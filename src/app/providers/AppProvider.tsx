@@ -21,6 +21,7 @@ interface AppContextValue {
   toggleTheme: () => void;
   login: (email: string, password: string) => Promise<UserRole>;
   signup: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
+  googleLogin: (authCode: string, role?: UserRole) => Promise<UserRole>;
   logout: () => void;
   completeOnboarding: (profileData: any) => Promise<void>;
   markSetupComplete: () => void;
@@ -202,6 +203,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const googleLogin = useCallback(async (authCode: string, role?: UserRole): Promise<UserRole> => {
+    setIsLoading(true);
+    try {
+      const response = await authAPI.googleLogin(authCode, role);
+      const apiResponse = response as unknown as ApiResponse<LoginResponse>;
+      
+      if (!apiResponse.success || !apiResponse.data) {
+        throw new Error(apiResponse.message || 'Google Login failed');
+      }
+
+      const { user: userDTO, token } = apiResponse.data;
+      const user: User = {
+        id: userDTO.userId,
+        email: userDTO.email,
+        first_name: userDTO.fullName.split(' ')[0],
+        last_name: userDTO.fullName.split(' ')[1] || '',
+        full_name: userDTO.fullName,
+        phone_number: userDTO.phoneNumber || null,
+        role: userDTO.role as UserRole,
+        is_email_verified: userDTO.isEmailVerified,
+        is_active: userDTO.isActive,
+        is_setup: userDTO.isSetup,
+        preferred_language: userDTO.preferredLanguage || 'en',
+        last_login_at: null,
+        login_failed_time: null,
+        access_failed_count: 0,
+        gigcoin_balance: 0,
+        created_at: userDTO.createdAt,
+        updated_at: userDTO.updatedAt || userDTO.createdAt,
+      };
+
+      setUser(user);
+      setRoleState(user.role);
+      localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+
+      return user.role;
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     setUser(null);
     setRoleState(null);
@@ -247,6 +294,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleTheme,
     login,
     signup,
+    googleLogin,
     logout,
     completeOnboarding,
     markSetupComplete
