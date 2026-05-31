@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, Briefcase, Code, ChevronRight } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, Briefcase, Code, ChevronRight, AlertCircle } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { authAPI } from '../../../api/authAPI';
@@ -19,6 +19,7 @@ export default function SignupScreen() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [googleClient, setGoogleClient] = useState<any>(null);
+  const [googleError, setGoogleError] = useState('');
 
   const selectedRoleRef = useRef<UserRole | null>(null);
   useEffect(() => {
@@ -103,6 +104,16 @@ export default function SignupScreen() {
     }
   };
 
+  const handleGoogleSignupClick = () => {
+    setGoogleError('');
+    const currentRole = selectedRoleRef.current;
+    if (currentRole === null) {
+      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      return;
+    }
+    googleClient?.requestCode();
+  };
+
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
@@ -170,6 +181,7 @@ export default function SignupScreen() {
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
+    setGoogleError('');
     setStep('form');
   };
 
@@ -340,8 +352,8 @@ export default function SignupScreen() {
               <h1 className="text-3xl font-black text-primary mb-2">Create your account</h1>
               <p className="mb-8 auth-subtitle">Fill in your details to get started</p>
               
-              <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-6 transition-all auth-google-btn"
-                onClick={() => googleClient?.requestCode()}
+              <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn"
+                onClick={handleGoogleSignupClick}
                 disabled={isLoading || !googleClient}
                 type="button">
                 <svg viewBox="0 0 24 24" className="w-5 h-5">
@@ -352,6 +364,16 @@ export default function SignupScreen() {
                 </svg>
                 Sign Up with Google
               </button>
+
+              {googleError && (
+                <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
+                  <span>
+                    Your Google account cannot be accessed at this time. Try troubleshooting this issue or{' '}
+                    <span className="text-[#4ADE80] underline cursor-pointer hover:text-[#22C55E]">contact us</span> for help.
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex-1 h-px auth-divider" />

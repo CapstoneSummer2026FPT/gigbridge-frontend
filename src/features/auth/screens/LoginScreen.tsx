@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [googleClient, setGoogleClient] = useState<any>(null);
+  const [googleError, setGoogleError] = useState('');
   const [formData, setFormData] = useState({ 
     email: '', 
     password: '',
@@ -53,12 +54,41 @@ export default function LoginScreen() {
   const handleGoogleLogin = async (authCode: string) => {
     setIsLoading(true);
     setError('');
+    setGoogleError('');
     try {
+      const selectedRoleStr = localStorage.getItem('selected_role');
+      const selectedRole = selectedRoleStr ? parseInt(selectedRoleStr, 10) : undefined;
+
       const googleLogin = appContext?.googleLogin || (async () => undefined);
-      const role = await googleLogin(authCode);
+      const role = await googleLogin(authCode, selectedRole);
+
+      console.log('Google login role:', role);
 
       const userStr = localStorage.getItem('gigbridge_user');
       const user = userStr ? JSON.parse(userStr) : null;
+
+      // Check if user did not set up a role AND is a newly created account (created within the last 10 seconds)
+      const isNewlyCreated = user?.created_at && (new Date().getTime() - new Date(user.created_at).getTime() < 10000);
+
+      if (selectedRole === undefined && isNewlyCreated) {
+        setGoogleError('Your account does not have a role set up yet. Please select a role on the sign-up page before signing in.');
+        if (appContext?.logout) {
+          appContext.logout();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin)) {
+        setGoogleError('Your account does not have a role set up yet. Please register with a role or contact support.');
+        if (appContext?.logout) {
+          appContext.logout();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.removeItem('selected_role');
 
       toast.success('Welcome back! Login successful.', {
         style: {
@@ -83,7 +113,7 @@ export default function LoginScreen() {
         navigate('/onboarding/profile-setup');
       }
     } catch (err: any) {
-      setError(err.message || 'Google Login failed');
+      setGoogleError(err.message || 'Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
     } finally {
       setIsLoading(false);
     }
@@ -92,14 +122,28 @@ export default function LoginScreen() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setGoogleError('');
     setIsLoading(true);
 
     try {
       const role = await login(formData.email, formData.password);
       
+      console.log('Email login role:', role);
+
       const userStr = localStorage.getItem('gigbridge_user');
       const user = userStr ? JSON.parse(userStr) : null;
       
+      if (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin)) {
+        setError('Your account does not have a role set up yet. Please select a role or contact support.');
+        if (appContext?.logout) {
+          appContext.logout();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.removeItem('selected_role');
+
       if (role === UserRole.Admin) {
         navigate('/admin');
       } else if (user?.is_setup) {
@@ -229,8 +273,11 @@ export default function LoginScreen() {
           <h1 className="text-3xl font-black text-primary mb-2">Welcome back</h1>
           <p className="mb-8 auth-subtitle">Sign in to your GigBridge account</p>
 
-          <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-6 transition-all auth-google-btn"
-            onClick={() => googleClient?.requestCode()}
+          <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn"
+            onClick={() => {
+              setGoogleError('');
+              googleClient?.requestCode();
+            }}
             disabled={isLoading || !googleClient}
             type="button">
             <svg viewBox="0 0 24 24" className="w-5 h-5">
@@ -241,6 +288,16 @@ export default function LoginScreen() {
             </svg>
             Continue with Google
           </button>
+
+          {googleError && (
+            <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
+              <span>
+                Your Google account cannot be accessed at this time. Try troubleshooting this issue or{' '}
+                <span className="text-[#4ADE80] underline cursor-pointer hover:text-[#22C55E]">contact us</span> for help.
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px auth-divider" />
