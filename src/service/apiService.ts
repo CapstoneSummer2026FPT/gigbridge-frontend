@@ -160,9 +160,9 @@ export const apiService = {
     }
   },
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async delete<T>(endpoint: string, data?: Record<string, any>): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.delete<ApiResponse<T>>(endpoint);
+      const response = await apiClient.delete<ApiResponse<T>>(endpoint, { data });
       return handleResponse(response);
     } catch (error: any) {
       return {

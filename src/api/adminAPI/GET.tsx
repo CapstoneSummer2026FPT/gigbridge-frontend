@@ -1,28 +1,29 @@
-// import { adminHandlers } from '../../mock_backend';
 import { apiService } from '../../service/apiService';
-import { ApiResponse } from '../../types/common';
+import type { ApiResponse } from '../../types/common';
+import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
 
-
-
+const AdminV1 = '/v1/admin';
 
 export const adminGetAPI = {
-  getDashboardStats: async () => {
-    return await adminHandlers.getDashboardStats();
+  /**
+   * GET /api/v1/admin/users
+   * Returns a paginated, searchable list of users.
+   * Backend Status: 1 = active, 0 = inactive (banned), null = all.
+   */
+  getUsers: async (params: GetUsersParams = {}): Promise<ApiResponse<PaginatedUsersResponse>> => {
+    return apiService.get<PaginatedUsersResponse>(`${AdminV1}/users`, params);
   },
 
-  getRecentUsers: async (limit?: number) => {
-    return await adminHandlers.getRecentUsers(limit);
-  },
-
-  getRecentProjects: async (limit?: number) => {
-    return await adminHandlers.getRecentProjects(limit);
-  },
-
-  getUserActivity: async (days?: number) => {
-    return await adminHandlers.getUserActivity(days);
-  },
-
-  getRevenueData: async (months?: number) => {
-    return await adminHandlers.getRevenueData(months);
+  /**
+   * Fetch all users matching the given search/filter by requesting page 1
+   * with a high page size.
+   */
+  getAllUsers: async (search?: string, status?: number): Promise<ApiResponse<PaginatedUsersResponse>> => {
+    return adminGetAPI.getUsers({
+      Page: 1,
+      PageSize: 200,
+      Search: search,
+      Status: status,
+    });
   },
 };
