@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ChevronRight, Building, MapPin, Globe, Briefcase, DollarSign, Award, Sparkles } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { profilePutAPI } from '../../../api/profileAPI';
+import { UserRole } from '../../../types/models/User';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../../types/models/Profile';
 import '../styles/profile-setup-screen.css';
 
@@ -40,6 +41,12 @@ export default function ProfileSetupScreen() {
 
   const role = appContext?.role ?? 0;
   const markSetupComplete = appContext?.markSetupComplete || (() => {});
+
+  useEffect(() => {
+    if (role === UserRole.Admin) {
+      navigate('/admin', { replace: true });
+    }
+  }, [navigate, role]);
 
   // Client form data
   const [clientData, setClientData] = useState({
@@ -124,6 +131,10 @@ export default function ProfileSetupScreen() {
       return freelancerData.location && freelancerData.bio;
     }
   };
+
+  if (role === UserRole.Admin) {
+    return null;
+  }
 
   return (
     <GuestLayout>

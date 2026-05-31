@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router';
-import { AppProvider } from './providers/AppProvider';
+import { AppProvider, useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 
 // Lazy imports for all screens
@@ -48,6 +48,7 @@ import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
 
 // Import router styles
 import './styles/router.css';
+import { UserRole } from '../types';
 
 function NotFound() {
   return (
@@ -151,15 +152,15 @@ export const router = createBrowserRouter([
       { path: 'financial-overview', element: <ProtectedRoute requireAuth requireSetup><FinancialOverviewScreen /></ProtectedRoute> },
 
       // Admin - requires authentication and admin role
-      { path: 'admin', element: <ProtectedRoute requireAuth requireSetup><AdminDashboardScreen /></ProtectedRoute> },
-      { path: 'admin/users', element: <ProtectedRoute requireAuth requireSetup><AdminUsersScreen /></ProtectedRoute> },
-      { path: 'admin/jobs', element: <ProtectedRoute requireAuth requireSetup><AdminJobsScreen /></ProtectedRoute> },
-      { path: 'admin/contracts', element: <ProtectedRoute requireAuth requireSetup><AdminContractsScreen /></ProtectedRoute> },
-      { path: 'admin/reports', element: <ProtectedRoute requireAuth requireSetup><AdminReportsScreen /></ProtectedRoute> },
-      { path: 'admin/feedback', element: <ProtectedRoute requireAuth requireSetup><AdminFeedbackScreen /></ProtectedRoute> },
-      { path: 'admin/system-tracking', element: <ProtectedRoute requireAuth requireSetup><AdminSystemTrackingScreen /></ProtectedRoute> },
-      { path: 'admin/revenue', element: <ProtectedRoute requireAuth requireSetup><AdminRevenueScreen /></ProtectedRoute> },
-      { path: 'admin/notifications', element: <ProtectedRoute requireAuth requireSetup><AdminNotificationsScreen /></ProtectedRoute> },
+      { path: 'admin', element: <AdminRoute><AdminDashboardScreen /></AdminRoute> },
+      { path: 'admin/users', element: <AdminRoute><AdminUsersScreen /></AdminRoute> },
+      { path: 'admin/jobs', element: <AdminRoute><AdminJobsScreen /></AdminRoute> },
+      { path: 'admin/contracts', element: <AdminRoute><AdminContractsScreen /></AdminRoute> },
+      { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
+      { path: 'admin/feedback', element: <AdminRoute><AdminFeedbackScreen /></AdminRoute> },
+      { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
+      { path: 'admin/revenue', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
+      { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
 
       // Market Insights - public
       { path: 'market-insights', element: <MarketInsightsScreen /> },

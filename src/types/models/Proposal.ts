@@ -27,3 +27,24 @@ export interface ProposalAttachment {
   file_url: string;
   file_size: number;
 }
+
+export interface ProposalQueryParams {
+  pageIndex?: number;
+  pageSize?: number;
+  PageIndex?: number;
+  PageSize?: number;
+}
+
+export interface ProposalDto {
+  proposalsId: string;
+  jobPostsId: string;
+  jobTitle: string;
+  freelancerProfilesId: string;
+  freelancerName: string;
+  coverLetter: string;
+  proposedRate: number;
+  proposedDuration: string;
+  status: ProposalStatus | number;
+  submittedAt: string;
+  reviewedAt?: string | null;
+}

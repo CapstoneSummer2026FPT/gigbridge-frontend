@@ -15,7 +15,6 @@ import type {
 
 const authV1Url = 'auth';
 
-
 export const authPostAPI = {
   /**
    * Login with email and password

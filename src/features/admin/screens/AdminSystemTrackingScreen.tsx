@@ -1,13 +1,70 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Activity, AlertTriangle, FileText, Zap, TrendingUp, Clock, Eye, Filter, Search, Download, RefreshCw, CheckCircle, XCircle, AlertCircle, Info, Terminal, Cpu, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { adminGetAPI } from '../../../api/adminAPI/GET';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import type { ApiResponse } from '../../../types/common';
+import type { AdminUserDto, PaginatedUsersResponse } from '../../../types/models/User';
+import type { JobPostSummaryDto } from '../../../types/models/Job';
+import type { ProposalDto } from '../../../types/models/Proposal';
 import '../styles/admin-users-screen.css';
 
 type TabType = 'overview' | 'audit' | 'errors' | 'alerts' | 'ai-usage';
 type LogLevel = 'info' | 'warning' | 'error' | 'critical';
 type AlertStatus = 'active' | 'resolved' | 'acknowledged';
+
+type AuditLog = {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+  action: string;
+  resource: string;
+  ipAddress: string;
+  userAgent: string;
+  status: string;
+  details: string;
+};
+
+type ErrorLogEntry = {
+  id: string;
+  timestamp: string;
+  level: LogLevel;
+  service: string;
+  message: string;
+  stackTrace: string | null;
+  userId: string | null;
+  requestId: string;
+  count: number;
+};
+
+type SystemAlert = {
+  id: string;
+  timestamp: string;
+  title: string;
+  description: string;
+  severity: LogLevel;
+  status: AlertStatus;
+  service: string;
+  metric: string;
+  value: string;
+  threshold: string;
+};
+
+type ApiLog = {
+  id: string;
+  timestamp: string;
+  method: string;
+  status: number;
+  url: string;
+  ip: string;
+  duration: number;
+  user: string | null;
+  application: string;
+};
 
 // Mock data
 const AUDIT_LOGS = [
@@ -268,6 +325,87 @@ const API_LOGS = [
   },
 ];
 
+const getRoleName = (role: number) => {
+  if (role === 0) return 'Client';
+  if (role === 1) return 'Freelancer';
+  if (role === 2) return 'Admin';
+  return 'User';
+};
+
+const toAuditLogs = (
+  users: AdminUserDto[],
+  jobs: JobPostSummaryDto[],
+  proposals: ProposalDto[]
+): AuditLog[] => {
+  const userLogs = users.slice(0, 8).map(user => ({
+    id: `user_${user.userId}`,
+    timestamp: user.updatedAt || user.createdAt,
+    userId: user.userId,
+    userName: user.fullName,
+    action: user.isActive ? 'user.active' : 'user.inactive',
+    resource: `${getRoleName(user.role)} ${user.email}`,
+    ipAddress: '-',
+    userAgent: user.provider || 'GigBridge',
+    status: 'success',
+    details: `${user.fullName} is registered as ${getRoleName(user.role)}`,
+  }));
+
+  const jobLogs = jobs.slice(0, 8).map(job => ({
+    id: `job_${job.jobPostsId}`,
+    timestamp: job.createdAt,
+    userId: '',
+    userName: 'Client',
+    action: 'job.created',
+    resource: job.title,
+    ipAddress: '-',
+    userAgent: 'GigBridge API',
+    status: 'success',
+    details: job.descriptionPreview || `Created job post "${job.title}"`,
+  }));
+
+  const proposalLogs = proposals.slice(0, 8).map(proposal => ({
+    id: `proposal_${proposal.proposalsId}`,
+    timestamp: proposal.submittedAt,
+    userId: proposal.freelancerProfilesId,
+    userName: proposal.freelancerName || 'Freelancer',
+    action: 'proposal.submitted',
+    resource: proposal.jobTitle || proposal.jobPostsId,
+    ipAddress: '-',
+    userAgent: 'GigBridge API',
+    status: 'success',
+    details: `Submitted proposal for "${proposal.jobTitle || proposal.jobPostsId}"`,
+  }));
+
+  return [...userLogs, ...jobLogs, ...proposalLogs]
+    .filter(log => Boolean(log.timestamp))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+};
+
+const toFailureLog = (service: string, url: string, response: ApiResponse<unknown>): ErrorLogEntry => ({
+  id: `${service}_${Date.now()}`,
+  timestamp: new Date().toISOString(),
+  level: response.statusCode >= 500 ? 'error' : 'warning',
+  service,
+  message: response.message || `${service} request failed`,
+  stackTrace: null,
+  userId: null,
+  requestId: url,
+  count: 1,
+});
+
+const toAlert = (service: string, response: ApiResponse<unknown>): SystemAlert => ({
+  id: `alert_${service}_${Date.now()}`,
+  timestamp: new Date().toISOString(),
+  title: `${service} request failed`,
+  description: response.message || `${service} endpoint returned an unsuccessful response`,
+  severity: response.statusCode >= 500 ? 'error' : 'warning',
+  status: 'active',
+  service,
+  metric: 'http_status',
+  value: response.statusCode.toString(),
+  threshold: '< 400',
+});
+
 export default function AdminSystemTrackingScreen() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -275,6 +413,11 @@ export default function AdminSystemTrackingScreen() {
   const [logLevelFilter, setLogLevelFilter] = useState<LogLevel | 'all'>('all');
   const [alertStatusFilter, setAlertStatusFilter] = useState<AlertStatus | 'all'>('all');
   const [timeRange, setTimeRange] = useState('24h');
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [errorLogs, setErrorLogs] = useState<ErrorLogEntry[]>([]);
+  const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
+  const [isLoadingTracking, setIsLoadingTracking] = useState(true);
 
   // API Logs filters
   const [apiLogFilters, setApiLogFilters] = useState({
@@ -292,19 +435,90 @@ export default function AdminSystemTrackingScreen() {
   const [apiLogPage, setApiLogPage] = useState(1);
   const apiLogsPerPage = 5;
 
-  const stats = useMemo(() => {
-    const auditCount = AUDIT_LOGS.length;
-    const errorCount = ERROR_LOGS.filter(e => e.level === 'error' || e.level === 'critical').length;
-    const activeAlerts = ALERTS.filter(a => a.status === 'active').length;
-    const todayAIRequests = AI_API_USAGE[AI_API_USAGE.length - 1].requests;
-    const todayAICost = AI_API_USAGE[AI_API_USAGE.length - 1].cost;
-    const avgResponseTime = '245ms';
+  const loadSystemTrackingData = async () => {
+    setIsLoadingTracking(true);
 
-    return { auditCount, errorCount, activeAlerts, todayAIRequests, todayAICost, avgResponseTime };
+    const requestLogs: ApiLog[] = [];
+    const failures: ErrorLogEntry[] = [];
+    const activeAlerts: SystemAlert[] = [];
+
+    const callTracked = async <T,>(
+      service: string,
+      url: string,
+      call: () => Promise<ApiResponse<T>>
+    ): Promise<ApiResponse<T>> => {
+      const startedAt = Date.now();
+      const response = await call();
+      const duration = Date.now() - startedAt;
+
+      requestLogs.push({
+        id: `${service}_${startedAt}`,
+        timestamp: new Date(startedAt).toISOString(),
+        method: 'GET',
+        status: response.statusCode,
+        url,
+        ip: '-',
+        duration,
+        user: null,
+        application: 'GigBridge API',
+      });
+
+      if (!response.success) {
+        failures.push(toFailureLog(service, url, response as ApiResponse<unknown>));
+        activeAlerts.push(toAlert(service, response as ApiResponse<unknown>));
+      }
+
+      return response;
+    };
+
+    const [usersResponse, jobsResponse, proposalsResponse] = await Promise.all([
+      callTracked<PaginatedUsersResponse>(
+        'admin-users',
+        '/api/v1/admin/users',
+        () => adminGetAPI.getUsers({ Page: 1, PageSize: 200 })
+      ),
+      callTracked<JobPostSummaryDto[]>(
+        'job-posts',
+        '/api/JobPosts/admin/all',
+        () => jobGetAPI.getAllJobPosts({ PageIndex: 1, PageSize: 200 })
+      ),
+      callTracked<ProposalDto[]>(
+        'proposals',
+        '/api/Proposals/admin/all',
+        () => proposalGetAPI.getAllProposals({ PageIndex: 1, PageSize: 200 })
+      ),
+    ]);
+
+    const users = usersResponse.data?.items || [];
+    const jobs = jobsResponse.data || [];
+    const proposals = proposalsResponse.data || [];
+
+    setAuditLogs(toAuditLogs(users, jobs, proposals));
+    setErrorLogs(failures);
+    setAlerts(activeAlerts);
+    setApiLogs(requestLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+    setIsLoadingTracking(false);
+  };
+
+  useEffect(() => {
+    loadSystemTrackingData();
   }, []);
 
+  const stats = useMemo(() => {
+    const auditCount = auditLogs.length;
+    const errorCount = errorLogs.filter(e => e.level === 'error' || e.level === 'critical').length;
+    const activeAlerts = alerts.filter(a => a.status === 'active').length;
+    const todayAIRequests = AI_API_USAGE[AI_API_USAGE.length - 1].requests;
+    const todayAICost = AI_API_USAGE[AI_API_USAGE.length - 1].cost;
+    const avgResponseTime = apiLogs.length
+      ? `${Math.round(apiLogs.reduce((total, log) => total + log.duration, 0) / apiLogs.length)}ms`
+      : '0ms';
+
+    return { auditCount, errorCount, activeAlerts, todayAIRequests, todayAICost, avgResponseTime };
+  }, [auditLogs, errorLogs, alerts, apiLogs]);
+
   const filteredErrors = useMemo(() => {
-    return ERROR_LOGS.filter(error => {
+    return errorLogs.filter(error => {
       const matchesSearch = searchQuery === '' ||
         error.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
         error.service.toLowerCase().includes(searchQuery.toLowerCase());
@@ -313,10 +527,10 @@ export default function AdminSystemTrackingScreen() {
 
       return matchesSearch && matchesLevel;
     });
-  }, [searchQuery, logLevelFilter]);
+  }, [errorLogs, searchQuery, logLevelFilter]);
 
   const filteredAlerts = useMemo(() => {
-    return ALERTS.filter(alert => {
+    return alerts.filter(alert => {
       const matchesSearch = searchQuery === '' ||
         alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         alert.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -325,7 +539,7 @@ export default function AdminSystemTrackingScreen() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, alertStatusFilter]);
+  }, [alerts, searchQuery, alertStatusFilter]);
 
   const getLogLevelBadge = (level: LogLevel) => {
     if (level === 'info') return <span className="badge-cyan text-xs">Info</span>;
@@ -371,7 +585,10 @@ export default function AdminSystemTrackingScreen() {
 
   // Filter and sort API logs
   const filteredApiLogs = useMemo(() => {
-    let filtered = API_LOGS.filter(log => {
+    let filtered = apiLogs.filter(log => {
+      const timestamp = new Date(log.timestamp).getTime();
+      const matchesStartDate = apiLogFilters.startDate === '' || timestamp >= new Date(apiLogFilters.startDate).getTime();
+      const matchesEndDate = apiLogFilters.endDate === '' || timestamp <= new Date(`${apiLogFilters.endDate}T23:59:59`).getTime();
       const matchesUrl = apiLogFilters.url === '' || log.url.toLowerCase().includes(apiLogFilters.url.toLowerCase());
       const matchesMethod = apiLogFilters.method === '' || log.method === apiLogFilters.method;
       const matchesStatus = apiLogFilters.status === '' || log.status.toString() === apiLogFilters.status;
@@ -381,7 +598,7 @@ export default function AdminSystemTrackingScreen() {
       const matchesMinDuration = apiLogFilters.minDuration === '' || log.duration >= parseInt(apiLogFilters.minDuration);
       const matchesMaxDuration = apiLogFilters.maxDuration === '' || log.duration <= parseInt(apiLogFilters.maxDuration);
 
-      return matchesUrl && matchesMethod && matchesStatus && matchesIp && matchesUsername && matchesMinDuration && matchesMaxDuration;
+      return matchesStartDate && matchesEndDate && matchesUrl && matchesMethod && matchesStatus && matchesIp && matchesUsername && matchesMinDuration && matchesMaxDuration;
     });
 
     // Sort by timestamp
@@ -392,7 +609,7 @@ export default function AdminSystemTrackingScreen() {
     });
 
     return filtered;
-  }, [apiLogFilters, apiLogSortOrder]);
+  }, [apiLogs, apiLogFilters, apiLogSortOrder]);
 
   // Pagination for API logs
   const totalApiLogPages = Math.ceil(filteredApiLogs.length / apiLogsPerPage);
@@ -416,6 +633,32 @@ export default function AdminSystemTrackingScreen() {
     setApiLogPage(1);
   };
 
+  const handleExportApiLogs = () => {
+    const header = ['Timestamp', 'Method', 'Status', 'URL', 'User', 'IP', 'Duration', 'Application'];
+    const rows = filteredApiLogs.map(log => [
+      log.timestamp,
+      log.method,
+      log.status.toString(),
+      log.url,
+      log.user || '',
+      log.ip,
+      `${log.duration}ms`,
+      log.application,
+    ]);
+
+    const csv = [header, ...rows]
+      .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `system-api-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const isApiLogFilterActive = () => {
     return Object.values(apiLogFilters).some(val => val !== '');
   };
@@ -435,11 +678,19 @@ export default function AdminSystemTrackingScreen() {
               <p className="text-sm text-secondary mt-1">Real-time system health and activity monitoring</p>
             </div>
             <div className="flex gap-2">
-              <button className="btn-ghost-cyan px-3 py-2 text-xs sm:text-sm flex items-center gap-2">
-                <RefreshCw size={14} />
+              <button
+                onClick={loadSystemTrackingData}
+                disabled={isLoadingTracking}
+                className="btn-ghost-cyan px-3 py-2 text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={isLoadingTracking ? 'animate-spin' : ''} />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
-              <button className="btn-cyan px-3 py-2 text-xs sm:text-sm flex items-center gap-2">
+              <button
+                onClick={handleExportApiLogs}
+                disabled={filteredApiLogs.length === 0}
+                className="btn-cyan px-3 py-2 text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50"
+              >
                 <Download size={14} />
                 <span className="hidden sm:inline">Export</span>
               </button>
@@ -685,10 +936,14 @@ export default function AdminSystemTrackingScreen() {
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">
                       <button
-                        onClick={() => setApiLogPage(1)}
-                        className="btn-cyan px-4 py-2 text-xs"
+                        onClick={() => {
+                          setApiLogPage(1);
+                          loadSystemTrackingData();
+                        }}
+                        disabled={isLoadingTracking}
+                        className="btn-cyan px-4 py-2 text-xs disabled:opacity-50"
                       >
-                        <RefreshCw size={14} className="inline mr-1" />
+                        <RefreshCw size={14} className={`inline mr-1 ${isLoadingTracking ? 'animate-spin' : ''}`} />
                         Refresh
                       </button>
                       {isApiLogFilterActive() && (
@@ -699,9 +954,13 @@ export default function AdminSystemTrackingScreen() {
                           Reset Filters
                         </button>
                       )}
-                      <button className="btn-ghost-cyan px-4 py-2 text-xs ml-auto">
+                      <button
+                        onClick={handleExportApiLogs}
+                        disabled={filteredApiLogs.length === 0}
+                        className="btn-ghost-cyan px-4 py-2 text-xs ml-auto disabled:opacity-50"
+                      >
                         <Download size={14} className="inline mr-1" />
-                        Export to Excel
+                        Export CSV
                       </button>
                     </div>
                   </div>
@@ -837,7 +1096,7 @@ export default function AdminSystemTrackingScreen() {
 
               {/* Audit Logs List */}
               <div className="space-y-3">
-                {AUDIT_LOGS.map(log => (
+                {auditLogs.map(log => (
                   <div key={log.id} className="glass-card p-4 hover:bg-white/5 transition-all">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -861,6 +1120,13 @@ export default function AdminSystemTrackingScreen() {
                     </div>
                   </div>
                 ))}
+                {!isLoadingTracking && auditLogs.length === 0 && (
+                  <div className="glass-card text-center py-12">
+                    <FileText size={48} className="mx-auto mb-4 text-muted" />
+                    <p className="text-primary font-medium mb-2">No audit activity found</p>
+                    <p className="text-sm text-secondary">Refresh after users, jobs, or proposals have been created.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -929,6 +1195,13 @@ export default function AdminSystemTrackingScreen() {
                     </div>
                   </div>
                 ))}
+                {!isLoadingTracking && filteredErrors.length === 0 && (
+                  <div className="glass-card text-center py-12">
+                    <CheckCircle size={48} className="mx-auto mb-4 text-green" />
+                    <p className="text-primary font-medium mb-2">No API errors found</p>
+                    <p className="text-sm text-secondary">All wired system tracking requests are currently successful.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1001,6 +1274,13 @@ export default function AdminSystemTrackingScreen() {
                     )}
                   </div>
                 ))}
+                {!isLoadingTracking && filteredAlerts.length === 0 && (
+                  <div className="glass-card text-center py-12">
+                    <CheckCircle size={48} className="mx-auto mb-4 text-green" />
+                    <p className="text-primary font-medium mb-2">No active alerts</p>
+                    <p className="text-sm text-secondary">Tracked admin endpoints are responding normally.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

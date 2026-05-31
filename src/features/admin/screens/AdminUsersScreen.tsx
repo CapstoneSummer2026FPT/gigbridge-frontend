@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign } from 'lucide-react';
+import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign, Plus, KeyRound, Phone } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
@@ -9,6 +9,14 @@ import '../styles/admin-users-screen.css';
 
 type UserFilter = 'all' | 'client' | 'freelancer' | 'admin' | 'banned';
 type UserSort = 'name' | 'joined' | 'status';
+
+const initialCreateForm = {
+  fullName: '',
+  email: '',
+  password: '',
+  phoneNumber: '',
+  role: UserRole.Client,
+};
 
 const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
   const spaceIndex = dto.fullName.indexOf(' ');
@@ -44,6 +52,10 @@ export default function AdminUsersScreen() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
   const [previewUser, setPreviewUser] = useState<User | null>(null);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [createForm, setCreateForm] = useState(initialCreateForm);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [creatingUser, setCreatingUser] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2} | null>(null);
   const [editForm, setEditForm] = useState({firstName: '', lastName: '', email: ''});
 
@@ -121,6 +133,44 @@ export default function AdminUsersScreen() {
     setShowActionMenu(null);
   };
 
+  const handleCreateUser = async () => {
+    const fullName = createForm.fullName.trim();
+    const email = createForm.email.trim();
+    const password = createForm.password;
+    const phoneNumber = createForm.phoneNumber.trim();
+
+    if (!fullName || !email || !password) {
+      setCreateError('Full name, email, and password are required.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setCreateError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setCreatingUser(true);
+    setCreateError(null);
+
+    const response = await adminAPI.createUser({
+      fullName,
+      email,
+      password,
+      role: createForm.role,
+      phoneNumber: phoneNumber || undefined,
+    });
+
+    if (response.success) {
+      await loadUsers();
+      setShowCreateUser(false);
+      setCreateForm(initialCreateForm);
+    } else {
+      setCreateError(response.message || 'Failed to create user.');
+    }
+
+    setCreatingUser(false);
+  };
+
   const getRoleBadge = (role: number) => {
     if (role === 0) return <span className="badge-cyan text-xs">Client</span>;
     if (role === 1) return <span className="badge-purple text-xs">Freelancer</span>;
@@ -146,10 +196,22 @@ export default function AdminUsersScreen() {
             <h1 className="text-3xl font-black text-primary">Manage Users</h1>
             <p className="text-sm text-secondary mt-1">View and manage all platform users</p>
           </div>
-          <button className="btn-cyan px-4 py-2 text-sm flex items-center gap-2">
-            <Download size={16} />
-            Export Users
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setCreateError(null);
+                setShowCreateUser(true);
+              }}
+              className="btn-cyan px-4 py-2 text-sm flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Create User
+            </button>
+            <button className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
+              <Download size={16} />
+              Export Users
+            </button>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -425,6 +487,160 @@ export default function AdminUsersScreen() {
             </div>
           )}
         </div>
+
+        {/* Create User Modal */}
+        {showCreateUser && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCreateUser(false)}>
+            <div className="glass-card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-primary">Create New User</h2>
+                  <p className="text-sm text-secondary mt-1">Add a platform account with a role and temporary password</p>
+                </div>
+                <button
+                  onClick={() => setShowCreateUser(false)}
+                  className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
+                >
+                  <XCircle size={20} className="text-red" />
+                </button>
+              </div>
+
+              {createError && (
+                <div className="mb-5 p-3 rounded-lg bg-red/10 border border-red/30">
+                  <p className="text-sm text-red">{createError}</p>
+                </div>
+              )}
+
+              <div className="space-y-5">
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Users size={16} className="text-cyan" />
+                    <p className="text-sm font-semibold text-primary">Account Details</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="text-xs text-secondary mb-2 block">Full Name</label>
+                      <input
+                        type="text"
+                        value={createForm.fullName}
+                        onChange={e => setCreateForm({ ...createForm, fullName: e.target.value })}
+                        className="input-gb w-full px-4 py-2.5 text-sm"
+                        placeholder="Jane Nguyen"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-secondary mb-2 block">Email Address</label>
+                      <div className="relative">
+                        <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                        <input
+                          type="email"
+                          value={createForm.email}
+                          onChange={e => setCreateForm({ ...createForm, email: e.target.value })}
+                          className="input-gb w-full py-2.5 text-sm"
+                          style={{ paddingLeft: '2.25rem', paddingRight: '1rem' }}
+                          placeholder="jane@example.com"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-secondary mb-2 block">Phone Number</label>
+                      <div className="relative">
+                        <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                        <input
+                          type="tel"
+                          value={createForm.phoneNumber}
+                          onChange={e => setCreateForm({ ...createForm, phoneNumber: e.target.value })}
+                          className="input-gb w-full py-2.5 text-sm"
+                          style={{ paddingLeft: '2.25rem', paddingRight: '1rem' }}
+                          placeholder="+84..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Shield size={16} className="text-purple" />
+                    <p className="text-sm font-semibold text-primary">Role Section</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { role: UserRole.Client, label: 'Client', icon: <Briefcase size={16} />, desc: 'Can post jobs' },
+                      { role: UserRole.Freelancer, label: 'Freelancer', icon: <UserCheck size={16} />, desc: 'Can submit proposals' },
+                      { role: UserRole.Admin, label: 'Admin', icon: <Shield size={16} />, desc: 'Can manage platform' },
+                    ].map(option => (
+                      <button
+                        key={option.role}
+                        type="button"
+                        onClick={() => setCreateForm({ ...createForm, role: option.role })}
+                        className={`p-4 rounded-xl text-left transition-all border ${
+                          createForm.role === option.role
+                            ? 'bg-cyan/20 text-cyan border-cyan'
+                            : 'glass-button text-secondary border-white/10 hover:text-primary'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          {option.icon}
+                          {createForm.role === option.role && <CheckCircle size={16} />}
+                        </div>
+                        <p className="text-sm font-semibold">{option.label}</p>
+                        <p className="text-xs opacity-80 mt-1">{option.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="glass-card p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <KeyRound size={16} className="text-amber" />
+                    <p className="text-sm font-semibold text-primary">Security Section</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-secondary mb-2 block">Temporary Password</label>
+                    <div className="relative">
+                      <KeyRound size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <input
+                        type="password"
+                        value={createForm.password}
+                        onChange={e => setCreateForm({ ...createForm, password: e.target.value })}
+                        className="input-gb w-full py-2.5 text-sm"
+                        style={{ paddingLeft: '2.25rem', paddingRight: '1rem' }}
+                        placeholder="Minimum 6 characters"
+                      />
+                    </div>
+                    <p className="text-xs text-muted mt-2">The backend creates the account as active and unverified by default.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowCreateUser(false);
+                    setCreateForm(initialCreateForm);
+                    setCreateError(null);
+                  }}
+                  className="btn-ghost-cyan px-6 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={creatingUser}
+                  className="btn-cyan px-6 py-2 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {creatingUser ? (
+                    <div className="w-4 h-4 border-2 border-[#0A0F1C] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Plus size={16} />
+                  )}
+                  Create User
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Preview Profile Modal */}
         {previewUser && (
