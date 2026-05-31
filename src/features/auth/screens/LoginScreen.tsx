@@ -162,41 +162,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handleDemoLogin = async (demoRole: 'client' | 'freelancer' | 'admin') => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const demoCredentials = {
-        client: 'client@gigbridge.com',
-        freelancer: 'freelancer@gigbridge.com',
-        admin: 'admin@gigbridge.com',
-      };
-      
-      await login(demoCredentials[demoRole], 'demo');
-      
-      const gigbridgeUserStr = localStorage.getItem('gigbridge_user');
-      if (gigbridgeUserStr) {
-        const user = JSON.parse(gigbridgeUserStr);
-        const role = user.role;
-        if (role === 0) {
-          navigate('/client/dashboard');
-        } else if (role === 1) {
-          navigate('/freelancer/dashboard');
-        } else if (role === 2) {
-          navigate('/admin');
-        } else {
-          navigate('/');
-        }
-      } else {
-        navigate('/');
-      }
-    } catch (err: any) {
-      console.error('Demo login failed:', err);
-      setError(err.message || 'Demo login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   return (
     <div className="min-h-screen flex auth-container">
@@ -353,18 +319,6 @@ export default function LoginScreen() {
               Sign Up
             </button>
           </p>
-
-          <div className="mt-8 p-4 rounded-xl auth-demo-box">
-            <p className="text-xs font-semibold mb-3 auth-demo-title">⚡ Quick Demo Access</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(['freelancer', 'client', 'admin'] as const).map(r => (
-                <button key={r} onClick={() => handleDemoLogin(r)}
-                  className="py-2 rounded-lg text-xs font-medium capitalize transition-all auth-demo-btn">
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
