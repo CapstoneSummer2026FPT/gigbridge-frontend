@@ -6,6 +6,8 @@ import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 import LandingScreen from '../features/landing/screens/LandingScreenNew';
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import SignupScreen from '../features/auth/screens/SignupScreen';
+import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen';
 import ProfileSetupScreen from '../features/onboarding/screens/ProfileSetupScreen';
 import ClientDashboardScreen from '../features/dashboard/screens/ClientDashboardScreen';
 import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerDashboardScreen';
@@ -84,6 +86,9 @@ export const router = createBrowserRouter([
       { index: true, element: <PublicRoute><LandingScreen /></PublicRoute> },
       { path: 'auth/login', element: <PublicRoute><LoginScreen /></PublicRoute> },
       { path: 'auth/signup', element: <PublicRoute><SignupScreen /></PublicRoute> },
+      { path: 'auth/forgot-password', element: <PublicRoute><ForgotPasswordScreen /></PublicRoute> },
+      { path: 'auth/reset-password', element: <PublicRoute><ResetPasswordScreen /></PublicRoute> },
+      { path: 'api/Auth/reset-password', element: <PublicRoute><ResetPasswordScreen /></PublicRoute> },
 
       // Onboarding routes - requires authentication
       { path: 'onboarding/profile-setup', element: <ProtectedRoute requireAuth><ProfileSetupScreen /></ProtectedRoute> },

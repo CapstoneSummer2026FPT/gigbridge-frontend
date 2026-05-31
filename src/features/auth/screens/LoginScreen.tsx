@@ -330,7 +330,7 @@ export default function LoginScreen() {
             </div>
 
             <div className="flex justify-end">
-              <button type="button" className="text-sm auth-link-cyan">Forgot password?</button>
+              <button type="button" className="text-sm auth-link-cyan" onClick={() => navigate('/auth/forgot-password')}>Forgot password?</button>
             </div>
 
             <button type="submit" disabled={isLoading}
