@@ -19,4 +19,7 @@ export const authAPI = {
   verifyEmail: authGetAPI.verifyEmail,
   testAuth: authGetAPI.testAuth,
   markSetupComplete: authPutAPI.markSetupComplete,
+  sendOtp: authPostAPI.sendOtp,
+  verifyOtp: authPostAPI.verifyOtp,
 };
+
