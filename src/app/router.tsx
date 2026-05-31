@@ -1,4 +1,5 @@
-import { createBrowserRouter, Outlet } from 'react-router';
+import type { ReactNode } from 'react';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 import { AppProvider } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 
@@ -73,6 +74,24 @@ function RootLayout() {
       <Outlet />
     </AppProvider>
   );
+}
+
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { isLoading, isAuthenticated, role } = useApp();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (role !== UserRole.Admin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 export const router = createBrowserRouter([

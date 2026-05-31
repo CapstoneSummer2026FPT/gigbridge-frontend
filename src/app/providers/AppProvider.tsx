@@ -111,7 +111,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authAPI.login({ email, password });
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
-      
+
       if (!apiResponse.success || !apiResponse.data) {
         throw new Error(apiResponse.message || 'Login failed');
       }
@@ -155,16 +155,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const signup = useCallback(async (email: string, password: string, firstName: string, lastName: string, role: UserRole) => {
     setIsLoading(true);
     try {
-      const registerData = { 
-        email, 
-        password, 
+      const registerData = {
+        email,
+        password,
         confirmPassword: password,
         fullName: `${firstName} ${lastName}`,
-        role 
+        role
       };
       const response = await (authAPI.register as (data: any) => Promise<ApiResponse<UserDTO>>)(registerData);
       const apiResponse = response as unknown as ApiResponse<UserDTO>;
-      
+
       if (!apiResponse.success || !apiResponse.data) {
         throw new Error(apiResponse.message || 'Registration failed');
       }

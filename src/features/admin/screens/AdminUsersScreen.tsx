@@ -1,13 +1,40 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { DB } from '../../../mock_backend';
-import type { User } from '../../../types';
+import { adminAPI } from '../../../api/adminAPI';
+import type { AdminUserDto, User } from '../../../types';
+import { UserRole } from '../../../types';
 import '../styles/admin-users-screen.css';
 
 type UserFilter = 'all' | 'client' | 'freelancer' | 'admin' | 'banned';
 type UserSort = 'name' | 'joined' | 'status';
+
+const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
+  const spaceIndex = dto.fullName.indexOf(' ');
+  const firstName = spaceIndex >= 0 ? dto.fullName.slice(0, spaceIndex) : dto.fullName;
+  const lastName = spaceIndex >= 0 ? dto.fullName.slice(spaceIndex + 1) : '';
+
+  return {
+    id: dto.userId,
+    email: dto.email,
+    first_name: firstName,
+    last_name: lastName,
+    full_name: dto.fullName,
+    phone_number: dto.phoneNumber ?? null,
+    role: dto.role as UserRole,
+    is_email_verified: dto.isEmailVerified,
+    is_active: dto.isActive,
+    is_setup: false,
+    preferred_language: dto.preferredLanguage || 'en',
+    last_login_at: null,
+    login_failed_time: null,
+    access_failed_count: 0,
+    gigcoin_balance: 0,
+    created_at: dto.createdAt,
+    updated_at: dto.updatedAt || dto.createdAt,
+  };
+};
 
 export default function AdminUsersScreen() {
   const navigate = useNavigate();
@@ -20,7 +47,22 @@ export default function AdminUsersScreen() {
   const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2} | null>(null);
   const [editForm, setEditForm] = useState({firstName: '', lastName: '', email: ''});
 
-  const allUsers = DB.getUsers();
+  // Real API state
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    const response = await adminAPI.getAllUsers();
+    setUsers(response.success && response.data ? response.data.items.map(mapAdminUserDtoToUser) : []);
+    setLoading(false);
+  };
+
+  const allUsers = users;
 
   // Filter and sort users
   const filteredUsers = useMemo(() => {
@@ -34,7 +76,7 @@ export default function AdminUsersScreen() {
         filterType === 'client' ? user.role === 0 :
         filterType === 'freelancer' ? user.role === 1 :
         filterType === 'admin' ? user.role === 2 :
-        filterType === 'banned' ? user.is_banned : true;
+        filterType === 'banned' ? !user.is_active : true;
 
       return matchesSearch && matchesFilter;
     });
@@ -43,7 +85,7 @@ export default function AdminUsersScreen() {
     filtered.sort((a, b) => {
       if (sortBy === 'name') return a.full_name.localeCompare(b.full_name);
       if (sortBy === 'joined') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      if (sortBy === 'status') return (a.is_banned ? 1 : 0) - (b.is_banned ? 1 : 0);
+      if (sortBy === 'status') return (a.is_active ? 0 : 1) - (b.is_active ? 0 : 1);
       return 0;
     });
 
@@ -55,29 +97,28 @@ export default function AdminUsersScreen() {
     const clients = allUsers.filter(u => u.role === 0).length;
     const freelancers = allUsers.filter(u => u.role === 1).length;
     const admins = allUsers.filter(u => u.role === 2).length;
-    const banned = allUsers.filter(u => u.is_banned).length;
-    const verified = allUsers.filter(u => u.email_verified).length;
+    const banned = allUsers.filter(u => !u.is_active).length;
+    const verified = allUsers.filter(u => u.is_email_verified).length;
 
     return { total, clients, freelancers, admins, banned, verified };
   }, [allUsers]);
 
-  const handleBanUser = (userId: string) => {
+  const handleBanUser = async (userId: string) => {
     const user = allUsers.find(u => u.id === userId);
     if (user) {
-      // Toggle ban status
-      user.is_banned = !user.is_banned;
-      alert(`User ${user.is_banned ? 'banned' : 'unbanned'} successfully`);
+      const response = await adminAPI.toggleUserActivity(user.email);
+      if (response.success) {
+        await loadUsers();
+      } else {
+        alert(response.message || 'Failed to update user status');
+      }
       setShowActionMenu(null);
     }
   };
 
-  const handleChangeRole = (userId: string, newRole: 0 | 1 | 2) => {
-    const user = allUsers.find(u => u.id === userId);
-    if (user) {
-      user.role = newRole;
-      alert(`User role updated to ${newRole === 0 ? 'Client' : newRole === 1 ? 'Freelancer' : 'Admin'}`);
-      setShowActionMenu(null);
-    }
+  const handleChangeRole = async (userId: string, newRole: 0 | 1 | 2) => {
+    alert('Role changes are not yet supported through the API.');
+    setShowActionMenu(null);
   };
 
   const getRoleBadge = (role: number) => {
@@ -87,8 +128,8 @@ export default function AdminUsersScreen() {
   };
 
   const getStatusBadge = (user: User) => {
-    if (user.is_banned) return <span className="badge-red text-xs">Banned</span>;
-    if (!user.email_verified) return <span className="badge-gray text-xs">Unverified</span>;
+    if (!user.is_active) return <span className="badge-red text-xs">Banned</span>;
+    if (!user.is_email_verified) return <span className="badge-gray text-xs">Unverified</span>;
     return <span className="badge-green text-xs">Active</span>;
   };
 
@@ -209,7 +250,11 @@ export default function AdminUsersScreen() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-secondary">
-            Showing <span className="text-primary font-semibold">{filteredUsers.length}</span> of <span className="text-primary font-semibold">{allUsers.length}</span> users
+            {loading ? (
+              <span>Loading users...</span>
+            ) : (
+              <>Showing <span className="text-primary font-semibold">{filteredUsers.length}</span> of <span className="text-primary font-semibold">{allUsers.length}</span> users</>
+            )}
           </p>
         </div>
 
@@ -228,140 +273,151 @@ export default function AdminUsersScreen() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary">
-                {filteredUsers.map(user => (
-                  <tr key={user.id} className="hover:bg-white/5 transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white">
-                          {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-primary">{user.full_name}</p>
-                          <p className="text-xs text-secondary">{user.id}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <Mail size={14} className="text-muted" />
-                        <span className="text-sm text-secondary">{user.email}</span>
-                        {user.email_verified && <CheckCircle size={14} className="text-green" />}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      {getRoleBadge(user.role)}
-                    </td>
-                    <td className="p-4">
-                      {getStatusBadge(user)}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-muted" />
-                        <span className="text-sm text-secondary">
-                          {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setPreviewUser(user)}
-                          className="p-2 rounded-lg glass-button hover:bg-cyan/10 transition-colors"
-                          title="Preview Profile"
-                        >
-                          <Eye size={16} className="text-cyan" />
-                        </button>
-
-                        <button
-                          onClick={() => setSelectedUser(user)}
-                          className="p-2 rounded-lg glass-button hover:bg-purple/10 transition-colors"
-                          title="Edit User"
-                        >
-                          <Edit size={16} className="text-purple" />
-                        </button>
-
-                        <div className="relative">
-                          <button
-                            onClick={() => setShowActionMenu(showActionMenu === user.id ? null : user.id)}
-                            className="p-2 rounded-lg glass-button hover:bg-amber/10 transition-colors"
-                            title="More Actions"
-                          >
-                            <MoreVertical size={16} className="text-amber" />
-                          </button>
-
-                          {showActionMenu === user.id && (
-                            <div className="absolute right-0 top-full mt-2 w-48 dropdown-menu p-2 z-50">
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({type: 'role', user, newRole: 0});
-                                  setShowActionMenu(null);
-                                }}
-                                disabled={user.role === 0}
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
-                              >
-                                <Briefcase size={14} />
-                                Set as Client
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({type: 'role', user, newRole: 1});
-                                  setShowActionMenu(null);
-                                }}
-                                disabled={user.role === 1}
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
-                              >
-                                <UserCheck size={14} />
-                                Set as Freelancer
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({type: 'role', user, newRole: 2});
-                                  setShowActionMenu(null);
-                                }}
-                                disabled={user.role === 2}
-                                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
-                              >
-                                <Shield size={14} />
-                                Set as Admin
-                              </button>
-
-                              <div className="h-px my-1 dropdown-divider" />
-
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({type: user.is_banned ? 'unban' : 'ban', user});
-                                  setShowActionMenu(null);
-                                }}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 ${
-                                  user.is_banned ? 'text-green' : 'text-red'
-                                }`}
-                              >
-                                {user.is_banned ? (
-                                  <>
-                                    <CheckCircle size={14} />
-                                    Unban User
-                                  </>
-                                ) : (
-                                  <>
-                                    <Ban size={14} />
-                                    Ban User
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-16">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 border-2 border-cyan border-t-transparent rounded-full animate-spin" />
+                        <p className="text-sm text-secondary">Loading users...</p>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredUsers.map(user => (
+                    <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white">
+                            {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-primary">{user.full_name}</p>
+                            <p className="text-xs text-secondary">{user.id}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Mail size={14} className="text-muted" />
+                          <span className="text-sm text-secondary">{user.email}</span>
+                          {user.is_email_verified && <CheckCircle size={14} className="text-green" />}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {getRoleBadge(user.role)}
+                      </td>
+                      <td className="p-4">
+                        {getStatusBadge(user)}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={14} className="text-muted" />
+                          <span className="text-sm text-secondary">
+                            {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPreviewUser(user)}
+                            className="p-2 rounded-lg glass-button hover:bg-cyan/10 transition-colors"
+                            title="Preview Profile"
+                          >
+                            <Eye size={16} className="text-cyan" />
+                          </button>
+
+                          <button
+                            onClick={() => setSelectedUser(user)}
+                            className="p-2 rounded-lg glass-button hover:bg-purple/10 transition-colors"
+                            title="Edit User"
+                          >
+                            <Edit size={16} className="text-purple" />
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              onClick={() => setShowActionMenu(showActionMenu === user.id ? null : user.id)}
+                              className="p-2 rounded-lg glass-button hover:bg-amber/10 transition-colors"
+                              title="More Actions"
+                            >
+                              <MoreVertical size={16} className="text-amber" />
+                            </button>
+
+                            {showActionMenu === user.id && (
+                              <div className="absolute right-0 top-full mt-2 w-48 dropdown-menu p-2 z-50">
+                                <button
+                                  onClick={() => {
+                                    setConfirmAction({type: 'role', user, newRole: 0});
+                                    setShowActionMenu(null);
+                                  }}
+                                  disabled={user.role === 0}
+                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
+                                >
+                                  <Briefcase size={14} />
+                                  Set as Client
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setConfirmAction({type: 'role', user, newRole: 1});
+                                    setShowActionMenu(null);
+                                  }}
+                                  disabled={user.role === 1}
+                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
+                                >
+                                  <UserCheck size={14} />
+                                  Set as Freelancer
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setConfirmAction({type: 'role', user, newRole: 2});
+                                    setShowActionMenu(null);
+                                  }}
+                                  disabled={user.role === 2}
+                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
+                                >
+                                  <Shield size={14} />
+                                  Set as Admin
+                                </button>
+
+                                <div className="h-px my-1 dropdown-divider" />
+
+                                <button
+                                  onClick={() => {
+                                    setConfirmAction({type: user.is_active ? 'ban' : 'unban', user});
+                                    setShowActionMenu(null);
+                                  }}
+                                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 ${
+                                    !user.is_active ? 'text-green' : 'text-red'
+                                  }`}
+                                >
+                                  {!user.is_active ? (
+                                    <>
+                                      <CheckCircle size={14} />
+                                      Unban User
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban size={14} />
+                                      Ban User
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
-          {filteredUsers.length === 0 && (
+          {!loading && filteredUsers.length === 0 && (
             <div className="text-center py-16">
               <UserX size={48} className="mx-auto mb-4 text-muted" />
               <p className="text-primary font-medium mb-2">No users found</p>
@@ -429,7 +485,7 @@ export default function AdminUsersScreen() {
                     <div className="col-span-2">
                       <p className="text-muted mb-1">Email Verification</p>
                       <div className="flex items-center gap-2">
-                        {previewUser.email_verified ? (
+                        {previewUser.is_email_verified ? (
                           <>
                             <CheckCircle size={16} className="text-green" />
                             <span className="text-green text-sm">Verified</span>
@@ -572,7 +628,7 @@ export default function AdminUsersScreen() {
                           <Mail size={14} className="text-muted" />
                           <span className="text-sm text-secondary">Email Verified</span>
                         </div>
-                        {selectedUser.email_verified ? (
+                        {selectedUser.is_email_verified ? (
                           <CheckCircle size={16} className="text-green" />
                         ) : (
                           <XCircle size={16} className="text-red" />
@@ -581,15 +637,15 @@ export default function AdminUsersScreen() {
 
                       <button
                         onClick={() => {
-                          setConfirmAction({type: selectedUser.is_banned ? 'unban' : 'ban', user: selectedUser});
+                          setConfirmAction({type: selectedUser.is_active ? 'ban' : 'unban', user: selectedUser});
                         }}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                          selectedUser.is_banned
+                          !selectedUser.is_active
                             ? 'bg-green/20 text-green border border-green hover:bg-green/30'
                             : 'bg-red/20 text-red border border-red hover:bg-red/30'
                         }`}
                       >
-                        {selectedUser.is_banned ? (
+                        {!selectedUser.is_active ? (
                           <>
                             <CheckCircle size={14} />
                             Unban Account
@@ -629,11 +685,20 @@ export default function AdminUsersScreen() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    if (editForm.firstName) selectedUser.first_name = editForm.firstName;
-                    if (editForm.lastName) selectedUser.last_name = editForm.lastName;
-                    if (editForm.email) selectedUser.email = editForm.email;
-                    alert('User information updated successfully!');
+                  onClick={async () => {
+                    const fullName = [editForm.firstName || selectedUser.first_name, editForm.lastName || selectedUser.last_name]
+                      .filter(Boolean).join(' ');
+
+                    const response = await adminAPI.updateUser(selectedUser.email, {
+                      fullName: fullName || undefined,
+                    });
+
+                    if (response.success && response.data) {
+                      await loadUsers();
+                      alert('User information updated successfully!');
+                    } else {
+                      alert(response.message || 'Failed to update user');
+                    }
                     setSelectedUser(null);
                     setEditForm({firstName: '', lastName: '', email: ''});
                   }}
@@ -687,11 +752,11 @@ export default function AdminUsersScreen() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (confirmAction.type === 'role' && confirmAction.newRole !== undefined) {
                       handleChangeRole(confirmAction.user.id, confirmAction.newRole);
                     } else if (confirmAction.type === 'ban' || confirmAction.type === 'unban') {
-                      handleBanUser(confirmAction.user.id);
+                      await handleBanUser(confirmAction.user.id);
                     }
                     setConfirmAction(null);
                     setSelectedUser(null);
