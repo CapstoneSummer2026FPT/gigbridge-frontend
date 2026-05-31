@@ -127,12 +127,18 @@ export default function LandingScreen() {
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <button className="landing-cta-primary" onClick={() => navigate('/auth')}>
+                  <button className="landing-cta-primary" onClick={() => {
+                    localStorage.setItem('selected_role', '1');
+                    navigate('/auth/signup');
+                  }}>
                     <Bot size={18} />
                     <span>Start as Freelancer</span>
                     <ArrowRight size={18} />
                   </button>
-                  <button className="landing-cta-secondary" onClick={() => navigate('/auth')}>
+                  <button className="landing-cta-secondary" onClick={() => {
+                    localStorage.setItem('selected_role', '0');
+                    navigate('/auth/signup');
+                  }}>
                     Hire Top Talent
                   </button>
                 </div>
@@ -323,11 +329,17 @@ export default function LandingScreen() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
               <button className="btn-cyan px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base flex items-center gap-2 justify-center"
-                onClick={() => navigate('/auth')}>
+                onClick={() => {
+                  localStorage.setItem('selected_role', '1');
+                  navigate('/auth/signup');
+                }}>
                 Start as Freelancer <ArrowRight size={18} />
               </button>
               <button className="btn-ghost-cyan px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base"
-                onClick={() => navigate('/auth')}>
+                onClick={() => {
+                  localStorage.setItem('selected_role', '0');
+                  navigate('/auth/signup');
+                }}>
                 Hire Top Talent
               </button>
             </div>

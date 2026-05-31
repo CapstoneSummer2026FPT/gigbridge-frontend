@@ -2,7 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { VerifyEmailRequest } from '../../types/models/Auth';
 
-const authV1Url = 'v1/auth';
+const authV1Url = 'auth';
 
 export const authGetAPI = {
   /**

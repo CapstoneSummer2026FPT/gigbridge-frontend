@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
+import { toast } from 'sonner';
 import '../styles/auth-screen.css';
 
 export default function LoginScreen() {
@@ -10,6 +11,8 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [googleClient, setGoogleClient] = useState<any>(null);
+  const [googleError, setGoogleError] = useState('');
   const [formData, setFormData] = useState({ 
     email: '', 
     password: '',
@@ -24,17 +27,123 @@ export default function LoginScreen() {
 
   const login = appContext?.login || (async () => undefined);
 
+  useEffect(() => {
+    let client: any = null;
+    const interval = setInterval(() => {
+      if (window.google) {
+        clearInterval(interval);
+
+        client = window.google.accounts.oauth2.initCodeClient({
+          client_id: "730304762860-sepqdvj434i8qagl8b2od5d9hqbo42tv.apps.googleusercontent.com",
+          scope: "openid email profile",
+          ux_mode: "popup",
+          callback: async (response: any) => {
+            if (response.code) {
+              handleGoogleLogin(response.code);
+            }
+          },
+        });
+
+        setGoogleClient(client);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleGoogleLogin = async (authCode: string) => {
+    setIsLoading(true);
+    setError('');
+    setGoogleError('');
+    try {
+      const selectedRoleStr = localStorage.getItem('selected_role');
+      const selectedRole = selectedRoleStr ? parseInt(selectedRoleStr, 10) : undefined;
+
+      const googleLogin = appContext?.googleLogin || (async () => undefined);
+      const role = await googleLogin(authCode, selectedRole);
+
+      console.log('Google login role:', role);
+
+      const userStr = localStorage.getItem('gigbridge_user');
+      const user = userStr ? JSON.parse(userStr) : null;
+
+      // Check if user did not set up a role AND is a newly created account (created within the last 10 seconds)
+      const isNewlyCreated = user?.created_at && (new Date().getTime() - new Date(user.created_at).getTime() < 10000);
+
+      if (selectedRole === undefined && isNewlyCreated) {
+        setGoogleError('Your account does not have a role set up yet. Please select a role on the sign-up page before signing in.');
+        if (appContext?.logout) {
+          appContext.logout();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin)) {
+        setGoogleError('Your account does not have a role set up yet. Please register with a role or contact support.');
+        if (appContext?.logout) {
+          appContext.logout();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.removeItem('selected_role');
+
+      toast.success('Welcome back! Login successful.', {
+        style: {
+          background: '#4ADE80',
+          color: '#FFFFFF',
+          border: '2px solid #22C55E',
+          fontSize: '14px',
+          fontWeight: '600',
+        },
+        duration: 3000,
+      });
+
+      if (role === UserRole.Admin) {
+        navigate('/admin');
+      } else if (user?.is_setup) {
+        if (role === UserRole.Client) {
+          navigate('/client/dashboard');
+        } else if (role === UserRole.Freelancer) {
+          navigate('/freelancer/dashboard');
+        }
+      } else {
+        navigate('/onboarding/profile-setup');
+      }
+    } catch (err: any) {
+      setGoogleError(err.message || 'Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setGoogleError('');
     setIsLoading(true);
 
     try {
       const role = await login(formData.email, formData.password);
       
+      console.log('Email login role:', role);
+
       const userStr = localStorage.getItem('gigbridge_user');
       const user = userStr ? JSON.parse(userStr) : null;
       
+      if (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin)) {
+        setError('Your account does not have a role set up yet. Please select a role or contact support.');
+        if (appContext?.logout) {
+          appContext.logout();
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.removeItem('selected_role');
+
       if (role === UserRole.Admin) {
         navigate('/admin');
       } else if (user?.is_setup) {
@@ -164,8 +273,13 @@ export default function LoginScreen() {
           <h1 className="text-3xl font-black text-primary mb-2">Welcome back</h1>
           <p className="mb-8 auth-subtitle">Sign in to your GigBridge account</p>
 
-          <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-6 transition-all auth-google-btn"
-            onClick={() => handleDemoLogin('freelancer')}>
+          <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn"
+            onClick={() => {
+              setGoogleError('');
+              googleClient?.requestCode();
+            }}
+            disabled={isLoading || !googleClient}
+            type="button">
             <svg viewBox="0 0 24 24" className="w-5 h-5">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -174,6 +288,16 @@ export default function LoginScreen() {
             </svg>
             Continue with Google
           </button>
+
+          {googleError && (
+            <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
+              <span>
+                Your Google account cannot be accessed at this time. Try troubleshooting this issue or{' '}
+                <span className="text-[#4ADE80] underline cursor-pointer hover:text-[#22C55E]">contact us</span> for help.
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px auth-divider" />

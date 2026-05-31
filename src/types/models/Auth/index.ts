@@ -12,3 +12,6 @@ export * from './Shared/EmailRequest';
 export * from './Shared/EmailSettingsDTO';
 export * from './Shared/UserDTO';
 export * from './Shared/LoginResponse';
+export * from './SendOtp/SendOtpRequest';
+export * from './VerifyOtp/VerifyOtpRequest';
+

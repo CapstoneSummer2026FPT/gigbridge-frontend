@@ -238,7 +238,10 @@ export default function LandingScreenNew() {
                 <motion.button
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/auth')}
+                  onClick={() => {
+                    localStorage.setItem('selected_role', '1');
+                    navigate('/auth/signup');
+                  }}
                   className="landing-new-cta-primary"
                 >
                   <Bot size={20} />
