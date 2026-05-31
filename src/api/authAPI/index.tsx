@@ -18,4 +18,8 @@ export const authAPI = {
   googleLogin: authPostAPI.googleLogin,
   verifyEmail: authGetAPI.verifyEmail,
   testAuth: authGetAPI.testAuth,
+  markSetupComplete: authPutAPI.markSetupComplete,
+  sendOtp: authPostAPI.sendOtp,
+  verifyOtp: authPostAPI.verifyOtp,
 };
+
