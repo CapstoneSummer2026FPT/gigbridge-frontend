@@ -112,7 +112,7 @@ export const apiService = {
       return {
         success: false,
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.message || error.message || 'An error occurred',
+        message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
         data: undefined,
       };
     }
@@ -126,7 +126,7 @@ export const apiService = {
       return {
         success: false,
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.message || error.message || 'An error occurred',
+        message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
         data: undefined,
       };
     }
@@ -140,7 +140,7 @@ export const apiService = {
       return {
         success: false,
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.message || error.message || 'An error occurred',
+        message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
         data: undefined,
       };
     }
@@ -154,7 +154,7 @@ export const apiService = {
       return {
         success: false,
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.message || error.message || 'An error occurred',
+        message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
         data: undefined,
       };
     }
@@ -168,7 +168,7 @@ export const apiService = {
       return {
         success: false,
         statusCode: error.response?.status || 500,
-        message: error.response?.data?.message || error.message || 'An error occurred',
+        message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
         data: undefined,
       };
     }
