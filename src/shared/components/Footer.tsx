@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useScrollRestoration } from '../../hooks/useScrollRestoration';
 import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
 import image_Frame_1_1 from '@/imports/Frame_1-1.png';
 import './styles/footer.css';
@@ -8,6 +9,7 @@ import './styles/footer.css';
 export function Footer() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { saveScrollPosition } = useScrollRestoration();
 
   const footerSections = [
     {
@@ -51,7 +53,10 @@ export function Footer() {
         <div className="footer-top">
           {/* Brand Section */}
           <div className="footer-brand">
-            <div className="footer-logo" onClick={() => navigate('/')}>
+            <div className="footer-logo" onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}>
               <ImageWithFallback
                 src={image_Frame_1_1}
                 alt="GigBridge Logo"
@@ -86,7 +91,10 @@ export function Footer() {
                 {section.links.map((link) => (
                   <li key={link.label}>
                     <button
-                      onClick={() => navigate(link.path)}
+                      onClick={() => {
+                        saveScrollPosition();
+                        navigate(link.path);
+                      }}
                       className="footer-link"
                     >
                       {link.label}
@@ -125,13 +133,22 @@ export function Footer() {
             © {new Date().getFullYear()} GigBridge. All rights reserved.
           </p>
           <div className="footer-bottom-links">
-            <button onClick={() => navigate('/privacy')} className="footer-bottom-link">
+            <button onClick={() => {
+              saveScrollPosition();
+              navigate('/privacy');
+            }} className="footer-bottom-link">
               Privacy
             </button>
-            <button onClick={() => navigate('/terms')} className="footer-bottom-link">
+            <button onClick={() => {
+              saveScrollPosition();
+              navigate('/terms');
+            }} className="footer-bottom-link">
               Terms
             </button>
-            <button onClick={() => navigate('/faq')} className="footer-bottom-link">
+            <button onClick={() => {
+              saveScrollPosition();
+              navigate('/faq');
+            }} className="footer-bottom-link">
               Help
             </button>
           </div>

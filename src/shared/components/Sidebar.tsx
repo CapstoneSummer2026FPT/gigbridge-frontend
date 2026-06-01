@@ -48,7 +48,6 @@ function getNavItems(role: number | null, t: any): NavItem[] {
       { label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
       { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
       { label: t('nav.aiAssistant'), icon: <Bot size={18} />, path: '/ai-assistant', badge: 'AI', badgeType: 'cyan' },
-      { label: t('nav.aiInterview'), icon: <Video size={18} />, path: '/ai-interview', badge: 'NEW', badgeType: 'purple' },
       { label: t('nav.marketInsights'), icon: <TrendingUp size={18} />, path: '/market-insights' },
       { label: t('nav.messages'), icon: <MessageSquare size={18} />, path: '/notifications' },
     ];

@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
+import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
 import { ArrowLeft, Zap, Users, Globe, Target, Award, Heart, Rocket, TrendingUp } from 'lucide-react';
 
 export default function AboutScreen() {
   const navigate = useNavigate();
+  const { saveScrollPosition } = useScrollRestoration();
 
   return (
     <GuestLayout>
@@ -11,7 +13,10 @@ export default function AboutScreen() {
         <div className="max-w-5xl mx-auto">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}
             className="btn-ghost-cyan px-4 py-2 mb-8 text-sm flex items-center gap-2"
           >
             <ArrowLeft size={16} />

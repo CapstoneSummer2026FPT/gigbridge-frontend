@@ -125,6 +125,10 @@ export default function JobDetailScreen() {
       if (gigcoinBalance !== null) {
         setGigcoinBalance(gigcoinBalance - (job.gigcoin_cost || 0));
       }
+      // Redirect to AI interview screen after successful application
+      setTimeout(() => {
+        navigate('/ai-interview');
+      }, 500);
     } catch (error) {
       console.error('Failed to apply for job:', error);
     } finally {
@@ -203,80 +207,10 @@ export default function JobDetailScreen() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              {role === UserRole.Freelancer && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button className="btn-cyan flex-1 py-3 flex items-center justify-center gap-2"
-                    onClick={() => setShowProposalForm(!showProposalForm)}>
-                    <Send size={16} />
-                    Submit Proposal
-                  </button>
-                  <button className="btn-purple flex-1 py-3 flex items-center justify-center gap-2"
-                    onClick={() => navigate('/ai-interview')}>
-                    <Video size={16} />
-                    AI Instant Interview
-                  </button>
-                </div>
-              )}
+              {/* Action Buttons - Removed, using Apply Now button in sidebar instead */}
             </div>
 
-            {/* Proposal Form */}
-            {showProposalForm && (
-              <div className="glass-card p-6 neon-border-cyan">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-primary font-semibold">Submit Your Proposal</h2>
-                  <button
-                    onClick={generateAIProposal}
-                    disabled={isGeneratingProposal}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all job-detail-proposal-bg">
-                    {isGeneratingProposal ? (
-                      <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Generating...</>
-                    ) : (
-                      <><Bot size={12} />✨ AI Write Proposal</>
-                    )}
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Your Bid ($)</label>
-                      <div className="relative">
-                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 job-detail-desc" />
-                        <input type="number" value={proposalData.bidAmount}
-                          onChange={e => setProposalData({ ...proposalData, bidAmount: e.target.value })}
-                          placeholder="0" className="input-gb w-full pl-8 pr-3 py-3 text-sm" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Delivery Days</label>
-                      <input type="number" value={proposalData.deliveryDays}
-                        onChange={e => setProposalData({ ...proposalData, deliveryDays: e.target.value })}
-                        placeholder="30" className="input-gb w-full px-3 py-3 text-sm" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-primary mb-2 block">Cover Letter</label>
-                    <textarea value={proposalData.coverLetter}
-                      onChange={e => setProposalData({ ...proposalData, coverLetter: e.target.value })}
-                      placeholder="Introduce yourself and explain why you're the best fit..."
-                      rows={8} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button onClick={() => setShowProposalForm(false)}
-                      className="px-4 py-2.5 rounded-xl text-sm transition-all job-detail-client-card">
-                      Cancel
-                    </button>
-                    <button onClick={handleSubmitProposal} disabled={isSubmitting}
-                      className="btn-cyan flex-1 py-2.5 text-sm flex items-center justify-center gap-2">
-                      {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" /> : 'Submit Proposal'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Proposal Form - Removed */}
 
             {/* Job Description */}
             <div className="glass-card p-6">
