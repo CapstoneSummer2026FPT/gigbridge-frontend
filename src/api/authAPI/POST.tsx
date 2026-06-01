@@ -76,8 +76,8 @@ export const authPostAPI = {
    * Google login
    * POST /v1/auth/google
    */
-  googleLogin: async (authCode: string, role?: number): Promise<ApiResponse<LoginResponse>> => {
-    return apiService.post<LoginResponse>(`${authV1Url}/google`, { authCode, role });
+  googleLogin: async (authCode: string, role?: number, isFromSignIn?: boolean): Promise<ApiResponse<LoginResponse>> => {
+    return apiService.post<LoginResponse>(`${authV1Url}/google`, { authCode, role, isFromSignIn });
   },
 
   /**

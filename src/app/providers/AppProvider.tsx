@@ -21,7 +21,7 @@ interface AppContextValue {
   toggleTheme: () => void;
   login: (email: string, password: string) => Promise<UserRole>;
   signup: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
-  googleLogin: (authCode: string, role?: UserRole) => Promise<UserRole>;
+  googleLogin: (authCode: string, role?: UserRole, isFromSignIn?: boolean) => Promise<UserRole>;
   logout: () => void;
   completeOnboarding: (profileData: any) => Promise<void>;
   markSetupComplete: () => void;
@@ -108,7 +108,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<UserRole> => {
-    setIsLoading(true);
     try {
       const response = await authAPI.login({ email, password });
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
@@ -148,13 +147,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   const signup = useCallback(async (email: string, password: string, fullName: string, role: UserRole) => {
-    setIsLoading(true);
     try {
       const registerData = {
         email,
@@ -199,15 +195,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
-  const googleLogin = useCallback(async (authCode: string, role?: UserRole): Promise<UserRole> => {
-    setIsLoading(true);
+  const googleLogin = useCallback(async (authCode: string, role?: UserRole, isFromSignIn?: boolean): Promise<UserRole> => {
     try {
-      const response = await authAPI.googleLogin(authCode, role);
+      const response = await authAPI.googleLogin(authCode, role, isFromSignIn);
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
       
       if (!apiResponse.success || !apiResponse.data) {
@@ -245,8 +238,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Google login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
@@ -262,15 +253,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const completeOnboarding = useCallback(async (profileData: any) => {
     if (!user) return;
-    setIsLoading(true);
     try {
       if (user.role === 0) {
         setClientProfile(profileData);
       } else {
         setFreelancerProfile(profileData);
       }
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      throw error;
     }
   }, [user]);
 
