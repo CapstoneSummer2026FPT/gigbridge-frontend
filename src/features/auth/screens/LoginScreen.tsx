@@ -34,7 +34,7 @@ export default function LoginScreen() {
         clearInterval(interval);
 
         client = window.google.accounts.oauth2.initCodeClient({
-          client_id: "730304762860-sepqdvj434i8qagl8b2od5d9hqbo42tv.apps.googleusercontent.com",
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
           scope: "openid email profile",
           ux_mode: "popup",
           callback: async (response: any) => {
