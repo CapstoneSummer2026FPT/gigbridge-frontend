@@ -21,7 +21,7 @@ interface AppContextValue {
   toggleTheme: () => void;
   login: (email: string, password: string) => Promise<UserRole>;
   signup: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
-  googleLogin: (authCode: string, role?: UserRole) => Promise<UserRole>;
+  googleLogin: (authCode: string, role?: UserRole, isFromSignIn?: boolean) => Promise<UserRole>;
   logout: () => void;
   completeOnboarding: (profileData: any) => Promise<void>;
   markSetupComplete: () => void;
@@ -203,10 +203,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const googleLogin = useCallback(async (authCode: string, role?: UserRole): Promise<UserRole> => {
+  const googleLogin = useCallback(async (authCode: string, role?: UserRole, isFromSignIn?: boolean): Promise<UserRole> => {
     setIsLoading(true);
     try {
-      const response = await authAPI.googleLogin(authCode, role);
+      const response = await authAPI.googleLogin(authCode, role, isFromSignIn);
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
       
       if (!apiResponse.success || !apiResponse.data) {

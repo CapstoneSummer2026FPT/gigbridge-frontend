@@ -60,17 +60,17 @@ export default function LoginScreen() {
       const selectedRole = selectedRoleStr ? parseInt(selectedRoleStr, 10) : undefined;
 
       const googleLogin = appContext?.googleLogin || (async () => undefined);
-      const role = await googleLogin(authCode, selectedRole);
+      const role = await googleLogin(authCode, selectedRole, true);
 
       console.log('Google login role:', role);
 
       const userStr = localStorage.getItem('gigbridge_user');
       const user = userStr ? JSON.parse(userStr) : null;
 
-      // Check if user did not set up a role AND is a newly created account (created within the last 10 seconds)
-      const isNewlyCreated = user?.created_at && (new Date().getTime() - new Date(user.created_at).getTime() < 10000);
+      // Check if user did not set up a role 
 
-      if (selectedRole === undefined && isNewlyCreated) {
+
+      if (selectedRole === undefined && (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin))) {
         setGoogleError('Your account does not have a role set up yet. Please select a role on the sign-up page before signing in.');
         if (appContext?.logout) {
           appContext.logout();
@@ -126,14 +126,14 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const role = await login(formData.email, formData.password);
+      const role_signIn = await login(formData.email, formData.password);
       
-      console.log('Email login role:', role);
+      console.log('Email login role:', role_signIn);
 
       const userStr = localStorage.getItem('gigbridge_user');
       const user = userStr ? JSON.parse(userStr) : null;
       
-      if (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin)) {
+      if (role_signIn === null || role_signIn === undefined || (role_signIn !== UserRole.Client && role_signIn !== UserRole.Freelancer && role_signIn !== UserRole.Admin)) {
         setError('Your account does not have a role set up yet. Please select a role or contact support.');
         if (appContext?.logout) {
           appContext.logout();
@@ -144,12 +144,12 @@ export default function LoginScreen() {
 
       localStorage.removeItem('selected_role');
 
-      if (role === UserRole.Admin) {
+      if (role_signIn === UserRole.Admin) {
         navigate('/admin');
       } else if (user?.is_setup) {
-        if (role === UserRole.Client) {
+        if (role_signIn === UserRole.Client) {
           navigate('/client/dashboard');
-        } else if (role === UserRole.Freelancer) {
+        } else if (role_signIn === UserRole.Freelancer) {
           navigate('/freelancer/dashboard');
         }
       } else {
@@ -259,8 +259,7 @@ export default function LoginScreen() {
             <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
               <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
               <span>
-                Your Google account cannot be accessed at this time. Try troubleshooting this issue or{' '}
-                <span className="text-[#4ADE80] underline cursor-pointer hover:text-[#22C55E]">contact us</span> for help.
+                {googleError}
               </span>
             </div>
           )}

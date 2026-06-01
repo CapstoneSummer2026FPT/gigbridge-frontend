@@ -82,7 +82,7 @@ export default function SignupScreen() {
       }
 
       const googleLogin = appContext?.googleLogin || (async () => undefined);
-      await googleLogin(authCode, currentRole);
+      await googleLogin(authCode, currentRole, false);
 
       toast.success('Welcome! Google registration successful.', {
         style: {
@@ -181,6 +181,7 @@ export default function SignupScreen() {
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
+    localStorage.setItem('selected_role', role.toString());
     setGoogleError('');
     setStep('form');
   };
@@ -369,8 +370,7 @@ export default function SignupScreen() {
                 <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
                   <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
                   <span>
-                    Your Google account cannot be accessed at this time. Try troubleshooting this issue or{' '}
-                    <span className="text-[#4ADE80] underline cursor-pointer hover:text-[#22C55E]">contact us</span> for help.
+                    {googleError}
                   </span>
                 </div>
               )}
@@ -490,7 +490,11 @@ export default function SignupScreen() {
               </form>
 
               <button
-                onClick={() => setStep('role')}
+                onClick={() => {
+                  setSelectedRole(null);
+                  localStorage.removeItem('selected_role');
+                  setStep('role');
+                }}
                 className="w-full mt-4 py-2 text-sm font-medium text-cyan-500 hover:text-cyan-400 transition-colors"
               >
                 ← Back to role selection
