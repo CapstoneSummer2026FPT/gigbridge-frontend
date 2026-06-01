@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
+import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
 import { ArrowLeft, HelpCircle, ChevronDown, Search } from 'lucide-react';
 
 const FAQ_CATEGORIES = {
@@ -100,6 +101,7 @@ const FAQ_CATEGORIES = {
 
 export default function FAQScreen() {
   const navigate = useNavigate();
+  const { saveScrollPosition } = useScrollRestoration();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -132,7 +134,10 @@ export default function FAQScreen() {
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}
             className="btn-ghost-cyan px-4 py-2 mb-8 text-sm flex items-center gap-2"
           >
             <ArrowLeft size={16} />

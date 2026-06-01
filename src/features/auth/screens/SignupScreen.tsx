@@ -401,37 +401,20 @@ export default function SignupScreen() {
                     disabled={isLoading} />
                 </div>
 
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
-                    <input type="email" placeholder="Email address" value={formData.email}
-                      onChange={e => {
-                        setFormData({ ...formData, email: e.target.value });
-                        if (isOtpVerified) {
-                          setIsOtpVerified(false);
-                          setSuccessMessage('');
-                        }
-                      }}
-                      className="input-gb w-full py-3 auth-input-with-icon"
-                      disabled={isLoading} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={isSendingOtp || isOtpVerified || !isValidEmail(formData.email) || countdown > 0}
-                    className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold"
-                    style={{ minWidth: '105px' }}
-                  >
-                    {isSendingOtp ? (
-                      <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
-                    ) : countdown > 0 ? (
-                      `${countdown}s`
-                    ) : (
-                      'Send OTP'
-                    )}
-                  </button>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
+                  <input type="email" placeholder="Email address" value={formData.email}
+                    onChange={e => {
+                      setFormData({ ...formData, email: e.target.value });
+                      if (isOtpVerified) {
+                        setIsOtpVerified(false);
+                        setSuccessMessage('');
+                      }
+                    }}
+                    className="input-gb w-full py-3 auth-input-with-icon"
+                    disabled={isLoading} />
                 </div>
-                
+
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
@@ -448,20 +431,47 @@ export default function SignupScreen() {
                   </div>
                   <button
                     type="button"
-                    onClick={handleVerifyOtp}
-                    disabled={isVerifyingOtp || isOtpVerified || !formData.otpCode || !formData.email}
-                    className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold"
-                    style={{ minWidth: '105px' }}
+                    onClick={countdown === 0 && !isOtpVerified ? handleSendOtp : handleVerifyOtp}
+                    disabled={(countdown === 0 && !isValidEmail(formData.email)) || isOtpVerified || isSendingOtp || isVerifyingOtp || (countdown > 0 && !formData.otpCode)}
+                    className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold whitespace-nowrap"
+                    style={{ minWidth: '110px' }}
                   >
-                    {isVerifyingOtp ? (
-                      <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
+                    {isSendingOtp ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
+                        Sending...
+                      </>
+                    ) : isVerifyingOtp ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
+                        Verifying...
+                      </>
                     ) : isOtpVerified ? (
-                      'Verified ✓'
+                      <>
+                        <CheckCircle size={16} />
+                        Verified
+                      </>
+                    ) : countdown > 0 ? (
+                      `Verify (${countdown}s)`
                     ) : (
-                      'Verify OTP'
+                      'Send OTP'
                     )}
                   </button>
                 </div>
+
+                {countdown > 0 && !isOtpVerified && (
+                  <div className="text-center text-sm">
+                    <span className="text-secondary">Didn't receive the code? </span>
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={isSendingOtp}
+                      className="text-cyan-500 hover:text-cyan-400 font-semibold transition-colors"
+                    >
+                      Resend OTP
+                    </button>
+                  </div>
+                )}
                  
                 <div className="relative">
                   <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
