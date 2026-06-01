@@ -16,9 +16,16 @@ export enum ExperienceLevel {
 }
 
 export enum Availability {
-  Available = 0,
-  Busy = 1,
+  FullTime = 0,
+  PartTime = 1,
   NotAvailable = 2,
+}
+
+export enum ProficiencyLevel {
+  Beginner = 0,
+  Intermediate = 1,
+  Advanced = 2,
+  Expert = 3,
 }
 
 export interface ClientProfile {
@@ -30,6 +37,97 @@ export interface ClientProfile {
   industry: string;
   company_description: string | null;
   location: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FreelancerSkillDto {
+  skillId: string;
+  skillName: string;
+  proficiencyLevel?: number;
+}
+
+export interface PortfolioItemDto {
+  portfolioItemId: string;
+  title: string;
+  description?: string;
+  projectUrl?: string;
+  imageUrl?: string;
+}
+
+export interface WorkExperienceDto {
+  workExperienceId: string;
+  companyName: string;
+  jobTitle: string;
+  description?: string;
+  startDate: string;
+  endDate?: string;
+}
+
+export interface FreelancerProfileDto {
+  freelancerProfileId: string;
+  userId: string;
+  title?: string;
+  bio?: string;
+  hourlyRate?: number;
+  experienceLevel?: number;
+  availability?: number;
+  location?: string;
+  profileCompletionScore?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
+  userFullName?: string;
+  userEmail?: string;
+  userAvatar?: string;
+  skills: FreelancerSkillDto[];
+  portfolioItems: PortfolioItemDto[];
+  workExperiences: WorkExperienceDto[];
+}
+
+export interface UpdateClientProfileDto {
+  CompanyName: string;
+  CompanyWebsite?: string;
+  CompanySize: number;
+  Industry: string;
+  CompanyDescription?: string;
+  Location: string;
+}
+
+export interface UpdateFreelancerProfileDto {
+  title: string;
+  bio: string;
+  hourlyRate: number;
+  experienceLevel: number;
+  availability: number;
+  location: string;
+}
+
+export interface ClientProfileResponseDto {
+  id: string;
+  user_id: string;
+  company_name: string;
+  company_website?: string;
+  company_size: number;
+  industry: string;
+  company_description?: string;
+  location: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FreelancerProfileResponseDto {
+  id: string;
+  user_id: string;
+  title: string;
+  bio: string;
+  hourlyRate: number;
+  experienceLevel: number;
+  availability: number;
+  location: string;
+  profileCompletionScore: number;
   created_at: string;
   updated_at: string;
 }
@@ -85,12 +183,6 @@ export interface PortfolioItem {
   description: string;
   project_url: string | null;
   image_urls: string;
-}
-
-export enum ProficiencyLevel {
-  Beginner = 0,
-  Intermediate = 1,
-  Expert = 2,
 }
 
 export interface FreelancerSkill {

@@ -1,7 +1,11 @@
-import { authHandlers } from '../../mock_backend';
+import { userHandlers } from '../../mock_backend';
 
 export const userGetAPI = {
-  getProfile: async (userId: string) => {
-    return await authHandlers.getProfile(userId);
+  getUserById: async (userId: string) => {
+    return await userHandlers.getUserById(userId);
+  },
+
+  getGigcoinBalance: async (userId: string) => {
+    return await userHandlers.getGigcoinBalance(userId);
   },
 };

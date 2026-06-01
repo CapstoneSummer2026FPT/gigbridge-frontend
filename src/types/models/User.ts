@@ -18,10 +18,12 @@ export interface User {
   role: UserRole;
   is_email_verified: boolean;
   is_active: boolean;
+  is_setup: boolean;
   preferred_language: string;
   last_login_at: string | null;
   login_failed_time: string | null;
   access_failed_count: number;
+  gigcoin_balance: number;
   created_at: string;
   updated_at: string;
 }

@@ -38,3 +38,16 @@
 .job-detail-star-icon {
   color: var(--gb-amber);
 }
+
+
+.text-red {
+  color: #ef4444;
+}
+
+.text-green {
+  color: #22c55e;
+}
+
+.text-purple {
+  color: #a855f7;
+}

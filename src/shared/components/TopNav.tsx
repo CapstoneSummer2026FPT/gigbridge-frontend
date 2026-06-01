@@ -34,22 +34,13 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const user = appContext?.user || null;
   const role = appContext?.role || null;
   const theme = appContext?.theme || 'black';
-  const setRole = appContext?.setRole || (() => {});
   const setTheme = appContext?.setTheme || (() => {});
   const logout = appContext?.logout || (() => {});
-
-  const notifications = user ? DB.getNotificationsByUser(user.id) : [];
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  // Mock wallet balance - Replace with actual API call
-  const walletBalance = 2450.50;
-
-  const handleRoleSwitch = (newRole: 0 | 1) => {
-    setRole(newRole);
-    if (newRole === 0) navigate('/client/dashboard');
-    else navigate('/freelancer/dashboard');
-    setShowUserMenu(false);
-  };
+  
+  // Wallet and notification data
+  const walletBalance = user?.gigcoin_balance || 0;
+  const unreadCount = 0; // TODO: Get from notifications service
+  const notifications: any[] = []; // TODO: Get from notifications service
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,24 +107,6 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       )}
 
       <div className="flex items-center gap-2 ml-auto">
-        {/* Role Switcher (logged in) */}
-        {user && role !== 2 && (
-          <div className="role-toggle hidden sm:flex">
-            <button
-              className={`role-toggle-btn ${role === 0 ? 'active' : ''}`}
-              onClick={() => handleRoleSwitch(0)}
-            >
-              Client
-            </button>
-            <button
-              className={`role-toggle-btn ${role === 1 ? 'active' : ''}`}
-              onClick={() => handleRoleSwitch(1)}
-            >
-              Freelancer
-            </button>
-          </div>
-        )}
-
         {/* Wallet Balance Dropdown */}
         {user && (
           <div className="relative">
@@ -242,16 +215,6 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 </div>
                 <div className="h-px mb-1 dropdown-divider" />
 
-                {role !== 2 && (
-                  <>
-                    <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
-                      onClick={() => { handleRoleSwitch(role === 0 ? 1 : 0); }}>
-                      <User size={14} />
-                      Switch to {role === 0 ? 'Freelancer' : 'Client'}
-                    </button>
-                  </>
-                )}
-
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/settings'); setShowUserMenu(false); }}>
                   <Settings size={14} />
@@ -307,9 +270,13 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               setTheme={setTheme}
               className="hidden sm:flex"
             />
+            <button className="btn-ghost-cyan px-4 py-2 text-sm"
+              onClick={() => navigate('/auth/login')}>
+              Log In
+            </button>
             <button className="btn-cyan px-4 py-2 text-sm"
-              onClick={() => navigate('/auth')}>
-              {t('auth.getStarted')}
+              onClick={() => navigate('/auth/signup')}>
+              Sign Up
             </button>
           </div>
         )}

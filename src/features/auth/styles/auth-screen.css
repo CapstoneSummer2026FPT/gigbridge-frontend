@@ -146,3 +146,21 @@
 .auth-input-with-icon-both {
   padding-right: 2.75rem !important;
 }
+
+
+/* ── OTP Input Styles ── */
+.otp-input {
+  letter-spacing: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.otp-timer {
+  color: var(--gb-text-secondary);
+  font-size: 0.75rem;
+}
+
+.bg-green-500 {
+  background-color: #22c55e;
+}

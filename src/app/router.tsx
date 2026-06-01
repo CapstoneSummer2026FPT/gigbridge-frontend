@@ -1,10 +1,13 @@
 import { createBrowserRouter, Outlet } from 'react-router';
 import { AppProvider } from './providers/AppProvider';
+import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 
 // Lazy imports for all screens
 import LandingScreen from '../features/landing/screens/LandingScreenNew';
-import AuthScreen from '../features/auth/screens/AuthScreen';
-import RoleSelectionScreen from '../features/onboarding/screens/RoleSelectionScreen';
+import LoginScreen from '../features/auth/screens/LoginScreen';
+import SignupScreen from '../features/auth/screens/SignupScreen';
+import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen';
 import ProfileSetupScreen from '../features/onboarding/screens/ProfileSetupScreen';
 import ClientDashboardScreen from '../features/dashboard/screens/ClientDashboardScreen';
 import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerDashboardScreen';
@@ -40,6 +43,7 @@ import WalletDepositScreen from '../features/wallet/screens/WalletDepositScreen'
 import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
+import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
 
 // Import router styles
 import './styles/router.css';
@@ -78,69 +82,73 @@ export const router = createBrowserRouter([
     path: '/',
     element: <RootLayout />,
     children: [
-      // Public routes
-      { index: true, element: <LandingScreen /> },
-      { path: 'auth', element: <AuthScreen /> },
+      // Public routes - redirect to dashboard if authenticated
+      { index: true, element: <PublicRoute><LandingScreen /></PublicRoute> },
+      { path: 'auth/login', element: <PublicRoute><LoginScreen /></PublicRoute> },
+      { path: 'auth/signup', element: <PublicRoute><SignupScreen /></PublicRoute> },
+      { path: 'auth/forgot-password', element: <PublicRoute><ForgotPasswordScreen /></PublicRoute> },
+      { path: 'auth/reset-password', element: <PublicRoute><ResetPasswordScreen /></PublicRoute> },
+      { path: 'api/Auth/reset-password', element: <PublicRoute><ResetPasswordScreen /></PublicRoute> },
 
-      // Onboarding routes
-      { path: 'onboarding/role-selection', element: <RoleSelectionScreen /> },
-      { path: 'onboarding/profile-setup', element: <ProfileSetupScreen /> },
+      // Onboarding routes - requires authentication
+      { path: 'onboarding/profile-setup', element: <ProtectedRoute requireAuth><ProfileSetupScreen /></ProtectedRoute> },
 
-      // Client routes
-      { path: 'client/dashboard', element: <ClientDashboardScreen /> },
+      // Client routes - requires authentication and setup
+      { path: 'client/dashboard', element: <ProtectedRoute requireAuth requireSetup><ClientDashboardScreen /></ProtectedRoute> },
 
-      // Freelancer routes
-      { path: 'freelancer/dashboard', element: <FreelancerDashboardScreen /> },
+      // Freelancer routes - requires authentication and setup
+      { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
 
-      // Jobs
-      { path: 'jobs/post', element: <PostJobScreen /> },
-      { path: 'jobs/post/interview-questions', element: <PostJobInterviewQuestionsScreen /> },
-      { path: 'jobs/browse', element: <BrowseJobsScreen /> },
-      { path: 'jobs/my-jobs', element: <BrowseJobsScreen /> },
-      { path: 'jobs/:id', element: <JobDetailScreen /> },
+      // Jobs - requires authentication
+      { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
+      { path: 'jobs/post/interview-questions', element: <ProtectedRoute requireAuth requireSetup><PostJobInterviewQuestionsScreen /></ProtectedRoute> },
+      { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><BrowseJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
 
-      // Profiles
-      { path: 'profile/freelancer/:id', element: <FreelancerProfileScreen /> },
-      { path: 'profile/client/:id', element: <ClientProfileScreen /> },
+      // Profiles - requires authentication
+      { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
+      { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
 
-      // Proposals
-      { path: 'proposals', element: <ProposalsInboxScreen /> },
+      // Proposals - requires authentication and setup
+      { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
 
-      // Workspace
-      { path: 'projects', element: <ProjectsListScreen /> },
-      { path: 'workspace/:id', element: <ProjectWorkspaceScreen /> },
+      // Workspace - requires authentication and setup
+      { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
+      { path: 'workspace/:id', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
 
-      // AI Features
-      { path: 'ai-assistant', element: <AIAssistantScreen /> },
-      { path: 'ai-interview', element: <AIInterviewScreen /> },
+      // AI Features - requires authentication and setup
+      { path: 'ai-assistant', element: <ProtectedRoute requireAuth requireSetup><AIAssistantScreen /></ProtectedRoute> },
+      { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
 
-      // Settings
-      { path: 'settings', element: <SettingsScreen /> },
+      // Settings - requires authentication
+      { path: 'settings', element: <ProtectedRoute requireAuth><SettingsScreen /></ProtectedRoute> },
 
-      // Wallet & Subscription
-      { path: 'wallet/deposit', element: <WalletDepositScreen /> },
-      { path: 'wallet/history', element: <WalletHistoryScreen /> },
-      { path: 'subscription', element: <SubscriptionScreen /> },
-      { path: 'financial-overview', element: <FinancialOverviewScreen /> },
+      // Wallet & Subscription - requires authentication and setup
+      { path: 'wallet/deposit', element: <ProtectedRoute requireAuth requireSetup><WalletDepositScreen /></ProtectedRoute> },
+      { path: 'wallet/history', element: <ProtectedRoute requireAuth requireSetup><WalletHistoryScreen /></ProtectedRoute> },
+      { path: 'buy-gigcoin', element: <ProtectedRoute requireAuth requireSetup><BuyGigcoinScreen /></ProtectedRoute> },
+      { path: 'subscription', element: <ProtectedRoute requireAuth requireSetup><SubscriptionScreen /></ProtectedRoute> },
+      { path: 'financial-overview', element: <ProtectedRoute requireAuth requireSetup><FinancialOverviewScreen /></ProtectedRoute> },
 
-      // Admin
-      { path: 'admin', element: <AdminDashboardScreen /> },
-      { path: 'admin/users', element: <AdminUsersScreen /> },
-      { path: 'admin/jobs', element: <AdminJobsScreen /> },
-      { path: 'admin/contracts', element: <AdminContractsScreen /> },
-      { path: 'admin/reports', element: <AdminReportsScreen /> },
-      { path: 'admin/feedback', element: <AdminFeedbackScreen /> },
-      { path: 'admin/system-tracking', element: <AdminSystemTrackingScreen /> },
-      { path: 'admin/revenue', element: <AdminRevenueScreen /> },
-      { path: 'admin/notifications', element: <AdminNotificationsScreen /> },
+      // Admin - requires authentication and admin role
+      { path: 'admin', element: <ProtectedRoute requireAuth requireSetup><AdminDashboardScreen /></ProtectedRoute> },
+      { path: 'admin/users', element: <ProtectedRoute requireAuth requireSetup><AdminUsersScreen /></ProtectedRoute> },
+      { path: 'admin/jobs', element: <ProtectedRoute requireAuth requireSetup><AdminJobsScreen /></ProtectedRoute> },
+      { path: 'admin/contracts', element: <ProtectedRoute requireAuth requireSetup><AdminContractsScreen /></ProtectedRoute> },
+      { path: 'admin/reports', element: <ProtectedRoute requireAuth requireSetup><AdminReportsScreen /></ProtectedRoute> },
+      { path: 'admin/feedback', element: <ProtectedRoute requireAuth requireSetup><AdminFeedbackScreen /></ProtectedRoute> },
+      { path: 'admin/system-tracking', element: <ProtectedRoute requireAuth requireSetup><AdminSystemTrackingScreen /></ProtectedRoute> },
+      { path: 'admin/revenue', element: <ProtectedRoute requireAuth requireSetup><AdminRevenueScreen /></ProtectedRoute> },
+      { path: 'admin/notifications', element: <ProtectedRoute requireAuth requireSetup><AdminNotificationsScreen /></ProtectedRoute> },
 
-      // Market Insights
+      // Market Insights - public
       { path: 'market-insights', element: <MarketInsightsScreen /> },
 
-      // Notifications
-      { path: 'notifications', element: <NotificationsScreen /> },
+      // Notifications - requires authentication
+      { path: 'notifications', element: <ProtectedRoute requireAuth><NotificationsScreen /></ProtectedRoute> },
 
-      // Company Pages
+      // Company Pages - public
       { path: 'about', element: <AboutScreen /> },
       { path: 'careers', element: <CareersScreen /> },
       { path: 'faq', element: <FAQScreen /> },

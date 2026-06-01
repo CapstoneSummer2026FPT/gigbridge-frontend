@@ -22,6 +22,7 @@ export interface Job {
   isAiRecommended?: boolean;
   postedAt: string;
   isRemote: boolean;
+  gigcoin_cost: number;
 }
 
 export interface Proposal {

@@ -8,5 +8,6 @@ export { profileHandlers } from './handlers/profileHandlers';
 export { reviewHandlers } from './handlers/reviewHandlers';
 export { marketInsightsHandlers } from './handlers/marketInsightsHandlers';
 export { adminHandlers } from './handlers/adminHandlers';
+export { userHandlers } from './handlers/userHandlers';
 export { DB } from './database/db';
 export * from './database/seed';

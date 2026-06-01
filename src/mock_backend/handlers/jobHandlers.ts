@@ -76,4 +76,27 @@ You will be responsible for delivering high-quality work in ${category}, leverag
 - Clear milestones and timely payments
 - Long-term collaboration potential`;
   },
+
+  async applyJob(jobId: string, freelancerId: string) {
+    await delay(300);
+    const job = DB.getJobById(jobId);
+    if (!job) throw new Error('Job not found');
+    
+    const freelancer = DB.getUserById(freelancerId);
+    if (!freelancer) throw new Error('Freelancer not found');
+    
+    const gigcoinCost = job.gigcoin_cost || 0;
+    if (freelancer.gigcoin_balance < gigcoinCost) {
+      throw new Error('Insufficient gigcoin balance');
+    }
+    
+    // Deduct gigcoin
+    freelancer.gigcoin_balance -= gigcoinCost;
+    
+    return {
+      success: true,
+      message: `Successfully applied to job. ${gigcoinCost} gigcoin deducted.`,
+      remainingBalance: freelancer.gigcoin_balance,
+    };
+  },
 };

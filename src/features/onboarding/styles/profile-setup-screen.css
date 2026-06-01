@@ -72,6 +72,7 @@
 .white .profile-setup-progress-step-active {
   background: linear-gradient(90deg, #5470EB, #9F4BFF);
   box-shadow: 0 0 16px rgba(84, 112, 235, 0.4), 0 0 32px rgba(159, 75, 255, 0.2);
+  animation: progressGlowLight 2s ease-in-out infinite;
 }
 
 @keyframes progressGlow {
@@ -83,7 +84,7 @@
   }
 }
 
-.white @keyframes progressGlow {
+@keyframes progressGlowLight {
   0%, 100% {
     box-shadow: 0 0 16px rgba(84, 112, 235, 0.4), 0 0 32px rgba(159, 75, 255, 0.2);
   }
