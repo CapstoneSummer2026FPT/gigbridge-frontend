@@ -321,12 +321,23 @@ export default function AIInterviewScreen() {
                 </p>
               </div>
 
+              {/* Success Message */}
+              <div className="glass-card p-6 mb-6 bg-green/5 border border-green/15">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle size={16} className="text-green" />
+                  <p className="text-primary font-semibold">Interview Submitted</p>
+                </div>
+                <p className="text-sm text-secondary">
+                  Your AI interview results have been sent to the employer. They will review your performance and may contact you if interested.
+                </p>
+              </div>
+
               <div className="flex gap-4">
                 <button className="btn-cyan flex-1 py-3 text-sm" onClick={() => navigate('/jobs/browse')}>
-                  Browse More Jobs
+                  Back to Job Search
                 </button>
                 <button className="btn-ghost-cyan flex-1 py-3 text-sm" onClick={() => navigate('/freelancer/dashboard')}>
-                  Back to Dashboard
+                  Go to Dashboard
                 </button>
               </div>
             </div>

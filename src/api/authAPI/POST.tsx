@@ -13,7 +13,7 @@ import type {
   VerifyOtpRequest,
 } from '../../types/models/Auth';
 
-const authV1Url = 'auth';
+const authV1Url = '/auth';
 
 export const authPostAPI = {
   /**
