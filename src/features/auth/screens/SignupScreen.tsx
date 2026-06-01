@@ -75,6 +75,7 @@ export default function SignupScreen() {
   const handleGoogleSignup = async (authCode: string) => {
     setIsLoading(true);
     setError('');
+    setGoogleError('');
     try {
       const currentRole = selectedRoleRef.current;
       if (currentRole === null) {
@@ -98,7 +99,7 @@ export default function SignupScreen() {
       // Google Sign Up redirects new user directly to onboarding profile setup
       navigate('/onboarding/profile-setup');
     } catch (err: any) {
-      setError(err.message || 'Google signup failed');
+      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
     } finally {
       setIsLoading(false);
     }

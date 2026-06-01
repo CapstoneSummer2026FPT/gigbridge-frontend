@@ -113,7 +113,7 @@ export default function LoginScreen() {
         navigate('/onboarding/profile-setup');
       }
     } catch (err: any) {
-      setGoogleError(err.message || 'Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
     } finally {
       setIsLoading(false);
     }
