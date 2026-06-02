@@ -13,7 +13,7 @@ import type {
   VerifyOtpRequest,
 } from '../../types/models/Auth';
 
-const authV1Url = 'auth';
+const authUrl = 'auth';
 
 
 export const authPostAPI = {
@@ -22,7 +22,7 @@ export const authPostAPI = {
    * POST /v1/auth/login
    */
   login: async (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
-    return apiService.post<LoginResponse>(`${authV1Url}/login`, credentials);
+    return apiService.post<LoginResponse>(`${authUrl}/login`, credentials);
   },
 
   /**
@@ -30,7 +30,7 @@ export const authPostAPI = {
    * POST /v1/auth/register
    */
   register: async (data: RegisterRequest): Promise<ApiResponse<UserDTO>> => {
-    return apiService.post<UserDTO>(`${authV1Url}/register`, data);
+    return apiService.post<UserDTO>(`${authUrl}/register`, data);
   },
 
   /**
@@ -38,7 +38,7 @@ export const authPostAPI = {
    * POST /v1/auth/refresh
    */
   refreshToken: async (accessToken: string): Promise<ApiResponse<LoginResponse>> => {
-    return apiService.post<LoginResponse>(`${authV1Url}/refresh`, { accessToken });
+    return apiService.post<LoginResponse>(`${authUrl}/refresh`, { accessToken });
   },
 
   /**
@@ -46,7 +46,7 @@ export const authPostAPI = {
    * POST /v1/auth/forgot-password
    */
   forgotPassword: async (data: ForgotPasswordRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authV1Url}/forgot-password`, data);
+    return apiService.post<null>(`${authUrl}/forgot-password`, data);
   },
 
   /**
@@ -54,7 +54,7 @@ export const authPostAPI = {
    * POST /v1/auth/password-reset
    */
   resetPassword: async (data: ResetPasswordRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authV1Url}/password-reset`, data);
+    return apiService.post<null>(`${authUrl}/password-reset`, data);
   },
 
   /**
@@ -62,7 +62,7 @@ export const authPostAPI = {
    * POST /v1/auth/resend-email
    */
   resendEmailConfirmation: async (data: EmailResendConfirmationRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authV1Url}/resend-email`, data);
+    return apiService.post<null>(`${authUrl}/resend-email`, data);
   },
 
   /**
@@ -70,7 +70,7 @@ export const authPostAPI = {
    * POST /v1/auth/validate-reset-token
    */
   validateResetToken: async (data: ValidateResetTokenRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authV1Url}/validate-reset-token`, data);
+    return apiService.post<null>(`${authUrl}/validate-reset-token`, data);
   },
 
   /**
@@ -78,7 +78,7 @@ export const authPostAPI = {
    * POST /v1/auth/google
    */
   googleLogin: async (authCode: string, role?: number, isFromSignIn?: boolean): Promise<ApiResponse<LoginResponse>> => {
-    return apiService.post<LoginResponse>(`${authV1Url}/google`, { authCode, role, isFromSignIn });
+    return apiService.post<LoginResponse>(`${authUrl}/google`, { authCode, role, isFromSignIn });
   },
 
   /**
@@ -86,7 +86,7 @@ export const authPostAPI = {
    * POST /auth/send-otp
    */
   sendOtp: async (data: SendOtpRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authV1Url}/send-otp`, data);
+    return apiService.post<null>(`${authUrl}/send-otp`, data);
   },
 
   /**
@@ -94,7 +94,7 @@ export const authPostAPI = {
    * POST /auth/verify-otp
    */
   verifyOtp: async (data: VerifyOtpRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authV1Url}/verify-otp`, data);
+    return apiService.post<null>(`${authUrl}/verify-otp`, data);
   },
 };
 
