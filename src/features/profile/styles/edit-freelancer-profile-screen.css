@@ -1,0 +1,291 @@
+/* EditFreelancerProfileScreen Styles */
+
+.edit-freelancer-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.edit-freelancer-profile-header-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--gb-text-primary);
+}
+
+.edit-freelancer-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.edit-freelancer-profile-section {
+  padding: 1.5rem;
+}
+
+.edit-freelancer-profile-section-title {
+  font-weight: 600;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: var(--gb-text-primary);
+}
+
+.edit-freelancer-profile-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.edit-freelancer-profile-image-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-freelancer-profile-image-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--gb-text-primary);
+}
+
+.edit-freelancer-profile-image-preview {
+  position: relative;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  height: 160px;
+  border: 1px solid var(--gb-border);
+}
+
+.edit-freelancer-profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-freelancer-profile-image-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.edit-freelancer-profile-image-preview:hover .edit-freelancer-profile-image-overlay {
+  opacity: 1;
+}
+
+.edit-freelancer-profile-image-help {
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  color: var(--gb-text-secondary);
+}
+
+.edit-freelancer-profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.edit-freelancer-profile-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-freelancer-profile-form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--gb-text-primary);
+}
+
+.edit-freelancer-profile-form-input,
+.edit-freelancer-profile-form-textarea,
+.edit-freelancer-profile-form-select {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--gb-border);
+  background: var(--gb-bg-secondary);
+  color: var(--gb-text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.edit-freelancer-profile-form-input::placeholder,
+.edit-freelancer-profile-form-textarea::placeholder,
+.edit-freelancer-profile-form-select::placeholder {
+  color: var(--gb-text-muted);
+}
+
+.edit-freelancer-profile-form-input:focus,
+.edit-freelancer-profile-form-textarea:focus,
+.edit-freelancer-profile-form-select:focus {
+  outline: none;
+  border-color: var(--gb-cyan, #0077FF);
+  background: var(--gb-bg-primary);
+  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.1);
+}
+
+.edit-freelancer-profile-form-textarea {
+  resize: none;
+  line-height: 1.5;
+  min-height: 100px;
+}
+
+.edit-freelancer-profile-form-error {
+  font-size: 0.75rem;
+  color: var(--gb-red, #ef4444);
+  margin-top: 0.25rem;
+}
+
+.edit-freelancer-profile-form-help {
+  font-size: 0.75rem;
+  color: var(--gb-text-secondary);
+  margin-top: 0.25rem;
+}
+
+.edit-freelancer-profile-form-counter {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--gb-text-secondary);
+  margin-top: 0.25rem;
+}
+
+.edit-freelancer-profile-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.edit-freelancer-profile-skill-button {
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--gb-border);
+  background: var(--gb-bg-secondary);
+  color: var(--gb-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-freelancer-profile-skill-button:hover {
+  border-color: var(--gb-cyan, #0077FF);
+  background: var(--gb-bg-tertiary);
+  color: var(--gb-cyan, #0077FF);
+}
+
+.edit-freelancer-profile-skill-button.active {
+  background: var(--gb-cyan, #0077FF);
+  border-color: var(--gb-cyan, #0077FF);
+  color: white;
+}
+
+.edit-freelancer-profile-skills-label {
+  font-size: 0.75rem;
+  color: var(--gb-text-secondary);
+  margin-top: 0.5rem;
+}
+
+.edit-freelancer-profile-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.edit-freelancer-profile-button-cancel {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--gb-border);
+  background: transparent;
+  color: var(--gb-text-primary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-freelancer-profile-button-cancel:hover {
+  background: var(--gb-bg-hover);
+  border-color: var(--gb-border-hover);
+}
+
+.edit-freelancer-profile-button-submit {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: var(--gb-cyan, #0077FF);
+  color: white;
+}
+
+.edit-freelancer-profile-button-submit:hover {
+  background: #0056cc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
+}
+
+.edit-freelancer-profile-button-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.edit-freelancer-profile-success-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid var(--gb-green, #22c55e);
+  margin-bottom: 1.5rem;
+  color: var(--gb-green, #22c55e);
+}
+
+.edit-freelancer-profile-banned-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--gb-red, #ef4444);
+  margin-bottom: 1.5rem;
+  color: var(--gb-red, #ef4444);
+}
+
+@media (max-width: 768px) {
+  .edit-freelancer-profile-images-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-freelancer-profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-freelancer-profile-skills {
+    flex-direction: column;
+  }
+
+  .edit-freelancer-profile-actions {
+    flex-direction: column;
+  }
+
+  .edit-freelancer-profile-button-cancel,
+  .edit-freelancer-profile-button-submit {
+    width: 100%;
+  }
+}

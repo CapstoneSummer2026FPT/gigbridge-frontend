@@ -1,0 +1,654 @@
+/* Manage Certifications & Portfolio Screen Styles */
+
+.manage-portfolio-wrapper {
+  min-height: 100vh;
+  background: var(--gb-bg-primary);
+}
+
+.manage-portfolio-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem 0;
+}
+
+.manage-portfolio-back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--gb-cyan, #0077FF);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.manage-portfolio-back-btn:hover {
+  background: #0056cc;
+  transform: translateY(-2px);
+}
+
+.manage-portfolio-header h1 {
+  font-size: 1.875rem;
+  font-weight: 900;
+  color: var(--gb-text-primary);
+  margin: 0;
+  flex: 1;
+}
+
+.manage-portfolio-count {
+  font-size: 0.875rem;
+  color: var(--gb-text-secondary);
+  font-weight: 600;
+}
+
+.manage-portfolio-success-message {
+  padding: 1rem;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid var(--gb-green, #22c55e);
+  border-radius: 0.75rem;
+  color: var(--gb-green, #22c55e);
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.manage-portfolio-container {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 2rem;
+}
+
+.manage-portfolio-form-section,
+.manage-portfolio-grid-section {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--gb-bg-secondary);
+  border: 1px solid var(--gb-border);
+}
+
+.manage-portfolio-form-section h2,
+.manage-portfolio-grid-section h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.manage-portfolio-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.manage-portfolio-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.manage-portfolio-form-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gb-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.manage-portfolio-form-group input,
+.manage-portfolio-form-group textarea {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--gb-border);
+  background: var(--gb-bg-primary);
+  color: var(--gb-text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.manage-portfolio-form-group input::placeholder,
+.manage-portfolio-form-group textarea::placeholder {
+  color: var(--gb-text-muted);
+}
+
+.manage-portfolio-form-group input:focus,
+.manage-portfolio-form-group textarea:focus {
+  outline: none;
+  border-color: var(--gb-cyan, #0077FF);
+  background: var(--gb-bg-secondary);
+  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.1);
+}
+
+.manage-portfolio-form-group input.error,
+.manage-portfolio-form-group textarea.error {
+  border-color: var(--gb-red, #ef4444);
+}
+
+.manage-portfolio-form-group textarea {
+  resize: none;
+  min-height: 100px;
+  line-height: 1.5;
+}
+
+.manage-portfolio-char-count {
+  font-size: 0.75rem;
+  color: var(--gb-text-secondary);
+  margin-top: 0.25rem;
+}
+
+.manage-portfolio-error {
+  font-size: 0.75rem;
+  color: var(--gb-red, #ef4444);
+  margin-top: 0.25rem;
+}
+
+.manage-portfolio-file-input-wrapper {
+  position: relative;
+  border: 2px dashed var(--gb-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-file-input-wrapper:hover {
+  border-color: var(--gb-cyan, #0077FF);
+}
+
+.manage-portfolio-file-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  cursor: pointer;
+  text-align: center;
+  color: var(--gb-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-file-label:hover {
+  color: var(--gb-cyan, #0077FF);
+}
+
+.manage-portfolio-file-label span {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.manage-portfolio-image-preview {
+  position: relative;
+  height: 200px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.manage-portfolio-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.manage-portfolio-remove-image {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-remove-image:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.manage-portfolio-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.manage-portfolio-button-cancel {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--gb-border);
+  background: transparent;
+  color: var(--gb-text-primary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-button-cancel:hover {
+  background: var(--gb-bg-hover);
+  border-color: var(--gb-border-hover);
+}
+
+.manage-portfolio-button-submit {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--gb-cyan, #0077FF);
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-button-submit:hover:not(:disabled) {
+  background: #0056cc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
+}
+
+.manage-portfolio-button-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.manage-portfolio-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--gb-text-secondary);
+}
+
+.manage-portfolio-add-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--gb-cyan, #0077FF);
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-add-button:hover {
+  background: #0056cc;
+  transform: translateY(-2px);
+}
+
+.manage-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.manage-portfolio-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--gb-bg-primary);
+  border: 1px solid var(--gb-border);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.manage-portfolio-card:hover {
+  border-color: var(--gb-cyan, #0077FF);
+}
+
+.manage-portfolio-card-image {
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.manage-portfolio-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.manage-portfolio-card:hover .manage-portfolio-card-image img {
+  transform: scale(1.05);
+}
+
+.manage-portfolio-card-actions {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.manage-portfolio-card:hover .manage-portfolio-card-actions {
+  opacity: 1;
+}
+
+.manage-portfolio-edit-btn,
+.manage-portfolio-delete-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.5rem;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-edit-btn:hover {
+  background: var(--gb-cyan, #0077FF);
+}
+
+.manage-portfolio-delete-btn:hover {
+  background: var(--gb-red, #ef4444);
+}
+
+.manage-portfolio-card-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.manage-portfolio-card-content h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  margin: 0;
+}
+
+.manage-portfolio-card-description {
+  font-size: 0.75rem;
+  color: var(--gb-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.manage-portfolio-card-link {
+  font-size: 0.75rem;
+  color: var(--gb-cyan, #0077FF);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-card-link:hover {
+  text-decoration: underline;
+}
+
+.manage-portfolio-delete-confirm {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  z-index: 10;
+}
+
+.manage-portfolio-delete-confirm p {
+  margin: 0;
+  color: white;
+  font-weight: 500;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.manage-portfolio-confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.manage-portfolio-button-no,
+.manage-portfolio-button-yes {
+  padding: 0.375rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-button-no {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.manage-portfolio-button-no:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.manage-portfolio-button-yes {
+  background: var(--gb-red, #ef4444);
+  color: white;
+}
+
+.manage-portfolio-button-yes:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 1024px) {
+  .manage-portfolio-container {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-portfolio-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .manage-portfolio-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .manage-portfolio-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .manage-portfolio-container {
+    gap: 1.5rem;
+  }
+
+  .manage-portfolio-form-section,
+  .manage-portfolio-grid-section {
+    padding: 1rem;
+  }
+
+  .manage-portfolio-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Certificates Section */
+.manage-portfolio-section {
+  margin-bottom: 3rem;
+}
+
+.manage-portfolio-section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--gb-border);
+}
+
+.manage-portfolio-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.manage-portfolio-list-section {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--gb-bg-secondary);
+  border: 1px solid var(--gb-border);
+}
+
+.manage-portfolio-list-section h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.manage-portfolio-grid-section h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.manage-portfolio-cert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.manage-portfolio-cert-card {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--gb-bg-primary);
+  border: 1px solid var(--gb-border);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-cert-card:hover {
+  border-color: var(--gb-cyan, #0077FF);
+  box-shadow: 0 2px 8px rgba(0, 119, 255, 0.1);
+}
+
+.manage-portfolio-cert-header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.manage-portfolio-cert-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 0.5rem;
+  background: rgba(0, 119, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gb-cyan, #0077FF);
+}
+
+.manage-portfolio-cert-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.manage-portfolio-cert-info h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.manage-portfolio-cert-issuer {
+  font-size: 0.875rem;
+  color: var(--gb-text-secondary);
+  margin: 0 0 0.25rem 0;
+}
+
+.manage-portfolio-cert-date {
+  font-size: 0.75rem;
+  color: var(--gb-text-secondary);
+  margin: 0;
+}
+
+.manage-portfolio-cert-image {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  height: 150px;
+}
+
+.manage-portfolio-cert-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.manage-portfolio-cert-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--gb-cyan, #0077FF);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.manage-portfolio-cert-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .manage-portfolio-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-portfolio-cert-header {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .manage-portfolio-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-portfolio-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .manage-portfolio-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .manage-portfolio-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .manage-portfolio-container {
+    grid-template-columns: 1fr;
+  }
+}
