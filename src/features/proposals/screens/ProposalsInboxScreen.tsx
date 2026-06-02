@@ -5,7 +5,8 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
-import type { Proposal } from '../../../types/models/Job';
+import { DB, SEED_JOBS } from '../../../mock_backend';
+import type { ProposalDto } from '../../../types/models/Proposal';
 import '../styles/proposals-inbox-screen.css';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,7 +29,7 @@ export default function ProposalsInboxScreen() {
   const [proposals, setProposals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isClient = role === 'client';
+  const isClient = role === 0; // 0 = client role
 
   // Fetch proposals from API
   useEffect(() => {
@@ -37,13 +38,20 @@ export default function ProposalsInboxScreen() {
       
       try {
         setLoading(true);
-        const filters = isClient 
-          ? { clientId: user.id }
-          : { freelancerId: user.id };
-        const data = await proposalGetAPI.getProposals(filters);
-        setProposals(data);
+        let data;
+        if (isClient) {
+          // For clients, we need to get proposals for their jobs
+          data = await proposalGetAPI.getAllProposals();
+        } else {
+          // For freelancers, get their proposals
+          data = await proposalGetAPI.getMyProposals();
+        }
+        
+        // Extract data from ApiResponse wrapper
+        setProposals(data?.data || []);
       } catch (error) {
         console.error('Failed to fetch proposals:', error);
+        setProposals([]);
       } finally {
         setLoading(false);
       }
@@ -53,13 +61,22 @@ export default function ProposalsInboxScreen() {
 
   const filteredProposals = filter === 'all' 
     ? proposals 
-    : proposals.filter(p => p.status === filter);
+    : proposals.filter(p => {
+        const status = typeof p.status === 'number' ? p.status : p.status;
+        const filterMap: Record<string, number | string> = {
+          pending: 0,
+          shortlisted: 1,
+          accepted: 1,
+          rejected: 2,
+        };
+        return status === filterMap[filter] || p.status === filter;
+      });
 
   const updateProposalStatus = async (proposalId: string, status: string) => {
     try {
       await proposalPutAPI.updateProposalStatus(proposalId, status);
       setProposals(prev => 
-        prev.map(p => p.id === proposalId ? { ...p, status } : p)
+        prev.map(p => p.proposalsId === proposalId ? { ...p, status: status as any } : p)
       );
     } catch (error) {
       console.error('Failed to update proposal status:', error);
@@ -79,7 +96,7 @@ export default function ProposalsInboxScreen() {
               {isClient ? 'Proposals Inbox' : 'My Proposals'}
             </h1>
             <p className="text-secondary">
-              {isClient ? `${proposals.filter(p => p.status === 'pending').length} new proposals awaiting review` : `${proposals.length} proposals submitted`}
+              {isClient ? `${proposals.filter(p => p.status === 0 || p.status === 'Pending').length} new proposals awaiting review` : `${proposals.length} proposals submitted`}
             </p>
           </div>
           {isClient && (
@@ -144,54 +161,43 @@ export default function ProposalsInboxScreen() {
                     color: filter === f ? '#0077FF' : '#8892A4',
                   }}>
                   {f} {f === 'all' && `(${proposals.length})`}
-                  {f !== 'all' && `(${proposals.filter(p => p.status === f).length})`}
+                  {f === 'pending' && `(${proposals.filter(p => p.status === 0 || p.status === 'Pending').length})`}
+                  {f === 'shortlisted' && `(${proposals.filter(p => p.status === 1).length})`}
+                  {f === 'accepted' && `(${proposals.filter(p => p.status === 1).length})`}
+                  {f === 'rejected' && `(${proposals.filter(p => p.status === 2).length})`}
                 </button>
               ))}
             </div>
 
             {filteredProposals.map(proposal => {
-              const freelancer = proposal.freelancer;
-              const job = proposal.job;
-              const isExpanded = expandedProposal === proposal.id;
+              const freelancer = proposal.freelancerName ? { name: proposal.freelancerName } : null;
+              const job = proposal.jobTitle ? { title: proposal.jobTitle } : null;
+              const isExpanded = expandedProposal === proposal.proposalsId;
 
               return (
-                <div key={proposal.id} className="glass-card overflow-hidden">
-                  <div className="p-5 cursor-pointer" onClick={() => setExpandedProposal(isExpanded ? null : proposal.id)}>
+                <div key={proposal.proposalsId} className="glass-card overflow-hidden">
+                  <div className="p-5 cursor-pointer" onClick={() => setExpandedProposal(isExpanded ? null : proposal.proposalsId)}>
                     <div className="flex items-start gap-4">
-                      <img src={freelancer?.avatar} alt={freelancer?.name}
+                      <img src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${proposal.freelancerName}`} alt={proposal.freelancerName}
                         className="w-12 h-12 rounded-xl flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-primary font-semibold">{isClient ? freelancer?.name : job?.title}</p>
-                              <span className={`badge-${STATUS_COLORS[proposal.status] || 'cyan'} text-[10px] capitalize`}>
-                                {proposal.status}
+                              <p className="text-primary font-semibold">{isClient ? proposal.freelancerName : proposal.jobTitle}</p>
+                              <span className={`badge-${STATUS_COLORS[proposal.status || 'pending'] || 'cyan'} text-[10px] capitalize`}>
+                                {proposal.status || 'pending'}
                               </span>
                             </div>
                             <p className="text-xs mt-0.5 text-secondary">
-                              {isClient ? job?.title : `Client: ${proposal.client?.name}`}
+                              {isClient ? proposal.jobTitle : `Client: Unknown`}
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-primary font-bold">${proposal.bidAmount.toLocaleString()}</p>
-                            <p className="text-xs text-secondary">{proposal.deliveryDays} days</p>
+                            <p className="text-primary font-bold">${(proposal.proposedRate || 0).toLocaleString()}</p>
+                            <p className="text-xs text-secondary">{proposal.proposedDuration || '0'} days</p>
                           </div>
                         </div>
-
-                        {/* AI Score */}
-                        {proposal.aiScore && (
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`match-score ${proposal.aiScore >= 90 ? 'high' : proposal.aiScore >= 70 ? 'medium' : 'low'} text-xs`}>
-                              <Bot size={10} /> {proposal.aiScore}% AI Score
-                            </div>
-                            {proposal.aiSummary && (
-                              <p className="text-xs truncate text-secondary">
-                                {proposal.aiSummary.slice(0, 60)}...
-                              </p>
-                            )}
-                          </div>
-                        )}
 
                         <p className="text-sm line-clamp-2 text-secondary">
                           {proposal.coverLetter}
@@ -202,42 +208,32 @@ export default function ProposalsInboxScreen() {
                     {/* Expanded View */}
                     {isExpanded && (
                       <div className="mt-4 pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                        {proposal.aiSummary && (
-                          <div className="p-3 rounded-xl mb-4"
-                            style={{ background: 'rgba(159,75,255,0.06)', border: '1px solid rgba(159,75,255,0.2)' }}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Bot size={12} className="text-purple" />
-                              <p className="text-xs font-semibold text-purple">AI Analysis</p>
-                            </div>
-                            <p className="text-xs leading-relaxed text-secondary">{proposal.aiSummary}</p>
-                          </div>
-                        )}
                         <p className="text-sm leading-relaxed mb-4 text-secondary">{proposal.coverLetter}</p>
 
                         <div className="flex gap-3">
-                          {isClient && proposal.status === 'pending' && (
+                          {isClient && (proposal.status === 0 || proposal.status === 'Pending') && (
                             <>
                               <button className="btn-cyan flex-1 py-2 text-sm flex items-center justify-center gap-2"
-                                onClick={() => updateProposalStatus(proposal.id, 'shortlisted')}>
+                                onClick={() => updateProposalStatus(proposal.proposalsId, '1')}>
                                 <CheckCircle size={14} /> Shortlist
                               </button>
                               <button className="flex-1 py-2 rounded-xl text-sm transition-all"
                                 style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444' }}
-                                onClick={() => updateProposalStatus(proposal.id, 'rejected')}>
+                                onClick={() => updateProposalStatus(proposal.proposalsId, '2')}>
                                 <XCircle size={14} className="inline mr-1" /> Decline
                               </button>
                               <button className="btn-ghost-cyan px-3 py-2 text-sm"
-                                onClick={() => navigate(`/profile/freelancer/${proposal.freelancerId}`)}>
+                                onClick={() => navigate(`/profile/freelancer/${proposal.freelancerProfilesId}`)}>
                                 View Profile
                               </button>
                             </>
                           )}
-                          {isClient && proposal.status === 'shortlisted' && (
+                          {isClient && (proposal.status === 1 || proposal.status === 'Accepted') && (
                             <button className="btn-purple flex-1 py-2 text-sm">Hire Freelancer</button>
                           )}
                           {!isClient && (
                             <button className="btn-ghost-cyan px-4 py-2 text-sm"
-                              onClick={() => navigate(`/jobs/${proposal.jobId}`)}>
+                              onClick={() => navigate(`/jobs/${proposal.jobPostsId}`)}>
                               View Job
                             </button>
                           )}
@@ -267,9 +263,9 @@ export default function ProposalsInboxScreen() {
               <div className="space-y-3">
                 {[
                   { label: 'Total Proposals', value: proposals.length, color: 'white' },
-                  { label: 'Pending Review', value: proposals.filter(p => p.status === 'pending').length, color: '#F59E0B' },
-                  { label: 'Shortlisted', value: proposals.filter(p => p.status === 'shortlisted').length, color: '#0077FF' },
-                  { label: 'Accepted', value: proposals.filter(p => p.status === 'accepted').length, color: '#22C55E' },
+                  { label: 'Pending Review', value: proposals.filter(p => p.status === 0 || p.status === 'Pending').length, color: '#F59E0B' },
+                  { label: 'Shortlisted', value: proposals.filter(p => p.status === 1 || p.status === 'Accepted').length, color: '#0077FF' },
+                  { label: 'Accepted', value: proposals.filter(p => p.status === 1 || p.status === 'Accepted').length, color: '#22C55E' },
                 ].map(item => (
                   <div key={item.label} className="flex justify-between items-center py-2 border-b"
                     style={{ borderColor: 'rgba(255,255,255,0.06)' }}>

@@ -18,6 +18,10 @@ import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
+import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
+import EditFreelancerProfileScreen from '../features/profile/screens/EditFreelancerProfileScreen';
+import ManageWorkExperienceScreen from '../features/profile/screens/ManageWorkExperienceScreen';
+import ManageCertificationsPortfolioScreen from '../features/profile/screens/ManageCertificationsPortfolioScreen';
 import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
 import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen';
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
@@ -129,6 +133,10 @@ export const router = createBrowserRouter([
       // Profiles - requires authentication
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/freelancer/:id/edit', element: <ProtectedRoute requireAuth><EditFreelancerProfileScreen /></ProtectedRoute> },
+      { path: 'profile/client/:id/edit', element: <ProtectedRoute requireAuth><EditClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/work-experience', element: <ProtectedRoute requireAuth><ManageWorkExperienceScreen /></ProtectedRoute> },
+      { path: 'profile/portfolio', element: <ProtectedRoute requireAuth><ManageCertificationsPortfolioScreen /></ProtectedRoute> },
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
