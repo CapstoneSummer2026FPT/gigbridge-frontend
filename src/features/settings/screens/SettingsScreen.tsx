@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Lock, CreditCard, Bell, Bot, Camera, Plus, X, Eye, EyeOff, Globe } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
-import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
 import { LanguageSwitcher } from '../../../shared/components/LanguageSwitcher';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { UserRole } from '../../../types/models/User';
+import { profileGetAPI } from '../../../api/profileAPI/GET';
+import { profilePutAPI } from '../../../api/profileAPI/PUT';
+import { CompanySize } from '../../../types/models/Profile';
 
 type SettingsTab = 'profile' | 'security' | 'payment' | 'notifications' | 'ai' | 'preferences';
 
@@ -17,24 +19,112 @@ export default function SettingsScreen() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizeSuccess, setOptimizeSuccess] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  const profile = role === 'freelancer'
-    ? SEED_FREELANCER_PROFILES.find(p => p.userId === user?.id) || SEED_FREELANCER_PROFILES[0]
-    : null;
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: user?.full_name || '',
     email: user?.email || '',
-    bio: profile?.bio || '',
-    hourlyRate: profile?.hourlyRate?.toString() || '',
-    location: profile?.location || '',
-    title: profile?.title || '',
+    location: '',
+    // Freelancer-specific fields
+    title: '',
+    bio: '',
+    hourlyRate: '',
+    // Client-specific fields
+    companyName: '',
+    companyWebsite: '',
+    companySize: CompanySize.Solo,
+    industry: '',
+    companyDescription: '',
   });
 
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!user) return;
+      setLoading(true);
+      setErrorMessage(null);
+      try {
+        if (role === UserRole.Freelancer) {
+          const res = await profileGetAPI.getMyFreelancerProfile();
+          if (res.success && res.data) {
+            setFormData(prev => ({
+              ...prev,
+              name: user.full_name || '',
+              email: user.email || '',
+              location: res.data.location || '',
+              title: res.data.title || '',
+              bio: res.data.bio || '',
+              hourlyRate: res.data.hourlyRate?.toString() || '',
+            }));
+          }
+        } else if (role === UserRole.Client) {
+          const res = await profileGetAPI.getClientProfile(user.id);
+          if (res.success && res.data) {
+            setFormData(prev => ({
+              ...prev,
+              name: user.full_name || '',
+              email: user.email || '',
+              location: res.data.location || '',
+              companyName: res.data.companyName || '',
+              companyWebsite: res.data.companyWebsite || '',
+              companySize: res.data.companySize !== undefined && res.data.companySize !== null ? res.data.companySize : CompanySize.Solo,
+              industry: res.data.industry || '',
+              companyDescription: res.data.companyDescription || '',
+            }));
+          }
+        }
+      } catch (err: any) {
+        console.error('Error loading profile:', err);
+        // If 404, we don't treat it as a hard error because the profile might just not be created yet.
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfileData();
+  }, [user, role]);
+
   const handleSave = async () => {
-    await new Promise(r => setTimeout(r, 800));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(false);
+    setErrorMessage(null);
+    try {
+      if (role === UserRole.Freelancer) {
+        const res = await profilePutAPI.updateFreelancerProfile({
+          title: formData.title,
+          bio: formData.bio,
+          hourlyRate: parseFloat(formData.hourlyRate) || 0,
+          experienceLevel: 1, // default or map if UI is added
+          availability: 0, // default full time
+          location: formData.location,
+        });
+
+        if (res.success) {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        } else {
+          setErrorMessage(res.message || 'Failed to update freelancer profile');
+        }
+      } else if (role === UserRole.Client) {
+        const res = await profilePutAPI.updateClientProfile({
+          CompanyName: formData.companyName,
+          CompanyWebsite: formData.companyWebsite,
+          CompanySize: formData.companySize,
+          Industry: formData.industry,
+          CompanyDescription: formData.companyDescription,
+          Location: formData.location,
+        });
+
+        if (res.success) {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        } else {
+          setErrorMessage(res.message || 'Failed to update client profile');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      setErrorMessage(err.message || 'An error occurred while saving.');
+    }
   };
 
   const handleAIOptimize = async () => {
@@ -89,75 +179,154 @@ export default function SettingsScreen() {
                   <h2 className="text-primary font-semibold mb-5">Profile Photo</h2>
                   <div className="flex items-center gap-5">
                     <div className="relative">
-                      <img src={user?.avatar} alt={user?.name} className="w-20 h-20 rounded-2xl avatar-glow" />
+                      <img src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'} alt={user?.full_name} className="w-20 h-20 rounded-2xl avatar-glow" />
                       <button className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center"
                         style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
                         <Camera size={14} style={{ color: '#0A0F1C' }} />
                       </button>
                     </div>
                     <div>
-                      <p className="text-primary font-medium">{user?.name}</p>
-                      <p className="text-sm mt-0.5 capitalize text-secondary">{role} · {user?.email}</p>
-                      {user?.isVerified && (
+                      <p className="text-primary font-medium">{user?.full_name}</p>
+                      <p className="text-sm mt-0.5 capitalize text-secondary">{role === UserRole.Client ? 'Client' : 'Freelancer'} · {user?.email}</p>
+                      {user?.is_email_verified && (
                         <span className="badge-green text-xs mt-2 inline-block">✓ Verified</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Basic Info */}
-                <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-5">Basic Information</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { label: 'Full Name', key: 'name', type: 'text' },
-                      { label: 'Email Address', key: 'email', type: 'email' },
-                      { label: 'Location', key: 'location', type: 'text' },
-                      ...(role === 'freelancer' ? [
-                        { label: 'Professional Title', key: 'title', type: 'text' },
-                        { label: 'Hourly Rate ($)', key: 'hourlyRate', type: 'number' },
-                      ] : []),
-                    ].map(field => (
-                      <div key={field.key}>
-                        <label className="text-xs font-medium text-primary mb-2 block">{field.label}</label>
-                        <input type={field.type} value={(formData as any)[field.key]}
-                          onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                          className="input-gb w-full px-4 py-3 text-sm" />
+                {loading ? (
+                  <div className="glass-card p-6 flex flex-col items-center justify-center min-h-[200px]">
+                    <div className="w-8 h-8 rounded-full border-2 border-cyan border-t-transparent animate-spin mb-2" />
+                    <p className="text-sm text-secondary">Loading settings...</p>
+                  </div>
+                ) : (
+                  <>
+                    {errorMessage && (
+                      <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
+                        {errorMessage}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    )}
 
-                {/* Bio with AI Optimizer */}
-                {role === 'freelancer' && (
-                  <div className="glass-card p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-primary font-semibold">Professional Bio</h2>
-                      <button onClick={handleAIOptimize} disabled={isOptimizing}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all disabled:opacity-50"
-                        style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.15), rgba(159,75,255,0.15))', border: '1px solid rgba(0,240,255,0.3)', color: '#0077FF' }}>
-                        {isOptimizing ? (
-                          <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Optimizing...</>
-                        ) : optimizeSuccess ? (
-                          '✓ Bio Optimized!'
-                        ) : (
-                          <><Bot size={14} />AI Optimize Bio</>
+                    {/* Basic Info */}
+                    <div className="glass-card p-6">
+                      <h2 className="text-primary font-semibold mb-5">Basic Information</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-medium text-primary mb-2 block">Full Name</label>
+                          <input type="text" value={formData.name} readOnly disabled
+                            className="input-gb w-full px-4 py-3 text-sm opacity-60 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-primary mb-2 block">Email Address</label>
+                          <input type="email" value={formData.email} readOnly disabled
+                            className="input-gb w-full px-4 py-3 text-sm opacity-60 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-primary mb-2 block">Location</label>
+                          <input type="text" value={formData.location}
+                            onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                            className="input-gb w-full px-4 py-3 text-sm" />
+                        </div>
+
+                        {role === UserRole.Freelancer && (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Professional Title</label>
+                              <input type="text" value={formData.title}
+                                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Hourly Rate ($)</label>
+                              <input type="number" value={formData.hourlyRate}
+                                onChange={e => setFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                          </>
                         )}
-                      </button>
-                    </div>
-                    <textarea value={formData.bio}
-                      onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                      rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
-                    <p className="text-xs mt-2 text-secondary">
-                      {formData.bio.length} / 1000 characters · AI-optimized bios get 67% more profile views
-                    </p>
-                  </div>
-                )}
 
-                <button onClick={handleSave}
-                  className={`btn-cyan px-8 py-3 text-sm transition-all ${saved ? 'bg-green-500!' : ''}`}>
-                  {saved ? '✓ Saved!' : 'Save Changes'}
-                </button>
+                        {role === UserRole.Client && (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Company Name</label>
+                              <input type="text" value={formData.companyName}
+                                onChange={e => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Company Website</label>
+                              <input type="url" value={formData.companyWebsite}
+                                onChange={e => setFormData(prev => ({ ...prev, companyWebsite: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Industry</label>
+                              <input type="text" value={formData.industry}
+                                onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Company Size</label>
+                              <select value={formData.companySize}
+                                onChange={e => setFormData(prev => ({ ...prev, companySize: parseInt(e.target.value) || 0 }))}
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                <option value={CompanySize.Solo}>Solo (1-9 employees)</option>
+                                <option value={CompanySize.Small}>Small (10-49 employees)</option>
+                                <option value={CompanySize.Medium}>Medium (50-249 employees)</option>
+                                <option value={CompanySize.Large}>Large (250+ employees)</option>
+                              </select>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bio or Company Description */}
+                    {role === UserRole.Freelancer && (
+                      <div className="glass-card p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-primary font-semibold">Professional Bio</h2>
+                          <button onClick={handleAIOptimize} disabled={isOptimizing}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all disabled:opacity-50"
+                            style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.15), rgba(159,75,255,0.15))', border: '1px solid rgba(0,240,255,0.3)', color: '#0077FF' }}>
+                            {isOptimizing ? (
+                              <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Optimizing...</>
+                            ) : optimizeSuccess ? (
+                              '✓ Bio Optimized!'
+                            ) : (
+                              <><Bot size={14} />AI Optimize Bio</>
+                            )}
+                          </button>
+                        </div>
+                        <textarea value={formData.bio}
+                          onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                          rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
+                        <p className="text-xs mt-2 text-secondary">
+                          {formData.bio.length} / 1000 characters · AI-optimized bios get 67% more profile views
+                        </p>
+                      </div>
+                    )}
+
+                    {role === UserRole.Client && (
+                      <div className="glass-card p-6">
+                        <h2 className="text-primary font-semibold mb-4">Company Description</h2>
+                        <textarea value={formData.companyDescription}
+                          onChange={e => setFormData(prev => ({ ...prev, companyDescription: e.target.value }))}
+                          rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
+                        <p className="text-xs mt-2 text-secondary">
+                          {formData.companyDescription.length} / 1000 characters
+                        </p>
+                      </div>
+                    )}
+
+                    <button onClick={handleSave}
+                      className={`btn-cyan px-8 py-3 text-sm transition-all ${saved ? 'bg-green-500!' : ''}`}>
+                      {saved ? '✓ Saved!' : 'Save Changes'}
+                    </button>
+                  </>
+                )}
               </>
             )}
 
