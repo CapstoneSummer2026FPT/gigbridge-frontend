@@ -2,7 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto, ClientProfileResponseDto, FreelancerProfileResponseDto } from '../../types/models/Profile';
 
-const profileV1Url = 'v1/profile';
+const profileV1Url = 'Profile';
 
 export const profilePutAPI = {
   /**
