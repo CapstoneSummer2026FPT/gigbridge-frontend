@@ -42,7 +42,7 @@ apiClient.interceptors.response.use(
         
         // Don't send Authorization header for refresh request to avoid infinite loop
         const refreshResponse = await axios.post(
-          `${API_BASE_URL}/v1/auth/refresh`,
+          `${API_BASE_URL}/auth/refresh`,
           { accessToken: currentToken },
           { 
             withCredentials: true,
