@@ -1,0 +1,462 @@
+import { FC, useState, useRef, useEffect } from 'react';
+import { X, FileSignature, BadgeCheck, DollarSign, Clock, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import '../styles/create-contract-modal.css';
+
+export interface ContractData {
+  proposalId: string;
+  freelancerName: string;
+  jobTitle: string;
+  proposedRate: number;
+  proposedDuration: string;
+  startDate: string;
+  endDate: string;
+  paymentSchedule: 'fixed' | 'milestone' | 'hourly';
+  clientSignature: string;
+  agreedToTerms: boolean;
+  createdAt: string;
+}
+
+interface CreateContractModalProps {
+  proposal: ProposalViewModel;
+  onClose: () => void;
+  onSubmit?: (contract: ContractData) => Promise<void>;
+}
+
+export const CreateContractModal: FC<CreateContractModalProps> = ({
+  proposal,
+  onClose,
+  onSubmit,
+}) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Contract state
+  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [clientSignature, setClientSignature] = useState('');
+  const [isSigned, setIsSigned] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  // Focus trap: restore focus on close, trap focus within modal
+  useEffect(() => {
+    const previousActiveElement = document.activeElement as HTMLElement;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    if (modalRef.current) {
+      modalRef.current.focus();
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousActiveElement?.focus();
+    };
+  }, [onClose]);
+
+  // Calculate end date from duration
+  const calculateEndDate = (): string => {
+    if (!startDate || !proposal.proposedDuration) return '';
+    const start = new Date(startDate);
+    const duration = parseInt(proposal.proposedDuration, 10) || 0;
+    const end = new Date(start.getTime() + duration * 24 * 60 * 60 * 1000);
+    return end.toISOString().split('T')[0];
+  };
+
+  const endDate = calculateEndDate();
+
+  // Determine payment schedule based on rate
+  const getPaymentSchedule = (): 'fixed' | 'milestone' | 'hourly' => {
+    if (proposal.proposedDuration === '0' || proposal.proposedDuration === 'Flexible') {
+      return 'hourly';
+    }
+    return 'fixed';
+  };
+
+  const paymentSchedule = getPaymentSchedule();
+
+  // Handle signature input
+  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim();
+    setClientSignature(value);
+    setIsSigned(value.length > 0);
+  };
+
+  // Validate form before submission
+  const validateForm = (): boolean => {
+    if (!startDate) {
+      setError('Please select a start date');
+      return false;
+    }
+    if (!clientSignature) {
+      setError('Please sign the contract');
+      return false;
+    }
+    if (!agreedToTerms) {
+      setError('You must agree to the terms and conditions');
+      return false;
+    }
+    return true;
+  };
+
+  // Handle form submission
+  const handleSubmit = async () => {
+    setError('');
+
+    if (!validateForm()) {
+      return;
+    }
+
+    const contractData: ContractData = {
+      proposalId: proposal.proposalsId,
+      freelancerName: proposal.freelancerName || 'Unknown',
+      jobTitle: proposal.jobTitle || 'Untitled Job',
+      proposedRate: proposal.proposedRate || 0,
+      proposedDuration: proposal.proposedDuration || '0',
+      startDate,
+      endDate: endDate || new Date().toISOString().split('T')[0],
+      paymentSchedule,
+      clientSignature,
+      agreedToTerms: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      setLoading(true);
+      if (onSubmit) {
+        await onSubmit(contractData);
+      }
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create contract');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      className="create-contract-overlay"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      role="presentation"
+    >
+      <motion.div
+        ref={modalRef}
+        className="create-contract-modal"
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+        role="dialog"
+        aria-labelledby="contract-modal-title"
+        aria-describedby="contract-modal-desc"
+        aria-modal="true"
+        tabIndex={-1}
+      >
+        {/* Close Button */}
+        <motion.button
+          className="create-contract-close"
+          onClick={onClose}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <X size={18} />
+        </motion.button>
+
+        {/* Header */}
+        <div className="create-contract-header">
+          <div className="create-contract-title-group">
+            <div className="create-contract-icon">
+              <FileSignature size={24} />
+            </div>
+            <div>
+              <h2 id="contract-modal-title">Create E-sign Contract</h2>
+              <p id="contract-modal-desc">Generate a legal contract for this proposal</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Success State */}
+        <AnimatePresence>
+          {success && (
+            <motion.div
+              className="create-contract-success"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <CheckCircle2 size={20} />
+              <span>Contract created successfully!</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error State */}
+        <AnimatePresence>
+          {error && !success && (
+            <motion.div
+              className="create-contract-error"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <span>{error}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Content - Scrollable */}
+        <div className="create-contract-content" ref={contentRef}>
+          {/* Contract Information Section */}
+          <section className="contract-section">
+            <h3 className="contract-section-title">Contract Information</h3>
+            <div className="contract-info-grid">
+              <motion.div
+                className="contract-info-item"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 }}
+              >
+                <span>Freelancer Name</span>
+                <strong>{proposal.freelancerName || 'Unknown'}</strong>
+              </motion.div>
+              <motion.div
+                className="contract-info-item"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <span>Job Title</span>
+                <strong>{proposal.jobTitle || 'Untitled Job'}</strong>
+              </motion.div>
+              <motion.div
+                className="contract-info-item"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15 }}
+              >
+                <span>Proposed Rate</span>
+                <strong>${(proposal.proposedRate || 0).toLocaleString()}</strong>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* Contract Terms Section */}
+          <section className="contract-section">
+            <h3 className="contract-section-title">Contract Terms</h3>
+            <div className="contract-terms-grid">
+              <motion.div
+                className="contract-term-item"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="contract-term-label">
+                  <Clock size={16} />
+                  <span>Duration</span>
+                </div>
+                <p className="contract-term-value">
+                  {proposal.proposedDuration === 'Flexible' || proposal.proposedDuration === '0'
+                    ? 'Flexible / Hourly'
+                    : `${proposal.proposedDuration} days`}
+                </p>
+              </motion.div>
+
+              <motion.div
+                className="contract-term-item"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+              >
+                <div className="contract-term-label">
+                  <DollarSign size={16} />
+                  <span>Total Amount</span>
+                </div>
+                <p className="contract-term-value">${(proposal.proposedRate || 0).toLocaleString()}</p>
+              </motion.div>
+
+              <motion.div
+                className="contract-term-item"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className="contract-term-label">
+                  <BadgeCheck size={16} />
+                  <span>Payment Schedule</span>
+                </div>
+                <p className="contract-term-value">
+                  {paymentSchedule === 'hourly' ? 'Hourly Rate' : paymentSchedule === 'milestone' ? 'Milestone Based' : 'Fixed Price'}
+                </p>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* Date Section */}
+          <section className="contract-section">
+            <h3 className="contract-section-title">Contract Timeline</h3>
+            <div className="contract-dates-grid">
+              <motion.label
+                className="contract-date-input"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+              >
+                <span>Start Date</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={loading}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </motion.label>
+
+              <motion.div
+                className="contract-date-display"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <span>End Date</span>
+                <p>{endDate ? new Date(endDate).toLocaleDateString() : 'Calculated from duration'}</p>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* Terms & Conditions Section */}
+          <section className="contract-section contract-legal-section">
+            <h3 className="contract-section-title">Terms & Conditions</h3>
+            <div className="contract-legal-content">
+              <p>
+                This E-sign Contract establishes a legal agreement between the client and freelancer for the
+                services described above. Both parties agree to:
+              </p>
+              <ul>
+                <li>Deliver services as described in the job posting and proposal</li>
+                <li>Maintain professional conduct throughout the engagement</li>
+                <li>Respect intellectual property rights and confidentiality agreements</li>
+                <li>Complete work by the agreed end date or notify of delays</li>
+                <li>
+                  Follow payment terms: {paymentSchedule === 'hourly' ? 'Payment for hours worked' : paymentSchedule === 'milestone' ? 'Payment upon milestone completion' : 'Full payment upon project completion or per milestones'}
+                </li>
+                <li>Resolve disputes through GigBridge&apos;s dispute resolution process</li>
+              </ul>
+              <p>
+                This agreement is legally binding and enforceable once electronically signed by both parties.
+              </p>
+            </div>
+
+            {/* Agreement Checkbox */}
+            <motion.label
+              className={`contract-checkbox-label ${agreedToTerms ? 'checked' : ''}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.45 }}
+            >
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                disabled={loading}
+              />
+              <span>I agree to the terms and conditions above</span>
+            </motion.label>
+          </section>
+
+          {/* E-sign Section */}
+          <section className="contract-section contract-esign-section">
+            <h3 className="contract-section-title">Electronic Signature</h3>
+
+            {/* Signature Input */}
+            <motion.label
+              className="contract-signature-input"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <span>Sign here (Type your full name)</span>
+              <input
+                type="text"
+                placeholder="Type your full name to sign"
+                value={clientSignature}
+                onChange={handleSignatureChange}
+                disabled={loading || success}
+              />
+            </motion.label>
+
+            {/* Signature Preview */}
+            <AnimatePresence>
+              {isSigned && (
+                <motion.div
+                  className="contract-signature-preview"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                >
+                  <span className="preview-label">Signature Preview</span>
+                  <div className="signature-box">
+                    <p className="signature-text">{clientSignature}</p>
+                    <span className="signature-date">{new Date().toLocaleDateString()}</span>
+                  </div>
+                  <span className="status-badge signed">
+                    <CheckCircle2 size={14} />
+                    Signed
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Status Display */}
+            {!isSigned && (
+              <motion.div
+                className="contract-status-badge unsigned"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <span>Unsigned</span>
+              </motion.div>
+            )}
+          </section>
+        </div>
+
+        {/* Actions Footer */}
+        <div className="create-contract-actions">
+          <motion.button
+            className="contract-btn cancel-btn"
+            onClick={onClose}
+            disabled={loading}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            Cancel
+          </motion.button>
+          <motion.button
+            className="contract-btn submit-btn"
+            onClick={handleSubmit}
+            disabled={!isSigned || !agreedToTerms || loading}
+            whileHover={!loading ? { scale: 1.02 } : {}}
+            whileTap={!loading ? { scale: 0.98 } : {}}
+          >
+            {loading ? 'Creating Contract...' : success ? 'Contract Created!' : 'Create & Send Contract'}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
