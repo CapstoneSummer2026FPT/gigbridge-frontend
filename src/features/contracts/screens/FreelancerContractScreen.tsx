@@ -2,18 +2,22 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Search,
-  Filter,
   Eye,
-  AlertCircle,
-  ChevronDown,
   Calendar,
   DollarSign,
   User,
-  CheckCircle2,
-  Clock,
   FileUp,
   PenTool,
+  TrendingUp,
+  Award,
+  ArrowUpDown,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  MoreVertical,
+  Zap,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -39,34 +43,22 @@ interface ContractWithMilestones extends ContractDto {
   clientName?: string;
 }
 
-const CONTRACT_STATUSES = [
-  { value: ContractStatus.Draft, label: 'Draft' },
-  { value: ContractStatus.PendingSignature, label: 'Pending Signature' },
-  { value: ContractStatus.Active, label: 'Active' },
-  { value: ContractStatus.Completed, label: 'Completed' },
-  { value: ContractStatus.Cancelled, label: 'Cancelled' },
-  { value: ContractStatus.Disputed, label: 'Disputed' },
-];
-
 export default function FreelancerContractScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
   const [contracts, setContracts] = useState<ContractWithMilestones[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<ContractWithMilestones[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<ContractStatus | 'All'>('All');
-  const [showFilters, setShowFilters] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'completed'>('active');
+  const [sortBy, setSortBy] = useState<'date' | 'value'>('date');
+  const [expandedContractIds, setExpandedContractIds] = useState<Set<string>>(new Set());
 
   // Load freelancer contracts
   useEffect(() => {
     const loadContracts = async () => {
       try {
         setLoading(true);
-        setError(null);
 
         const params: ContractQueryParams = {
           pageIndex: 0,
@@ -76,7 +68,6 @@ export default function FreelancerContractScreen() {
         const response = await contractGetAPI.getMyContracts(params);
 
         if (response.success && response.data) {
-          // Filter for freelancer contracts (user is freelancerProfilesId)
           const userProfileId = (user as any)?.profileId || user?.id;
           const freelancerContracts = Array.isArray(response.data)
             ? response.data.filter((c: ContractDto) => c.freelancerProfilesId === userProfileId)
@@ -98,68 +89,70 @@ export default function FreelancerContractScreen() {
     }
   }, [user?.id]);
 
-  // Filter contracts
+  // Filter & sort contracts
   useEffect(() => {
     let result = contracts;
 
-    // Status filter
-    if (selectedStatus !== 'All') {
-      result = result.filter((c) => c.status === selectedStatus);
+    // Tab filter
+    if (activeTab === 'active') {
+      result = result.filter(c => c.status === ContractStatus.Active);
+    } else if (activeTab === 'pending') {
+      result = result.filter(c => c.status === ContractStatus.PendingSignature);
+    } else if (activeTab === 'completed') {
+      result = result.filter(c => c.status === ContractStatus.Completed);
     }
 
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
-        (c) =>
+        c =>
           c.title.toLowerCase().includes(query) ||
           (c.clientProfilesId && c.clientProfilesId.toLowerCase().includes(query))
       );
     }
 
+    // Sorting
+    result.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'date') {
+        const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+        const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+        comparison = dateB - dateA;
+      } else if (sortBy === 'value') {
+        comparison = (b.totalBudget || 0) - (a.totalBudget || 0);
+      }
+      return comparison;
+    });
+
     setFilteredContracts(result);
-  }, [contracts, selectedStatus, searchQuery]);
+  }, [contracts, activeTab, searchQuery, sortBy]);
 
-  const getStatusBadgeClass = (status: ContractStatus) => {
-    return `status-badge ${getContractStatusClass(status)}`;
+  const calculateMilestoneProgress = (contract: ContractWithMilestones) => {
+    if (!contract.milestones || contract.milestones.length === 0) return 0;
+    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.Paid).length;
+    return Math.round((completed / contract.milestones.length) * 100);
   };
 
-  const calculateMilestoneStats = (contract: ContractWithMilestones) => {
+  const getMilestoneStats = (contract: ContractWithMilestones) => {
     if (!contract.milestones || contract.milestones.length === 0) {
-      return { total: 0, completed: 0, pending: 0, total_budget: 0, escrowed: 0, released: 0 };
+      return { total: 0, completed: 0, pending: 0 };
     }
-
-    const completed = contract.milestones.filter((m) => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.Paid).length;
-    const pending = contract.milestones.filter((m) => m.status !== MilestoneStatus.Approved && m.status !== MilestoneStatus.Paid).length;
+    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.Paid).length;
     const total = contract.milestones.length;
-    const total_budget = contract.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-    const escrowed = contract.milestones
-      .filter((m) => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.SubmittedForReview)
-      .reduce((sum, m) => sum + (m.amount || 0), 0);
-    const released = contract.milestones
-      .filter((m) => m.status === MilestoneStatus.Paid)
-      .reduce((sum, m) => sum + (m.amount || 0), 0);
-
-    return { total, completed, pending, total_budget, escrowed, released };
-  };
-
-  const handleViewDetails = (contractId: string) => {
-    navigate(`/contracts/${contractId}`, { state: { tab: 'details', role: 'freelancer' } });
-  };
-
-  const handleMilestoneDeliverableSubmit = (milestoneId: string) => {
-    if (!expandedContractId) return;
-    navigate(`/contracts/${expandedContractId}/deliverables/${milestoneId}`);
+    return { total, completed, pending: total - completed };
   };
 
   if (loading) {
     return (
       <AppLayout>
-        <div className="freelancer-contract-wrapper">
-          <div className="loading-container">
-            <div className="spinner"></div>
-            <p>Loading your contracts...</p>
-          </div>
+        <div className="contract-loader">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+            className="spinner"
+          />
+          <p>Loading your contracts...</p>
         </div>
       </AppLayout>
     );
@@ -167,280 +160,288 @@ export default function FreelancerContractScreen() {
 
   return (
     <AppLayout>
-      <div className="freelancer-contract-wrapper">
-        {/* Header */}
-        <div className="freelancer-contract-header">
-          <h1 className="freelancer-contract-title">My Contracts</h1>
-          <p className="freelancer-contract-subtitle">
-            Track your contracts and submit deliverables - {contracts.length} total
-          </p>
-        </div>
+      <div className="contract-screen-wrapper">
+        {/* Header Section */}
+        <div
+          className="contract-header-section"
+        >
+          <div className="header-content">
+            <div className="header-title-group">
+              <h1>My Contracts</h1>
+              <p>Manage projects, track milestones, submit deliverables</p>
+            </div>
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="success-message">
-            <p>{successMessage}</p>
-            <button onClick={() => setSuccessMessage(null)} className="success-close">
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="error-message">
-            <AlertCircle size={20} />
-            <p>{error}</p>
-            <button onClick={() => setError(null)} className="error-close">
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Search & Filter Controls */}
-        <div className="freelancer-contract-controls glass-card">
-          <div className="freelancer-contract-search">
-            <Search size={18} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by contract title or client..."
-              className="freelancer-contract-search-input"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="freelancer-contract-search-clear"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`filter-toggle ${showFilters ? 'active' : ''}`}
-          >
-            <Filter size={18} />
-            Filter
-          </button>
-        </div>
-
-        {/* Filter Options */}
-        {showFilters && (
-          <div className="filter-options glass-card">
-            <div className="filter-group">
-              <label className="filter-label">Contract Status</label>
-              <div className="filter-buttons">
-                <button
-                  onClick={() => setSelectedStatus('All')}
-                  className={`filter-btn ${selectedStatus === 'All' ? 'active' : ''}`}
-                >
-                  All
-                </button>
-                {CONTRACT_STATUSES.map((status) => (
-                  <button
-                    key={status.value}
-                    onClick={() => setSelectedStatus(status.value)}
-                    className={`filter-btn ${selectedStatus === status.value ? 'active' : ''}`}
-                  >
-                    {status.label}
-                  </button>
-                ))}
+            <div className="header-stats">
+              <div className="stat">
+                <span className="stat-icon"><Clock size={16} /></span>
+                <div>
+                  <span className="stat-label">Active</span>
+                  <span className="stat-number">{contracts.filter(c => c.status === ContractStatus.Active).length}</span>
+                </div>
+              </div>
+              <div className="stat">
+                <span className="stat-icon"><TrendingUp size={16} /></span>
+                <div>
+                  <span className="stat-label">Total Value</span>
+                  <span className="stat-number">{formatContractAmount(contracts.reduce((s, c) => s + (c.totalBudget || 0), 0))}</span>
+                </div>
+              </div>
+              <div className="stat">
+                <span className="stat-icon"><Award size={16} /></span>
+                <div>
+                  <span className="stat-label">Completed</span>
+                  <span className="stat-number">{contracts.filter(c => c.status === ContractStatus.Completed).length}</span>
+                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Contracts List */}
-        <div className="freelancer-contract-container">
-          {filteredContracts.length === 0 ? (
-            <div className="freelancer-contract-empty">
-              <Search size={48} />
-              <p className="freelancer-contract-empty-title">
-                {searchQuery ? 'No contracts found' : 'No contracts yet'}
-              </p>
-              <p className="freelancer-contract-empty-subtitle">
-                {searchQuery ? 'Try a different search term' : 'Your accepted contracts will appear here'}
-              </p>
+        {/* Tabs & Controls */}
+        <motion.div
+          className="contract-controls-section"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <div className="tabs-wrapper">
+            {(['active', 'pending', 'completed'] as const).map((tab) => {
+              const tabCount = contracts.filter(c => 
+                tab === 'active' ? c.status === ContractStatus.Active :
+                tab === 'pending' ? c.status === ContractStatus.PendingSignature :
+                c.status === ContractStatus.Completed
+              ).length;
+
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+                >
+                  {tab === 'active' && <Clock size={16} />}
+                  {tab === 'pending' && <AlertTriangle size={16} />}
+                  {tab === 'completed' && <CheckCircle2 size={16} />}
+                  <span className="tab-label">
+                    {tab === 'active' && 'Active'}
+                    {tab === 'pending' && 'Pending'}
+                    {tab === 'completed' && 'Completed'}
+                  </span>
+                  <span className="tab-count">{tabCount}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="controls-toolbar">
+            <div className="search-input-wrapper">
+              <Search size={16} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search contracts..."
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="clear-btn">✕</button>
+              )}
             </div>
-          ) : (
-            <div className="freelancer-contract-list">
-              {filteredContracts.map((contract) => {
-                const milestoneStats = calculateMilestoneStats(contract);
-                const isExpanded = expandedContractId === contract.contractsId;
 
-                return (
-                  <div key={contract.contractsId} className="freelancer-contract-card glass-card">
-                    {/* Card Header */}
-                    <div className="freelancer-contract-card-header">
-                      <div className="freelancer-contract-card-title-section">
-                        <h3 className="freelancer-contract-card-title">{contract.title}</h3>
-                        <span className={getStatusBadgeClass(contract.status)}>
-                          {getContractStatusLabel(contract.status)}
-                        </span>
+            <button
+              className="sort-button"
+              onClick={() => setSortBy(sortBy === 'date' ? 'value' : 'date')}
+            >
+              <ArrowUpDown size={14} />
+              {sortBy === 'date' ? 'By Date' : 'By Value'}
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Contracts Grid */}
+        <div className="contracts-grid-section">
+          <AnimatePresence mode="wait">
+            {filteredContracts.length === 0 ? (
+              <motion.div
+                className="empty-state"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <Zap size={48} />
+                <h3>{searchQuery ? 'No contracts found' : 'No contracts in this category'}</h3>
+                <p>{searchQuery ? 'Try a different search' : 'Contracts you accept will appear here'}</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                className="contracts-grid"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                {filteredContracts.map((contract, idx) => {
+                  const progress = calculateMilestoneProgress(contract);
+                  const milestoneStats = getMilestoneStats(contract);
+
+                  return (
+                    <motion.div
+                      key={contract.contractsId}
+                      className="contract-card"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      {/* Card Header */}
+                      <div className="card-header">
+                        <div className="header-left">
+                          <h3 className="contract-title">{contract.title}</h3>
+                          <span className={`status-badge ${getContractStatusClass(contract.status)}`}>
+                            {getContractStatusLabel(contract.status)}
+                          </span>
+                        </div>
+                        <button className="menu-btn">
+                          <MoreVertical size={16} />
+                        </button>
                       </div>
 
-                      <div className="freelancer-contract-card-actions">
-                        <button
-                          onClick={() => handleViewDetails(contract.contractsId)}
-                          className="contract-action-btn contract-action-view"
-                          title="View contract details"
-                        >
-                          <Eye size={18} />
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            setExpandedContractId(isExpanded ? null : contract.contractsId)
-                          }
-                          className={`contract-action-btn contract-action-expand ${
-                            isExpanded ? 'expanded' : ''
-                          }`}
-                          title={isExpanded ? 'Collapse' : 'Expand'}
-                        >
-                          <ChevronDown size={18} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Card Body */}
-                    <div className="freelancer-contract-card-body">
-                      <div className="contract-info-grid">
-                        <div className="info-item">
-                          <div className="info-label">
-                            <User size={16} />
-                            Client
-                          </div>
-                          <p className="info-value">{contract.clientName || contract.clientProfilesId}</p>
-                        </div>
-
-                        <div className="info-item">
-                          <div className="info-label">
-                            <DollarSign size={16} />
-                            Budget
-                          </div>
-                          <p className="info-value">{formatContractAmount(contract.totalBudget)}</p>
-                        </div>
-
-                        <div className="info-item">
-                          <div className="info-label">
-                            <Calendar size={16} />
-                            Start Date
-                          </div>
-                          <p className="info-value">{formatContractDate(contract.startDate)}</p>
-                        </div>
-
-                        {contract.endDate && (
+                      {/* Card Body */}
+                      <div className="card-body">
+                        {/* Info Grid */}
+                        <div className="info-grid">
                           <div className="info-item">
-                            <div className="info-label">
-                              <Calendar size={16} />
-                              End Date
+                            <span className="info-label">
+                              <User size={14} />
+                              Client
+                            </span>
+                            <span className="info-value">{contract.clientName || contract.clientProfilesId}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-label">
+                              <DollarSign size={14} />
+                              Budget
+                            </span>
+                            <span className="info-value">{formatContractAmount(contract.totalBudget)}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-label">
+                              <Calendar size={14} />
+                              Started
+                            </span>
+                            <span className="info-value">{formatContractDate(contract.startDate)}</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        {milestoneStats.total > 0 && (
+                          <div className="progress-section">
+                            <div className="progress-header">
+                              <span className="progress-label">Milestones</span>
+                              <span className="progress-text">{milestoneStats.completed}/{milestoneStats.total}</span>
                             </div>
-                            <p className="info-value">{formatContractDate(contract.endDate)}</p>
+                            <div className="progress-bar">
+                              <motion.div
+                                className="progress-fill"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 0.8, ease: 'easeOut' }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Milestone Stats */}
+                        {milestoneStats.total > 0 && (
+                          <div className="milestone-stats">
+                            <div className="stat-badge completed">
+                              <CheckCircle2 size={14} />
+                              {milestoneStats.completed} Completed
+                            </div>
+                            <div className="stat-badge pending">
+                              <Clock size={14} />
+                              {milestoneStats.pending} Pending
+                            </div>
                           </div>
                         )}
                       </div>
 
-                      {/* Milestone Summary */}
-                      {milestoneStats.total > 0 && (
-                        <div className="milestone-summary">
-                          <div className="milestone-stat">
-                            <span className="milestone-label">Total Milestones</span>
-                            <span className="milestone-value">{milestoneStats.total}</span>
-                          </div>
-                          <div className="milestone-stat">
-                            <span className="milestone-label">Completed</span>
-                            <span className="milestone-value completed">{milestoneStats.completed}</span>
-                          </div>
-                          <div className="milestone-stat">
-                            <span className="milestone-label">Pending</span>
-                            <span className="milestone-value pending">{milestoneStats.pending}</span>
-                          </div>
-                          <div className="milestone-stat">
-                            <span className="milestone-label">Total Amount</span>
-                            <span className="milestone-value amount">
-                              {formatContractAmount(milestoneStats.total_budget)}
-                            </span>
-                          </div>
-                          <div className="milestone-stat">
-                            <span className="milestone-label">Escrow / Released</span>
-                            <span className="milestone-value amount">
-                              {formatContractAmount(milestoneStats.escrowed)} / {formatContractAmount(milestoneStats.released)}
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                      {/* Card Footer */}
+                      <div className="card-footer">
+                        <button
+                          className="action-btn view-btn"
+                          onClick={() => navigate(`/contracts/${contract.contractsId}`)}
+                        >
+                          <Eye size={14} />
+                          View Details
+                        </button>
+                        {contract.status === ContractStatus.PendingSignature && (
+                          <button
+                            className="action-btn sign-btn"
+                            onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
+                          >
+                            <PenTool size={14} />
+                            Sign
+                          </button>
+                        )}
+                        {contract.status === ContractStatus.Active && (
+                          <button
+                            className="action-btn expand-btn"
+                            onClick={() => {
+                              setExpandedContractIds(prev => {
+                                const newSet = new Set(prev);
+                                if (newSet.has(contract.contractsId)) {
+                                  newSet.delete(contract.contractsId);
+                                } else {
+                                  newSet.add(contract.contractsId);
+                                }
+                                return newSet;
+                              });
+                            }}
+                          >
+                            <FileUp size={14} />
+                            {expandedContractIds.has(contract.contractsId) ? 'Collapse' : 'Milestones'}
+                          </button>
+                        )}
+                      </div>
 
-                      {/* Expanded Content */}
-                      {isExpanded && (
-                        <div className="contract-expanded-content">
-                          {/* Milestones List */}
-                          {contract.milestones && contract.milestones.length > 0 && (
-                            <div className="milestones-section">
-                              <h4 className="milestones-title">Milestones</h4>
-                              <div className="freelancer-milestones-list">
-                                {contract.milestones.map((milestone, idx) => (
-                                  <MilestoneDetailCard
-                                    key={milestone.id}
-                                    milestone={milestone}
-                                    index={idx}
-                                    onSubmitDeliverable={() =>
-                                      handleMilestoneDeliverableSubmit(milestone.id)
-                                    }
-                                    isSubmittingFor={false}
-                                  />
-                                ))}
-                              </div>
+                      {/* Expanded Milestones */}
+                      <AnimatePresence>
+                        {expandedContractIds.has(contract.contractsId) && contract.milestones && (
+                          <motion.div
+                            className="expanded-milestones"
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                          >
+                            <div className="milestones-list">
+                              {contract.milestones.map((milestone, i) => (
+                                <MilestoneDetailCard
+                                  key={milestone.id || `${contract.contractsId}-milestone-${i}`}
+                                  milestone={milestone}
+                                  index={i}
+                                  onSubmitDeliverable={() => navigate(`/contracts/${contract.contractsId}/deliverables/${milestone.id || i}`)}
+                                  isSubmittingFor={false}
+                                />
+                              ))}
                             </div>
-                          )}
-
-                          {/* Description */}
-                          {contract.description && (
-                            <div className="description-section">
-                              <h4 className="description-title">Description</h4>
-                              <p className="description-text">{contract.description}</p>
-                            </div>
-                          )}
-
-                          {/* Contract Actions */}
-                          <div className="contract-actions-expanded">
-                            <button
-                              onClick={() => handleViewDetails(contract.contractsId)}
-                              className="action-btn action-view-full"
-                            >
-                              <FileUp size={16} />
-                              View Full Details
-                            </button>
-                            {contract.status === ContractStatus.PendingSignature && (
-                              <button
-                                onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                                className="action-btn action-view-full"
-                              >
-                                <PenTool size={16} />
-                                Sign Contract
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Results Info */}
         {filteredContracts.length > 0 && (
-          <div className="freelancer-contract-results-info">
-            <p>
-              Showing <strong>{filteredContracts.length}</strong> of <strong>{contracts.length}</strong>{' '}
-              contracts
-            </p>
-          </div>
+          <motion.div
+            className="results-info"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            {/* Removed - moved filter stats to header */}
+          </motion.div>
         )}
       </div>
     </AppLayout>

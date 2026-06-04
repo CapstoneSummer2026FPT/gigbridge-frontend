@@ -16,6 +16,9 @@ export interface ContractData {
   clientSignature: string;
   agreedToTerms: boolean;
   createdAt: string;
+  isPremium?: boolean;
+  includeNDA?: boolean;
+  includeIPTransfer?: boolean;
 }
 
 interface CreateContractModalProps {
@@ -40,6 +43,11 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  
+  // Premium legal automation state
+  const [isPremium] = useState(true); // Mock: In real app, check from user subscription
+  const [includeNDA, setIncludeNDA] = useState(true); // Auto-enabled if Premium
+  const [includeIPTransfer, setIncludeIPTransfer] = useState(true); // Auto-enabled if Premium
 
   // Focus trap: restore focus on close, trap focus within modal
   useEffect(() => {
@@ -127,6 +135,9 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
       clientSignature,
       agreedToTerms: true,
       createdAt: new Date().toISOString(),
+      isPremium,
+      includeNDA,
+      includeIPTransfer,
     };
 
     try {
@@ -337,6 +348,95 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
               </motion.div>
             </div>
           </section>
+
+          {/* Legal Automation Section - Premium Feature */}
+          {isPremium && (
+            <section className="contract-section contract-legal-automation-section">
+              <div className="legal-automation-header">
+                <h3 className="contract-section-title">
+                  <BadgeCheck size={18} />
+                  Premium Legal Protection
+                </h3>
+                <span className="premium-badge">Premium</span>
+              </div>
+              <p className="legal-automation-desc">
+                Automatically include legal clauses and apply watermarking to protect your intellectual property.
+              </p>
+
+              <div className="legal-clauses-grid">
+                {/* NDA Clause */}
+                <motion.div
+                  className="legal-clause-item"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.32 }}
+                >
+                  <label className="clause-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={includeNDA}
+                      onChange={(e) => setIncludeNDA(e.target.checked)}
+                      disabled={loading}
+                    />
+                    <div className="clause-content">
+                      <strong>NDA Clause</strong>
+                      <p>Protects confidential information and trade secrets</p>
+                    </div>
+                  </label>
+                  <span className="clause-status">{includeNDA ? '✓ Included' : 'Not included'}</span>
+                </motion.div>
+
+                {/* IP Transfer Clause */}
+                <motion.div
+                  className="legal-clause-item"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                >
+                  <label className="clause-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={includeIPTransfer}
+                      onChange={(e) => setIncludeIPTransfer(e.target.checked)}
+                      disabled={loading}
+                    />
+                    <div className="clause-content">
+                      <strong>IP Transfer Agreement</strong>
+                      <p>Ensures full ownership transfer upon payment release</p>
+                    </div>
+                  </label>
+                  <span className="clause-status">{includeIPTransfer ? '✓ Included' : 'Not included'}</span>
+                </motion.div>
+              </div>
+
+              {/* Watermarking Info */}
+              <motion.div
+                className="watermarking-info"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.38 }}
+              >
+                <div className="watermark-icon">🔒</div>
+                <div className="watermark-content">
+                  <h4>File Watermarking</h4>
+                  <p>Deliverables will be automatically watermarked until escrow payment is released. Watermarks are removed once payment is confirmed.</p>
+                </div>
+              </motion.div>
+            </section>
+          )}
+
+          {/* Non-Premium Message */}
+          {!isPremium && (
+            <section className="contract-section contract-legal-upgrade-section">
+              <div className="upgrade-message">
+                <BadgeCheck size={18} />
+                <div>
+                  <h4>Upgrade to Premium</h4>
+                  <p>Unlock legal protection with NDA clauses, IP transfer agreements, and automatic file watermarking.</p>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Terms & Conditions Section */}
           <section className="contract-section contract-legal-section">
