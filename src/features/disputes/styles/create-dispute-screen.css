@@ -1,0 +1,258 @@
+.create-dispute-wrapper {
+  min-height: 100vh;
+  padding: 2rem;
+  background: var(--gb-bg-primary);
+  color: var(--gb-text-primary);
+}
+
+.dispute-back-btn,
+.dispute-submit-btn,
+.evidence-add-row button,
+.dispute-success-card button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.55rem;
+  border: 1px solid var(--gb-border-hover);
+  border-radius: 8px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.dispute-back-btn {
+  margin-bottom: 1rem;
+  padding: 0 0.9rem;
+  color: #004ea8;
+  background: rgba(0, 119, 255, 0.12);
+}
+
+.create-dispute-hero,
+.dispute-form-card,
+.evidence-card,
+.dispute-success-card,
+.dispute-message {
+  border: 1px solid var(--gb-border);
+  border-radius: 8px;
+  background: var(--gb-glass-bg);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.create-dispute-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1.2rem;
+}
+
+.dispute-kicker {
+  margin: 0 0 0.35rem;
+  color: var(--gb-cyan);
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.create-dispute-hero h1,
+.evidence-header h2,
+.dispute-success-card h2 {
+  margin: 0;
+  color: var(--gb-text-primary);
+  font-weight: 950;
+}
+
+.create-dispute-hero h1 {
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+}
+
+.create-dispute-hero p,
+.evidence-header p,
+.dispute-success-card p {
+  margin: 0.4rem 0 0;
+  color: var(--gb-text-secondary);
+}
+
+.vip-dispute-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: 380px;
+  padding: 0.75rem;
+  border: 1px solid rgba(159, 75, 255, 0.28);
+  border-radius: 8px;
+  color: #6d28d9;
+  background: rgba(159, 75, 255, 0.12);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.dispute-message {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem 1rem;
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.1);
+  font-weight: 900;
+}
+
+.dispute-message span {
+  flex: 1;
+}
+
+.dispute-message button,
+.evidence-item button {
+  display: inline-flex;
+  border: 1px solid var(--gb-border);
+  border-radius: 8px;
+  color: var(--gb-text-primary);
+  background: var(--gb-bg-primary);
+  cursor: pointer;
+}
+
+.create-dispute-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(300px, 0.75fr);
+  gap: 1rem;
+}
+
+.dispute-form-card,
+.evidence-card,
+.dispute-success-card {
+  padding: 1rem;
+}
+
+.dispute-form-card label {
+  display: block;
+  margin: 0.8rem 0 0.4rem;
+  color: var(--gb-text-primary);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.dispute-form-card select,
+.dispute-form-card textarea,
+.evidence-add-row input {
+  width: 100%;
+  border: 1px solid var(--gb-border);
+  border-radius: 8px;
+  outline: none;
+  color: var(--gb-text-primary);
+  background: var(--gb-bg-primary);
+  font-family: inherit;
+}
+
+.dispute-form-card select,
+.evidence-add-row input {
+  min-height: 2.75rem;
+  padding: 0 0.85rem;
+}
+
+.dispute-form-card textarea {
+  padding: 0.85rem;
+  resize: vertical;
+}
+
+.dispute-count {
+  margin-top: 0.35rem;
+  color: var(--gb-text-secondary);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.dispute-submit-btn,
+.dispute-success-card button {
+  width: 100%;
+  margin-top: 1rem;
+  color: white;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--gb-cyan), var(--gb-purple));
+}
+
+.evidence-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+}
+
+.evidence-header svg {
+  color: var(--gb-cyan);
+}
+
+.evidence-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.evidence-add-row button {
+  padding: 0 0.8rem;
+  color: #004ea8;
+  background: rgba(0, 119, 255, 0.12);
+}
+
+.evidence-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.evidence-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 8px;
+  background: var(--gb-bg-primary);
+}
+
+.evidence-item span {
+  color: var(--gb-text-primary);
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.evidence-item strong {
+  color: var(--gb-text-secondary);
+  font-size: 0.8rem;
+}
+
+.dispute-success-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.dispute-success-card svg {
+  color: var(--gb-amber);
+}
+
+@media (max-width: 900px) {
+  .create-dispute-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .create-dispute-wrapper {
+    padding: 1rem;
+  }
+
+  .create-dispute-hero,
+  .evidence-add-row {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .vip-dispute-chip {
+    max-width: none;
+  }
+}

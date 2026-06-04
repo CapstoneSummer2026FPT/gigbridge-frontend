@@ -4,8 +4,10 @@
 
 export enum ProposalStatus {
   Pending = 0,
-  Accepted = 1,
-  Rejected = 2,
+  Shortlisted = 1,
+  Accepted = 2,
+  Rejected = 3,
+  Withdrawn = 4,
 }
 
 export interface Proposal {

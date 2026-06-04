@@ -114,6 +114,8 @@ export default function ClientDashboardScreen() {
                 {[
                   { label: 'Review Proposals', path: '/proposals', badge: `${pendingProposals.length} new`, icon: <FileText size={14} /> },
                   { label: 'View Projects', path: '/workspace/proj_1', badge: `${projects.length} active`, icon: <Activity size={14} /> },
+                  { label: 'Smart Talent Matching', path: '/talent-matching', badge: 'PRO', icon: <Star size={14} /> },
+                  { label: 'Financial Overview', path: '/financial-overview', badge: 'VND', icon: <DollarSign size={14} /> },
                   { label: 'AI Assistant', path: '/ai-assistant', badge: 'New', icon: <Bot size={14} /> },
                 ].map(action => (
                   <button key={action.label} onClick={() => navigate(action.path)}

@@ -4,6 +4,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { DB } from '../../../mock_backend';
 import { Flag, Calendar, DollarSign, Clock, User } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { MOCK_PROJECTS_FOR_PROJECTS_LIST } from '../mock/data-for-ProjectsListScreen';
 
 export default function ProjectsListScreen() {
   const navigate = useNavigate();
@@ -15,9 +16,15 @@ export default function ProjectsListScreen() {
     return null;
   }
 
-  const projects = role === 0
+  const dbProjects = role === 0
     ? DB.getProjectsByClient(user.id)
     : DB.getProjectsByFreelancer(user.id);
+  const projects = dbProjects.length > 0
+    ? dbProjects
+    : MOCK_PROJECTS_FOR_PROJECTS_LIST.filter(project => role === 0
+      ? project.clientId === user.id || project.clientId === 'demo_client_001'
+      : project.freelancerId === user.id || project.freelancerId === 'demo_freelancer_001'
+    );
 
   const getStatusColor = (status: string) => {
     switch (status) {

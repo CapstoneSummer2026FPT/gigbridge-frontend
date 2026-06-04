@@ -8,6 +8,7 @@ import { DB } from '../../mock_backend';
 import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
 import { CompactLanguageSwitcher, CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useTranslation } from '../../hooks/useTranslation';
+import { MOCK_TOP_NAV_NOTIFICATIONS } from '../../features/notifications/mock/data-for-TopNav';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -39,8 +40,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   
   // Wallet and notification data
   const walletBalance = user?.gigcoin_balance || 0;
-  const unreadCount = 0; // TODO: Get from notifications service
-  const notifications: any[] = []; // TODO: Get from notifications service
+  const dbNotifications = user ? DB.getNotificationsByUser(user.id) : [];
+  const fallbackNotifications = user
+    ? MOCK_TOP_NAV_NOTIFICATIONS.filter(n => n.userId === user.id)
+    : [];
+  const notifications = dbNotifications.length > 0
+    ? dbNotifications
+    : (fallbackNotifications.length > 0 ? fallbackNotifications : MOCK_TOP_NAV_NOTIFICATIONS.slice(0, 4));
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,13 +187,23 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   <button onClick={() => navigate('/notifications')} className="text-xs text-cyan">See all</button>
                 </div>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {notifications.slice(0, 5).map(n => (
-                    <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
-                      onClick={() => { setShowNotifs(false); navigate(n.actionUrl || '/notifications'); }}>
-                      <p className="text-primary text-xs font-medium">{n.title}</p>
-                      <p className="text-xs mt-0.5 line-clamp-2 text-secondary">{n.body}</p>
+                  {notifications.length > 0 ? (
+                    notifications.slice(0, 5).map(n => (
+                      <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
+                        onClick={() => { setShowNotifs(false); navigate(n.actionUrl || '/notifications'); }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-primary text-xs font-medium">{n.title}</p>
+                          {!n.isRead && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />}
+                        </div>
+                        <p className="text-xs mt-0.5 line-clamp-2 text-secondary">{n.body}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center">
+                      <p className="text-primary text-sm font-medium">No notifications</p>
+                      <p className="text-xs text-secondary mt-1">You're all caught up.</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}

@@ -1,39 +1,68 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Bot, Clock, DollarSign, Users, Globe, Bookmark, ChevronDown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
-import type { Job } from '../../../types/models/Job';
+import { UserRole } from '../../../types/models/User';
+import { MOCK_BROWSE_JOBS, type BrowseJob } from '../mock/data-for-BrowseJobsScreen';
 import '../styles/browse-jobs-screen.css';
 
+const PAGE_SIZE = 20;
 const CATEGORIES = ['All', 'Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile'];
-const EXPERIENCE = ['All', 'Entry', 'Intermediate', 'Expert'];
-const BUDGET_RANGES = ['All', 'Under $1K', '$1K–$5K', '$5K–$10K', '$10K+'];
+const WORK_TYPES = ['All', 'fixed', 'hourly'];
+const DATE_POSTED = ['Any time', 'Last 24 hours', 'Last 7 days', 'Last 30 days'];
+
+const sanitizeSearch = (value: string) => value.replace(/[<>"'`;]/g, '').slice(0, 120);
+
+const getDatePostedDays = (value: string) => {
+  if (value === 'Last 24 hours') return 1;
+  if (value === 'Last 7 days') return 7;
+  if (value === 'Last 30 days') return 30;
+  return null;
+};
 
 export default function BrowseJobsScreen() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { user } = useApp();
-  const [search, setSearch] = useState(params.get('q') || '');
+  const { user, role } = useApp();
+  const [search, setSearch] = useState(sanitizeSearch(params.get('q') || ''));
   const [category, setCategory] = useState(params.get('cat') || 'All');
-  const [experience, setExperience] = useState('All');
-  const [budget, setBudget] = useState('All');
+  const [skills, setSkills] = useState('');
+  const [budgetMin, setBudgetMin] = useState('');
+  const [budgetMax, setBudgetMax] = useState('');
+  const [workType, setWorkType] = useState('All');
+  const [datePosted, setDatePosted] = useState('Any time');
+  const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
   const [aiOnly, setAiOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [saved, setSaved] = useState<string[]>([]);
-  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [allJobs, setAllJobs] = useState<BrowseJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
-  // Fetch jobs from API
+  useEffect(() => {
+    const stored = window.localStorage.getItem('gb_saved_jobs');
+    setSaved(stored ? JSON.parse(stored) : []);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('gb_saved_jobs', JSON.stringify(saved));
+  }, [saved]);
+
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setLoading(true);
         const data = await jobGetAPI.getJobs();
-        setAllJobs(data);
+        setAllJobs(data.length ? data.map(job => ({
+          ...job,
+          datePosted: new Date().toISOString().slice(0, 10),
+          isFeatured: Boolean(job.isAiRecommended),
+        })) : MOCK_BROWSE_JOBS);
       } catch (error) {
         console.error('Failed to fetch jobs:', error);
+        setAllJobs(MOCK_BROWSE_JOBS);
       } finally {
         setLoading(false);
       }
@@ -41,46 +70,94 @@ export default function BrowseJobsScreen() {
     fetchJobs();
   }, []);
 
-  const jobs = useMemo(() => {
-    let list = allJobs;
-    if (search) list = list.filter(j => j.title.toLowerCase().includes(search.toLowerCase()) || j.skills.some(s => s.toLowerCase().includes(search.toLowerCase())));
-    if (category !== 'All') list = list.filter(j => j.category === category);
-    if (aiOnly) list = list.filter(j => j.isAiRecommended);
-    if (experience !== 'All') list = list.filter(j => j.experienceLevel === experience.toLowerCase());
-    return list.sort((a, b) => (b.aiMatchScore || 0) - (a.aiMatchScore || 0));
-  }, [allJobs, search, category, experience, budget, aiOnly]);
+  const budgetInvalid = Boolean(budgetMin && budgetMax && Number(budgetMin) > Number(budgetMax));
 
-  const toggleSave = (id: string) => setSaved(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
+  const jobs = useMemo(() => {
+    if (budgetInvalid) return [];
+
+    const query = sanitizeSearch(search).toLowerCase();
+    const skillTerms = skills.split(',').map(item => item.trim().toLowerCase()).filter(Boolean);
+    const postedWithinDays = getDatePostedDays(datePosted);
+
+    const scored = allJobs
+      .filter(job => job.status === 'open')
+      .filter(job => {
+        const searchableText = `${job.title} ${job.description}`.toLowerCase();
+        const matchesSearch = !query || searchableText.includes(query);
+        const matchesCategory = category === 'All' || job.category === category;
+        const matchesSkills = skillTerms.length === 0 || skillTerms.every(skill =>
+          job.skills.some(jobSkill => jobSkill.toLowerCase().includes(skill))
+        );
+        const matchesBudgetMin = !budgetMin || job.budgetMax >= Number(budgetMin);
+        const matchesBudgetMax = !budgetMax || job.budgetMin <= Number(budgetMax);
+        const matchesWorkType = workType === 'All' || job.jobType === workType;
+        const matchesAi = !aiOnly || job.isAiRecommended;
+        const matchesDate = !postedWithinDays || (
+          (Date.now() - new Date(job.datePosted).getTime()) / 86400000 <= postedWithinDays
+        );
+
+        return matchesSearch && matchesCategory && matchesSkills && matchesBudgetMin
+          && matchesBudgetMax && matchesWorkType && matchesAi && matchesDate;
+      })
+      .map(job => {
+        const titleScore = query && job.title.toLowerCase().includes(query) ? 3 : 0;
+        const descScore = query && job.description.toLowerCase().includes(query) ? 1 : 0;
+        const skillScore = query ? job.skills.filter(skill => skill.toLowerCase().includes(query)).length : 0;
+        return { job, relevance: titleScore + descScore + skillScore + (job.aiMatchScore || 0) / 100 };
+      });
+
+    scored.sort((a, b) => {
+      if ((a.job.isFeatured ? 1 : 0) !== (b.job.isFeatured ? 1 : 0)) {
+        return (b.job.isFeatured ? 1 : 0) - (a.job.isFeatured ? 1 : 0);
+      }
+      if (sortBy === 'date') {
+        return new Date(b.job.datePosted).getTime() - new Date(a.job.datePosted).getTime();
+      }
+      return b.relevance - a.relevance;
+    });
+
+    return scored.map(item => item.job);
+  }, [aiOnly, allJobs, budgetInvalid, budgetMax, budgetMin, category, datePosted, search, skills, sortBy, workType]);
+
+  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const pagedJobs = jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, category, skills, budgetMin, budgetMax, workType, datePosted, sortBy, aiOnly]);
+
+  const toggleSave = (id: string) => {
+    if (!user || role !== UserRole.Freelancer) {
+      alert('Please log in as a freelancer to save jobs.');
+      return;
+    }
+    setSaved(prev => prev.includes(id) ? prev.filter(savedId => savedId !== id) : [...prev, id]);
+  };
 
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-black text-primary mb-2">Browse Jobs</h1>
-          <p className="browse-jobs-desc">Discover opportunities matched to your expertise</p>
+          <p className="browse-jobs-desc">Discover open opportunities with search, advanced filters, and saved jobs.</p>
         </div>
 
-        {/* Search & Filter Row */}
         <div className="glass-card p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 browse-jobs-search-icon" />
               <input
-                type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search job titles, skills, keywords..."
-                className="input-gb w-full pl-10 pr-4 py-3 text-sm"
+                type="text"
+                value={search}
+                onChange={event => setSearch(sanitizeSearch(event.target.value))}
+                placeholder="Search title or description..."
+                className="input-gb w-full browse-jobs-search-input"
               />
             </div>
             <button onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm transition-all browse-jobs-filter-btn">
               <Filter size={16} /> Filters
-              {(category !== 'All' || experience !== 'All') && (
-                <span className="w-2 h-2 rounded-full browse-jobs-filter-indicator" />
-              )}
             </button>
-
-            {/* AI Toggle */}
             <button onClick={() => setAiOnly(!aiOnly)}
               className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${aiOnly ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
               <Bot size={16} />
@@ -88,38 +165,45 @@ export default function BrowseJobsScreen() {
             </button>
           </div>
 
-          {/* Expanded Filters */}
           {showFilters && (
             <div className="mt-4 pt-4 border-t browse-jobs-divider">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-primary mb-2 block">Experience Level</label>
-                  <div className="flex flex-wrap gap-1">
-                    {EXPERIENCE.map(e => (
-                      <button key={e} onClick={() => setExperience(e)}
-                        className={`px-2 py-1 rounded-lg text-xs transition-all ${experience === e ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
-                        {e}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-primary mb-2 block">Budget Range</label>
-                  <div className="flex flex-wrap gap-1">
-                    {BUDGET_RANGES.map(b => (
-                      <button key={b} onClick={() => setBudget(b)}
-                        className={`px-2 py-1 rounded-lg text-xs transition-all ${budget === b ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
-                        {b}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <div className="browse-jobs-filter-grid">
+                <label>
+                  Category
+                  <select value={category} onChange={event => setCategory(event.target.value)}>
+                    {CATEGORIES.map(item => <option key={item}>{item}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Skills
+                  <input value={skills} onChange={event => setSkills(sanitizeSearch(event.target.value))} placeholder="React, SQL" />
+                </label>
+                <label>
+                  Min Budget
+                  <input type="number" min="0" value={budgetMin} onChange={event => setBudgetMin(event.target.value)} />
+                </label>
+                <label>
+                  Max Budget
+                  <input type="number" min="0" value={budgetMax} onChange={event => setBudgetMax(event.target.value)} />
+                </label>
+                <label>
+                  Work Type
+                  <select value={workType} onChange={event => setWorkType(event.target.value)}>
+                    {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? 'All' : item === 'fixed' ? 'Fixed Price' : 'Hourly'}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Date Posted
+                  <select value={datePosted} onChange={event => setDatePosted(event.target.value)}>
+                    {DATE_POSTED.map(item => <option key={item}>{item}</option>)}
+                  </select>
+                </label>
               </div>
+              {budgetInvalid && <p className="browse-jobs-error">Budget range is invalid. Min must be less than or equal to Max.</p>}
             </div>
           )}
         </div>
 
-        {/* Category Pills */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setCategory(cat)}
@@ -129,61 +213,46 @@ export default function BrowseJobsScreen() {
           ))}
         </div>
 
-        {/* Results Count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm browse-jobs-desc">
-            <span className="text-primary font-semibold">{jobs.length}</span> jobs found
-            {aiOnly && <span className="browse-jobs-ai-toggle-active"> · AI Recommended</span>}
+            <span className="text-primary font-semibold">{jobs.length}</span> open jobs found
           </p>
           <div className="flex items-center gap-2">
             <span className="text-xs browse-jobs-desc">Sort by:</span>
-            <button className="flex items-center gap-1 text-sm text-primary">
-              Best Match <ChevronDown size={14} />
+            <button onClick={() => setSortBy(sortBy === 'relevance' ? 'date' : 'relevance')} className="flex items-center gap-1 text-sm text-primary">
+              {sortBy === 'relevance' ? 'Most Relevant' : 'Date Posted'} <ChevronDown size={14} />
             </button>
           </div>
         </div>
 
-        {/* Job Cards */}
         <div className="space-y-4">
-          {jobs.map((job, idx) => (
+          {pagedJobs.map((job, idx) => (
             <div key={job.id}
-              className="glass-card p-5 cursor-pointer group"
+              className="glass-card p-5 cursor-pointer group browse-jobs-job-card"
               style={{ animationDelay: `${idx * 0.05}s` }}
-              onClick={() => navigate(`/jobs/${job.id}`)}>
+              onClick={() => navigate(`/jobs/${job.id}`, { state: { job } })}>
               <div className="flex flex-col md:flex-row md:items-start gap-4">
                 <div className="flex-1">
                   <div className="flex items-start gap-2 flex-wrap mb-2">
-                    <h2 className="text-primary font-semibold group-hover:text-[#0077FF] transition-colors">
-                      {job.title}
-                    </h2>
-                    {job.isAiRecommended && <span className="badge-purple text-xs flex-shrink-0">⚡ AI Pick</span>}
+                    <h2 className="text-primary font-semibold group-hover:text-[#0077FF] transition-colors">{job.title}</h2>
+                    {job.isFeatured && <span className="badge-purple text-xs flex-shrink-0">Featured</span>}
+                    {job.isAiRecommended && <span className="badge-cyan text-xs flex-shrink-0">AI Pick</span>}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 mb-3">
                     <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
                       <DollarSign size={12} />
-                      ${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()} · {job.jobType === 'fixed' ? 'Fixed' : '/hr'}
+                      ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()} · {job.jobType === 'fixed' ? 'Fixed' : 'Hourly'}
                     </div>
-                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                      <Globe size={12} /> Remote
-                    </div>
-                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                      <Users size={12} /> {job.proposalCount} proposals
-                    </div>
-                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                      <Clock size={12} /> {job.postedAt}
-                    </div>
+                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> Remote</div>
+                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} proposals</div>
+                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Clock size={12} /> {job.postedAt}</div>
                     <span className="tag-pill capitalize text-xs">{job.experienceLevel}</span>
                   </div>
 
-                  <p className="text-sm leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">
-                    {job.description.slice(0, 150)}...
-                  </p>
-
+                  <p className="text-sm leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">{job.description}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {job.skills.map(skill => (
-                      <span key={skill} className="tag-pill">{skill}</span>
-                    ))}
+                    {job.skills.map(skill => <span key={skill} className="tag-pill">{skill}</span>)}
                   </div>
                 </div>
 
@@ -195,13 +264,11 @@ export default function BrowseJobsScreen() {
                     </div>
                   )}
                   <button
-                    onClick={e => { e.stopPropagation(); toggleSave(job.id); }}
-                    className={`p-2 rounded-lg transition-all ${saved.includes(job.id) ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'}`}
-                    style={{ background: saved.includes(job.id) ? 'rgba(0,240,255,0.1)' : 'transparent' }}>
-                    <Bookmark size={16} fill={saved.includes(job.id) ? '#0077FF' : 'none'} />
+                    onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
+                    className={`p-2 rounded-lg transition-all ${saved.includes(job.id) ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'}`}>
+                    <Bookmark size={16} fill={saved.includes(job.id) ? 'currentColor' : 'none'} />
                   </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); navigate(`/jobs/${job.id}`); }}
+                  <button onClick={event => { event.stopPropagation(); navigate(`/jobs/${job.id}`, { state: { job } }); }}
                     className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
                     View Job
                   </button>
@@ -211,11 +278,18 @@ export default function BrowseJobsScreen() {
           ))}
         </div>
 
-        {jobs.length === 0 && (
+        {!loading && jobs.length === 0 && (
           <div className="text-center py-20">
             <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
-            <p className="text-primary font-semibold mb-2">No jobs found</p>
-            <p className="text-sm browse-jobs-desc">Try adjusting your filters or search terms</p>
+            <p className="text-primary font-semibold mb-2">MSG73: No jobs match your criteria. Try adjusting filters.</p>
+          </div>
+        )}
+
+        {jobs.length > PAGE_SIZE && (
+          <div className="browse-jobs-pagination">
+            <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>Previous</button>
+            <span>Page {page} of {totalPages}</span>
+            <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)}>Next</button>
           </div>
         )}
       </div>

@@ -287,3 +287,89 @@
     gap: 0.75rem;
   }
 }
+
+/* Trust Score Card - Sidebar Version */
+.client-profile-trust-score-display-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.client-profile-trust-score-circle-sidebar {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.client-profile-trust-score-ring {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.client-profile-trust-score-bg {
+  fill: none;
+  stroke: rgba(0, 119, 255, 0.1);
+  stroke-width: 4;
+}
+
+.client-profile-trust-score-fill {
+  fill: none;
+  stroke: url(#trustGradient);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.client-profile-trust-score-text-sidebar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--gb-cyan, #0077FF), #9F4BFF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.client-profile-trust-score-info-sidebar {
+  width: 100%;
+}
+
+.client-profile-trust-score-info-sidebar p {
+  color: var(--gb-text-secondary);
+  margin: 0;
+}
+
+.client-profile-trust-score-info-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.client-profile-trust-score-info-sidebar li {
+  color: var(--gb-text-secondary);
+  margin: 0;
+}
+
+.client-profile-trust-score-info-sidebar li span:last-child {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .client-profile-trust-score-display-sidebar {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .client-profile-trust-score-circle-sidebar {
+    width: 70px;
+    height: 70px;
+  }
+}

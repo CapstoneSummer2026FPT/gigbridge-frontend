@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { History, Search, Filter, Download, Eye, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, Wallet, RefreshCw, XCircle } from 'lucide-react';
+import { History, Search, Download, Eye, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, Wallet, RefreshCw, XCircle, UploadCloud } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { Transaction, TransactionType, TransactionStatus } from '../../../types/models/Financial';
 import '../../admin/styles/admin-users-screen.css';
@@ -151,6 +151,11 @@ export default function WalletHistoryScreen() {
     return <RefreshCw size={16} className="text-cyan" />;
   };
 
+  const canUploadPaymentProof = (trans: Transaction) => (
+    trans.Status === TransactionStatus.Pending
+    && (trans.Type === TransactionType.Deposit || trans.Type === TransactionType.Subscription)
+  );
+
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
@@ -274,13 +279,24 @@ export default function WalletHistoryScreen() {
                       <span>Sub ID: {trans.SubscriptionId}</span>
                     )}
                   </div>
-                  <button
-                    onClick={() => setViewTransaction(trans)}
-                    className="text-xs text-cyan hover:underline flex items-center gap-1"
-                  >
-                    <Eye size={12} />
-                    View Details
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {canUploadPaymentProof(trans) && (
+                      <button
+                        onClick={() => navigate(`/wallet/payment-proof/${trans.trans_TransactionsId}`)}
+                        className="text-xs text-amber hover:underline flex items-center gap-1"
+                      >
+                        <UploadCloud size={12} />
+                        Upload Payment Proof
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setViewTransaction(trans)}
+                      className="text-xs text-cyan hover:underline flex items-center gap-1"
+                    >
+                      <Eye size={12} />
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
