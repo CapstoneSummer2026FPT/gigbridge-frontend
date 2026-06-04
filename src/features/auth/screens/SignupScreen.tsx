@@ -5,6 +5,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { authAPI } from '../../../api/authAPI';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 
 
@@ -110,7 +111,7 @@ export default function SignupScreen() {
       navigate('/onboarding/profile-setup');
     } catch (err: any) {
       if (isMounted.current) {
-        setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+        setGoogleError(getErrorMessage(err));
       }
     } finally {
       if (isMounted.current) {
@@ -153,12 +154,12 @@ export default function SignupScreen() {
         }
       } else {
         if (isMounted.current) {
-          setError(response.message || 'Failed to send OTP.');
+          setError(getErrorMessage(response));
         }
       }
     } catch (err: any) {
       if (isMounted.current) {
-        setError(err.message || 'An error occurred while sending OTP.');
+        setError(getErrorMessage(err));
       }
     } finally {
       if (isMounted.current) {
@@ -189,12 +190,12 @@ export default function SignupScreen() {
         }
       } else {
         if (isMounted.current) {
-          setError(response.message || 'Invalid or expired verification code.');
+          setError(getErrorMessage(response));
         }
       }
     } catch (err: any) {
       if (isMounted.current) {
-        setError(err.message || 'An error occurred while verifying OTP.');
+        setError(getErrorMessage(err));
       }
     } finally {
       if (isMounted.current) {
@@ -245,7 +246,7 @@ export default function SignupScreen() {
       navigate('/onboarding/profile-setup');
     } catch (err: any) {
       if (isMounted.current) {
-        setError(err.message || 'An error occurred');
+        setError(getErrorMessage(err));
       }
     } finally {
       if (isMounted.current) {
@@ -412,7 +413,7 @@ export default function SignupScreen() {
               </button>
 
               {googleError && (
-                <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
+                <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left" style={{ whiteSpace: 'pre-line' }}>
                   <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
                   <span>
                     {googleError}
@@ -428,7 +429,7 @@ export default function SignupScreen() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                  <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+                  <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', whiteSpace: 'pre-line' }}>
                     {error}
                   </div>
                 )}

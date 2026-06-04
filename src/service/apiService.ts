@@ -119,6 +119,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -133,6 +134,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -147,6 +149,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -161,6 +164,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -175,6 +179,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }

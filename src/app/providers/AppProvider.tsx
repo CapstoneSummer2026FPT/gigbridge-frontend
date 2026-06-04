@@ -113,7 +113,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
       
       if (!apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.message || 'Login failed');
+        const err = new Error(apiResponse.message || 'Login failed') as any;
+        err.errors = apiResponse.errors;
+        throw err;
       }
 
       const { user: userDTO, token } = apiResponse.data;
@@ -163,7 +165,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const apiResponse = response as unknown as ApiResponse<UserDTO>;
       
       if (!apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.message || 'Registration failed');
+        const err = new Error(apiResponse.message || 'Registration failed') as any;
+        err.errors = apiResponse.errors;
+        throw err;
       }
 
       const userDTO = apiResponse.data;
@@ -203,7 +207,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
       
       if (!apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.message || 'Google Login failed');
+        const err = new Error(apiResponse.message || 'Google Login failed') as any;
+        err.errors = apiResponse.errors;
+        throw err;
       }
 
       const { user: userDTO, token } = apiResponse.data;

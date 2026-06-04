@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle, Mail } from 'lucide-react';
 import { authAPI } from '../../../api/authAPI';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 
 export default function ResetPasswordScreen() {
@@ -78,12 +79,12 @@ export default function ResetPasswordScreen() {
         toast.success('Password reset successfully!');
       } else {
         if (isMounted.current) {
-          setError(response.message || 'Failed to reset password.');
+          setError(getErrorMessage(response));
         }
       }
     } catch (err: any) {
       if (isMounted.current) {
-        setError(err.message || 'An error occurred. Please try again.');
+        setError(getErrorMessage(err));
       }
     } finally {
       if (isMounted.current) {
@@ -155,7 +156,7 @@ export default function ResetPasswordScreen() {
                 <AlertCircle size={18} className="shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold">Verification Required</p>
-                  <p className="mt-1 text-xs opacity-90">{error}</p>
+                  <p className="mt-1 text-xs opacity-90" style={{ whiteSpace: 'pre-line' }}>{error}</p>
                 </div>
               </div>
               <button onClick={() => navigate('/auth/forgot-password')} className="btn-cyan w-full py-3">
@@ -178,7 +179,7 @@ export default function ResetPasswordScreen() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+                <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', whiteSpace: 'pre-line' }}>
                   <AlertCircle size={16} className="shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
