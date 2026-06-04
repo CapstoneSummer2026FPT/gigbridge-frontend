@@ -495,22 +495,24 @@ export default function EditFreelancerProfileScreen() {
           <div className="glass-card edit-freelancer-profile-section">
             <h2 className="edit-freelancer-profile-section-title">Biography</h2>
             
-            <textarea
-              name="bio"
-              value={formData.bio}
-              onChange={handleChange}
-              maxLength={255}
-              rows={4}
-              className="edit-freelancer-profile-form-textarea"
-              placeholder="Tell us about yourself and your experience"
-            />
-            <div className="edit-freelancer-profile-form-counter">
-              <p>Max 255 characters</p>
-              <p>{formData.bio.length}/255</p>
+            <div className="edit-freelancer-profile-biography-container">
+              <textarea
+                name="bio"
+                value={formData.bio}
+                onChange={handleChange}
+                maxLength={255}
+                rows={4}
+                className="edit-freelancer-profile-form-textarea"
+                placeholder="Tell us about yourself and your experience"
+              />
+              <div className="edit-freelancer-profile-form-counter">
+                <span>Max 255 characters</span>
+                <span className="edit-freelancer-profile-char-count">{formData.bio.length}/255</span>
+              </div>
+              {errors.bio && (
+                <p className="edit-freelancer-profile-form-error">{errors.bio}</p>
+              )}
             </div>
-            {errors.bio && (
-              <p className="edit-freelancer-profile-form-error">{errors.bio}</p>
-            )}
           </div>
 
           {/* Skills */}

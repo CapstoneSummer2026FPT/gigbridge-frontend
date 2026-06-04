@@ -528,3 +528,299 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* Trust Score Card */
+.freelancer-profile-trust-score-card {
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(0, 119, 255, 0.06), rgba(159, 75, 255, 0.06));
+  border: 1px solid rgba(0, 119, 255, 0.2);
+  border-radius: 0.75rem;
+  margin-top: 1rem;
+}
+
+.freelancer-profile-trust-score-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--gb-text-primary);
+}
+
+.freelancer-profile-trust-score-header span {
+  font-size: 0.875rem;
+  color: var(--gb-cyan, #0077FF);
+}
+
+.freelancer-profile-trust-score-display {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.freelancer-profile-trust-score-circle {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+}
+
+.freelancer-profile-trust-score-ring {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.freelancer-profile-trust-score-bg {
+  fill: none;
+  stroke: rgba(0, 119, 255, 0.1);
+  stroke-width: 4;
+}
+
+.freelancer-profile-trust-score-fill {
+  fill: none;
+  stroke: url(#trustGradient);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.freelancer-profile-trust-score-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.75rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--gb-cyan, #0077FF), #9F4BFF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.freelancer-profile-trust-score-info {
+  flex: 1;
+}
+
+.freelancer-profile-trust-score-info p {
+  color: var(--gb-text-secondary);
+  margin: 0;
+}
+
+.freelancer-profile-trust-score-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.freelancer-profile-trust-score-info li {
+  color: var(--gb-text-secondary);
+  margin: 0;
+}
+
+/* Trust Score Card - Sidebar Version */
+.freelancer-profile-trust-score-display-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.freelancer-profile-trust-score-circle-sidebar {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.freelancer-profile-trust-score-text-sidebar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--gb-cyan, #0077FF), #9F4BFF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.freelancer-profile-trust-score-info-sidebar {
+  width: 100%;
+}
+
+.freelancer-profile-trust-score-info-sidebar p {
+  color: var(--gb-text-secondary);
+  margin: 0;
+}
+
+.freelancer-profile-trust-score-info-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.freelancer-profile-trust-score-info-sidebar li {
+  color: var(--gb-text-secondary);
+  margin: 0;
+}
+
+.freelancer-profile-trust-score-info-sidebar li span:last-child {
+  font-size: 0.75rem;
+}
+
+/* CV Card */
+.freelancer-profile-cv-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--gb-bg-secondary);
+  border: 1px solid var(--gb-border);
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.freelancer-profile-cv-card:hover {
+  border-color: var(--gb-cyan, #0077FF);
+  background: rgba(0, 119, 255, 0.04);
+}
+
+.freelancer-profile-cv-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 0.75rem;
+  background: rgba(0, 119, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.freelancer-profile-cv-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.freelancer-profile-cv-info p {
+  margin: 0;
+  color: var(--gb-text-primary);
+}
+
+.freelancer-profile-cv-info p:first-child {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.freelancer-profile-cv-info p:last-child {
+  color: var(--gb-text-secondary);
+  font-size: 0.75rem;
+}
+
+.freelancer-profile-cv-download-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--gb-cyan, #0077FF);
+  color: white;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.freelancer-profile-cv-download-btn:hover {
+  background: #0056cc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
+}
+
+.freelancer-profile-cv-download-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .freelancer-profile-trust-score-display {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .freelancer-profile-trust-score-circle {
+    width: 70px;
+    height: 70px;
+  }
+
+  .freelancer-profile-cv-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .freelancer-profile-cv-download-btn {
+    width: 100%;
+  }
+}
+
+/* Save Freelancer Button */
+.freelancer-profile-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--gb-border);
+  background: transparent;
+  color: var(--gb-text-secondary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.freelancer-profile-save-btn:hover {
+  border-color: var(--gb-cyan, #0077FF);
+  color: var(--gb-cyan, #0077FF);
+  background: rgba(0, 119, 255, 0.05);
+}
+
+.freelancer-profile-save-btn.saved {
+  border-color: var(--gb-cyan, #0077FF);
+  color: var(--gb-cyan, #0077FF);
+  background: rgba(0, 119, 255, 0.1);
+}
+
+.freelancer-profile-save-btn.saved:hover {
+  background: rgba(0, 119, 255, 0.15);
+}
+.invite-message-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.9rem 0;
+  color: var(--gb-text-primary);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.invite-message-field textarea {
+  min-height: 6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 0.6rem;
+  color: var(--gb-text-primary);
+  background: var(--gb-bg-primary);
+  resize: vertical;
+}
+
+.invite-success {
+  margin: 0.75rem 0;
+  color: #15803d;
+  font-size: 0.85rem;
+  font-weight: 800;
+}

@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router';
-import { DollarSign, TrendingUp, Users, Wallet, CreditCard, Filter, Search, Download, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Eye, CheckCircle, XCircle, Clock, AlertCircle, Ban, RotateCw, Plus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router';
+import { DollarSign, TrendingUp, Wallet, CreditCard, Search, Download, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Eye, CheckCircle, XCircle, Clock, AlertCircle, Ban, RotateCw, Plus, Percent, ShieldCheck } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DB } from '../../../mock_backend';
 import '../styles/admin-users-screen.css';
+import '../styles/admin-revenue-screen.css';
 
-type TabType = 'overview' | 'wallets' | 'subscriptions' | 'transactions';
+type TabType = 'system' | 'overview' | 'wallets' | 'subscriptions' | 'transactions';
 type TransactionFilter = 'all' | 'deposit' | 'withdrawal' | 'subscription' | 'refund';
 type SubscriptionFilter = 'all' | 'active' | 'expired' | 'cancelled' | 'pending';
 type SubscriptionAction = 'cancel' | 'extend' | 'renew';
@@ -177,15 +178,56 @@ const MOCK_TRANSACTIONS = [
   },
 ];
 
+const SYSTEM_FINANCE_ALERTS = [
+  {
+    id: 'fin_alert_1',
+    severity: 'warning',
+    title: 'Escrow concentration is elevated',
+    description: 'Top 3 active contracts currently hold 64% of total escrow. Review for settlement delay.',
+    createdAt: '2026-06-03T08:30:00Z',
+  },
+  {
+    id: 'fin_alert_2',
+    severity: 'info',
+    title: 'Commission rate changed recently',
+    description: 'Commission policy update will apply to future transactions only per BR-64.',
+    createdAt: '2026-06-02T15:10:00Z',
+  },
+  {
+    id: 'fin_alert_3',
+    severity: 'critical',
+    title: 'Pending proof requires verification',
+    description: 'One pending deposit has been waiting longer than the expected admin verification window.',
+    createdAt: '2026-06-01T12:20:00Z',
+  },
+];
+
+const SYSTEM_FINANCE_AUDIT_LOG = [
+  { id: 'audit_fin_1', actor: 'Admin', action: 'Commission rate reviewed', detail: 'Reviewed current commission policy at 10%', createdAt: '2026-06-03T09:00:00Z' },
+  { id: 'audit_fin_2', actor: 'System', action: 'Financial anomaly generated', detail: 'Escrow concentration alert created', createdAt: '2026-06-03T08:30:00Z' },
+  { id: 'audit_fin_3', actor: 'Admin', action: 'Revenue export generated', detail: 'Downloaded platform finance report', createdAt: '2026-06-02T16:45:00Z' },
+];
+
 export default function AdminRevenueScreen() {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<TabType>(
+    location.pathname.includes('system-finance') ? 'system' : 'overview'
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [transactionFilter, setTransactionFilter] = useState<TransactionFilter>('all');
   const [subscriptionFilter, setSubscriptionFilter] = useState<SubscriptionFilter>('all');
   const [viewTransaction, setViewTransaction] = useState<typeof MOCK_TRANSACTIONS[0] | null>(null);
   const [subscriptionAction, setSubscriptionAction] = useState<{ action: SubscriptionAction; subscription: typeof MOCK_SUBSCRIPTIONS[0] } | null>(null);
   const [extendMonths, setExtendMonths] = useState(1);
+  const [commissionRate, setCommissionRate] = useState('10');
+  const [commissionError, setCommissionError] = useState<string | null>(null);
+  const [commissionSuccess, setCommissionSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.pathname.includes('system-finance')) {
+      setActiveTab('system');
+    }
+  }, [location.pathname]);
 
   const stats = useMemo(() => {
     const totalRevenue = REVENUE_DATA[REVENUE_DATA.length - 1].revenue;
@@ -197,6 +239,22 @@ export default function AdminRevenueScreen() {
 
     return { totalRevenue, totalWalletBalance, activeSubscriptions, totalTransactions, pendingTransactions, monthlyRecurring };
   }, []);
+
+  const systemFinanceSummary = useMemo(() => {
+    const totalPlatformBalance = MOCK_WALLETS.reduce((sum, wallet) => sum + wallet.balance, 0);
+    const totalEscrowHeld = 18400;
+    const completedRevenue = MOCK_TRANSACTIONS
+      .filter(transaction => transaction.status === 'completed')
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+    const totalCommissions = completedRevenue * (Number(commissionRate || 0) / 100);
+
+    return {
+      totalPlatformBalance,
+      totalEscrowHeld,
+      totalCommissions,
+      pendingVerification: MOCK_TRANSACTIONS.filter(transaction => transaction.status === 'pending').length,
+    };
+  }, [commissionRate]);
 
   const filteredTransactions = useMemo(() => {
     return MOCK_TRANSACTIONS.filter(trans => {
@@ -270,9 +328,22 @@ export default function AdminRevenueScreen() {
     setExtendMonths(1);
   };
 
+  const handleSaveCommission = () => {
+    const parsedRate = Number(commissionRate);
+    setCommissionSuccess(null);
+
+    if (Number.isNaN(parsedRate) || parsedRate < 0 || parsedRate > 100) {
+      setCommissionError('MSG75: Commission rate must be between 0% and 100%.');
+      return;
+    }
+
+    setCommissionError(null);
+    setCommissionSuccess('Commission rate saved. Changes apply to future transactions only and were logged to Audit Log.');
+  };
+
   return (
     <AppLayout>
-      <div className="w-full max-w-[100vw] overflow-x-hidden">
+      <div className="admin-revenue-screen w-full max-w-[100vw] overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
@@ -297,7 +368,7 @@ export default function AdminRevenueScreen() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="revenue-stats-grid mb-6 sm:mb-8">
             {[
               { label: 'Total Revenue', value: `$${stats.totalRevenue.toLocaleString()}`, icon: <TrendingUp size={16} />, color: 'green', trend: '+12%' },
               { label: 'Wallet Balance', value: `$${stats.totalWalletBalance.toLocaleString()}`, icon: <Wallet size={16} />, color: 'cyan', trend: '+8%' },
@@ -306,13 +377,13 @@ export default function AdminRevenueScreen() {
               { label: 'Pending', value: stats.pendingTransactions.toString(), icon: <Clock size={16} />, color: 'amber', trend: '2' },
               { label: 'Monthly MRR', value: `$${stats.monthlyRecurring.toFixed(0)}`, icon: <TrendingUp size={16} />, color: 'green', trend: '+$180' },
             ].map(stat => (
-              <div key={stat.label} className="stat-card">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-secondary truncate">{stat.label}</p>
-                  <span className={`icon-${stat.color} flex-shrink-0`}>{stat.icon}</span>
+              <div key={stat.label} className="revenue-stat-card">
+                <div className="revenue-stat-header">
+                  <p className="revenue-stat-label">{stat.label}</p>
+                  <span className={`revenue-stat-icon icon-${stat.color}`}>{stat.icon}</span>
                 </div>
-                <p className="text-xl sm:text-2xl font-bold text-primary mb-1">{stat.value}</p>
-                <p className="text-xs text-green">{stat.trend}</p>
+                <p className="revenue-stat-value">{stat.value}</p>
+                <p className="revenue-stat-trend">{stat.trend}</p>
               </div>
             ))}
           </div>
@@ -320,6 +391,7 @@ export default function AdminRevenueScreen() {
           {/* Tabs */}
           <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
             {[
+              { id: 'system', label: 'System Finance', icon: <ShieldCheck size={14} /> },
               { id: 'overview', label: 'Overview', icon: <TrendingUp size={14} /> },
               { id: 'wallets', label: 'Wallets', icon: <Wallet size={14} /> },
               { id: 'subscriptions', label: 'Subscriptions', icon: <CreditCard size={14} /> },
@@ -339,6 +411,144 @@ export default function AdminRevenueScreen() {
               </button>
             ))}
           </div>
+
+          {activeTab === 'system' && (
+            <div className="system-finance-panel">
+              <section className="system-finance-hero">
+                <div>
+                  <p className="system-finance-kicker">Admin Portal</p>
+                  <h2>System Finance</h2>
+                  <p>
+                    Monitor platform-wide balances, escrow exposure, commission revenue, and finance anomalies.
+                  </p>
+                </div>
+                <div className="system-finance-policy">
+                  <ShieldCheck size={20} />
+                  <span>Admins cannot directly modify user wallet balances from this page.</span>
+                </div>
+              </section>
+
+              <section className="system-finance-summary-grid">
+                <div className="system-finance-card">
+                  <span>Total Platform Balance</span>
+                  <strong>${systemFinanceSummary.totalPlatformBalance.toLocaleString()}</strong>
+                  <small>Across all user wallets</small>
+                </div>
+                <div className="system-finance-card">
+                  <span>Total Escrow Held</span>
+                  <strong>${systemFinanceSummary.totalEscrowHeld.toLocaleString()}</strong>
+                  <small>Funds reserved for active contracts</small>
+                </div>
+                <div className="system-finance-card">
+                  <span>Total Commissions</span>
+                  <strong>${systemFinanceSummary.totalCommissions.toFixed(2)}</strong>
+                  <small>Estimated from completed transactions</small>
+                </div>
+                <div className="system-finance-card">
+                  <span>Pending Verification</span>
+                  <strong>{systemFinanceSummary.pendingVerification}</strong>
+                  <small>Manual finance review queue</small>
+                </div>
+              </section>
+
+              <section className="system-finance-grid">
+                <div className="commission-card">
+                  <div className="commission-card-header">
+                    <div>
+                      <p className="system-finance-kicker">BR-64 Configuration</p>
+                      <h3>Commission Fee Percentage</h3>
+                    </div>
+                    <Percent size={22} />
+                  </div>
+
+                  <label className="commission-label" htmlFor="commissionRate">
+                    Commission rate
+                  </label>
+                  <div className="commission-input-row">
+                    <input
+                      id="commissionRate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={commissionRate}
+                      onChange={(event) => {
+                        setCommissionRate(event.target.value);
+                        setCommissionError(null);
+                        setCommissionSuccess(null);
+                      }}
+                      className="commission-input"
+                    />
+                    <span>%</span>
+                    <button onClick={handleSaveCommission} className="commission-save-btn">
+                      <CheckCircle size={16} />
+                      Save Rate
+                    </button>
+                  </div>
+
+                  {commissionError && (
+                    <div className="system-finance-message error">
+                      <AlertCircle size={16} />
+                      <span>{commissionError}</span>
+                    </div>
+                  )}
+                  {commissionSuccess && (
+                    <div className="system-finance-message success">
+                      <CheckCircle size={16} />
+                      <span>{commissionSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="commission-rule-note">
+                    <strong>Business rule:</strong> Commission changes apply to future transactions only. Every saved change is written to Audit Log.
+                  </div>
+                </div>
+
+                <div className="finance-alerts-card">
+                  <div className="commission-card-header">
+                    <div>
+                      <p className="system-finance-kicker">Monitoring</p>
+                      <h3>Financial Alerts & Anomalies</h3>
+                    </div>
+                    <AlertCircle size={22} />
+                  </div>
+
+                  <div className="finance-alert-list">
+                    {SYSTEM_FINANCE_ALERTS.map(alert => (
+                      <div key={alert.id} className={`finance-alert-item ${alert.severity}`}>
+                        <div>
+                          <strong>{alert.title}</strong>
+                          <p>{alert.description}</p>
+                        </div>
+                        <span>{formatDate(alert.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <section className="finance-audit-card">
+                <div className="commission-card-header">
+                  <div>
+                    <p className="system-finance-kicker">Audit Log</p>
+                    <h3>Configuration Change History</h3>
+                  </div>
+                  <Clock size={22} />
+                </div>
+
+                <div className="finance-audit-list">
+                  {SYSTEM_FINANCE_AUDIT_LOG.map(log => (
+                    <div key={log.id} className="finance-audit-item">
+                      <span>{formatDate(log.createdAt)}</span>
+                      <strong>{log.action}</strong>
+                      <p>{log.detail}</p>
+                      <small>by {log.actor}</small>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
 
           {/* Overview Tab */}
           {activeTab === 'overview' && (

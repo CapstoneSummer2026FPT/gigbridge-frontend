@@ -2,8 +2,157 @@
  * Job Detail Screen Styles
  */
 
+.job-detail-page {
+  padding: 1.5rem 1rem 2.5rem;
+}
+
+.job-detail-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(0, 119, 255, 0.14);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+}
+
+.job-detail-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--gb-cyan), var(--gb-purple), var(--gb-amber));
+}
+
+.job-detail-hero-top {
+  position: relative;
+  z-index: 1;
+}
+
+.job-detail-title {
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
 .job-detail-meta {
   color: var(--gb-text-secondary);
+}
+
+.job-detail-meta > div {
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 119, 255, 0.05);
+}
+
+.job-detail-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.5rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.job-detail-status-open {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.job-detail-status-draft {
+  color: #374151;
+  background: rgba(107, 114, 128, 0.16);
+}
+
+.job-detail-status-in_progress {
+  color: #1e40af;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.job-detail-status-closed {
+  color: #991b1b;
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.job-detail-client-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.job-detail-primary-action,
+.job-detail-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  padding: 0.7rem 1rem;
+  border-radius: 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.job-detail-primary-action {
+  border: 1px solid var(--gb-cyan);
+  color: white;
+  background: linear-gradient(135deg, var(--gb-cyan), #005fcc);
+  box-shadow: 0 8px 18px rgba(0, 119, 255, 0.22);
+}
+
+.job-detail-secondary-action {
+  border: 1px solid rgba(159, 75, 255, 0.35);
+  color: var(--gb-text-primary);
+  background: rgba(159, 75, 255, 0.08);
+}
+
+.job-detail-secondary-action span {
+  min-width: 1.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  color: white;
+  background: var(--gb-purple);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.job-detail-primary-action:hover,
+.job-detail-secondary-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+}
+
+.job-detail-quick-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.job-detail-stat-card {
+  min-height: 4.2rem;
+  padding: 0.75rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.job-detail-stat-card span {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--gb-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.job-detail-stat-card strong {
+  display: block;
+  color: var(--gb-text-primary);
+  font-size: 0.88rem;
+  line-height: 1.25;
 }
 
 .job-detail-icon {
@@ -35,6 +184,11 @@
   border: 1px solid var(--gb-border);
 }
 
+.job-detail-client-card:hover {
+  border-color: rgba(0, 119, 255, 0.35);
+  background: rgba(0, 119, 255, 0.06);
+}
+
 .job-detail-star-icon {
   color: var(--gb-amber);
 }
@@ -50,4 +204,30 @@
 
 .text-purple {
   color: #a855f7;
+}
+
+@media (max-width: 900px) {
+  .job-detail-quick-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .job-detail-page {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .job-detail-hero-top {
+    flex-direction: column;
+  }
+
+  .job-detail-client-actions,
+  .job-detail-primary-action,
+  .job-detail-secondary-action {
+    width: 100%;
+  }
+
+  .job-detail-quick-stats {
+    grid-template-columns: 1fr;
+  }
 }

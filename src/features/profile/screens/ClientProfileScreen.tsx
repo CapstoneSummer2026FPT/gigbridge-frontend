@@ -1,8 +1,11 @@
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, CheckCircle, Briefcase, DollarSign, Users, TrendingUp, Shield, Edit3, ArrowLeft, Globe, Mail, Phone } from 'lucide-react';
+import { Star, MapPin, CheckCircle, Briefcase, DollarSign, Users, TrendingUp, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { DB } from '../../../mock_backend';
 import { SEED_CLIENT_PROFILES } from '../../../mock_backend/database/seed';
+import { getStoredReviews } from '../../reviews/mock/data-for-Reviews';
+import '../../reviews/styles/reviews-screen.css';
 import '../styles/client-profile-screen.css';
 
 export default function ClientProfileScreen() {
@@ -14,6 +17,15 @@ export default function ClientProfileScreen() {
   const profile = SEED_CLIENT_PROFILES.find(p => p.user_id === targetId) || SEED_CLIENT_PROFILES[0];
   const jobs = DB.getJobsByClient(targetId);
 
+  // Mock trust score
+  const [trustScore] = useState(88);
+  const profileReviews = getStoredReviews()
+    .filter(review => review.revieweeId === targetId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const averageRating = profileReviews.length
+    ? profileReviews.reduce((sum, review) => sum + review.rating, 0) / profileReviews.length
+    : 0;
+
   return (
     <AppLayout>
       <div className="client-profile-wrapper">
@@ -22,9 +34,14 @@ export default function ClientProfileScreen() {
           <button onClick={() => navigate(-1)} className="client-profile-back-btn">
             <ArrowLeft size={20} />
           </button>
-          <button onClick={() => navigate(`/profile/client/${user.id}/edit`)} className="client-profile-edit-btn">
-            Edit Profile
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button onClick={() => navigate(`/messages?user=${user.id}`)} className="client-profile-edit-btn">
+              <MessageSquare size={16} /> Message
+            </button>
+            <button onClick={() => navigate(`/profile/client/${user.id}/edit`)} className="client-profile-edit-btn">
+              Edit Profile
+            </button>
+          </div>
         </div>
 
         <div className="max-w-6xl mx-auto px-4">
@@ -159,10 +176,75 @@ export default function ClientProfileScreen() {
                   ))}
                 </div>
               </div>
+
+              <div className="profile-reviews-card">
+                <h2>Reviews</h2>
+                <div className="profile-review-summary">
+                  <div className="profile-review-score">{averageRating.toFixed(1)}</div>
+                  <div>
+                    {[5, 4, 3, 2, 1].map(star => {
+                      const count = profileReviews.filter(review => review.rating === star).length;
+                      return (
+                        <div key={star} className="profile-rating-bar">
+                          <span>{star}★</span>
+                          <div><i style={{ width: `${profileReviews.length ? (count / profileReviews.length) * 100 : 0}%` }} /></div>
+                          <span>{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {profileReviews.map(review => (
+                  <div key={review.id} className="profile-review-item">
+                    <strong>{review.isAnonymous ? 'Anonymous User' : review.reviewerName}</strong>
+                    <div className="profile-review-stars">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                    <p>{review.comment}</p>
+                  </div>
+                ))}
+                <button
+                  className="review-submit"
+                  onClick={() => navigate(`/reviews/create?contract=contract_3&reviewee=${targetId}`)}
+                >
+                  Leave Review
+                </button>
+              </div>
             </div>
 
             {/* Right - Sidebar */}
             <div className="space-y-6">
+              {/* Trust Score Card */}
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold text-primary mb-4 flex items-center gap-2">
+                  <Shield size={16} className="text-cyan" />
+                  Trust Score
+                </h3>
+                <div className="client-profile-trust-score-display-sidebar">
+                  <div className="client-profile-trust-score-circle-sidebar">
+                    <svg viewBox="0 0 100 100" className="client-profile-trust-score-ring">
+                      <circle cx="50" cy="50" r="45" className="client-profile-trust-score-bg" />
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r="45" 
+                        className="client-profile-trust-score-fill"
+                        style={{ 
+                          strokeDashoffset: `${283 - (283 * trustScore) / 100}`
+                        }}
+                      />
+                    </svg>
+                    <span className="client-profile-trust-score-text-sidebar">{trustScore}</span>
+                  </div>
+                  <div className="client-profile-trust-score-info-sidebar">
+                    <p className="text-xs text-secondary mb-2 text-center">Calculated from:</p>
+                    <ul className="text-xs space-y-1">
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-cyan flex-shrink-0" /><span>Payment history</span></li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-green flex-shrink-0" /><span>Freelancer ratings</span></li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-purple flex-shrink-0" /><span>Verification</span></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               {/* Company Stats Card */}
               <div className="glass-card p-6">
                 <h3 className="text-sm font-bold text-primary mb-4">Company Stats</h3>

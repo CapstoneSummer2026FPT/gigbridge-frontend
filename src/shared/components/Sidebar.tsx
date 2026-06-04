@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, User, Settings, Shield, Users, Flag,
-  TrendingUp, Video, PlusCircle, Zap, ChevronRight, X, Activity, Bell
+  TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
+  ChevronDown
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -12,9 +13,10 @@ import '../styles/Sidebar.css';
 interface NavItem {
   label: string;
   icon: React.ReactNode;
-  path: string;
+  path?: string;
   badge?: string;
   badgeType?: 'cyan' | 'purple' | 'green' | 'red';
+  children?: NavItem[];
 }
 
 interface NavSection {
@@ -27,34 +29,117 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-function getNavItems(role: number | null, t: any): NavItem[] {
-  if (role === 0) {
-    return [
-      { label: t('nav.dashboard'), icon: <LayoutDashboard size={18} />, path: '/client/dashboard' },
-      { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post', badge: 'AI', badgeType: 'cyan' },
-      { label: t('nav.myJobs'), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
-      { label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals', badge: '5', badgeType: 'purple' },
-      { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
-      { label: t('nav.aiAssistant'), icon: <Bot size={18} />, path: '/ai-assistant', badge: 'NEW', badgeType: 'cyan' },
-      { label: t('nav.marketInsights'), icon: <TrendingUp size={18} />, path: '/market-insights' },
-      { label: t('nav.messages'), icon: <MessageSquare size={18} />, path: '/notifications' },
-    ];
-  }
+function getClientNavItems(t: any): NavItem[] {
+  return [
+    {
+      label: t('nav.dashboard'),
+      icon: <LayoutDashboard size={18} />,
+      path: '/client/dashboard',
+    },
+    {
+      label: 'Jobs',
+      icon: <Briefcase size={18} />,
+      children: [
+        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post', badge: 'AI', badgeType: 'cyan' },
+        { label: 'My Jobs', icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
+      ],
+    },
+    {
+      label: 'Freelancers',
+      icon: <Search size={18} />,
+      children: [
+        { label: 'Saved Freelancers', icon: <Bookmark size={18} />, path: '/freelancers/saved' },
+      ],
+    },
+    {
+      label: 'Work',
+      icon: <Flag size={18} />,
+      children: [
+        { label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals', badge: '5', badgeType: 'purple' },
+        { label: 'Contracts', icon: <FileText size={18} />, path: '/contracts' },
+        { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
+      ],
+    },
+    {
+      label: t('nav.aiAssistant'),
+      icon: <Bot size={18} />,
+      path: '/ai-assistant',
+      badge: 'NEW',
+      badgeType: 'cyan',
+    },
+    {
+      label: 'Smart Matching',
+      icon: <Zap size={18} />,
+      path: '/talent-matching',
+      badge: 'PRO',
+      badgeType: 'purple',
+    },
+    {
+      label: t('nav.marketInsights'),
+      icon: <TrendingUp size={18} />,
+      path: '/market-insights',
+    },
+    {
+      label: 'Financial Overview',
+      icon: <BarChart2 size={18} />,
+      path: '/financial-overview',
+    },
+    {
+      label: t('nav.messages'),
+      icon: <MessageSquare size={18} />,
+      path: '/messages',
+    },
+  ];
+}
 
-  if (role === 1) {
-    return [
-      { label: t('nav.dashboard'), icon: <LayoutDashboard size={18} />, path: '/freelancer/dashboard' },
-      { label: t('nav.browseJobs'), icon: <Search size={18} />, path: '/jobs/browse' },
-      { label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
-      { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
-      { label: t('nav.aiAssistant'), icon: <Bot size={18} />, path: '/ai-assistant', badge: 'AI', badgeType: 'cyan' },
-      { label: t('nav.marketInsights'), icon: <TrendingUp size={18} />, path: '/market-insights' },
-      { label: t('nav.messages'), icon: <MessageSquare size={18} />, path: '/notifications' },
-    ];
-  }
-
-  // Regular admin items (for non-sectioned view)
-  return [];
+function getFreelancerNavItems(t: any): NavItem[] {
+  return [
+    {
+      label: t('nav.dashboard'),
+      icon: <LayoutDashboard size={18} />,
+      path: '/freelancer/dashboard',
+    },
+    {
+      label: 'Jobs',
+      icon: <Search size={18} />,
+      children: [
+        { label: t('nav.browseJobs'), icon: <Search size={18} />, path: '/jobs/browse' },
+        { label: 'Saved Jobs', icon: <Bookmark size={18} />, path: '/jobs/saved' },
+      ],
+    },
+    {
+      label: 'Work',
+      icon: <Flag size={18} />,
+      children: [
+        { label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
+        { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
+      ],
+    },
+    {
+      label: t('nav.aiAssistant'),
+      icon: <Bot size={18} />,
+      path: '/ai-assistant',
+      badge: 'AI',
+      badgeType: 'cyan',
+    },
+    {
+      label: t('nav.marketInsights'),
+      icon: <TrendingUp size={18} />,
+      path: '/market-insights',
+    },
+    {
+      label: 'Early Payout',
+      icon: <Zap size={18} />,
+      path: '/wallet/early-payout',
+      badge: 'PRO',
+      badgeType: 'purple',
+    },
+    {
+      label: t('nav.messages'),
+      icon: <MessageSquare size={18} />,
+      path: '/messages',
+    },
+  ];
 }
 
 function getAdminNavSections(): NavSection[] {
@@ -76,15 +161,25 @@ function getAdminNavSections(): NavSection[] {
       title: 'Content Management',
       items: [
         { label: 'Job Posts', icon: <Briefcase size={18} />, path: '/admin/jobs' },
-        { label: 'Contracts', icon: <FileText size={18} />, path: '/admin/contracts' },
+        { label: 'Contracts & Compliance', icon: <Shield size={18} />, path: '/admin/contracts' },
+        { label: 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
+        { label: 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
+        { label: 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },
         { label: 'User Feedback', icon: <MessageSquare size={18} />, path: '/admin/feedback' },
         { label: 'Reports', icon: <Flag size={18} />, path: '/admin/reports', badge: '5', badgeType: 'red' },
+      ],
+    },
+    {
+      title: 'Configuration',
+      items: [
+        { label: 'Contract Templates', icon: <Settings size={18} />, path: '/admin/contract-templates' },
       ],
     },
     {
       title: 'Financial',
       items: [
         { label: 'Revenue', icon: <TrendingUp size={18} />, path: '/admin/revenue' },
+        { label: 'System Finance', icon: <BarChart2 size={18} />, path: '/admin/system-finance' },
       ],
     },
     {
@@ -103,21 +198,103 @@ function getAdminNavSections(): NavSection[] {
   ];
 }
 
+function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, path }: any) {
+  const hasChildren = item.children && item.children.length > 0;
+
+  return (
+    <>
+      <button
+        onClick={() => {
+          if (hasChildren) {
+            onToggle(item.label);
+          } else if (item.path) {
+            onNavigate(item.path);
+          }
+        }}
+        className={`sidebar-item w-full relative ${isActive ? 'active' : ''}`}
+      >
+        {isActive && <span className="sidebar-active-indicator" />}
+        <span className="ml-1">{item.icon}</span>
+        <span className="flex-1 text-left">{item.label}</span>
+        <div className="sidebar-item-actions">
+          {item.badge && (
+            <span className={`badge-${item.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}>
+              {item.badge}
+            </span>
+          )}
+          {hasChildren && (
+            <ChevronDown
+              size={16}
+              className={`sidebar-item-chevron ${isExpanded ? 'expanded' : ''}`}
+            />
+          )}
+        </div>
+      </button>
+
+      {/* Children */}
+      {hasChildren && isExpanded && (
+        <div className="sidebar-children">
+          {item.children?.map((child: NavItem) => (
+            <button
+              key={child.path || child.label}
+              onClick={() => {
+                if (child.path) {
+                  onNavigate(child.path);
+                }
+              }}
+              className={`sidebar-item sidebar-child-item ${path === child.path ? 'active' : ''}`}
+            >
+              <span className="ml-1">{child.icon}</span>
+              <span className="flex-1 text-left">{child.label}</span>
+              {child.badge && (
+                <span className={`badge-${child.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}>
+                  {child.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, role } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  const navItems = getNavItems(role, t);
+  const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
   const adminSections = role === 2 ? getAdminNavSections() : [];
-  const isActive = (path: string) => {
-    // Exact match
+
+  const handleToggleMenu = (label: string) => {
+    setExpandedMenus(prev =>
+      prev.includes(label)
+        ? prev.filter(m => m !== label)
+        : [...prev, label]
+    );
+  };
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    if (onClose) onClose();
+  };
+
+  const isActive = (path?: string) => {
+    if (!path) return false;
     if (location.pathname === path) return true;
-    // For admin root, only match exactly to avoid matching child routes
     if (path === '/admin') return location.pathname === '/admin';
-    // For other paths, check if current path starts with the nav path
     return location.pathname.startsWith(path + '/');
+  };
+
+  const isMenuActive = (item: NavItem) => {
+    if (item.path) return isActive(item.path);
+    if (item.children) {
+      return item.children.some(child => isActive(child.path));
+    }
+    return false;
   };
 
   return (
@@ -148,8 +325,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               const active = isActive(item.path);
               return (
                 <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
+                  key={item.path || item.label}
+                  onClick={() => {
+                    if (item.path) {
+                      handleNavigate(item.path);
+                    }
+                  }}
                   className={`sidebar-item w-full relative ${active ? 'active' : ''}`}
                 >
                   {active && <span className="sidebar-active-indicator" />}
@@ -166,26 +347,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         ))}
 
-        {/* Regular navigation for Client/Freelancer */}
-        {role !== 2 && navItems.map(item => {
-          const active = isActive(item.path);
-          return (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`sidebar-item w-full relative ${active ? 'active' : ''}`}
-            >
-              {active && <span className="sidebar-active-indicator" />}
-              <span className="ml-1">{item.icon}</span>
-              <span className="flex-1 text-left">{item.label}</span>
-              {item.badge && (
-                <span className={`badge-${item.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}>
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        {/* Client/Freelancer hierarchical navigation */}
+        {role !== 2 && navItems.map(item => (
+          <NavItemComponent
+            key={item.label}
+            item={item}
+            isActive={isMenuActive(item)}
+            isExpanded={expandedMenus.includes(item.label)}
+            onToggle={handleToggleMenu}
+            onNavigate={handleNavigate}
+            path={location.pathname}
+          />
+        ))}
       </nav>
 
       {/* Bottom Links */}

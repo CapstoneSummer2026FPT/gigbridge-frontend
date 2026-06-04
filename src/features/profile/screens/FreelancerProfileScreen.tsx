@@ -1,16 +1,19 @@
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, CheckCircle, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle } from 'lucide-react';
+import { Star, MapPin, CheckCircle, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, Video, X, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { DB } from '../../../mock_backend';
 import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
+import { MOCK_BROWSE_JOBS } from '../../jobs/mock/data-for-BrowseJobsScreen';
+import { getStoredReviews } from '../../reviews/mock/data-for-Reviews';
+import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-screen.css';
 
 export default function FreelancerProfileScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser, role: currentRole } = useApp();
+  const { user: currentUser } = useApp();
 
   const targetId = id || 'u_freelancer_1';
   const user = DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!;
@@ -20,6 +23,63 @@ export default function FreelancerProfileScreen() {
   const [isPremium] = useState(true); // Mock: user is premium
   const [isIdentityVerified] = useState(true); // Mock: identity verified
   const [isOnVacation, setIsOnVacation] = useState(false);
+  
+  // Trust score and CV
+  const [trustScore] = useState(92); // Mock: trust score 0-100
+  const [cvFile] = useState<{ name: string; url: string } | null>({
+    name: 'john_doe_resume.pdf',
+    url: '#'
+  });
+
+  // Bookmark functionality
+  const [isSaved, setIsSaved] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [sentInvites, setSentInvites] = useState<string[]>([]);
+  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open');
+  const profileReviews = getStoredReviews()
+    .filter(review => review.revieweeId === targetId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const averageRating = profileReviews.length
+    ? profileReviews.reduce((sum, review) => sum + review.rating, 0) / profileReviews.length
+    : 0;
+
+  const handleSaveFreelancer = () => {
+    setIsSaved(!isSaved);
+  };
+
+  const handleSendInterviewInvite = () => {
+    setInviteError('');
+    setInviteSuccess('');
+
+    if (user.is_active === false) {
+      setInviteError('MSG30: This account was being banned!');
+      return;
+    }
+
+    if (openClientJobs.length === 0) {
+      setInviteError('MSG62: Please create a job post first');
+      return;
+    }
+
+    if (!selectedJobId) {
+      setInviteError('Please select a job post');
+      return;
+    }
+
+    const inviteKey = `${targetId}_${selectedJobId}`;
+    if (sentInvites.includes(inviteKey)) {
+      setInviteError('An interview invitation was already sent for this freelancer and job.');
+      return;
+    }
+
+    setSentInvites(prev => [...prev, inviteKey]);
+    setInviteSuccess('Interview invitation sent. The freelancer will receive a notification and can accept or decline within 7 days.');
+    setTimeout(() => setShowInviteModal(false), 1200);
+  };
 
   const mockSkills = ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'];
   const mockExperience = [
@@ -44,9 +104,33 @@ export default function FreelancerProfileScreen() {
           <button onClick={() => navigate(-1)} className="freelancer-profile-back-btn">
             <ArrowLeft size={20} />
           </button>
-          <button onClick={() => navigate(`/profile/freelancer/${user.id}/edit`)} className="freelancer-profile-edit-btn">
-            Edit Profile
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            {currentUser?.role !== 1 && (
+              <button 
+                onClick={handleSaveFreelancer}
+                className={`freelancer-profile-save-btn ${isSaved ? 'saved' : ''}`}
+                title={isSaved ? 'Remove from saved' : 'Save freelancer'}
+              >
+                <Bookmark size={20} fill={isSaved ? 'currentColor' : 'none'} />
+                <span>{isSaved ? 'Saved' : 'Save'}</span>
+              </button>
+            )}
+            {currentUser?.role === 0 && (
+              <button onClick={() => navigate(`/messages?user=${user.id}`)} className="freelancer-profile-save-btn">
+                <MessageSquare size={20} />
+                <span>Message</span>
+              </button>
+            )}
+            {currentUser?.role === 0 && (
+              <button onClick={() => setShowInviteModal(true)} className="freelancer-profile-save-btn">
+                <Video size={20} />
+                <span>Invite to Interview</span>
+              </button>
+            )}
+            <button onClick={() => navigate(`/profile/freelancer/${user.id}/edit`)} className="freelancer-profile-edit-btn">
+              Edit Profile
+            </button>
+          </div>
         </div>
 
         <div className="max-w-6xl mx-auto px-4">
@@ -109,6 +193,8 @@ export default function FreelancerProfileScreen() {
                     <p className="text-xs text-secondary">Success</p>
                   </div>
                 </div>
+
+
               </div>
 
               {/* Hourly Rate - Right Side */}
@@ -132,6 +218,29 @@ export default function FreelancerProfileScreen() {
                 </p>
               </div>
 
+              {/* CV Section */}
+              {cvFile && (
+                <div className="glass-card p-6">
+                  <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
+                    <FileText size={20} className="text-cyan" />
+                    Resume/CV
+                  </h2>
+                  <div className="freelancer-profile-cv-card">
+                    <div className="freelancer-profile-cv-icon">
+                      <FileText size={32} className="text-cyan" />
+                    </div>
+                    <div className="freelancer-profile-cv-info">
+                      <p className="font-semibold text-primary text-sm">{cvFile.name}</p>
+                      <p className="text-xs text-secondary mt-1">PDF Document</p>
+                    </div>
+                    <button className="freelancer-profile-cv-download-btn" title="Download CV">
+                      <Download size={18} />
+                      <span>Download</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Skills Section */}
               <div className="glass-card p-6">
                 <h2 className="text-lg font-bold text-primary mb-4">Skills</h2>
@@ -149,7 +258,7 @@ export default function FreelancerProfileScreen() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h2 className="text-lg font-bold text-primary m-0">Work Experience</h2>
                   <button 
-                    onClick={() => navigate('/profile/work-experience')}
+                    onClick={() => navigate('/profile/manage-content?tab=experience')}
                     style={{
                       padding: '0.5rem 1rem',
                       borderRadius: '0.5rem',
@@ -192,7 +301,7 @@ export default function FreelancerProfileScreen() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h2 className="text-lg font-bold text-primary m-0">Portfolio</h2>
                   <button 
-                    onClick={() => navigate('/profile/portfolio')}
+                    onClick={() => navigate('/profile/manage-content?tab=portfolio')}
                     style={{
                       padding: '0.5rem 1rem',
                       borderRadius: '0.5rem',
@@ -240,7 +349,7 @@ export default function FreelancerProfileScreen() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h2 className="text-lg font-bold text-primary m-0">Certificates & Credentials</h2>
                   <button 
-                    onClick={() => navigate('/profile/portfolio')}
+                    onClick={() => navigate('/profile/manage-content?tab=certificates')}
                     style={{
                       padding: '0.5rem 1rem',
                       borderRadius: '0.5rem',
@@ -289,10 +398,75 @@ export default function FreelancerProfileScreen() {
                   ))}
                 </div>
               </div>
+
+              <div className="profile-reviews-card">
+                <h2>Reviews</h2>
+                <div className="profile-review-summary">
+                  <div className="profile-review-score">{averageRating.toFixed(1)}</div>
+                  <div>
+                    {[5, 4, 3, 2, 1].map(star => {
+                      const count = profileReviews.filter(review => review.rating === star).length;
+                      return (
+                        <div key={star} className="profile-rating-bar">
+                          <span>{star}★</span>
+                          <div><i style={{ width: `${profileReviews.length ? (count / profileReviews.length) * 100 : 0}%` }} /></div>
+                          <span>{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {profileReviews.map(review => (
+                  <div key={review.id} className="profile-review-item">
+                    <strong>{review.isAnonymous ? 'Anonymous User' : review.reviewerName}</strong>
+                    <div className="profile-review-stars">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                    <p>{review.comment}</p>
+                  </div>
+                ))}
+                <button
+                  className="review-submit"
+                  onClick={() => navigate(`/reviews/create?contract=contract_1&reviewee=${targetId}`)}
+                >
+                  Leave Review
+                </button>
+              </div>
             </div>
 
             {/* Right - Sidebar */}
             <div className="space-y-6">
+              {/* Trust Score Card */}
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold text-primary mb-4 flex items-center gap-2">
+                  <Shield size={16} className="text-cyan" />
+                  Trust Score
+                </h3>
+                <div className="freelancer-profile-trust-score-display-sidebar">
+                  <div className="freelancer-profile-trust-score-circle-sidebar">
+                    <svg viewBox="0 0 100 100" className="freelancer-profile-trust-score-ring">
+                      <circle cx="50" cy="50" r="45" className="freelancer-profile-trust-score-bg" />
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r="45" 
+                        className="freelancer-profile-trust-score-fill"
+                        style={{ 
+                          strokeDashoffset: `${283 - (283 * trustScore) / 100}`
+                        }}
+                      />
+                    </svg>
+                    <span className="freelancer-profile-trust-score-text-sidebar">{trustScore}</span>
+                  </div>
+                  <div className="freelancer-profile-trust-score-info-sidebar">
+                    <p className="text-xs text-secondary mb-2 text-center">Calculated from:</p>
+                    <ul className="text-xs space-y-1">
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-cyan flex-shrink-0" /><span>Completion rate</span></li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-green flex-shrink-0" /><span>Profile complete</span></li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-purple flex-shrink-0" /><span>Verification</span></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               {/* Availability Card */}
               <div className="glass-card p-6">
                 <h3 className="text-sm font-bold text-primary mb-4">Availability</h3>
@@ -374,6 +548,41 @@ export default function FreelancerProfileScreen() {
           </div>
         </div>
       </div>
+
+      {showInviteModal && (
+        <div className="proposal-modal-overlay" onClick={() => setShowInviteModal(false)}>
+          <div className="proposal-modal proposal-job-modal" onClick={event => event.stopPropagation()}>
+            <button className="proposal-modal-close" onClick={() => setShowInviteModal(false)}>
+              <X size={18} />
+            </button>
+            <div className="proposal-modal-title">
+              <Video size={20} />
+              <div>
+                <h2>Invite to Interview</h2>
+                <p>{user.full_name}</p>
+              </div>
+            </div>
+            <div className="proposal-manage-toolbar">
+              <label>
+                <span>Job post</span>
+                <select value={selectedJobId} onChange={event => setSelectedJobId(event.target.value)}>
+                  <option value="">Select an open job</option>
+                  {openClientJobs.map(job => <option key={job.id} value={job.id}>{job.title}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="invite-message-field">
+              Optional message
+              <textarea value={inviteMessage} onChange={event => setInviteMessage(event.target.value)} placeholder="Add a short message for the freelancer..." />
+            </label>
+            {inviteError && <p className="browse-jobs-error">{inviteError}</p>}
+            {inviteSuccess && <p className="invite-success">{inviteSuccess}</p>}
+            <button className="job-detail-primary-action" onClick={handleSendInterviewInvite}>
+              Send invitation
+            </button>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

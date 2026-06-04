@@ -1,0 +1,241 @@
+/* Milestone Detail Card Styles */
+
+.milestone-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.milestone-detail-card:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.milestone-detail-card.completed {
+  background: rgba(74, 222, 128, 0.05);
+  border-color: rgba(74, 222, 128, 0.2);
+}
+
+.milestone-detail-card.overdue {
+  background: rgba(248, 113, 113, 0.05);
+  border-color: rgba(248, 113, 113, 0.2);
+}
+
+/* Header */
+.milestone-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.milestone-number-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.milestone-number-circle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.icon-completed {
+  color: #16a34a;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.milestone-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.milestone-detail-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  word-break: break-word;
+}
+
+.milestone-detail-amount {
+  font-size: 0.85rem;
+  color: var(--accent-color);
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+}
+
+/* Status */
+.milestone-detail-status {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.status-approved {
+  background: rgba(74, 222, 128, 0.2);
+  color: #16a34a;
+}
+
+.status-badge.status-pending {
+  background: rgba(251, 146, 60, 0.2);
+  color: #ea580c;
+}
+
+.status-badge.status-submitted {
+  background: rgba(59, 130, 246, 0.16);
+  color: #1d4ed8;
+}
+
+.status-badge.status-overdue {
+  background: rgba(248, 113, 113, 0.2);
+  color: #dc2626;
+}
+
+/* Dates */
+.milestone-detail-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.due-date,
+.paid-date {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+}
+
+.due-date svg,
+.paid-date svg {
+  width: 14px;
+  height: 14px;
+}
+
+.paid-date {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+/* Deliverable Section */
+.milestone-deliverable-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.deliverable-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.deliverable-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-color-dark, #0066cc) 100%);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.deliverable-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.deliverable-submit-btn.active {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.deliverable-submit-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Completed Badge */
+.milestone-completed-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 6px;
+  color: #16a34a;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  justify-content: center;
+}
+
+.milestone-completed-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .milestone-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .milestone-detail-status {
+    align-self: flex-start;
+  }
+
+  .milestone-detail-dates {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .deliverable-submit-btn {
+    width: 100%;
+  }
+}

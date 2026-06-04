@@ -436,22 +436,24 @@ export default function EditClientProfileScreen() {
           <div className="glass-card edit-client-profile-section">
             <h2 className="edit-client-profile-section-title">Biography</h2>
             
-            <textarea
-              name="bio"
-              value={formData.bio}
-              onChange={handleChange}
-              maxLength={255}
-              rows={4}
-              className="edit-client-profile-form-textarea"
-              placeholder="Tell us about your company"
-            />
-            <div className="edit-client-profile-form-counter">
-              <p>Max 255 characters</p>
-              <p>{formData.bio.length}/255</p>
+            <div className="edit-client-profile-biography-container">
+              <textarea
+                name="bio"
+                value={formData.bio}
+                onChange={handleChange}
+                maxLength={255}
+                rows={4}
+                className="edit-client-profile-form-textarea"
+                placeholder="Tell us about your company"
+              />
+              <div className="edit-client-profile-form-counter">
+                <span>Max 255 characters</span>
+                <span className="edit-client-profile-char-count">{formData.bio.length}/255</span>
+              </div>
+              {errors.bio && (
+                <p className="edit-client-profile-form-error">{errors.bio}</p>
+              )}
             </div>
-            {errors.bio && (
-              <p className="edit-client-profile-form-error">{errors.bio}</p>
-            )}
           </div>
 
           {/* Action Buttons */}

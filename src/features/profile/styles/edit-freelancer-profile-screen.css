@@ -289,3 +289,54 @@
     width: 100%;
   }
 }
+
+/* Biography Section Styles */
+.edit-freelancer-profile-biography-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-freelancer-profile-biography-container .edit-freelancer-profile-form-textarea {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 2px solid var(--gb-border);
+  background: var(--gb-bg-secondary);
+  color: var(--gb-text-primary);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 120px;
+  max-height: 300px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.edit-freelancer-profile-biography-container .edit-freelancer-profile-form-textarea:focus {
+  outline: none;
+  border-color: var(--gb-cyan, #0077FF);
+  background: var(--gb-bg-primary);
+  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.1);
+}
+
+.edit-freelancer-profile-biography-container .edit-freelancer-profile-form-textarea::placeholder {
+  color: var(--gb-text-muted);
+}
+
+.edit-freelancer-profile-char-count {
+  font-weight: 600;
+  color: var(--gb-cyan, #0077FF);
+}
+
+.edit-freelancer-profile-biography-container .edit-freelancer-profile-form-counter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.25rem;
+  font-size: 0.75rem;
+}
+
+.edit-freelancer-profile-biography-container .edit-freelancer-profile-form-error {
+  margin-top: 0.5rem;
+}
