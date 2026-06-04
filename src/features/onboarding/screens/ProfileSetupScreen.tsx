@@ -1,15 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ChevronRight, Building, MapPin, Globe, Briefcase, DollarSign, Award, Sparkles } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { GuestLayout } from '../../../shared/components/AppLayout';
-import { profilePutAPI } from '../../../api/profileAPI';
+import { profilePutAPI, profileGetAPI } from '../../../api/profileAPI';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../../types/models/Profile';
 import '../styles/profile-setup-screen.css';
 
-const INDUSTRIES = [
+const INDUSTRIES_FALLBACK = [
   'Technology', 'Finance', 'Healthcare', 'E-commerce', 'Education', 
   'Marketing', 'Real Estate', 'Entertainment', 'Manufacturing', 'Other'
+];
+
+const COMPANY_SIZES_FALLBACK = [
+  { id: 0, name: 'Solo (1-9 employees)' },
+  { id: 1, name: 'Small (10-49 employees)' },
+  { id: 2, name: 'Medium (50-249 employees)' },
+  { id: 3, name: 'Large (250+ employees)' }
 ];
 
 const EXPERIENCE_LEVELS = [
@@ -41,7 +48,31 @@ export default function ProfileSetupScreen() {
   const role = appContext?.role ?? 0;
   const markSetupComplete = appContext?.markSetupComplete || (() => {});
 
-  // Client form data
+  const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>(COMPANY_SIZES_FALLBACK);
+  const [industries, setIndustries] = useState<string[]>(INDUSTRIES_FALLBACK);
+
+  useEffect(() => {
+    if (role === 0) { // Client
+      const fetchLookups = async () => {
+        try {
+          const [sizesRes, indRes] = await Promise.all([
+            profileGetAPI.getCompanySizes(),
+            profileGetAPI.getIndustries()
+          ]);
+          if (sizesRes.success && sizesRes.data) {
+            setCompanySizes(sizesRes.data);
+          }
+          if (indRes.success && indRes.data) {
+            setIndustries(indRes.data);
+          }
+        } catch (err) {
+          console.error('Failed to load lookups from BE:', err);
+        }
+      };
+      fetchLookups();
+    }
+  }, [role]);
+
   const [clientData, setClientData] = useState({
     CompanyName: '',
     CompanyWebsite: '',
@@ -191,7 +222,7 @@ export default function ProfileSetupScreen() {
                     className="input-gb"
                   >
                     <option value="">Select an industry</option>
-                    {INDUSTRIES.map(ind => (
+                    {industries.map(ind => (
                       <option key={ind} value={ind}>{ind}</option>
                     ))}
                   </select>
@@ -214,16 +245,17 @@ export default function ProfileSetupScreen() {
                 <div className="form-group">
                   <label className="form-label">
                     <Briefcase size={16} />
-                    Company Size (Number of Employees)
+                    Company Size *
                   </label>
-                  <input
-                    type="number"
-                    value={clientData.CompanySize || ''}
+                  <select
+                    value={clientData.CompanySize}
                     onChange={e => setClientData({ ...clientData, CompanySize: parseInt(e.target.value) || 0 })}
-                    placeholder="e.g., 10"
-                    min="0"
                     className="input-gb"
-                  />
+                  >
+                    {companySizes.map(size => (
+                      <option key={size.id} value={size.id}>{size.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}

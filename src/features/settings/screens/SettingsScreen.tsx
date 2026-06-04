@@ -21,6 +21,10 @@ export default function SettingsScreen() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>([]);
+  const [industries, setIndustries] = useState<string[]>([]);
+  const [experienceLevels, setExperienceLevels] = useState<{ id: number; name: string }[]>([]);
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<{ id: number; name: string }[]>([]);
 
   const [formData, setFormData] = useState({
     name: user?.full_name || '',
@@ -30,6 +34,8 @@ export default function SettingsScreen() {
     title: '',
     bio: '',
     hourlyRate: '',
+    experienceLevel: 0,
+    availability: 0,
     // Client-specific fields
     companyName: '',
     companyWebsite: '',
@@ -45,31 +51,53 @@ export default function SettingsScreen() {
       setErrorMessage(null);
       try {
         if (role === UserRole.Freelancer) {
-          const res = await profileGetAPI.getMyFreelancerProfile();
-          if (res.success && res.data) {
+          const [profileRes, expRes, availRes] = await Promise.all([
+            profileGetAPI.getMyFreelancerProfile(),
+            profileGetAPI.getExperienceLevels(),
+            profileGetAPI.getAvailabilityStatuses()
+          ]);
+          if (expRes.success && expRes.data) {
+            setExperienceLevels(expRes.data);
+          }
+          if (availRes.success && availRes.data) {
+            setAvailabilityStatuses(availRes.data);
+          }
+          if (profileRes.success && profileRes.data) {
             setFormData(prev => ({
               ...prev,
               name: user.full_name || '',
               email: user.email || '',
-              location: res.data.location || '',
-              title: res.data.title || '',
-              bio: res.data.bio || '',
-              hourlyRate: res.data.hourlyRate?.toString() || '',
+              location: profileRes.data.location || '',
+              title: profileRes.data.title || '',
+              bio: profileRes.data.bio || '',
+              hourlyRate: profileRes.data.hourlyRate?.toString() || '',
+              experienceLevel: profileRes.data.experienceLevel !== undefined && profileRes.data.experienceLevel !== null ? profileRes.data.experienceLevel : 0,
+              availability: profileRes.data.availability !== undefined && profileRes.data.availability !== null ? profileRes.data.availability : 0,
             }));
           }
         } else if (role === UserRole.Client) {
-          const res = await profileGetAPI.getClientProfile(user.id);
-          if (res.success && res.data) {
+          const [profileRes, sizesRes, indRes] = await Promise.all([
+            profileGetAPI.getClientProfile(user.id),
+            profileGetAPI.getCompanySizes(),
+            profileGetAPI.getIndustries()
+          ]);
+          if (sizesRes.success && sizesRes.data) {
+            setCompanySizes(sizesRes.data);
+          }
+          if (indRes.success && indRes.data) {
+            setIndustries(indRes.data);
+          }
+          if (profileRes.success && profileRes.data) {
             setFormData(prev => ({
               ...prev,
               name: user.full_name || '',
               email: user.email || '',
-              location: res.data.location || '',
-              companyName: res.data.companyName || '',
-              companyWebsite: res.data.companyWebsite || '',
-              companySize: res.data.companySize !== undefined && res.data.companySize !== null ? res.data.companySize : CompanySize.Solo,
-              industry: res.data.industry || '',
-              companyDescription: res.data.companyDescription || '',
+              location: profileRes.data.location || '',
+              companyName: profileRes.data.companyName || '',
+              companyWebsite: profileRes.data.companyWebsite || '',
+              companySize: profileRes.data.companySize !== undefined && profileRes.data.companySize !== null ? profileRes.data.companySize : CompanySize.Solo,
+              industry: profileRes.data.industry || '',
+              companyDescription: profileRes.data.companyDescription || '',
             }));
           }
         }
@@ -93,8 +121,8 @@ export default function SettingsScreen() {
           title: formData.title,
           bio: formData.bio,
           hourlyRate: parseFloat(formData.hourlyRate) || 0,
-          experienceLevel: 1, // default or map if UI is added
-          availability: 0, // default full time
+          experienceLevel: formData.experienceLevel,
+          availability: formData.availability,
           location: formData.location,
         });
 
@@ -243,6 +271,28 @@ export default function SettingsScreen() {
                                 onChange={e => setFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
                                 className="input-gb w-full px-4 py-3 text-sm" />
                             </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Experience Level</label>
+                              <select value={formData.experienceLevel}
+                                onChange={e => setFormData(prev => ({ ...prev, experienceLevel: parseInt(e.target.value) || 0 }))}
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                {experienceLevels.map(level => (
+                                  <option key={level.id} value={level.id}>{level.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Availability</label>
+                              <select value={formData.availability}
+                                onChange={e => setFormData(prev => ({ ...prev, availability: parseInt(e.target.value) || 0 }))}
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                {availabilityStatuses.map(status => (
+                                  <option key={status.id} value={status.id}>{status.name}</option>
+                                ))}
+                              </select>
+                            </div>
                           </>
                         )}
 
@@ -262,9 +312,15 @@ export default function SettingsScreen() {
                             </div>
                             <div>
                               <label className="text-xs font-medium text-primary mb-2 block">Industry</label>
-                              <input type="text" value={formData.industry}
+                              <select value={formData.industry}
                                 onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))}
-                                className="input-gb w-full px-4 py-3 text-sm" />
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                <option value="">Select an industry</option>
+                                {industries.map(ind => (
+                                  <option key={ind} value={ind}>{ind}</option>
+                                ))}
+                              </select>
                             </div>
                             <div>
                               <label className="text-xs font-medium text-primary mb-2 block">Company Size</label>
@@ -272,10 +328,9 @@ export default function SettingsScreen() {
                                 onChange={e => setFormData(prev => ({ ...prev, companySize: parseInt(e.target.value) || 0 }))}
                                 className="input-gb w-full px-4 py-3 text-sm bg-black"
                                 style={{ colorScheme: 'dark' }}>
-                                <option value={CompanySize.Solo}>Solo (1-9 employees)</option>
-                                <option value={CompanySize.Small}>Small (10-49 employees)</option>
-                                <option value={CompanySize.Medium}>Medium (50-249 employees)</option>
-                                <option value={CompanySize.Large}>Large (250+ employees)</option>
+                                {companySizes.map(size => (
+                                  <option key={size.id} value={size.id}>{size.name}</option>
+                                ))}
                               </select>
                             </div>
                           </>

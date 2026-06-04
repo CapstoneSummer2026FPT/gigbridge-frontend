@@ -17,4 +17,21 @@ export const profileGetAPI = {
   getAllFreelancers: async (filters?: { skills?: string[]; availabilityStatus?: string; minRating?: number }) => {
     return await apiService.get('Profile/freelancer', filters || {});
   },
+
+  getCompanySizes: async () => {
+    return await apiService.get<{ id: number; name: string }[]>('Profile/company-sizes');
+  },
+
+  getIndustries: async () => {
+    return await apiService.get<string[]>('Profile/industries');
+  },
+
+  getExperienceLevels: async () => {
+    return await apiService.get<{ id: number; name: string }[]>('Profile/experience-levels');
+  },
+
+  getAvailabilityStatuses: async () => {
+    return await apiService.get<{ id: number; name: string }[]>('Profile/availability-statuses');
+  },
 };
+
