@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle, Mail } from 'lucide-react';
 import { authAPI } from '../../../api/authAPI';
@@ -6,6 +6,14 @@ import { toast } from 'sonner';
 import '../styles/auth-screen.css';
 
 export default function ResetPasswordScreen() {
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as { email?: string; otp?: string } | null;
@@ -64,15 +72,23 @@ export default function ResetPasswordScreen() {
       });
 
       if (response.success) {
-        setSuccess(true);
+        if (isMounted.current) {
+          setSuccess(true);
+        }
         toast.success('Password reset successfully!');
       } else {
-        setError(response.message || 'Failed to reset password.');
+        if (isMounted.current) {
+          setError(response.message || 'Failed to reset password.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
+      if (isMounted.current) {
+        setError(err.message || 'An error occurred. Please try again.');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 

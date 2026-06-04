@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle, Lock } from 'lucide-react';
 import { authAPI } from '../../../api/authAPI';
@@ -6,6 +6,14 @@ import { toast } from 'sonner';
 import '../styles/auth-screen.css';
 
 export default function ForgotPasswordScreen() {
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -44,16 +52,24 @@ export default function ForgotPasswordScreen() {
       // Calls forgot-password API which now sends OTP after checking email existence
       const response = await authAPI.forgotPassword({ email });
       if (response.success) {
-        setSuccess('Verification code sent to your email.');
-        setCountdown(60);
+        if (isMounted.current) {
+          setSuccess('Verification code sent to your email.');
+          setCountdown(60);
+        }
         toast.success('Verification code sent successfully!');
       } else {
-        setError(response.message || 'Failed to send verification code.');
+        if (isMounted.current) {
+          setError(response.message || 'Failed to send verification code.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
+      if (isMounted.current) {
+        setError(err.message || 'An error occurred. Please try again.');
+      }
     } finally {
-      setIsSendingOtp(false);
+      if (isMounted.current) {
+        setIsSendingOtp(false);
+      }
     }
   };
 
@@ -74,16 +90,24 @@ export default function ForgotPasswordScreen() {
         otp: otpCode
       });
       if (response.success) {
-        setIsOtpVerified(true);
-        setSuccess('OTP verified successfully! You can now proceed to reset your password.');
+        if (isMounted.current) {
+          setIsOtpVerified(true);
+          setSuccess('OTP verified successfully! You can now proceed to reset your password.');
+        }
         toast.success('OTP verified successfully!');
       } else {
-        setError(response.message || 'Invalid or expired OTP code.');
+        if (isMounted.current) {
+          setError(response.message || 'Invalid or expired OTP code.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'Verification failed. Please try again.');
+      if (isMounted.current) {
+        setError(err.message || 'Verification failed. Please try again.');
+      }
     } finally {
-      setIsVerifyingOtp(false);
+      if (isMounted.current) {
+        setIsVerifyingOtp(false);
+      }
     }
   };
 

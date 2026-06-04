@@ -32,9 +32,15 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
+    const isAuthRequest = originalRequest?.url && (
+      originalRequest.url.includes('auth/login') ||
+      originalRequest.url.includes('auth/google') ||
+      originalRequest.url.includes('auth/register') ||
+      originalRequest.url.includes('auth/refresh')
+    );
 
     // Handle 401 - try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
 
       try {

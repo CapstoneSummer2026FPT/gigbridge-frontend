@@ -11,6 +11,14 @@ import '../styles/auth-screen.css';
 type SignupStep = 'role' | 'form';
 
 export default function SignupScreen() {
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const navigate = useNavigate();
   const [step, setStep] = useState<SignupStep>('role');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -101,9 +109,13 @@ export default function SignupScreen() {
       // Google Sign Up redirects new user directly to onboarding profile setup
       navigate('/onboarding/profile-setup');
     } catch (err: any) {
-      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      if (isMounted.current) {
+        setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      }
     } finally {
-      setIsGoogleLoading(false);
+      if (isMounted.current) {
+        setIsGoogleLoading(false);
+      }
     }
   };
 
@@ -111,7 +123,9 @@ export default function SignupScreen() {
     setGoogleError('');
     const currentRole = selectedRoleRef.current;
     if (currentRole === null) {
-      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      if (isMounted.current) {
+        setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      }
       return;
     }
     googleClient?.requestCode();
@@ -133,15 +147,23 @@ export default function SignupScreen() {
     try {
       const response = await authAPI.sendOtp({ email: formData.email });
       if (response.success) {
-        setSuccessMessage(response.message || 'Verification code sent successfully!');
-        setCountdown(60);
+        if (isMounted.current) {
+          setSuccessMessage(response.message || 'Verification code sent successfully!');
+          setCountdown(60);
+        }
       } else {
-        setError(response.message || 'Failed to send OTP.');
+        if (isMounted.current) {
+          setError(response.message || 'Failed to send OTP.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred while sending OTP.');
+      if (isMounted.current) {
+        setError(err.message || 'An error occurred while sending OTP.');
+      }
     } finally {
-      setIsSendingOtp(false);
+      if (isMounted.current) {
+        setIsSendingOtp(false);
+      }
     }
   };
 
@@ -161,15 +183,23 @@ export default function SignupScreen() {
       });
       
       if (response.success) {
-        setSuccessMessage(response.message || 'Email verified successfully!');
-        setIsOtpVerified(true);
+        if (isMounted.current) {
+          setSuccessMessage(response.message || 'Email verified successfully!');
+          setIsOtpVerified(true);
+        }
       } else {
-        setError(response.message || 'Invalid or expired verification code.');
+        if (isMounted.current) {
+          setError(response.message || 'Invalid or expired verification code.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred while verifying OTP.');
+      if (isMounted.current) {
+        setError(err.message || 'An error occurred while verifying OTP.');
+      }
     } finally {
-      setIsVerifyingOtp(false);
+      if (isMounted.current) {
+        setIsVerifyingOtp(false);
+      }
     }
   };
 
@@ -196,23 +226,31 @@ export default function SignupScreen() {
 
     try {
       if (selectedRole === null) {
-        setError('Please select a role');
-        setIsEmailLoading(false);
+        if (isMounted.current) {
+          setError('Please select a role');
+          setIsEmailLoading(false);
+        }
         return;
       }
 
       if (!isOtpVerified) {
-        setError('Please verify your email address first.');
-        setIsEmailLoading(false);
+        if (isMounted.current) {
+          setError('Please verify your email address first.');
+          setIsEmailLoading(false);
+        }
         return;
       }
 
       await signup(formData.email, formData.password, formData.fullName, selectedRole);
       navigate('/onboarding/profile-setup');
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      if (isMounted.current) {
+        setError(err.message || 'An error occurred');
+      }
     } finally {
-      setIsEmailLoading(false);
+      if (isMounted.current) {
+        setIsEmailLoading(false);
+      }
     }
   };
 
