@@ -405,24 +405,6 @@ export default function SettingsScreen() {
                   ))}
                   <button className="btn-cyan px-6 py-3 text-sm mt-2">Update Password</button>
                 </div>
-
-                <div className="mt-8 pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <h3 className="text-primary font-semibold mb-4">Two-Factor Authentication</h3>
-                  <div className="flex items-center justify-between p-4 rounded-xl"
-                    style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                    <div>
-                      <p className="text-primary font-medium text-sm">Authenticator App</p>
-                      <p className="text-xs mt-0.5 text-secondary">Extra security for your account</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="badge-green text-xs">Enabled</span>
-                      <div className="w-10 h-5 rounded-full relative cursor-pointer"
-                        style={{ background: '#22C55E' }}>
-                        <div className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 

@@ -45,6 +45,10 @@ apiClient.interceptors.response.use(
 
       try {
         const currentToken = localStorage.getItem('access_token');
+        if (!currentToken) {
+          console.warn('No access token found in localStorage. Skipping token refresh.');
+          return Promise.reject(error);
+        }
         
         // Don't send Authorization header for refresh request to avoid infinite loop
         const refreshResponse = await axios.post(

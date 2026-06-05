@@ -195,11 +195,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setRoleState(user.role);
       localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
       localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      
+      // Automatically log the user in after registration to acquire tokens
+      await login(email, password);
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
     }
-  }, []);
+  }, [login]);
 
   const googleLogin = useCallback(async (authCode: string, role?: UserRole, isFromSignIn?: boolean): Promise<UserRole> => {
     try {
