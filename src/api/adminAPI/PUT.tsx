@@ -1,5 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { FAQCategoryDto, FAQDto, UpdateFAQCategoryPayload, UpdateFAQPayload } from '../../types/models/FAQ';
 import type { AdminUserDto, UpdateUserPayload } from '../../types/models/User';
 
 const AdminV1 = '/v1/admin';
@@ -35,5 +36,13 @@ export const adminPutAPI = {
    */
   unbanUser: async (email: string): Promise<ApiResponse<AdminUserDto>> => {
     return adminPutAPI.updateUser(email, { isActive: true });
+  },
+
+  updateFAQ: async (id: number, payload: UpdateFAQPayload): Promise<ApiResponse<FAQDto>> => {
+    return apiService.put<FAQDto>(`/admin/faq/${id}`, payload);
+  },
+
+  updateFAQCategory: async (id: number, payload: UpdateFAQCategoryPayload): Promise<ApiResponse<FAQCategoryDto>> => {
+    return apiService.put<FAQCategoryDto>(`/admin/faq/categories/${id}`, payload);
   },
 };
