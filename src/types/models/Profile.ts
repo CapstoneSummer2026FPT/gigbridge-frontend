@@ -106,21 +106,21 @@ export interface UpdateFreelancerProfileDto {
 }
 
 export interface ClientProfileResponseDto {
-  id: string;
-  user_id: string;
-  company_name: string;
-  company_website?: string;
-  company_size: number;
+  clientProfilesId: string;
+  userId: string;
+  companyName: string;
+  companyWebsite?: string;
+  companySize: number;
   industry: string;
-  company_description?: string;
+  companyDescription?: string;
   location: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FreelancerProfileResponseDto {
-  id: string;
-  user_id: string;
+  freelancerProfilesId: string;
+  userId: string;
   title: string;
   bio: string;
   hourlyRate: number;
@@ -128,8 +128,8 @@ export interface FreelancerProfileResponseDto {
   availability: number;
   location: string;
   profileCompletionScore: number;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FreelancerProfile {

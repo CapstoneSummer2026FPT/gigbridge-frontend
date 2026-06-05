@@ -1,11 +1,14 @@
-import { useState } from 'react';
-import { User, Lock, CreditCard, Bell, Bot, Camera, Plus, X, Eye, EyeOff, Globe, Landmark } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Lock, CreditCard, Bell, Bot, Camera, Plus, X, Eye, EyeOff, Globe } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
-import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
 import { LanguageSwitcher } from '../../../shared/components/LanguageSwitcher';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { UserRole } from '../../../types/models/User';
+import { profileGetAPI } from '../../../api/profileAPI/GET';
+import { profilePutAPI } from '../../../api/profileAPI/PUT';
+import { CompanySize } from '../../../types/models/Profile';
+import { authPostAPI } from '../../../api/authAPI/POST';
 import {
   getStoredBillingConfig,
   saveStoredBillingConfig,
@@ -22,6 +25,18 @@ export default function SettingsScreen() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizeSuccess, setOptimizeSuccess] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>([]);
+  const [industries, setIndustries] = useState<string[]>([]);
+  const [experienceLevels, setExperienceLevels] = useState<{ id: number; name: string }[]>([]);
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<{ id: number; name: string }[]>([]);
   const [billingConfig, setBillingConfig] = useState<BillingEarningsConfig>(getStoredBillingConfig);
   const [billingError, setBillingError] = useState('');
   const [billingSaved, setBillingSaved] = useState(false);
@@ -31,18 +46,132 @@ export default function SettingsScreen() {
     : null;
 
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: user?.full_name || '',
     email: user?.email || '',
-    bio: profile?.bio || '',
-    hourlyRate: profile?.hourlyRate?.toString() || '',
-    location: profile?.location || '',
-    title: profile?.title || '',
+    location: '',
+    // Freelancer-specific fields
+    title: '',
+    bio: '',
+    hourlyRate: '',
+    experienceLevel: 0,
+    availability: 0,
+    // Client-specific fields
+    companyName: '',
+    companyWebsite: '',
+    companySize: CompanySize.Solo,
+    industry: '',
+    companyDescription: '',
   });
 
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!user) return;
+      setLoading(true);
+      setErrorMessage(null);
+      try {
+        if (role === UserRole.Freelancer) {
+          const [profileRes, expRes, availRes] = await Promise.all([
+            profileGetAPI.getMyFreelancerProfile(),
+            profileGetAPI.getExperienceLevels(),
+            profileGetAPI.getAvailabilityStatuses()
+          ]);
+          if (expRes.success && expRes.data) {
+            setExperienceLevels(expRes.data);
+          }
+          if (availRes.success && availRes.data) {
+            setAvailabilityStatuses(availRes.data);
+          }
+          if (profileRes.success && profileRes.data) {
+            setFormData(prev => ({
+              ...prev,
+              name: user.full_name || '',
+              email: user.email || '',
+              location: profileRes.data.location || '',
+              title: profileRes.data.title || '',
+              bio: profileRes.data.bio || '',
+              hourlyRate: profileRes.data.hourlyRate?.toString() || '',
+              experienceLevel: profileRes.data.experienceLevel !== undefined && profileRes.data.experienceLevel !== null ? profileRes.data.experienceLevel : 0,
+              availability: profileRes.data.availability !== undefined && profileRes.data.availability !== null ? profileRes.data.availability : 0,
+            }));
+          }
+        } else if (role === UserRole.Client) {
+          const [profileRes, sizesRes, indRes] = await Promise.all([
+            profileGetAPI.getClientProfile(user.id),
+            profileGetAPI.getCompanySizes(),
+            profileGetAPI.getIndustries()
+          ]);
+          if (sizesRes.success && sizesRes.data) {
+            setCompanySizes(sizesRes.data);
+          }
+          if (indRes.success && indRes.data) {
+            setIndustries(indRes.data);
+          }
+          if (profileRes.success && profileRes.data) {
+            setFormData(prev => ({
+              ...prev,
+              name: user.full_name || '',
+              email: user.email || '',
+              location: profileRes.data.location || '',
+              companyName: profileRes.data.companyName || '',
+              companyWebsite: profileRes.data.companyWebsite || '',
+              companySize: profileRes.data.companySize !== undefined && profileRes.data.companySize !== null ? profileRes.data.companySize : CompanySize.Solo,
+              industry: profileRes.data.industry || '',
+              companyDescription: profileRes.data.companyDescription || '',
+            }));
+          }
+        }
+      } catch (err: any) {
+        console.error('Error loading profile:', err);
+        // If 404, we don't treat it as a hard error because the profile might just not be created yet.
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfileData();
+  }, [user, role]);
+
   const handleSave = async () => {
-    await new Promise(r => setTimeout(r, 800));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(false);
+    setErrorMessage(null);
+    try {
+      if (role === UserRole.Freelancer) {
+        const res = await profilePutAPI.updateFreelancerProfile({
+          title: formData.title,
+          bio: formData.bio,
+          hourlyRate: parseFloat(formData.hourlyRate) || 0,
+          experienceLevel: formData.experienceLevel,
+          availability: formData.availability,
+          location: formData.location,
+        });
+
+        if (res.success) {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        } else {
+          setErrorMessage(res.message || 'Failed to update freelancer profile');
+        }
+      } else if (role === UserRole.Client) {
+        const res = await profilePutAPI.updateClientProfile({
+          CompanyName: formData.companyName,
+          CompanyWebsite: formData.companyWebsite,
+          CompanySize: formData.companySize,
+          Industry: formData.industry,
+          CompanyDescription: formData.companyDescription,
+          Location: formData.location,
+        });
+
+        if (res.success) {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        } else {
+          setErrorMessage(res.message || 'Failed to update client profile');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      setErrorMessage(err.message || 'An error occurred while saving.');
+    }
   };
 
   const handleAIOptimize = async () => {
@@ -57,6 +186,46 @@ export default function SettingsScreen() {
     setTimeout(() => setOptimizeSuccess(false), 3000);
   };
 
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setPasswordError('All fields are required');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const res = await authPostAPI.changePassword({
+        currentPassword,
+        newPassword
+      });
+
+      if (res.success) {
+        setPasswordSuccess(true);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      } else {
+        if (res.errors && typeof res.errors === 'object') {
+          const errorMsgs = Object.values(res.errors).flat().join(', ');
+          setPasswordError(errorMsgs || res.message || 'Failed to update password');
+        } else {
+          setPasswordError(res.message || 'Failed to update password');
+        }
+      }
+    } catch (err: any) {
+      setPasswordError(err.message || 'An error occurred while updating your password');
+    } finally {
+      setPasswordLoading(false);
+    }
   const handleBillingChange = (key: keyof BillingEarningsConfig, value: string | boolean) => {
     setBillingConfig(prev => ({ ...prev, [key]: value }));
     setBillingError('');
@@ -124,75 +293,181 @@ export default function SettingsScreen() {
                   <h2 className="text-primary font-semibold mb-5">Profile Photo</h2>
                   <div className="flex items-center gap-5">
                     <div className="relative">
-                      <img src={user?.avatar} alt={user?.name} className="w-20 h-20 rounded-2xl avatar-glow" />
+                      <img src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'} alt={user?.full_name} className="w-20 h-20 rounded-2xl avatar-glow" />
                       <button className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center"
                         style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
                         <Camera size={14} style={{ color: '#0A0F1C' }} />
                       </button>
                     </div>
                     <div>
-                      <p className="text-primary font-medium">{user?.name}</p>
-                      <p className="text-sm mt-0.5 capitalize text-secondary">{role} · {user?.email}</p>
-                      {user?.isVerified && (
+                      <p className="text-primary font-medium">{user?.full_name}</p>
+                      <p className="text-sm mt-0.5 capitalize text-secondary">{role === UserRole.Client ? 'Client' : 'Freelancer'} · {user?.email}</p>
+                      {user?.is_email_verified && (
                         <span className="badge-green text-xs mt-2 inline-block">✓ Verified</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Basic Info */}
-                <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-5">Basic Information</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { label: 'Full Name', key: 'name', type: 'text' },
-                      { label: 'Email Address', key: 'email', type: 'email' },
-                      { label: 'Location', key: 'location', type: 'text' },
-                      ...(role === 'freelancer' ? [
-                        { label: 'Professional Title', key: 'title', type: 'text' },
-                        { label: 'Hourly Rate ($)', key: 'hourlyRate', type: 'number' },
-                      ] : []),
-                    ].map(field => (
-                      <div key={field.key}>
-                        <label className="text-xs font-medium text-primary mb-2 block">{field.label}</label>
-                        <input type={field.type} value={(formData as any)[field.key]}
-                          onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                          className="input-gb w-full px-4 py-3 text-sm" />
+                {loading ? (
+                  <div className="glass-card p-6 flex flex-col items-center justify-center min-h-[200px]">
+                    <div className="w-8 h-8 rounded-full border-2 border-cyan border-t-transparent animate-spin mb-2" />
+                    <p className="text-sm text-secondary">Loading settings...</p>
+                  </div>
+                ) : (
+                  <>
+                    {errorMessage && (
+                      <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
+                        {errorMessage}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    )}
 
-                {/* Bio with AI Optimizer */}
-                {role === 'freelancer' && (
-                  <div className="glass-card p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-primary font-semibold">Professional Bio</h2>
-                      <button onClick={handleAIOptimize} disabled={isOptimizing}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all disabled:opacity-50"
-                        style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.15), rgba(159,75,255,0.15))', border: '1px solid rgba(0,240,255,0.3)', color: '#0077FF' }}>
-                        {isOptimizing ? (
-                          <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Optimizing...</>
-                        ) : optimizeSuccess ? (
-                          '✓ Bio Optimized!'
-                        ) : (
-                          <><Bot size={14} />AI Optimize Bio</>
+                    {/* Basic Info */}
+                    <div className="glass-card p-6">
+                      <h2 className="text-primary font-semibold mb-5">Basic Information</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs font-medium text-primary mb-2 block">Full Name</label>
+                          <input type="text" value={formData.name} readOnly disabled
+                            className="input-gb w-full px-4 py-3 text-sm opacity-60 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-primary mb-2 block">Email Address</label>
+                          <input type="email" value={formData.email} readOnly disabled
+                            className="input-gb w-full px-4 py-3 text-sm opacity-60 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-primary mb-2 block">Location</label>
+                          <input type="text" value={formData.location}
+                            onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                            className="input-gb w-full px-4 py-3 text-sm" />
+                        </div>
+
+                        {role === UserRole.Freelancer && (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Professional Title</label>
+                              <input type="text" value={formData.title}
+                                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Hourly Rate ($)</label>
+                              <input type="number" value={formData.hourlyRate}
+                                onChange={e => setFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Experience Level</label>
+                              <select value={formData.experienceLevel}
+                                onChange={e => setFormData(prev => ({ ...prev, experienceLevel: parseInt(e.target.value) || 0 }))}
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                {experienceLevels.map(level => (
+                                  <option key={level.id} value={level.id}>{level.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Availability</label>
+                              <select value={formData.availability}
+                                onChange={e => setFormData(prev => ({ ...prev, availability: parseInt(e.target.value) || 0 }))}
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                {availabilityStatuses.map(status => (
+                                  <option key={status.id} value={status.id}>{status.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </>
                         )}
-                      </button>
-                    </div>
-                    <textarea value={formData.bio}
-                      onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                      rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
-                    <p className="text-xs mt-2 text-secondary">
-                      {formData.bio.length} / 1000 characters · AI-optimized bios get 67% more profile views
-                    </p>
-                  </div>
-                )}
 
-                <button onClick={handleSave}
-                  className={`btn-cyan px-8 py-3 text-sm transition-all ${saved ? 'bg-green-500!' : ''}`}>
-                  {saved ? '✓ Saved!' : 'Save Changes'}
-                </button>
+                        {role === UserRole.Client && (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Company Name</label>
+                              <input type="text" value={formData.companyName}
+                                onChange={e => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Company Website</label>
+                              <input type="url" value={formData.companyWebsite}
+                                onChange={e => setFormData(prev => ({ ...prev, companyWebsite: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Industry</label>
+                              <select value={formData.industry}
+                                onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))}
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                <option value="">Select an industry</option>
+                                {industries.map(ind => (
+                                  <option key={ind} value={ind}>{ind}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-primary mb-2 block">Company Size</label>
+                              <select value={formData.companySize}
+                                onChange={e => setFormData(prev => ({ ...prev, companySize: parseInt(e.target.value) || 0 }))}
+                                className="input-gb w-full px-4 py-3 text-sm bg-black"
+                                style={{ colorScheme: 'dark' }}>
+                                {companySizes.map(size => (
+                                  <option key={size.id} value={size.id}>{size.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bio or Company Description */}
+                    {role === UserRole.Freelancer && (
+                      <div className="glass-card p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-primary font-semibold">Professional Bio</h2>
+                          <button onClick={handleAIOptimize} disabled={isOptimizing}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all disabled:opacity-50"
+                            style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.15), rgba(159,75,255,0.15))', border: '1px solid rgba(0,240,255,0.3)', color: '#0077FF' }}>
+                            {isOptimizing ? (
+                              <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Optimizing...</>
+                            ) : optimizeSuccess ? (
+                              '✓ Bio Optimized!'
+                            ) : (
+                              <><Bot size={14} />AI Optimize Bio</>
+                            )}
+                          </button>
+                        </div>
+                        <textarea value={formData.bio}
+                          onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                          rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
+                        <p className="text-xs mt-2 text-secondary">
+                          {formData.bio.length} / 1000 characters · AI-optimized bios get 67% more profile views
+                        </p>
+                      </div>
+                    )}
+
+                    {role === UserRole.Client && (
+                      <div className="glass-card p-6">
+                        <h2 className="text-primary font-semibold mb-4">Company Description</h2>
+                        <textarea value={formData.companyDescription}
+                          onChange={e => setFormData(prev => ({ ...prev, companyDescription: e.target.value }))}
+                          rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
+                        <p className="text-xs mt-2 text-secondary">
+                          {formData.companyDescription.length} / 1000 characters
+                        </p>
+                      </div>
+                    )}
+
+                    <button onClick={handleSave}
+                      className={`btn-cyan px-8 py-3 text-sm transition-all ${saved ? 'bg-green-500!' : ''}`}>
+                      {saved ? '✓ Saved!' : 'Save Changes'}
+                    </button>
+                  </>
+                )}
               </>
             )}
 
@@ -200,40 +475,97 @@ export default function SettingsScreen() {
             {tab === 'security' && (
               <div className="glass-card p-6">
                 <h2 className="text-primary font-semibold mb-6">Password & Security</h2>
-                <div className="space-y-4">
-                  {['Current Password', 'New Password', 'Confirm New Password'].map(label => (
-                    <div key={label}>
-                      <label className="text-xs font-medium text-primary mb-2 block">{label}</label>
-                      <div className="relative">
-                        <input type={showPassword ? 'text' : 'password'} placeholder="••••••••"
-                          className="input-gb w-full px-4 py-3 pr-11 text-sm" />
-                        <button onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary">
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
+                <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                  {passwordError && (
+                    <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
+                      {passwordError}
                     </div>
-                  ))}
-                  <button className="btn-cyan px-6 py-3 text-sm mt-2">Update Password</button>
-                </div>
+                  )}
 
-                <div className="mt-8 pt-6 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                  <h3 className="text-primary font-semibold mb-4">Two-Factor Authentication</h3>
-                  <div className="flex items-center justify-between p-4 rounded-xl"
-                    style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                    <div>
-                      <p className="text-primary font-medium text-sm">Authenticator App</p>
-                      <p className="text-xs mt-0.5 text-secondary">Extra security for your account</p>
+                  {passwordSuccess && (
+                    <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981' }}>
+                      Password updated successfully!
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="badge-green text-xs">Enabled</span>
-                      <div className="w-10 h-5 rounded-full relative cursor-pointer"
-                        style={{ background: '#22C55E' }}>
-                        <div className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white" />
-                      </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-medium text-primary mb-2 block">Current Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        className="input-gb w-full px-4 py-3 pr-11 text-sm"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                   </div>
-                </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-primary mb-2 block">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        className="input-gb w-full px-4 py-3 pr-11 text-sm"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-primary mb-2 block">Confirm New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={confirmNewPassword}
+                        onChange={e => setConfirmNewPassword(e.target.value)}
+                        className="input-gb w-full px-4 py-3 pr-11 text-sm"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    className="btn-cyan px-6 py-3 text-sm mt-2 flex items-center gap-2"
+                  >
+                    {passwordLoading ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Password'
+                    )}
+                  </button>
+                </form>
               </div>
             )}
 

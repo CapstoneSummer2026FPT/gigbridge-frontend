@@ -5,12 +5,21 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { authAPI } from '../../../api/authAPI';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 
 
 type SignupStep = 'role' | 'form';
 
 export default function SignupScreen() {
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const navigate = useNavigate();
   const [step, setStep] = useState<SignupStep>('role');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -101,9 +110,13 @@ export default function SignupScreen() {
       // Google Sign Up redirects new user directly to onboarding profile setup
       navigate('/onboarding/profile-setup');
     } catch (err: any) {
-      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      if (isMounted.current) {
+        setGoogleError(getErrorMessage(err));
+      }
     } finally {
-      setIsGoogleLoading(false);
+      if (isMounted.current) {
+        setIsGoogleLoading(false);
+      }
     }
   };
 
@@ -111,7 +124,9 @@ export default function SignupScreen() {
     setGoogleError('');
     const currentRole = selectedRoleRef.current;
     if (currentRole === null) {
-      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      if (isMounted.current) {
+        setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      }
       return;
     }
     googleClient?.requestCode();
@@ -133,15 +148,23 @@ export default function SignupScreen() {
     try {
       const response = await authAPI.sendOtp({ email: formData.email });
       if (response.success) {
-        setSuccessMessage(response.message || 'Verification code sent successfully!');
-        setCountdown(60);
+        if (isMounted.current) {
+          setSuccessMessage(response.message || 'Verification code sent successfully!');
+          setCountdown(60);
+        }
       } else {
-        setError(response.message || 'Failed to send OTP.');
+        if (isMounted.current) {
+          setError(getErrorMessage(response));
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred while sending OTP.');
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
     } finally {
-      setIsSendingOtp(false);
+      if (isMounted.current) {
+        setIsSendingOtp(false);
+      }
     }
   };
 
@@ -161,15 +184,23 @@ export default function SignupScreen() {
       });
       
       if (response.success) {
-        setSuccessMessage(response.message || 'Email verified successfully!');
-        setIsOtpVerified(true);
+        if (isMounted.current) {
+          setSuccessMessage(response.message || 'Email verified successfully!');
+          setIsOtpVerified(true);
+        }
       } else {
-        setError(response.message || 'Invalid or expired verification code.');
+        if (isMounted.current) {
+          setError(getErrorMessage(response));
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred while verifying OTP.');
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
     } finally {
-      setIsVerifyingOtp(false);
+      if (isMounted.current) {
+        setIsVerifyingOtp(false);
+      }
     }
   };
 
@@ -196,23 +227,31 @@ export default function SignupScreen() {
 
     try {
       if (selectedRole === null) {
-        setError('Please select a role');
-        setIsEmailLoading(false);
+        if (isMounted.current) {
+          setError('Please select a role');
+          setIsEmailLoading(false);
+        }
         return;
       }
 
       if (!isOtpVerified) {
-        setError('Please verify your email address first.');
-        setIsEmailLoading(false);
+        if (isMounted.current) {
+          setError('Please verify your email address first.');
+          setIsEmailLoading(false);
+        }
         return;
       }
 
       await signup(formData.email, formData.password, formData.fullName, selectedRole);
       navigate('/onboarding/profile-setup');
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
     } finally {
-      setIsEmailLoading(false);
+      if (isMounted.current) {
+        setIsEmailLoading(false);
+      }
     }
   };
 
@@ -374,7 +413,7 @@ export default function SignupScreen() {
               </button>
 
               {googleError && (
-                <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
+                <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left" style={{ whiteSpace: 'pre-line' }}>
                   <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
                   <span>
                     {googleError}
@@ -390,7 +429,7 @@ export default function SignupScreen() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                  <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+                  <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', whiteSpace: 'pre-line' }}>
                     {error}
                   </div>
                 )}
