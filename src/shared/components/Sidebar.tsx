@@ -112,6 +112,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
       icon: <Flag size={18} />,
       children: [
         { label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
+        { label: 'Contracts', icon: <FileText size={18} />, path: '/contracts' },
         { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
       ],
     },

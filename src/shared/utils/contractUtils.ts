@@ -1,4 +1,5 @@
-import type { ContractStatus, PaymentType, MilestoneStatus } from '../../types/models/Contract';
+import type { ContractStatus, PaymentType } from '../../types/models/Contract';
+import { MilestoneStatus } from '../../types/models/Contract';
 
 /**
  * Get human-readable status label for contract status enum

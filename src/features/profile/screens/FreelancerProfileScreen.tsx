@@ -1,12 +1,14 @@
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, CheckCircle, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, Video, X, MessageSquare } from 'lucide-react';
+import { Star, MapPin, CheckCircle, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, Video, X, MessageSquare, BriefcaseBusiness } from 'lucide-react';
 import { useState } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { DB } from '../../../mock_backend';
 import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
 import { MOCK_BROWSE_JOBS } from '../../jobs/mock/data-for-BrowseJobsScreen';
 import { getStoredReviews } from '../../reviews/mock/data-for-Reviews';
+import { InviteFreelancerToJobModal, type InviteFreelancerData } from '../components/InviteFreelancerToJobModal';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-screen.css';
 
@@ -34,12 +36,23 @@ export default function FreelancerProfileScreen() {
   // Bookmark functionality
   const [isSaved, setIsSaved] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showJobInviteModal, setShowJobInviteModal] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [sentInvites, setSentInvites] = useState<string[]>([]);
-  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open');
+  const [sentJobInvites, setSentJobInvites] = useState<string[]>([]);
+  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open').map(job => ({
+    id: job.id,
+    title: job.title,
+    status: job.status,
+  }));
+  
+  const isAlreadyInvitedToJob = (jobId: string): boolean => {
+    const inviteKey = `${targetId}_${jobId}`;
+    return sentJobInvites.includes(inviteKey);
+  };
   const profileReviews = getStoredReviews()
     .filter(review => review.revieweeId === targetId)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -81,6 +94,17 @@ export default function FreelancerProfileScreen() {
     setTimeout(() => setShowInviteModal(false), 1200);
   };
 
+  const handleSendJobInvite = async (data: InviteFreelancerData) => {
+    const inviteKey = `${data.freelancerId}_${data.jobId}`;
+    
+    if (sentJobInvites.includes(inviteKey)) {
+      throw new Error('This freelancer was already invited to this job.');
+    }
+
+    setSentJobInvites(prev => [...prev, inviteKey]);
+    // Could add API call here
+  };
+
   const mockSkills = ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'];
   const mockExperience = [
     { company: 'Tech Startup', title: 'Senior Developer', years: '2021-Present' },
@@ -119,6 +143,12 @@ export default function FreelancerProfileScreen() {
               <button onClick={() => navigate(`/messages?user=${user.id}`)} className="freelancer-profile-save-btn">
                 <MessageSquare size={20} />
                 <span>Message</span>
+              </button>
+            )}
+            {currentUser?.role === 0 && (
+              <button onClick={() => setShowJobInviteModal(true)} className="freelancer-profile-invite-job-btn">
+                <BriefcaseBusiness size={20} />
+                <span>Invite to Job</span>
               </button>
             )}
             {currentUser?.role === 0 && (
@@ -583,6 +613,19 @@ export default function FreelancerProfileScreen() {
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showJobInviteModal && (
+          <InviteFreelancerToJobModal
+            freelancerName={user.full_name}
+            freelancerId={targetId}
+            availableJobs={openClientJobs}
+            onClose={() => setShowJobInviteModal(false)}
+            onSubmit={handleSendJobInvite}
+            isAlreadyInvited={isAlreadyInvitedToJob}
+          />
+        )}
+      </AnimatePresence>
     </AppLayout>
   );
 }

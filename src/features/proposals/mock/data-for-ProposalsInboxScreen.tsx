@@ -55,7 +55,7 @@ export const MOCK_PROPOSALS: ProposalViewModel[] = [
     coverLetter: 'My proposal focuses on UX polish, reusable components, and fast delivery. I can provide wireframes first, then implement the full responsive frontend.',
     proposedRate: 4800,
     proposedDuration: '18',
-    status: 1,
+    status: 2,
     submittedAt: '2026-06-01T13:45:00Z',
     updatedAt: '2026-06-01T14:00:00Z',
     isAIGenerated: false,
