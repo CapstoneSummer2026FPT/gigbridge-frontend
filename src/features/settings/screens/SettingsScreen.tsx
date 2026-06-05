@@ -9,8 +9,13 @@ import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { profilePutAPI } from '../../../api/profileAPI/PUT';
 import { CompanySize } from '../../../types/models/Profile';
 import { authPostAPI } from '../../../api/authAPI/POST';
+import {
+  getStoredBillingConfig,
+  saveStoredBillingConfig,
+  type BillingEarningsConfig,
+} from '../mock/data-for-BillingsEarningsSettings';
 
-type SettingsTab = 'profile' | 'security' | 'payment' | 'notifications' | 'ai' | 'preferences';
+type SettingsTab = 'profile' | 'security' | 'payment' | 'billing' | 'notifications' | 'ai' | 'preferences';
 
 export default function SettingsScreen() {
   const { user, role } = useApp();
@@ -32,6 +37,13 @@ export default function SettingsScreen() {
   const [industries, setIndustries] = useState<string[]>([]);
   const [experienceLevels, setExperienceLevels] = useState<{ id: number; name: string }[]>([]);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<{ id: number; name: string }[]>([]);
+  const [billingConfig, setBillingConfig] = useState<BillingEarningsConfig>(getStoredBillingConfig);
+  const [billingError, setBillingError] = useState('');
+  const [billingSaved, setBillingSaved] = useState(false);
+
+  const profile = role === 'freelancer'
+    ? SEED_FREELANCER_PROFILES.find(p => p.userId === user?.id) || SEED_FREELANCER_PROFILES[0]
+    : null;
 
   const [formData, setFormData] = useState({
     name: user?.full_name || '',
@@ -214,12 +226,37 @@ export default function SettingsScreen() {
     } finally {
       setPasswordLoading(false);
     }
+  const handleBillingChange = (key: keyof BillingEarningsConfig, value: string | boolean) => {
+    setBillingConfig(prev => ({ ...prev, [key]: value }));
+    setBillingError('');
+    setBillingSaved(false);
+  };
+
+  const handleBillingSave = () => {
+    const bankAccountPattern = /^[0-9A-Za-z\s.-]{6,34}$/;
+    const validBank = billingConfig.bankName.trim().length >= 2
+      && billingConfig.bankAccountName.trim().length >= 2
+      && bankAccountPattern.test(billingConfig.bankAccountNumber.trim());
+    const validAddress = billingConfig.billingAddress.trim().length >= 1
+      && billingConfig.billingAddress.trim().length <= 255;
+
+    if (!validBank || !validAddress) {
+      setBillingError('MSG77: Please enter valid bank information');
+      setBillingSaved(false);
+      return;
+    }
+
+    saveStoredBillingConfig(billingConfig);
+    setBillingError('');
+    setBillingSaved(true);
+    window.setTimeout(() => setBillingSaved(false), 2200);
   };
 
   const TABS = [
     { id: 'profile', label: t('settings.general'), icon: <User size={16} /> },
     { id: 'security', label: t('settings.security'), icon: <Lock size={16} /> },
     { id: 'payment', label: 'Payment', icon: <CreditCard size={16} /> },
+    { id: 'billing', label: 'Billings & Earnings', icon: <Landmark size={16} /> },
     { id: 'notifications', label: t('settings.notifications'), icon: <Bell size={16} /> },
     { id: 'preferences', label: 'Preferences', icon: <Globe size={16} /> },
     { id: 'ai', label: 'AI Settings', icon: <Bot size={16} /> },
@@ -585,6 +622,72 @@ export default function SettingsScreen() {
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Billings & Earnings Tab */}
+            {tab === 'billing' && (
+              <div className="space-y-5">
+                {billingError && (
+                  <div className="alert-red text-sm font-semibold">{billingError}</div>
+                )}
+                {billingSaved && (
+                  <div className="alert-green text-sm font-semibold">Billing information saved for future invoices and withdrawals.</div>
+                )}
+
+                <div className="glass-card p-6">
+                  <h2 className="text-primary font-semibold mb-5">Bank Account Details</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-primary mb-2 block">Bank Name</label>
+                      <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.bankName}
+                        onChange={e => handleBillingChange('bankName', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-primary mb-2 block">Account Holder Name</label>
+                      <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.bankAccountName}
+                        onChange={e => handleBillingChange('bankAccountName', e.target.value)} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-medium text-primary mb-2 block">Bank Account Number</label>
+                      <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.bankAccountNumber}
+                        onChange={e => handleBillingChange('bankAccountNumber', e.target.value)}
+                        placeholder="6-34 letters or digits" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass-card p-6">
+                  <h2 className="text-primary font-semibold mb-5">Billing Address & VAT</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-medium text-primary mb-2 block">Billing Address</label>
+                      <textarea className="input-gb w-full px-4 py-3 text-sm resize-none" rows={3}
+                        maxLength={255}
+                        value={billingConfig.billingAddress}
+                        onChange={e => handleBillingChange('billingAddress', e.target.value)} />
+                      <p className="text-xs text-secondary mt-1">{billingConfig.billingAddress.length}/255 characters</p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-primary mb-2 block">Company Tax ID (optional)</label>
+                      <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.companyTaxId}
+                        onChange={e => handleBillingChange('companyTaxId', e.target.value)}
+                        placeholder="Required only for VAT invoices" />
+                    </div>
+                    <label className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary bg-secondary cursor-pointer">
+                      <div>
+                        <p className="text-sm font-semibold text-primary">Enable VAT invoice settings</p>
+                        <p className="text-xs text-secondary mt-1">Tax ID is required when VAT invoices are enabled.</p>
+                      </div>
+                      <input type="checkbox" checked={billingConfig.vatInvoiceEnabled}
+                        onChange={e => handleBillingChange('vatInvoiceEnabled', e.target.checked)} />
+                    </label>
+                  </div>
+                </div>
+
+                <button onClick={handleBillingSave} className="btn-cyan px-8 py-3 text-sm">
+                  Save Billings & Earnings
+                </button>
               </div>
             )}
 

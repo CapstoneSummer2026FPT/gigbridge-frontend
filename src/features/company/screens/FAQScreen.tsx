@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
+import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
 import { ArrowLeft, HelpCircle, ChevronDown, Search } from 'lucide-react';
+import {
+  FAQ_MANAGEMENT_ARTICLES,
+  FAQ_MANAGEMENT_CATEGORIES,
+} from '../../admin/mock/data-for-AdminFAQManagementScreen';
 
 const FAQ_CATEGORIES = {
   'Getting Started': [
@@ -100,6 +105,7 @@ const FAQ_CATEGORIES = {
 
 export default function FAQScreen() {
   const navigate = useNavigate();
+  const { saveScrollPosition } = useScrollRestoration();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -113,7 +119,25 @@ export default function FAQScreen() {
     setExpandedItems(newExpanded);
   };
 
-  const filteredFAQs = Object.entries(FAQ_CATEGORIES).reduce((acc, [category, questions]) => {
+  const publishedFAQCategories = FAQ_MANAGEMENT_CATEGORIES
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .reduce((acc, category) => {
+      const categoryArticles = FAQ_MANAGEMENT_ARTICLES
+        .filter(article => article.status === 'published' && article.categoryId === category.id)
+        .map(article => ({
+          question: article.title,
+          answer: article.content,
+        }));
+
+      if (categoryArticles.length > 0) {
+        acc[category.name] = categoryArticles;
+      }
+
+      return acc;
+    }, {} as Record<string, Array<{ question: string; answer: string }>>);
+
+  const filteredFAQs = Object.entries(publishedFAQCategories).reduce((acc, [category, questions]) => {
     const filtered = questions.filter(
       q =>
         searchQuery === '' ||
@@ -124,7 +148,7 @@ export default function FAQScreen() {
       acc[category] = filtered;
     }
     return acc;
-  }, {} as typeof FAQ_CATEGORIES);
+  }, {} as Record<string, Array<{ question: string; answer: string }>>);
 
   return (
     <GuestLayout>
@@ -132,7 +156,10 @@ export default function FAQScreen() {
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}
             className="btn-ghost-cyan px-4 py-2 mb-8 text-sm flex items-center gap-2"
           >
             <ArrowLeft size={16} />

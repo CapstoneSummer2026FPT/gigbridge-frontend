@@ -1,2 +1,2 @@
-// Job update APIs can be added here if needed
+// JobPostsController currently exposes no PUT endpoints.
 export const jobPutAPI = {};

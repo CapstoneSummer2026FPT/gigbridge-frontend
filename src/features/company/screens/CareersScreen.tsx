@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
+import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
 import { ArrowLeft, Briefcase, MapPin, Clock, DollarSign, Users, Code, Palette, BarChart2, Shield } from 'lucide-react';
 
 const JOB_OPENINGS = [
@@ -58,6 +59,7 @@ const BENEFITS = [
 
 export default function CareersScreen() {
   const navigate = useNavigate();
+  const { saveScrollPosition } = useScrollRestoration();
 
   return (
     <GuestLayout>
@@ -65,7 +67,10 @@ export default function CareersScreen() {
         <div className="max-w-6xl mx-auto">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}
             className="btn-ghost-cyan px-4 py-2 mb-8 text-sm flex items-center gap-2"
           >
             <ArrowLeft size={16} />

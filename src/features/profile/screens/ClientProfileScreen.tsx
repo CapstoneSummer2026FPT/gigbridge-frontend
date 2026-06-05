@@ -1,8 +1,12 @@
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, CheckCircle, Briefcase, DollarSign, Users, TrendingUp, Shield } from 'lucide-react';
+import { Star, MapPin, CheckCircle, Briefcase, DollarSign, Users, TrendingUp, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { DB, SEED_JOBS } from '../../../mock_backend';
+import { DB } from '../../../mock_backend';
 import { SEED_CLIENT_PROFILES } from '../../../mock_backend/database/seed';
+import { getStoredReviews } from '../../reviews/mock/data-for-Reviews';
+import '../../reviews/styles/reviews-screen.css';
+import '../styles/client-profile-screen.css';
 
 export default function ClientProfileScreen() {
   const { id } = useParams();
@@ -10,154 +14,308 @@ export default function ClientProfileScreen() {
 
   const targetId = id || 'u_client_1';
   const user = DB.getUserById(targetId) || DB.getUserById('u_client_1')!;
-  const profile = SEED_CLIENT_PROFILES.find(p => p.userId === targetId) || SEED_CLIENT_PROFILES[0];
+  const profile = SEED_CLIENT_PROFILES.find(p => p.user_id === targetId) || SEED_CLIENT_PROFILES[0];
   const jobs = DB.getJobsByClient(targetId);
 
-  const TRUST_BADGES = [
-    { label: 'Identity Verified', icon: <Shield size={14} />, color: '#22C55E' },
-    { label: 'Payment Verified', icon: <CheckCircle size={14} />, color: '#0077FF' },
-    { label: 'Top Client', icon: <Star size={14} />, color: '#F59E0B' },
-    { label: 'Repeat Hirer', icon: <Users size={14} />, color: '#9F4BFF' },
-  ];
+  // Mock trust score
+  const [trustScore] = useState(88);
+  const profileReviews = getStoredReviews()
+    .filter(review => review.revieweeId === targetId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const averageRating = profileReviews.length
+    ? profileReviews.reduce((sum, review) => sum + review.rating, 0) / profileReviews.length
+    : 0;
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto">
-        {/* Hero */}
-        <div className="glass-card overflow-hidden mb-6">
-          <div className="h-32 relative"
-            style={{ background: 'linear-gradient(135deg, rgba(159,75,255,0.15), rgba(0,240,255,0.1))' }}>
-            <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 400 128">
-              <circle cx="100" cy="64" r="60" fill="none" stroke="#9F4BFF" strokeWidth="0.5" />
-              <circle cx="300" cy="64" r="40" fill="none" stroke="#0077FF" strokeWidth="0.5" />
-              <line x1="0" y1="64" x2="400" y2="64" stroke="#8892A4" strokeWidth="0.3" />
-            </svg>
-          </div>
-          <div className="px-6 pb-6">
-            <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-10 mb-4">
-              <img src={user.avatar} alt={user.name}
-                className="w-24 h-24 rounded-2xl border-4" style={{ borderColor: '#0A0F1C' }} />
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-black text-primary">{user.name}</h1>
-                  {profile.isVerifiedClient && <CheckCircle size={18} className="text-cyan" />}
-                </div>
-                <p className="font-medium mb-1 text-secondary">{profile.companyName}</p>
-                <div className="flex flex-wrap gap-3">
-                  <p className="text-sm text-secondary">{profile.industry}</p>
-                  <div className="flex items-center gap-1 text-sm text-secondary">
-                    <MapPin size={12} /> {profile.location}
-                  </div>
-                  <span className="badge-cyan">Member since {profile.memberSince}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { label: 'Total Spent', value: `$${(profile.totalSpent / 1000).toFixed(0)}K+`, icon: <DollarSign size={14} />, color: '#22C55E' },
-                { label: 'Jobs Posted', value: profile.postedJobs, icon: <Briefcase size={14} />, color: '#0077FF' },
-                { label: 'Freelancers Hired', value: profile.hiredFreelancers, icon: <Users size={14} />, color: '#9F4BFF' },
-                { label: 'Avg Rating Given', value: `${profile.rating}/5`, icon: <Star size={14} />, color: '#F59E0B' },
-              ].map(stat => (
-                <div key={stat.label} className="p-3 rounded-xl text-center"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div className="flex justify-center mb-1" style={{ color: stat.color }}>{stat.icon}</div>
-                  <p className="text-lg font-black" style={{ color: stat.color }}>{stat.value}</p>
-                  <p className="text-xs text-secondary">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+      <div className="client-profile-wrapper">
+        {/* Header with Background */}
+        <div className="client-profile-header-bg">
+          <button onClick={() => navigate(-1)} className="client-profile-back-btn">
+            <ArrowLeft size={20} />
+          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button onClick={() => navigate(`/messages?user=${user.id}`)} className="client-profile-edit-btn">
+              <MessageSquare size={16} /> Message
+            </button>
+            <button onClick={() => navigate(`/profile/client/${user.id}/edit`)} className="client-profile-edit-btn">
+              Edit Profile
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main */}
-          <div className="lg:col-span-2 space-y-5">
-            {/* Bio */}
-            <div className="glass-card p-6">
-              <h2 className="text-primary font-semibold mb-3">About</h2>
-              <p className="text-sm leading-relaxed text-secondary">{profile.bio}</p>
-            </div>
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Profile Card */}
+          <div className="client-profile-card glass-card -mt-20 mb-8">
+            <div className="client-profile-card-content">
+              {/* Avatar */}
+              <div className="client-profile-avatar-container">
+                <img 
+                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop"
+                  alt={user.full_name}
+                  className="client-profile-avatar"
+                />
+                <div className="client-profile-badge-verified">
+                  <CheckCircle size={20} className="text-green" />
+                </div>
+              </div>
 
-            {/* Recent Job Postings */}
-            <div className="glass-card p-6">
-              <h2 className="text-primary font-semibold mb-4">Recent Job Postings</h2>
-              <div className="space-y-3">
-                {jobs.slice(0, 4).map(job => (
-                  <div key={job.id}
-                    className="p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                    onClick={() => navigate(`/jobs/${job.id}`)}>
-                    <div>
-                      <p className="text-primary text-sm font-medium mb-1">{job.title}</p>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-secondary">${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()}</span>
-                        <span className="text-xs text-secondary">{job.proposalCount} proposals</span>
-                        <span className={`badge-${job.status === 'open' ? 'green' : 'amber'} text-[10px]`}>{job.status}</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {job.skills.slice(0, 2).map(s => <span key={s} className="badge-cyan text-[10px]">{s}</span>)}
-                    </div>
+              {/* Info */}
+              <div className="client-profile-card-info">
+                <h1 className="client-profile-name">{user.full_name}</h1>
+                <p className="client-profile-company">{profile?.company_name || 'Company Name'}</p>
+                
+                <div className="client-profile-meta-info">
+                  <div className="client-profile-meta-item">
+                    <MapPin size={14} className="text-cyan" />
+                    <span>{profile?.location || 'Remote'}</span>
                   </div>
-                ))}
+                  <div className="client-profile-meta-item">
+                    <Globe size={14} className="text-cyan" />
+                    <span>{profile?.company_website || 'website.com'}</span>
+                  </div>
+                  <div className="client-profile-meta-item">
+                    <CheckCircle size={14} className="text-green" />
+                    <span>Payment Verified</span>
+                  </div>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="client-profile-quick-stats">
+                  <div className="client-profile-quick-stat">
+                    <p className="text-2xl font-black text-green">$50K+</p>
+                    <p className="text-xs text-secondary">Total Spent</p>
+                  </div>
+                  <div className="client-profile-quick-stat">
+                    <p className="text-2xl font-black text-cyan">12</p>
+                    <p className="text-xs text-secondary">Jobs Posted</p>
+                  </div>
+                  <div className="client-profile-quick-stat">
+                    <p className="text-2xl font-black text-purple">25</p>
+                    <p className="text-xs text-secondary">Hired</p>
+                  </div>
+                  <div className="client-profile-quick-stat">
+                    <p className="text-2xl font-black text-amber-400">4.8</p>
+                    <p className="text-xs text-secondary">Rating</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Industry & Member Since - Right Side */}
+              <div className="client-profile-info-right">
+                <div className="client-profile-info-item">
+                  <p className="text-xs text-secondary mb-1">Industry</p>
+                  <p className="font-semibold text-primary">{profile?.industry || 'Technology'}</p>
+                </div>
+                <div className="client-profile-info-item">
+                  <p className="text-xs text-secondary mb-1">Member Since</p>
+                  <p className="font-semibold text-primary">Jan 2024</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-5">
-            {/* Trust Score */}
-            <div className="glass-card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-primary font-semibold text-sm">Trust Score</h2>
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Left - Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* About Section */}
+              <div className="glass-card p-6">
+                <h2 className="text-lg font-bold text-primary mb-4">About</h2>
+                <p className="text-sm leading-relaxed text-secondary">
+                  {profile?.company_description || 'We are a growing tech startup focused on building innovative solutions. We work with talented developers and designers to create world-class products.'}
+                </p>
               </div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="relative">
-                  <svg viewBox="0 0 60 60" className="w-14 h-14">
-                    <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
-                    <circle cx="30" cy="30" r="24" fill="none" stroke="#22C55E" strokeWidth="4"
-                      strokeDasharray={`${(profile.trustScore / 100) * 150.8} 150.8`}
-                      strokeLinecap="round" transform="rotate(-90 30 30)" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary">{profile.trustScore}%</span>
+
+              {/* Active Jobs Section */}
+              <div className="glass-card p-6">
+                <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
+                  <Briefcase size={18} className="text-cyan" />
+                  Active Jobs
+                </h2>
+                <div className="space-y-3">
+                  {jobs.slice(0, 5).map(job => (
+                    <div 
+                      key={job.id}
+                      className="client-profile-job-card"
+                      onClick={() => navigate(`/jobs/${job.id}`)}>
+                      <div className="flex-1">
+                        <p className="font-semibold text-primary text-sm">{job.title}</p>
+                        <p className="text-xs text-secondary mt-1">{job.description?.substring(0, 100)}...</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-xs text-cyan">${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()}</span>
+                          <span className={`text-xs badge-${job.status === 'open' ? 'green' : 'amber'}`}>{job.status}</span>
+                          <span className="text-xs text-secondary">{job.proposalCount} proposals</span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <TrendingUp size={16} className="text-cyan" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trust Badges Section */}
+              <div className="glass-card p-6">
+                <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
+                  <Shield size={18} className="text-cyan" />
+                  Trust & Verification
+                </h2>
+                <div className="client-profile-badges-grid">
+                  {[
+                    { label: 'Identity Verified', color: '#22C55E', icon: <CheckCircle size={16} /> },
+                    { label: 'Payment Verified', color: '#0077FF', icon: <DollarSign size={16} /> },
+                    { label: 'Top Client', color: '#F59E0B', icon: <Star size={16} /> },
+                    { label: 'Repeat Hirer', color: '#9F4BFF', icon: <Users size={16} /> },
+                  ].map(badge => (
+                    <div key={badge.label} className="client-profile-badge" style={{ borderColor: `${badge.color}33` }}>
+                      <div style={{ color: badge.color }}>{badge.icon}</div>
+                      <span className="text-xs font-medium text-primary">{badge.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="profile-reviews-card">
+                <h2>Reviews</h2>
+                <div className="profile-review-summary">
+                  <div className="profile-review-score">{averageRating.toFixed(1)}</div>
+                  <div>
+                    {[5, 4, 3, 2, 1].map(star => {
+                      const count = profileReviews.filter(review => review.rating === star).length;
+                      return (
+                        <div key={star} className="profile-rating-bar">
+                          <span>{star}★</span>
+                          <div><i style={{ width: `${profileReviews.length ? (count / profileReviews.length) * 100 : 0}%` }} /></div>
+                          <span>{count}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <div>
-                  <p className="text-primary text-sm font-semibold">Excellent</p>
-                  <p className="text-xs text-green">Top 10% Client</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} size={12} fill={i < Math.floor(profile.rating) ? '#F59E0B' : 'none'} className="text-amber" />
+                {profileReviews.map(review => (
+                  <div key={review.id} className="profile-review-item">
+                    <strong>{review.isAnonymous ? 'Anonymous User' : review.reviewerName}</strong>
+                    <div className="profile-review-stars">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                    <p>{review.comment}</p>
+                  </div>
                 ))}
-                <span className="text-xs text-primary ml-1">{profile.rating}</span>
-                <span className="text-xs ml-1 text-secondary">({profile.reviewCount})</span>
+                <button
+                  className="review-submit"
+                  onClick={() => navigate(`/reviews/create?contract=contract_3&reviewee=${targetId}`)}
+                >
+                  Leave Review
+                </button>
               </div>
             </div>
 
-            {/* Trust Badges */}
-            <div className="glass-card p-5">
-              <h2 className="text-primary font-semibold mb-4 text-sm">Verified Badges</h2>
-              <div className="space-y-2">
-                {TRUST_BADGES.map(badge => (
-                  <div key={badge.label} className="flex items-center gap-2 p-2 rounded-lg"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <span style={{ color: badge.color }}>{badge.icon}</span>
-                    <span className="text-sm text-primary">{badge.label}</span>
-                    <CheckCircle size={12} className="ml-auto" style={{ color: badge.color }} />
+            {/* Right - Sidebar */}
+            <div className="space-y-6">
+              {/* Trust Score Card */}
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold text-primary mb-4 flex items-center gap-2">
+                  <Shield size={16} className="text-cyan" />
+                  Trust Score
+                </h3>
+                <div className="client-profile-trust-score-display-sidebar">
+                  <div className="client-profile-trust-score-circle-sidebar">
+                    <svg viewBox="0 0 100 100" className="client-profile-trust-score-ring">
+                      <circle cx="50" cy="50" r="45" className="client-profile-trust-score-bg" />
+                      <circle 
+                        cx="50" 
+                        cy="50" 
+                        r="45" 
+                        className="client-profile-trust-score-fill"
+                        style={{ 
+                          strokeDashoffset: `${283 - (283 * trustScore) / 100}`
+                        }}
+                      />
+                    </svg>
+                    <span className="client-profile-trust-score-text-sidebar">{trustScore}</span>
                   </div>
-                ))}
+                  <div className="client-profile-trust-score-info-sidebar">
+                    <p className="text-xs text-secondary mb-2 text-center">Calculated from:</p>
+                    <ul className="text-xs space-y-1">
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-cyan flex-shrink-0" /><span>Payment history</span></li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-green flex-shrink-0" /><span>Freelancer ratings</span></li>
+                      <li className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-purple flex-shrink-0" /><span>Verification</span></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Company Stats Card */}
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold text-primary mb-4">Company Stats</h3>
+                <div className="space-y-4">
+                  <div className="client-profile-stat-row">
+                    <span className="text-xs text-secondary">Total Spent</span>
+                    <span className="font-bold text-green">$50K+</span>
+                  </div>
+                  <div className="client-profile-stat-row">
+                    <span className="text-xs text-secondary">Active Jobs</span>
+                    <span className="font-bold text-cyan">{jobs.length}</span>
+                  </div>
+                  <div className="client-profile-stat-row">
+                    <span className="text-xs text-secondary">Hire Rate</span>
+                    <span className="font-bold text-green">82%</span>
+                  </div>
+                  <div className="client-profile-stat-row">
+                    <span className="text-xs text-secondary">Avg Rating</span>
+                    <span className="font-bold text-amber-400">4.8/5</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Card */}
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold text-primary mb-4">Contact Info</h3>
+                <div className="space-y-3">
+                  <div className="client-profile-contact-row">
+                    <Mail size={14} className="text-cyan" />
+                    <span className="text-xs text-secondary">{user.email}</span>
+                  </div>
+                  <div className="client-profile-contact-row">
+                    <Phone size={14} className="text-cyan" />
+                    <span className="text-xs text-secondary">{user.phone_number || '+1 (555) 123-4567'}</span>
+                  </div>
+                  <div className="client-profile-contact-row">
+                    <MapPin size={14} className="text-cyan" />
+                    <span className="text-xs text-secondary">{profile?.location || 'Remote'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ratings Card */}
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold text-primary mb-4">Client Ratings</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={14} fill="#F59E0B" className="text-amber-400" />
+                  ))}
+                </div>
+                <p className="text-lg font-bold text-primary">4.8/5</p>
+                <p className="text-xs text-secondary mt-1">Based on 24 reviews</p>
+              </div>
+
+              {/* Company Size Card */}
+              <div className="glass-card p-6">
+                <h3 className="text-sm font-bold text-primary mb-4">Company Info</h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-secondary mb-1">Company Size</p>
+                    <p className="text-sm font-semibold text-primary">Small Team (10-50)</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-secondary mb-1">Website</p>
+                    <p className="text-sm font-semibold text-cyan underline cursor-pointer">
+                      {profile?.company_website || 'website.com'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <button className="btn-cyan w-full py-3 text-sm" onClick={() => navigate('/jobs/post')}>
-              Work With This Client
-            </button>
           </div>
         </div>
       </div>

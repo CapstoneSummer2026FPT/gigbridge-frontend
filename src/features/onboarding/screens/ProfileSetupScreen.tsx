@@ -4,6 +4,8 @@ import { ChevronRight, Building, MapPin, Globe, Briefcase, DollarSign, Award, Sp
 import { useApp } from '../../../app/providers/AppProvider';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { profilePutAPI, profileGetAPI } from '../../../api/profileAPI';
+import { profilePutAPI } from '../../../api/profileAPI';
+import { UserRole } from '../../../types/models/User';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../../types/models/Profile';
 import '../styles/profile-setup-screen.css';
 
@@ -155,6 +157,10 @@ export default function ProfileSetupScreen() {
       return freelancerData.location && freelancerData.bio;
     }
   };
+
+  if (role === UserRole.Admin) {
+    return null;
+  }
 
   return (
     <GuestLayout>

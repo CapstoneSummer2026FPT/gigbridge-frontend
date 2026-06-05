@@ -1,25 +1,74 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, DollarSign, Users, FileText, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { DB } from '../../../mock_backend';
-import type { Job } from '../../../mock_backend/types/legacy';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import type { Job, JobPostSummaryDto } from '../../../types/models/Job';
 import '../styles/admin-users-screen.css';
 
 type JobFilter = 'all' | 'draft' | 'open' | 'in_progress' | 'closed';
 type JobSort = 'posted' | 'title' | 'budget';
+
+const experienceLevelMap: Record<number, Job['experienceLevel']> = {
+  0: 'entry',
+  1: 'intermediate',
+  2: 'expert',
+};
+
+const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
+  id: job.jobPostsId,
+  clientId: '',
+  title: job.title,
+  description: job.descriptionPreview,
+  category: 'Uncategorized',
+  skills: job.skillNames || [],
+  budgetMin: job.budgetMin ?? 0,
+  budgetMax: job.budgetMax ?? 0,
+  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
+  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
+  status: 'open',
+  proposalCount: 0,
+  viewCount: 0,
+  postedAt: job.createdAt,
+  isRemote: job.locationType == null || job.locationType === 0,
+  gigcoin_cost: 0,
+});
 
 export default function AdminJobsScreen() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<JobFilter>('all');
   const [sortBy, setSortBy] = useState<JobSort>('posted');
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(true);
+  const [jobsError, setJobsError] = useState<string | null>(null);
   const [previewJob, setPreviewJob] = useState<Job | null>(null);
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{type: 'lock' | 'unlock', job: Job} | null>(null);
   const [lockedJobs, setLockedJobs] = useState<Set<string>>(new Set());
 
-  const allJobs = DB.getJobs();
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setIsLoadingJobs(true);
+      setJobsError(null);
+
+      const response = await jobGetAPI.getAllJobPosts({
+        PageIndex: 1,
+        PageSize: 200,
+      });
+
+      if (response.success && response.data) {
+        setAllJobs(response.data.map(mapJobPostSummaryToJob));
+      } else {
+        setAllJobs([]);
+        setJobsError(response.message || 'Failed to load jobs');
+      }
+
+      setIsLoadingJobs(false);
+    };
+
+    fetchJobs();
+  }, []);
 
   // Filter and sort jobs
   const filteredJobs = useMemo(() => {
@@ -85,8 +134,7 @@ export default function AdminJobsScreen() {
   };
 
   const getClientName = (clientId: string) => {
-    const user = DB.getUserById(clientId);
-    return user?.full_name || 'Unknown Client';
+    return clientId || 'Unknown Client';
   };
 
   return (
@@ -198,9 +246,22 @@ export default function AdminJobsScreen() {
           {/* Results count */}
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs sm:text-sm text-secondary">
-              Showing <span className="text-primary font-semibold">{filteredJobs.length}</span> of <span className="text-primary font-semibold">{allJobs.length}</span> jobs
+              {isLoadingJobs ? (
+                <span>Loading jobs...</span>
+              ) : (
+                <>
+                  Showing <span className="text-primary font-semibold">{filteredJobs.length}</span> of <span className="text-primary font-semibold">{allJobs.length}</span> jobs
+                </>
+              )}
             </p>
           </div>
+
+          {jobsError && (
+            <div className="glass-card p-4 mb-6 flex items-center gap-3 border border-red/30">
+              <AlertCircle size={18} className="text-red flex-shrink-0" />
+              <p className="text-sm text-secondary">{jobsError}</p>
+            </div>
+          )}
 
           {/* Jobs Table - Desktop */}
           <div className="glass-card overflow-hidden hidden xl:block">

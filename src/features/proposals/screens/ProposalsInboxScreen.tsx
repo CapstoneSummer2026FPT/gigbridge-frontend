@@ -1,296 +1,444 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { Bot, Star, DollarSign, Clock, CheckCircle, XCircle, ChevronRight, Filter, Users } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { BarChart2, X, Users } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
-import type { Proposal } from '../../../types/models/Job';
+import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import { ProposalCard, ProposalDetailModal, CreateContractModal, type ContractData, ProposalToolbar, PaginationToolbar, FreelancerProposalView, ClientProposalSidebar } from '../components';
+import type { JobProposalGroup, ProposalDetailMode, ProposalStatusValue, ProposalStatusFilter, ProposalSortBy } from '../types';
+import { getStatusLabel } from '../utils/statusHelpers';
 import '../styles/proposals-inbox-screen.css';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'amber', shortlisted: 'cyan', accepted: 'green', rejected: 'red', withdrawn: 'gray',
-};
-
-const AI_TOP_TALENT = [
-  { name: 'Alex Johnson', title: 'Senior React Dev', match: 96, avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=alex&backgroundColor=c0aede', bid: '$6,500', rate: 4.9 },
-  { name: 'Sarah Chen', title: 'UI/UX Designer', match: 98, avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=sarah&backgroundColor=d1d4f9', bid: '$4,800', rate: 5.0 },
-  { name: 'Marcus Rivera', title: 'Data Scientist', match: 79, avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=marcus&backgroundColor=ffd5dc', bid: '$8,200', rate: 4.7 },
-  { name: 'David Kim', title: 'DevOps Engineer', match: 85, avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=david&backgroundColor=b6e3f4', bid: '$5,100', rate: 4.8 },
-  { name: 'Priya Patel', title: 'ML Engineer', match: 91, avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=priya&backgroundColor=ffdfbf', bid: '$7,800', rate: 4.9 },
-];
-
 export default function ProposalsInboxScreen() {
-  const navigate = useNavigate();
   const { user, role } = useApp();
-  const [filter, setFilter] = useState('all');
-  const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
-  const [proposals, setProposals] = useState<any[]>([]);
+  const [proposals, setProposals] = useState<ProposalViewModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [managingJob, setManagingJob] = useState<JobProposalGroup | null>(null);
+  const [proposalStatusFilter, setProposalStatusFilter] = useState<ProposalStatusFilter>('all');
+  const [proposalSortBy, setProposalSortBy] = useState<ProposalSortBy>('interviewScore');
+  const [proposalDetail, setProposalDetail] = useState<{ proposal: ProposalViewModel; mode: ProposalDetailMode } | null>(null);
+  const [createContractProposal, setCreateContractProposal] = useState<ProposalViewModel | null>(null);
+  const [isPremiumFreelancer] = useState(true);
+  const [tokenBalance, setTokenBalance] = useState(120);
+  const [boostAmount, setBoostAmount] = useState(10);
+  const [boostError, setBoostError] = useState('');
+  const [boostSuccess, setBoostSuccess] = useState('');
+  const [competitionJob, setCompetitionJob] = useState<JobProposalGroup | null>(null);
+  const [competitionError, setCompetitionError] = useState('');
+  const [jobMenuOpen, setJobMenuOpen] = useState<string | null>(null);
+  const [proposalsPerPage, setProposalsPerPage] = useState(10);
+  const [currentProposalPage, setCurrentProposalPage] = useState(1);
+  const [showToolbars, setShowToolbars] = useState(true);
+  const proposalCardsRef = useRef<HTMLDivElement>(null);
+  const lastScrollYRef = useRef(0);
 
-  const isClient = role === 'client';
+  const isClient = role === 0;
 
-  // Fetch proposals from API
+  // Fetch proposals
   useEffect(() => {
     const fetchProposals = async () => {
       if (!user) return;
-      
+
       try {
         setLoading(true);
-        const filters = isClient 
-          ? { clientId: user.id }
-          : { freelancerId: user.id };
-        const data = await proposalGetAPI.getProposals(filters);
-        setProposals(data);
+        const response = isClient
+          ? await proposalGetAPI.getAllProposals()
+          : await proposalGetAPI.getMyProposals();
+        setProposals(response.data?.length ? response.data.map((proposal, index) => ({
+          ...proposal,
+          updatedAt: proposal.reviewedAt || proposal.submittedAt,
+          isAIGenerated: index % 2 === 0,
+          interviewScore: Math.max(58, 96 - index * 7),
+          rankingScore: Math.max(58, 96 - index * 7),
+          boostedTokenAmount: 0,
+          attachments: [
+            {
+              propoAttach_ProposalAttachmentsId: `api_attach_${proposal.proposalsId}`,
+              propo_ProposalsId: proposal.proposalsId,
+              fileName: `${proposal.freelancerName || 'Freelancer'}_CV.pdf`,
+              fileUrl: '#',
+              fileSize: 700000 + index * 42000,
+              createdAt: proposal.submittedAt,
+            },
+          ],
+        })) : MOCK_PROPOSALS);
       } catch (error) {
         console.error('Failed to fetch proposals:', error);
+        setProposals(MOCK_PROPOSALS);
       } finally {
         setLoading(false);
       }
     };
+
     fetchProposals();
   }, [user, isClient]);
 
-  const filteredProposals = filter === 'all' 
-    ? proposals 
-    : proposals.filter(p => p.status === filter);
+  // Scroll detection for showing/hiding toolbars
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLDivElement;
+      if (!target) return;
 
-  const updateProposalStatus = async (proposalId: string, status: string) => {
+      const currentScrollY = target.scrollTop;
+      const scrollDelta = currentScrollY - lastScrollYRef.current;
+
+      if (scrollDelta < -5) {
+        setShowToolbars(true);
+      } else if (scrollDelta > 5) {
+        setShowToolbars(false);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    const element = proposalCardsRef.current;
+    if (element) {
+      element.addEventListener('scroll', handleScroll, { passive: true });
+      return () => element.removeEventListener('scroll', handleScroll);
+    }
+  }, [managingJob]);
+
+  // Group proposals by job
+  const jobGroups = useMemo<JobProposalGroup[]>(() => {
+    const groups = new Map<string, JobProposalGroup>();
+
+    proposals.forEach(proposal => {
+      const id = proposal.jobPostsId || 'unknown-job';
+      const current = groups.get(id);
+
+      if (current) {
+        current.proposals.push(proposal);
+        return;
+      }
+
+      groups.set(id, {
+        jobPostsId: id,
+        jobTitle: proposal.jobTitle || 'Untitled JobPost',
+        proposals: [proposal],
+      });
+    });
+
+    return Array.from(groups.values()).sort((a, b) => b.proposals.length - a.proposals.length);
+  }, [proposals]);
+
+  // Update proposal status
+  const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     try {
-      await proposalPutAPI.updateProposalStatus(proposalId, status);
-      setProposals(prev => 
-        prev.map(p => p.id === proposalId ? { ...p, status } : p)
+      await proposalPutAPI.updateProposalStatus(proposalId, String(status));
+      setProposals(prev =>
+        prev.map(proposal =>
+          proposal.proposalsId === proposalId
+            ? { ...proposal, status, reviewedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+            : proposal
+        )
       );
     } catch (error) {
       console.error('Failed to update proposal status:', error);
     }
   };
 
-  const getFreelancer = (id: string) => DB.getUserById(id);
-  const getJob = (id: string) => SEED_JOBS.find(j => j.id === id);
+  // Filter and sort managing proposals
+  const visibleManagingProposals = useMemo(() => {
+    const items = managingJob?.proposals || [];
+    const filtered = proposalStatusFilter === 'all'
+      ? items
+      : items.filter(proposal => String(proposal.status) === proposalStatusFilter);
+
+    return [...filtered].sort((a, b) => {
+      if ((a.boostedTokenAmount || 0) !== (b.boostedTokenAmount || 0)) return (b.boostedTokenAmount || 0) - (a.boostedTokenAmount || 0);
+      if (proposalSortBy === 'interviewScore') return (b.interviewScore || 0) - (a.interviewScore || 0);
+      if (proposalSortBy === 'status') return Number(a.status) - Number(b.status);
+      if (proposalSortBy === 'rate') return (b.proposedRate || 0) - (a.proposedRate || 0);
+      return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
+    });
+  }, [managingJob, proposalSortBy, proposalStatusFilter]);
+
+  // Paginate proposals
+  const paginatedProposals = useMemo(() => {
+    const start = (currentProposalPage - 1) * proposalsPerPage;
+    const end = start + proposalsPerPage;
+    return visibleManagingProposals.slice(start, end);
+  }, [visibleManagingProposals, currentProposalPage, proposalsPerPage]);
+
+  const totalProposalPages = Math.ceil(visibleManagingProposals.length / proposalsPerPage);
+
+  const handleProposalsPerPageChange = (newValue: number) => {
+    setProposalsPerPage(newValue);
+    setCurrentProposalPage(1);
+  };
+
+  // Boost proposal logic
+  const boostProposal = (proposal: ProposalViewModel) => {
+    setBoostError('');
+    setBoostSuccess('');
+
+    if (!isPremiumFreelancer) {
+      setBoostError('MSG45: This feature requires a Premium subscription');
+      return;
+    }
+
+    if (getStatusLabel(proposal.status) !== 'Pending') {
+      setBoostError('Only pending proposals can be boosted.');
+      return;
+    }
+
+    if (tokenBalance < boostAmount) {
+      setBoostError('MSG46: Insufficient balance. Please top up your wallet.');
+      return;
+    }
+
+    setTokenBalance(prev => prev - boostAmount);
+    setProposals(prev => prev.map(item => item.proposalsId === proposal.proposalsId
+      ? {
+          ...item,
+          boostedTokenAmount: (item.boostedTokenAmount || 0) + boostAmount,
+          rankingScore: (item.rankingScore || item.interviewScore || 0) + boostAmount,
+          updatedAt: new Date().toISOString(),
+        }
+      : item
+    ));
+    setBoostSuccess(`Boost successful. ${boostAmount} tokens deducted and ranking score increased.`);
+  };
+
+  // Competition matrix logic
+  const openCompetitionMatrix = (job: JobProposalGroup) => {
+    setCompetitionError('');
+
+    if (!isPremiumFreelancer) {
+      setCompetitionError('MSG45: This feature requires a Premium subscription');
+      return;
+    }
+
+    if (job.proposals.length < 3) {
+      setCompetitionError('MSG74: Not enough data for analysis (minimum 3 proposals required)');
+      return;
+    }
+
+    setCompetitionJob(job);
+  };
+
+  const competitionStats = useMemo(() => {
+    if (!competitionJob) return null;
+    const rates = competitionJob.proposals.map(proposal => proposal.proposedRate || 0);
+    const scores = competitionJob.proposals.map(proposal => proposal.interviewScore || 0);
+    return {
+      minBid: Math.min(...rates),
+      avgBid: Math.round(rates.reduce((sum, rate) => sum + rate, 0) / rates.length),
+      maxBid: Math.max(...rates),
+      proposalCount: competitionJob.proposals.length,
+      highScore: scores.filter(score => score >= 85).length,
+      midScore: scores.filter(score => score >= 70 && score < 85).length,
+      lowScore: scores.filter(score => score < 70).length,
+    };
+  }, [competitionJob]);
+
+  // Event handlers
+  const handleViewDetail = (proposal: ProposalViewModel, mode: ProposalDetailMode) => {
+    setProposalDetail({ proposal, mode });
+  };
+
+  const handleAccept = (proposalId: string) => {
+    updateProposalStatus(proposalId, 2);
+  };
+
+  const handleReject = (proposalId: string) => {
+    updateProposalStatus(proposalId, 3);
+  };
+
+  const handleCreateContract = (proposal: ProposalViewModel) => {
+    setCreateContractProposal(proposal);
+  };
+
+  const handleContractSubmit = async (contractData: ContractData) => {
+    console.log('Creating contract:', contractData);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  };
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+      <div className="proposals-page">
+        <div className="proposals-header">
           <div>
-            <h1 className="text-3xl font-black text-primary mb-1">
-              {isClient ? 'Proposals Inbox' : 'My Proposals'}
-            </h1>
-            <p className="text-secondary">
-              {isClient ? `${proposals.filter(p => p.status === 'pending').length} new proposals awaiting review` : `${proposals.length} proposals submitted`}
+            <h1>Proposal Management</h1>
+            <p>
+              {isClient
+                ? 'Review proposals grouped by JobPost.'
+                : 'Track proposals grouped by the jobs you applied to.'}
             </p>
           </div>
-          {isClient && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-              style={{ background: 'rgba(159,75,255,0.08)', border: '1px solid rgba(159,75,255,0.2)', color: '#9F4BFF' }}>
-              <Bot size={14} />
-              AI Ranked by Match Score
-            </div>
-          )}
         </div>
 
-        {/* AI Smart Talent Section (Clients only) */}
-        {isClient && (
-          <div className="glass-card p-6 mb-6"
-            style={{ background: 'linear-gradient(135deg, rgba(159,75,255,0.06), rgba(0,240,255,0.04))', border: '1px solid rgba(159,75,255,0.2)' }}>
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center animate-orb"
-                style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-                <Bot size={14} style={{ color: '#0A0F1C' }} />
-              </div>
-              <h2 className="text-primary font-semibold">AI Smart Talent Matching</h2>
-              <span className="badge-purple text-xs ml-auto">Top 5 Matches</span>
+        {!isClient && (
+          <div className="proposal-premium-strip">
+            <div>
+              <span>Premium Freelancer</span>
+              <strong>{isPremiumFreelancer ? 'Active' : 'Inactive'}</strong>
             </div>
-            <p className="text-sm mb-4 text-secondary">
-              Our AI analyzed 847 freelancer profiles and found these exceptional matches for your active jobs:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {AI_TOP_TALENT.map((talent, i) => (
-                <div key={i} className="p-3 rounded-xl cursor-pointer transition-all text-center"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  onClick={() => navigate(`/profile/freelancer/u_freelancer_1`)}>
-                  <div className="relative inline-block mb-2">
-                    <img src={talent.avatar} alt={talent.name} className="w-12 h-12 rounded-xl mx-auto" />
-                    <div className="absolute -bottom-1 -right-1">
-                      <span className="match-score high text-[9px] px-1 py-0">{talent.match}%</span>
-                    </div>
-                  </div>
-                  <p className="text-primary text-xs font-semibold">{talent.name.split(' ')[0]}</p>
-                  <p className="text-[10px] mb-1 text-secondary">{talent.title.split(' ').slice(0, 2).join(' ')}</p>
-                  <div className="flex items-center justify-center gap-1">
-                    <Star size={10} fill="#F59E0B" className="text-amber" />
-                    <span className="text-[10px] text-primary">{talent.rate}</span>
-                  </div>
-                  <p className="text-xs font-bold mt-1 text-green">{talent.bid}</p>
-                </div>
-              ))}
+            <div>
+              <span>Token Balance</span>
+              <strong>{tokenBalance}</strong>
             </div>
+            <label>
+              <span>Boost tokens</span>
+              <input type="number" min="1" value={boostAmount} onChange={event => setBoostAmount(Math.max(1, Number(event.target.value) || 1))} />
+            </label>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Proposals List */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Filter Tabs */}
-            <div className="flex gap-2 flex-wrap">
-              {['all', 'pending', 'shortlisted', 'accepted', 'rejected'].map(f => (
-                <button key={f} onClick={() => setFilter(f)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all"
-                  style={{
-                    background: filter === f ? 'rgba(0,240,255,0.12)' : 'rgba(255,255,255,0.04)',
-                    border: filter === f ? '1px solid rgba(0,240,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
-                    color: filter === f ? '#0077FF' : '#8892A4',
-                  }}>
-                  {f} {f === 'all' && `(${proposals.length})`}
-                  {f !== 'all' && `(${proposals.filter(p => p.status === f).length})`}
-                </button>
-              ))}
-            </div>
+        {(boostError || boostSuccess || competitionError) && (
+          <div className={`proposal-feedback ${boostError || competitionError ? 'error' : 'success'}`}>
+            {boostError || competitionError || boostSuccess}
+          </div>
+        )}
 
-            {filteredProposals.map(proposal => {
-              const freelancer = proposal.freelancer;
-              const job = proposal.job;
-              const isExpanded = expandedProposal === proposal.id;
+        {!isClient && (
+          <FreelancerProposalView
+            loading={loading}
+            proposals={proposals}
+            statusFilter={proposalStatusFilter}
+            jobGroups={jobGroups}
+            isClient={isClient}
+            onStatusFilterChange={setProposalStatusFilter}
+            onViewDetail={handleViewDetail}
+            onBoost={boostProposal}
+            onCreateContract={handleCreateContract}
+            onCompetitionMatrix={openCompetitionMatrix}
+          />
+        )}
 
-              return (
-                <div key={proposal.id} className="glass-card overflow-hidden">
-                  <div className="p-5 cursor-pointer" onClick={() => setExpandedProposal(isExpanded ? null : proposal.id)}>
-                    <div className="flex items-start gap-4">
-                      <img src={freelancer?.avatar} alt={freelancer?.name}
-                        className="w-12 h-12 rounded-xl flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="text-primary font-semibold">{isClient ? freelancer?.name : job?.title}</p>
-                              <span className={`badge-${STATUS_COLORS[proposal.status] || 'cyan'} text-[10px] capitalize`}>
-                                {proposal.status}
-                              </span>
-                            </div>
-                            <p className="text-xs mt-0.5 text-secondary">
-                              {isClient ? job?.title : `Client: ${proposal.client?.name}`}
-                            </p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="text-primary font-bold">${proposal.bidAmount.toLocaleString()}</p>
-                            <p className="text-xs text-secondary">{proposal.deliveryDays} days</p>
-                          </div>
-                        </div>
+        {isClient && (
+          <div className="proposals-split-layout">
+            <ClientProposalSidebar
+              loading={loading}
+              jobGroups={jobGroups}
+              managingJob={managingJob}
+              jobMenuOpen={jobMenuOpen}
+              onJobSelect={setManagingJob}
+              onJobMenuToggle={setJobMenuOpen}
+            />
 
-                        {/* AI Score */}
-                        {proposal.aiScore && (
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`match-score ${proposal.aiScore >= 90 ? 'high' : proposal.aiScore >= 70 ? 'medium' : 'low'} text-xs`}>
-                              <Bot size={10} /> {proposal.aiScore}% AI Score
-                            </div>
-                            {proposal.aiSummary && (
-                              <p className="text-xs truncate text-secondary">
-                                {proposal.aiSummary.slice(0, 60)}...
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        <p className="text-sm line-clamp-2 text-secondary">
-                          {proposal.coverLetter}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Expanded View */}
-                    {isExpanded && (
-                      <div className="mt-4 pt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                        {proposal.aiSummary && (
-                          <div className="p-3 rounded-xl mb-4"
-                            style={{ background: 'rgba(159,75,255,0.06)', border: '1px solid rgba(159,75,255,0.2)' }}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Bot size={12} className="text-purple" />
-                              <p className="text-xs font-semibold text-purple">AI Analysis</p>
-                            </div>
-                            <p className="text-xs leading-relaxed text-secondary">{proposal.aiSummary}</p>
-                          </div>
-                        )}
-                        <p className="text-sm leading-relaxed mb-4 text-secondary">{proposal.coverLetter}</p>
-
-                        <div className="flex gap-3">
-                          {isClient && proposal.status === 'pending' && (
-                            <>
-                              <button className="btn-cyan flex-1 py-2 text-sm flex items-center justify-center gap-2"
-                                onClick={() => updateProposalStatus(proposal.id, 'shortlisted')}>
-                                <CheckCircle size={14} /> Shortlist
-                              </button>
-                              <button className="flex-1 py-2 rounded-xl text-sm transition-all"
-                                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444' }}
-                                onClick={() => updateProposalStatus(proposal.id, 'rejected')}>
-                                <XCircle size={14} className="inline mr-1" /> Decline
-                              </button>
-                              <button className="btn-ghost-cyan px-3 py-2 text-sm"
-                                onClick={() => navigate(`/profile/freelancer/${proposal.freelancerId}`)}>
-                                View Profile
-                              </button>
-                            </>
-                          )}
-                          {isClient && proposal.status === 'shortlisted' && (
-                            <button className="btn-purple flex-1 py-2 text-sm">Hire Freelancer</button>
-                          )}
-                          {!isClient && (
-                            <button className="btn-ghost-cyan px-4 py-2 text-sm"
-                              onClick={() => navigate(`/jobs/${proposal.jobId}`)}>
-                              View Job
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+            {managingJob && (
+              <div className="proposals-content-panel">
+                <div className="proposals-panel-header">
+                  <button className="proposals-back-btn" onClick={() => setManagingJob(null)}>
+                    <span>←</span>
+                  </button>
+                  <div>
+                    <h2>{managingJob.jobTitle}</h2>
+                    <span>{managingJob.proposals.length} proposal{managingJob.proposals.length !== 1 ? 's' : ''}</span>
                   </div>
                 </div>
-              );
-            })}
 
-            {filteredProposals.length === 0 && (
-              <div className="text-center py-16 glass-card">
-                <Users size={40} className="mx-auto mb-3 opacity-20 text-secondary" />
-                <p className="text-primary font-medium">No proposals found</p>
-                <p className="text-sm mt-1 text-secondary">
-                  {isClient ? 'Post a job to start receiving proposals' : 'Browse jobs and submit proposals to get started'}
-                </p>
+                <ProposalToolbar
+                  showToolbars={showToolbars}
+                  proposalStatusFilter={proposalStatusFilter}
+                  proposalSortBy={proposalSortBy}
+                  onStatusFilterChange={setProposalStatusFilter}
+                  onSortByChange={setProposalSortBy}
+                />
+
+                <PaginationToolbar
+                  showToolbars={showToolbars}
+                  proposalsPerPage={proposalsPerPage}
+                  currentPage={currentProposalPage}
+                  totalItems={visibleManagingProposals.length}
+                  totalPages={totalProposalPages}
+                  onPerPageChange={handleProposalsPerPageChange}
+                  onPrevPage={() => setCurrentProposalPage(prev => Math.max(1, prev - 1))}
+                  onNextPage={() => setCurrentProposalPage(prev => Math.min(totalProposalPages, prev + 1))}
+                />
+
+                <div className="proposal-cards" ref={proposalCardsRef}>
+                  {paginatedProposals.map(proposal => (
+                    <ProposalCard
+                      key={proposal.proposalsId}
+                      proposal={proposal}
+                      isClient={isClient}
+                      onViewDetail={handleViewDetail}
+                      onAccept={handleAccept}
+                      onReject={handleReject}
+                      onBoost={boostProposal}
+                      onCreateContract={handleCreateContract}
+                    />
+                  ))}
+
+                  {paginatedProposals.length === 0 && (
+                    <div className="proposals-empty compact">
+                      <Users size={28} />
+                      <p>No proposals match this filter</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
+        )}
 
-          {/* Summary Sidebar */}
-          <div className="space-y-5">
-            <div className="glass-card p-5">
-              <h2 className="text-primary font-semibold mb-4 text-sm">Summary</h2>
-              <div className="space-y-3">
+        {proposalDetail && (
+          <ProposalDetailModal
+            proposal={proposalDetail.proposal}
+            mode={proposalDetail.mode}
+            onClose={() => setProposalDetail(null)}
+          />
+        )}
+
+        {createContractProposal && (
+          <CreateContractModal
+            proposal={createContractProposal}
+            onClose={() => setCreateContractProposal(null)}
+            onSubmit={handleContractSubmit}
+          />
+        )}
+
+        {competitionJob && competitionStats && (
+          <div className="proposal-modal-overlay" onClick={() => setCompetitionJob(null)}>
+            <div className="proposal-modal proposal-detail-modal" onClick={event => event.stopPropagation()}>
+              <button className="proposal-modal-close" onClick={() => setCompetitionJob(null)}>
+                <X size={18} />
+              </button>
+              <div className="proposal-modal-title">
+                <BarChart2 size={20} />
+                <div>
+                  <h2>Competitor Bid Matrix</h2>
+                  <p>{competitionJob.jobTitle} · anonymized data</p>
+                </div>
+              </div>
+              <div className="proposal-bid-matrix">
+                <div>
+                  <span>Min bid</span>
+                  <strong>${competitionStats.minBid.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Avg bid</span>
+                  <strong>${competitionStats.avgBid.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Max bid</span>
+                  <strong>${competitionStats.maxBid.toLocaleString()}</strong>
+                </div>
+                <div>
+                  <span>Proposal count</span>
+                  <strong>{competitionStats.proposalCount}</strong>
+                </div>
+              </div>
+              <div className="proposal-score-distribution">
+                <h3>AI score distribution</h3>
                 {[
-                  { label: 'Total Proposals', value: proposals.length, color: 'white' },
-                  { label: 'Pending Review', value: proposals.filter(p => p.status === 'pending').length, color: '#F59E0B' },
-                  { label: 'Shortlisted', value: proposals.filter(p => p.status === 'shortlisted').length, color: '#0077FF' },
-                  { label: 'Accepted', value: proposals.filter(p => p.status === 'accepted').length, color: '#22C55E' },
+                  { label: 'High score 85+', value: competitionStats.highScore },
+                  { label: 'Medium score 70-84', value: competitionStats.midScore },
+                  { label: 'Low score <70', value: competitionStats.lowScore },
                 ].map(item => (
-                  <div key={item.label} className="flex justify-between items-center py-2 border-b"
-                    style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                    <span className="text-xs text-secondary">{item.label}</span>
-                    <span className="text-sm font-bold" style={{ color: item.color }}>{item.value}</span>
+                  <div key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <div><i style={{ width: `${(item.value / competitionStats.proposalCount) * 100}%` }} /></div>
                   </div>
                 ))}
               </div>
             </div>
-
-            {isClient && (
-              <div className="glass-card p-5"
-                style={{ background: 'rgba(0,240,255,0.04)', border: '1px solid rgba(0,240,255,0.15)' }}>
-                <p className="text-sm font-semibold text-primary mb-2">🤖 AI Tip</p>
-                <p className="text-xs leading-relaxed text-secondary">
-                  Proposals with AI scores above 90% have a 3x higher success rate. Consider shortlisting Alex Johnson's proposal first.
-                </p>
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
     </AppLayout>
   );

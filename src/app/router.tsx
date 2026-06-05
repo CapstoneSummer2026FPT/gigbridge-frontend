@@ -1,5 +1,6 @@
-import { createBrowserRouter, Outlet } from 'react-router';
-import { AppProvider } from './providers/AppProvider';
+import type { ReactNode } from 'react';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router';
+import { AppProvider, useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 
 // Lazy imports for all screens
@@ -15,8 +16,15 @@ import PostJobScreen from '../features/jobs/screens/PostJobScreen';
 import PostJobInterviewQuestionsScreen from '../features/jobs/screens/PostJobInterviewQuestionsScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
+import ManageJobPostsScreen from '../features/jobs/screens/ManageJobPostsScreen';
+import EditJobPostScreen from '../features/jobs/screens/EditJobPostScreen';
+import SavedJobsScreen from '../features/jobs/screens/SavedJobsScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
+import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
+import EditFreelancerProfileScreen from '../features/profile/screens/EditFreelancerProfileScreen';
+import ManageFreelancerContentScreen from '../features/profile/screens/ManageFreelancerContentScreen';
+import SavedFreelancersScreen from '../features/freelancers/screens/SavedFreelancersScreen';
 import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
 import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen';
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
@@ -26,14 +34,22 @@ import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import AdminDashboardScreen from '../features/admin/screens/AdminDashboardScreen';
 import AdminUsersScreen from '../features/admin/screens/AdminUsersScreen';
 import AdminJobsScreen from '../features/admin/screens/AdminJobsScreen';
-import AdminContractsScreen from '../features/admin/screens/AdminContractsScreen';
 import AdminSystemTrackingScreen from '../features/admin/screens/AdminSystemTrackingScreen';
 import AdminRevenueScreen from '../features/admin/screens/AdminRevenueScreen';
 import AdminReportsScreen from '../features/admin/screens/AdminReportsScreen';
 import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
+import AdminContractAuditScreen from '../features/admin/screens/AdminContractAuditScreen';
+import AdminContractTemplatesScreen from '../features/admin/screens/AdminContractTemplatesScreen';
+import AdminFAQManagementScreen from '../features/admin/screens/AdminFAQManagementScreen';
+import AdminAdsPackagesScreen from '../features/admin/screens/AdminAdsPackagesScreen';
+import AdminDisputeManagementScreen from '../features/admin/screens/AdminDisputeManagementScreen';
+import CreateDisputeScreen from '../features/disputes/screens/CreateDisputeScreen';
 import MarketInsightsScreen from '../features/market-insights/screens/MarketInsightsScreen';
 import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
+import ChatScreen from '../features/messages/screens/ChatScreen';
+import CreateReviewScreen from '../features/reviews/screens/CreateReviewScreen';
+import SmartTalentMatchingScreen from '../features/talent-matching/screens/SmartTalentMatchingScreen';
 import AboutScreen from '../features/company/screens/AboutScreen';
 import CareersScreen from '../features/company/screens/CareersScreen';
 import FAQScreen from '../features/company/screens/FAQScreen';
@@ -44,9 +60,23 @@ import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
+import UploadPaymentProofScreen from '../features/wallet/screens/UploadPaymentProofScreen';
+import EarlyPayoutScreen from '../features/wallet/screens/EarlyPayoutScreen';
+import {
+  ApproveMilestoneScreen,
+  CreateEsignContractScreen,
+  EsignDocumentSigningScreen,
+  FreelancerContractScreen,
+  ManageContractScreen,
+  ManageMilestonesScreen,
+  SignatureWorkflowScreen,
+  SubmitMilestoneDeliverableScreen,
+  ViewContractDetailsScreen,
+} from '../features/contracts';
 
 // Import router styles
 import './styles/router.css';
+import { UserRole } from '../types';
 
 function NotFound() {
   return (
@@ -77,6 +107,29 @@ function RootLayout() {
   );
 }
 
+function AdminRoute({ children }: { children: ReactNode }) {
+  const { isLoading, isAuthenticated, role } = useApp();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (role !== UserRole.Admin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function ContractListRoute() {
+  const { role } = useApp();
+  return role === UserRole.Freelancer ? <FreelancerContractScreen /> : <ManageContractScreen />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -102,16 +155,33 @@ export const router = createBrowserRouter([
       // Jobs - requires authentication
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
       { path: 'jobs/post/interview-questions', element: <ProtectedRoute requireAuth requireSetup><PostJobInterviewQuestionsScreen /></ProtectedRoute> },
-      { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
-      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><BrowseJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/browse', element: <BrowseJobsScreen /> },
+      { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostsScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
+      { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup><EditJobPostScreen /></ProtectedRoute> },
 
       // Profiles - requires authentication
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/freelancer/:id/edit', element: <ProtectedRoute requireAuth><EditFreelancerProfileScreen /></ProtectedRoute> },
+      { path: 'profile/client/:id/edit', element: <ProtectedRoute requireAuth><EditClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/manage-content', element: <ProtectedRoute requireAuth><ManageFreelancerContentScreen /></ProtectedRoute> },
+      { path: 'freelancers/saved', element: <ProtectedRoute requireAuth><SavedFreelancersScreen /></ProtectedRoute> },
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
+
+      // Contracts - requires authentication and setup
+      { path: 'contracts', element: <ProtectedRoute requireAuth requireSetup><ContractListRoute /></ProtectedRoute> },
+      { path: 'contracts/create/:proposalId', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/disputes/create', element: <ProtectedRoute requireAuth requireSetup><CreateDisputeScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/documents/:documentId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup><ManageMilestonesScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/milestones/:milestoneId/approve', element: <ProtectedRoute requireAuth requireSetup><ApproveMilestoneScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/deliverables/:milestoneId', element: <ProtectedRoute requireAuth requireSetup><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
 
       // Workspace - requires authentication and setup
       { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
@@ -120,6 +190,7 @@ export const router = createBrowserRouter([
       // AI Features - requires authentication and setup
       { path: 'ai-assistant', element: <ProtectedRoute requireAuth requireSetup><AIAssistantScreen /></ProtectedRoute> },
       { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
+      { path: 'talent-matching', element: <ProtectedRoute requireAuth requireSetup><SmartTalentMatchingScreen /></ProtectedRoute> },
 
       // Settings - requires authentication
       { path: 'settings', element: <ProtectedRoute requireAuth><SettingsScreen /></ProtectedRoute> },
@@ -127,26 +198,36 @@ export const router = createBrowserRouter([
       // Wallet & Subscription - requires authentication and setup
       { path: 'wallet/deposit', element: <ProtectedRoute requireAuth requireSetup><WalletDepositScreen /></ProtectedRoute> },
       { path: 'wallet/history', element: <ProtectedRoute requireAuth requireSetup><WalletHistoryScreen /></ProtectedRoute> },
+      { path: 'wallet/payment-proof/:transactionId', element: <ProtectedRoute requireAuth requireSetup><UploadPaymentProofScreen /></ProtectedRoute> },
+      { path: 'wallet/early-payout', element: <ProtectedRoute requireAuth requireSetup><EarlyPayoutScreen /></ProtectedRoute> },
       { path: 'buy-gigcoin', element: <ProtectedRoute requireAuth requireSetup><BuyGigcoinScreen /></ProtectedRoute> },
       { path: 'subscription', element: <ProtectedRoute requireAuth requireSetup><SubscriptionScreen /></ProtectedRoute> },
       { path: 'financial-overview', element: <ProtectedRoute requireAuth requireSetup><FinancialOverviewScreen /></ProtectedRoute> },
 
       // Admin - requires authentication and admin role
-      { path: 'admin', element: <ProtectedRoute requireAuth requireSetup><AdminDashboardScreen /></ProtectedRoute> },
-      { path: 'admin/users', element: <ProtectedRoute requireAuth requireSetup><AdminUsersScreen /></ProtectedRoute> },
-      { path: 'admin/jobs', element: <ProtectedRoute requireAuth requireSetup><AdminJobsScreen /></ProtectedRoute> },
-      { path: 'admin/contracts', element: <ProtectedRoute requireAuth requireSetup><AdminContractsScreen /></ProtectedRoute> },
-      { path: 'admin/reports', element: <ProtectedRoute requireAuth requireSetup><AdminReportsScreen /></ProtectedRoute> },
-      { path: 'admin/feedback', element: <ProtectedRoute requireAuth requireSetup><AdminFeedbackScreen /></ProtectedRoute> },
-      { path: 'admin/system-tracking', element: <ProtectedRoute requireAuth requireSetup><AdminSystemTrackingScreen /></ProtectedRoute> },
-      { path: 'admin/revenue', element: <ProtectedRoute requireAuth requireSetup><AdminRevenueScreen /></ProtectedRoute> },
-      { path: 'admin/notifications', element: <ProtectedRoute requireAuth requireSetup><AdminNotificationsScreen /></ProtectedRoute> },
+      { path: 'admin', element: <AdminRoute><AdminDashboardScreen /></AdminRoute> },
+      { path: 'admin/users', element: <AdminRoute><AdminUsersScreen /></AdminRoute> },
+      { path: 'admin/jobs', element: <AdminRoute><AdminJobsScreen /></AdminRoute> },
+      { path: 'admin/contracts', element: <AdminRoute><AdminContractAuditScreen /></AdminRoute> },
+      { path: 'admin/contract-audit', element: <AdminRoute><Navigate to="/admin/contracts" replace /></AdminRoute> },
+      { path: 'admin/contract-templates', element: <AdminRoute><AdminContractTemplatesScreen /></AdminRoute> },
+      { path: 'admin/faq-management', element: <AdminRoute><AdminFAQManagementScreen /></AdminRoute> },
+      { path: 'admin/ads-packages', element: <AdminRoute><AdminAdsPackagesScreen /></AdminRoute> },
+      { path: 'admin/disputes', element: <AdminRoute><AdminDisputeManagementScreen /></AdminRoute> },
+      { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
+      { path: 'admin/feedback', element: <AdminRoute><AdminFeedbackScreen /></AdminRoute> },
+      { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
+      { path: 'admin/revenue', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
+      { path: 'admin/system-finance', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
+      { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
 
       // Market Insights - public
       { path: 'market-insights', element: <MarketInsightsScreen /> },
 
       // Notifications - requires authentication
       { path: 'notifications', element: <ProtectedRoute requireAuth><NotificationsScreen /></ProtectedRoute> },
+      { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><ChatScreen /></ProtectedRoute> },
+      { path: 'reviews/create', element: <ProtectedRoute requireAuth requireSetup><CreateReviewScreen /></ProtectedRoute> },
 
       // Company Pages - public
       { path: 'about', element: <AboutScreen /> },

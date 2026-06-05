@@ -28,6 +28,60 @@ export interface User {
   updated_at: string;
 }
 
+/**
+ * Backend AdminUserDto shape returned from api/v1/admin/users
+ */
+export interface AdminUserDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  avatar: string | null;
+  phoneNumber: string | null;
+  role: number;
+  isEmailVerified: boolean;
+  isActive: boolean;
+  preferredLanguage: string | null;
+  provider: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+/**
+ * Paginated response from GET /api/v1/admin/users
+ */
+export interface PaginatedUsersResponse {
+  items: AdminUserDto[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface GetUsersParams {
+  Page?: number;
+  PageSize?: number;
+  Search?: string;
+  /** 1 = active, 0 = inactive/banned, omit = all */
+  Status?: number;
+}
+
+export interface CreateUserPayload {
+  fullName: string;
+  email: string;
+  password: string;
+  role: number;
+  phoneNumber?: string;
+}
+
+export interface UpdateUserPayload {
+  fullName?: string;
+  phoneNumber?: string;
+  avatar?: string;
+  preferredLanguage?: string;
+  /** Setting isActive = false bans the user. */
+  isActive?: boolean;
+}
+
 export interface RefreshToken {
   id: string;
   user_id: string;

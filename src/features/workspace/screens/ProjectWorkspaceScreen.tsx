@@ -4,6 +4,7 @@ import { Send, Paperclip, Bot, CheckCircle, Clock, DollarSign, Files, ChevronRig
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { DB, SEED_PROJECTS, SEED_MESSAGES } from '../../../mock_backend';
+import '../styles/project-workspace-screen.css';
 
 const AI_QUICK_SUGGESTIONS = [
   'Summarize project progress',
@@ -68,7 +69,7 @@ export default function ProjectWorkspaceScreen() {
 
   return (
     <AppLayout fullWidth>
-      <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)]">
+      <div className="project-workspace-page flex flex-col md:flex-row h-[calc(100vh-4rem)]">
         {/* Left Sidebar - Project Info */}
         <div className="hidden md:flex flex-col w-72 flex-shrink-0 p-4 overflow-y-auto border-r border-primary">
           {/* Project Header */}
@@ -109,7 +110,7 @@ export default function ProjectWorkspaceScreen() {
                 const statusColor = { paid: '#22C55E', approved: '#22C55E', in_progress: '#0077FF', submitted: '#F59E0B', pending: '#8892A4' }[m.status] || '#8892A4';
                 return (
                   <div key={m.id} className="flex items-start gap-2 p-2 rounded-lg"
-                    style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${statusColor}20` }}>
+                    style={{ background: 'var(--workspace-subtle-bg)', border: `1px solid ${statusColor}30` }}>
                     <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                       style={{ background: statusColor + '20', border: `1px solid ${statusColor}` }}>
                       {(m.status === 'paid' || m.status === 'approved') ? (
@@ -161,7 +162,7 @@ export default function ProjectWorkspaceScreen() {
         <div className="flex-1 flex flex-col">
           {/* Chat Header */}
           <div className="flex items-center justify-between px-5 py-3"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            style={{ borderBottom: '1px solid var(--workspace-border)' }}>
             <div className="flex items-center gap-3">
               <img src={partner?.avatar} alt={partner?.name} className="w-9 h-9 rounded-xl" />
               <div>
@@ -174,9 +175,9 @@ export default function ProjectWorkspaceScreen() {
                 <button key={tab} onClick={() => setActiveTab(tab as any)}
                   className="px-3 py-1.5 rounded-lg text-xs capitalize transition-all"
                   style={{
-                    background: activeTab === tab ? 'rgba(0,240,255,0.12)' : 'rgba(255,255,255,0.04)',
-                    border: activeTab === tab ? '1px solid rgba(0,240,255,0.3)' : '1px solid rgba(255,255,255,0.06)',
-                    color: activeTab === tab ? '#0077FF' : '#8892A4',
+                    background: activeTab === tab ? 'var(--workspace-tab-active-bg)' : 'var(--workspace-tab-bg)',
+                    border: activeTab === tab ? '1px solid var(--workspace-accent-border)' : '1px solid var(--workspace-border)',
+                    color: activeTab === tab ? 'var(--workspace-accent)' : 'var(--workspace-muted)',
                   }}>
                   {tab}
                 </button>
@@ -198,21 +199,21 @@ export default function ProjectWorkspaceScreen() {
                     <div className={`max-w-lg ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
                       {msg.type === 'file' ? (
                         <div className="flex items-center gap-2 p-3 rounded-xl"
-                          style={{ background: isMe ? 'rgba(0,240,255,0.12)' : 'rgba(255,255,255,0.06)', border: `1px solid ${isMe ? 'rgba(0,240,255,0.25)' : 'rgba(255,255,255,0.1)'}` }}>
+                          style={{ background: isMe ? 'var(--workspace-message-sent-bg)' : 'var(--workspace-message-received-bg)', border: `1px solid ${isMe ? 'var(--workspace-accent-border)' : 'var(--workspace-border)'}` }}>
                           <Files size={16} className="text-cyan" />
                           <span className="text-primary text-sm">{msg.fileName}</span>
                         </div>
                       ) : (
                         <div className="px-4 py-2.5 rounded-2xl text-sm"
                           style={{
-                            background: isMe ? 'linear-gradient(135deg, rgba(0,240,255,0.2), rgba(0,150,255,0.15))' : 'rgba(255,255,255,0.06)',
-                            border: isMe ? '1px solid rgba(0,240,255,0.25)' : '1px solid rgba(255,255,255,0.08)',
-                            color: 'white', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                            background: isMe ? 'var(--workspace-message-sent-bg)' : 'var(--workspace-message-received-bg)',
+                            border: isMe ? '1px solid var(--workspace-accent-border)' : '1px solid var(--workspace-border)',
+                            color: 'var(--workspace-message-text)', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                           }}>
                           {msg.content}
                         </div>
                       )}
-                      <p className="text-[10px]" style={{ color: '#4B5563' }}>
+                      <p className="text-[10px]" style={{ color: 'var(--workspace-muted)' }}>
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
@@ -271,7 +272,7 @@ export default function ProjectWorkspaceScreen() {
                   { name: 'api-spec.yml', size: '156 KB', date: 'Apr 8' },
                 ].map(file => (
                   <div key={file.name} className="flex items-center justify-between p-3 rounded-xl mb-2"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    style={{ background: 'var(--workspace-subtle-bg)', border: '1px solid var(--workspace-border)' }}>
                     <div className="flex items-center gap-3">
                       <Files size={16} className="text-cyan" />
                       <div>
@@ -292,10 +293,10 @@ export default function ProjectWorkspaceScreen() {
 
           {/* Message Input */}
           {activeTab === 'chat' && (
-            <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="px-5 py-4" style={{ borderTop: '1px solid var(--workspace-border)' }}>
               <div className="flex items-end gap-3">
                 <button className="p-2.5 rounded-xl flex-shrink-0 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#8892A4' }}>
+                  style={{ background: 'var(--workspace-tab-bg)', border: '1px solid var(--workspace-border)', color: 'var(--workspace-muted)' }}>
                   <Paperclip size={18} />
                 </button>
                 <div className="flex-1 relative">
@@ -322,10 +323,10 @@ export default function ProjectWorkspaceScreen() {
         {/* AI Assistant Sidebar */}
         {showAI && (
           <div className="w-80 flex flex-col flex-shrink-0"
-            style={{ borderLeft: '1px solid rgba(159,75,255,0.2)', background: 'rgba(10,15,28,0.8)' }}>
+            style={{ borderLeft: '1px solid var(--workspace-ai-border)', background: 'var(--workspace-ai-panel-bg)' }}>
             {/* AI Header */}
             <div className="flex items-center justify-between p-4"
-              style={{ borderBottom: '1px solid rgba(159,75,255,0.15)' }}>
+              style={{ borderBottom: '1px solid var(--workspace-ai-border)' }}>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center animate-orb"
                   style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
@@ -355,7 +356,7 @@ export default function ProjectWorkspaceScreen() {
                     style={{
                       background: msg.role === 'ai' ? 'rgba(159,75,255,0.08)' : 'rgba(0,240,255,0.1)',
                       border: `1px solid ${msg.role === 'ai' ? 'rgba(159,75,255,0.2)' : 'rgba(0,240,255,0.2)'}`,
-                      color: 'white', maxWidth: '85%',
+                      color: 'var(--workspace-message-text)', maxWidth: '85%',
                     }}>
                     {msg.content}
                   </div>
@@ -368,14 +369,14 @@ export default function ProjectWorkspaceScreen() {
               {AI_QUICK_SUGGESTIONS.map(s => (
                 <button key={s} onClick={() => { setAiMessage(s); }}
                   className="text-[10px] px-2 py-1 rounded-lg transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#8892A4' }}>
+                  style={{ background: 'var(--workspace-tab-bg)', border: '1px solid var(--workspace-border)', color: 'var(--workspace-muted)' }}>
                   {s}
                 </button>
               ))}
             </div>
 
             {/* AI Input */}
-            <div className="p-4 pt-2" style={{ borderTop: '1px solid rgba(159,75,255,0.1)' }}>
+            <div className="p-4 pt-2" style={{ borderTop: '1px solid var(--workspace-ai-border)' }}>
               <div className="flex items-center gap-2">
                 <input value={aiMessage} onChange={e => setAiMessage(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') sendAIMessage(); }}

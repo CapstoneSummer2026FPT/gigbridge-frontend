@@ -1,0 +1,746 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { AlertCircle, ArrowRight, Calendar, DollarSign, FileText, Users, X, CheckCircle, Download, Send, Zap } from 'lucide-react';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import { useApp } from '../../../app/providers/AppProvider';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
+import type { ProposalDto } from '../../../types/models/Proposal';
+import type { CreateContractDto, PaymentType } from '../../../types/models/Contract';
+import { ContractStatus } from '../../../types/models/Contract';
+import '../styles/create-esign-contract-screen.css';
+
+interface ContractMilestoneDraft {
+  title: string;
+  amount: number;
+  dueDate: string;
+}
+
+export default function CreateEsignContractScreen() {
+  const navigate = useNavigate();
+  const { proposalId } = useParams<{ proposalId: string }>();
+  const { user } = useApp();
+
+  const [proposal, setProposal] = useState<ProposalDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Form state
+  const [formData, setFormData] = useState<CreateContractDto>({
+    jobPostId: '',
+    proposalId: proposalId || '',
+    clientProfileId: user?.id || '',
+    freelancerProfileId: '',
+    title: '',
+    description: '',
+    totalBudget: 0,
+    paymentType: 0 as PaymentType,
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+  });
+
+  const [step, setStep] = useState<'review' | 'terms' | 'preview' | 'confirm'>('review');
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [sendingForSignature, setSendingForSignature] = useState(false);
+  const [contractCreated, setContractCreated] = useState<{ id: string; pdfUrl: string } | null>(null);
+  const [paymentTerms, setPaymentTerms] = useState('Escrow funded per milestone. Funds are released after client approval.');
+  const [milestoneDrafts, setMilestoneDrafts] = useState<ContractMilestoneDraft[]>([
+    {
+      title: 'Project kickoff and scope confirmation',
+      amount: 0,
+      dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    },
+  ]);
+  const isPremiumClient = Boolean((user as any)?.isPremium || user?.role === 'Client');
+
+  // Validation
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // Load proposal data
+  useEffect(() => {
+    const loadProposal = async () => {
+      if (!proposalId) {
+        setError('Invalid proposal ID');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await proposalGetAPI.getAllProposals({ pageSize: 100 });
+        const found = response.data?.find(p => p.proposalsId === proposalId);
+
+        if (!found) {
+          setError('Proposal not found');
+          setLoading(false);
+          return;
+        }
+
+        setProposal(found);
+
+        // Prefill form with proposal data
+        setFormData(prev => ({
+          ...prev,
+          jobPostId: found.jobPostsId,
+          proposalId: found.proposalsId,
+          freelancerProfileId: found.freelancerProfilesId,
+          title: `Contract for ${found.jobTitle}`,
+          description: `This contract is for the project: ${found.jobTitle}`,
+          totalBudget: found.proposedRate || 0,
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        }));
+      } catch (err) {
+        console.error('Failed to load proposal:', err);
+        setError('Failed to load proposal details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProposal();
+  }, [proposalId]);
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.title || formData.title.trim().length < 5) {
+      errors.title = 'Title must be at least 5 characters';
+    }
+
+    if (formData.title && formData.title.length > 255) {
+      errors.title = 'Title must be at most 255 characters';
+    }
+
+    if (formData.totalBudget <= 0) {
+      errors.totalBudget = 'Budget must be greater than 0';
+    }
+
+    if (!formData.description || !formData.description.trim()) {
+      errors.description = 'Scope is required (BR-51)';
+    }
+
+    if (!paymentTerms.trim()) {
+      errors.paymentTerms = 'Payment terms are required (BR-51)';
+    }
+
+    if (!formData.startDate) {
+      errors.startDate = 'Start date is required';
+    }
+
+    if (formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+
+      if (endDate <= startDate) {
+        errors.endDate = 'End date must be after start date';
+      }
+    } else {
+      errors.endDate = 'Timeline end date is required (BR-51)';
+    }
+
+    const validMilestones = milestoneDrafts.filter(m => m.title.trim() || m.amount > 0 || m.dueDate);
+    const totalMilestoneAmount = validMilestones.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+
+    validMilestones.forEach((milestone, index) => {
+      if (!milestone.title.trim()) {
+        errors[`milestoneTitle${index}`] = 'Milestone title is required';
+      }
+
+      if (!milestone.dueDate) {
+        errors[`milestoneDueDate${index}`] = 'Milestone deadline is required';
+      }
+
+      if ((Number(milestone.amount) || 0) <= 0) {
+        errors[`milestoneAmount${index}`] = 'Milestone amount must be positive';
+      }
+    });
+
+    if (validMilestones.length === 0) {
+      errors.milestones = 'At least one milestone is required';
+    }
+
+    if (totalMilestoneAmount > formData.totalBudget) {
+      errors.milestones = 'Total milestone amount cannot exceed contract budget (BR-53)';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleGeneratePdf = async () => {
+    if (!contractCreated) {
+      setError('Contract must be created first');
+      return;
+    }
+
+    try {
+      setGeneratingPdf(true);
+      setError('');
+
+      const response = await contractPostAPI.generateContractPdf(contractCreated.id, {
+        includeTerms: true,
+        includeNda: isPremiumClient,
+        includeClauses: isPremiumClient
+          ? ['scope', 'budget', 'timeline', 'payment', 'nda', 'ip-ownership', 'payment-watermark']
+          : ['scope', 'budget', 'timeline', 'payment'],
+      });
+
+      if (response.data?.pdfUrl) {
+        setPdfUrl(response.data.pdfUrl);
+        setSuccess('Contract PDF generated successfully');
+      } else {
+        setError('Failed to generate PDF');
+      }
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      setError('Failed to generate contract PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const handleCreateContract = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setError('');
+      setSuccess('');
+
+      const response = await contractPostAPI.createContractFromProposal(formData);
+
+      if (response.data) {
+        setContractCreated({
+          id: response.data.contractsId,
+          pdfUrl: response.data.esignContractPdfUrl || '',
+        });
+        setSuccess('Contract created successfully');
+        setStep('terms');
+      } else {
+        setError('Failed to create contract');
+      }
+    } catch (err) {
+      console.error('Failed to create contract:', err);
+      setError('Failed to create contract. Please try again.');
+    }
+  };
+
+  const handleSendForSignature = async () => {
+    if (!contractCreated) {
+      setError('Contract not found');
+      return;
+    }
+
+    try {
+      setSendingForSignature(true);
+      setError('');
+
+      const response = await contractPostAPI.sendForSignature(
+        contractCreated.id,
+        proposal?.freelancerName
+      );
+
+      if (response.data?.signatureUrl) {
+        setSuccess('Contract sent for signature. Freelancer will receive a signing invitation.');
+        setStep('confirm');
+        // Navigate to contract details after a delay
+        setTimeout(() => {
+          navigate(`/contracts/${contractCreated.id}`);
+        }, 2000);
+      } else {
+        setError('Failed to send contract for signature');
+      }
+    } catch (err) {
+      console.error('Failed to send for signature:', err);
+      setError('Failed to send contract for signature');
+    } finally {
+      setSendingForSignature(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof CreateContractDto, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // Clear validation error for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="create-contract-page">
+          <div className="create-contract-loading">
+            <div className="spinner" />
+            <p>Loading proposal details...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!proposal) {
+    return (
+      <AppLayout>
+        <div className="create-contract-page">
+          <div className="create-contract-error">
+            <AlertCircle size={32} />
+            <h2>{error || 'Proposal not found'}</h2>
+            <button onClick={() => navigate(-1)}>Go back</button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout>
+      <div className="create-contract-page">
+        <div className="create-contract-header">
+          <button className="back-btn" onClick={() => navigate(-1)}>
+            ← Back
+          </button>
+          <h1>Create E-sign Contract</h1>
+          <p>Generate and manage contract from proposal</p>
+        </div>
+
+        {error && (
+          <div className="contract-alert alert-error">
+            <AlertCircle size={18} />
+            {error}
+            <button onClick={() => setError('')}>
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {success && (
+          <div className="contract-alert alert-success">
+            <CheckCircle size={18} />
+            {success}
+            <button onClick={() => setSuccess('')}>
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Steps indicator */}
+        <div className="contract-steps">
+          <div className={`step ${step === 'review' ? 'active' : contractCreated ? 'completed' : ''}`}>
+            <span className="step-number">1</span>
+            <span className="step-label">Review Proposal</span>
+          </div>
+          <div className="step-divider" />
+          <div className={`step ${step === 'terms' ? 'active' : step === 'preview' || step === 'confirm' ? 'completed' : ''}`}>
+            <span className="step-number">2</span>
+            <span className="step-label">Set Terms</span>
+          </div>
+          <div className="step-divider" />
+          <div className={`step ${step === 'preview' ? 'active' : step === 'confirm' ? 'completed' : ''}`}>
+            <span className="step-number">3</span>
+            <span className="step-label">Preview PDF</span>
+          </div>
+          <div className="step-divider" />
+          <div className={`step ${step === 'confirm' ? 'active' : ''}`}>
+            <span className="step-number">4</span>
+            <span className="step-label">Send for Signing</span>
+          </div>
+        </div>
+
+        {/* Step: Review */}
+        {step === 'review' && (
+          <div className="contract-step-content">
+            <div className="contract-section">
+              <h2>Proposal Overview</h2>
+
+              <div className="proposal-summary-card">
+                <div className="summary-header">
+                  <div>
+                    <img
+                      src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${proposal.freelancerName}`}
+                      alt={proposal.freelancerName}
+                      className="freelancer-avatar"
+                    />
+                    <div>
+                      <h3>{proposal.freelancerName || 'Unknown Freelancer'}</h3>
+                      <p>{proposal.jobTitle}</p>
+                    </div>
+                  </div>
+                  <span className="proposal-status">Accepted</span>
+                </div>
+
+                <div className="summary-details">
+                  <div className="detail-item">
+                    <DollarSign size={16} />
+                    <span>Proposed Rate</span>
+                    <strong>${(proposal.proposedRate || 0).toLocaleString()}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <Calendar size={16} />
+                    <span>Duration</span>
+                    <strong>{proposal.proposedDuration || 'Flexible'}</strong>
+                  </div>
+                  <div className="detail-item">
+                    <FileText size={16} />
+                    <span>Cover Letter</span>
+                    <p className="cover-letter-preview">{proposal.coverLetter || 'No cover letter'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="contract-actions">
+              <button className="btn-primary" onClick={() => setStep('terms')}>
+                Proceed to Terms <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Terms */}
+        {step === 'terms' && (
+          <div className="contract-step-content">
+            <div className="contract-section">
+              <h2>Contract Terms</h2>
+
+              <form className="contract-form">
+                <div className="form-group">
+                  <label>Contract Title</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={e => handleInputChange('title', e.target.value)}
+                    placeholder="e.g., Web Development Project"
+                    maxLength={255}
+                  />
+                  {validationErrors.title && <span className="form-error">{validationErrors.title}</span>}
+                  <span className="form-hint">{formData.title.length}/255 characters</span>
+                </div>
+
+                <div className="form-group">
+                  <label>Scope</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={e => handleInputChange('description', e.target.value)}
+                    placeholder="Define deliverables, boundaries, acceptance criteria, and responsibilities..."
+                    rows={4}
+                  />
+                  {validationErrors.description && <span className="form-error">{validationErrors.description}</span>}
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Total Budget</label>
+                    <div className="input-with-prefix">
+                      <span>$</span>
+                      <input
+                        type="number"
+                        value={formData.totalBudget}
+                        onChange={e => handleInputChange('totalBudget', parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    {validationErrors.totalBudget && <span className="form-error">{validationErrors.totalBudget}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label>Payment Type</label>
+                    <select
+                      value={formData.paymentType}
+                      onChange={e => handleInputChange('paymentType', parseInt(e.target.value))}
+                    >
+                      <option value={0}>Fixed Price</option>
+                      <option value={1}>Hourly Rate</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Start Date</label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={e => handleInputChange('startDate', e.target.value)}
+                    />
+                    {validationErrors.startDate && <span className="form-error">{validationErrors.startDate}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label>End Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={e => handleInputChange('endDate', e.target.value)}
+                    />
+                    {validationErrors.endDate && <span className="form-error">{validationErrors.endDate}</span>}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Payment Terms</label>
+                  <textarea
+                    value={paymentTerms}
+                    onChange={e => setPaymentTerms(e.target.value)}
+                    placeholder="Describe escrow funding, approval, release, and revision rules..."
+                    rows={3}
+                  />
+                  {validationErrors.paymentTerms && <span className="form-error">{validationErrors.paymentTerms}</span>}
+                </div>
+
+                <div className="contract-milestone-editor">
+                  <div className="milestone-editor-header">
+                    <div>
+                      <h3>Milestones</h3>
+                      <p>Total allocation must stay within contract budget.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setMilestoneDrafts(prev => [
+                        ...prev,
+                        { title: '', amount: 0, dueDate: '' },
+                      ])}
+                    >
+                      Add Milestone
+                    </button>
+                  </div>
+
+                  {validationErrors.milestones && <span className="form-error">{validationErrors.milestones}</span>}
+
+                  <div className="milestone-draft-list">
+                    {milestoneDrafts.map((milestone, index) => (
+                      <div className="milestone-draft-row" key={`milestone-draft-${index}`}>
+                        <input
+                          type="text"
+                          value={milestone.title}
+                          onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, title: e.target.value } : item))}
+                          placeholder="Milestone title"
+                        />
+                        <input
+                          type="number"
+                          value={milestone.amount}
+                          onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, amount: parseFloat(e.target.value) || 0 } : item))}
+                          min="0"
+                          placeholder="Amount"
+                        />
+                        <input
+                          type="date"
+                          value={milestone.dueDate}
+                          onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, dueDate: e.target.value } : item))}
+                        />
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => setMilestoneDrafts(prev => prev.filter((_, i) => i !== index))}
+                          disabled={milestoneDrafts.length === 1}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {isPremiumClient && (
+                  <div className="premium-legal-box">
+                    <Zap size={18} />
+                    <div>
+                      <h3>Premium Legal Automation</h3>
+                      <p>NDA, IP ownership, and payment watermark clauses will be embedded automatically until payment is released.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="terms-checkbox">
+                  <input type="checkbox" id="terms-agree" defaultChecked />
+                  <label htmlFor="terms-agree">I agree to include standard contract terms and conditions</label>
+                </div>
+              </form>
+            </div>
+
+            <div className="contract-actions">
+              <button className="btn-secondary" onClick={() => setStep('review')}>
+                ← Back
+              </button>
+              <button className="btn-primary" onClick={handleCreateContract}>
+                Create Contract <FileText size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Preview */}
+        {step === 'preview' && contractCreated && (
+          <div className="contract-step-content">
+            <div className="contract-section">
+              <h2>Preview Contract PDF</h2>
+
+              <div className="pdf-preview-container">
+                {pdfUrl ? (
+                  <>
+                    <div className="pdf-viewer">
+                      <iframe src={pdfUrl} title="Contract PDF Preview" />
+                    </div>
+                    <a href={pdfUrl} download="contract.pdf" className="btn-secondary">
+                      <Download size={16} />
+                      Download PDF
+                    </a>
+                  </>
+                ) : (
+                  <div className="pdf-generation">
+                    <p>Generate contract PDF to preview before sending for signature</p>
+                    <button
+                      className="btn-primary"
+                      onClick={handleGeneratePdf}
+                      disabled={generatingPdf}
+                    >
+                      {generatingPdf ? (
+                        <>
+                          <span className="spinner small" />
+                          Generating PDF...
+                        </>
+                      ) : (
+                        <>
+                          <Download size={16} />
+                          Generate PDF
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="contract-summary">
+                <h3>Contract Summary</h3>
+                <div className="summary-grid">
+                  <div>
+                    <span>Client</span>
+                    <strong>{user?.fullName || 'You'}</strong>
+                  </div>
+                  <div>
+                    <span>Freelancer</span>
+                    <strong>{proposal.freelancerName}</strong>
+                  </div>
+                  <div>
+                    <span>Title</span>
+                    <strong>{formData.title}</strong>
+                  </div>
+                  <div>
+                    <span>Budget</span>
+                    <strong>${(formData.totalBudget || 0).toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span>Start Date</span>
+                    <strong>{new Date(formData.startDate).toLocaleDateString()}</strong>
+                  </div>
+                  <div>
+                    <span>End Date</span>
+                    <strong>{formData.endDate ? new Date(formData.endDate).toLocaleDateString() : 'N/A'}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="contract-actions">
+              <button className="btn-secondary" onClick={() => setStep('terms')}>
+                ← Back
+              </button>
+              <button className="btn-primary" onClick={() => setStep('confirm')}>
+                Proceed to Signing <Send size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Confirm */}
+        {step === 'confirm' && contractCreated && (
+          <div className="contract-step-content">
+            <div className="contract-section">
+              <h2>Send for E-Signature</h2>
+
+              <div className="signature-info">
+                <CheckCircle size={48} className="success-icon" />
+                <h3>Contract Created Successfully</h3>
+                <p>Your contract is ready to be sent for electronic signature</p>
+
+                <div className="signature-details">
+                  <div className="detail-box">
+                    <Users size={20} />
+                    <div>
+                      <h4>Freelancer</h4>
+                      <p>{proposal.freelancerName}</p>
+                    </div>
+                  </div>
+
+                  <div className="detail-box">
+                    <FileText size={20} />
+                    <div>
+                      <h4>Document</h4>
+                      <p>{formData.title}</p>
+                    </div>
+                  </div>
+
+                  <div className="detail-box">
+                    <DollarSign size={20} />
+                    <div>
+                      <h4>Amount</h4>
+                      <p>${(formData.totalBudget || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="signature-process">
+                  <h4>What happens next:</h4>
+                  <ol>
+                    <li>Contract is sent to freelancer for e-signature</li>
+                    <li>Freelancer receives email with signing link</li>
+                    <li>Freelancer signs contract electronically</li>
+                    <li>Contract becomes active after both signatures</li>
+                    <li>Milestone tracking begins</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <div className="contract-actions">
+              <button className="btn-secondary" onClick={() => setStep('preview')}>
+                ← Back to Preview
+              </button>
+              <button
+                className="btn-primary btn-large"
+                onClick={handleSendForSignature}
+                disabled={sendingForSignature}
+              >
+                {sendingForSignature ? (
+                  <>
+                    <span className="spinner small" />
+                    Sending for Signature...
+                  </>
+                ) : (
+                  <>
+                    <Send size={16} />
+                    Send Contract for E-Signature
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </AppLayout>
+  );
+}

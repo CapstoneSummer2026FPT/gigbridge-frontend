@@ -2,7 +2,8 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto, ClientProfileResponseDto, FreelancerProfileResponseDto } from '../../types/models/Profile';
 
-const profileV1Url = 'Profile';
+
+const profileUrl = 'Profile';
 
 export const profilePutAPI = {
   /**
@@ -10,7 +11,7 @@ export const profilePutAPI = {
    * PUT /v1/profile/client
    */
   updateClientProfile: async (data: UpdateClientProfileDto): Promise<ApiResponse<ClientProfileResponseDto>> => {
-    return apiService.put<ClientProfileResponseDto>(`${profileV1Url}/client`, data);
+    return apiService.put<ClientProfileResponseDto>(`${profileUrl}/client`, data);
   },
 
   /**
@@ -18,7 +19,7 @@ export const profilePutAPI = {
    * PUT /v1/profile/freelancer
    */
   updateFreelancerProfile: async (data: UpdateFreelancerProfileDto): Promise<ApiResponse<FreelancerProfileResponseDto>> => {
-    return apiService.put<FreelancerProfileResponseDto>(`${profileV1Url}/freelancer`, data);
+    return apiService.put<FreelancerProfileResponseDto>(`${profileUrl}/freelancer`, data);
   },
 
   /**
@@ -26,6 +27,6 @@ export const profilePutAPI = {
    * PUT /v1/profile/setup-complete
    */
   markSetupComplete: async (): Promise<ApiResponse<any>> => {
-    return apiService.put<any>(`${profileV1Url}/setup-complete`, {});
+    return apiService.put<any>(`${profileUrl}/setup-complete`, {});
   },
 };

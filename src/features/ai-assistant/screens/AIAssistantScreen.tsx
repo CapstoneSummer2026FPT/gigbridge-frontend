@@ -1,254 +1,328 @@
-import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, FileText, Code, BarChart2, Lightbulb, Upload, X, Zap, MessageSquare } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  Eraser,
+  Loader2,
+  MessageSquare,
+  Send,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
+import {
+  AI_ASSISTANT_CAPABILITIES,
+  AI_ASSISTANT_DISCLAIMER,
+  AI_ASSISTANT_STARTER_PROMPTS,
+  buildMockAIResponse,
+  createInitialAssistantMessage,
+  estimateTokenUsage,
+  type AIAssistantMessage,
+} from '../mock/data-for-AIAssistantScreen';
+import '../styles/ai-assistant-screen.css';
 
-interface ChatMessage { role: 'user' | 'ai'; content: string; type?: 'text' | 'code' | 'insight'; timestamp: Date; }
+const AI_SESSION_STORAGE_KEY = 'gb_ai_assistant_session';
+const AI_RESPONSE_TIMEOUT_MS = 5000;
 
-const AI_FEATURES = [
-  { icon: <FileText size={18} />, label: 'Proposal Writer', desc: 'Generate compelling proposals', color: '#0077FF' },
-  { icon: <Code size={18} />, label: 'Code Review', desc: 'Analyze and improve code', color: '#9F4BFF' },
-  { icon: <BarChart2 size={18} />, label: 'Progress Insights', desc: 'Analyze project health', color: '#22C55E' },
-  { icon: <Lightbulb size={18} />, label: 'Skill Advisor', desc: 'Career growth suggestions', color: '#F59E0B' },
-];
-
-const QUICK_PROMPTS = [
-  'Write a proposal for a React developer role',
-  'Analyze my earning trends and suggest improvements',
-  'What skills should I learn next for maximum income?',
-  'Draft a project status update for my client',
-  'How can I improve my profile to get more jobs?',
-  'Generate a professional bio for my portfolio',
-];
-
-const AI_RESPONSES: Record<string, { content: string; type: 'text' | 'insight' }> = {
-  proposal: {
-    content: `# AI-Generated Proposal\n\n**Subject: Experienced React Developer Ready to Deliver Excellence**\n\nDear [Client Name],\n\nThank you for posting this exciting opportunity. I am a Senior React Developer with 7+ years of experience building scalable, high-performance web applications, and I believe I am the perfect fit for your project.\n\n**Why Choose Me:**\n• Expert-level proficiency in React, TypeScript, and Next.js\n• Delivered 30+ similar projects with 4.9/5 client satisfaction\n• Strong communication and proactive project management\n• Available for daily stand-ups and quick questions\n\nI would love to discuss how I can bring your vision to life. Let's schedule a quick call!\n\nBest regards`,
-    type: 'text',
-  },
-  skills: {
-    content: `**🚀 Top Skills to Learn for Maximum Income in 2026:**\n\n1. **AI/ML Integration** (avg $125/hr, +142% demand)\n   - Learn: OpenAI API, LangChain, vector databases\n   \n2. **Web3 & Blockchain** (avg $115/hr, +89% demand)\n   - Learn: Solidity, ethers.js, DeFi protocols\n   \n3. **Cloud Architecture** (avg $110/hr, +52% demand)\n   - Learn: AWS CDK, Kubernetes, serverless\n\n**💡 Recommendation:** Your current React skills are highly valued. Adding AI/ML integration would likely increase your hourly rate by 30-40%.`,
-    type: 'insight',
-  },
-  default: {
-    content: `I understand your request. Based on my analysis of your profile and current market trends, here are my recommendations:\n\n**Immediate Actions:**\n1. Update your profile with recent project keywords (TypeScript, AI integration)\n2. Your proposal acceptance rate can improve by responding within 2 hours\n3. Adding a video introduction can increase interview invitations by 67%\n\n**Market Insight:** React developers in your experience range are averaging $95-115/hr in Q2 2026, placing you competitively at $95/hr. Consider a rate review in 2 months.\n\nHow else can I help you today?`,
-    type: 'insight',
-  },
-};
+type ServiceState = 'ready' | 'thinking' | 'timeout' | 'unavailable';
 
 export default function AIAssistantScreen() {
-  const { user } = useApp();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'ai',
-      content: `Hello ${user?.name?.split(' ')[0] || 'there'}! 👋 I'm your personal AI Career Assistant, powered by GigBridge Intelligence.\n\nI can help you with:\n• Writing winning proposals\n• Analyzing your earning patterns\n• Career growth recommendations  \n• Code and document review\n• Project progress insights\n\nWhat would you like to accomplish today?`,
-      type: 'text',
-      timestamp: new Date(),
+  const { user, role } = useApp();
+  const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'there';
+  const roleLabel = role === 0 ? 'client' : role === 1 ? 'freelancer' : 'user';
+  const endRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<number | null>(null);
+
+  const [messages, setMessages] = useState<AIAssistantMessage[]>(() => {
+    try {
+      const stored = sessionStorage.getItem(AI_SESSION_STORAGE_KEY);
+      if (stored) return JSON.parse(stored);
+    } catch (_error) {
+      sessionStorage.removeItem(AI_SESSION_STORAGE_KEY);
     }
-  ]);
+    return [createInitialAssistantMessage(firstName)];
+  });
   const [input, setInput] = useState('');
-  const [isThinking, setIsThinking] = useState(false);
-  const [activeFeature, setActiveFeature] = useState<string | null>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [serviceState, setServiceState] = useState<ServiceState>('ready');
+  const [error, setError] = useState('');
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  const tokenUsage = useMemo(
+    () => messages.reduce((total, message) => total + message.tokenEstimate, 0),
+    [messages]
+  );
+  const assistantMessageCount = messages.filter(message => message.role === 'assistant').length;
 
-  const sendMessage = async (text?: string) => {
-    const messageText = text || input;
-    if (!messageText.trim()) return;
+  useEffect(() => {
+    sessionStorage.setItem(AI_SESSION_STORAGE_KEY, JSON.stringify(messages));
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-    setMessages(prev => [...prev, { role: 'user', content: messageText, type: 'text', timestamp: new Date() }]);
+  useEffect(() => () => {
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+  }, []);
+
+  const clearConversation = () => {
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    const nextMessages = [createInitialAssistantMessage(firstName)];
+    setMessages(nextMessages);
     setInput('');
-    setIsThinking(true);
-
-    await new Promise(r => setTimeout(r, 1200));
-
-    const lowerText = messageText.toLowerCase();
-    let response = AI_RESPONSES.default;
-    if (lowerText.includes('proposal')) response = AI_RESPONSES.proposal;
-    if (lowerText.includes('skill')) response = AI_RESPONSES.skills;
-
-    setIsThinking(false);
-    setMessages(prev => [...prev, { role: 'ai', content: response.content, type: response.type, timestamp: new Date() }]);
+    setServiceState('ready');
+    setError('');
+    sessionStorage.setItem(AI_SESSION_STORAGE_KEY, JSON.stringify(nextMessages));
   };
 
+  const copyMessage = async (message: AIAssistantMessage) => {
+    await navigator.clipboard.writeText(message.content);
+    setCopiedMessageId(message.id);
+    window.setTimeout(() => setCopiedMessageId(null), 1200);
+  };
+
+  const sendPrompt = async (promptText?: string) => {
+    const prompt = (promptText ?? input).trim();
+    if (!prompt || serviceState === 'thinking') return;
+
+    if (prompt.length > 5000) {
+      setError('MSG66: Message must be under 5000 characters');
+      return;
+    }
+
+    const userMessage: AIAssistantMessage = {
+      id: `user_${Date.now()}`,
+      role: 'user',
+      type: 'text',
+      content: prompt,
+      createdAt: new Date().toISOString(),
+      tokenEstimate: estimateTokenUsage(prompt),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setError('');
+    setServiceState('thinking');
+
+    timeoutRef.current = window.setTimeout(() => {
+      setServiceState('timeout');
+      setError('AI response is taking longer than 5 seconds. Still trying to reconnect to the service...');
+    }, AI_RESPONSE_TIMEOUT_MS);
+
+    const shouldTimeout = prompt.toLowerCase().includes('timeout');
+    const shouldFail = prompt.toLowerCase().includes('unavailable') || prompt.toLowerCase().includes('offline');
+    const responseDelay = shouldTimeout ? 5600 : 1150;
+
+    await new Promise(resolve => window.setTimeout(resolve, responseDelay));
+    if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+
+    if (shouldFail) {
+      setServiceState('unavailable');
+      setError('MSG47: AI service is temporarily unavailable. Please try again later.');
+      return;
+    }
+
+    const response = buildMockAIResponse(prompt, roleLabel);
+    const assistantMessage: AIAssistantMessage = {
+      id: `ai_${Date.now()}`,
+      role: 'assistant',
+      type: response.type,
+      content: `${response.content}\n\nDisclaimer: ${AI_ASSISTANT_DISCLAIMER}`,
+      createdAt: new Date().toISOString(),
+      tokenEstimate: estimateTokenUsage(response.content),
+    };
+
+    setMessages(prev => [...prev, assistantMessage]);
+    setServiceState('ready');
+    setError('');
+  };
+
+  const stateLabel = {
+    ready: 'AI Ready',
+    thinking: 'Generating',
+    timeout: 'Timeout Watch',
+    unavailable: 'Unavailable',
+  }[serviceState];
+
   return (
-    <AppLayout fullWidth>
-      <div className="flex h-[calc(100vh-4rem)]" style={{ background: '#0A0F1C' }}>
-        {/* Left Panel - Features */}
-        <div className="hidden md:flex flex-col w-64 flex-shrink-0 p-4 overflow-y-auto"
-          style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-          {/* AI Avatar */}
-          <div className="text-center mb-6 pt-2">
-            <div className="w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center animate-orb"
-              style={{ background: 'radial-gradient(circle at 30% 30%, rgba(0,240,255,0.9), rgba(159,75,255,0.7))' }}>
-              <Bot size={36} style={{ color: '#0A0F1C' }} />
+    <AppLayout>
+      <div className="ai-assistant-page">
+        <header className="ai-assistant-header">
+          <div className="ai-assistant-title-block">
+            <div className="ai-assistant-mark">
+              <Bot size={24} />
             </div>
-            <p className="text-primary font-bold">GigBridge AI</p>
-            <div className="flex items-center justify-center gap-1 mt-1">
-              <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
-              <p className="text-xs text-green">Online · Instant Response</p>
+            <div>
+              <p className="ai-assistant-kicker">AI Work Assistant</p>
+              <h1>Work faster with contextual AI support</h1>
+              <p>Ask work questions, draft content, review decisions, and keep session context in one place.</p>
             </div>
           </div>
 
-          {/* Features */}
-          <p className="text-xs font-semibold mb-3 text-secondary">AI CAPABILITIES</p>
-          <div className="space-y-2 mb-6">
-            {AI_FEATURES.map(feature => (
-              <button key={feature.label}
-                onClick={() => setActiveFeature(activeFeature === feature.label ? null : feature.label)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all"
-                style={{
-                  background: activeFeature === feature.label ? `${feature.color}15` : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${activeFeature === feature.label ? feature.color + '40' : 'rgba(255,255,255,0.06)'}`,
-                }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: feature.color + '20' }}>
-                  <span style={{ color: feature.color }}>{feature.icon}</span>
-                </div>
-                <div>
-                  <p className="text-primary text-xs font-medium">{feature.label}</p>
-                  <p className="text-[10px] text-secondary">{feature.desc}</p>
-                </div>
-              </button>
-            ))}
+          <div className="ai-assistant-status-panel">
+            <span className={`ai-service-pill ${serviceState}`}>
+              {serviceState === 'thinking' ? <Loader2 size={15} className="ai-spin" /> : <CheckCircle2 size={15} />}
+              {stateLabel}
+            </span>
+            <span className="ai-model-pill">
+              <Zap size={14} />
+              LLM mock API
+            </span>
           </div>
+        </header>
 
-          {/* Quick Prompts */}
-          <p className="text-xs font-semibold mb-3 text-secondary">QUICK PROMPTS</p>
-          <div className="space-y-1">
-            {QUICK_PROMPTS.slice(0, 4).map(prompt => (
-              <button key={prompt} onClick={() => sendMessage(prompt)}
-                className="w-full text-left px-3 py-2 rounded-lg text-xs transition-all"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#8892A4' }}>
-                {prompt.length > 35 ? prompt.slice(0, 35) + '...' : prompt}
-              </button>
-            ))}
+        {error && (
+          <div className={`ai-assistant-alert ${serviceState === 'unavailable' ? 'danger' : 'warning'}`}>
+            <AlertTriangle size={17} />
+            {error}
           </div>
+        )}
 
-          {/* Document Analyzer */}
-          <div className="mt-6 upload-zone p-4" onClick={() => {}}>
-            <Upload size={18} className="mx-auto mb-1 text-secondary" />
-            <p className="text-xs text-primary font-medium">Analyze Document</p>
-            <p className="text-[10px] text-secondary">PDF, DOCX, Code files</p>
-          </div>
-        </div>
-
-        {/* Main Chat */}
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(10,15,28,0.8)' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center animate-orb"
-                style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-                <Bot size={16} style={{ color: '#0A0F1C' }} />
+        <div className="ai-assistant-shell">
+          <aside className="ai-assistant-rail">
+            <div className="ai-stat-grid">
+              <div>
+                <strong>{tokenUsage.toLocaleString()}</strong>
+                <span>Tokens</span>
               </div>
               <div>
-                <p className="text-primary font-semibold text-sm">GigBridge AI Assistant</p>
-                <p className="text-xs text-green">Powered by Advanced Intelligence</p>
+                <strong>{messages.length}</strong>
+                <span>Messages</span>
+              </div>
+              <div>
+                <strong>{assistantMessageCount}</strong>
+                <span>AI replies</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="badge-purple text-xs">GPT-4o Enhanced</span>
-              <button className="text-xs px-3 py-1.5 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#8892A4' }}
-                onClick={() => setMessages([])}>
-                Clear Chat
+
+            <section>
+              <div className="ai-section-heading">
+                <Sparkles size={15} />
+                Capabilities
+              </div>
+              <div className="ai-capability-list">
+                {AI_ASSISTANT_CAPABILITIES.map(capability => (
+                  <button
+                    key={capability.id}
+                    type="button"
+                    className={`ai-capability-card ${capability.accent}`}
+                    onClick={() => sendPrompt(capability.prompt)}
+                    disabled={serviceState === 'thinking'}
+                  >
+                    <span>{capability.icon}</span>
+                    <strong>{capability.title}</strong>
+                    <small>{capability.description}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <div className="ai-section-heading">
+                <MessageSquare size={15} />
+                Starters
+              </div>
+              <div className="ai-starter-list">
+                {AI_ASSISTANT_STARTER_PROMPTS.map(prompt => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => sendPrompt(prompt)}
+                    disabled={serviceState === 'thinking'}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </aside>
+
+          <main className="ai-chat-panel">
+            <div className="ai-chat-toolbar">
+              <div>
+                <strong>Session Context</strong>
+                <span>History is stored for this browser session.</span>
+              </div>
+              <button type="button" onClick={clearConversation}>
+                <Eraser size={16} />
+                Clear
               </button>
             </div>
-          </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-5">
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                {msg.role === 'ai' ? (
-                  <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center mt-1"
-                    style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-                    <Bot size={14} style={{ color: '#0A0F1C' }} />
+            <div className="ai-message-list">
+              {messages.map(message => (
+                <article key={message.id} className={`ai-message-row ${message.role}`}>
+                  <div className="ai-message-avatar">
+                    {message.role === 'assistant' ? <Bot size={16} /> : firstName.charAt(0).toUpperCase()}
                   </div>
-                ) : (
-                  <img src={user?.avatar} alt="" className="w-8 h-8 rounded-xl flex-shrink-0 mt-1" />
-                )}
-                <div className={`max-w-2xl ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                  <div className="px-5 py-4 rounded-2xl text-sm leading-relaxed whitespace-pre-line"
-                    style={{
-                      background: msg.role === 'user'
-                        ? 'linear-gradient(135deg, rgba(0,240,255,0.15), rgba(0,150,255,0.1))'
-                        : msg.type === 'insight'
-                          ? 'linear-gradient(135deg, rgba(159,75,255,0.08), rgba(0,240,255,0.04))'
-                          : 'rgba(255,255,255,0.05)',
-                      border: msg.role === 'user'
-                        ? '1px solid rgba(0,240,255,0.25)'
-                        : msg.type === 'insight'
-                          ? '1px solid rgba(159,75,255,0.2)'
-                          : '1px solid rgba(255,255,255,0.08)',
-                      color: 'white',
-                      borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                    }}>
-                    {msg.content}
+                  <div className="ai-message-stack">
+                    <div className={`ai-message-bubble ${message.type}`}>
+                      <div className="ai-message-meta">
+                        <span>{message.role === 'assistant' ? 'GigBridge AI' : firstName}</span>
+                        <span>
+                          <Clock3 size={12} />
+                          {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p>{message.content}</p>
+                    </div>
+                    {message.role === 'assistant' && (
+                      <button className="ai-copy-button" type="button" onClick={() => copyMessage(message)}>
+                        <Copy size={13} />
+                        {copiedMessageId === message.id ? 'Copied' : 'Copy'}
+                      </button>
+                    )}
                   </div>
-                  <p className="text-[10px] px-1" style={{ color: '#4B5563' }}>
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-              </div>
-            ))}
+                </article>
+              ))}
 
-            {isThinking && (
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-                  <Bot size={14} style={{ color: '#0A0F1C' }} />
-                </div>
-                <div className="px-5 py-4 rounded-2xl flex items-center gap-2"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="typing-dot" />
-                  <div className="typing-dot" />
-                  <div className="typing-dot" />
-                  <span className="text-xs ml-1 text-secondary">AI is thinking...</span>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Quick prompts mobile */}
-          <div className="px-5 py-2 flex gap-2 overflow-x-auto md:hidden">
-            {QUICK_PROMPTS.slice(0, 3).map(p => (
-              <button key={p} onClick={() => sendMessage(p)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#8892A4' }}>
-                {p.slice(0, 25)}...
-              </button>
-            ))}
-          </div>
-
-          {/* Input Area */}
-          <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex items-end gap-3">
-              <div className="flex-1 relative">
-                <textarea
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  placeholder="Ask me anything about your career, proposals, code..."
-                  rows={2}
-                  className="input-gb w-full px-4 py-3 resize-none text-sm"
-                />
-              </div>
-              <button
-                onClick={() => sendMessage()}
-                disabled={!input.trim() || isThinking}
-                className="btn-cyan p-3 rounded-xl flex-shrink-0 disabled:opacity-40 flex items-center gap-2">
-                <Send size={18} />
-              </button>
+              {serviceState === 'thinking' && (
+                <article className="ai-message-row assistant">
+                  <div className="ai-message-avatar"><Bot size={16} /></div>
+                  <div className="ai-thinking-card">
+                    <Loader2 size={17} className="ai-spin" />
+                    <span>Generating a response within the 5 second SLA...</span>
+                  </div>
+                </article>
+              )}
+              <div ref={endRef} />
             </div>
-            <p className="text-xs mt-2 text-center" style={{ color: '#4B5563' }}>
-              AI responses are generated for guidance. Always verify important information.
-            </p>
-          </div>
+
+            <div className="ai-disclaimer-bar">
+              <AlertTriangle size={15} />
+              {AI_ASSISTANT_DISCLAIMER}
+            </div>
+
+            <form
+              className="ai-compose"
+              onSubmit={event => {
+                event.preventDefault();
+                sendPrompt();
+              }}
+            >
+              <textarea
+                value={input}
+                onChange={event => setInput(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendPrompt();
+                  }
+                }}
+                placeholder="Ask about a proposal, job post, contract, code review, or project decision..."
+                rows={2}
+                maxLength={5000}
+              />
+              <div className="ai-compose-actions">
+                <span>{input.length}/5000</span>
+                <button type="submit" disabled={!input.trim() || serviceState === 'thinking'}>
+                  <Send size={18} />
+                  Send
+                </button>
+              </div>
+            </form>
+          </main>
         </div>
       </div>
     </AppLayout>

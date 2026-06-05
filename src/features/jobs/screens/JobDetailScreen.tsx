@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Video, Send, Bookmark, Share2, ChevronRight, Zap } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router';
+import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Video, Send, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -13,10 +13,50 @@ import type { ClientProfile } from '../../../types/models/Profile';
 import { UserRole } from '../../../types/models/User';
 import '../styles/job-detail-screen.css';
 
+type ManageJobPostState = {
+  id: string;
+  title: string;
+  description: string;
+  status: 'Draft' | 'Open' | 'Closed' | 'Cancelled';
+  budget: number;
+  budgetType: 'Fixed' | 'Hourly';
+  duration: string;
+  skills: string[];
+  proposals: number;
+  createdAt: string;
+};
+
+type JobLocationState = ManageJobPostState | Job;
+
+const toJobFromManageState = (job: ManageJobPostState): Job => ({
+  id: job.id,
+  clientId: '',
+  title: job.title,
+  description: job.description,
+  category: 'All',
+  skills: job.skills,
+  budgetMin: job.budgetType === 'Hourly' ? job.budget : job.budget,
+  budgetMax: job.budgetType === 'Hourly' ? job.budget : job.budget,
+  jobType: job.budgetType === 'Hourly' ? 'hourly' : 'fixed',
+  experienceLevel: 'intermediate',
+  status: job.status.toLowerCase() === 'cancelled' ? 'closed' : job.status.toLowerCase() as Job['status'],
+  proposalCount: job.proposals,
+  viewCount: 0,
+  postedAt: job.createdAt,
+  isRemote: true,
+  gigcoin_cost: 0,
+});
+
+const formatStatus = (status: Job['status']) =>
+  status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
 export default function JobDetailScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, role } = useApp();
+  const fallbackJob = (location.state as { job?: JobLocationState } | null)?.job;
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [showProposalForm, setShowProposalForm] = useState(false);
   const [proposalData, setProposalData] = useState({ coverLetter: '', bidAmount: '', deliveryDays: '' });
   const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
@@ -47,12 +87,36 @@ export default function JobDetailScreen() {
         setSimilarJobs(allJobs.filter(j => j.id !== id).slice(0, 3));
       } catch (error) {
         console.error('Failed to fetch job details:', error);
+        if (fallbackJob && fallbackJob.id === id) {
+          setJob('budgetMin' in fallbackJob ? fallbackJob : toJobFromManageState(fallbackJob));
+          setClient(null);
+          setClientProfile(null);
+          setSimilarJobs([]);
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchJobDetails();
-  }, [id]);
+  }, [id, fallbackJob]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem('gb_saved_jobs');
+    setSavedJobs(stored ? JSON.parse(stored) : []);
+  }, []);
+
+  const toggleSavedJob = () => {
+    if (!job) return;
+    if (!user || role !== UserRole.Freelancer) {
+      alert('Please log in as a freelancer to save jobs.');
+      return;
+    }
+    setSavedJobs(prev => {
+      const next = prev.includes(job.id) ? prev.filter(id => id !== job.id) : [...prev, job.id];
+      window.localStorage.setItem('gb_saved_jobs', JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Fetch gigcoin balance for freelancers
   useEffect(() => {
@@ -125,6 +189,10 @@ export default function JobDetailScreen() {
       if (gigcoinBalance !== null) {
         setGigcoinBalance(gigcoinBalance - (job.gigcoin_cost || 0));
       }
+      // Redirect to AI interview screen after successful application
+      setTimeout(() => {
+        navigate('/ai-interview');
+      }, 500);
     } catch (error) {
       console.error('Failed to apply for job:', error);
     } finally {
@@ -132,7 +200,7 @@ export default function JobDetailScreen() {
     }
   };
 
-  if (loading || !job) {
+  if (loading) {
     return (
       <AppLayout>
         <div className="max-w-6xl mx-auto text-center py-20">
@@ -142,22 +210,38 @@ export default function JobDetailScreen() {
     );
   }
 
+  if (!job) {
+    return (
+      <AppLayout>
+        <div className="max-w-6xl mx-auto text-center py-20">
+          <p className="text-primary font-semibold">Job not found</p>
+          <button className="btn-cyan mt-4 px-4 py-2 text-sm" onClick={() => navigate('/jobs/my-jobs')}>
+            Back to My Jobs
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const applicationCost = job.gigcoin_cost || 0;
+  const canApplyWithGigcoins = applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost);
+
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto">
+      <div className="job-detail-page max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Job Header */}
-            <div className="glass-card p-6">
-              <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="glass-card p-6 job-detail-hero">
+              <div className="flex items-start justify-between gap-4 mb-5 job-detail-hero-top">
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="badge-cyan">{job.category}</span>
                     {job.isAiRecommended && <span className="badge-purple">⚡ AI Recommended</span>}
-                    <span className="badge-green">Open</span>
+                    <span className={`job-detail-status job-detail-status-${job.status}`}>{formatStatus(job.status)}</span>
                   </div>
-                  <h1 className="text-2xl font-black text-primary mb-2">{job.title}</h1>
+                  <h1 className="text-3xl font-black text-primary mb-3 job-detail-title">{job.title}</h1>
                   <div className="flex flex-wrap items-center gap-4 text-sm job-detail-meta">
                     <div className="flex items-center gap-1"><DollarSign size={14} />${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()}</div>
                     <div className="flex items-center gap-1"><Globe size={14} />Remote</div>
@@ -166,13 +250,47 @@ export default function JobDetailScreen() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="p-2 rounded-lg transition-all job-detail-client-card">
-                    <Bookmark size={16} />
+                  <button className="p-2 rounded-lg transition-all job-detail-client-card" onClick={toggleSavedJob}>
+                    <Bookmark size={16} fill={savedJobs.includes(job.id) ? 'currentColor' : 'none'} />
                   </button>
                   <button className="p-2 rounded-lg transition-all job-detail-client-card">
                     <Share2 size={16} />
                   </button>
                 </div>
+              </div>
+
+              {role === UserRole.Client && (
+                <div className="job-detail-client-actions">
+                  <button
+                    className="job-detail-primary-action"
+                    onClick={() => navigate(`/jobs/${job.id}/edit`)}
+                  >
+                    <Edit3 size={16} />
+                    Edit Jobpost
+                  </button>
+                  <button
+                    className="job-detail-secondary-action"
+                    onClick={() => navigate(`/proposals?job=${job.id}`)}
+                  >
+                    <FileText size={16} />
+                    Manage Proposal
+                    <span>{job.proposalCount}</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="job-detail-quick-stats">
+                {[
+                  { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} - $${job.budgetMax.toLocaleString()}` },
+                  { label: 'Work type', value: job.jobType === 'fixed' ? 'Fixed Price' : 'Hourly Rate' },
+                  { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
+                  { label: 'Deadline', value: job.deadline || 'Flexible' },
+                ].map(item => (
+                  <div key={item.label} className="job-detail-stat-card">
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                ))}
               </div>
 
               {/* AI Match Score (for freelancers) */}
@@ -203,80 +321,10 @@ export default function JobDetailScreen() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              {role === UserRole.Freelancer && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button className="btn-cyan flex-1 py-3 flex items-center justify-center gap-2"
-                    onClick={() => setShowProposalForm(!showProposalForm)}>
-                    <Send size={16} />
-                    Submit Proposal
-                  </button>
-                  <button className="btn-purple flex-1 py-3 flex items-center justify-center gap-2"
-                    onClick={() => navigate('/ai-interview')}>
-                    <Video size={16} />
-                    AI Instant Interview
-                  </button>
-                </div>
-              )}
+              {/* Action Buttons - Removed, using Apply Now button in sidebar instead */}
             </div>
 
-            {/* Proposal Form */}
-            {showProposalForm && (
-              <div className="glass-card p-6 neon-border-cyan">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-primary font-semibold">Submit Your Proposal</h2>
-                  <button
-                    onClick={generateAIProposal}
-                    disabled={isGeneratingProposal}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all job-detail-proposal-bg">
-                    {isGeneratingProposal ? (
-                      <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Generating...</>
-                    ) : (
-                      <><Bot size={12} />✨ AI Write Proposal</>
-                    )}
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Your Bid ($)</label>
-                      <div className="relative">
-                        <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 job-detail-desc" />
-                        <input type="number" value={proposalData.bidAmount}
-                          onChange={e => setProposalData({ ...proposalData, bidAmount: e.target.value })}
-                          placeholder="0" className="input-gb w-full pl-8 pr-3 py-3 text-sm" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Delivery Days</label>
-                      <input type="number" value={proposalData.deliveryDays}
-                        onChange={e => setProposalData({ ...proposalData, deliveryDays: e.target.value })}
-                        placeholder="30" className="input-gb w-full px-3 py-3 text-sm" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-primary mb-2 block">Cover Letter</label>
-                    <textarea value={proposalData.coverLetter}
-                      onChange={e => setProposalData({ ...proposalData, coverLetter: e.target.value })}
-                      placeholder="Introduce yourself and explain why you're the best fit..."
-                      rows={8} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button onClick={() => setShowProposalForm(false)}
-                      className="px-4 py-2.5 rounded-xl text-sm transition-all job-detail-client-card">
-                      Cancel
-                    </button>
-                    <button onClick={handleSubmitProposal} disabled={isSubmitting}
-                      className="btn-cyan flex-1 py-2.5 text-sm flex items-center justify-center gap-2">
-                      {isSubmitting ? <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" /> : 'Submit Proposal'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Proposal Form - Removed */}
 
             {/* Job Description */}
             <div className="glass-card p-6">
@@ -397,13 +445,13 @@ export default function JobDetailScreen() {
                     <span className="text-xs job-detail-desc">Application Cost</span>
                     <div className="flex items-center gap-1">
                       <Zap size={14} className="text-purple" />
-                      <span className="text-sm font-semibold text-primary">{job?.gigcoin_cost || 0} GigCoins</span>
+                      <span className="text-sm font-semibold text-primary">{applicationCost} GigCoins</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs job-detail-desc">Your Balance</span>
-                    <span className={`text-sm font-semibold ${gigcoinBalance !== null && gigcoinBalance >= (job?.gigcoin_cost || 0) ? 'text-green' : 'text-red'}`}>
-                      {gigcoinBalance !== null ? gigcoinBalance : '...'} GigCoins
+                    <span className={`text-sm font-semibold ${applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost) ? 'text-green' : 'text-red'}`}>
+                      {applicationCost === 0 && gigcoinBalance === null ? 'Not required' : `${gigcoinBalance !== null ? gigcoinBalance : '...'} GigCoins`}
                     </span>
                   </div>
                 </div>
@@ -414,7 +462,7 @@ export default function JobDetailScreen() {
                     <CheckCircle size={16} className="text-green" />
                     <span className="text-xs text-green font-medium">Already applied to this job</span>
                   </div>
-                ) : gigcoinBalance !== null && gigcoinBalance >= (job?.gigcoin_cost || 0) ? (
+                ) : canApplyWithGigcoins ? (
                   <button 
                     onClick={handleApplyJob}
                     disabled={isApplying}

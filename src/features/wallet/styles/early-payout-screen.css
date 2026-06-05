@@ -1,0 +1,201 @@
+.early-payout-page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+  color: var(--gb-text-primary);
+}
+
+.early-payout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.early-payout-header p {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.3rem;
+  color: var(--gb-amber);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.early-payout-header h1 {
+  margin: 0;
+  color: var(--gb-text-primary);
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.early-payout-header span {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--gb-text-secondary);
+}
+
+.early-payout-header button,
+.early-payout-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.6rem;
+  border-radius: 0.7rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.early-payout-header button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--gb-border);
+  color: var(--gb-text-primary);
+  background: var(--gb-glass-bg);
+}
+
+.early-payout-header button.active {
+  color: var(--gb-amber);
+  border-color: rgba(245,158,11,0.3);
+  background: rgba(245,158,11,0.1);
+}
+
+.early-payout-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.75rem;
+  font-weight: 900;
+}
+
+.early-payout-alert.danger { color: var(--gb-red); border: 1px solid rgba(239,68,68,0.25); background: rgba(239,68,68,0.1); }
+.early-payout-alert.success { color: var(--gb-green); border: 1px solid rgba(34,197,94,0.25); background: rgba(34,197,94,0.1); }
+
+.early-payout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 1rem;
+}
+
+.early-payout-card,
+.early-payout-side div {
+  border: 1px solid var(--gb-border);
+  border-radius: 0.85rem;
+  background: var(--gb-glass-bg);
+}
+
+.early-payout-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.early-payout-balance {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  color: var(--gb-green);
+  background: rgba(34,197,94,0.1);
+}
+
+.early-payout-balance span,
+.early-payout-balance strong {
+  display: block;
+}
+
+.early-payout-balance span,
+.early-payout-card label,
+.early-payout-summary span,
+.early-payout-side p {
+  color: var(--gb-text-secondary);
+}
+
+.early-payout-balance strong {
+  color: var(--gb-text-primary);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.early-payout-card label {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 900;
+}
+
+.early-payout-card input {
+  min-height: 2.8rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 0.7rem;
+  color: var(--gb-text-primary);
+  background: var(--gb-bg-primary);
+  outline: none;
+}
+
+.early-payout-summary {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.early-payout-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 0.7rem;
+  background: var(--gb-bg-primary);
+}
+
+.early-payout-summary b {
+  color: var(--gb-text-primary);
+}
+
+.early-payout-submit {
+  width: 100%;
+  border: none;
+  color: white;
+  background: linear-gradient(135deg, var(--gb-cyan), var(--gb-purple));
+}
+
+.early-payout-side {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.early-payout-side div {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+}
+
+.early-payout-side svg {
+  color: var(--gb-purple);
+}
+
+.early-payout-side strong {
+  color: var(--gb-text-primary);
+}
+
+.early-payout-side p {
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+@media (max-width: 760px) {
+  .early-payout-header,
+  .early-payout-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .early-payout-header {
+    flex-direction: column;
+  }
+}

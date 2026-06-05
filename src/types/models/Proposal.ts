@@ -4,8 +4,10 @@
 
 export enum ProposalStatus {
   Pending = 0,
-  Accepted = 1,
-  Rejected = 2,
+  Shortlisted = 1,
+  Accepted = 2,
+  Rejected = 3,
+  Withdrawn = 4,
 }
 
 export interface Proposal {
@@ -26,4 +28,25 @@ export interface ProposalAttachment {
   file_name: string;
   file_url: string;
   file_size: number;
+}
+
+export interface ProposalQueryParams {
+  pageIndex?: number;
+  pageSize?: number;
+  PageIndex?: number;
+  PageSize?: number;
+}
+
+export interface ProposalDto {
+  proposalsId: string;
+  jobPostsId: string;
+  jobTitle: string;
+  freelancerProfilesId: string;
+  freelancerName: string;
+  coverLetter: string;
+  proposedRate: number;
+  proposedDuration: string;
+  status: ProposalStatus | number;
+  submittedAt: string;
+  reviewedAt?: string | null;
 }
