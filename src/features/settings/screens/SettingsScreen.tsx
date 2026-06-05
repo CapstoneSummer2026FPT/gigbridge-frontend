@@ -189,11 +189,6 @@ export default function SettingsScreen() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters');
-      return;
-    }
-
     setPasswordLoading(true);
     try {
       const res = await authPostAPI.changePassword({
@@ -207,7 +202,12 @@ export default function SettingsScreen() {
         setNewPassword('');
         setConfirmNewPassword('');
       } else {
-        setPasswordError(res.message || 'Failed to update password');
+        if (res.errors && typeof res.errors === 'object') {
+          const errorMsgs = Object.values(res.errors).flat().join(', ');
+          setPasswordError(errorMsgs || res.message || 'Failed to update password');
+        } else {
+          setPasswordError(res.message || 'Failed to update password');
+        }
       }
     } catch (err: any) {
       setPasswordError(err.message || 'An error occurred while updating your password');
