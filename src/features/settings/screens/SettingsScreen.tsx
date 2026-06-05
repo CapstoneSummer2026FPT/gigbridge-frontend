@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, CreditCard, Bell, Bot, Camera, Plus, X, Eye, EyeOff, Globe } from 'lucide-react';
+import { User, Lock, CreditCard, Bell, Bot, Camera, Plus, X, Eye, EyeOff, Globe, Landmark } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { LanguageSwitcher } from '../../../shared/components/LanguageSwitcher';
@@ -226,6 +226,8 @@ export default function SettingsScreen() {
     } finally {
       setPasswordLoading(false);
     }
+  };
+
   const handleBillingChange = (key: keyof BillingEarningsConfig, value: string | boolean) => {
     setBillingConfig(prev => ({ ...prev, [key]: value }));
     setBillingError('');
