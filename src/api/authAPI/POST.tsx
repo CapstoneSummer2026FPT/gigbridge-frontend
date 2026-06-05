@@ -11,6 +11,7 @@ import type {
   UserDTO,
   SendOtpRequest,
   VerifyOtpRequest,
+  ChangePasswordProfileRequest,
 } from '../../types/models/Auth';
 
 const authUrl = 'auth';
@@ -95,6 +96,14 @@ export const authPostAPI = {
    */
   verifyOtp: async (data: VerifyOtpRequest): Promise<ApiResponse<null>> => {
     return apiService.post<null>(`${authUrl}/verify-otp`, data);
+  },
+
+  /**
+   * Change user password (authenticated)
+   * POST /v1/auth/change-password
+   */
+  changePassword: async (data: ChangePasswordProfileRequest): Promise<ApiResponse<null>> => {
+    return apiService.post<null>(`${authUrl}/change-password`, data);
   },
 };
 

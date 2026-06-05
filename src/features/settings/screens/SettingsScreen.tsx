@@ -8,6 +8,7 @@ import { UserRole } from '../../../types/models/User';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { profilePutAPI } from '../../../api/profileAPI/PUT';
 import { CompanySize } from '../../../types/models/Profile';
+import { authPostAPI } from '../../../api/authAPI/POST';
 
 type SettingsTab = 'profile' | 'security' | 'payment' | 'notifications' | 'ai' | 'preferences';
 
@@ -21,6 +22,12 @@ export default function SettingsScreen() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>([]);
   const [industries, setIndustries] = useState<string[]>([]);
   const [experienceLevels, setExperienceLevels] = useState<{ id: number; name: string }[]>([]);
@@ -165,6 +172,48 @@ export default function SettingsScreen() {
     setIsOptimizing(false);
     setOptimizeSuccess(true);
     setTimeout(() => setOptimizeSuccess(false), 3000);
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setPasswordError('All fields are required');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const res = await authPostAPI.changePassword({
+        currentPassword,
+        newPassword
+      });
+
+      if (res.success) {
+        setPasswordSuccess(true);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      } else {
+        setPasswordError(res.message || 'Failed to update password');
+      }
+    } catch (err: any) {
+      setPasswordError(err.message || 'An error occurred while updating your password');
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const TABS = [
@@ -389,22 +438,97 @@ export default function SettingsScreen() {
             {tab === 'security' && (
               <div className="glass-card p-6">
                 <h2 className="text-primary font-semibold mb-6">Password & Security</h2>
-                <div className="space-y-4">
-                  {['Current Password', 'New Password', 'Confirm New Password'].map(label => (
-                    <div key={label}>
-                      <label className="text-xs font-medium text-primary mb-2 block">{label}</label>
-                      <div className="relative">
-                        <input type={showPassword ? 'text' : 'password'} placeholder="••••••••"
-                          className="input-gb w-full px-4 py-3 pr-11 text-sm" />
-                        <button onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary">
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
+                <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                  {passwordError && (
+                    <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
+                      {passwordError}
                     </div>
-                  ))}
-                  <button className="btn-cyan px-6 py-3 text-sm mt-2">Update Password</button>
-                </div>
+                  )}
+
+                  {passwordSuccess && (
+                    <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981' }}>
+                      Password updated successfully!
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-medium text-primary mb-2 block">Current Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        className="input-gb w-full px-4 py-3 pr-11 text-sm"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-primary mb-2 block">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        className="input-gb w-full px-4 py-3 pr-11 text-sm"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-primary mb-2 block">Confirm New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={confirmNewPassword}
+                        onChange={e => setConfirmNewPassword(e.target.value)}
+                        className="input-gb w-full px-4 py-3 pr-11 text-sm"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    className="btn-cyan px-6 py-3 text-sm mt-2 flex items-center gap-2"
+                  >
+                    {passwordLoading ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Password'
+                    )}
+                  </button>
+                </form>
               </div>
             )}
 
