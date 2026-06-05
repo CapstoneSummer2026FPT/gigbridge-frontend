@@ -11,4 +11,12 @@ export const adminDeleteAPI = {
   deleteUser: async (email: string): Promise<ApiResponse<object>> => {
     return apiService.delete<object>(`${Admin_Api_Base_Url}/users`, { email });
   },
+
+  deleteFAQ: async (id: number): Promise<ApiResponse<object>> => {
+    return apiService.delete<object>(`/admin/faq/${id}`);
+  },
+
+  deleteFAQCategory: async (id: number): Promise<ApiResponse<object>> => {
+    return apiService.delete<object>(`/admin/faq/categories/${id}`);
+  },
 };

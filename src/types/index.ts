@@ -32,5 +32,8 @@ export * from './models/Notification';
 // Audit Logs
 export * from './models/AuditLog';
 
+// FAQs
+export * from './models/FAQ';
+
 // Projects (legacy compatibility)
 export * from './models/Project';
