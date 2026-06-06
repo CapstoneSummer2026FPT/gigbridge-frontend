@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import '../styles/auth-screen.css';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 
 export default function LoginScreen() {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function LoginScreen() {
     password: '',
   });
 
-  let appContext;
+  let appContext: ReturnType<typeof useApp> | null;
   try {
     appContext = useApp();
   } catch (e) {
@@ -351,7 +352,7 @@ export default function LoginScreen() {
               <button type="button" className="text-sm auth-link-cyan" onClick={() => navigate('/auth/forgot-password')}>Forgot password?</button>
             </div>
 
-            <button type="submit" disabled={isLoading}
+            <button type="submit" disabled={isLoading || !formData.email || !formData.password}
               className="btn-cyan w-full py-3 flex items-center justify-center gap-2 auth-form-animate hover:scale-[1.01] transition-transform">
               {isLoading ? (
                 <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />

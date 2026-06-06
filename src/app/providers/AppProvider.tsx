@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { User, UserRole } from '../../types/models/User';
+import type { User } from '../../types/models/User';
+import { UserRole } from '../../types/models/User';
 import type { ClientProfile, FreelancerProfile } from '../../types/models/Profile';
 import type { ApiResponse } from '../../types/common';
 import type { LoginResponse, UserDTO } from '../../types/models/Auth';
@@ -29,17 +30,76 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
+const getField = <T,>(source: any, camelCaseKey: string, pascalCaseKey: string): T | undefined =>
+  source?.[camelCaseKey] ?? source?.[pascalCaseKey];
+
+const normalizeRole = (value: unknown): UserRole => {
+  if (typeof value === 'number' && Number.isInteger(value) && value in UserRole) {
+    return value as UserRole;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    const numericRole = Number(normalized);
+
+    if (Number.isInteger(numericRole) && numericRole in UserRole) {
+      return numericRole as UserRole;
+    }
+
+    if (normalized === 'client') return UserRole.Client;
+    if (normalized === 'freelancer') return UserRole.Freelancer;
+    if (normalized === 'admin') return UserRole.Admin;
+  }
+
+  throw new Error('Your account does not have a valid role set up yet. Please register with a role or contact support.');
+};
+
+const mapUserDTOToUser = (userDTO: UserDTO | any): User => {
+  const fullName = getField<string>(userDTO, 'fullName', 'FullName') ?? '';
+  const createdAt = getField<string>(userDTO, 'createdAt', 'CreatedAt') ?? new Date().toISOString();
+  const updatedAt = getField<string | null>(userDTO, 'updatedAt', 'UpdatedAt') ?? createdAt;
+
+  return {
+    id: String(getField<string>(userDTO, 'userId', 'UserId') ?? ''),
+    email: getField<string>(userDTO, 'email', 'Email') ?? '',
+    first_name: fullName.split(' ')[0] || '',
+    last_name: fullName.split(' ')[1] || '',
+    full_name: fullName,
+    phone_number: getField<string | null>(userDTO, 'phoneNumber', 'PhoneNumber') ?? null,
+    role: normalizeRole(getField(userDTO, 'role', 'Role')),
+    is_email_verified: Boolean(getField<boolean>(userDTO, 'isEmailVerified', 'IsEmailVerified')),
+    is_active: getField<boolean>(userDTO, 'isActive', 'IsActive') ?? true,
+    is_setup: Boolean(getField<boolean>(userDTO, 'isSetup', 'IsSetup')),
+    preferred_language: getField<string | null>(userDTO, 'preferredLanguage', 'PreferredLanguage') || 'en',
+    last_login_at: null,
+    login_failed_time: null,
+    access_failed_count: 0,
+    gigcoin_balance: 0,
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+};
+
+const getLoginData = (response: ApiResponse<LoginResponse>) => {
+  const loginData = response.data as any;
+
+  return {
+    userDTO: loginData?.user ?? loginData?.User,
+    token: loginData?.token ?? loginData?.Token,
+  };
+};
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRoleState] = useState<UserRole | null>(null);
-  const [theme, setThemeState] = useState<AppTheme>('black');
+  const [theme, setThemeState] = useState<AppTheme>('white');
   const [isLoading, setIsLoading] = useState(true);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [freelancerProfile, setFreelancerProfile] = useState<FreelancerProfile | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('gigbridge_theme') as AppTheme;
-    const initialTheme = savedTheme && (savedTheme === 'black' || savedTheme === 'white') ? savedTheme : 'black';
+    const initialTheme = savedTheme && (savedTheme === 'black' || savedTheme === 'white') ? savedTheme : 'white';
     setThemeState(initialTheme);
     document.documentElement.classList.add(initialTheme);
 
@@ -118,26 +178,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
 
-      const { user: userDTO, token } = apiResponse.data;
-      const user: User = {
-        id: userDTO.userId,
-        email: userDTO.email,
-        first_name: userDTO.fullName.split(' ')[0],
-        last_name: userDTO.fullName.split(' ')[1] || '',
-        full_name: userDTO.fullName,
-        phone_number: userDTO.phoneNumber || null,
-        role: userDTO.role as UserRole,
-        is_email_verified: userDTO.isEmailVerified,
-        is_active: userDTO.isActive,
-        is_setup: userDTO.isSetup,
-        preferred_language: userDTO.preferredLanguage || 'en',
-        last_login_at: null,
-        login_failed_time: null,
-        access_failed_count: 0,
-        gigcoin_balance: 0,
-        created_at: userDTO.createdAt,
-        updated_at: userDTO.updatedAt || userDTO.createdAt,
-      };
+      const { userDTO, token } = getLoginData(apiResponse);
+      const user = mapUserDTOToUser(userDTO);
 
       setUser(user);
       setRoleState(user.role);
@@ -171,26 +213,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
 
-      const userDTO = apiResponse.data;
-      const user: User = {
-        id: userDTO.userId,
-        email: userDTO.email,
-        first_name: userDTO.fullName.split(' ')[0],
-        last_name: userDTO.fullName.split(' ')[1] || '',
-        full_name: userDTO.fullName,
-        phone_number: userDTO.phoneNumber || null,
-        role: userDTO.role as UserRole,
-        is_email_verified: userDTO.isEmailVerified,
-        is_active: userDTO.isActive,
-        is_setup: userDTO.isSetup,
-        preferred_language: userDTO.preferredLanguage || 'en',
-        last_login_at: null,
-        login_failed_time: null,
-        access_failed_count: 0,
-        gigcoin_balance: 0,
-        created_at: userDTO.createdAt,
-        updated_at: userDTO.updatedAt || userDTO.createdAt,
-      };
+      const user = mapUserDTOToUser(apiResponse.data);
 
       setUser(user);
       setRoleState(user.role);
@@ -216,26 +239,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
 
-      const { user: userDTO, token } = apiResponse.data;
-      const user: User = {
-        id: userDTO.userId,
-        email: userDTO.email,
-        first_name: userDTO.fullName.split(' ')[0],
-        last_name: userDTO.fullName.split(' ')[1] || '',
-        full_name: userDTO.fullName,
-        phone_number: userDTO.phoneNumber || null,
-        role: userDTO.role as UserRole,
-        is_email_verified: userDTO.isEmailVerified,
-        is_active: userDTO.isActive,
-        is_setup: userDTO.isSetup,
-        preferred_language: userDTO.preferredLanguage || 'en',
-        last_login_at: null,
-        login_failed_time: null,
-        access_failed_count: 0,
-        gigcoin_balance: 0,
-        created_at: userDTO.createdAt,
-        updated_at: userDTO.updatedAt || userDTO.createdAt,
-      };
+      const { userDTO, token } = getLoginData(apiResponse);
+      const user = mapUserDTOToUser(userDTO);
 
       setUser(user);
       setRoleState(user.role);

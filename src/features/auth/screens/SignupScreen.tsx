@@ -205,7 +205,7 @@ export default function SignupScreen() {
     }
   };
 
-  let appContext;
+  let appContext: ReturnType<typeof useApp> | null;
   try {
     appContext = useApp();
   } catch (e) {

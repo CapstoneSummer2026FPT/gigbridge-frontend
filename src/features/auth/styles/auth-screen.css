@@ -333,3 +333,95 @@
 .logo-text-white {
   color: #FFFFFF !important;
 }
+
+/* ─── Animation Classes ─── */
+.auth-form-animate {
+  position: relative;
+  z-index: auto;
+}
+
+.auth-role-animate {
+  position: relative;
+  z-index: auto;
+}
+
+/* ─── Auth Submit Button Override ─── */
+.auth-form-card .btn-cyan {
+  background: linear-gradient(135deg, #0077FF 0%, #0096FF 50%, #38bdf8 100%);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  padding: 0;              /* let Tailwind py-3 control vertical */
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  min-height: 56px;
+  box-shadow:
+    0 4px 15px rgba(0, 119, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: background-position 0.4s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+/* Subtle shimmer sweep on hover */
+.auth-form-card .btn-cyan::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 70%
+  );
+  transition: left 0.5s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.auth-form-card .btn-cyan:hover:not(:disabled)::before {
+  left: 160%;
+}
+
+.auth-form-card .btn-cyan:hover:not(:disabled) {
+  background-position: 100% 50%;
+  box-shadow:
+    0 8px 25px rgba(0, 119, 255, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.auth-form-card .btn-cyan:active:not(:disabled) {
+  transform: translateY(0px);
+  box-shadow:
+    0 3px 10px rgba(0, 119, 255, 0.35),
+    inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form-card .btn-cyan:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure content is above shimmer */
+.auth-form-card .btn-cyan span,
+.auth-form-card .btn-cyan svg {
+  position: relative;
+  z-index: 2;
+}
