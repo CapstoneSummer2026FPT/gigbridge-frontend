@@ -1,20 +1,37 @@
 import { apiService } from '../../service/apiService';
-import type { FreelancerProfileDetailDto, UpdateFreelancerProfileDto } from '../../types/models/Profile';
+import type { FreelancerProfileDetailDto } from '../../types/models/Profile';
 
 export const profileGetAPI = {
   getFreelancerProfile: async (userId: string) => {
-    return await apiService.get<FreelancerProfileDetailDto>(`/api/freelancerprofile/${userId}`);
+    return await apiService.get<FreelancerProfileDetailDto>(`Profile/freelancer/${userId}`);
   },
 
   getMyFreelancerProfile: async () => {
-    return await apiService.get<FreelancerProfileDetailDto>('/api/freelancerprofile/me');
+    return await apiService.get<FreelancerProfileDetailDto>('Profile/freelancer/me');
   },
 
   getClientProfile: async (userId: string) => {
-    return await apiService.get(`/api/clientprofile/${userId}`);
+    return await apiService.get(`Profile/client/${userId}`);
   },
 
   getAllFreelancers: async (filters?: { skills?: string[]; availabilityStatus?: string; minRating?: number }) => {
-    return await apiService.get('/api/freelancerprofile', filters || {});
+    return await apiService.get('Profile/freelancer', filters || {});
+  },
+
+  getCompanySizes: async () => {
+    return await apiService.get<{ id: number; name: string }[]>('Profile/company-sizes');
+  },
+
+  getIndustries: async () => {
+    return await apiService.get<string[]>('Profile/industries');
+  },
+
+  getExperienceLevels: async () => {
+    return await apiService.get<{ id: number; name: string }[]>('Profile/experience-levels');
+  },
+
+  getAvailabilityStatuses: async () => {
+    return await apiService.get<{ id: number; name: string }[]>('Profile/availability-statuses');
   },
 };
+

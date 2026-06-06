@@ -1,42 +1,121 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle, Lock } from 'lucide-react';
 import { authAPI } from '../../../api/authAPI';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 
 export default function ForgotPasswordScreen() {
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Countdown timer effect
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  const isValidEmail = (emailStr: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+  };
+
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError('');
-    setIsLoading(true);
-
-    if (!email) {
-      setError('Please enter your email address.');
-      setIsLoading(false);
+    setSuccess('');
+    
+    if (!email || !isValidEmail(email)) {
+      setError('Please enter a valid email address.');
       return;
     }
 
+    setIsSendingOtp(true);
     try {
+      // Calls forgot-password API which now sends OTP after checking email existence
       const response = await authAPI.forgotPassword({ email });
       if (response.success) {
-        setSuccess(true);
-        localStorage.setItem('reset_password_email', email);
-        toast.success('Password reset link sent to your email.');
+        if (isMounted.current) {
+          setSuccess('Verification code sent to your email.');
+          setCountdown(60);
+        }
+        toast.success('Verification code sent successfully!');
       } else {
-        setError(response.message || 'Failed to send password reset email.');
+        if (isMounted.current) {
+          setError(getErrorMessage(response));
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsSendingOtp(false);
+      }
     }
+  };
+
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!otpCode) {
+      setError('Please enter the OTP verification code.');
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      const response = await authAPI.verifyOtp({
+        email,
+        otp: otpCode
+      });
+      if (response.success) {
+        if (isMounted.current) {
+          setIsOtpVerified(true);
+          setSuccess('OTP verified successfully! You can now proceed to reset your password.');
+        }
+        toast.success('OTP verified successfully!');
+      } else {
+        if (isMounted.current) {
+          setError(getErrorMessage(response));
+        }
+      }
+    } catch (err: any) {
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
+    } finally {
+      if (isMounted.current) {
+        setIsVerifyingOtp(false);
+      }
+    }
+  };
+
+  const handleGoToResetPassword = () => {
+    navigate('/auth/reset-password', {
+      state: { email, otp: otpCode }
+    });
   };
 
   return (
@@ -69,7 +148,7 @@ export default function ForgotPasswordScreen() {
 
           <h2 className="text-3xl font-black text-primary mb-4">Reset Your Password</h2>
           <p className="text-base max-w-sm auth-description">
-            No worries! Just enter your email and we'll help you secure your account in no time.
+            No worries! Just verify your email and we'll help you secure your account in no time.
           </p>
         </div>
 
@@ -89,62 +168,115 @@ export default function ForgotPasswordScreen() {
           </div>
 
           <h1 className="text-3xl font-black text-primary mb-2">Forgot password?</h1>
-          <p className="mb-8 auth-subtitle">Enter your email and we will send you a reset link</p>
+          <p className="mb-8 auth-subtitle">Verify your email to reset your password</p>
 
-          {success ? (
-            <div className="space-y-6">
-              <div className="p-4 rounded-xl text-sm border flex items-start gap-3" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#22C55E' }}>
-                <CheckCircle size={18} className="shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold">Reset Link Sent</p>
-                  <p className="mt-1 text-xs opacity-90">Please check your inbox at <strong>{email}</strong> for instructions to reset your password.</p>
-                </div>
+          <div className="space-y-4">
+            {error && (
+              <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', whiteSpace: 'pre-line' }}>
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
               </div>
-              <button onClick={() => navigate('/auth/login')} className="btn-cyan w-full py-3">
-                Back to Sign In
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
-                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
+            )}
 
-              <div className="relative">
+            {success && (
+              <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#22C55E' }}>
+                <CheckCircle size={16} className="shrink-0 mt-0.5" />
+                <span>{success}</span>
+              </div>
+            )}
+
+            {/* Email input and Send OTP button */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type="email"
                   placeholder="Email address"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => {
+                    setEmail(e.target.value);
+                    if (isOtpVerified) {
+                      setIsOtpVerified(false);
+                      setSuccess('');
+                    }
+                  }}
                   className="input-gb w-full py-3 auth-input-with-icon"
-                  disabled={isLoading}
+                  disabled={isOtpVerified || isSendingOtp || isVerifyingOtp}
                   required
                 />
               </div>
-
-              <button type="submit" disabled={isLoading} className="btn-cyan w-full py-3 flex items-center justify-center gap-2">
-                {isLoading ? (
-                  <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={isSendingOtp || isOtpVerified || !isValidEmail(email) || countdown > 0}
+                className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold"
+                style={{ minWidth: '105px' }}
+              >
+                {isSendingOtp ? (
+                  <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
+                ) : countdown > 0 ? (
+                  `${countdown}s`
                 ) : (
-                  <>
-                    Send Reset Link
-                    <ArrowRight size={18} />
-                  </>
+                  'Send OTP'
                 )}
               </button>
+            </div>
 
-              <p className="text-center mt-6 text-sm auth-switch-text">
-                Remember your password?{' '}
-                <button type="button" className="font-semibold auth-link-cyan" onClick={() => navigate('/auth/login')}>
-                  Sign In
-                </button>
-              </p>
-            </form>
-          )}
+            {/* OTP Code input and Verify OTP button */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
+                <input
+                  type="text"
+                  placeholder="OTP code"
+                  value={otpCode}
+                  onChange={e => {
+                    setOtpCode(e.target.value);
+                    if (isOtpVerified) {
+                      setIsOtpVerified(false);
+                      setSuccess('');
+                    }
+                  }}
+                  className="input-gb w-full py-3 auth-input-with-icon"
+                  disabled={isOtpVerified || isSendingOtp || isVerifyingOtp || !email}
+                  required
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleVerifyOtp}
+                disabled={isVerifyingOtp || isOtpVerified || !otpCode || !email}
+                className="btn-cyan px-4 py-3 shrink-0 flex items-center justify-center gap-2 text-xs font-semibold"
+                style={{ minWidth: '105px' }}
+              >
+                {isVerifyingOtp ? (
+                  <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
+                ) : isOtpVerified ? (
+                  'Verified ✓'
+                ) : (
+                  'Verify OTP'
+                )}
+              </button>
+            </div>
+
+            {/* Go to Reset Password (Enabled after OTP is verified) */}
+            <button
+              type="button"
+              onClick={handleGoToResetPassword}
+              disabled={!isOtpVerified}
+              className="btn-cyan w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Go to Reset Password
+              <ArrowRight size={18} />
+            </button>
+
+            <p className="text-center mt-6 text-sm auth-switch-text">
+              Remember your password?{' '}
+              <button type="button" className="font-semibold auth-link-cyan" onClick={() => navigate('/auth/login')}>
+                Sign In
+              </button>
+            </p>
+          </div>
         </div>
       </div>
     </div>

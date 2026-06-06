@@ -21,5 +21,6 @@ export const authAPI = {
   markSetupComplete: authPutAPI.markSetupComplete,
   sendOtp: authPostAPI.sendOtp,
   verifyOtp: authPostAPI.verifyOtp,
+  changePassword: authPostAPI.changePassword,
 };
 

@@ -1,16 +1,26 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import { Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle, Mail } from 'lucide-react';
 import { authAPI } from '../../../api/authAPI';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 
 export default function ResetPasswordScreen() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { email?: string; otp?: string } | null;
+
+  const [email, setEmail] = useState(state?.email || '');
+  const [otp, setOtp] = useState(state?.otp || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,36 +28,16 @@ export default function ResetPasswordScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
+  const [isOtpValid, setIsOtpValid] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem('reset_password_email') || '';
-    setEmail(savedEmail);
-
-    // Validate the token upon page load
-    const validateToken = async () => {
-      if (!token) {
-        setIsTokenValid(false);
-        setError('Reset token is missing or invalid.');
-        return;
-      }
-
-      try {
-        const response = await authAPI.validateResetToken({ token });
-        if (response.success) {
-          setIsTokenValid(true);
-        } else {
-          setIsTokenValid(false);
-          setError('Reset token is expired or invalid.');
-        }
-      } catch (err: any) {
-        setIsTokenValid(false);
-        setError(err.message || 'Reset token verification failed.');
-      }
-    };
-
-    validateToken();
-  }, [token]);
+    if (!email || !otp) {
+      setIsOtpValid(false);
+      setError('Please verify your email and obtain an OTP code first.');
+    } else {
+      setIsOtpValid(true);
+    }
+  }, [email, otp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +45,11 @@ export default function ResetPasswordScreen() {
 
     if (!email) {
       setError('Email address is required.');
+      return;
+    }
+
+    if (!otp) {
+      setError('OTP verification code is required.');
       return;
     }
 
@@ -72,22 +67,29 @@ export default function ResetPasswordScreen() {
 
     try {
       const response = await authAPI.resetPassword({
-        passwordResetToken: token,
+        otp,
         email,
         newPassword
       });
 
       if (response.success) {
-        setSuccess(true);
-        localStorage.removeItem('reset_password_email');
+        if (isMounted.current) {
+          setSuccess(true);
+        }
         toast.success('Password reset successfully!');
       } else {
-        setError(response.message || 'Failed to reset password.');
+        if (isMounted.current) {
+          setError(getErrorMessage(response));
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -143,22 +145,22 @@ export default function ResetPasswordScreen() {
           <h1 className="text-3xl font-black text-primary mb-2">Reset password</h1>
           <p className="mb-8 auth-subtitle">Choose your new secure password</p>
 
-          {isTokenValid === null ? (
+          {isOtpValid === null ? (
             <div className="flex flex-col items-center justify-center py-10 space-y-4">
               <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-              <p className="text-sm text-secondary">Verifying reset token...</p>
+              <p className="text-sm text-secondary">Verifying request state...</p>
             </div>
-          ) : isTokenValid === false ? (
+          ) : isOtpValid === false ? (
             <div className="space-y-6">
               <div className="p-4 rounded-xl text-sm flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
                 <AlertCircle size={18} className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Invalid Reset Token</p>
-                  <p className="mt-1 text-xs opacity-90">{error}</p>
+                  <p className="font-semibold">Verification Required</p>
+                  <p className="mt-1 text-xs opacity-90" style={{ whiteSpace: 'pre-line' }}>{error}</p>
                 </div>
               </div>
               <button onClick={() => navigate('/auth/forgot-password')} className="btn-cyan w-full py-3">
-                Request New Reset Link
+                Go to Forgot Password
               </button>
             </div>
           ) : success ? (
@@ -177,22 +179,34 @@ export default function ResetPasswordScreen() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+                <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', whiteSpace: 'pre-line' }}>
                   <AlertCircle size={16} className="shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
               )}
 
-              {/* Email Address - Input if not in localStorage, read-only if it is */}
+              {/* Email Address - Read-only from state */}
               <div className="relative">
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type="email"
                   placeholder="Email address"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
                   className="input-gb w-full py-3 auth-input-with-icon"
-                  disabled={isLoading || !!localStorage.getItem('reset_password_email')}
+                  disabled={true}
+                  required
+                />
+              </div>
+
+              {/* OTP Code - Read-only from state */}
+              <div className="relative">
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
+                <input
+                  type="text"
+                  placeholder="Verified OTP code"
+                  value={otp}
+                  className="input-gb w-full py-3 auth-input-with-icon"
+                  disabled={true}
                   required
                 />
               </div>

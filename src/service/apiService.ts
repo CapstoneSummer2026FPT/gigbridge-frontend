@@ -32,17 +32,27 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
+    const isAuthRequest = originalRequest?.url && (
+      originalRequest.url.includes('auth/login') ||
+      originalRequest.url.includes('auth/google') ||
+      originalRequest.url.includes('auth/register') ||
+      originalRequest.url.includes('auth/refresh')
+    );
 
     // Handle 401 - try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
 
       try {
         const currentToken = localStorage.getItem('access_token');
+        if (!currentToken) {
+          console.warn('No access token found in localStorage. Skipping token refresh.');
+          return Promise.reject(error);
+        }
         
         // Don't send Authorization header for refresh request to avoid infinite loop
         const refreshResponse = await axios.post(
-          `${API_BASE_URL}/v1/auth/refresh`,
+          `${API_BASE_URL}/auth/refresh`,
           { accessToken: currentToken },
           { 
             withCredentials: true,
@@ -113,6 +123,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -127,6 +138,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -141,6 +153,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -155,6 +168,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }
@@ -169,6 +183,7 @@ export const apiService = {
         success: false,
         statusCode: error.response?.status || 500,
         message: error.response?.data?.message || error.response?.data?.Message || error.message || 'An error occurred',
+        errors: error.response?.data?.errors,
         data: undefined,
       };
     }

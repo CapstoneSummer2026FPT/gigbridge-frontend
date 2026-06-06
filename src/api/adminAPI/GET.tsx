@@ -1,5 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
 
 const AdminV1 = '/v1/admin';
@@ -25,5 +26,13 @@ export const adminGetAPI = {
       Search: search,
       Status: status,
     });
+  },
+
+  getFAQs: async (categoryId?: number): Promise<ApiResponse<FAQDto[]>> => {
+    return apiService.get<FAQDto[]>('/admin/faq', categoryId ? { categoryId } : {});
+  },
+
+  getFAQCategories: async (): Promise<ApiResponse<FAQCategoryDto[]>> => {
+    return apiService.get<FAQCategoryDto[]>('/admin/faq/categories');
   },
 };

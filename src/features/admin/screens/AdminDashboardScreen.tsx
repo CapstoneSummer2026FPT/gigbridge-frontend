@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { Users, Briefcase, DollarSign, TrendingUp, Shield, AlertCircle, CheckCircle, XCircle, BarChart2, Activity, Bot, Flag, FileText, Terminal, MessageSquare } from 'lucide-react';
+import { Users, Briefcase, DollarSign, TrendingUp, Shield, AlertCircle, CheckCircle, XCircle, BarChart2, Activity, Bot, Flag, FileText, Terminal, MessageSquare, HelpCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { DB, MARKET_INSIGHTS } from '../../../mock_backend';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
@@ -115,6 +115,24 @@ export default function AdminDashboardScreen() {
               </div>
               <div className="w-10 h-10 rounded-lg bg-green/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <FileText size={20} className="text-green" />
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/faq-management')}
+            className="glass-card p-6 hover:bg-white/5 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <HelpCircle size={20} className="text-cyan" />
+                  <h3 className="text-lg font-bold text-primary">FAQ Management</h3>
+                </div>
+                <p className="text-sm text-secondary">Manage public FAQ articles and categories</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-cyan/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <HelpCircle size={20} className="text-cyan" />
               </div>
             </div>
           </button>

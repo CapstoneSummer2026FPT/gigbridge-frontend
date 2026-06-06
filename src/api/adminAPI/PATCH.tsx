@@ -17,4 +17,12 @@ export const adminPatchAPI = {
       email,
     });
   },
+
+  toggleFAQActivity: async (id: number): Promise<ApiResponse<object>> => {
+    return apiService.patch<object>(`/admin/faq/${id}/toggle-activity`);
+  },
+
+  toggleFAQCategoryActivity: async (id: number): Promise<ApiResponse<object>> => {
+    return apiService.patch<object>(`/admin/faq/categories/${id}/toggle-activity`);
+  },
 };
