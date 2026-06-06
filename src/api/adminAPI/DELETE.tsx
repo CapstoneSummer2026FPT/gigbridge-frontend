@@ -1,6 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-const Admin_Api_Base_Url = '/v1/admin';
+const Admin_Api_Base_Url = '/admin';
+
 
 export const adminDeleteAPI = {
   /**
@@ -13,10 +14,10 @@ export const adminDeleteAPI = {
   },
 
   deleteFAQ: async (id: number): Promise<ApiResponse<object>> => {
-    return apiService.delete<object>(`/admin/faq/${id}`);
+    return apiService.delete<object>(`${Admin_Api_Base_Url}/faq/${id}`);
   },
 
   deleteFAQCategory: async (id: number): Promise<ApiResponse<object>> => {
-    return apiService.delete<object>(`/admin/faq/categories/${id}`);
+    return apiService.delete<object>(`${Admin_Api_Base_Url}/faq/categories/${id}`);
   },
 };

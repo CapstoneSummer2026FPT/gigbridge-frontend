@@ -3,7 +3,7 @@ import type { ApiResponse } from '../../types/common';
 import type { FAQCategoryDto, FAQDto, UpdateFAQCategoryPayload, UpdateFAQPayload } from '../../types/models/FAQ';
 import type { AdminUserDto, UpdateUserPayload } from '../../types/models/User';
 
-const AdminV1 = '/v1/admin';
+const Admin_Api_Base_Url = '/admin';
 
 export const adminPutAPI = {
   /**
@@ -12,7 +12,7 @@ export const adminPutAPI = {
    * Only provided fields are changed (partial update via nullable fields).
    */
   updateUser: async (email: string, payload: UpdateUserPayload): Promise<ApiResponse<AdminUserDto>> => {
-    return apiService.put<AdminUserDto>(`${AdminV1}/users`, {
+    return apiService.put<AdminUserDto>(`${Admin_Api_Base_Url}/users`, {
       email,
       request: {
         fullName: payload.fullName,
@@ -39,10 +39,10 @@ export const adminPutAPI = {
   },
 
   updateFAQ: async (id: number, payload: UpdateFAQPayload): Promise<ApiResponse<FAQDto>> => {
-    return apiService.put<FAQDto>(`/admin/faq/${id}`, payload);
+    return apiService.put<FAQDto>(`${Admin_Api_Base_Url}/faq/${id}`, payload);
   },
 
   updateFAQCategory: async (id: number, payload: UpdateFAQCategoryPayload): Promise<ApiResponse<FAQCategoryDto>> => {
-    return apiService.put<FAQCategoryDto>(`/admin/faq/categories/${id}`, payload);
+    return apiService.put<FAQCategoryDto>(`${Admin_Api_Base_Url}/faq/categories/${id}`, payload);
   },
 };
