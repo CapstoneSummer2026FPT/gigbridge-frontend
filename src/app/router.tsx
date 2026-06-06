@@ -4,7 +4,7 @@ import { AppProvider, useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 
 // Lazy imports for all screens
-import LandingScreen from '../features/landing/screens/LandingScreenNew';
+import LandingScreen from '../features/landing/screens/LandingPagePremium';
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import SignupScreen from '../features/auth/screens/SignupScreen';
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen';
@@ -89,7 +89,7 @@ function AdminRoute({ children }: { children: ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/auth/login" replace />;
   }
 
   if (role !== UserRole.Admin) {

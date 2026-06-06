@@ -1,19 +1,29 @@
-import image_Frame_1_1 from '@/imports/Frame_1-1.png'
-import image_Frame_1 from '@/imports/Frame_1.png'
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, DollarSign, CreditCard, TrendingUp, History, Moon, Sun, Coins } from 'lucide-react';
+import { useWindowScroll } from 'react-use';
+import gsap from 'gsap';
+import { TiLocationArrow } from 'react-icons/ti';
+import clsx from 'clsx';
 import { useApp, AppTheme } from '../../app/providers/AppProvider';
 import { DB } from '../../mock_backend';
 import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
 import { CompactLanguageSwitcher, CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useTranslation } from '../../hooks/useTranslation';
 import { MOCK_TOP_NAV_NOTIFICATIONS } from '../../features/notifications/mock/data-for-TopNav';
+import Button from './Button';
 
 interface TopNavProps {
   onMenuClick?: () => void;
   showMenuButton?: boolean;
 }
+
+const navItems = [
+  { label: 'Browse Jobs', path: '/jobs/browse' },
+  { label: 'About', path: '/about' },
+  { label: 'FAQ', path: '/faq' },
+  { label: 'Contact', path: '#contact' }
+];
 
 export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}) {
   const navigate = useNavigate();
@@ -35,9 +45,10 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const user = appContext?.user || null;
   const role = appContext?.role || null;
   const theme = appContext?.theme || 'black';
-  const setTheme = appContext?.setTheme || (() => {});
-  const logout = appContext?.logout || (() => {});
-  
+  const setTheme = appContext?.setTheme || (() => { });
+  const logout = appContext?.logout || (() => { });
+  const isAuthenticated = appContext?.isAuthenticated || false;
+
   // Wallet and notification data
   const walletBalance = user?.gigcoin_balance || 0;
   const dbNotifications = user ? DB.getNotificationsByUser(user.id) : [];
@@ -56,8 +67,169 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
   const isLanding = location.pathname === '/';
 
+  // Landing Page Audio & Scroll Visibility Logic
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [isIndicatorActive, setIsIndicatorActive] = useState(false);
+  const audioElementRef = useRef<HTMLAudioElement>(null);
+  const navContainerRef = useRef<HTMLDivElement>(null);
+  const { y: currentScrollY } = useWindowScroll();
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  const toggleAudioIndicator = () => {
+    setIsAudioPlaying((prev) => !prev);
+    setIsIndicatorActive((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (audioElementRef.current) {
+      if (isAudioPlaying) {
+        audioElementRef.current.play().catch((err) => console.log('Audio autoplay blocked:', err));
+      } else {
+        audioElementRef.current.pause();
+      }
+    }
+  }, [isAudioPlaying]);
+
+  useEffect(() => {
+    if (!isLanding || !navContainerRef.current) return;
+
+    if (currentScrollY === 0) {
+      setIsNavVisible(true);
+      navContainerRef.current.classList.remove('floating-nav');
+    } else if (currentScrollY > lastScrollY) {
+      setIsNavVisible(false);
+      navContainerRef.current.classList.add('floating-nav');
+    } else if (currentScrollY < lastScrollY) {
+      setIsNavVisible(true);
+      navContainerRef.current.classList.add('floating-nav');
+    }
+
+    setLastScrollY(currentScrollY);
+  }, [currentScrollY, lastScrollY, isLanding]);
+
+  useEffect(() => {
+    if (!isLanding || !navContainerRef.current) return;
+    gsap.to(navContainerRef.current, {
+      y: isNavVisible ? 0 : -100,
+      opacity: isNavVisible ? 1 : 0,
+      duration: 0.2,
+    });
+  }, [isNavVisible, isLanding]);
+
+  const handleCtaClick = () => {
+    if (isAuthenticated) {
+      const dashboardPath = role === 1 ? '/freelancer/dashboard' : '/client/dashboard';
+      navigate(dashboardPath);
+    } else {
+      navigate('/auth/login');
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // LANDING PAGE CUSTOM NAV BAR
+  // ═══════════════════════════════════════════════════════════════
+  if (isLanding) {
+    return (
+      <div
+        ref={navContainerRef}
+        className="fixed inset-x-0 top-4 z-50 h-16 border-none transition-all duration-700 sm:inset-x-6 landing-nav-container"
+      >
+        <header className="absolute top-1/2 w-full -translate-y-1/2">
+          <nav className="flex size-full items-center justify-between p-4">
+            {/* Logo and CTA Button */}
+            <div className="flex items-center gap-7">
+              <div
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 cursor-pointer select-none"
+              >
+                <img
+                  src="/img/logo.png"
+                  alt="GigBridge Logo"
+                  className="w-8 h-8 rounded-lg object-cover"
+                />
+                <span className="text-xl font-bold tracking-tight font-zentry logo-text">
+                  GIGBRIDGE
+                </span>
+              </div>
+
+              <Button
+                id="auth-button"
+                title={isAuthenticated ? 'Dashboard' : 'Login'}
+                rightIcon={<TiLocationArrow />}
+                onClick={handleCtaClick}
+                containerClass="bg-blue-50 md:flex hidden items-center justify-center gap-1"
+              />
+            </div>
+
+            {/* Navigation Links and Audio Button */}
+            <div className="flex h-full items-center">
+              <div className="hidden md:block">
+                {navItems.map((item, index) => {
+                  if (item.path.startsWith('#')) {
+                    return (
+                      <a
+                        key={index}
+                        href={item.path}
+                        className="nav-hover-btn"
+                      >
+                        {item.label}
+                      </a>
+                    );
+                  }
+                  return (
+                    <span
+                      key={index}
+                      onClick={() => navigate(item.path)}
+                      className="nav-hover-btn"
+                    >
+                      {item.label}
+                    </span>
+                  );
+                })}
+              </div>
+
+              <CombinedThemeLanguageSwitcher
+                theme={theme}
+                setTheme={setTheme}
+                className="ml-10 hidden sm:flex"
+              />
+
+              <button
+                onClick={toggleAudioIndicator}
+                className="ml-10 flex items-center space-x-0.5"
+              >
+                <audio
+                  ref={audioElementRef}
+                  className="hidden"
+                  src="/audio/loop.mp3"
+                  loop
+                />
+                {[1, 2, 3, 4].map((bar) => (
+                  <div
+                    key={bar}
+                    className={clsx('indicator-line', {
+                      active: isIndicatorActive,
+                    })}
+                    style={{
+                      animationDelay: `${bar * 0.1}s`,
+                      ['--animation-order' as any]: bar
+                    }}
+                  />
+                ))}
+              </button>
+            </div>
+          </nav>
+        </header>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // STANDARD APPLICATION TOP NAV
+  // ═══════════════════════════════════════════════════════════════
   return (
-    <header className="glass-nav fixed top-0 left-0 right-0 z-50 h-16 flex items-center px-4 md:px-6 gap-4">
+    <div className="fixed inset-x-0 top-4 z-50 h-16 border-none sm:inset-x-6 landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
       {/* Hamburger Menu Button - Show on both mobile and desktop when logged in */}
       {showMenuButton && (
         <button
@@ -68,16 +240,15 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
           <Menu size={20} className="text-muted" />
         </button>
       )}
-      
+
       {/* Logo */}
       <div className="flex items-center gap-2 cursor-pointer flex-shrink-0" onClick={() => navigate('/')}>
-        <ImageWithFallback
-          src={image_Frame_1_1}
+        <img
+          src="/img/logo.png"
           alt="GigBridge Logo"
           className="w-8 h-8 rounded-lg object-cover"
         />
         <span className="text-primary font-bold text-lg hidden sm:block">GigBridge</span>
-        
       </div>
 
       {/* Search Bar */}
@@ -115,7 +286,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
       <div className="flex items-center gap-2 ml-auto">
         {/* Wallet Balance Dropdown */}
-        {user && (
+        {user && role !== 2 && (
           <div className="relative">
             <button
               onClick={() => { setShowWalletMenu(!showWalletMenu); setShowNotifs(false); setShowUserMenu(false); }}
@@ -210,6 +381,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
           </div>
         ) : null}
 
+
+
         {/* User Menu / Auth Buttons */}
         {user ? (
           <div className="relative">
@@ -238,41 +411,21 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   Settings
                 </button>
 
-                <div className="px-3 py-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Moon size={14} className="text-muted" />
-                      <span className="text-sm text-secondary">Theme</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setTheme('black')}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                        theme === 'black'
-                          ? 'bg-cyan/15 text-cyan border border-cyan/40'
-                          : 'glass-button text-secondary hover:bg-white/5'
-                      }`}
-                    >
-                      ⚫ Black
-                    </button>
-                    <button
-                      onClick={() => setTheme('white')}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                        theme === 'white'
-                          ? 'bg-cyan/15 text-cyan border border-cyan/40'
-                          : 'glass-button text-secondary hover:bg-white/5'
-                      }`}
-                    >
-                      ⚪ White
-                    </button>
-                  </div>
+                {/* Theme and Language Switcher Capsule inside Dropdown */}
+                <div className="px-3 py-2 flex justify-center">
+                  <CombinedThemeLanguageSwitcher
+                    theme={theme}
+                    setTheme={setTheme}
+                    className="w-full justify-between"
+                  />
                 </div>
 
                 <div className="h-px my-1 dropdown-divider" />
 
+
+
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 logout-button"
-                  onClick={() => { logout(); navigate('/'); setShowUserMenu(false); }}>
+                  onClick={() => { logout('/'); setShowUserMenu(false); }}>
                   <LogOut size={14} />
                   Sign Out
                 </button>
@@ -303,6 +456,6 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       {(showUserMenu || showNotifs || showWalletMenu) && (
         <div className="fixed inset-0 z-40" onClick={() => { setShowUserMenu(false); setShowNotifs(false); setShowWalletMenu(false); }} />
       )}
-    </header>
+    </div>
   );
 }

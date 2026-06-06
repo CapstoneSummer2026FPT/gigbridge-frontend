@@ -62,8 +62,8 @@ apiClient.interceptors.response.use(
         
         // Response structure: ApiResponse<LoginResponse>
         const apiResponse = refreshResponse.data;
-        const loginData = apiResponse.data; // LoginResponse
-        const newAccessToken = loginData?.token;
+        const loginData = apiResponse.data ?? apiResponse.Data; // LoginResponse
+        const newAccessToken = loginData?.token ?? loginData?.Token;
 
         if (newAccessToken) {
           // Save new token
@@ -94,14 +94,22 @@ apiClient.interceptors.response.use(
 const handleResponse = <T>(response: AxiosResponse<any>): ApiResponse<T> => {
   const { data, status } = response;
 
+  const normalizeApiResponse = (raw: any): ApiResponse<T> => ({
+    success: raw.success ?? raw.Success ?? (status >= 200 && status < 300),
+    statusCode: raw.statusCode ?? raw.StatusCode ?? status,
+    message: raw.message ?? raw.Message ?? 'Success',
+    data: (raw.data ?? raw.Data) as T,
+    errors: raw.errors ?? raw.Errors,
+  });
+
   // Backend returns ApiResponse<T> directly with success, statusCode, message
-  if (data && typeof data === 'object' && 'success' in data && 'statusCode' in data) {
-    return data as ApiResponse<T>;
+  if (data && typeof data === 'object' && (('success' in data && 'statusCode' in data) || ('Success' in data && 'StatusCode' in data))) {
+    return normalizeApiResponse(data);
   }
 
   // If data has 'data' property, it's wrapped response
-  if (data && typeof data === 'object' && 'data' in data) {
-    return data as ApiResponse<T>;
+  if (data && typeof data === 'object' && ('data' in data || 'Data' in data)) {
+    return normalizeApiResponse(data);
   }
 
   // Fallback - wrap raw data in ApiResponse

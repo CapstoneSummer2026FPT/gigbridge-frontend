@@ -3,7 +3,6 @@ import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useScrollRestoration } from '../../hooks/useScrollRestoration';
 import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
-import image_Frame_1_1 from '@/imports/Frame_1-1.png';
 import './styles/footer.css';
 
 export function Footer() {
@@ -57,8 +56,8 @@ export function Footer() {
               saveScrollPosition();
               navigate('/');
             }}>
-              <ImageWithFallback
-                src={image_Frame_1_1}
+              <img
+                src="/img/logo.png"
                 alt="GigBridge Logo"
                 className="footer-logo-img"
               />
