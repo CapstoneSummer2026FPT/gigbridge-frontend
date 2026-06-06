@@ -4,6 +4,8 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, Alert
 import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { toast } from 'sonner';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import '../styles/auth-screen.css';
 
 export default function LoginScreen() {
@@ -68,9 +70,6 @@ export default function LoginScreen() {
 
       const userStr = localStorage.getItem('gigbridge_user');
       const user = userStr ? JSON.parse(userStr) : null;
-
-      // Check if user did not set up a role 
-
 
       if (selectedRole === undefined && (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin))) {
         setGoogleError('Your account does not have a role set up yet. Please select a role on the sign-up page before signing in.');
@@ -146,6 +145,17 @@ export default function LoginScreen() {
 
       localStorage.removeItem('selected_role');
 
+      toast.success('Welcome back! Login successful.', {
+        style: {
+          background: '#4ADE80',
+          color: '#FFFFFF',
+          border: '2px solid #22C55E',
+          fontSize: '14px',
+          fontWeight: '600',
+        },
+        duration: 3000,
+      });
+
       if (role_signIn === UserRole.Admin) {
         navigate('/admin');
       } else if (user?.is_setup) {
@@ -164,84 +174,99 @@ export default function LoginScreen() {
     }
   };
 
+  // GSAP Entrance Animations
+  useGSAP(() => {
+    // Left panel slide-in
+    gsap.from('.auth-left-panel', {
+      xPercent: -100,
+      duration: 1,
+      ease: 'power4.out',
+    });
 
+    // Left panel text / branding staggered fade-in
+    gsap.from('.auth-left-content-animate', {
+      opacity: 0,
+      y: 30,
+      stagger: 0.1,
+      duration: 0.8,
+      ease: 'power3.out',
+      delay: 0.2,
+    });
+
+    // Right form card slide/fade
+    gsap.from('.auth-form-card', {
+      opacity: 0,
+      scale: 0.96,
+      y: 20,
+      duration: 0.9,
+      ease: 'power3.out',
+    });
+
+    // Form elements staggered slide
+    gsap.from('.auth-form-animate', {
+      opacity: 0,
+      y: 15,
+      stagger: 0.07,
+      duration: 0.7,
+      ease: 'power3.out',
+      delay: 0.15,
+    });
+  }, []);
 
   return (
     <div className="min-h-screen flex auth-container">
-      {/* Left Panel - Illustration */}
-      <div className="hidden lg:flex flex-col flex-1 relative overflow-hidden p-10 auth-left-panel">
-        <div className="absolute top-20 left-20 w-80 h-80 rounded-full opacity-10 animate-float auth-orb-cyan" />
-        <div className="absolute bottom-40 right-10 w-60 h-60 rounded-full opacity-10 animate-float auth-orb-purple" />
+      {/* Background ambient orbs */}
+      <div className="absolute top-20 left-10 w-96 h-96 rounded-full auth-orb-cyan pointer-events-none" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full auth-orb-purple pointer-events-none" />
 
-        <div className="flex items-center gap-3 mb-auto">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center auth-logo-bg">
-            <Zap size={22} className="auth-logo-icon" />
-          </div>
-          <span className="text-primary text-xl font-black">GigBridge</span>
-          <span className="badge-cyan">AI</span>
-        </div>
+      {/* Left Panel - Premium Zentry Aesthetic with Full Image & Gradient */}
+      <div className="hidden lg:flex flex-col flex-1 relative overflow-hidden p-12 auth-left-panel select-none"
+        style={{
+          backgroundImage: "url('/img/about.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}>
+        {/* Gradient Overlay: dark on the left to transparent on the right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent pointer-events-none z-1" />
 
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <div className="relative mb-8">
-            <div className="w-32 h-32 rounded-full mx-auto flex items-center justify-center animate-orb auth-ai-avatar">
-              <Bot size={56} className="auth-ai-avatar-icon" />
-            </div>
-            <div className="absolute -top-4 -right-4 w-8 h-8 rounded-full flex items-center justify-center auth-orb-green">
-              <CheckCircle size={14} className="auth-orb-green-icon" />
-            </div>
-            <div className="absolute -bottom-2 -left-4 w-8 h-8 rounded-full flex items-center justify-center auth-orb-amber">
-              <Star size={14} fill="#F59E0B" className="auth-orb-amber-icon" />
-            </div>
+        <div className="relative z-10 flex flex-col h-full justify-between">
+          {/* Logo / Header */}
+          <div className="flex items-center gap-3 auth-left-content-animate cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/img/logo.png" className="w-10 h-10 object-contain" alt="GigBridge Logo" />
+            <span className="logo-text logo-text-white text-xl font-zentry font-black tracking-wider select-none">GigBridge</span>
           </div>
 
-          <h2 className="text-3xl font-black text-primary mb-4">Your AI Career Partner</h2>
-          <p className="text-base max-w-sm auth-description">
-            Join the intelligent marketplace that connects world-class talent with ambitious companies.
+          {/* Big Title & Description (White Text) */}
+          <div className="max-w-md my-auto text-left auth-left-content-animate">
+            <h2 className="text-4xl xl:text-5xl font-zentry font-black tracking-wider text-white mb-6 uppercase leading-tight">
+              Your Career Partner
+            </h2>
+            <p className="text-lg text-white/80 leading-relaxed font-medium">
+              Join the professional marketplace that connects world-class talent with ambitious companies in a secure, e-signed workflow.
+            </p>
+          </div>
+
+          {/* Footer */}
+          <p className="text-xs text-white/50 auth-left-content-animate">
+            © 2026 GigBridge · Privacy · Terms
           </p>
-
-          <div className="flex flex-wrap gap-2 justify-center mt-6">
-            {['AI Job Matching', 'Smart Proposals', 'AI Interviews', 'Instant Pay'].map(f => (
-              <span key={f} className="badge-cyan">{f}</span>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-3 mt-8">
-            <div className="flex -space-x-2">
-              {['jordan', 'alex', 'sarah', 'marcus'].map(seed => (
-                <img key={seed} src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}`}
-                  className="w-8 h-8 rounded-full border-2 auth-avatar-border" alt="" />
-              ))}
-            </div>
-            <div>
-              <div className="flex gap-0.5 mb-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} size={10} fill="#F59E0B" className="auth-star-icon" />
-                ))}
-              </div>
-              <p className="text-xs auth-description">52K+ members trust us</p>
-            </div>
-          </div>
         </div>
-
-        <p className="text-xs text-center mt-auto auth-footer-text">
-          © 2026 GigBridge AI · Privacy · Terms
-        </p>
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center auth-logo-bg">
-              <Zap size={16} className="auth-logo-icon" />
-            </div>
-            <span className="text-primary font-bold">GigBridge</span>
+      {/* Right Panel - Glassmorphic Form Card */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 auth-right-panel">
+        <div className="w-full max-w-md auth-form-card p-8 lg:p-10">
+          <div className="flex items-center gap-2 mb-8 lg:hidden cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/img/logo.png" className="w-8 h-8 object-contain" alt="GigBridge Logo" />
+            <span className="logo-text font-zentry font-bold tracking-wider select-none">GigBridge</span>
           </div>
 
-          <h1 className="text-3xl font-black text-primary mb-2">Welcome back</h1>
-          <p className="mb-8 auth-subtitle">Sign in to your GigBridge account</p>
+          <h1 className="text-2xl lg:text-3xl font-zentry font-black tracking-wider text-primary mb-2 uppercase auth-form-animate">
+            Welcome back
+          </h1>
+          <p className="mb-6 auth-subtitle auth-form-animate">Sign in to your GigBridge account</p>
 
-          <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn"
+          <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn auth-form-animate"
             onClick={() => {
               setGoogleError('');
               googleClient?.requestCode();
@@ -262,7 +287,7 @@ export default function LoginScreen() {
           </button>
 
           {googleError && (
-            <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left">
+            <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left auth-form-animate">
               <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
               <span>
                 {googleError}
@@ -270,42 +295,42 @@ export default function LoginScreen() {
             </div>
           )}
 
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px auth-divider" />
-            <span className="text-xs auth-divider-text">or continue with email</span>
-            <div className="flex-1 h-px auth-divider" />
+          <div className="flex items-center gap-3 mb-6 auth-form-animate">
+            <div className="flex-1 auth-divider" />
+            <span className="auth-divider-text">or continue with email</span>
+            <div className="flex-1 auth-divider" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+              <div className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
                 {error}
               </div>
             )}
             
-            <div className="relative">
-              <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
+            <div className="relative auth-form-animate">
+              <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
               <input type="email" placeholder="Email address" value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
-                className="input-gb w-full py-3 auth-input-with-icon" />
+                className="input-gb w-full py-3 auth-input-with-icon" required />
             </div>
-            <div className="relative">
-              <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
+            <div className="relative auth-form-animate">
+              <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
               <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
-                className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both" />
+                className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both" required />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 auth-input-icon">
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end auth-form-animate">
               <button type="button" className="text-sm auth-link-cyan" onClick={() => navigate('/auth/forgot-password')}>Forgot password?</button>
             </div>
 
             <button type="submit" disabled={isLoading}
-              className="btn-cyan w-full py-3 flex items-center justify-center gap-2">
+              className="btn-cyan w-full py-3 flex items-center justify-center gap-2 auth-form-animate hover:scale-[1.01] transition-transform">
               {isLoading ? (
                 <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
               ) : (
@@ -317,7 +342,7 @@ export default function LoginScreen() {
             </button>
           </form>
 
-          <p className="text-center mt-6 text-sm auth-switch-text">
+          <p className="text-center mt-6 text-sm auth-switch-text auth-form-animate">
             Don't have an account?{' '}
             <button className="font-semibold auth-link-cyan"
               onClick={() => navigate('/auth/signup')}>

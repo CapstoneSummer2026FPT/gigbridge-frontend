@@ -22,7 +22,7 @@ interface AppContextValue {
   login: (email: string, password: string) => Promise<UserRole>;
   signup: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
   googleLogin: (authCode: string, role?: UserRole, isFromSignIn?: boolean) => Promise<UserRole>;
-  logout: () => void;
+  logout: (redirectPath?: string) => void;
   completeOnboarding: (profileData: any) => Promise<void>;
   markSetupComplete: () => void;
 }
@@ -241,7 +241,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((redirectPath?: string) => {
     setUser(null);
     setRoleState(null);
     setClientProfile(null);
@@ -249,6 +249,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('gigbridge_session');
     localStorage.removeItem('gigbridge_user');
     localStorage.removeItem('access_token');
+    if (redirectPath) {
+      window.location.href = redirectPath;
+    }
   }, []);
 
   const completeOnboarding = useCallback(async (profileData: any) => {

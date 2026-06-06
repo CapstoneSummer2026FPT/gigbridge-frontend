@@ -205,102 +205,80 @@ export function CombinedThemeLanguageSwitcher({
   className?: string;
 }) {
   const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
-  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const [showLangDropdown, setShowLangDropdown] = useState(false);
-  const themeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const langTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const themeOptions = [
-    { value: 'black' as const, label: 'Dark', icon: <Moon size={14} /> },
-    { value: 'white' as const, label: 'Light', icon: <Sun size={14} /> },
-  ];
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowLangDropdown(false);
+      }
+    }
+    if (showLangDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showLangDropdown]);
 
-  const currentTheme = themeOptions.find((t) => t.value === theme);
-  const otherTheme = themeOptions.find((t) => t.value !== theme);
+  const toggleTheme = () => {
+    setTheme(theme === 'black' ? 'white' : 'black');
+  };
+
   const otherLanguages = availableLanguages.filter((lng) => lng !== currentLanguage);
 
-  const handleThemeMouseEnter = () => {
-    if (themeTimeoutRef.current) clearTimeout(themeTimeoutRef.current);
-    setShowThemeDropdown(true);
-  };
-
-  const handleThemeMouseLeave = () => {
-    themeTimeoutRef.current = setTimeout(() => {
-      setShowThemeDropdown(false);
-    }, 200);
-  };
-
-  const handleLangMouseEnter = () => {
-    if (langTimeoutRef.current) clearTimeout(langTimeoutRef.current);
-    setShowLangDropdown(true);
-  };
-
-  const handleLangMouseLeave = () => {
-    langTimeoutRef.current = setTimeout(() => {
-      setShowLangDropdown(false);
-    }, 200);
-  };
-
   return (
-    <div className={`flex items-center gap-0.5 p-1 rounded-xl glass-button border border-white/10 ${className}`}>
-      {/* Theme Section */}
-      <div
-        className="relative"
-        onMouseEnter={handleThemeMouseEnter}
-        onMouseLeave={handleThemeMouseLeave}
+    <div
+      ref={dropdownRef}
+      className={`flex items-center gap-1.5 p-1 rounded-full bg-background/50 backdrop-blur-md border border-border/50 shadow-sm transition-all duration-300 ${className}`}
+    >
+      {/* Theme Toggle Button */}
+      <button
+        onClick={toggleTheme}
+        className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-300 cursor-pointer flex items-center justify-center group active:scale-95"
+        title={`Switch to ${theme === 'black' ? 'Light' : 'Dark'} Mode`}
       >
+        <span className="transition-transform duration-500 group-hover:rotate-45 flex items-center justify-center">
+          {theme === 'black' ? (
+            <Sun size={15} className="text-amber-500 fill-amber-500/10" />
+          ) : (
+            <Moon size={15} className="text-violet-500 fill-violet-500/10" />
+          )}
+        </span>
+      </button>
+
+      {/* Vertical Divider */}
+      <div className="w-px h-4 bg-border/60 self-center" />
+
+      {/* Language Selection Button */}
+      <div className="relative">
         <button
-          className="px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 text-secondary hover:text-primary"
+          onClick={() => setShowLangDropdown(!showLangDropdown)}
+          className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-200 cursor-pointer flex items-center gap-1 active:scale-95"
+          title="Select Language"
         >
-          {currentTheme?.icon}
-          <span className="hidden sm:inline">{currentTheme?.label}</span>
+          <span>{currentLanguage}</span>
+          <Globe size={11} className="opacity-60" />
         </button>
 
-        {/* Theme Dropdown */}
-        {showThemeDropdown && otherTheme && (
-          <div className="absolute top-full left-0 pt-1 z-50">
-            <button
-              onClick={() => {
-                setTheme(otherTheme.value);
-                setShowThemeDropdown(false);
-              }}
-              className="px-3 py-2 rounded-lg text-xs font-bold transition-all glass-button border border-white/10 flex items-center gap-1.5 text-secondary hover:text-primary hover:border-cyan/40 whitespace-nowrap"
-            >
-              {otherTheme.icon}
-              <span className="hidden sm:inline">{otherTheme.label}</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div className="w-px h-6 bg-border" />
-
-      {/* Language Section */}
-      <div
-        className="relative"
-        onMouseEnter={handleLangMouseEnter}
-        onMouseLeave={handleLangMouseLeave}
-      >
-        <button
-          className="px-3 py-2 rounded-lg text-xs font-bold uppercase transition-all duration-200 text-secondary hover:text-primary"
-        >
-          {currentLanguage}
-        </button>
-
-        {/* Language Dropdown */}
+        {/* Language Dropdown Menu */}
         {showLangDropdown && otherLanguages.length > 0 && (
-          <div className="absolute top-full right-0 pt-1 z-50 flex flex-col gap-1">
-            {otherLanguages.map((lng) => (
+          <div className="absolute right-0 top-full mt-2 w-32 rounded-xl bg-card border border-border shadow-lg p-1 z-50 animate-in fade-in slide-in-from-top-1 duration-200">
+            {availableLanguages.map((lng) => (
               <button
                 key={lng}
                 onClick={() => {
                   changeLanguage(lng);
                   setShowLangDropdown(false);
                 }}
-                className="px-3 py-2 rounded-lg text-xs font-bold uppercase transition-all glass-button border border-white/10 text-secondary hover:text-primary hover:border-cyan/40"
+                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer ${
+                  currentLanguage === lng
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-foreground/5'
+                }`}
               >
-                {lng}
+                <span>{lng === 'en' ? 'English' : 'Tiếng Việt'}</span>
+                {currentLanguage === lng && <Check size={12} />}
               </button>
             ))}
           </div>
