@@ -12,7 +12,7 @@ export default function ProjectsListScreen() {
   const { t } = useTranslation();
 
   if (!user) {
-    navigate('/auth');
+    navigate('/auth/login');
     return null;
   }
 

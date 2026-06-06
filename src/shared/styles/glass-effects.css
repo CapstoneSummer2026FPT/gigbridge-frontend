@@ -160,18 +160,30 @@
 /* ─── Buttons ─── */
 .btn-cyan {
   background: linear-gradient(135deg, var(--gb-cyan), #0096FF);
-  color: var(--primary-foreground);
+  color: #FFFFFF;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
+  padding: 12px 24px;
   font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 20px rgba(0, 119, 255, 0.3);
+  display: inline-block;
+  text-align: center;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
-.btn-cyan:hover {
+.btn-cyan:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 30px rgba(0, 119, 255, 0.5);
+}
+
+.btn-cyan:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
 }
 
 .btn-purple {
