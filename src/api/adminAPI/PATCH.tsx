@@ -1,7 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 
-const Admin_Api_Base_Url = '/v1/admin';
+const Admin_Api_Base_Url = '/admin';
 
 export const adminPatchAPI = {
   /**
@@ -19,10 +19,10 @@ export const adminPatchAPI = {
   },
 
   toggleFAQActivity: async (id: number): Promise<ApiResponse<object>> => {
-    return apiService.patch<object>(`/admin/faq/${id}/toggle-activity`);
+    return apiService.patch<object>(`${Admin_Api_Base_Url}/faq/${id}/toggle-activity`);
   },
 
   toggleFAQCategoryActivity: async (id: number): Promise<ApiResponse<object>> => {
-    return apiService.patch<object>(`/admin/faq/categories/${id}/toggle-activity`);
+    return apiService.patch<object>(`${Admin_Api_Base_Url}/faq/categories/${id}/toggle-activity`);
   },
 };

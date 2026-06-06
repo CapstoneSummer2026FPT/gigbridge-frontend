@@ -3,7 +3,7 @@ import type { ApiResponse } from '../../types/common';
 import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
 
-const AdminV1 = '/v1/admin';
+const Admin_Api_Base_Url = '/admin';
 
 export const adminPostAPI = {
   /**
@@ -12,7 +12,7 @@ export const adminPostAPI = {
    * IsActive = true, IsEmailVerified = false by default.
    */
   createUser: async (payload: CreateUserPayload): Promise<ApiResponse<AdminUserDto>> => {
-    return apiService.post<AdminUserDto>(`${AdminV1}/users`, {
+    return apiService.post<AdminUserDto>(`${Admin_Api_Base_Url}/users`, {
       fullName: payload.fullName,
       email: payload.email,
       password: payload.password,
@@ -22,10 +22,10 @@ export const adminPostAPI = {
   },
 
   createFAQ: async (payload: CreateFAQPayload): Promise<ApiResponse<FAQDto>> => {
-    return apiService.post<FAQDto>('/admin/faq', payload);
+    return apiService.post<FAQDto>(`${Admin_Api_Base_Url}/faq`, payload);
   },
 
   createFAQCategory: async (payload: CreateFAQCategoryPayload): Promise<ApiResponse<FAQCategoryDto>> => {
-    return apiService.post<FAQCategoryDto>('/admin/faq/categories', payload);
+    return apiService.post<FAQCategoryDto>(`${Admin_Api_Base_Url}/faq/categories`, payload);
   },
 };
