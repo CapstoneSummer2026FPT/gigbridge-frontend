@@ -19,6 +19,7 @@ import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
 import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
+import CreateProposalScreen from '../features/proposals/screens/CreateProposalScreen';
 import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen';
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
 import AIAssistantScreen from '../features/ai-assistant/screens/AIAssistantScreen';
@@ -133,6 +134,7 @@ export const router = createBrowserRouter([
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
+      { path: 'proposals/create/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
 
       // Workspace - requires authentication and setup
       { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },

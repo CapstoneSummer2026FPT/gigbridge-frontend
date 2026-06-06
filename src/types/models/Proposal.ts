@@ -37,6 +37,13 @@ export interface ProposalQueryParams {
   PageSize?: number;
 }
 
+export interface CreateProposalRequest {
+  jobPostsId: string;
+  coverLetter: string;
+  proposedRate: number;
+  proposedDuration: string;
+}
+
 export interface ProposalDto {
   proposalsId: string;
   jobPostsId: string;
