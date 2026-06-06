@@ -163,6 +163,7 @@
 .faq-editor-card select,
 .faq-editor-card textarea,
 .category-create-row input,
+.category-slug-input,
 .faq-list-controls select,
 .faq-search input {
   width: 100%;
@@ -177,6 +178,7 @@
 .faq-editor-card input,
 .faq-editor-card select,
 .category-create-row input,
+.category-slug-input,
 .faq-list-controls select,
 .faq-search {
   min-height: 2.75rem;
@@ -185,6 +187,7 @@
 .faq-editor-card input,
 .faq-editor-card select,
 .category-create-row input,
+.category-slug-input,
 .faq-list-controls select {
   padding: 0 0.85rem;
 }

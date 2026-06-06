@@ -1,5 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
 
 const AdminV1 = '/v1/admin';
@@ -18,5 +19,13 @@ export const adminPostAPI = {
       role: payload.role,
       phoneNumber: payload.phoneNumber,
     });
+  },
+
+  createFAQ: async (payload: CreateFAQPayload): Promise<ApiResponse<FAQDto>> => {
+    return apiService.post<FAQDto>('/admin/faq', payload);
+  },
+
+  createFAQCategory: async (payload: CreateFAQCategoryPayload): Promise<ApiResponse<FAQCategoryDto>> => {
+    return apiService.post<FAQCategoryDto>('/admin/faq/categories', payload);
   },
 };

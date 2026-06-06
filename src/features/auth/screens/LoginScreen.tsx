@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -17,6 +17,14 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [googleClient, setGoogleClient] = useState<any>(null);
   const [googleError, setGoogleError] = useState('');
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const [formData, setFormData] = useState({ 
     email: '', 
     password: '',
@@ -72,20 +80,24 @@ export default function LoginScreen() {
       const user = userStr ? JSON.parse(userStr) : null;
 
       if (selectedRole === undefined && (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin))) {
-        setGoogleError('Your account does not have a role set up yet. Please select a role on the sign-up page before signing in.');
+        if (isMounted.current) {
+          setGoogleError('Your account does not have a role set up yet. Please select a role on the sign-up page before signing in.');
+          setIsGoogleLoading(false);
+        }
         if (appContext?.logout) {
           appContext.logout();
         }
-        setIsGoogleLoading(false);
         return;
       }
 
       if (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin)) {
-        setGoogleError('Your account does not have a role set up yet. Please register with a role or contact support.');
+        if (isMounted.current) {
+          setGoogleError('Your account does not have a role set up yet. Please register with a role or contact support.');
+          setIsGoogleLoading(false);
+        }
         if (appContext?.logout) {
           appContext.logout();
         }
-        setIsGoogleLoading(false);
         return;
       }
 
@@ -114,9 +126,13 @@ export default function LoginScreen() {
         navigate('/onboarding/profile-setup');
       }
     } catch (err: any) {
-      setGoogleError('Your Google account cannot be accessed at this time. Try troubleshooting this issue or contact us for help.');
+      if (isMounted.current) {
+        setGoogleError(getErrorMessage(err));
+      }
     } finally {
-      setIsGoogleLoading(false);
+      if (isMounted.current) {
+        setIsGoogleLoading(false);
+      }
     }
   };
 
@@ -135,11 +151,13 @@ export default function LoginScreen() {
       const user = userStr ? JSON.parse(userStr) : null;
       
       if (role_signIn === null || role_signIn === undefined || (role_signIn !== UserRole.Client && role_signIn !== UserRole.Freelancer && role_signIn !== UserRole.Admin)) {
-        setError('Your account does not have a role set up yet. Please select a role or contact support.');
+        if (isMounted.current) {
+          setError('Your account does not have a role set up yet. Please select a role or contact support.');
+          setIsEmailLoading(false);
+        }
         if (appContext?.logout) {
           appContext.logout();
         }
-        setIsEmailLoading(false);
         return;
       }
 
@@ -168,9 +186,13 @@ export default function LoginScreen() {
         navigate('/onboarding/profile-setup');
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
     } finally {
-      setIsEmailLoading(false);
+      if (isMounted.current) {
+        setIsEmailLoading(false);
+      }
     }
   };
 
