@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Users, Briefcase, DollarSign, TrendingUp, Shield, AlertCircle, CheckCircle, XCircle, BarChart2, Activity, Bot, Flag, FileText, Terminal, MessageSquare, HelpCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { DB, MARKET_INSIGHTS } from '../../../mock_backend';
+import { adminAPI } from '../../../api/adminAPI';
+import { DB } from '../../../mock_backend';
+import type { AdminUserDto } from '../../../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 const REVENUE_DATA = [
@@ -38,8 +40,74 @@ const HEATMAP_SKILLS = [
 export default function AdminDashboardScreen() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'moderation' | 'revenue'>('overview');
-  const allUsers = DB.getUsers();
+  const [adminUsers, setAdminUsers] = useState<AdminUserDto[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const allJobs = DB.getJobs();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUsers = async () => {
+      setUsersLoading(true);
+      setUsersError(null);
+
+      const response = await adminAPI.getAllUsers();
+
+      if (!isMounted) return;
+
+      if (response.success && response.data) {
+        setAdminUsers(response.data.items);
+      } else {
+        setAdminUsers([]);
+        setUsersError(response.message || 'Failed to load users.');
+      }
+
+      setUsersLoading(false);
+    };
+
+    loadUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const userStats = useMemo(() => {
+    const total = adminUsers.length;
+    const active = adminUsers.filter(user => user.isActive).length;
+
+    return {
+      total,
+      active,
+      change: total > 0 ? `${active.toLocaleString()} active` : 'No users loaded',
+    };
+  }, [adminUsers]);
+
+  const getUserInitials = (fullName: string) => {
+    const initials = fullName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part.charAt(0).toUpperCase())
+      .join('');
+
+    return initials || 'U';
+  };
+
+  const getRoleLabel = (role: number) => {
+    if (role === 0) return 'client';
+    if (role === 1) return 'freelancer';
+    if (role === 2) return 'admin';
+    return 'unknown';
+  };
+
+  const getRoleBadgeClass = (role: number) => {
+    if (role === 2) return 'badge-purple';
+    if (role === 0) return 'badge-cyan';
+    if (role === 1) return 'badge-green';
+    return 'badge-gray';
+  };
 
   return (
     <AppLayout>
@@ -195,7 +263,7 @@ export default function AdminDashboardScreen() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Total Users', value: '71,141', change: '+1,284 this week', icon: <Users size={16} />, iconClass: 'stat-icon-cyan icon-cyan' },
+            { label: 'Total Users', value: usersLoading ? '...' : userStats.total.toLocaleString(), change: userStats.change, icon: <Users size={16} />, iconClass: 'stat-icon-cyan icon-cyan' },
             { label: 'Active Jobs', value: allJobs.filter(j => j.status === 'open').length.toString(), change: '+42 today', icon: <Briefcase size={16} />, iconClass: 'stat-icon-purple icon-purple' },
             { label: 'Platform Revenue', value: '$398K', change: '+16.4% MoM', icon: <DollarSign size={16} />, iconClass: 'stat-icon-green icon-green' },
             { label: 'Success Rate', value: '96.4%', change: '+0.8% this month', icon: <TrendingUp size={16} />, iconClass: 'stat-icon-amber icon-amber' },
@@ -308,39 +376,69 @@ export default function AdminDashboardScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {allUsers.map(u => (
-                    <tr key={u.id} className="border-b border-primary transition-all hover:bg-hover">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <img src={u.avatar} alt={u.name} className="w-8 h-8 rounded-lg" />
-                          <div>
-                            <p className="text-primary text-sm font-medium">{u.name}</p>
-                            <p className="text-xs text-secondary">{u.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`badge-${u.role === 'admin' ? 'purple' : u.role === 'client' ? 'cyan' : 'green'} capitalize text-xs`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-2 h-2 rounded-full ${u.isVerified ? 'bg-green-medium' : 'bg-amber-medium'}`} />
-                          <span className={`text-xs ${u.isVerified ? 'text-green' : 'text-amber'}`}>
-                            {u.isVerified ? 'Verified' : 'Pending'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-xs text-secondary">{u.createdAt}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <button className="action-btn action-btn-view">View</button>
-                          <button className="action-btn action-btn-ban">Ban</button>
-                        </div>
+                  {usersLoading ? (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-10 text-center text-sm text-secondary">
+                        Loading users...
                       </td>
                     </tr>
-                  ))}
+                  ) : usersError ? (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-10 text-center text-sm text-red">
+                        {usersError}
+                      </td>
+                    </tr>
+                  ) : adminUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-10 text-center text-sm text-secondary">
+                        No users found.
+                      </td>
+                    </tr>
+                  ) : (
+                    adminUsers.map(user => (
+                      <tr key={user.userId} className="border-b border-primary transition-all hover:bg-hover">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            {user.avatar ? (
+                              <img src={user.avatar} alt={user.fullName} className="w-8 h-8 rounded-lg object-cover" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-cyan/20 text-cyan flex items-center justify-center text-xs font-bold">
+                                {getUserInitials(user.fullName)}
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-primary text-sm font-medium">{user.fullName}</p>
+                              <p className="text-xs text-secondary">{user.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`${getRoleBadgeClass(user.role)} capitalize text-xs`}>
+                            {getRoleLabel(user.role)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-2 h-2 rounded-full ${user.isActive ? 'bg-green-medium' : 'bg-red-medium'}`} />
+                            <span className={`text-xs ${user.isActive ? 'text-green' : 'text-red'}`}>
+                              {user.isActive ? (user.isEmailVerified ? 'Verified' : 'Unverified') : 'Banned'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-secondary">
+                          {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => navigate('/admin/users')} className="action-btn action-btn-view">View</button>
+                            <button onClick={() => navigate('/admin/users')} className="action-btn action-btn-ban">
+                              {user.isActive ? 'Ban' : 'Unban'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

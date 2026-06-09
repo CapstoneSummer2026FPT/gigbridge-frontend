@@ -3,7 +3,7 @@ import type { ApiResponse } from '../../types/common';
 import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
 
-const AdminV1 = '/v1/admin';
+const Admin_Api_Base_Url = '/admin';
 
 export const adminGetAPI = {
   /**
@@ -12,7 +12,7 @@ export const adminGetAPI = {
    * Backend Status: 1 = active, 0 = inactive (banned), null = all.
    */
   getUsers: async (params: GetUsersParams = {}): Promise<ApiResponse<PaginatedUsersResponse>> => {
-    return apiService.get<PaginatedUsersResponse>(`${AdminV1}/users`, params);
+    return apiService.get<PaginatedUsersResponse>(`${Admin_Api_Base_Url}/users`, params);
   },
 
   /**
@@ -29,10 +29,10 @@ export const adminGetAPI = {
   },
 
   getFAQs: async (categoryId?: number): Promise<ApiResponse<FAQDto[]>> => {
-    return apiService.get<FAQDto[]>('/admin/faq', categoryId ? { categoryId } : {});
+    return apiService.get<FAQDto[]>(`${Admin_Api_Base_Url}/faq`, categoryId ? { categoryId } : {});
   },
 
   getFAQCategories: async (): Promise<ApiResponse<FAQCategoryDto[]>> => {
-    return apiService.get<FAQCategoryDto[]>('/admin/faq/categories');
+    return apiService.get<FAQCategoryDto[]>(`${Admin_Api_Base_Url}/faq/categories`);
   },
 };
