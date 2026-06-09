@@ -12,6 +12,7 @@ import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import { ContractStatus, PaymentType, MilestoneStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 import {
   getContractStatusLabel,
   getContractStatusClass,
@@ -93,7 +94,7 @@ export default function ViewContractDetailsScreen() {
     const userProfileId = (user as any).profileId || user.id;
 
     // Admin role check
-    const isAdmin = user.role === 2 || user.role === 'Admin' || user.role === 'admin';
+    const isAdmin = user.role === UserRole.Admin;
     if (isAdmin) {
       setUserRole('admin');
       return;
@@ -102,14 +103,14 @@ export default function ViewContractDetailsScreen() {
     const isMock = contract.contractsId.startsWith('contract_mock_') || contract.contractsId.includes('mock');
 
     // Check if user is client
-    const isClient = user.role === 0 || user.role === 'Client' || user.role === 'client';
+    const isClient = user.role === UserRole.Client;
     if (contract.clientProfilesId === userProfileId || (!((user as any).profileId) && isClient) || (isMock && isClient)) {
       setUserRole('client');
       return;
     }
 
     // Check if user is freelancer
-    const isFreelancer = user.role === 1 || user.role === 'Freelancer' || user.role === 'freelancer';
+    const isFreelancer = user.role === UserRole.Freelancer;
     if (contract.freelancerProfilesId === userProfileId || (!((user as any).profileId) && isFreelancer) || (isMock && isFreelancer)) {
       setUserRole('freelancer');
       return;
