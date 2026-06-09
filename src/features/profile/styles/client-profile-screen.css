@@ -2,116 +2,194 @@
 
 .client-profile-wrapper {
   min-height: 100vh;
+  background-color: var(--gb-bg-primary);
+  color: var(--gb-text-primary);
+  padding-bottom: 4rem;
 }
 
+/* Stunning Hero Cover Header with glowing abstract backdrops matching theme */
 .client-profile-header-bg {
-  height: 240px;
-  background: linear-gradient(135deg, rgba(159, 75, 255, 0.15), rgba(0, 240, 255, 0.1));
+  height: 280px;
+  background: linear-gradient(135deg, rgba(0, 119, 255, 0.15) 0%, rgba(159, 75, 255, 0.15) 100%);
   position: relative;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 1.5rem;
+  padding: 2rem;
+  overflow: hidden;
 }
 
-.client-profile-back-btn,
-.client-profile-edit-btn {
-  width: auto;
-  height: auto;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  background: var(--gb-cyan, #0077FF);
-  border: none;
+.client-profile-header-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 70% 20%, rgba(0, 119, 255, 0.12), transparent 40%),
+              radial-gradient(circle at 20% 80%, rgba(159, 75, 255, 0.15), transparent 50%),
+              linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px, 24px 24px;
+  filter: blur(20px);
+  z-index: 1;
+}
+
+.client-profile-header-bg > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Premium Back Button */
+.client-profile-back-btn {
+  background: var(--gb-glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--gb-text-primary);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: white;
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.client-profile-back-btn {
-  background: var(--gb-bg-secondary, rgba(255, 255, 255, 0.1));
-  color: var(--gb-text-primary);
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--gb-glass-border);
 }
 
 .client-profile-back-btn:hover {
-  background: var(--gb-bg-hover, rgba(255, 255, 255, 0.2));
+  background: var(--gb-glass-hover);
+  transform: translateX(-4px);
+  border-color: var(--gb-cyan);
+  box-shadow: 0 0 15px rgba(0, 119, 255, 0.15);
+}
+
+/* Action Buttons Header Block */
+.client-profile-actions-container {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.client-profile-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--gb-glass-border);
+  background: var(--gb-glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--gb-text-primary);
 }
 
 .client-profile-edit-btn:hover {
-  background: var(--gb-cyan, #0056cc);
+  border-color: var(--gb-cyan);
+  color: var(--gb-cyan);
+  background: rgba(0, 119, 255, 0.05);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
 }
 
+.client-profile-edit-btn-primary {
+  background: var(--gb-cyan);
+  border: 1px solid var(--gb-cyan);
+  color: #ffffff;
+}
+
+.client-profile-edit-btn-primary:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.2);
+}
+
+/* Premium Card Overlay matching glass effects */
 .client-profile-card {
   position: relative;
-  padding: 2rem;
-  border-radius: 1rem;
+  padding: 2.5rem;
+  border-radius: 1.5rem;
+  background: var(--gb-glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--gb-glass-border);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  margin-top: -5rem;
+  margin-bottom: 2rem;
+  z-index: 10;
 }
 
 .client-profile-card-content {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 2rem;
-  align-items: flex-start;
+  gap: 2.5rem;
+  align-items: center;
 }
 
+/* Avatar Container with Theme Gradient Ring */
 .client-profile-avatar-container {
   position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 1.25rem;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--gb-purple), var(--gb-cyan));
+  box-shadow: 0 8px 25px rgba(0, 119, 255, 0.15);
 }
 
 .client-profile-avatar {
-  width: 140px;
-  height: 140px;
-  border-radius: 1rem;
+  width: 100%;
+  height: 100%;
+  border-radius: 1.15rem;
   object-fit: cover;
-  border: 3px solid var(--gb-cyan, #0077FF);
+  background: var(--gb-bg-secondary);
 }
 
 .client-profile-badge-verified {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 40px;
-  height: 40px;
+  bottom: -6px;
+  right: -6px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: var(--gb-green, #22c55e);
-  border: 2px solid var(--gb-bg-secondary, #fff);
+  background: var(--gb-green);
+  border: 3px solid var(--gb-bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
+  color: white;
 }
 
+/* User Info Layout */
 .client-profile-card-info {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
 .client-profile-name {
-  font-size: 1.875rem;
-  font-weight: 900;
+  font-size: 2.25rem;
+  font-weight: 800;
   color: var(--gb-text-primary);
+  margin: 0;
 }
 
 .client-profile-company {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  color: var(--gb-cyan, #0077FF);
+  color: var(--gb-cyan);
+  margin: 0;
 }
 
 .client-profile-meta-info {
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
+  margin-top: 0.25rem;
 }
 
 .client-profile-meta-item {
@@ -123,61 +201,108 @@
 }
 
 .client-profile-quick-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-top: 0.5rem;
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
 }
 
 .client-profile-quick-stat {
+  display: flex;
+  flex-direction: column;
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-glass-border);
+  padding: 0.5rem 1.25rem;
+  border-radius: 0.75rem;
   text-align: center;
+  transition: all 0.2s ease;
+}
+
+.client-profile-quick-stat:hover {
+  background: var(--gb-glass-hover);
+  border-color: var(--gb-cyan);
 }
 
 .client-profile-quick-stat p:first-child {
   margin: 0;
-  color: var(--gb-cyan, #0077FF);
+  color: var(--gb-text-primary);
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .client-profile-quick-stat p:last-child {
-  color: var(--gb-text-secondary);
+  color: var(--gb-text-muted);
   font-size: 0.75rem;
-  margin-top: 0.25rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
+/* Industry & Member Since - Right Side stats card style */
 .client-profile-info-right {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
   text-align: right;
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-glass-border);
+  padding: 1.25rem 2rem;
+  border-radius: 1.25rem;
+  min-width: 180px;
 }
 
 .client-profile-info-item {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  color: var(--gb-text-primary);
 }
 
+.client-profile-info-item p:first-child {
+  color: var(--gb-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  font-weight: 600;
+}
+
+.client-profile-info-item p:last-child {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  margin: 0;
+}
+
+/* Active Jobs Rows */
 .client-profile-job-card {
-  padding: 1rem;
-  background: var(--gb-bg-tertiary);
-  border: 1px solid var(--gb-border);
-  border-radius: 0.75rem;
+  padding: 1.25rem;
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-glass-border);
+  border-radius: 1rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  color: var(--gb-text-primary);
+  align-items: center;
+  gap: 1.5rem;
 }
 
 .client-profile-job-card:hover {
-  background: var(--gb-bg-hover);
-  border-color: var(--gb-cyan, #0077FF);
+  background: var(--gb-glass-hover);
+  border-color: var(--gb-cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 119, 255, 0.1);
 }
 
+.client-profile-job-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+/* Trust Badges / Verification Pills Grid */
 .client-profile-badges-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -186,15 +311,124 @@
 
 .client-profile-badge {
   display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--gb-glass-bg);
+  border-radius: 1rem;
+  border: 1.5px solid transparent;
+  transition: all 0.3s ease;
+  color: var(--gb-text-secondary);
+}
+
+.client-profile-badge:hover {
+  transform: translateY(-2px);
+  background: var(--gb-glass-hover);
+}
+
+.client-profile-badge-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Sidebar Trust Score Ring setup matching theme */
+.client-profile-trust-score-display-sidebar {
+  display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 1.5rem;
+}
+
+.client-profile-trust-score-circle-sidebar {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.client-profile-trust-score-ring {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.client-profile-trust-score-bg {
+  fill: none;
+  stroke: var(--gb-border);
+  stroke-width: 6;
+}
+
+.client-profile-trust-score-fill {
+  fill: none;
+  stroke: url(#trustGradient);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 283;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.client-profile-trust-score-text-sidebar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.25rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--gb-cyan), var(--gb-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: var(--gb-font-family, inherit);
+}
+
+.client-profile-trust-score-info-sidebar {
+  width: 100%;
+}
+
+.client-profile-trust-score-info-sidebar p {
+  color: var(--gb-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.client-profile-trust-score-info-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  padding: 1rem;
-  background: var(--gb-bg-tertiary);
-  border: 1px solid var(--gb-border);
-  border-radius: 0.75rem;
-  text-align: center;
+}
+
+.client-profile-trust-score-info-sidebar li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
   color: var(--gb-text-secondary);
+}
+
+/* Sidebar Contact Card Rows & Company stats card rows */
+.client-profile-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  color: var(--gb-text-secondary);
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--gb-border);
+}
+
+.client-profile-contact-row:last-child {
+  border-bottom: none;
 }
 
 .client-profile-stat-row {
@@ -204,6 +438,7 @@
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--gb-border);
   color: var(--gb-text-secondary);
+  font-size: 0.875rem;
 }
 
 .client-profile-stat-row:last-child {
@@ -211,17 +446,17 @@
 }
 
 .client-profile-stat-row span:last-child {
-  color: var(--gb-cyan, #0077FF);
-  font-weight: 600;
+  color: var(--gb-cyan);
+  font-weight: 750;
 }
 
-.client-profile-contact-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-  color: var(--gb-text-secondary);
-  font-size: 0.875rem;
+.white .client-profile-avatar-container {
+  background: linear-gradient(135deg, var(--gb-purple), var(--gb-cyan));
+  box-shadow: 0 8px 25px rgba(0, 119, 255, 0.1);
+}
+
+.white .client-profile-card {
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.05);
 }
 
 @media (max-width: 1024px) {
@@ -233,143 +468,59 @@
     grid-column: 1 / -1;
     text-align: left;
     flex-direction: row;
-    justify-content: space-around;
-  }
-
-  .client-profile-quick-stats {
-    grid-template-columns: repeat(2, 1fr);
+    justify-content: space-between;
   }
 }
 
 @media (max-width: 768px) {
   .client-profile-header-bg {
-    height: 180px;
-    padding: 1rem;
+    height: 200px;
+    padding: 1.5rem;
   }
 
   .client-profile-card {
-    padding: 1.5rem;
+    padding: 1.75rem;
+    margin-top: -4rem;
   }
 
   .client-profile-card-content {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
+    text-align: center;
   }
 
-  .client-profile-avatar {
-    width: 100px;
-    height: 100px;
+  .client-profile-avatar-container {
+    margin: 0 auto;
+  }
+
+  .client-profile-name {
+    font-size: 1.75rem;
+  }
+
+  .client-profile-meta-info {
+    justify-content: center;
   }
 
   .client-profile-quick-stats {
-    grid-template-columns: repeat(2, 1fr);
+    justify-content: center;
+    gap: 1.5rem;
   }
 
   .client-profile-info-right {
-    text-align: left;
     flex-direction: column;
+    text-align: center;
   }
 
   .client-profile-badges-grid {
     grid-template-columns: 1fr;
   }
-
-  .client-profile-name {
-    font-size: 1.5rem;
-  }
 }
 
-@media (max-width: 480px) {
-  .client-profile-quick-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .client-profile-card-info {
-    gap: 0.75rem;
-  }
-}
-
-/* Trust Score Card - Sidebar Version */
-.client-profile-trust-score-display-sidebar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.client-profile-trust-score-circle-sidebar {
-  position: relative;
-  width: 100px;
-  height: 100px;
-}
-
-.client-profile-trust-score-ring {
-  transform: rotate(-90deg);
-  width: 100%;
-  height: 100%;
-}
-
-.client-profile-trust-score-bg {
-  fill: none;
-  stroke: rgba(0, 119, 255, 0.1);
-  stroke-width: 4;
-}
-
-.client-profile-trust-score-fill {
-  fill: none;
-  stroke: url(#trustGradient);
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-dasharray: 283;
-  stroke-dashoffset: 0;
-  transition: stroke-dashoffset 0.6s ease;
-}
-
-.client-profile-trust-score-text-sidebar {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 2rem;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--gb-cyan, #0077FF), #9F4BFF);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.client-profile-trust-score-info-sidebar {
-  width: 100%;
-}
-
-.client-profile-trust-score-info-sidebar p {
-  color: var(--gb-text-secondary);
-  margin: 0;
-}
-
-.client-profile-trust-score-info-sidebar ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.client-profile-trust-score-info-sidebar li {
-  color: var(--gb-text-secondary);
-  margin: 0;
-}
-
-.client-profile-trust-score-info-sidebar li span:last-child {
-  font-size: 0.75rem;
-}
-
-@media (max-width: 768px) {
-  .client-profile-trust-score-display-sidebar {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .client-profile-trust-score-circle-sidebar {
-    width: 70px;
-    height: 70px;
-  }
+/* Reviews Card */
+.profile-reviews-card {
+  background: var(--gb-glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--gb-glass-border);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
 }
