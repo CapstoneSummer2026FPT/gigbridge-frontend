@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign, Plus, KeyRound, Phone } from 'lucide-react';
+import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign, Plus, KeyRound, Phone, Trash2 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
@@ -56,7 +56,7 @@ export default function AdminUsersScreen() {
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2} | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role' | 'delete', user: User, newRole?: 0 | 1 | 2} | null>(null);
   const [editForm, setEditForm] = useState({firstName: '', lastName: '', email: ''});
 
   // Real API state
@@ -123,6 +123,19 @@ export default function AdminUsersScreen() {
         await loadUsers();
       } else {
         alert(response.message || 'Failed to update user status');
+      }
+      setShowActionMenu(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    const user = allUsers.find(u => u.id === userId);
+    if (user) {
+      const response = await adminAPI.deleteUser(user.email);
+      if (response.success) {
+        await loadUsers();
+      } else {
+        alert(response.message || 'Failed to delete user');
       }
       setShowActionMenu(null);
     }
@@ -397,6 +410,17 @@ export default function AdminUsersScreen() {
                             <Edit size={16} className="text-purple" />
                           </button>
 
+                          <button
+                            onClick={() => {
+                              setConfirmAction({type: 'delete', user});
+                              setShowActionMenu(null);
+                            }}
+                            className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
+                            title="Delete User"
+                          >
+                            <Trash2 size={16} className="text-red" />
+                          </button>
+
                           <div className="relative">
                             <button
                               onClick={() => setShowActionMenu(showActionMenu === user.id ? null : user.id)}
@@ -466,6 +490,17 @@ export default function AdminUsersScreen() {
                                       Ban User
                                     </>
                                   )}
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setConfirmAction({type: 'delete', user});
+                                    setShowActionMenu(null);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 text-red"
+                                >
+                                  <Trash2 size={14} />
+                                  Delete User
                                 </button>
                               </div>
                             )}
@@ -957,6 +992,7 @@ export default function AdminUsersScreen() {
                   {confirmAction.type === 'ban' && `Are you sure you want to ban this user? They will lose access to the platform.`}
                   {confirmAction.type === 'unban' && `Are you sure you want to unban this user? They will regain access to the platform.`}
                   {confirmAction.type === 'role' && `Are you sure you want to change this user's role to ${confirmAction.newRole === 0 ? 'Client' : confirmAction.newRole === 1 ? 'Freelancer' : 'Admin'}?`}
+                  {confirmAction.type === 'delete' && `Are you sure you want to permanently delete this user? This action cannot be undone.`}
                 </p>
               </div>
 
@@ -973,12 +1009,15 @@ export default function AdminUsersScreen() {
                       handleChangeRole(confirmAction.user.id, confirmAction.newRole);
                     } else if (confirmAction.type === 'ban' || confirmAction.type === 'unban') {
                       await handleBanUser(confirmAction.user.id);
+                    } else if (confirmAction.type === 'delete') {
+                      await handleDeleteUser(confirmAction.user.id);
                     }
                     setConfirmAction(null);
                     setSelectedUser(null);
+                    setPreviewUser(null);
                   }}
                   className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${
-                    confirmAction.type === 'ban'
+                    confirmAction.type === 'ban' || confirmAction.type === 'delete'
                       ? 'bg-red/20 text-red border border-red hover:bg-red/30'
                       : confirmAction.type === 'unban'
                       ? 'bg-green/20 text-green border border-green hover:bg-green/30'
@@ -988,6 +1027,7 @@ export default function AdminUsersScreen() {
                   {confirmAction.type === 'ban' && 'Ban User'}
                   {confirmAction.type === 'unban' && 'Unban User'}
                   {confirmAction.type === 'role' && 'Change Role'}
+                  {confirmAction.type === 'delete' && 'Delete User'}
                 </button>
               </div>
             </div>

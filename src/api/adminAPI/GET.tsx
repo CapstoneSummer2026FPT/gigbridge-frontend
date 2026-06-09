@@ -1,9 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
+import type { GetReportsParams, ReportDto, ReportsResponse } from '../../types/models/Report';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
 
 const Admin_Api_Base_Url = '/admin';
+const Admin_Reports_Api_Base_Url = '/reports/admin';
 
 export const adminGetAPI = {
   /**
@@ -34,5 +36,13 @@ export const adminGetAPI = {
 
   getFAQCategories: async (): Promise<ApiResponse<FAQCategoryDto[]>> => {
     return apiService.get<FAQCategoryDto[]>(`${Admin_Api_Base_Url}/faq/categories`);
+  },
+
+  getReports: async (params: GetReportsParams = {}): Promise<ApiResponse<ReportsResponse>> => {
+    return apiService.get<ReportsResponse>(Admin_Reports_Api_Base_Url, params);
+  },
+
+  getReportDetail: async (reportId: string): Promise<ApiResponse<ReportDto>> => {
+    return apiService.get<ReportDto>(`${Admin_Reports_Api_Base_Url}/${reportId}`);
   },
 };
