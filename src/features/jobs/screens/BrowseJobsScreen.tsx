@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, DollarSign, Users, Globe, Bookmark, ChevronDown } from 'lucide-react';
+import { Search, Filter, Bot, Clock, DollarSign, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Medal, Zap } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -12,6 +12,49 @@ const PAGE_SIZE = 20;
 const CATEGORIES = ['All', 'Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile'];
 const WORK_TYPES = ['All', 'fixed', 'hourly'];
 const DATE_POSTED = ['Any time', 'Last 24 hours', 'Last 7 days', 'Last 30 days'];
+
+const MOCK_TOP_FREELANCERS = [
+  {
+    rank: 1,
+    name: 'Alex Rivera',
+    role: 'Full-Stack Engineer',
+    elo: 2840,
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    isPro: true,
+  },
+  {
+    rank: 2,
+    name: 'Sofia Chen',
+    role: 'UI/UX Designer',
+    elo: 2750,
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    isPro: true,
+  },
+  {
+    rank: 3,
+    name: 'Marcus Vance',
+    role: 'DevOps Architect',
+    elo: 2690,
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    isPro: false,
+  },
+  {
+    rank: 4,
+    name: 'Priya Patel',
+    role: 'Data Scientist',
+    elo: 2610,
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    isPro: true,
+  },
+  {
+    rank: 5,
+    name: 'Liam Nguyen',
+    role: 'React Developer',
+    elo: 2580,
+    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+    isPro: false,
+  },
+];
 
 const sanitizeSearch = (value: string) => value.replace(/[<>"'`;]/g, '').slice(0, 120);
 
@@ -142,156 +185,261 @@ export default function BrowseJobsScreen() {
           <p className="browse-jobs-desc">Discover open opportunities with search, advanced filters, and saved jobs.</p>
         </div>
 
-        <div className="glass-card p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 browse-jobs-search-icon" />
-              <input
-                type="text"
-                value={search}
-                onChange={event => setSearch(sanitizeSearch(event.target.value))}
-                placeholder="Search title or description..."
-                className="input-gb w-full browse-jobs-search-input"
-              />
-            </div>
-            <button onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm transition-all browse-jobs-filter-btn">
-              <Filter size={16} /> Filters
-            </button>
-            <button onClick={() => setAiOnly(!aiOnly)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${aiOnly ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
-              <Bot size={16} />
-              AI Recommended
-            </button>
-          </div>
-
-          {showFilters && (
-            <div className="mt-4 pt-4 border-t browse-jobs-divider">
-              <div className="browse-jobs-filter-grid">
-                <label>
-                  Category
-                  <select value={category} onChange={event => setCategory(event.target.value)}>
-                    {CATEGORIES.map(item => <option key={item}>{item}</option>)}
-                  </select>
-                </label>
-                <label>
-                  Skills
-                  <input value={skills} onChange={event => setSkills(sanitizeSearch(event.target.value))} placeholder="React, SQL" />
-                </label>
-                <label>
-                  Min Budget
-                  <input type="number" min="0" value={budgetMin} onChange={event => setBudgetMin(event.target.value)} />
-                </label>
-                <label>
-                  Max Budget
-                  <input type="number" min="0" value={budgetMax} onChange={event => setBudgetMax(event.target.value)} />
-                </label>
-                <label>
-                  Work Type
-                  <select value={workType} onChange={event => setWorkType(event.target.value)}>
-                    {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? 'All' : item === 'fixed' ? 'Fixed Price' : 'Hourly'}</option>)}
-                  </select>
-                </label>
-                <label>
-                  Date Posted
-                  <select value={datePosted} onChange={event => setDatePosted(event.target.value)}>
-                    {DATE_POSTED.map(item => <option key={item}>{item}</option>)}
-                  </select>
-                </label>
-              </div>
-              {budgetInvalid && <p className="browse-jobs-error">Budget range is invalid. Min must be less than or equal to Max.</p>}
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
-          {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => setCategory(cat)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${category === cat ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm browse-jobs-desc">
-            <span className="text-primary font-semibold">{jobs.length}</span> open jobs found
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs browse-jobs-desc">Sort by:</span>
-            <button onClick={() => setSortBy(sortBy === 'relevance' ? 'date' : 'relevance')} className="flex items-center gap-1 text-sm text-primary">
-              {sortBy === 'relevance' ? 'Most Relevant' : 'Date Posted'} <ChevronDown size={14} />
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {pagedJobs.map((job, idx) => (
-            <div key={job.id}
-              className="glass-card p-5 cursor-pointer group browse-jobs-job-card"
-              style={{ animationDelay: `${idx * 0.05}s` }}
-              onClick={() => navigate(`/jobs/${job.id}`, { state: { job } })}>
-              <div className="flex flex-col md:flex-row md:items-start gap-4">
-                <div className="flex-1">
-                  <div className="flex items-start gap-2 flex-wrap mb-2">
-                    <h2 className="text-primary font-semibold group-hover:text-[#0077FF] transition-colors">{job.title}</h2>
-                    {job.isFeatured && <span className="badge-purple text-xs flex-shrink-0">Featured</span>}
-                    {job.isAiRecommended && <span className="badge-cyan text-xs flex-shrink-0">AI Pick</span>}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3 mb-3">
-                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                      <DollarSign size={12} />
-                      ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()} · {job.jobType === 'fixed' ? 'Fixed' : 'Hourly'}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> Remote</div>
-                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} proposals</div>
-                    <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Clock size={12} /> {job.postedAt}</div>
-                    <span className="tag-pill capitalize text-xs">{job.experienceLevel}</span>
-                  </div>
-
-                  <p className="text-sm leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">{job.description}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {job.skills.map(skill => <span key={skill} className="tag-pill">{skill}</span>)}
-                  </div>
+        <div className="browse-jobs-layout-grid">
+          {/* Left Column (2/3 width) */}
+          <div className="space-y-6">
+            <div className="glass-card p-4">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 browse-jobs-search-icon" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={event => setSearch(sanitizeSearch(event.target.value))}
+                    placeholder="Search title or description..."
+                    className="input-gb w-full browse-jobs-search-input"
+                  />
                 </div>
+                <button onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm transition-all browse-jobs-filter-btn">
+                  <Filter size={16} /> Filters
+                </button>
+                <button onClick={() => setAiOnly(!aiOnly)}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${aiOnly ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
+                  <Bot size={16} />
+                  AI Recommended
+                </button>
+              </div>
 
-                <div className="flex md:flex-col items-center md:items-end gap-3 flex-shrink-0">
-                  {job.aiMatchScore && user && (
-                    <div className={`match-score ${job.aiMatchScore >= 90 ? 'high' : job.aiMatchScore >= 70 ? 'medium' : 'low'} flex-shrink-0`}>
-                      <Bot size={10} />
-                      {job.aiMatchScore}% Match
-                    </div>
-                  )}
-                  <button
-                    onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
-                    className={`p-2 rounded-lg transition-all ${saved.includes(job.id) ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'}`}>
-                    <Bookmark size={16} fill={saved.includes(job.id) ? 'currentColor' : 'none'} />
-                  </button>
-                  <button onClick={event => { event.stopPropagation(); navigate(`/jobs/${job.id}`, { state: { job } }); }}
-                    className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
-                    View Job
+              {showFilters && (
+                <div className="mt-4 pt-4 border-t browse-jobs-divider">
+                  <div className="browse-jobs-filter-grid">
+                    <label>
+                      Category
+                      <select value={category} onChange={event => setCategory(event.target.value)}>
+                        {CATEGORIES.map(item => <option key={item}>{item}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Skills
+                      <input value={skills} onChange={event => setSkills(sanitizeSearch(event.target.value))} placeholder="React, SQL" />
+                    </label>
+                    <label>
+                      Min Budget
+                      <input type="number" min="0" value={budgetMin} onChange={event => setBudgetMin(event.target.value)} />
+                    </label>
+                    <label>
+                      Max Budget
+                      <input type="number" min="0" value={budgetMax} onChange={event => setBudgetMax(event.target.value)} />
+                    </label>
+                    <label>
+                      Work Type
+                      <select value={workType} onChange={event => setWorkType(event.target.value)}>
+                        {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? 'All' : item === 'fixed' ? 'Fixed Price' : 'Hourly'}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Date Posted
+                      <select value={datePosted} onChange={event => setDatePosted(event.target.value)}>
+                        {DATE_POSTED.map(item => <option key={item}>{item}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  {budgetInvalid && <p className="browse-jobs-error">Budget range is invalid. Min must be less than or equal to Max.</p>}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => setCategory(cat)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${category === cat ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm browse-jobs-desc">
+                  <span className="text-primary font-semibold">{jobs.length}</span> open jobs found
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs browse-jobs-desc">Sort by:</span>
+                  <button onClick={() => setSortBy(sortBy === 'relevance' ? 'date' : 'relevance')} className="flex items-center gap-1 text-sm text-primary">
+                    {sortBy === 'relevance' ? 'Most Relevant' : 'Date Posted'} <ChevronDown size={14} />
                   </button>
                 </div>
               </div>
+
+              <div className="space-y-4">
+                {pagedJobs.map((job, idx) => (
+                  <div key={job.id}
+                    className="glass-card p-5 cursor-pointer group browse-jobs-job-card"
+                    style={{ animationDelay: `${idx * 0.05}s` }}
+                    onClick={() => navigate(`/jobs/${job.id}`, { state: { job } })}>
+                    <div className="flex flex-col md:flex-row md:items-start gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-start gap-2 flex-wrap mb-2">
+                          <h2 className="text-primary font-semibold group-hover:text-[#0077FF] transition-colors">{job.title}</h2>
+                          {job.isFeatured && <span className="badge-purple text-xs flex-shrink-0">Featured</span>}
+                          {job.isAiRecommended && <span className="badge-cyan text-xs flex-shrink-0">AI Pick</span>}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 mb-3">
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
+                            <DollarSign size={12} />
+                            ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()} · {job.jobType === 'fixed' ? 'Fixed' : 'Hourly'}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> Remote</div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} proposals</div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Clock size={12} /> {job.postedAt}</div>
+                          <span className="tag-pill capitalize text-xs">{job.experienceLevel}</span>
+                        </div>
+
+                        <p className="text-sm leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">{job.description}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {job.skills.map(skill => <span key={skill} className="tag-pill">{skill}</span>)}
+                        </div>
+                      </div>
+
+                      <div className="flex md:flex-col items-center md:items-end gap-3 flex-shrink-0">
+                        {job.aiMatchScore && user && (
+                          <div className={`match-score ${job.aiMatchScore >= 90 ? 'high' : job.aiMatchScore >= 70 ? 'medium' : 'low'} flex-shrink-0`}>
+                            <Bot size={10} />
+                            {job.aiMatchScore}% Match
+                          </div>
+                        )}
+                        <button
+                          onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
+                          className={`p-2 rounded-lg transition-all ${saved.includes(job.id) ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'}`}>
+                          <Bookmark size={16} fill={saved.includes(job.id) ? 'currentColor' : 'none'} />
+                        </button>
+                        <button onClick={event => { event.stopPropagation(); navigate(`/jobs/${job.id}`, { state: { job } }); }}
+                          className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
+                          View Job
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {!loading && jobs.length === 0 && (
+                <div className="text-center py-20">
+                  <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
+                  <p className="text-primary font-semibold mb-2">MSG73: No jobs match your criteria. Try adjusting filters.</p>
+                </div>
+              )}
+
+              {jobs.length > PAGE_SIZE && (
+                <div className="browse-jobs-pagination">
+                  <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>Previous</button>
+                  <span>Page {page} of {totalPages}</span>
+                  <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)}>Next</button>
+                </div>
+              )}
             </div>
-          ))}
+          </div>
+
+          {/* Right Column (1/3 width) - Sidebar with System Ads and Freelancer Rankings */}
+          <div className="system-ads-sidebar-container">
+            {/* Ad 1: GigBridge Premium */}
+            <div className="system-ad-card system-ad-card-premium">
+              <div className="system-ad-title">
+                <Sparkles size={18} className="ad-icon-purple" />
+                <span>GigBridge Premium</span>
+              </div>
+              <p className="system-ad-subtitle">
+                Get priority matching, badge highlights, and double the proposal visibility. Stand out from the crowd!
+              </p>
+              <button className="system-ad-btn system-ad-btn-primary">
+                Upgrade Plan
+              </button>
+            </div>
+
+            {/* Ad 2: Skill Certification */}
+            <div className="system-ad-card">
+              <div className="system-ad-title">
+                <Zap size={18} className="ad-icon-cyan" />
+                <span>Verify Your Skills</span>
+              </div>
+              <p className="system-ad-subtitle">
+                Complete a fast technical ELO test and add a verified Pro Certificate directly onto your profile.
+              </p>
+              <button className="system-ad-btn system-ad-btn-secondary">
+                Start Challenge
+              </button>
+            </div>
+
+            {/* Freelancer ELO Leaderboard */}
+            <div className="freelancer-ranking-card">
+              <div className="freelancer-ranking-header">
+                <div className="freelancer-ranking-title">
+                  <Trophy size={18} className="trophy-icon" />
+                  <span>Top Freelancers</span>
+                </div>
+                <span className="freelancer-ranking-subtitle flex items-center gap-1">
+                  <TrendingUp size={12} className="text-emerald-500" />
+                  Elo Ratings
+                </span>
+              </div>
+
+              <div className="ranking-list">
+                {MOCK_TOP_FREELANCERS.map((freelancer) => {
+                  const isGold = freelancer.rank === 1;
+                  const isSilver = freelancer.rank === 2;
+                  const isBronze = freelancer.rank === 3;
+                  
+                  return (
+                    <div 
+                      key={freelancer.rank} 
+                      className={`ranking-item ${
+                        isGold ? 'ranking-item-top1' : 
+                        isSilver ? 'ranking-item-top2' : 
+                        isBronze ? 'ranking-item-top3' : ''
+                      }`}
+                    >
+                      <div className="ranking-user-info">
+                        <div className={`ranking-position ${
+                          isGold ? 'ranking-position-gold' : 
+                          isSilver ? 'ranking-position-silver' : 
+                          isBronze ? 'ranking-position-bronze' : ''
+                        }`}>
+                          {freelancer.rank}
+                        </div>
+                        <div className="ranking-avatar-container">
+                          <img 
+                            src={freelancer.avatar} 
+                            alt={freelancer.name} 
+                            className={`ranking-avatar ${
+                              isGold ? 'ranking-avatar-gold' : 
+                              isSilver ? 'ranking-avatar-silver' : 
+                              isBronze ? 'ranking-avatar-bronze' : ''
+                            }`}
+                          />
+                          {freelancer.isPro && (
+                            <div className="ranking-badge-overlay">
+                              <Medal size={10} className="text-[#9f4bff]" fill="currentColor" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="ranking-text-details">
+                          <span className="ranking-name">{freelancer.name}</span>
+                          <span className="ranking-role">{freelancer.role}</span>
+                        </div>
+                      </div>
+                      <div className="ranking-elo">
+                        <span className="ranking-elo-value">{freelancer.elo}</span>
+                        <span className="ranking-elo-label">Elo</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
-
-        {!loading && jobs.length === 0 && (
-          <div className="text-center py-20">
-            <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
-            <p className="text-primary font-semibold mb-2">MSG73: No jobs match your criteria. Try adjusting filters.</p>
-          </div>
-        )}
-
-        {jobs.length > PAGE_SIZE && (
-          <div className="browse-jobs-pagination">
-            <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>Previous</button>
-            <span>Page {page} of {totalPages}</span>
-            <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)}>Next</button>
-          </div>
-        )}
       </div>
     </AppLayout>
   );
