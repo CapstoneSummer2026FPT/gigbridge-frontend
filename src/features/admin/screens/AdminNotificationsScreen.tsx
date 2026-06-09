@@ -3,10 +3,35 @@ import { useNavigate } from 'react-router';
 import { Bell, Send, Users, User, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, Plus, Eye, Trash2, Edit, Ban } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { AdminNotification, NotificationType, NotificationPriority, NotificationStatus, NotificationTarget } from '../../../types/models/Notification';
+import { adminAPI } from '../../../api/adminAPI';
 import '../styles/admin-users-screen.css';
 
 type TabType = 'all' | 'scheduled' | 'sent' | 'failed';
 type StatusFilter = 'all' | 'scheduled' | 'sent' | 'failed' | 'cancelled';
+type AdminBroadcastTarget = 0 | 1 | 2 | 3 | 4;
+type AdminNotificationType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+
+const ADMIN_NOTIFICATION_TYPES: { value: AdminNotificationType; label: string }[] = [
+  { value: 10, label: 'System Alert' },
+  { value: 0, label: 'New Job' },
+  { value: 1, label: 'Proposal Received' },
+  { value: 2, label: 'Proposal Status Changed' },
+  { value: 3, label: 'Contract Started' },
+  { value: 4, label: 'Milestone Updated' },
+  { value: 6, label: 'Payment Confirmed' },
+  { value: 7, label: 'Chat Message' },
+  { value: 8, label: 'Dispute Update' },
+  { value: 9, label: 'Review Received' },
+  { value: 11, label: 'AI Interview Invite' },
+  { value: 12, label: 'Subscription Expiring' },
+];
+
+const ADMIN_BROADCAST_TARGETS: { value: AdminBroadcastTarget; label: string }[] = [
+  { value: 0, label: 'All Users' },
+  { value: 1, label: 'Clients' },
+  { value: 2, label: 'Freelancers' },
+  { value: 3, label: 'Admins' },
+];
 
 // Mock data
 const MOCK_NOTIFICATIONS: AdminNotification[] = [
@@ -89,6 +114,26 @@ export default function AdminNotificationsScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [viewNotification, setViewNotification] = useState<AdminNotification | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [broadcastForm, setBroadcastForm] = useState({
+    target: 0 as Exclude<AdminBroadcastTarget, 4>,
+    type: 10 as AdminNotificationType,
+    title: '',
+    content: '',
+    referenceId: '',
+    referenceType: '',
+    sendEmail: false,
+  });
+  const [testForm, setTestForm] = useState({
+    targetMode: 'all' as 'all' | 'specific',
+    targetEmails: '',
+    type: 10 as AdminNotificationType,
+    title: 'Test notification',
+    content: 'This is a test notification from GigBridge admin.',
+  });
+  const [broadcastStatus, setBroadcastStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [testStatus, setTestStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isBroadcastSending, setIsBroadcastSending] = useState(false);
+  const [isTestSending, setIsTestSending] = useState(false);
   const [createForm, setCreateForm] = useState({
     type: NotificationType.Custom,
     target: NotificationTarget.AllUsers,
@@ -186,6 +231,151 @@ export default function AdminNotificationsScreen() {
     });
   };
 
+  const sendAdminNotification = async (payload: {
+    target: AdminBroadcastTarget;
+    targetUserId?: string | null;
+    type: AdminNotificationType;
+    title: string;
+    content: string;
+    referenceId?: string | null;
+    referenceType?: string | null;
+    sendEmail?: boolean;
+  }) => {
+    return adminAPI.broadcastNotification({
+      target: payload.target,
+      targetUserId: payload.targetUserId || null,
+      type: payload.type,
+      title: payload.title.trim(),
+      content: payload.content.trim(),
+      referenceId: payload.referenceId || null,
+      referenceType: payload.referenceType?.trim() || null,
+      sendEmail: Boolean(payload.sendEmail),
+    });
+  };
+
+  const handleSendBroadcast = async () => {
+    if (!broadcastForm.title.trim()) {
+      setBroadcastStatus({ type: 'error', message: 'Title is required.' });
+      return;
+    }
+
+    setIsBroadcastSending(true);
+    setBroadcastStatus(null);
+
+    const response = await sendAdminNotification({
+      target: broadcastForm.target,
+      type: broadcastForm.type,
+      title: broadcastForm.title,
+      content: broadcastForm.content,
+      referenceId: broadcastForm.referenceId.trim() || null,
+      referenceType: broadcastForm.referenceType,
+      sendEmail: broadcastForm.sendEmail,
+    });
+
+    if (response.success) {
+      setBroadcastStatus({ type: 'success', message: response.message || 'Broadcast sent successfully.' });
+      setBroadcastForm(prev => ({ ...prev, title: '', content: '', referenceId: '', referenceType: '', sendEmail: false }));
+    } else {
+      setBroadcastStatus({ type: 'error', message: response.message || 'Failed to send broadcast.' });
+    }
+
+    setIsBroadcastSending(false);
+  };
+
+  const parseTargetEmails = (value: string) =>
+    value
+      .split(/[\s,;]+/)
+      .map(email => email.trim().toLowerCase())
+      .filter(Boolean);
+
+  const resolveTargetEmails = async (emails: string[]) => {
+    const uniqueEmails = Array.from(new Set(emails));
+    const results = await Promise.all(
+      uniqueEmails.map(async email => {
+        const response = await adminAPI.getAllUsers(email);
+        const user = response.data?.items?.find(item => item.email.toLowerCase() === email);
+
+        return {
+          email,
+          userId: user?.userId,
+        };
+      })
+    );
+
+    return {
+      resolvedUsers: results.filter(result => result.userId) as { email: string; userId: string }[],
+      missingEmails: results.filter(result => !result.userId).map(result => result.email),
+    };
+  };
+
+  const handleSendTestNotification = async () => {
+    if (!testForm.title.trim()) {
+      setTestStatus({ type: 'error', message: 'Title is required.' });
+      return;
+    }
+
+    const targetEmails = parseTargetEmails(testForm.targetEmails);
+
+    if (testForm.targetMode === 'specific' && targetEmails.length === 0) {
+      setTestStatus({ type: 'error', message: 'Add at least one target user email.' });
+      return;
+    }
+
+    setIsTestSending(true);
+    setTestStatus(null);
+
+    if (testForm.targetMode === 'all') {
+      const response = await sendAdminNotification({
+        target: 0,
+        type: testForm.type,
+        title: testForm.title,
+        content: testForm.content,
+      });
+
+      setTestStatus({
+        type: response.success ? 'success' : 'error',
+        message: response.message || (response.success ? 'Test notification sent to all users.' : 'Failed to send test notification.'),
+      });
+      setIsTestSending(false);
+      return;
+    }
+
+    const { resolvedUsers, missingEmails } = await resolveTargetEmails(targetEmails);
+
+    if (resolvedUsers.length === 0) {
+      setTestStatus({
+        type: 'error',
+        message: missingEmails.length > 0
+          ? `No users found for: ${missingEmails.join(', ')}`
+          : 'No users found for those emails.',
+      });
+      setIsTestSending(false);
+      return;
+    }
+
+    const responses = await Promise.all(
+      resolvedUsers.map(user =>
+        sendAdminNotification({
+          target: 4,
+          targetUserId: user.userId,
+          type: testForm.type,
+          title: testForm.title,
+          content: testForm.content,
+        })
+      )
+    );
+
+    const failedCount = responses.filter(response => !response.success).length;
+    const missingText = missingEmails.length > 0 ? ` Missing: ${missingEmails.join(', ')}.` : '';
+    setTestStatus({
+      type: failedCount === 0 && missingEmails.length === 0 ? 'success' : 'error',
+      message: failedCount === 0
+        ? `Test notification sent to ${resolvedUsers.length} user${resolvedUsers.length === 1 ? '' : 's'}.${missingText}`
+        : `${failedCount} of ${resolvedUsers.length} test notifications failed.${missingText}`,
+    });
+    setIsTestSending(false);
+  };
+
   const handleDeleteNotification = (id: string) => {
     console.log('Deleting notification:', id);
     // Here you would make API call to backend
@@ -237,6 +427,191 @@ export default function AdminNotificationsScreen() {
                 <p className="text-xl sm:text-2xl font-bold text-primary">{stat.value}</p>
               </div>
             ))}
+          </div>
+
+          {/* Broadcast and Test Send */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6 sm:mb-8">
+            <div className="glass-card p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Send size={16} className="text-purple" />
+                    <p className="text-sm font-bold text-primary">Broadcast</p>
+                  </div>
+                  <p className="text-xs text-secondary">Send one notification to a platform audience.</p>
+                </div>
+                <span className="badge-purple text-xs">Live</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs text-muted mb-1">Audience</label>
+                  <select
+                    value={broadcastForm.target}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, target: Number(e.target.value) as Exclude<AdminBroadcastTarget, 4> })}
+                    className="input-gb w-full px-3 py-2 text-sm cursor-pointer"
+                  >
+                    {ADMIN_BROADCAST_TARGETS.map(target => (
+                      <option key={target.value} value={target.value}>{target.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Type</label>
+                  <select
+                    value={broadcastForm.type}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, type: Number(e.target.value) as AdminNotificationType })}
+                    className="input-gb w-full px-3 py-2 text-sm cursor-pointer"
+                  >
+                    {ADMIN_NOTIFICATION_TYPES.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={broadcastForm.title}
+                  onChange={e => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                  placeholder="Broadcast title"
+                  className="input-gb w-full px-3 py-2 text-sm"
+                />
+                <textarea
+                  value={broadcastForm.content}
+                  onChange={e => setBroadcastForm({ ...broadcastForm, content: e.target.value })}
+                  placeholder="Broadcast message"
+                  rows={3}
+                  className="input-gb w-full px-3 py-2 text-sm resize-none"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    value={broadcastForm.referenceId}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, referenceId: e.target.value })}
+                    placeholder="Reference ID (optional)"
+                    className="input-gb w-full px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={broadcastForm.referenceType}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, referenceType: e.target.value })}
+                    placeholder="Reference type (optional)"
+                    className="input-gb w-full px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4">
+                <label className="flex items-center gap-2 text-xs text-secondary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={broadcastForm.sendEmail}
+                    onChange={e => setBroadcastForm({ ...broadcastForm, sendEmail: e.target.checked })}
+                    className="accent-cyan"
+                  />
+                  Also send email
+                </label>
+                <button
+                  onClick={handleSendBroadcast}
+                  disabled={isBroadcastSending || !broadcastForm.title.trim()}
+                  className="btn-purple px-4 py-2 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Send size={14} />
+                  {isBroadcastSending ? 'Sending...' : 'Send Broadcast'}
+                </button>
+              </div>
+
+              {broadcastStatus && (
+                <p className={`text-xs mt-3 ${broadcastStatus.type === 'success' ? 'text-green' : 'text-red'}`}>
+                  {broadcastStatus.message}
+                </p>
+              )}
+            </div>
+
+            <div className="glass-card p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Bell size={16} className="text-cyan" />
+                    <p className="text-sm font-bold text-primary">Test Notification</p>
+                  </div>
+                  <p className="text-xs text-secondary">Send a quick test to all users or selected user emails.</p>
+                </div>
+                <span className="badge-cyan text-xs">Test</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs text-muted mb-1">Target</label>
+                  <select
+                    value={testForm.targetMode}
+                    onChange={e => setTestForm({ ...testForm, targetMode: e.target.value as 'all' | 'specific' })}
+                    className="input-gb w-full px-3 py-2 text-sm cursor-pointer"
+                  >
+                    <option value="all">All Users</option>
+                    <option value="specific">Specific Users</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Type</label>
+                  <select
+                    value={testForm.type}
+                    onChange={e => setTestForm({ ...testForm, type: Number(e.target.value) as AdminNotificationType })}
+                    className="input-gb w-full px-3 py-2 text-sm cursor-pointer"
+                  >
+                    {ADMIN_NOTIFICATION_TYPES.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {testForm.targetMode === 'specific' && (
+                <textarea
+                  value={testForm.targetEmails}
+                  onChange={e => setTestForm({ ...testForm, targetEmails: e.target.value })}
+                  placeholder="Paste user emails separated by commas, spaces, or new lines"
+                  rows={2}
+                  className="input-gb w-full px-3 py-2 text-sm resize-none mb-3"
+                />
+              )}
+
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={testForm.title}
+                  onChange={e => setTestForm({ ...testForm, title: e.target.value })}
+                  placeholder="Test title"
+                  className="input-gb w-full px-3 py-2 text-sm"
+                />
+                <textarea
+                  value={testForm.content}
+                  onChange={e => setTestForm({ ...testForm, content: e.target.value })}
+                  placeholder="Test message"
+                  rows={3}
+                  className="input-gb w-full px-3 py-2 text-sm resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleSendTestNotification}
+                  disabled={isTestSending || !testForm.title.trim()}
+                  className="btn-cyan px-4 py-2 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Send size={14} />
+                  {isTestSending ? 'Sending...' : 'Send Test'}
+                </button>
+              </div>
+
+              {testStatus && (
+                <p className={`text-xs mt-3 ${testStatus.type === 'success' ? 'text-green' : 'text-red'}`}>
+                  {testStatus.message}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Tabs */}
