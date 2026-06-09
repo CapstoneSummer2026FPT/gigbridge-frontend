@@ -34,11 +34,11 @@ export default function ClientProfileScreen() {
           <button onClick={() => navigate(-1)} className="client-profile-back-btn">
             <ArrowLeft size={20} />
           </button>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div className="client-profile-actions-container">
             <button onClick={() => navigate(`/messages?user=${user.id}`)} className="client-profile-edit-btn">
               <MessageSquare size={16} /> Message
             </button>
-            <button onClick={() => navigate(`/profile/client/${user.id}/edit`)} className="client-profile-edit-btn">
+            <button onClick={() => navigate(`/profile/client/${user.id}/edit`)} className="client-profile-edit-btn client-profile-edit-btn-primary">
               Edit Profile
             </button>
           </div>
@@ -46,7 +46,7 @@ export default function ClientProfileScreen() {
 
         <div className="max-w-6xl mx-auto px-4">
           {/* Profile Card */}
-          <div className="client-profile-card glass-card -mt-20 mb-8">
+          <div className="client-profile-card">
             <div className="client-profile-card-content">
               {/* Avatar */}
               <div className="client-profile-avatar-container">
@@ -56,7 +56,7 @@ export default function ClientProfileScreen() {
                   className="client-profile-avatar"
                 />
                 <div className="client-profile-badge-verified">
-                  <CheckCircle size={20} className="text-green" />
+                  <CheckCircle size={20} />
                 </div>
               </div>
 
@@ -83,20 +83,20 @@ export default function ClientProfileScreen() {
                 {/* Quick Stats */}
                 <div className="client-profile-quick-stats">
                   <div className="client-profile-quick-stat">
-                    <p className="text-2xl font-black text-green">$50K+</p>
-                    <p className="text-xs text-secondary">Total Spent</p>
+                    <p>$50K+</p>
+                    <p>Total Spent</p>
                   </div>
                   <div className="client-profile-quick-stat">
-                    <p className="text-2xl font-black text-cyan">12</p>
-                    <p className="text-xs text-secondary">Jobs Posted</p>
+                    <p>{jobs.length}</p>
+                    <p>Jobs Posted</p>
                   </div>
                   <div className="client-profile-quick-stat">
-                    <p className="text-2xl font-black text-purple">25</p>
-                    <p className="text-xs text-secondary">Hired</p>
+                    <p>25</p>
+                    <p>Hired</p>
                   </div>
                   <div className="client-profile-quick-stat">
-                    <p className="text-2xl font-black text-amber-400">4.8</p>
-                    <p className="text-xs text-secondary">Rating</p>
+                    <p>4.8</p>
+                    <p>Rating</p>
                   </div>
                 </div>
               </div>
@@ -104,12 +104,12 @@ export default function ClientProfileScreen() {
               {/* Industry & Member Since - Right Side */}
               <div className="client-profile-info-right">
                 <div className="client-profile-info-item">
-                  <p className="text-xs text-secondary mb-1">Industry</p>
-                  <p className="font-semibold text-primary">{profile?.industry || 'Technology'}</p>
+                  <p>Industry</p>
+                  <p>{profile?.industry || 'Technology'}</p>
                 </div>
                 <div className="client-profile-info-item">
-                  <p className="text-xs text-secondary mb-1">Member Since</p>
-                  <p className="font-semibold text-primary">Jan 2024</p>
+                  <p>Member Since</p>
+                  <p>Jan 2024</p>
                 </div>
               </div>
             </div>
@@ -142,10 +142,10 @@ export default function ClientProfileScreen() {
                       <div className="flex-1">
                         <p className="font-semibold text-primary text-sm">{job.title}</p>
                         <p className="text-xs text-secondary mt-1">{job.description?.substring(0, 100)}...</p>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-cyan">${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()}</span>
-                          <span className={`text-xs badge-${job.status === 'open' ? 'green' : 'amber'}`}>{job.status}</span>
-                          <span className="text-xs text-secondary">{job.proposalCount} proposals</span>
+                        <div className="client-profile-job-stats">
+                          <span className="text-xs font-bold text-cyan">${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()}</span>
+                          <span className={`text-xs badge-${job.status === 'open' ? 'green' : 'amber'}`} style={{ textTransform: 'capitalize' }}>{job.status}</span>
+                          <span className="text-xs text-secondary font-medium">{job.proposalCount} proposals</span>
                         </div>
                       </div>
                       <div className="flex-shrink-0">
@@ -169,9 +169,9 @@ export default function ClientProfileScreen() {
                     { label: 'Top Client', color: '#F59E0B', icon: <Star size={16} /> },
                     { label: 'Repeat Hirer', color: '#9F4BFF', icon: <Users size={16} /> },
                   ].map(badge => (
-                    <div key={badge.label} className="client-profile-badge" style={{ borderColor: `${badge.color}33` }}>
-                      <div style={{ color: badge.color }}>{badge.icon}</div>
-                      <span className="text-xs font-medium text-primary">{badge.label}</span>
+                    <div key={badge.label} className="client-profile-badge" style={{ borderColor: `${badge.color}33`, borderStyle: 'solid' }}>
+                      <div className="client-profile-badge-icon" style={{ color: badge.color }}>{badge.icon}</div>
+                      <span className="text-xs font-bold text-primary">{badge.label}</span>
                     </div>
                   ))}
                 </div>
@@ -221,6 +221,12 @@ export default function ClientProfileScreen() {
                 <div className="client-profile-trust-score-display-sidebar">
                   <div className="client-profile-trust-score-circle-sidebar">
                     <svg viewBox="0 0 100 100" className="client-profile-trust-score-ring">
+                      <defs>
+                        <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="var(--gb-cyan, #0077FF)" />
+                          <stop offset="100%" stopColor="var(--gb-purple, #9F4BFF)" />
+                        </linearGradient>
+                      </defs>
                       <circle cx="50" cy="50" r="45" className="client-profile-trust-score-bg" />
                       <circle 
                         cx="50" 
