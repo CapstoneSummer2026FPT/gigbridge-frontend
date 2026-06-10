@@ -88,9 +88,7 @@ export interface JobPostSummaryDto {
   descriptionPreview: string;
   budgetMin?: number | null;
   budgetMax?: number | null;
-  locationType?: number | null;
   budgetType?: number | null;
-  experienceLevelRequired?: number | null;
   eloPoints?: number;
   createdAt: string;
   skillNames: string[];
