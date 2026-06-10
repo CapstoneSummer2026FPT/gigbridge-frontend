@@ -11,7 +11,18 @@ import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback'
 import { CompactLanguageSwitcher, CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useTranslation } from '../../hooks/useTranslation';
 import { MOCK_TOP_NAV_NOTIFICATIONS } from '../../features/notifications/mock/data-for-TopNav';
+import { mapNotificationDto, notificationGetAPI } from '../../api/notificationAPI/GET';
+import { notificationPutAPI } from '../../api/notificationAPI/PUT';
+import type { Notification } from '../../types/models/Notification';
 import Button from './Button';
+
+type NavNotification = {
+  id: string;
+  title: string;
+  body: string;
+  isRead: boolean;
+  actionUrl?: string;
+};
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -33,6 +44,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [searchVal, setSearchVal] = useState('');
+  const [apiNotifications, setApiNotifications] = useState<Notification[] | null>(null);
 
   // Safely get app context - might be null for guest users
   let appContext;
@@ -51,18 +63,59 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
   // Wallet and notification data
   const walletBalance = user?.gigcoin_balance || 0;
-  const dbNotifications = user ? DB.getNotificationsByUser(user.id) : [];
+  const dbNotifications = user ? DB.getNotificationsByUser(user.id) as Notification[] : [];
   const fallbackNotifications = user
     ? MOCK_TOP_NAV_NOTIFICATIONS.filter(n => n.userId === user.id)
     : [];
-  const notifications = dbNotifications.length > 0
+  const notifications: NavNotification[] = apiNotifications !== null
+    ? apiNotifications
+    : dbNotifications.length > 0
     ? dbNotifications
     : (fallbackNotifications.length > 0 ? fallbackNotifications : MOCK_TOP_NAV_NOTIFICATIONS.slice(0, 4));
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNotifications = async () => {
+      if (!user) {
+        setApiNotifications(null);
+        return;
+      }
+
+      const response = await notificationGetAPI.getNotificationsPage({ pageSize: 5 });
+      if (isMounted) {
+        setApiNotifications(response.success && response.data
+          ? response.data.items.map(mapNotificationDto)
+          : null);
+      }
+    };
+
+    void loadNotifications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchVal.trim()) navigate(`/jobs/browse?q=${encodeURIComponent(searchVal.trim())}`);
+  };
+
+  const handleNotificationClick = async (notification: NavNotification) => {
+    setShowNotifs(false);
+
+    if (!notification.isRead && apiNotifications !== null) {
+      const response = await notificationPutAPI.markRead(notification as Notification);
+      if (response.success) {
+        setApiNotifications(current => current.map(item =>
+          item.id === notification.id ? { ...item, isRead: true, is_read: true } : item
+        ));
+      }
+    }
+
+    navigate(notification.actionUrl || '/notifications');
   };
 
   const isLanding = location.pathname === '/';
@@ -361,7 +414,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   {notifications.length > 0 ? (
                     notifications.slice(0, 5).map(n => (
                       <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
-                        onClick={() => { setShowNotifs(false); navigate(n.actionUrl || '/notifications'); }}>
+                        onClick={() => void handleNotificationClick(n)}>
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-primary text-xs font-medium">{n.title}</p>
                           {!n.isRead && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />}

@@ -37,9 +37,48 @@ export enum NotificationTarget {
 export interface Notification {
   id: string;
   user_id: string;
+  source?: 'Personal' | 'Broadcast' | string;
+  notificationId?: string | null;
+  broadcastNotificationId?: string | null;
+  broadcastRecipientId?: string | null;
+  readTargetId?: string;
   title: string;
   message: string;
+  body: string;
+  type: string;
+  referenceId?: string | null;
+  referenceType?: string | null;
   is_read: boolean;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+  actionUrl?: string;
+}
+
+export interface NotificationDto {
+  id: string;
+  source: 'Personal' | 'Broadcast' | string;
+  notificationId?: string | null;
+  broadcastNotificationId?: string | null;
+  broadcastRecipientId?: string | null;
+  readTargetId: string;
+  type: number | string;
+  title: string;
+  content?: string | null;
+  referenceId?: string | null;
+  referenceType?: string | null;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  items: NotificationDto[];
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 }
 
 export interface AdminNotification {

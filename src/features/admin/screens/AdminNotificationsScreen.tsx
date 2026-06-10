@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Bell, Send, Users, User, Calendar, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter, Plus, Eye, Trash2, Edit, Ban } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { AdminNotification, NotificationType, NotificationPriority, NotificationStatus, NotificationTarget } from '../../../types/models/Notification';
+import { adminNotificationAPI } from '../../../api/notificationAPI/ADMIN';
 import '../styles/admin-users-screen.css';
 
 type TabType = 'all' | 'scheduled' | 'sent' | 'failed';
@@ -89,6 +90,9 @@ export default function AdminNotificationsScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [viewNotification, setViewNotification] = useState<AdminNotification | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [createForm, setCreateForm] = useState({
     type: NotificationType.Custom,
     target: NotificationTarget.AllUsers,
@@ -169,10 +173,7 @@ export default function AdminNotificationsScreen() {
     });
   };
 
-  const handleCreateNotification = () => {
-    console.log('Creating notification:', createForm);
-    // Here you would make API call to backend
-    setShowCreateModal(false);
+  const resetCreateForm = () => {
     setCreateForm({
       type: NotificationType.Custom,
       target: NotificationTarget.AllUsers,
@@ -184,6 +185,47 @@ export default function AdminNotificationsScreen() {
       scheduleDate: '',
       scheduleTime: '',
     });
+  };
+
+  const handleCreateNotification = async () => {
+    setFormError('');
+    setFormSuccess('');
+
+    if (createForm.scheduleDate || createForm.scheduleTime) {
+      setFormError('Scheduled notifications are not supported by the backend yet. Clear date/time to send now.');
+      return;
+    }
+
+    if (createForm.target === NotificationTarget.Individual && !createForm.targetUserId.trim()) {
+      setFormError('Target User ID is required for an individual notification.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await adminNotificationAPI.createBroadcast({
+        type: createForm.type,
+        target: createForm.target,
+        targetUserId: createForm.targetUserId.trim() || undefined,
+        title: createForm.title.trim(),
+        content: createForm.message.trim(),
+        referenceType: createForm.actionUrl.trim() ? 'Url' : undefined,
+      });
+
+      if (!response.success) {
+        setFormError(response.message || 'Failed to send notification.');
+        return;
+      }
+
+      setFormSuccess('Broadcast notification sent successfully.');
+      resetCreateForm();
+      setTimeout(() => {
+        setShowCreateModal(false);
+        setFormSuccess('');
+      }, 900);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDeleteNotification = (id: string) => {
@@ -497,6 +539,17 @@ export default function AdminNotificationsScreen() {
                 </div>
 
                 <div className="space-y-4">
+                  {formError && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red">
+                      {formError}
+                    </div>
+                  )}
+                  {formSuccess && (
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm text-green">
+                      {formSuccess}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-primary mb-2">Type</label>
@@ -631,10 +684,10 @@ export default function AdminNotificationsScreen() {
                   <button
                     onClick={handleCreateNotification}
                     className="btn-purple px-6 py-2 flex items-center gap-2"
-                    disabled={!createForm.title || !createForm.message}
+                    disabled={isSubmitting || !createForm.title || !createForm.message}
                   >
                     <Send size={16} />
-                    {createForm.scheduleDate && createForm.scheduleTime ? 'Schedule' : 'Send'} Notification
+                    {isSubmitting ? 'Sending...' : createForm.scheduleDate && createForm.scheduleTime ? 'Schedule' : 'Send'} Notification
                   </button>
                 </div>
               </div>

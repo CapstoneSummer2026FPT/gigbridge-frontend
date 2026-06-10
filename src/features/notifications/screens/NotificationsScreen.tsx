@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Bell, MessageSquare, Bot, DollarSign, CheckCircle, Briefcase, Star, Trash2 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { DB } from '../../../mock_backend';
+import { mapNotificationDto, notificationGetAPI } from '../../../api/notificationAPI/GET';
+import { notificationPutAPI } from '../../../api/notificationAPI/PUT';
+import type { Notification } from '../../../types/models/Notification';
 import type { ReactNode } from 'react';
 
 const NOTIF_ICONS: Record<string, ReactNode> = {
@@ -27,11 +30,68 @@ export default function NotificationsScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'messages'>('all');
-  const [filter, setFilter] = useState('all');
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const allNotifs = user ? DB.getNotificationsByUser(user.id) : [];
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNotifications = async () => {
+      if (!user) {
+        setNotifications([]);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await notificationGetAPI.getNotificationsPage({ pageSize: 20 });
+        const fallbackNotifications = DB.getNotificationsByUser(user.id) as Notification[];
+
+        if (isMounted) {
+          setNotifications(response.success && response.data
+            ? response.data.items.map(mapNotificationDto)
+            : fallbackNotifications);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadNotifications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const allNotifs = notifications;
   const displayNotifs = activeTab === 'unread' ? allNotifs.filter(n => !n.isRead) : allNotifs;
   const unreadCount = allNotifs.filter(n => !n.isRead).length;
+
+  const markNotificationRead = async (notification: Notification) => {
+    if (notification.isRead) {
+      navigate(notification.actionUrl || '/notifications');
+      return;
+    }
+
+    const response = await notificationPutAPI.markRead(notification);
+    if (response.success) {
+      setNotifications(current => current.map(item =>
+        item.id === notification.id ? { ...item, isRead: true, is_read: true } : item
+      ));
+    }
+
+    navigate(notification.actionUrl || '/notifications');
+  };
+
+  const markAllRead = async () => {
+    const response = await notificationPutAPI.markAllRead();
+    if (response.success) {
+      setNotifications(current => current.map(item => ({ ...item, isRead: true, is_read: true })));
+    }
+  };
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -54,7 +114,7 @@ export default function NotificationsScreen() {
               ) : 'All caught up!'}
             </p>
           </div>
-          <button className="text-sm transition-all text-secondary">
+          <button onClick={markAllRead} className="text-sm transition-all text-secondary">
             Mark all as read
           </button>
         </div>
@@ -89,6 +149,12 @@ export default function NotificationsScreen() {
           <div className="lg:col-span-2 space-y-2">
             {(activeTab === 'all' || activeTab === 'unread') && (
               <>
+                {isLoading && displayNotifs.length === 0 && (
+                  <div className="text-center py-16">
+                    <Bell size={40} className="mx-auto mb-3 opacity-20 text-secondary" />
+                    <p className="text-primary font-medium">Loading notifications</p>
+                  </div>
+                )}
                 {displayNotifs.map(notif => (
                   <div key={notif.id}
                     className="flex items-start gap-4 p-4 rounded-xl cursor-pointer transition-all group"
@@ -96,7 +162,7 @@ export default function NotificationsScreen() {
                       background: notif.isRead ? 'rgba(255,255,255,0.02)' : 'rgba(0,240,255,0.04)',
                       border: notif.isRead ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,240,255,0.12)',
                     }}
-                    onClick={() => navigate(notif.actionUrl || '/')}>
+                    onClick={() => void markNotificationRead(notif)}>
                     {/* Icon */}
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -117,7 +183,7 @@ export default function NotificationsScreen() {
                     </button>
                   </div>
                 ))}
-                {displayNotifs.length === 0 && (
+                {!isLoading && displayNotifs.length === 0 && (
                   <div className="text-center py-16">
                     <Bell size={40} className="mx-auto mb-3 opacity-20 text-secondary" />
                     <p className="text-primary font-medium">No notifications</p>
