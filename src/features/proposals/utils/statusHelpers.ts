@@ -1,4 +1,4 @@
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../types';
 
 export const getStatusLabel = (status: ProposalViewModel['status'] | string | null | undefined) => {
   const normalizedStatus = Number(status ?? 0);

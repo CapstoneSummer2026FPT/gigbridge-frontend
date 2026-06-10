@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { X, Download, FileText, Award } from 'lucide-react';
 import { motion } from 'motion/react';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../types';
 
 interface ProposalDetailModalProps {
   proposal: ProposalViewModel;

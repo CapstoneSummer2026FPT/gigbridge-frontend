@@ -1,4 +1,21 @@
-import type { ProposalViewModel } from './mock/data-for-ProposalsInboxScreen';
+import type { ProposalDto } from '../../types/models/Proposal';
+
+export type ProposalAttachmentViewModel = {
+  propoAttach_ProposalAttachmentsId: string;
+  propo_ProposalsId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  createdAt: string;
+};
+
+export type ProposalViewModel = ProposalDto & {
+  updatedAt?: string;
+  isAIGenerated?: boolean;
+  interviewScore?: number;
+  rankingScore?: number;
+  attachments?: ProposalAttachmentViewModel[];
+};
 
 export type JobProposalGroup = {
   jobPostsId: string;

@@ -10,8 +10,8 @@ export enum BudgetType {
 export enum JobStatus {
   Draft = 0,
   Open = 1,
-  InProgress = 2,
-  Closed = 3,
+  Closed = 2,
+  Cancelled = 3,
 }
 
 export interface JobPost {
@@ -58,7 +58,7 @@ export interface Job {
   jobType: 'fixed' | 'hourly';
   experienceLevel: 'entry' | 'intermediate' | 'expert';
   deadline?: string;
-  status: 'draft' | 'open' | 'in_progress' | 'closed';
+  status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
   proposalCount: number;
   viewCount: number;
   aiMatchScore?: number;
@@ -113,6 +113,7 @@ export interface JobPostDetailDto {
   experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
+  endDate?: string | null;
   applicationDeadline?: string | null;
   createdAt: string;
   skills: JobPostSkillDto[];
@@ -133,6 +134,7 @@ export interface CreateJobPostRequest {
   locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
+  endDate?: string | null;
   applicationDeadline?: string | null;
   skillIds: string[];
 }

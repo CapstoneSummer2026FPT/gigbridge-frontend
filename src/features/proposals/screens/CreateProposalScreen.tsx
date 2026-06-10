@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { toast } from 'sonner';
 import { ArrowLeft, Briefcase, Calendar, DollarSign, Send, Timer } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -108,7 +109,12 @@ export default function CreateProposalScreen() {
         return;
       }
 
-      navigate('/proposals');
+      toast.success('Proposal submitted successfully.');
+      navigate('/proposals', {
+        state: {
+          successMessage: 'Proposal submitted successfully.',
+        },
+      });
     } catch (err) {
       console.error('Failed to submit proposal:', err);
       setError('Failed to submit proposal.');

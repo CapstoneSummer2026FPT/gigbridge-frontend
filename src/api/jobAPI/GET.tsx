@@ -63,7 +63,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   budgetMax: job.budgetMax ?? 0,
   jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
   experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
-  deadline: job.applicationDeadline ?? undefined,
+  deadline: job.endDate ?? job.applicationDeadline ?? undefined,
   status: 'open',
   proposalCount: 0,
   viewCount: 0,

@@ -1,6 +1,5 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import { proposalHandlers } from '../../mock_backend';
 import type { CreateProposalRequest } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
@@ -14,7 +13,11 @@ export const proposalPostAPI = {
     return apiService.post<string>(proposalsUrl, data);
   },
 
-  generateAICoverLetter: async (jobTitle: string, freelancerSkills: string[]) => {
-    return await proposalHandlers.generateAICoverLetter(jobTitle, freelancerSkills);
+  generateAICoverLetter: async (): Promise<ApiResponse<never>> => {
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'AI cover letter generation is not exposed by ProposalsController.',
+    };
   },
 };

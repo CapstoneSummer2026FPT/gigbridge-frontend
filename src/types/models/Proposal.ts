@@ -57,3 +57,18 @@ export interface ProposalDto {
   submittedAt: string;
   reviewedAt?: string | null;
 }
+
+export interface ProposalDetailDto {
+  proposalId: string;
+  jobPostId: string;
+  jobPostTitle?: string | null;
+  freelancerProfileId: string;
+  freelancerName?: string | null;
+  coverLetter?: string | null;
+  proposedRate?: number | null;
+  proposedDuration?: string | null;
+  status: ProposalStatus | number;
+  submittedAt?: string | null;
+  updatedAt?: string | null;
+  isAigenerated?: boolean | null;
+}

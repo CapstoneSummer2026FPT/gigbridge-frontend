@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { jobPutAPI } from '../../../api/jobAPI/PUT';
 import type { Job } from '../../../types/models/Job';
 import '../../admin/styles/admin-users-screen.css';
 
@@ -68,27 +69,30 @@ export default function MyJobsScreen() {
 
   const [jobs, setJobs] = useState<MyJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<JobStatus>('all');
   const [showCloseModal, setShowCloseModal] = useState<MyJob | null>(null);
   const [showCancelModal, setShowCancelModal] = useState<MyJob | null>(null);
 
+  const fetchMyJobs = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const data = await jobGetAPI.getClientJobs();
+
+      setJobs(data.map(mapJobToMyJob));
+    } catch (error) {
+      console.error('Failed to fetch my jobs:', error);
+      setError('Failed to load your job posts. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMyJobs = async () => {
-      try {
-        setLoading(true);
-
-        const data = await jobGetAPI.getClientJobs();
-
-        setJobs(data.map(mapJobToMyJob));
-      } catch (error) {
-        console.error('Failed to fetch my jobs:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMyJobs();
   }, []);
 
@@ -145,17 +149,33 @@ export default function MyJobsScreen() {
     });
   };
 
-  const handleCloseJob = (jobId: string) => {
-    console.log('Closing job:', jobId);
-    // TODO: call PATCH /api/JobPosts/{jobPostId}/status with status = 2
-    setShowCloseModal(null);
+  const updateJobStatus = async (
+    jobId: string,
+    status: number,
+    localStatus: MyJob['status']
+  ) => {
+    try {
+      setError('');
+      const response = await jobPutAPI.updateJobPostStatus(jobId, status);
+
+      if (!response.success) {
+        setError(response.message || 'Failed to update job status.');
+        return;
+      }
+
+      setJobs(prev => prev.map(job => job.id === jobId ? { ...job, status: localStatus } : job));
+    } catch (error) {
+      console.error('Failed to update job status:', error);
+      setError('Failed to update job status. Please try again.');
+    } finally {
+      setShowCloseModal(null);
+      setShowCancelModal(null);
+    }
   };
 
-  const handleCancelJob = (jobId: string) => {
-    console.log('Cancelling job:', jobId);
-    // TODO: call PATCH /api/JobPosts/{jobPostId}/status with status = 3
-    setShowCancelModal(null);
-  };
+  const handleCloseJob = (jobId: string) => updateJobStatus(jobId, 2, 'closed');
+
+  const handleCancelJob = (jobId: string) => updateJobStatus(jobId, 3, 'cancelled');
 
   return (
     <AppLayout>
@@ -259,6 +279,15 @@ export default function MyJobsScreen() {
               </select>
             </div>
           </div>
+
+          {error && (
+            <div className="glass-card p-4 mb-6 text-center">
+              <p className="text-sm text-red mb-3">{error}</p>
+              <button className="btn-ghost-cyan px-4 py-2 text-xs" onClick={fetchMyJobs}>
+                Retry
+              </button>
+            </div>
+          )}
 
           {/* Jobs List */}
           {loading ? (

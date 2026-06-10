@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
 import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature } from 'lucide-react';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../types';
 
 interface ProposalCardProps {
   proposal: ProposalViewModel;
@@ -9,7 +9,6 @@ interface ProposalCardProps {
   onViewDetail: (proposal: ProposalViewModel, mode: 'detail' | 'score' | 'cv') => void;
   onAccept: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
-  onBoost?: (proposal: ProposalViewModel) => void;
   onCreateContract?: (proposal: ProposalViewModel) => void;
 }
 
@@ -19,7 +18,6 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   onViewDetail,
   onAccept,
   onReject,
-  onBoost,
   onCreateContract,
 }) => {
   
@@ -92,11 +90,6 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <span>AI Generated</span>
           </div>
         )}
-        {(proposal.boostedTokenAmount || 0) > 0 && (
-          <div style={{ background: 'rgba(159, 75, 255, 0.12)', color: '#7c3aed' }}>
-            <span>Boosted {proposal.boostedTokenAmount}x</span>
-          </div>
-        )}
       </div>
 
       {/* Interface Grid: IDs and dates */}
@@ -164,7 +157,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
 
         </div>
       ) : (
-        /* FREELANCER VIEW: Boost + Menu */
+        /* FREELANCER VIEW */
         <div className="proposal-review-actions">
           <motion.button
             className="proposal-view-btn"
@@ -175,17 +168,6 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <Eye size={15} />
             Details
           </motion.button>
-          {proposal.status === 0 && onBoost && (
-            <motion.button
-              className="proposal-boost-btn"
-              onClick={() => onBoost(proposal)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Sparkles size={15} />
-              Boost
-            </motion.button>
-          )}
         </div>
       )}
     </motion.div>

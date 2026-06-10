@@ -1,20 +1,46 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Bookmark, Briefcase, Clock, DollarSign, Globe } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { MOCK_BROWSE_JOBS } from '../mock/data-for-BrowseJobsScreen';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import type { Job } from '../../../types/models/Job';
 import '../styles/browse-jobs-screen.css';
 
 export default function SavedJobsScreen() {
   const navigate = useNavigate();
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const stored = window.localStorage.getItem('gb_saved_jobs');
     setSavedIds(stored ? JSON.parse(stored) : []);
   }, []);
 
-  const savedJobs = useMemo(() => MOCK_BROWSE_JOBS.filter(job => savedIds.includes(job.id)), [savedIds]);
+  useEffect(() => {
+    const fetchSavedJobs = async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        const results = await Promise.allSettled(savedIds.map(id => jobGetAPI.getJobById(id)));
+        const jobs = results
+          .filter((result): result is PromiseFulfilledResult<{ job: Job; client: null; clientProfile: null }> => result.status === 'fulfilled')
+          .map(result => result.value.job);
+
+        setSavedJobs(jobs);
+      } catch (error) {
+        console.error('Failed to load saved jobs:', error);
+        setError('Failed to load saved jobs.');
+        setSavedJobs([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSavedJobs();
+  }, [savedIds]);
 
   const toggleSave = (jobId: string) => {
     setSavedIds(prev => {
@@ -32,7 +58,17 @@ export default function SavedJobsScreen() {
           <p className="browse-jobs-desc">Jobs you bookmarked for later review.</p>
         </div>
 
-        {savedJobs.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-20 glass-card">
+            <Bookmark size={44} className="mx-auto mb-4 browse-jobs-job-meta" />
+            <p className="text-primary font-semibold mb-2">Loading saved jobs...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-20 glass-card">
+            <Bookmark size={44} className="mx-auto mb-4 browse-jobs-job-meta" />
+            <p className="text-primary font-semibold mb-2">{error}</p>
+          </div>
+        ) : savedJobs.length === 0 ? (
           <div className="text-center py-20 glass-card">
             <Bookmark size={44} className="mx-auto mb-4 browse-jobs-job-meta" />
             <p className="text-primary font-semibold mb-2">No saved jobs yet</p>

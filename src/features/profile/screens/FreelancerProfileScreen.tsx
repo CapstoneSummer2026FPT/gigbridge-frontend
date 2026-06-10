@@ -1,12 +1,12 @@
 import { useNavigate, useParams } from 'react-router';
 import { Star, MapPin, CheckCircle, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, Video, X, MessageSquare, BriefcaseBusiness } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { DB } from '../../../mock_backend';
 import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
-import { MOCK_BROWSE_JOBS } from '../../jobs/mock/data-for-BrowseJobsScreen';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { getStoredReviews } from '../../reviews/mock/data-for-Reviews';
 import { InviteFreelancerToJobModal, type InviteFreelancerData } from '../components/InviteFreelancerToJobModal';
 import '../../reviews/styles/reviews-screen.css';
@@ -43,11 +43,29 @@ export default function FreelancerProfileScreen() {
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [sentInvites, setSentInvites] = useState<string[]>([]);
   const [sentJobInvites, setSentJobInvites] = useState<string[]>([]);
-  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open').map(job => ({
-    id: job.id,
-    title: job.title,
-    status: job.status,
-  }));
+  const [openClientJobs, setOpenClientJobs] = useState<Array<{ id: string; title: string; status: string }>>([]);
+
+  useEffect(() => {
+    const fetchOpenClientJobs = async () => {
+      if (!currentUser) return;
+
+      try {
+        const jobs = await jobGetAPI.getClientJobs();
+        setOpenClientJobs(jobs
+          .filter(job => job.status === 'open')
+          .map(job => ({
+            id: job.id,
+            title: job.title,
+            status: job.status,
+          })));
+      } catch (error) {
+        console.error('Failed to fetch client jobs for invite modal:', error);
+        setOpenClientJobs([]);
+      }
+    };
+
+    fetchOpenClientJobs();
+  }, [currentUser]);
   
   const isAlreadyInvitedToJob = (jobId: string): boolean => {
     const inviteKey = `${targetId}_${jobId}`;

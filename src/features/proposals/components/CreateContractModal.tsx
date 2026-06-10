@@ -1,7 +1,7 @@
 import { FC, useState, useRef, useEffect } from 'react';
 import { X, FileSignature, BadgeCheck, DollarSign, Clock, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../types';
 import '../styles/create-contract-modal.css';
 
 export interface ContractData {

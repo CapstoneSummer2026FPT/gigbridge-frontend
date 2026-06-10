@@ -12,7 +12,6 @@ import {
   Eye,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobHandlers } from '../../../mock_backend';
 import { jobPostAPI } from '../../../api/jobAPI/POST';
 import type { CreateJobPostRequest } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
@@ -72,19 +71,14 @@ export default function PostJobScreen() {
     setIsGenerating(true);
 
     try {
-      const desc = await jobHandlers.generateAIDescription(
-        form.title,
-        form.category,
-        form.skills
-      );
+      const response = await jobPostAPI.generateAIDescription();
 
-      setForm(prev => ({
-        ...prev,
-        description: desc,
-      }));
+      if (!response.success) {
+        alert(response.message || 'AI job description generation is not available yet.');
+      }
     } catch (error) {
       console.error('Failed to generate description:', error);
-      alert('Failed to generate description');
+      alert('AI job description generation is not available yet.');
     } finally {
       setIsGenerating(false);
     }
@@ -141,7 +135,7 @@ export default function PostJobScreen() {
       // Enum JobPostVisibility: 0=Public, 1=Private, 2=InviteOnly
       visibility: 0,
 
-      applicationDeadline: form.deadline
+      endDate: form.deadline
         ? new Date(form.deadline).toISOString()
         : null,
 

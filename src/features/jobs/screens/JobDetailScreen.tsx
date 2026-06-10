@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText } from 'lucide-react';
+import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Bookmark, Share2, ChevronRight, Edit3, FileText } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
-import { userGetAPI } from '../../../api/userAPI/GET';
-import type { Job } from '../../../mock_backend/types/legacy';
+import type { Job } from '../../../types/models/Job';
 import type { User } from '../../../types/models/User';
 import { UserRole } from '../../../types/models/User';
 import '../styles/job-detail-screen.css';
@@ -59,7 +58,6 @@ export default function JobDetailScreen() {
   const [clientProfile, setClientProfile] = useState<any>(null);
   const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [gigcoinBalance, setGigcoinBalance] = useState<number | null>(null);
 
   // Fetch job details from API
   useEffect(() => {
@@ -109,21 +107,6 @@ export default function JobDetailScreen() {
     });
   };
 
-  // Fetch gigcoin balance for freelancers
-  useEffect(() => {
-    const fetchGigcoinBalance = async () => {
-      if (role === UserRole.Freelancer && user) {
-        try {
-          const balance = await userGetAPI.getGigcoinBalance(user.id);
-          setGigcoinBalance(balance.gigcoin_balance);
-        } catch (error) {
-          console.error('Failed to fetch gigcoin balance:', error);
-        }
-      }
-    };
-    fetchGigcoinBalance();
-  }, [user, role]);
-
   if (loading) {
     return (
       <AppLayout>
@@ -146,9 +129,6 @@ export default function JobDetailScreen() {
       </AppLayout>
     );
   }
-
-  const applicationCost = job.gigcoin_cost || 0;
-  const canApplyWithGigcoins = applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost);
 
   return (
     <AppLayout>
@@ -362,40 +342,15 @@ export default function JobDetailScreen() {
             {role === UserRole.Freelancer && (
               <div className="glass-card p-5">
                 <h2 className="text-primary font-semibold mb-4 text-sm">Apply to Job</h2>
-                
-                {/* Gigcoin Cost Display */}
-                <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs job-detail-desc">Application Cost</span>
-                    <div className="flex items-center gap-1">
-                      <Zap size={14} className="text-purple" />
-                      <span className="text-sm font-semibold text-primary">{applicationCost} GigCoins</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs job-detail-desc">Your Balance</span>
-                    <span className={`text-sm font-semibold ${applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost) ? 'text-green' : 'text-red'}`}>
-                      {applicationCost === 0 && gigcoinBalance === null ? 'Not required' : `${gigcoinBalance !== null ? gigcoinBalance : '...'} GigCoins`}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Apply Button or Insufficient Balance Message */}
-                {canApplyWithGigcoins ? (
-                  <button 
-                    onClick={() => navigate(`/proposals/create/${job.id}`)}
-                    className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
-                    <Zap size={14} />
-                    Apply Now
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => navigate('/buy-gigcoin')}
-                    className="btn-purple w-full py-2.5 text-sm flex items-center justify-center gap-2">
-                    <Zap size={14} />
-                    Buy GigCoins
-                  </button>
-                )}
+                <p className="text-xs job-detail-desc mb-4">
+                  Submit a focused proposal for this JobPost. You can review the job details before sending.
+                </p>
+                <button 
+                  onClick={() => navigate(`/proposals/create/${job.id}`)}
+                  className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
+                  <FileText size={14} />
+                  Apply JobPost
+                </button>
               </div>
             )}
           </div>
