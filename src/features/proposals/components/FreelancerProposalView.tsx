@@ -90,7 +90,7 @@ export function FreelancerProposalView({
                   </div>
                   <div className="freelancer-proposal-rate">
                     <span>Bid</span>
-                    <strong>${(proposal.proposedRate || 0).toLocaleString()}</strong>
+                    <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
                   </div>
                 </div>
 

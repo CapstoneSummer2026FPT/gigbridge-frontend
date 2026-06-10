@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronRight, Building, MapPin, Globe, Briefcase, DollarSign, Award, Sparkles } from 'lucide-react';
+import { ChevronRight, Building, MapPin, Globe, Briefcase, Award, Sparkles } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { profilePutAPI, profileGetAPI } from '../../../api/profileAPI';
@@ -87,7 +87,6 @@ export default function ProfileSetupScreen() {
   const [freelancerData, setFreelancerData] = useState<UpdateFreelancerProfileDto>({
     title: '',
     bio: '',
-    hourlyRate: 0,
     experienceLevel: 0,
     availability: 0,
     location: '',
@@ -152,7 +151,7 @@ export default function ProfileSetupScreen() {
       if (step === 1) return clientData.CompanyName && clientData.Industry;
       return clientData.Location;
     } else {
-      if (step === 1) return freelancerData.title && freelancerData.hourlyRate && freelancerData.hourlyRate > 0;
+      if (step === 1) return freelancerData.title;
       return freelancerData.location && freelancerData.bio;
     }
   };
@@ -315,21 +314,6 @@ export default function ProfileSetupScreen() {
                     value={freelancerData.title || ''}
                     onChange={e => setFreelancerData({ ...freelancerData, title: e.target.value })}
                     placeholder="e.g., Full-Stack Developer, UI/UX Designer"
-                    className="input-gb"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    <DollarSign size={16} />
-                    Hourly Rate (USD) *
-                  </label>
-                  <input
-                    type="number"
-                    value={freelancerData.hourlyRate || ''}
-                    onChange={e => setFreelancerData({ ...freelancerData, hourlyRate: parseFloat(e.target.value) || 0 })}
-                    placeholder="50"
-                    min="0"
                     className="input-gb"
                   />
                 </div>

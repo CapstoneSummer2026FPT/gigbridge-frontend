@@ -24,7 +24,7 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
   skills: job.skillNames || [],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
-  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
+  jobType: 'fixed',
   experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
   status: 'open',
   proposalCount: 0,
@@ -127,11 +127,7 @@ export default function AdminJobsScreen() {
     return <span className="badge-red text-xs">Closed</span>;
   };
 
-  const getJobTypeBadge = (jobType: string) => {
-    return jobType === 'fixed'
-      ? <span className="badge-purple text-xs">Fixed Price</span>
-      : <span className="badge-amber text-xs">Hourly</span>;
-  };
+  const getJobTypeBadge = () => <span className="badge-purple text-xs">Fixed Price</span>;
 
   const getClientName = (clientId: string) => {
     return clientId || 'Unknown Client';
@@ -303,7 +299,7 @@ export default function AdminJobsScreen() {
                         </div>
                       </td>
                       <td className="p-3">
-                        {getJobTypeBadge(job.jobType)}
+                        {getJobTypeBadge()}
                       </td>
                       <td className="p-3">
                         {getStatusBadge(job.status)}
@@ -381,7 +377,7 @@ export default function AdminJobsScreen() {
                   <p className="text-xs text-secondary line-clamp-2 mb-2">{job.description}</p>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {getStatusBadge(job.status)}
-                    {getJobTypeBadge(job.jobType)}
+                    {getJobTypeBadge()}
                     {lockedJobs.has(job.id) && (
                       <span className="badge-amber text-xs flex items-center gap-1">
                         <Lock size={10} />
@@ -486,7 +482,7 @@ export default function AdminJobsScreen() {
                       <h3 className="text-xl font-bold text-primary mb-2">{previewJob.title}</h3>
                       <div className="flex items-center gap-2 flex-wrap">
                         {getStatusBadge(previewJob.status)}
-                        {getJobTypeBadge(previewJob.jobType)}
+                        {getJobTypeBadge()}
                         <span className="badge-cyan text-xs">{previewJob.category}</span>
                         {lockedJobs.has(previewJob.id) && (
                           <span className="badge-amber text-xs flex items-center gap-1">

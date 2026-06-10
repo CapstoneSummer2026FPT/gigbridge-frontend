@@ -114,8 +114,8 @@ export const ProposalDetailModal: FC<ProposalDetailModalProps> = ({
                 <strong>{proposal.freelancerName || 'Unknown'}</strong>
               </div>
               <div>
-                <span>Proposed Rate</span>
-                <strong>${(proposal.proposedRate || 0).toLocaleString()}</strong>
+                <span>Proposed Budget</span>
+                <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
               </div>
               <div>
                 <span>Duration</span>

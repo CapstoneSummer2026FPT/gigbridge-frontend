@@ -233,7 +233,7 @@ export default function SmartTalentMatchingScreen() {
 
                       <div className="smart-match-meta-row">
                         <span><UserRound size={14} /> {talent.location}</span>
-                        <span><DollarSign size={14} /> ${talent.hourlyRate}/hr</span>
+                        <span><DollarSign size={14} /> ${talent.projectBudget.toLocaleString()}/project</span>
                         <span><Star size={14} /> {talent.anonymousRating.toFixed(1)} anonymous rating</span>
                         <span><Award size={14} /> {talent.completedMilestones} milestones</span>
                       </div>

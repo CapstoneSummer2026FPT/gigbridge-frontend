@@ -52,7 +52,6 @@ export default function SettingsScreen() {
     // Freelancer-specific fields
     title: '',
     bio: '',
-    hourlyRate: '',
     experienceLevel: 0,
     availability: 0,
     // Client-specific fields
@@ -89,7 +88,6 @@ export default function SettingsScreen() {
               location: profileRes.data.location || '',
               title: profileRes.data.title || '',
               bio: profileRes.data.bio || '',
-              hourlyRate: profileRes.data.hourlyRate?.toString() || '',
               experienceLevel: profileRes.data.experienceLevel !== undefined && profileRes.data.experienceLevel !== null ? profileRes.data.experienceLevel : 0,
               availability: profileRes.data.availability !== undefined && profileRes.data.availability !== null ? profileRes.data.availability : 0,
             }));
@@ -139,7 +137,6 @@ export default function SettingsScreen() {
         const res = await profilePutAPI.updateFreelancerProfile({
           title: formData.title,
           bio: formData.bio,
-          hourlyRate: parseFloat(formData.hourlyRate) || 0,
           experienceLevel: formData.experienceLevel,
           availability: formData.availability,
           location: formData.location,
@@ -351,12 +348,6 @@ export default function SettingsScreen() {
                               <label className="text-xs font-medium text-primary mb-2 block">Professional Title</label>
                               <input type="text" value={formData.title}
                                 onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                                className="input-gb w-full px-4 py-3 text-sm" />
-                            </div>
-                            <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Hourly Rate ($)</label>
-                              <input type="number" value={formData.hourlyRate}
-                                onChange={e => setFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
                                 className="input-gb w-full px-4 py-3 text-sm" />
                             </div>
                             <div>
@@ -790,7 +781,7 @@ export default function SettingsScreen() {
                     {[
                       { label: 'AI Job Matching', desc: 'Let AI find and rank jobs based on your profile', enabled: true },
                       { label: 'AI Proposal Suggestions', desc: 'Get AI-powered cover letter assistance', enabled: true },
-                      { label: 'Smart Rate Recommendations', desc: 'AI-based hourly rate optimization', enabled: true },
+                      { label: 'Smart Budget Recommendations', desc: 'AI-based fixed-price budget guidance', enabled: true },
                       { label: 'Auto-apply to high matches', desc: 'Automatically apply to 90%+ match jobs', enabled: false },
                     ].map(setting => (
                       <div key={setting.label} className="flex items-center justify-between py-3 border-b"

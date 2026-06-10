@@ -12,7 +12,7 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed' | 'hourly';
+  jobType: 'fixed';
   experienceLevel: 'entry' | 'intermediate' | 'expert';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed';

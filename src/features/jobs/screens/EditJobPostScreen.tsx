@@ -19,7 +19,6 @@ export default function EditJobPostScreen() {
     title: 'Build E-Commerce Platform',
     description: 'Need a scalable e-commerce platform with React frontend and Node.js backend. Must include user authentication, product catalog, shopping cart, payment integration.',
     budget: 5000,
-    budgetType: 'Fixed' as 'Fixed' | 'Hourly',
     duration: '2-4 weeks',
     category: 'Web Development',
     level: 'Intermediate',
@@ -153,20 +152,6 @@ export default function EditJobPostScreen() {
                 />
               </div>
               {errors.budget && <div className="form-error"><AlertCircle size={14} />{errors.budget}</div>}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Budget Type *</label>
-              <select
-                value={formData.budgetType}
-                onChange={(e) =>
-                  handleInputChange('budgetType', e.target.value)
-                }
-                className="form-select"
-              >
-                <option value="Fixed">Fixed Price</option>
-                <option value="Hourly">Hourly Rate</option>
-              </select>
             </div>
           </div>
 

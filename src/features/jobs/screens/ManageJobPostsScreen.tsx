@@ -10,7 +10,6 @@ interface JobPost {
   description: string;
   status: 'Draft' | 'Open' | 'Closed' | 'Cancelled';
   budget: number;
-  budgetType: 'Fixed' | 'Hourly';
   duration: string;
   skills: string[];
   proposals: number;
@@ -38,7 +37,6 @@ export default function ManageJobPostsScreen() {
       description: 'Need a scalable e-commerce platform with React frontend',
       status: 'Open',
       budget: 5000,
-      budgetType: 'Fixed',
       duration: '4 weeks',
       skills: ['React', 'Node.js', 'PostgreSQL'],
       proposals: 12,
@@ -52,7 +50,6 @@ export default function ManageJobPostsScreen() {
       description: 'Create UI mockups for mobile app',
       status: 'Draft',
       budget: 1500,
-      budgetType: 'Fixed',
       duration: '2 weeks',
       skills: ['Figma', 'UI/UX Design'],
       proposals: 0,
@@ -66,7 +63,6 @@ export default function ManageJobPostsScreen() {
       description: 'Professional logo for startup',
       status: 'Closed',
       budget: 800,
-      budgetType: 'Fixed',
       duration: '1 week',
       skills: ['Graphic Design', 'Branding'],
       proposals: 25,
@@ -80,7 +76,6 @@ export default function ManageJobPostsScreen() {
       description: 'Monthly website maintenance and updates',
       status: 'Open',
       budget: 50,
-      budgetType: 'Hourly',
       duration: 'Ongoing',
       skills: ['WordPress', 'HTML/CSS'],
       proposals: 8,
@@ -305,7 +300,7 @@ export default function ManageJobPostsScreen() {
                   {/* Budget */}
                   <div className="col-budget">
                     <span className="budget-text">
-                      ${job.budget}{job.budgetType === 'Hourly' ? '/hr' : ''}
+                      ${job.budget}
                     </span>
                   </div>
 

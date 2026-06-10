@@ -19,7 +19,6 @@ type ManageJobPostState = {
   description: string;
   status: 'Draft' | 'Open' | 'Closed' | 'Cancelled';
   budget: number;
-  budgetType: 'Fixed' | 'Hourly';
   duration: string;
   skills: string[];
   proposals: number;
@@ -35,9 +34,9 @@ const toJobFromManageState = (job: ManageJobPostState): Job => ({
   description: job.description,
   category: 'All',
   skills: job.skills,
-  budgetMin: job.budgetType === 'Hourly' ? job.budget : job.budget,
-  budgetMax: job.budgetType === 'Hourly' ? job.budget : job.budget,
-  jobType: job.budgetType === 'Hourly' ? 'hourly' : 'fixed',
+  budgetMin: job.budget,
+  budgetMax: job.budget,
+  jobType: 'fixed',
   experienceLevel: 'intermediate',
   status: job.status.toLowerCase() === 'cancelled' ? 'closed' : job.status.toLowerCase() as Job['status'],
   proposalCount: job.proposals,
@@ -282,7 +281,7 @@ export default function JobDetailScreen() {
               <div className="job-detail-quick-stats">
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} - $${job.budgetMax.toLocaleString()}` },
-                  { label: 'Work type', value: job.jobType === 'fixed' ? 'Fixed Price' : 'Hourly Rate' },
+                  { label: 'Work type', value: 'Fixed Price' },
                   { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
                   { label: 'Deadline', value: job.deadline || 'Flexible' },
                 ].map(item => (
@@ -420,7 +419,7 @@ export default function JobDetailScreen() {
               <div className="space-y-3">
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} – $${job.budgetMax.toLocaleString()}` },
-                  { label: 'Type', value: job.jobType === 'fixed' ? 'Fixed Price' : 'Hourly Rate' },
+                  { label: 'Type', value: 'Fixed Price' },
                   { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
                   { label: 'Location', value: 'Remote Worldwide' },
                   { label: 'Proposals', value: `${job.proposalCount} submitted` },

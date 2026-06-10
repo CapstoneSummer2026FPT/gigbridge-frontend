@@ -11,7 +11,7 @@ interface SavedFreelancer {
   avatar_url: string;
   title: string;
   location: string;
-  hourly_rate: number;
+  project_budget: number;
   rating: number;
   jobsCompleted: number;
   successRate: number;
@@ -34,7 +34,7 @@ export default function SavedFreelancersScreen() {
       avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop',
       title: 'Senior React Developer',
       location: 'San Francisco, CA',
-      hourly_rate: 75,
+      project_budget: 6500,
       rating: 4.9,
       jobsCompleted: 45,
       successRate: 98,
@@ -48,7 +48,7 @@ export default function SavedFreelancersScreen() {
       avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
       title: 'Full Stack Developer',
       location: 'New York, NY',
-      hourly_rate: 85,
+      project_budget: 7800,
       rating: 4.8,
       jobsCompleted: 62,
       successRate: 96,
@@ -62,7 +62,7 @@ export default function SavedFreelancersScreen() {
       avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
       title: 'UI/UX Designer',
       location: 'Remote',
-      hourly_rate: 65,
+      project_budget: 5400,
       rating: 4.7,
       jobsCompleted: 38,
       successRate: 95,
@@ -76,7 +76,7 @@ export default function SavedFreelancersScreen() {
       avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop',
       title: 'Developer',
       location: 'Unknown',
-      hourly_rate: 0,
+      project_budget: 0,
       rating: 0,
       jobsCompleted: 0,
       successRate: 0,
@@ -236,8 +236,8 @@ export default function SavedFreelancersScreen() {
                       {!freelancer.isBanned && (
                         <div className="saved-freelancer-stats">
                           <div className="saved-freelancer-stat">
-                            <span className="saved-freelancer-stat-label">Rate</span>
-                            <span className="saved-freelancer-stat-value">${freelancer.hourly_rate}/hr</span>
+                            <span className="saved-freelancer-stat-label">Budget</span>
+                            <span className="saved-freelancer-stat-value">${freelancer.project_budget.toLocaleString()}/project</span>
                           </div>
                           <div className="saved-freelancer-stat">
                             <span className="saved-freelancer-stat-label">Success Rate</span>

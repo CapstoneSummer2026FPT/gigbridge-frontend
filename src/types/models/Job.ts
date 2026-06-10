@@ -2,11 +2,6 @@
  * Job Models - JOB_POSTS, JOB_POST_SKILLS, JOB_POST_ATTACHMENTS tables
  */
 
-export enum BudgetType {
-  Fixed = 0,
-  Hourly = 1,
-}
-
 export enum JobStatus {
   Draft = 0,
   Open = 1,
@@ -20,7 +15,6 @@ export interface JobPost {
   title: string;
   description: string;
   category_id: string;
-  budget_type: BudgetType;
   budget_min: number;
   budget_max: number;
   currency: string;
@@ -55,7 +49,7 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed' | 'hourly';
+  jobType: 'fixed';
   experienceLevel: 'entry' | 'intermediate' | 'expert';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed';
@@ -79,7 +73,6 @@ export interface JobPostSummaryDto {
   jobPostsId: string;
   title: string;
   descriptionPreview: string;
-  budgetType: BudgetType;
   budgetMin?: number | null;
   budgetMax?: number | null;
   experienceLevelRequired?: number | null;
@@ -104,7 +97,6 @@ export interface JobPostDetailDto {
   clientProfilesId: string;
   title: string;
   description: string;
-  budgetType: BudgetType;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
@@ -113,7 +105,7 @@ export interface JobPostDetailDto {
   experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
-  applicationDeadline?: string | null;
+  endDate?: string | null;
   createdAt: string;
   skills: JobPostSkillDto[];
   attachments: JobPostAttachmentDto[];
@@ -123,7 +115,6 @@ export interface CreateJobPostRequest {
   title: string;
   description: string;
   categoryId?: string | null;
-  budgetType: BudgetType | number;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
@@ -133,6 +124,6 @@ export interface CreateJobPostRequest {
   locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
-  applicationDeadline?: string | null;
+  endDate?: string | null;
   skillIds: string[];
 }

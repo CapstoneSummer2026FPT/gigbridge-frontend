@@ -11,7 +11,6 @@ interface JobListing {
   clientName: string;
   clientRating: number;
   budget: number;
-  budgetType: 'Fixed' | 'Hourly';
   duration: string;
   skills: string[];
   category: string;
@@ -38,7 +37,6 @@ export default function BrowseJobsForFreelancerScreen() {
       clientName: 'TechCorp Inc',
       clientRating: 4.9,
       budget: 5000,
-      budgetType: 'Fixed',
       duration: '4 weeks',
       skills: ['React', 'Node.js', 'PostgreSQL'],
       category: 'Web Development',
@@ -54,7 +52,6 @@ export default function BrowseJobsForFreelancerScreen() {
       clientName: 'StartupXYZ',
       clientRating: 4.7,
       budget: 1500,
-      budgetType: 'Fixed',
       duration: '2 weeks',
       skills: ['Figma', 'UI Design', 'Prototyping'],
       category: 'UI/UX Design',
@@ -70,7 +67,6 @@ export default function BrowseJobsForFreelancerScreen() {
       clientName: 'Creative Agency',
       clientRating: 4.8,
       budget: 800,
-      budgetType: 'Fixed',
       duration: '1 week',
       skills: ['Graphic Design', 'Branding', 'Adobe Creative Suite'],
       category: 'Graphic Design',
@@ -86,7 +82,6 @@ export default function BrowseJobsForFreelancerScreen() {
       clientName: 'Small Business Co',
       clientRating: 4.5,
       budget: 50,
-      budgetType: 'Hourly',
       duration: 'Ongoing',
       skills: ['WordPress', 'HTML/CSS', 'PHP'],
       category: 'Web Development',
@@ -102,7 +97,6 @@ export default function BrowseJobsForFreelancerScreen() {
       clientName: 'Data Solutions Ltd',
       clientRating: 4.6,
       budget: 3000,
-      budgetType: 'Fixed',
       duration: '3 weeks',
       skills: ['Python', 'Pandas', 'Data Visualization', 'SQL'],
       category: 'Data Science',
@@ -298,7 +292,7 @@ export default function BrowseJobsForFreelancerScreen() {
                       <div className="meta-item">
                         <DollarSign size={14} />
                         <span className="meta-text">
-                          ${job.budget}{job.budgetType === 'Hourly' ? '/hr' : ''}
+                          ${job.budget}
                         </span>
                       </div>
                       <div className="meta-item">

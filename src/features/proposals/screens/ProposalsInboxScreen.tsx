@@ -149,7 +149,7 @@ export default function ProposalsInboxScreen() {
       if ((a.boostedTokenAmount || 0) !== (b.boostedTokenAmount || 0)) return (b.boostedTokenAmount || 0) - (a.boostedTokenAmount || 0);
       if (proposalSortBy === 'interviewScore') return (b.interviewScore || 0) - (a.interviewScore || 0);
       if (proposalSortBy === 'status') return Number(a.status) - Number(b.status);
-      if (proposalSortBy === 'rate') return (b.proposedRate || 0) - (a.proposedRate || 0);
+      if (proposalSortBy === 'rate') return (b.proposedBudget || 0) - (a.proposedBudget || 0);
       return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
     });
   }, [managingJob, proposalSortBy, proposalStatusFilter]);
@@ -220,7 +220,7 @@ export default function ProposalsInboxScreen() {
 
   const competitionStats = useMemo(() => {
     if (!competitionJob) return null;
-    const rates = competitionJob.proposals.map(proposal => proposal.proposedRate || 0);
+    const rates = competitionJob.proposals.map(proposal => proposal.proposedBudget || 0);
     const scores = competitionJob.proposals.map(proposal => proposal.interviewScore || 0);
     return {
       minBid: Math.min(...rates),

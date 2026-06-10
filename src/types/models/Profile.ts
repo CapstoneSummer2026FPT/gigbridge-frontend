@@ -69,7 +69,6 @@ export interface FreelancerProfileDto {
   userId: string;
   title?: string;
   bio?: string;
-  hourlyRate?: number;
   experienceLevel?: number;
   availability?: number;
   location?: string;
@@ -99,7 +98,6 @@ export interface UpdateClientProfileDto {
 export interface UpdateFreelancerProfileDto {
   title: string;
   bio: string;
-  hourlyRate: number;
   experienceLevel: number;
   availability: number;
   location: string;
@@ -123,7 +121,6 @@ export interface FreelancerProfileResponseDto {
   userId: string;
   title: string;
   bio: string;
-  hourlyRate: number;
   experienceLevel: number;
   availability: number;
   location: string;
@@ -137,7 +134,6 @@ export interface FreelancerProfile {
   user_id: string;
   title: string;
   bio: string;
-  hourly_rate: number;
   experience_level: ExperienceLevel;
   availability: Availability;
   location: string;
