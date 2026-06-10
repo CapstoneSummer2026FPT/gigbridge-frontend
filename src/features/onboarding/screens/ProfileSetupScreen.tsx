@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronRight, Building, MapPin, Globe, Briefcase, Award, Sparkles } from 'lucide-react';
+import { ChevronRight, Building, MapPin, Globe, Briefcase, Sparkles } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { profilePutAPI, profileGetAPI } from '../../../api/profileAPI';
@@ -18,12 +18,6 @@ const COMPANY_SIZES_FALLBACK = [
   { id: 1, name: 'Small (10-49 employees)' },
   { id: 2, name: 'Medium (50-249 employees)' },
   { id: 3, name: 'Large (250+ employees)' }
-];
-
-const EXPERIENCE_LEVELS = [
-  { value: 0, label: 'Entry Level (0-2 years)' },
-  { value: 1, label: 'Intermediate (3-5 years)' },
-  { value: 2, label: 'Expert (5+ years)' },
 ];
 
 const AVAILABILITY = [
@@ -87,7 +81,6 @@ export default function ProfileSetupScreen() {
   const [freelancerData, setFreelancerData] = useState<UpdateFreelancerProfileDto>({
     title: '',
     bio: '',
-    experienceLevel: 0,
     availability: 0,
     location: '',
   });
@@ -316,24 +309,6 @@ export default function ProfileSetupScreen() {
                     placeholder="e.g., Full-Stack Developer, UI/UX Designer"
                     className="input-gb"
                   />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    <Award size={16} />
-                    Experience Level
-                  </label>
-                  <div className="radio-group">
-                    {EXPERIENCE_LEVELS.map(level => (
-                      <button
-                        key={level.value}
-                        onClick={() => setFreelancerData({ ...freelancerData, experienceLevel: level.value })}
-                        className={`radio-button ${freelancerData.experienceLevel === level.value ? 'radio-button-active' : ''}`}
-                      >
-                        {level.label}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}

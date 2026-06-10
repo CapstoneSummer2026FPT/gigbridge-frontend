@@ -13,7 +13,6 @@ export interface Job {
   budgetMin: number;
   budgetMax: number;
   jobType: 'fixed';
-  experienceLevel: 'entry' | 'intermediate' | 'expert';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed';
   proposalCount: number;

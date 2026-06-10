@@ -37,7 +37,6 @@ const toJobFromManageState = (job: ManageJobPostState): Job => ({
   budgetMin: job.budget,
   budgetMax: job.budget,
   jobType: 'fixed',
-  experienceLevel: 'intermediate',
   status: job.status.toLowerCase() === 'cancelled' ? 'closed' : job.status.toLowerCase() as Job['status'],
   proposalCount: job.proposals,
   viewCount: 0,
@@ -282,7 +281,6 @@ export default function JobDetailScreen() {
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} - $${job.budgetMax.toLocaleString()}` },
                   { label: 'Work type', value: 'Fixed Price' },
-                  { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
                   { label: 'Deadline', value: job.deadline || 'Flexible' },
                 ].map(item => (
                   <div key={item.label} className="job-detail-stat-card">
@@ -308,7 +306,7 @@ export default function JobDetailScreen() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-3">
-                    {['Skills Match', 'Experience Fit', 'Budget Align'].map((factor, i) => (
+                    {['Skills Match', 'Profile Fit', 'Budget Align'].map((factor, i) => (
                       <div key={factor} className="text-center">
                         <div className="progress-bar-gb mb-1">
                           <div className="progress-bar-gb-fill" style={{ width: `${[92, 88, 95][i]}%` }} />
@@ -420,7 +418,6 @@ export default function JobDetailScreen() {
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} – $${job.budgetMax.toLocaleString()}` },
                   { label: 'Type', value: 'Fixed Price' },
-                  { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
                   { label: 'Location', value: 'Remote Worldwide' },
                   { label: 'Proposals', value: `${job.proposalCount} submitted` },
                   { label: 'Deadline', value: job.deadline || 'Flexible' },

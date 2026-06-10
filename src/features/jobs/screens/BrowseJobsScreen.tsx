@@ -294,7 +294,6 @@ export default function BrowseJobsScreen() {
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> Remote</div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} proposals</div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Clock size={12} /> {job.postedAt}</div>
-                          <span className="tag-pill capitalize text-xs">{job.experienceLevel}</span>
                         </div>
 
                         <p className="text-sm leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">{job.description}</p>

@@ -21,7 +21,6 @@ export default function EditJobPostScreen() {
     budget: 5000,
     duration: '2-4 weeks',
     category: 'Web Development',
-    level: 'Intermediate',
     skills: ['React', 'Node.js', 'PostgreSQL'],
   });
 
@@ -175,7 +174,7 @@ export default function EditJobPostScreen() {
             {errors.duration && <div className="form-error"><AlertCircle size={14} />{errors.duration}</div>}
           </div>
 
-          {/* Category & Level Row */}
+          {/* Category */}
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Category</label>
@@ -188,19 +187,6 @@ export default function EditJobPostScreen() {
                 <option value="Mobile App">Mobile App</option>
                 <option value="UI/UX Design">UI/UX Design</option>
                 <option value="Graphic Design">Graphic Design</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Experience Level</label>
-              <select
-                value={formData.level}
-                onChange={(e) => handleInputChange('level', e.target.value)}
-                className="form-select"
-              >
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Expert">Expert</option>
               </select>
             </div>
           </div>

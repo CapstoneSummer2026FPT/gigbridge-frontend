@@ -10,7 +10,6 @@ interface JobFilters {
   skills: string[];
   minBudget: number;
   maxBudget: number;
-  experienceLevel: string;
   searchQuery: string;
 }
 
@@ -20,7 +19,6 @@ export function useJobFilters(jobs: Job[]) {
     skills: [],
     minBudget: 0,
     maxBudget: Infinity,
-    experienceLevel: '',
     searchQuery: '',
   });
 
@@ -41,11 +39,6 @@ export function useJobFilters(jobs: Job[]) {
 
       // Budget filter
       if (job.budget < filters.minBudget || job.budget > filters.maxBudget) {
-        return false;
-      }
-
-      // Experience level filter
-      if (filters.experienceLevel && job.experienceLevel !== filters.experienceLevel) {
         return false;
       }
 
@@ -75,7 +68,6 @@ export function useJobFilters(jobs: Job[]) {
       skills: [],
       minBudget: 0,
       maxBudget: Infinity,
-      experienceLevel: '',
       searchQuery: '',
     });
   };
@@ -106,7 +98,6 @@ interface JobFormData {
   budgetMin: string;
   budgetMax: string;
   jobType: 'fixed';
-  experienceLevel: 'entry' | 'intermediate' | 'expert';
   deadline: string;
   isRemote: boolean;
 }
@@ -120,7 +111,6 @@ export function useJobForm() {
     budgetMin: '',
     budgetMax: '',
     jobType: 'fixed',
-    experienceLevel: 'intermediate',
     deadline: '',
     isRemote: true,
   });
@@ -178,7 +168,6 @@ export function useJobForm() {
       budgetMin: '',
       budgetMax: '',
       jobType: 'fixed',
-      experienceLevel: 'intermediate',
       deadline: '',
       isRemote: true,
     });

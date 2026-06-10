@@ -50,7 +50,6 @@ export interface Job {
   budgetMin: number;
   budgetMax: number;
   jobType: 'fixed';
-  experienceLevel: 'entry' | 'intermediate' | 'expert';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed';
   proposalCount: number;
@@ -75,7 +74,6 @@ export interface JobPostSummaryDto {
   descriptionPreview: string;
   budgetMin?: number | null;
   budgetMax?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   createdAt: string;
   skillNames: string[];
@@ -102,7 +100,6 @@ export interface JobPostDetailDto {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
   endDate?: string | null;
@@ -120,7 +117,6 @@ export interface CreateJobPostRequest {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
   visibility?: number | null;

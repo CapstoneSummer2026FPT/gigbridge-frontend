@@ -9,12 +9,6 @@ import '../styles/admin-users-screen.css';
 type JobFilter = 'all' | 'draft' | 'open' | 'in_progress' | 'closed';
 type JobSort = 'posted' | 'title' | 'budget';
 
-const experienceLevelMap: Record<number, Job['experienceLevel']> = {
-  0: 'entry',
-  1: 'intermediate',
-  2: 'expert',
-};
-
 const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
   id: job.jobPostsId,
   clientId: '',
@@ -25,7 +19,6 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
-  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
   status: 'open',
   proposalCount: 0,
   viewCount: 0,
@@ -567,10 +560,6 @@ export default function AdminJobsScreen() {
                     <div>
                       <p className="text-muted mb-1">Job ID</p>
                       <p className="text-primary font-mono text-xs">{previewJob.id}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted mb-1">Experience Level</p>
-                      <p className="text-primary capitalize">{previewJob.experienceLevel}</p>
                     </div>
                     <div>
                       <p className="text-muted mb-1">Remote</p>

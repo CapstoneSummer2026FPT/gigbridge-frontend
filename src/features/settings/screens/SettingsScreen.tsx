@@ -35,7 +35,6 @@ export default function SettingsScreen() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>([]);
   const [industries, setIndustries] = useState<string[]>([]);
-  const [experienceLevels, setExperienceLevels] = useState<{ id: number; name: string }[]>([]);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<{ id: number; name: string }[]>([]);
   const [billingConfig, setBillingConfig] = useState<BillingEarningsConfig>(getStoredBillingConfig);
   const [billingError, setBillingError] = useState('');
@@ -52,7 +51,6 @@ export default function SettingsScreen() {
     // Freelancer-specific fields
     title: '',
     bio: '',
-    experienceLevel: 0,
     availability: 0,
     // Client-specific fields
     companyName: '',
@@ -69,14 +67,10 @@ export default function SettingsScreen() {
       setErrorMessage(null);
       try {
         if (role === UserRole.Freelancer) {
-          const [profileRes, expRes, availRes] = await Promise.all([
+          const [profileRes, availRes] = await Promise.all([
             profileGetAPI.getMyFreelancerProfile(),
-            profileGetAPI.getExperienceLevels(),
             profileGetAPI.getAvailabilityStatuses()
           ]);
-          if (expRes.success && expRes.data) {
-            setExperienceLevels(expRes.data);
-          }
           if (availRes.success && availRes.data) {
             setAvailabilityStatuses(availRes.data);
           }
@@ -88,7 +82,6 @@ export default function SettingsScreen() {
               location: profileRes.data.location || '',
               title: profileRes.data.title || '',
               bio: profileRes.data.bio || '',
-              experienceLevel: profileRes.data.experienceLevel !== undefined && profileRes.data.experienceLevel !== null ? profileRes.data.experienceLevel : 0,
               availability: profileRes.data.availability !== undefined && profileRes.data.availability !== null ? profileRes.data.availability : 0,
             }));
           }
@@ -137,7 +130,6 @@ export default function SettingsScreen() {
         const res = await profilePutAPI.updateFreelancerProfile({
           title: formData.title,
           bio: formData.bio,
-          experienceLevel: formData.experienceLevel,
           availability: formData.availability,
           location: formData.location,
         });
@@ -349,17 +341,6 @@ export default function SettingsScreen() {
                               <input type="text" value={formData.title}
                                 onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
                                 className="input-gb w-full px-4 py-3 text-sm" />
-                            </div>
-                            <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Experience Level</label>
-                              <select value={formData.experienceLevel}
-                                onChange={e => setFormData(prev => ({ ...prev, experienceLevel: parseInt(e.target.value) || 0 }))}
-                                className="input-gb w-full px-4 py-3 text-sm bg-black"
-                                style={{ colorScheme: 'dark' }}>
-                                {experienceLevels.map(level => (
-                                  <option key={level.id} value={level.id}>{level.name}</option>
-                                ))}
-                              </select>
                             </div>
                             <div>
                               <label className="text-xs font-medium text-primary mb-2 block">Availability</label>

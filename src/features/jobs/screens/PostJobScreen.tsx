@@ -27,7 +27,6 @@ export default function PostJobScreen() {
     skills: [] as string[],
     budgetMin: '',
     budgetMax: '',
-    experienceLevel: 'intermediate' as 'entry' | 'intermediate' | 'expert',
     deadline: '',
     isRemote: true,
   });
@@ -217,25 +216,6 @@ export default function PostJobScreen() {
                     Onsite
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Experience Level */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">Experience Level</label>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { value: 'entry', label: 'Entry', sub: 'Smaller scope', emoji: '🌱' },
-                  { value: 'intermediate', label: 'Mid-Level', sub: 'Standard scope', emoji: '⚡' },
-                  { value: 'expert', label: 'Expert', sub: 'Complex scope', emoji: '🚀' },
-                ].map(level => (
-                  <button key={level.value} onClick={() => setForm({ ...form, experienceLevel: level.value as any })}
-                    className={`experience-level-btn p-3 rounded-xl text-center transition-all ${form.experienceLevel === level.value ? 'active' : ''}`}>
-                    <span className="experience-level-emoji text-xl mb-1 block">{level.emoji}</span>
-                    <p className="text-primary text-sm font-medium">{level.label}</p>
-                    <p className="experience-level-sub text-xs">{level.sub}</p>
-                  </button>
-                ))}
               </div>
             </div>
 
