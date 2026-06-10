@@ -145,6 +145,7 @@ export default function ProfileSetupScreen() {
       return clientData.Location;
     } else {
       if (step === 1) return freelancerData.title;
+      if (step === 1) return freelancerData.title;
       return freelancerData.location && freelancerData.bio;
     }
   };

@@ -735,3 +735,4 @@ export const MARKET_INSIGHTS = {
     successRate: 96.4,
   },
 };
+

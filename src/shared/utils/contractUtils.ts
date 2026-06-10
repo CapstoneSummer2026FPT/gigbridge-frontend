@@ -136,6 +136,7 @@ export const generateContractSummary = (data: {
 Client: ${data.clientName}
 Freelancer: ${data.freelancerName}
 Amount: ${formatContractAmount(data.amount)} (Fixed Price)
+Amount: ${formatContractAmount(data.amount)} (Fixed Price)
 Duration: ${duration} days
 Start Date: ${formatContractDate(data.startDate)}
 ${data.endDate ? `End Date: ${formatContractDate(data.endDate)}` : ''}`;
