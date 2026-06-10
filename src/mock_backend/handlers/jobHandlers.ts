@@ -39,7 +39,6 @@ export const jobHandlers = {
       budgetMin: data.budgetMin || 0,
       budgetMax: data.budgetMax || 0,
       jobType: data.jobType || 'fixed',
-      experienceLevel: data.experienceLevel || 'intermediate',
       status: 'open',
       proposalCount: 0,
       viewCount: 0,

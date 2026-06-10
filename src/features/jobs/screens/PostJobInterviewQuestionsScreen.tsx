@@ -11,8 +11,7 @@ interface JobFormData {
   skills: string[];
   budgetMin: string;
   budgetMax: string;
-  jobType: 'fixed' | 'hourly';
-  experienceLevel: 'entry' | 'intermediate' | 'expert';
+  jobType?: 'fixed';
   deadline: string;
   isRemote: boolean;
 }

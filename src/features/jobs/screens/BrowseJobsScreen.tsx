@@ -10,7 +10,7 @@ import '../styles/browse-jobs-screen.css';
 
 const PAGE_SIZE = 20;
 const CATEGORIES = ['All', 'Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile'];
-const WORK_TYPES = ['All', 'fixed', 'hourly'];
+const WORK_TYPES = ['All', 'fixed'];
 const DATE_POSTED = ['Any time', 'Last 24 hours', 'Last 7 days', 'Last 30 days'];
 
 const MOCK_TOP_FREELANCERS = [
@@ -235,7 +235,7 @@ export default function BrowseJobsScreen() {
                     <label>
                       Work Type
                       <select value={workType} onChange={event => setWorkType(event.target.value)}>
-                        {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? 'All' : item === 'fixed' ? 'Fixed Price' : 'Hourly'}</option>)}
+                        {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? 'All' : 'Fixed Price'}</option>)}
                       </select>
                     </label>
                     <label>
@@ -289,12 +289,11 @@ export default function BrowseJobsScreen() {
                         <div className="flex flex-wrap items-center gap-3 mb-3">
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
                             <DollarSign size={12} />
-                            ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()} · {job.jobType === 'fixed' ? 'Fixed' : 'Hourly'}
+                            ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()} · Fixed
                           </div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> Remote</div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} proposals</div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Clock size={12} /> {job.postedAt}</div>
-                          <span className="tag-pill capitalize text-xs">{job.experienceLevel}</span>
                         </div>
 
                         <p className="text-sm leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">{job.description}</p>

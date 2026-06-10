@@ -14,7 +14,6 @@ type Contract = {
   jobId: string;
   proposalId: string;
   totalBudget: number;
-  paymentType: 'fixed' | 'hourly';
   status: 'active' | 'completed' | 'cancelled' | 'disputed';
   startDate: string;
   endDate?: string;
@@ -41,7 +40,6 @@ const MOCK_CONTRACTS: Contract[] = [
     jobId: 'job_1',
     proposalId: 'prop_1',
     totalBudget: 5000,
-    paymentType: 'fixed',
     status: 'active',
     startDate: '2024-05-01',
     eSign: {
@@ -61,7 +59,6 @@ const MOCK_CONTRACTS: Contract[] = [
     jobId: 'job_2',
     proposalId: 'prop_2',
     totalBudget: 3500,
-    paymentType: 'fixed',
     status: 'completed',
     startDate: '2024-04-15',
     endDate: '2024-05-10',
@@ -81,8 +78,7 @@ const MOCK_CONTRACTS: Contract[] = [
     freelancerId: 'user_freelancer_3',
     jobId: 'job_3',
     proposalId: 'prop_3',
-    totalBudget: 45,
-    paymentType: 'hourly',
+    totalBudget: 1200,
     status: 'active',
     startDate: '2024-05-05',
   },
@@ -95,7 +91,6 @@ const MOCK_CONTRACTS: Contract[] = [
     jobId: 'job_4',
     proposalId: 'prop_4',
     totalBudget: 2800,
-    paymentType: 'fixed',
     status: 'disputed',
     startDate: '2024-04-20',
   },
@@ -120,7 +115,7 @@ FREELANCER: [FREELANCER_NAME]
 
 2. COMPENSATION
 Total Budget: $[TOTAL_BUDGET]
-Payment Type: [PAYMENT_TYPE]
+Contract Type: Fixed Price
 
 3. TERM
 This agreement shall commence on [START_DATE] and continue until completion.
@@ -186,12 +181,6 @@ Freelancer Signature`);
     if (status === 'completed') return <span className="badge-cyan text-xs">Completed</span>;
     if (status === 'cancelled') return <span className="badge-gray text-xs">Cancelled</span>;
     return <span className="badge-red text-xs">Disputed</span>;
-  };
-
-  const getPaymentTypeBadge = (paymentType: string) => {
-    return paymentType === 'fixed'
-      ? <span className="badge-purple text-xs">Fixed Price</span>
-      : <span className="badge-amber text-xs">Hourly</span>;
   };
 
   const getClientName = (clientId: string) => {
@@ -360,10 +349,6 @@ Freelancer Signature`);
                         </div>
                       </div>
                       <div>
-                        <p className="text-muted mb-1">Payment Type</p>
-                        {getPaymentTypeBadge(contract.paymentType)}
-                      </div>
-                      <div>
                         <p className="text-muted mb-1">Start Date</p>
                         <div className="flex items-center gap-1">
                           <Calendar size={12} className="text-cyan" />
@@ -439,7 +424,7 @@ Freelancer Signature`);
                         <h3 className="text-xl font-bold text-primary mb-2">{viewContract.title}</h3>
                         <div className="flex items-center gap-2 flex-wrap">
                           {getStatusBadge(viewContract.status)}
-                          {getPaymentTypeBadge(viewContract.paymentType)}
+                          <span className="badge-purple text-xs">Fixed Price</span>
                           {viewContract.eSign && (
                             <span className="badge-purple text-xs flex items-center gap-1">
                               <FileSignature size={12} />
@@ -612,7 +597,6 @@ Freelancer Signature`);
                       <code className="text-cyan">[START_DATE]</code>
                       <code className="text-cyan">[DESCRIPTION]</code>
                       <code className="text-cyan">[TOTAL_BUDGET]</code>
-                      <code className="text-cyan">[PAYMENT_TYPE]</code>
                     </div>
                   </div>
 

@@ -12,7 +12,6 @@ interface MyJob {
   title: string;
   description: string;
   budget: number;
-  budgetType: 'fixed' | 'hourly';
   status: 'open' | 'in_progress' | 'closed' | 'cancelled';
   proposalsCount: number;
   viewsCount: number;
@@ -28,7 +27,6 @@ const MOCK_JOBS: MyJob[] = [
     title: 'E-commerce Website Development',
     description: 'Looking for an experienced web developer to build a modern e-commerce platform with React and Node.js.',
     budget: 5000,
-    budgetType: 'fixed',
     status: 'open',
     proposalsCount: 12,
     viewsCount: 145,
@@ -40,8 +38,7 @@ const MOCK_JOBS: MyJob[] = [
     id: 'job_2',
     title: 'Mobile App UI/UX Design',
     description: 'Need a creative designer for a fitness tracking mobile app. Must have experience with modern design trends.',
-    budget: 80,
-    budgetType: 'hourly',
+    budget: 2800,
     status: 'in_progress',
     proposalsCount: 8,
     viewsCount: 98,
@@ -53,7 +50,6 @@ const MOCK_JOBS: MyJob[] = [
     title: 'SEO Optimization for Blog',
     description: 'Looking for SEO expert to optimize our tech blog for better search rankings.',
     budget: 1200,
-    budgetType: 'fixed',
     status: 'closed',
     proposalsCount: 15,
     viewsCount: 203,
@@ -65,7 +61,6 @@ const MOCK_JOBS: MyJob[] = [
     title: 'Data Analysis Project',
     description: 'Need data analyst to work on customer behavior analysis using Python and SQL.',
     budget: 3500,
-    budgetType: 'fixed',
     status: 'cancelled',
     proposalsCount: 6,
     viewsCount: 67,
@@ -224,7 +219,7 @@ export default function MyJobsScreen() {
                     <p className="text-2xl font-bold text-green">
                       ${job.budget.toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted capitalize">{job.budgetType}</p>
+                    <p className="text-xs text-muted">Fixed Price</p>
                   </div>
                 </div>
 

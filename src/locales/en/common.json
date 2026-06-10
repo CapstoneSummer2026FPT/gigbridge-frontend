@@ -73,7 +73,6 @@
     "submitProposal": "Submit Proposal",
     "budget": "Budget",
     "duration": "Duration",
-    "experienceLevel": "Experience Level",
     "skills": "Skills Required",
     "description": "Description",
     "category": "Category",
@@ -136,7 +135,7 @@
     "education": "Education",
     "portfolio": "Portfolio",
     "reviews": "Reviews",
-    "hourlyRate": "Hourly Rate",
+    "projectBudget": "Project Budget",
     "availability": "Availability",
     "languages": "Languages",
     "saveChanges": "Save Changes"

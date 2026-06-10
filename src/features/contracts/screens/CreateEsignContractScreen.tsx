@@ -6,7 +6,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import type { ProposalDto } from '../../../types/models/Proposal';
-import type { CreateContractDto, PaymentType } from '../../../types/models/Contract';
+import type { CreateContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import '../styles/create-esign-contract-screen.css';
 
@@ -35,7 +35,6 @@ export default function CreateEsignContractScreen() {
     title: '',
     description: '',
     totalBudget: 0,
-    paymentType: 0 as PaymentType,
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
   });
@@ -88,7 +87,7 @@ export default function CreateEsignContractScreen() {
           freelancerProfileId: found.freelancerProfilesId,
           title: `Contract for ${found.jobTitle}`,
           description: `This contract is for the project: ${found.jobTitle}`,
-          totalBudget: found.proposedRate || 0,
+          totalBudget: found.proposedBudget || 0,
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         }));
       } catch (err) {
@@ -383,8 +382,8 @@ export default function CreateEsignContractScreen() {
                 <div className="summary-details">
                   <div className="detail-item">
                     <DollarSign size={16} />
-                    <span>Proposed Rate</span>
-                    <strong>${(proposal.proposedRate || 0).toLocaleString()}</strong>
+                    <span>Proposed Budget</span>
+                    <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
                   </div>
                   <div className="detail-item">
                     <Calendar size={16} />
@@ -454,17 +453,6 @@ export default function CreateEsignContractScreen() {
                       />
                     </div>
                     {validationErrors.totalBudget && <span className="form-error">{validationErrors.totalBudget}</span>}
-                  </div>
-
-                  <div className="form-group">
-                    <label>Payment Type</label>
-                    <select
-                      value={formData.paymentType}
-                      onChange={e => handleInputChange('paymentType', parseInt(e.target.value))}
-                    >
-                      <option value={0}>Fixed Price</option>
-                      <option value={1}>Hourly Rate</option>
-                    </select>
                   </div>
                 </div>
 

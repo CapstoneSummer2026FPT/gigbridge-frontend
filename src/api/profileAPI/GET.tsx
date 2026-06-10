@@ -26,10 +26,6 @@ export const profileGetAPI = {
     return await apiService.get<string[]>('Profile/industries');
   },
 
-  getExperienceLevels: async () => {
-    return await apiService.get<{ id: number; name: string }[]>('Profile/experience-levels');
-  },
-
   getAvailabilityStatuses: async () => {
     return await apiService.get<{ id: number; name: string }[]>('Profile/availability-statuses');
   },

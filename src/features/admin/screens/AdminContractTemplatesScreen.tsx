@@ -51,10 +51,10 @@ const MOCK_TEMPLATES: ContractTemplate[] = [
   },
   {
     id: 'tpl-02',
-    name: 'Hourly Work Contract',
-    description: 'Reusable terms for tracked hourly work, weekly invoicing, and client review.',
+    name: 'Fixed Scope Contract',
+    description: 'Reusable terms for fixed project scope, milestone delivery, and client review.',
     content:
-      'HOURLY WORK AGREEMENT\n\nScope\nWork is performed according to weekly tasks approved by the Client.\n\nBudget\nHourly budget limits are agreed before each billing cycle.\n\nTimeline\nTimesheets are submitted weekly and reviewed within three business days.\n\nIP\nProject work product and related IP transfer after the approved invoice is paid.',
+      'FIXED SCOPE AGREEMENT\n\nScope\nWork is performed according to the approved project scope and milestone deliverables.\n\nBudget\nThe fixed project budget is funded into escrow before work begins, with change requests approved separately.\n\nTimeline\nMilestones are submitted according to the agreed delivery schedule and reviewed within three business days.\n\nIP\nProject work product and related IP transfer after the approved milestone or final payment is paid.',
     category: 'standard',
     version: 1,
     isDefault: false,

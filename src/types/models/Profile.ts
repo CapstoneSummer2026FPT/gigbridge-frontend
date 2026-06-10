@@ -9,12 +9,6 @@ export enum CompanySize {
   Large = 3,
 }
 
-export enum ExperienceLevel {
-  Entry = 0,
-  Intermediate = 1,
-  Expert = 2,
-}
-
 export enum Availability {
   FullTime = 0,
   PartTime = 1,
@@ -69,8 +63,6 @@ export interface FreelancerProfileDto {
   userId: string;
   title?: string;
   bio?: string;
-  hourlyRate?: number;
-  experienceLevel?: number;
   availability?: number;
   location?: string;
   profileCompletionScore?: number;
@@ -99,8 +91,6 @@ export interface UpdateClientProfileDto {
 export interface UpdateFreelancerProfileDto {
   title: string;
   bio: string;
-  hourlyRate: number;
-  experienceLevel: number;
   availability: number;
   location: string;
 }
@@ -123,8 +113,6 @@ export interface FreelancerProfileResponseDto {
   userId: string;
   title: string;
   bio: string;
-  hourlyRate: number;
-  experienceLevel: number;
   availability: number;
   location: string;
   profileCompletionScore: number;
@@ -137,8 +125,6 @@ export interface FreelancerProfile {
   user_id: string;
   title: string;
   bio: string;
-  hourly_rate: number;
-  experience_level: ExperienceLevel;
   availability: Availability;
   location: string;
   profile_completion_score: number;
