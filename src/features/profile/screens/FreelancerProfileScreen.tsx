@@ -128,7 +128,7 @@ export default function FreelancerProfileScreen() {
           <button onClick={() => navigate(-1)} className="freelancer-profile-back-btn">
             <ArrowLeft size={20} />
           </button>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div className="freelancer-profile-actions-container">
             {currentUser?.role !== 1 && (
               <button 
                 onClick={handleSaveFreelancer}
@@ -165,7 +165,7 @@ export default function FreelancerProfileScreen() {
 
         <div className="max-w-6xl mx-auto px-4">
           {/* Profile Card */}
-          <div className="freelancer-profile-card glass-card -mt-20 mb-8">
+          <div className="freelancer-profile-card">
             <div className="freelancer-profile-card-content">
               {/* Avatar */}
               <div className="freelancer-profile-avatar-container">
@@ -174,6 +174,9 @@ export default function FreelancerProfileScreen() {
                   alt={user.full_name}
                   className="freelancer-profile-avatar"
                 />
+                <div className="freelancer-profile-badge-verified">
+                  <CheckCircle size={20} />
+                </div>
               </div>
 
               {/* Info */}
@@ -182,12 +185,12 @@ export default function FreelancerProfileScreen() {
                   {user.full_name}
                   {isPremium && isIdentityVerified && (
                     <span className="freelancer-profile-pro-verified-badge" title="Pro Verified Freelancer">
-                      <Crown size={16} /> Pro Verified
+                      <Crown size={14} /> Pro Verified
                     </span>
                   )}
                   {isOnVacation && (
                     <span className="freelancer-profile-vacation-badge" title="On Vacation">
-                      <AlertCircle size={16} /> On Vacation
+                      <AlertCircle size={14} /> On Vacation
                     </span>
                   )}
                 </h1>
@@ -211,27 +214,25 @@ export default function FreelancerProfileScreen() {
                 {/* Quick Stats */}
                 <div className="freelancer-profile-quick-stats">
                   <div className="freelancer-profile-quick-stat">
-                    <p className="text-2xl font-black text-cyan">4.9</p>
-                    <p className="text-xs text-secondary">Rating</p>
+                    <p>4.9</p>
+                    <p>Rating</p>
                   </div>
                   <div className="freelancer-profile-quick-stat">
-                    <p className="text-2xl font-black text-green">45</p>
-                    <p className="text-xs text-secondary">Jobs Done</p>
+                    <p>45</p>
+                    <p>Jobs Done</p>
                   </div>
                   <div className="freelancer-profile-quick-stat">
-                    <p className="text-2xl font-black text-purple">98%</p>
-                    <p className="text-xs text-secondary">Success</p>
+                    <p>98%</p>
+                    <p>Success</p>
                   </div>
                 </div>
-
-
               </div>
 
               {/* Hourly Rate - Right Side */}
               <div className="freelancer-profile-rate-container">
-                <p className="text-xs text-secondary mb-2">Hourly Rate</p>
-                <p className="text-3xl font-black text-cyan">${profile?.hourly_rate || 75}<span className="text-sm">/hr</span></p>
-                <p className="text-xs text-secondary mt-1">in VND</p>
+                <p>Hourly Rate</p>
+                <p>${profile?.hourly_rate || 75}<span>/hr</span></p>
+                <p>in VND</p>
               </div>
             </div>
           </div>
@@ -257,11 +258,11 @@ export default function FreelancerProfileScreen() {
                   </h2>
                   <div className="freelancer-profile-cv-card">
                     <div className="freelancer-profile-cv-icon">
-                      <FileText size={32} className="text-cyan" />
+                      <FileText size={28} />
                     </div>
                     <div className="freelancer-profile-cv-info">
-                      <p className="font-semibold text-primary text-sm">{cvFile.name}</p>
-                      <p className="text-xs text-secondary mt-1">PDF Document</p>
+                      <p>{cvFile.name}</p>
+                      <p>PDF Document</p>
                     </div>
                     <button className="freelancer-profile-cv-download-btn" title="Download CV">
                       <Download size={18} />
@@ -285,7 +286,7 @@ export default function FreelancerProfileScreen() {
 
               {/* Experience Section */}
               <div className="glass-card p-6">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                   <h2 className="text-lg font-bold text-primary m-0">Work Experience</h2>
                   <button 
                     onClick={() => navigate('/profile/manage-content?tab=experience')}
@@ -312,7 +313,7 @@ export default function FreelancerProfileScreen() {
                     Manage
                   </button>
                 </div>
-                <div className="space-y-4">
+                <div className="experience-timeline-track">
                   {mockExperience.map((exp, idx) => (
                     <div key={idx} className="freelancer-profile-experience-item">
                       <div className="freelancer-profile-experience-dot" />
@@ -328,7 +329,7 @@ export default function FreelancerProfileScreen() {
 
               {/* Portfolio Section */}
               <div className="glass-card p-6">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                   <h2 className="text-lg font-bold text-primary m-0">Portfolio</h2>
                   <button 
                     onClick={() => navigate('/profile/manage-content?tab=portfolio')}
@@ -357,7 +358,7 @@ export default function FreelancerProfileScreen() {
                 </div>
                 <div className="freelancer-profile-portfolio-grid">
                   {mockPortfolio.map((project, idx) => (
-                    <div key={idx} className="freelancer-profile-portfolio-card glass-card overflow-hidden hover:shadow-lg transition-all">
+                    <div key={idx} className="freelancer-profile-portfolio-card">
                       <div className="freelancer-profile-portfolio-image-wrapper">
                         <img 
                           src={project.image}
@@ -365,7 +366,7 @@ export default function FreelancerProfileScreen() {
                           className="freelancer-profile-portfolio-image"
                         />
                       </div>
-                      <div className="p-4">
+                      <div className="freelancer-profile-portfolio-card-info-block">
                         <p className="font-semibold text-primary text-sm">{project.title}</p>
                         <p className="text-xs text-secondary mt-2">{project.tech}</p>
                       </div>
@@ -376,7 +377,7 @@ export default function FreelancerProfileScreen() {
 
               {/* Certificates Section */}
               <div className="glass-card p-6">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                   <h2 className="text-lg font-bold text-primary m-0">Certificates & Credentials</h2>
                   <button 
                     onClick={() => navigate('/profile/manage-content?tab=certificates')}
@@ -405,13 +406,13 @@ export default function FreelancerProfileScreen() {
                 </div>
                 <div className="space-y-3">
                   {mockCertificates.map((cert, idx) => (
-                    <div key={idx} className="freelancer-profile-cert-item glass-card p-3">
+                    <div key={idx} className="freelancer-profile-cert-item p-3">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '1rem' }}>
                         <div className="flex-1">
                           <p className="font-semibold text-primary text-sm">{cert.title}</p>
                           <p className="text-xs text-secondary mt-1">{cert.issuer}</p>
                           <p className="text-xs text-secondary mt-1">
-                            Issued: {new Date(cert.issue_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                             Issued: {new Date(cert.issue_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                             {cert.expiry_date && ` • Expires: ${new Date(cert.expiry_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`}
                           </p>
                         </div>
@@ -473,6 +474,12 @@ export default function FreelancerProfileScreen() {
                 <div className="freelancer-profile-trust-score-display-sidebar">
                   <div className="freelancer-profile-trust-score-circle-sidebar">
                     <svg viewBox="0 0 100 100" className="freelancer-profile-trust-score-ring">
+                      <defs>
+                        <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="var(--gb-cyan, #0077FF)" />
+                          <stop offset="100%" stopColor="var(--gb-purple, #9F4BFF)" />
+                        </linearGradient>
+                      </defs>
                       <circle cx="50" cy="50" r="45" className="freelancer-profile-trust-score-bg" />
                       <circle 
                         cx="50" 

@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   MoreVertical,
   Zap,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -53,6 +55,8 @@ export default function FreelancerContractScreen() {
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'completed'>('active');
   const [sortBy, setSortBy] = useState<'date' | 'value'>('date');
   const [expandedContractIds, setExpandedContractIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   // Load freelancer contracts
   useEffect(() => {
@@ -67,13 +71,8 @@ export default function FreelancerContractScreen() {
 
         const response = await contractGetAPI.getMyContracts(params);
 
-        if (response.success && response.data) {
-          const userProfileId = (user as any)?.profileId || user?.id;
-          const freelancerContracts = Array.isArray(response.data)
-            ? response.data.filter((c: ContractDto) => c.freelancerProfilesId === userProfileId)
-            : [];
-
-          setContracts((freelancerContracts.length > 0 ? freelancerContracts : MOCK_CONTRACTS_FOR_SCREENS) as ContractWithMilestones[]);
+        if (response.success && response.data && response.data.length > 0) {
+          setContracts(response.data as ContractWithMilestones[]);
         } else {
           setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
         }
@@ -86,6 +85,9 @@ export default function FreelancerContractScreen() {
 
     if (user?.id) {
       loadContracts();
+    } else {
+      setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
+      setLoading(false);
     }
   }, [user?.id]);
 
@@ -126,6 +128,7 @@ export default function FreelancerContractScreen() {
     });
 
     setFilteredContracts(result);
+    setCurrentPage(1); // Reset page to 1 on filter/tab changes
   }, [contracts, activeTab, searchQuery, sortBy]);
 
   const calculateMilestoneProgress = (contract: ContractWithMilestones) => {
@@ -157,6 +160,12 @@ export default function FreelancerContractScreen() {
       </AppLayout>
     );
   }
+
+  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / itemsPerPage));
+  const paginatedContracts = filteredContracts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <AppLayout>
@@ -256,7 +265,7 @@ export default function FreelancerContractScreen() {
           </div>
         </motion.div>
 
-        {/* Contracts Grid */}
+        {/* Contracts List / Rows */}
         <div className="contracts-grid-section">
           <AnimatePresence mode="wait">
             {filteredContracts.length === 0 ? (
@@ -271,156 +280,189 @@ export default function FreelancerContractScreen() {
                 <p>{searchQuery ? 'Try a different search' : 'Contracts you accept will appear here'}</p>
               </motion.div>
             ) : (
-              <motion.div
-                className="contracts-grid"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                {filteredContracts.map((contract, idx) => {
+              <div className="flex flex-col gap-4">
+                {paginatedContracts.map((contract, index) => {
                   const progress = calculateMilestoneProgress(contract);
                   const milestoneStats = getMilestoneStats(contract);
+                  const isExpanded = expandedContractIds.has(contract.contractsId);
+                  const name = contract.clientName || contract.clientProfilesId || 'Unknown Client';
+                  const initials = name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .substring(0, 2)
+                    .toUpperCase();
+
+                  const getStatusColorHex = (status: ContractStatus) => {
+                    switch(status) {
+                      case ContractStatus.Active: return '#0077FF';
+                      case ContractStatus.Completed: return '#22C55E';
+                      case ContractStatus.Cancelled: return '#EF4444';
+                      case ContractStatus.Disputed: return '#F59E0B';
+                      default: return '#9F4BFF';
+                    }
+                  };
+                  const statusColor = getStatusColorHex(contract.status);
 
                   return (
                     <motion.div
                       key={contract.contractsId}
-                      className="contract-card"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ delay: idx * 0.05 }}
+                      transition={{ duration: 0.3, delay: (index % itemsPerPage) * 0.05 }}
+                      className="bg-card hover:bg-card/95 border border-border/55 hover:border-blue-500/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden relative flex flex-col"
                     >
-                      {/* Card Header */}
-                      <div className="card-header">
-                        <div className="header-left">
-                          <h3 className="contract-title">{contract.title}</h3>
+                      {/* Left vertical border for status */}
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 w-1.5" 
+                        style={{ backgroundColor: statusColor }}
+                      />
+
+                      {/* Main Row Content */}
+                      <div className="p-5 pl-7 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        {/* Left Section: Avatar Initials & Info */}
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          <div 
+                            className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-white shadow-sm"
+                            style={{ 
+                              background: `linear-gradient(135deg, ${statusColor}dd, ${statusColor})`,
+                            }}
+                          >
+                            {initials}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 
+                              onClick={() => navigate(`/contracts/${contract.contractsId}`)}
+                              className="text-base font-bold text-foreground truncate hover:text-blue-500 transition-colors cursor-pointer"
+                            >
+                              {contract.title}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground font-semibold">
+                              <span className="text-foreground flex items-center gap-1.5">
+                                <User size={13} className="text-muted-foreground" />
+                                {name}
+                              </span>
+                              <span className="h-3 w-px bg-border/60 hidden sm:inline" />
+                              <span className="flex items-center gap-1.5">
+                                <Calendar size={13} />
+                                {formatContractDate(contract.startDate)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Center Section: Budget & Progress */}
+                        <div className="flex flex-wrap items-center gap-6 lg:gap-10 shrink-0">
+                          {/* Budget */}
+                          <div className="flex flex-col min-w-[90px]">
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Budget</span>
+                            <span className="text-sm font-black text-foreground mt-0.5">
+                              {formatContractAmount(contract.totalBudget)}
+                            </span>
+                          </div>
+
+                          {/* Progress */}
+                          {milestoneStats.total > 0 && (
+                            <div className="flex flex-col min-w-[150px] w-full sm:w-auto">
+                              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider mb-1">
+                                <span className="text-muted-foreground">Milestones ({progress}%)</span>
+                                <span className="text-blue-500 font-bold">{milestoneStats.completed}/{milestoneStats.total} Paid</span>
+                              </div>
+                              <div className="h-1.5 bg-secondary border border-border/40 rounded-full overflow-hidden w-full">
+                                <div 
+                                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right Section: Status & Actions */}
+                        <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0 border-t border-border/20 pt-3 lg:border-t-0 lg:pt-0">
                           <span className={`status-badge ${getContractStatusClass(contract.status)}`}>
                             {getContractStatusLabel(contract.status)}
                           </span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => navigate(`/contracts/${contract.contractsId}`)}
+                              className="p-2 bg-secondary/50 hover:bg-blue-500/10 border border-border/50 hover:border-blue-500/30 rounded-xl flex items-center justify-center text-muted-foreground hover:text-blue-500 transition-all duration-200 cursor-pointer"
+                              title="View details"
+                            >
+                              <Eye size={16} />
+                            </button>
+
+                            {contract.status === ContractStatus.Active && (
+                              <button
+                                onClick={() => {
+                                  setExpandedContractIds(prev => {
+                                    const newSet = new Set(prev);
+                                    if (newSet.has(contract.contractsId)) {
+                                      newSet.delete(contract.contractsId);
+                                    } else {
+                                      newSet.add(contract.contractsId);
+                                    }
+                                    return newSet;
+                                  });
+                                }}
+                                className={`p-2 bg-secondary/50 border border-border/50 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer
+                                  ${isExpanded ? 'bg-secondary border-foreground/30 rotate-180' : ''}`}
+                                title={isExpanded ? 'Collapse' : 'Expand'}
+                              >
+                                <ChevronDown size={16} />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <button className="menu-btn">
-                          <MoreVertical size={16} />
-                        </button>
                       </div>
 
-                      {/* Card Body */}
-                      <div className="card-body">
-                        {/* Info Grid */}
-                        <div className="info-grid">
-                          <div className="info-item">
-                            <span className="info-label">
-                              <User size={14} />
-                              Client
-                            </span>
-                            <span className="info-value">{contract.clientName || contract.clientProfilesId}</span>
-                          </div>
-                          <div className="info-item">
-                            <span className="info-label">
-                              <DollarSign size={14} />
-                              Budget
-                            </span>
-                            <span className="info-value">{formatContractAmount(contract.totalBudget)}</span>
-                          </div>
-                          <div className="info-item">
-                            <span className="info-label">
-                              <Calendar size={14} />
-                              Started
-                            </span>
-                            <span className="info-value">{formatContractDate(contract.startDate)}</span>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        {milestoneStats.total > 0 && (
-                          <div className="progress-section">
-                            <div className="progress-header">
-                              <span className="progress-label">Milestones</span>
-                              <span className="progress-text">{milestoneStats.completed}/{milestoneStats.total}</span>
-                            </div>
-                            <div className="progress-bar">
-                              <motion.div
-                                className="progress-fill"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${progress}%` }}
-                                transition={{ duration: 0.8, ease: 'easeOut' }}
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Milestone Stats */}
-                        {milestoneStats.total > 0 && (
-                          <div className="milestone-stats">
-                            <div className="stat-badge completed">
-                              <CheckCircle2 size={14} />
-                              {milestoneStats.completed} Completed
-                            </div>
-                            <div className="stat-badge pending">
-                              <Clock size={14} />
-                              {milestoneStats.pending} Pending
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Card Footer */}
-                      <div className="card-footer">
-                        <button
-                          className="action-btn view-btn"
-                          onClick={() => navigate(`/contracts/${contract.contractsId}`)}
-                        >
-                          <Eye size={14} />
-                          View Details
-                        </button>
-                        {contract.status === ContractStatus.PendingSignature && (
-                          <button
-                            className="action-btn sign-btn"
-                            onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                          >
-                            <PenTool size={14} />
-                            Sign
-                          </button>
-                        )}
-                        {contract.status === ContractStatus.Active && (
-                          <button
-                            className="action-btn expand-btn"
-                            onClick={() => {
-                              setExpandedContractIds(prev => {
-                                const newSet = new Set(prev);
-                                if (newSet.has(contract.contractsId)) {
-                                  newSet.delete(contract.contractsId);
-                                } else {
-                                  newSet.add(contract.contractsId);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          >
-                            <FileUp size={14} />
-                            {expandedContractIds.has(contract.contractsId) ? 'Collapse' : 'Milestones'}
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Expanded Milestones */}
+                      {/* Expandable Milestones Section */}
                       <AnimatePresence>
-                        {expandedContractIds.has(contract.contractsId) && contract.milestones && (
+                        {isExpanded && contract.milestones && (
                           <motion.div
-                            className="expanded-milestones"
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                            className="overflow-hidden border-t border-border/50 bg-secondary/10"
                           >
-                            <div className="milestones-list">
-                              {contract.milestones.map((milestone, i) => (
-                                <MilestoneDetailCard
-                                  key={milestone.id || `${contract.contractsId}-milestone-${i}`}
-                                  milestone={milestone}
-                                  index={i}
-                                  onSubmitDeliverable={() => navigate(`/contracts/${contract.contractsId}/deliverables/${milestone.id || i}`)}
-                                  isSubmittingFor={false}
-                                />
-                              ))}
+                            <div className="p-5 pl-7 flex flex-col gap-4">
+                              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                                Milestone Breakdown
+                              </span>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                {contract.milestones.map((milestone, i) => (
+                                  <MilestoneDetailCard
+                                    key={milestone.id || `${contract.contractsId}-milestone-${i}`}
+                                    milestone={milestone}
+                                    index={i}
+                                    onSubmitDeliverable={() => navigate(`/contracts/${contract.contractsId}/deliverables/${milestone.id || i}`)}
+                                    isSubmittingFor={false}
+                                  />
+                                ))}
+                              </div>
+                              
+                              {/* Quick Actions */}
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                <button
+                                  onClick={() => navigate(`/contracts/${contract.contractsId}`)}
+                                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-md shadow-blue-500/10 flex items-center gap-1.5"
+                                >
+                                  View Portal
+                                  <ChevronRight size={14} />
+                                </button>
+                                
+                                {contract.status === ContractStatus.PendingSignature && (
+                                  <button
+                                    onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
+                                    className="px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 text-purple-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
+                                  >
+                                    <PenTool size={13} />
+                                    Sign Contract
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </motion.div>
                         )}
@@ -428,20 +470,97 @@ export default function FreelancerContractScreen() {
                     </motion.div>
                   );
                 })}
-              </motion.div>
+              </div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Results Info */}
+        {/* Pagination Controls */}
         {filteredContracts.length > 0 && (
-          <motion.div
-            className="results-info"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            {/* Removed - moved filter stats to header */}
-          </motion.div>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-card border border-border/50 rounded-2xl p-4 shadow-sm">
+            {/* Left side: showing items text */}
+            <div className="text-xs text-muted-foreground font-semibold">
+              Showing <span className="text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+              <span className="text-foreground">{Math.min(currentPage * itemsPerPage, filteredContracts.length)}</span> of{' '}
+              <span className="text-foreground">{filteredContracts.length}</span> contracts
+            </div>
+
+            {/* Center side: Page buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="p-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
+                title="First Page"
+              >
+                &laquo;
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
+              >
+                Prev
+              </button>
+
+              {/* Dynamic Page Numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                .map((page, idx, arr) => {
+                  const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
+                  return (
+                    <div key={page} className="flex items-center gap-1">
+                      {showEllipsis && <span className="text-muted-foreground px-1 text-xs">...</span>}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                          currentPage === page
+                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm shadow-blue-500/10'
+                            : 'border-border/50 bg-secondary/20 hover:bg-secondary'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  );
+                })}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
+              >
+                Next
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="p-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
+                title="Last Page"
+              >
+                &raquo;
+              </button>
+            </div>
+
+            {/* Right side: Items per page dropdown */}
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <span>Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-secondary/40 border border-border/50 rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-500 font-bold text-foreground cursor-pointer transition-colors"
+              >
+                {[5, 10, 20, 50].map((size) => (
+                  <option key={size} value={size}>
+                    {size} rows
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         )}
       </div>
     </AppLayout>

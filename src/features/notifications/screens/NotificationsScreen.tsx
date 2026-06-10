@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, MessageSquare, Bot, DollarSign, CheckCircle, Briefcase, Star, Trash2 } from 'lucide-react';
+import { Bell, MessageSquare, Bot, DollarSign, CheckCircle, Briefcase, Star, Trash2, AlertTriangle, FileText } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
+import { useUserNotifications } from '../hooks/useUserNotifications';
 import type { ReactNode } from 'react';
+import '../styles/notifications-screen.css';
 
 const NOTIF_ICONS: Record<string, ReactNode> = {
+  job: <Briefcase size={16} className="text-cyan" />,
   proposal: <Briefcase size={16} className="text-cyan" />,
+  contract: <FileText size={16} className="text-cyan" />,
   message: <MessageSquare size={16} className="text-purple" />,
   milestone: <CheckCircle size={16} className="text-green" />,
   payment: <DollarSign size={16} className="text-green" />,
   review: <Star size={16} className="text-amber" />,
+  dispute: <AlertTriangle size={16} className="text-red" />,
   ai_suggestion: <Bot size={16} className="text-purple" />,
-  job_match: <Briefcase size={16} className="text-cyan" />,
   system: <Bell size={16} className="text-secondary" />,
 };
 
@@ -27,11 +30,11 @@ export default function NotificationsScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'messages'>('all');
-  const [filter, setFilter] = useState('all');
-
-  const allNotifs = user ? DB.getNotificationsByUser(user.id) : [];
+  const { notifications: allNotifs, unreadCount, isLoading, markAsRead, markAllAsRead } = useUserNotifications(user, {
+    pageSize: 20,
+    pollMs: 45000,
+  });
   const displayNotifs = activeTab === 'unread' ? allNotifs.filter(n => !n.isRead) : allNotifs;
-  const unreadCount = allNotifs.filter(n => !n.isRead).length;
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -54,7 +57,11 @@ export default function NotificationsScreen() {
               ) : 'All caught up!'}
             </p>
           </div>
-          <button className="text-sm transition-all text-secondary">
+          <button
+            className="text-sm transition-all text-secondary disabled:opacity-50"
+            disabled={unreadCount === 0}
+            onClick={() => void markAllAsRead()}
+          >
             Mark all as read
           </button>
         </div>
@@ -96,7 +103,10 @@ export default function NotificationsScreen() {
                       background: notif.isRead ? 'rgba(255,255,255,0.02)' : 'rgba(0,240,255,0.04)',
                       border: notif.isRead ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,240,255,0.12)',
                     }}
-                    onClick={() => navigate(notif.actionUrl || '/')}>
+                    onClick={() => {
+                      void markAsRead(notif.id);
+                      navigate(notif.actionUrl || '/notifications');
+                    }}>
                     {/* Icon */}
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -120,8 +130,12 @@ export default function NotificationsScreen() {
                 {displayNotifs.length === 0 && (
                   <div className="text-center py-16">
                     <Bell size={40} className="mx-auto mb-3 opacity-20 text-secondary" />
-                    <p className="text-primary font-medium">No notifications</p>
-                    <p className="text-sm mt-1 text-secondary">You're all caught up!</p>
+                    <p className="text-primary font-medium">
+                      {isLoading ? 'Loading notifications...' : 'No notifications'}
+                    </p>
+                    <p className="text-sm mt-1 text-secondary">
+                      {isLoading ? 'Checking your inbox.' : "You're all caught up!"}
+                    </p>
                   </div>
                 )}
               </>

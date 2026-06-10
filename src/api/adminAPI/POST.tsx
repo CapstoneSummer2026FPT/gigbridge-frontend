@@ -5,6 +5,17 @@ import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
 
 const Admin_Api_Base_Url = '/admin';
 
+export interface AdminBroadcastNotificationPayload {
+  target: number;
+  targetUserId?: string | null;
+  type: number;
+  title: string;
+  content?: string;
+  referenceId?: string | null;
+  referenceType?: string | null;
+  sendEmail: boolean;
+}
+
 export const adminPostAPI = {
   /**
    * POST /api/v1/admin/users
@@ -27,5 +38,9 @@ export const adminPostAPI = {
 
   createFAQCategory: async (payload: CreateFAQCategoryPayload): Promise<ApiResponse<FAQCategoryDto>> => {
     return apiService.post<FAQCategoryDto>(`${Admin_Api_Base_Url}/faq/categories`, payload);
+  },
+
+  broadcastNotification: async (payload: AdminBroadcastNotificationPayload): Promise<ApiResponse<null>> => {
+    return apiService.post<null>('admin/notifications/broadcast', payload);
   },
 };

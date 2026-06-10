@@ -128,3 +128,309 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Redesign for layout grid columns */
+.browse-jobs-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  margin-top: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .browse-jobs-layout-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+/* Sidebar Containers */
+.system-ads-sidebar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Advertisements Section */
+.system-ad-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-border);
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.system-ad-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(159, 75, 255, 0.3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.system-ad-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 10% 10%, rgba(159, 75, 255, 0.06), transparent 50%),
+              radial-gradient(circle at 90% 90%, rgba(0, 119, 255, 0.06), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.system-ad-card-premium {
+  background: linear-gradient(135deg, rgba(26, 21, 44, 0.6) 0%, rgba(15, 12, 30, 0.8) 100%);
+  border: 1px solid rgba(159, 75, 255, 0.25);
+}
+
+.system-ad-card-premium:hover {
+  border-color: var(--gb-purple);
+  box-shadow: 0 12px 30px rgba(159, 75, 255, 0.15);
+}
+
+.system-ad-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.system-ad-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gb-text-primary);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.system-ad-title .ad-icon-purple {
+  color: var(--gb-purple);
+}
+
+.system-ad-title .ad-icon-cyan {
+  color: var(--gb-cyan);
+}
+
+.system-ad-subtitle {
+  font-size: 0.8rem;
+  color: var(--gb-text-secondary);
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+
+.system-ad-btn {
+  width: 100%;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.system-ad-btn-primary {
+  background: linear-gradient(135deg, #9f4bff 0%, #0077ff 100%);
+  color: #ffffff;
+  border: none;
+}
+
+.system-ad-btn-primary:hover {
+  opacity: 0.95;
+  transform: scale(1.02);
+}
+
+.system-ad-btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--gb-text-primary);
+  border: 1px solid var(--gb-border);
+}
+
+.system-ad-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Leaderboard Card */
+.freelancer-ranking-card {
+  border-radius: 1.25rem;
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-border);
+  padding: 1.5rem;
+}
+
+.freelancer-ranking-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.freelancer-ranking-title {
+  font-size: 1.1rem;
+  font-weight: 850;
+  color: var(--gb-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.freelancer-ranking-title .trophy-icon {
+  color: #eab308;
+}
+
+.freelancer-ranking-subtitle {
+  font-size: 0.75rem;
+  color: var(--gb-text-secondary);
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  transition: all 0.2s ease;
+}
+
+.ranking-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
+}
+
+.ranking-item-top1 {
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border-color: rgba(234, 179, 8, 0.2);
+}
+
+.ranking-item-top2 {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.ranking-item-top3 {
+  background: linear-gradient(90deg, rgba(180, 83, 9, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border-color: rgba(180, 83, 9, 0.2);
+}
+
+.ranking-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.ranking-position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.ranking-position-gold {
+  color: #eab308;
+}
+
+.ranking-position-silver {
+  color: #94a3b8;
+}
+
+.ranking-position-bronze {
+  color: #b45309;
+}
+
+.ranking-avatar-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ranking-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gb-border);
+}
+
+.ranking-avatar-gold {
+  border-color: #eab308;
+}
+
+.ranking-avatar-silver {
+  border-color: #94a3b8;
+}
+
+.ranking-avatar-bronze {
+  border-color: #b45309;
+}
+
+.ranking-badge-overlay {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: var(--gb-bg-primary);
+  border-radius: 50%;
+  padding: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ranking-text-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ranking-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gb-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-role {
+  font-size: 0.7rem;
+  color: var(--gb-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-elo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.ranking-elo-value {
+  font-family: monospace;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--gb-cyan);
+}
+
+.ranking-elo-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--gb-text-secondary);
+  letter-spacing: 0.05em;
+}
+

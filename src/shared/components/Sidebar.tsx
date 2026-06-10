@@ -371,6 +371,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <User size={18} />
           <span>Profile</span>
         </button>
+        <button onClick={() => navigate('/notifications')} className="sidebar-item w-full">
+          <Bell size={18} />
+          <span>Notifications</span>
+        </button>
         <button onClick={() => navigate('/settings')} className="sidebar-item w-full">
           <Settings size={18} />
           <span>Settings</span>
