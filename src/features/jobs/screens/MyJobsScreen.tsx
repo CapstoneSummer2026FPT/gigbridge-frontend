@@ -18,21 +18,18 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobGetAPI, jobPutAPI } from '../../../api/jobAPI';
 import {
-  BudgetType,
   JobStatus,
   type JobPostSummaryDto,
 } from '../../../types/models/Job';
 import '../../admin/styles/admin-users-screen.css';
 
 type JobStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
-type BudgetDisplayType = 'fixed' | 'hourly';
 
 interface MyJob {
   id: string;
   title: string;
   description: string;
   budget: number;
-  budgetType: BudgetDisplayType;
   status: JobStatus | null;
   visibility: number | null;
   proposalsCount: number;
@@ -87,7 +84,6 @@ const mapSummaryToMyJob = (job: JobPostSummaryDto): MyJob => ({
   title: job.title,
   description: job.descriptionPreview,
   budget: job.budgetMax || job.budgetMin || 0,
-  budgetType: job.budgetType === BudgetType.Hourly ? 'hourly' : 'fixed',
   status: getKnownStatus(job.status),
   visibility: getVisibility(job.visibility),
   proposalsCount: 0,
