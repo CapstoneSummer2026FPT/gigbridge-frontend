@@ -1,7 +1,9 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
 import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature } from 'lucide-react';
+import { ProposalStatus } from '../../../types/models/Proposal';
 import type { ProposalViewModel } from '../types';
+import { getStatusClass, getStatusLabel } from '../utils/statusHelpers';
 
 interface ProposalCardProps {
   proposal: ProposalViewModel;
@@ -9,6 +11,7 @@ interface ProposalCardProps {
   onViewDetail: (proposal: ProposalViewModel, mode: 'detail' | 'score' | 'cv') => void;
   onAccept: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
+  onViewAnswers?: (proposal: ProposalViewModel) => void;
   onCreateContract?: (proposal: ProposalViewModel) => void;
 }
 
@@ -18,27 +21,13 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   onViewDetail,
   onAccept,
   onReject,
+  onViewAnswers,
   onCreateContract,
 }) => {
-  
-  const statusLabel =
-    proposal.status === 0
-      ? 'Pending'
-      : proposal.status === 1
-        ? 'Shortlisted'
-        : proposal.status === 2
-          ? 'Accepted'
-          : proposal.status === 3
-            ? 'Rejected'
-            : 'Withdrawn';
-
-  const getStatusColor = (status: number | undefined) => {
-    if (status === 0) return 'proposal-status-pending';
-    if (status === 1) return 'proposal-status-shortlisted';
-    if (status === 2) return 'proposal-status-accepted';
-    if (status === 3) return 'proposal-status-rejected';
-    return 'proposal-status-withdrawn';
-  };
+  const status = Number(proposal.status);
+  const statusLabel = getStatusLabel(proposal.status);
+  const canClientReview = status === ProposalStatus.Pending || status === ProposalStatus.Shortlisted;
+  const accepted = status === ProposalStatus.Accepted;
 
   return (
     <motion.div
@@ -61,7 +50,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
           </div>
         </div>
         <div className="proposal-card-side">
-          <span className={`proposal-status ${getStatusColor(proposal.status)}`}>{statusLabel}</span>
+          <span className={getStatusClass(proposal.status)}>{statusLabel}</span>
           {proposal.interviewScore && (
             <span className="proposal-score-pill">
               <span style={{ fontSize: '0.65rem' }}>Score</span>
@@ -112,7 +101,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
       {isClient ? (
         /* CLIENT VIEW: Accept/Reject + Menu */
         <div className="proposal-review-actions">
-          {proposal.status === 2 ? (
+          {accepted ? (
             <motion.button
               className="proposal-create-contract-btn"
               onClick={() => onCreateContract?.(proposal)}
@@ -122,7 +111,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
               <FileSignature size={15} />
               Create E-sign Contract
             </motion.button>
-          ) : (
+          ) : canClientReview ? (
             <>
               <motion.button
                 className="proposal-accept-btn"
@@ -143,6 +132,17 @@ export const ProposalCard: FC<ProposalCardProps> = ({
                 Reject
               </motion.button>
             </>
+          ) : null}
+          {onViewAnswers && (
+            <motion.button
+              className="proposal-view-btn"
+              onClick={() => onViewAnswers(proposal)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <FileSignature size={15} />
+              View Answers
+            </motion.button>
           )}
           <motion.button
             className="proposal-view-btn"

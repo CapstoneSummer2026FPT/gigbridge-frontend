@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { toast } from 'sonner';
 import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Bookmark, Share2, ChevronRight, Edit3, FileText } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 import type { Job } from '../../../types/models/Job';
 import type { User } from '../../../types/models/User';
 import { UserRole } from '../../../types/models/User';
+import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
+import { canEditProposal, canViewContract, canWithdrawProposal, getStatusClass, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import '../styles/job-detail-screen.css';
 
 type ManageJobPostState = {
@@ -58,6 +64,13 @@ export default function JobDetailScreen() {
   const [clientProfile, setClientProfile] = useState<any>(null);
   const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [myProposal, setMyProposal] = useState<ProposalDetailDto | null>(null);
+  const [proposalStatusLoading, setProposalStatusLoading] = useState(false);
+  const [proposalStatusError, setProposalStatusError] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [acceptedContractId, setAcceptedContractId] = useState<string | null>(null);
+  const [contractLookupLoading, setContractLookupLoading] = useState(false);
+  const [contractLookupMessage, setContractLookupMessage] = useState('');
 
   // Fetch job details from API
   useEffect(() => {
@@ -94,6 +107,73 @@ export default function JobDetailScreen() {
     setSavedJobs(stored ? JSON.parse(stored) : []);
   }, []);
 
+  const loadMyProposalStatus = useCallback(async () => {
+    if (!job?.id || role !== UserRole.Freelancer) {
+      setMyProposal(null);
+      return;
+    }
+
+    try {
+      setProposalStatusLoading(true);
+      setProposalStatusError('');
+
+      const response = await proposalGetAPI.getMyProposalByJobPost(job.id);
+
+      if (response.success && response.data) {
+        setMyProposal(response.data);
+        return;
+      }
+
+      setMyProposal(null);
+
+      if (response.statusCode !== 404) {
+        setProposalStatusError(response.message || 'Failed to load your proposal status.');
+      }
+    } catch (error) {
+      console.error('Failed to load proposal status:', error);
+      setProposalStatusError('Failed to load your proposal status.');
+      setMyProposal(null);
+    } finally {
+      setProposalStatusLoading(false);
+    }
+  }, [job?.id, role]);
+
+  useEffect(() => {
+    loadMyProposalStatus();
+  }, [loadMyProposalStatus]);
+
+  useEffect(() => {
+    const loadAcceptedContract = async () => {
+      if (!myProposal?.proposalId || !canViewContract(myProposal.status)) {
+        setAcceptedContractId(null);
+        setContractLookupMessage('');
+        return;
+      }
+
+      try {
+        setContractLookupLoading(true);
+        setContractLookupMessage('');
+        const response = await contractGetAPI.getContractByProposal(myProposal.proposalId);
+
+        if (response.success && response.data?.contractsId) {
+          setAcceptedContractId(response.data.contractsId);
+          return;
+        }
+
+        setAcceptedContractId(null);
+        setContractLookupMessage(response.message || 'Contract is not available yet.');
+      } catch (error) {
+        console.error('Failed to load accepted proposal contract:', error);
+        setAcceptedContractId(null);
+        setContractLookupMessage('Contract is not available yet.');
+      } finally {
+        setContractLookupLoading(false);
+      }
+    };
+
+    loadAcceptedContract();
+  }, [myProposal?.proposalId, myProposal?.status]);
+
   const toggleSavedJob = () => {
     if (!job) return;
     if (!user || role !== UserRole.Freelancer) {
@@ -105,6 +185,33 @@ export default function JobDetailScreen() {
       window.localStorage.setItem('gb_saved_jobs', JSON.stringify(next));
       return next;
     });
+  };
+
+  const handleWithdrawProposal = async () => {
+    if (!myProposal?.proposalId || !canWithdrawProposal(myProposal.status)) return;
+
+    const confirmed = window.confirm('Withdraw this proposal? You will not be able to apply again for this JobPost.');
+    if (!confirmed) return;
+
+    try {
+      setWithdrawing(true);
+      setProposalStatusError('');
+
+      const response = await proposalPutAPI.updateProposalStatus(myProposal.proposalId, ProposalStatus.Withdrawn);
+
+      if (!response.success) {
+        setProposalStatusError(response.message || 'Failed to withdraw proposal.');
+        return;
+      }
+
+      toast.success('Proposal withdrawn successfully.');
+      await loadMyProposalStatus();
+    } catch (error) {
+      console.error('Failed to withdraw proposal:', error);
+      setProposalStatusError('Failed to withdraw proposal.');
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   if (loading) {
@@ -345,12 +452,69 @@ export default function JobDetailScreen() {
                 <p className="text-xs job-detail-desc mb-4">
                   Submit a focused proposal for this JobPost. You can review the job details before sending.
                 </p>
-                <button 
-                  onClick={() => navigate(`/proposals/create/${job.id}`)}
-                  className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
-                  <FileText size={14} />
-                  Apply JobPost
-                </button>
+
+                {proposalStatusLoading && (
+                  <div className="job-detail-proposal-state">Checking your proposal status...</div>
+                )}
+
+                {proposalStatusError && (
+                  <div className="job-detail-proposal-error">{proposalStatusError}</div>
+                )}
+
+                {!proposalStatusLoading && myProposal && (
+                  <div className="job-detail-proposal-actions-stack">
+                    <span className={getStatusClass(myProposal.status)}>{getStatusLabel(myProposal.status)}</span>
+
+                    {canEditProposal(myProposal.status) && (
+                      <button
+                        onClick={() => navigate(`/proposals/${myProposal.proposalId}/edit`)}
+                        className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2"
+                      >
+                        <FileText size={14} />
+                        Continue Editing
+                      </button>
+                    )}
+
+                    {canWithdrawProposal(myProposal.status) && (
+                      <button
+                        onClick={handleWithdrawProposal}
+                        disabled={withdrawing}
+                        className="job-detail-secondary-action w-full justify-center"
+                      >
+                        {withdrawing ? 'Withdrawing...' : 'Withdraw'}
+                      </button>
+                    )}
+
+                    {canViewContract(myProposal.status) && (
+                      <>
+                        {contractLookupLoading && (
+                          <div className="job-detail-proposal-state">Checking contract...</div>
+                        )}
+                        {!contractLookupLoading && acceptedContractId && (
+                          <button
+                            onClick={() => navigate(`/contracts/${acceptedContractId}`)}
+                            className="job-detail-primary-action w-full justify-center"
+                          >
+                            <CheckCircle size={14} />
+                            View Contract
+                          </button>
+                        )}
+                        {!contractLookupLoading && !acceptedContractId && contractLookupMessage && (
+                          <div className="job-detail-proposal-state">{contractLookupMessage}</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {!proposalStatusLoading && !myProposal && (
+                  <button
+                    onClick={() => navigate(`/proposals/create/${job.id}`)}
+                    className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
+                    <FileText size={14} />
+                    Apply JobPost
+                  </button>
+                )}
               </div>
             )}
           </div>

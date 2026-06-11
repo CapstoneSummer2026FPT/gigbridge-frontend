@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router';
-import { BarChart2, Briefcase, CheckCircle, Clock, Eye, FileText } from 'lucide-react';
-import { ProposalCard } from './ProposalCard';
+import { BarChart2, Briefcase, CheckCircle, Clock, Edit3, Eye, FileText, XCircle } from 'lucide-react';
 import type { JobProposalGroup, ProposalDetailMode, ProposalStatusFilter, ProposalViewModel } from '../types';
-import { getStatusLabel, getStatusClass } from '../utils/statusHelpers';
+import { canEditProposal, canViewContract, canWithdrawProposal, getStatusLabel, getStatusClass } from '../utils/statusHelpers';
 
 interface FreelancerProposalViewProps {
   loading: boolean;
@@ -11,7 +10,10 @@ interface FreelancerProposalViewProps {
   jobGroups: JobProposalGroup[];
   onStatusFilterChange: (status: ProposalStatusFilter) => void;
   onViewDetail: (proposal: ProposalViewModel, mode: ProposalDetailMode) => void;
-  onCreateContract: (proposal: ProposalViewModel) => void;
+  onEditDraft: (proposal: ProposalViewModel) => void;
+  onViewAnswers: (proposal: ProposalViewModel) => void;
+  onWithdraw: (proposal: ProposalViewModel) => void;
+  onViewContract: (proposal: ProposalViewModel) => void;
   onCompetitionMatrix: (job: JobProposalGroup) => void;
 }
 
@@ -22,7 +24,10 @@ export function FreelancerProposalView({
   jobGroups,
   onStatusFilterChange,
   onViewDetail,
-  onCreateContract,
+  onEditDraft,
+  onViewAnswers,
+  onWithdraw,
+  onViewContract,
   onCompetitionMatrix,
 }: FreelancerProposalViewProps) {
   const navigate = useNavigate();
@@ -40,17 +45,18 @@ export function FreelancerProposalView({
       <div className="freelancer-proposals-toolbar">
         <div>
           <h2>My Proposals & Applications</h2>
-          <p>Sorted by submitted date, newest first. Accepted proposals link to their contract.</p>
+          <p>Sorted by submitted date, newest first. Draft proposals stay editable.</p>
         </div>
         <label>
           <span>Filter by status</span>
           <select value={statusFilter} onChange={event => onStatusFilterChange(event.target.value as ProposalStatusFilter)}>
             <option value="all">All statuses</option>
-            <option value="0">Pending</option>
-            <option value="1">Shortlisted</option>
-            <option value="2">Accepted</option>
-            <option value="3">Rejected</option>
-            <option value="4">Withdrawn</option>
+            <option value="0">Draft</option>
+            <option value="1">Pending</option>
+            <option value="2">Shortlisted</option>
+            <option value="3">Accepted</option>
+            <option value="4">Rejected</option>
+            <option value="5">Withdrawn</option>
           </select>
         </label>
       </div>
@@ -69,8 +75,10 @@ export function FreelancerProposalView({
       ) : (
         <div className="freelancer-proposal-list">
           {sortedProposals.map(proposal => {
-            const accepted = getStatusLabel(proposal.status) === 'Accepted';
             const relatedJob = jobGroups.find(group => group.jobPostsId === proposal.jobPostsId);
+            const editable = canEditProposal(proposal.status);
+            const withdrawable = canWithdrawProposal(proposal.status);
+            const contractVisible = canViewContract(proposal.status);
 
             return (
               <article key={proposal.proposalsId} className="freelancer-proposal-card">
@@ -115,8 +123,28 @@ export function FreelancerProposalView({
                     <FileText size={15} />
                     Proposal Details
                   </button>
-                  {accepted && (
-                    <button className="proposal-accepted-contract-btn" onClick={() => navigate('/contracts')}>
+
+                  {editable ? (
+                    <button className="proposal-view-btn" onClick={() => onEditDraft(proposal)}>
+                      <Edit3 size={15} />
+                      Edit Question
+                    </button>
+                  ) : (
+                    <button className="proposal-view-btn" onClick={() => onViewAnswers(proposal)}>
+                      <FileText size={15} />
+                      View Question
+                    </button>
+                  )}
+
+                  {withdrawable && (
+                    <button className="proposal-withdraw-btn" onClick={() => onWithdraw(proposal)}>
+                      <XCircle size={15} />
+                      Withdraw
+                    </button>
+                  )}
+
+                  {contractVisible && (
+                    <button className="proposal-accepted-contract-btn" onClick={() => onViewContract(proposal)}>
                       <CheckCircle size={15} />
                       View Contract
                     </button>

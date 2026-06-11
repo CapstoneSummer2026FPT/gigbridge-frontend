@@ -21,6 +21,8 @@ import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfi
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
 import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
 import CreateProposalScreen from '../features/proposals/screens/CreateProposalScreen';
+import ScreenProposalAnswerQuestion from '../features/proposals/screens/ScreenProposalAnswerQuestion';
+import ViewProposalAnswersScreen from '../features/proposals/screens/ViewProposalAnswersScreen';
 import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen';
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
 import AIAssistantScreen from '../features/ai-assistant/screens/AIAssistantScreen';
@@ -47,6 +49,7 @@ import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
+import ViewContractDetailsScreen from '../features/contracts/screens/ViewContractDetailsScreen';
 
 // Import router styles
 import './styles/router.css';
@@ -129,6 +132,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
+      { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
 
       // Profiles - requires authentication
@@ -138,6 +142,12 @@ export const router = createBrowserRouter([
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
       { path: 'proposals/create/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'proposals/:proposalId/edit', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'proposals/create/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ScreenProposalAnswerQuestion /></ProtectedRoute> },
+      { path: 'proposals/:proposalId/answers', element: <ProtectedRoute requireAuth requireSetup><ViewProposalAnswersScreen /></ProtectedRoute> },
+
+      // Contracts - requires authentication and setup
+      { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
 
       // Workspace - requires authentication and setup
       { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },

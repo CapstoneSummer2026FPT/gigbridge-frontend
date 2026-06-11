@@ -1,71 +1,151 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
-import { ArrowLeft, Briefcase, Calendar, DollarSign, Send, Timer } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, DollarSign, FileText, Send, Timer } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { jobGetAPI, jobQuestionAPI } from '../../../api/jobAPI';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
+import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
 import type { Job } from '../../../types/models/Job';
+import {
+  ProposalStatus,
+  type ProposalDetailDto,
+} from '../../../types/models/Proposal';
+import {
+  buildProposalPayload,
+  buildProposedDuration,
+  durationUnits,
+  parseProposedDuration,
+  type DurationUnit,
+  type ProposalFormState,
+} from '../utils/proposalDraft';
+import { getStatusLabel } from '../utils/statusHelpers';
 import '../styles/create-proposal-screen.css';
 
-type ProposalForm = {
-  coverLetter: string;
-  proposedRate: string;
-  proposedDuration: string;
-};
-
-const initialForm: ProposalForm = {
+const initialForm: ProposalFormState = {
   coverLetter: '',
   proposedRate: '',
-  proposedDuration: '',
+  durationValue: '',
+  durationUnit: 'week',
 };
 
 export default function CreateProposalScreen() {
-  const { jobPostId } = useParams<{ jobPostId: string }>();
+  const { jobPostId, proposalId } = useParams<{ jobPostId?: string; proposalId?: string }>();
   const navigate = useNavigate();
+  const isEditing = Boolean(proposalId);
 
   const [job, setJob] = useState<Job | null>(null);
-  const [form, setForm] = useState<ProposalForm>(initialForm);
+  const [proposal, setProposal] = useState<ProposalDetailDto | null>(null);
+  const [existingNonDraftProposal, setExistingNonDraftProposal] = useState<ProposalDetailDto | null>(null);
+  const [form, setForm] = useState<ProposalFormState>(initialForm);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [checkingQuestions, setCheckingQuestions] = useState(false);
   const [error, setError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ProposalForm | 'jobPostId', string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof ProposalFormState | 'jobPostId', string>>>({});
+
+  const currentJobPostId = jobPostId || proposal?.jobPostId || '';
 
   useEffect(() => {
-    const fetchJob = async () => {
-      if (!jobPostId) {
-        setError('Invalid job post.');
-        setLoading(false);
-        return;
-      }
+    const loadProposalForEdit = async () => {
+      if (!proposalId) return;
 
       try {
         setLoading(true);
         setError('');
 
-        const response = await jobGetAPI.getJobById(jobPostId);
-        setJob(response.job);
-      } catch (err) {
-        console.error('Failed to load job for proposal:', err);
-        setError('Failed to load job details.');
+        const response = await proposalGetAPI.getProposalDetail(proposalId);
+
+        if (!response.success || !response.data) {
+          setError(response.message || 'Failed to load proposal.');
+          return;
+        }
+
+        const detail = response.data;
+        setProposal(detail);
+
+        if (Number(detail.status) !== ProposalStatus.Draft) {
+          setExistingNonDraftProposal(detail);
+        }
+
+        const duration = parseProposedDuration(detail.proposedDuration);
+        setForm({
+          coverLetter: detail.coverLetter || '',
+          proposedRate: detail.proposedRate ? String(detail.proposedRate) : '',
+          durationValue: duration.durationValue,
+          durationUnit: duration.durationUnit,
+        });
+
+        const jobResponse = await jobGetAPI.getJobById(detail.jobPostId);
+        setJob(jobResponse.job);
+      } catch (loadError) {
+        console.error('Failed to load draft proposal:', loadError);
+        setError('Failed to load proposal.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchJob();
-  }, [jobPostId]);
+    const loadProposalForCreate = async () => {
+      if (!jobPostId) return;
+
+      try {
+        setLoading(true);
+        setError('');
+
+        const jobResponse = await jobGetAPI.getJobById(jobPostId);
+        setJob(jobResponse.job);
+
+        const existingResponse = await proposalGetAPI.getMyProposalByJobPost(jobPostId);
+        if (existingResponse.success && existingResponse.data) {
+          if (Number(existingResponse.data.status) === ProposalStatus.Draft) {
+            navigate(`/proposals/${existingResponse.data.proposalId}/edit`, { replace: true });
+            return;
+          }
+
+          setExistingNonDraftProposal(existingResponse.data);
+        } else if (existingResponse.statusCode !== 404) {
+          setError(existingResponse.message || 'Failed to check existing proposal status.');
+        }
+      } catch (loadError) {
+        console.error('Failed to load proposal form:', loadError);
+        setError('Failed to load proposal form.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (proposalId) {
+      loadProposalForEdit();
+      return;
+    }
+
+    if (jobPostId) {
+      loadProposalForCreate();
+      return;
+    }
+
+    setError('Invalid proposal route.');
+    setLoading(false);
+  }, [jobPostId, navigate, proposalId]);
 
   const ratePreview = useMemo(() => {
     const value = Number(form.proposedRate);
     return value > 0 ? `$${value.toLocaleString()}` : 'Not set';
   }, [form.proposedRate]);
 
-  const validate = () => {
-    const nextErrors: Partial<Record<keyof ProposalForm | 'jobPostId', string>> = {};
-    const proposedRate = Number(form.proposedRate);
+  const durationPreview = useMemo(() => {
+    if (!form.durationValue) return 'Not set';
+    return buildProposedDuration(form.durationValue, form.durationUnit);
+  }, [form.durationUnit, form.durationValue]);
 
-    if (!jobPostId) {
+  const validate = () => {
+    const nextErrors: Partial<Record<keyof ProposalFormState | 'jobPostId', string>> = {};
+    const proposedRate = Number(form.proposedRate);
+    const durationValue = Number(form.durationValue);
+
+    if (!currentJobPostId) {
       nextErrors.jobPostId = 'Job post is required.';
     }
 
@@ -81,53 +161,116 @@ export default function CreateProposalScreen() {
       nextErrors.proposedRate = 'Proposed rate must be greater than 0.';
     }
 
-    if (!form.proposedDuration.trim()) {
-      nextErrors.proposedDuration = 'Proposed duration is required.';
+    if (!form.durationValue.trim()) {
+      nextErrors.durationValue = 'Proposed duration is required.';
+    } else if (!Number.isFinite(durationValue) || durationValue <= 0) {
+      nextErrors.durationValue = 'Duration must be greater than 0.';
     }
 
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
-    setError('');
+  const saveProposal = async (status: ProposalStatus) => {
+    if (!currentJobPostId) {
+      throw new Error('Job post is required.');
+    }
 
-    if (!validate() || !jobPostId) return;
+    const payload = buildProposalPayload(currentJobPostId, form, status);
+
+    if (proposalId || proposal?.proposalId) {
+      const id = proposalId || proposal?.proposalId || '';
+      const response = await proposalPutAPI.updateProposal(id, {
+        coverLetter: payload.coverLetter,
+        proposedRate: payload.proposedRate,
+        proposedDuration: payload.proposedDuration,
+        status,
+      });
+
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to update proposal.');
+      }
+
+      return id;
+    }
+
+    const response = await proposalPostAPI.createProposal(payload);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to create proposal.');
+    }
+
+    return response.data;
+  };
+
+  const handleSaveDraft = async () => {
+    setError('');
+    if (!validate()) return;
 
     try {
       setSubmitting(true);
-
-      const response = await proposalPostAPI.createProposal({
-        jobPostsId: jobPostId,
-        coverLetter: form.coverLetter.trim(),
-        proposedRate: Number(form.proposedRate),
-        proposedDuration: form.proposedDuration.trim(),
-      });
-
-      if (!response.success || !response.data) {
-        setError(response.message || 'Failed to submit proposal.');
-        return;
-      }
-
-      toast.success('Proposal submitted successfully.');
+      await saveProposal(ProposalStatus.Draft);
+      toast.success('Proposal draft saved successfully.');
       navigate('/proposals', {
-        state: {
-          successMessage: 'Proposal submitted successfully.',
-        },
+        state: { successMessage: 'Proposal draft saved successfully.' },
       });
-    } catch (err) {
-      console.error('Failed to submit proposal:', err);
-      setError('Failed to submit proposal.');
+    } catch (saveError) {
+      console.error('Failed to save proposal draft:', saveError);
+      setError(saveError instanceof Error ? saveError.message : 'Failed to save proposal draft.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleNext = async () => {
+    setError('');
+    if (!validate() || !currentJobPostId) return;
+
+    try {
+      setCheckingQuestions(true);
+
+      const questionsResponse = await jobQuestionAPI.getJobPostQuestions(currentJobPostId);
+
+      if (!questionsResponse.success) {
+        setError(questionsResponse.message || 'Failed to load JobPost questions.');
+        return;
+      }
+
+      const questions = questionsResponse.data || [];
+
+      if (questions.length === 0) {
+        await saveProposal(ProposalStatus.Pending);
+        toast.success('Proposal submitted successfully.');
+        navigate('/proposals', {
+          state: { successMessage: 'Proposal submitted successfully.' },
+        });
+        return;
+      }
+
+      navigate(`/proposals/create/${currentJobPostId}/questions`, {
+        state: {
+          jobPostId: currentJobPostId,
+          proposalId: proposalId || proposal?.proposalId,
+          form,
+        },
+      });
+    } catch (nextError) {
+      console.error('Failed to continue proposal flow:', nextError);
+      setError(nextError instanceof Error ? nextError.message : 'Failed to continue proposal flow.');
+    } finally {
+      setCheckingQuestions(false);
+    }
+  };
+
+  if (!jobPostId && !proposalId) {
+    return <Navigate to="/jobs/browse" replace />;
+  }
+
   if (loading) {
     return (
       <AppLayout>
         <div className="create-proposal-page">
-          <div className="create-proposal-loading glass-card">Loading job details...</div>
+          <div className="create-proposal-loading glass-card">Loading proposal form...</div>
         </div>
       </AppLayout>
     );
@@ -141,8 +284,8 @@ export default function CreateProposalScreen() {
             <ArrowLeft size={16} />
           </button>
           <div>
-            <p>Submit Proposal</p>
-            <h1>{job?.title || 'Create Proposal'}</h1>
+            <p>{isEditing ? 'Edit Draft Proposal' : 'Create Proposal'}</p>
+            <h1>{job?.title || proposal?.jobPostTitle || 'Proposal Details'}</h1>
           </div>
         </div>
 
@@ -152,12 +295,19 @@ export default function CreateProposalScreen() {
               <Send size={18} />
               <div>
                 <h2>Proposal Details</h2>
-                <p>Write a focused application for this job.</p>
+                <p>Write a focused application for this JobPost.</p>
               </div>
             </div>
 
             {error && <div className="create-proposal-alert">{error}</div>}
             {fieldErrors.jobPostId && <div className="create-proposal-alert">{fieldErrors.jobPostId}</div>}
+
+            {existingNonDraftProposal && (
+              <div className="create-proposal-alert">
+                You already have a {getStatusLabel(existingNonDraftProposal.status)} proposal for this JobPost.
+                Duplicate proposals are not allowed.
+              </div>
+            )}
 
             <label className="create-proposal-field">
               <span>Cover Letter *</span>
@@ -167,6 +317,7 @@ export default function CreateProposalScreen() {
                 placeholder="Explain your relevant experience, how you will approach the work, and why you are a good fit..."
                 rows={12}
                 className="input-gb"
+                disabled={Boolean(existingNonDraftProposal)}
               />
               <small className={fieldErrors.coverLetter ? 'error' : ''}>
                 {fieldErrors.coverLetter || `${form.coverLetter.trim().length}/50 minimum characters`}
@@ -184,20 +335,36 @@ export default function CreateProposalScreen() {
                   onChange={event => setForm(prev => ({ ...prev, proposedRate: event.target.value }))}
                   placeholder="1200"
                   className="input-gb"
+                  disabled={Boolean(existingNonDraftProposal)}
                 />
                 {fieldErrors.proposedRate && <small className="error">{fieldErrors.proposedRate}</small>}
               </label>
 
               <label className="create-proposal-field">
                 <span>Proposed Duration *</span>
-                <input
-                  type="text"
-                  value={form.proposedDuration}
-                  onChange={event => setForm(prev => ({ ...prev, proposedDuration: event.target.value }))}
-                  placeholder="e.g. 3 weeks"
-                  className="input-gb"
-                />
-                {fieldErrors.proposedDuration && <small className="error">{fieldErrors.proposedDuration}</small>}
+                <div className="create-proposal-duration-row">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={form.durationValue}
+                    onChange={event => setForm(prev => ({ ...prev, durationValue: event.target.value }))}
+                    placeholder="3"
+                    className="input-gb"
+                    disabled={Boolean(existingNonDraftProposal)}
+                  />
+                  <select
+                    value={form.durationUnit}
+                    onChange={event => setForm(prev => ({ ...prev, durationUnit: event.target.value as DurationUnit }))}
+                    className="input-gb"
+                    disabled={Boolean(existingNonDraftProposal)}
+                  >
+                    {durationUnits.map(unit => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+                {fieldErrors.durationValue && <small className="error">{fieldErrors.durationValue}</small>}
               </label>
             </div>
 
@@ -205,17 +372,25 @@ export default function CreateProposalScreen() {
               <button
                 type="button"
                 className="create-proposal-secondary"
-                onClick={() => navigate(jobPostId ? `/jobs/${jobPostId}` : '/jobs/browse')}
+                onClick={() => navigate(currentJobPostId ? `/jobs/${currentJobPostId}` : '/jobs/browse')}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn-cyan create-proposal-submit"
-                onClick={handleSubmit}
-                disabled={submitting}
+                className="create-proposal-secondary"
+                onClick={handleSaveDraft}
+                disabled={submitting || checkingQuestions || Boolean(existingNonDraftProposal)}
               >
-                {submitting ? 'Submitting Proposal...' : 'Submit Proposal'}
+                {submitting ? 'Saving Draft...' : 'Save as Draft'}
+              </button>
+              <button
+                type="button"
+                className="btn-cyan create-proposal-submit"
+                onClick={handleNext}
+                disabled={submitting || checkingQuestions || Boolean(existingNonDraftProposal)}
+              >
+                {checkingQuestions ? 'Checking Questions...' : 'Next'}
               </button>
             </div>
           </section>
@@ -246,7 +421,7 @@ export default function CreateProposalScreen() {
             </div>
             <div className="create-proposal-summary-row">
               <span>Duration</span>
-              <strong>{form.proposedDuration || 'Not set'}</strong>
+              <strong>{durationPreview}</strong>
             </div>
 
             <div className="create-proposal-summary-icons">
@@ -256,12 +431,18 @@ export default function CreateProposalScreen() {
               </div>
               <div>
                 <Timer size={16} />
-                <span>{form.proposedDuration || 'Duration'}</span>
+                <span>{durationPreview}</span>
               </div>
               <div>
                 <Calendar size={16} />
                 <span>{job?.deadline || 'Flexible'}</span>
               </div>
+              {proposal?.proposalId && (
+                <div>
+                  <FileText size={16} />
+                  <span>Draft {proposal.proposalId.substring(0, 8)}...</span>
+                </div>
+              )}
             </div>
 
             {Boolean(job?.skills.length) && (

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { useLocation, useSearchParams } from 'react-router';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { BarChart2, X, Users } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
-import type { ProposalDto } from '../../../types/models/Proposal';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
 import { ProposalCard, ProposalDetailModal, CreateContractModal, type ContractData, ProposalToolbar, PaginationToolbar, FreelancerProposalView, ClientProposalSidebar } from '../components';
 import type { JobProposalGroup, ProposalDetailMode, ProposalStatusValue, ProposalStatusFilter, ProposalSortBy, ProposalViewModel } from '../types';
-import { getStatusLabel } from '../utils/statusHelpers';
+import { canViewContract, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
 import '../styles/proposals-inbox-screen.css';
 
 const toProposalViewModel = (proposal: ProposalDto): ProposalViewModel => ({
@@ -20,6 +21,7 @@ const toProposalViewModel = (proposal: ProposalDto): ProposalViewModel => ({
 export default function ProposalsInboxScreen() {
   const { user, role } = useApp();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [proposals, setProposals] = useState<ProposalViewModel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,11 +254,47 @@ export default function ProposalsInboxScreen() {
   };
 
   const handleAccept = (proposalId: string) => {
-    updateProposalStatus(proposalId, 2);
+    updateProposalStatus(proposalId, ProposalStatus.Accepted);
   };
 
   const handleReject = (proposalId: string) => {
-    updateProposalStatus(proposalId, 3);
+    updateProposalStatus(proposalId, ProposalStatus.Rejected);
+  };
+
+  const handleWithdraw = async (proposal: ProposalViewModel) => {
+    if (!canWithdrawProposal(proposal.status)) return;
+
+    const confirmed = window.confirm('Withdraw this proposal?');
+    if (!confirmed) return;
+
+    await updateProposalStatus(proposal.proposalsId, ProposalStatus.Withdrawn);
+  };
+
+  const handleEditDraft = (proposal: ProposalViewModel) => {
+    navigate(`/proposals/${proposal.proposalsId}/edit`);
+  };
+
+  const handleViewAnswers = (proposal: ProposalViewModel) => {
+    navigate(`/proposals/${proposal.proposalsId}/answers`);
+  };
+
+  const handleViewContract = async (proposal: ProposalViewModel) => {
+    if (!canViewContract(proposal.status)) return;
+
+    try {
+      setError('');
+      const response = await contractGetAPI.getContractByProposal(proposal.proposalsId);
+
+      if (response.success && response.data?.contractsId) {
+        navigate(`/contracts/${response.data.contractsId}`);
+        return;
+      }
+
+      setError(response.message || 'Contract is not available yet for this accepted proposal.');
+    } catch (error) {
+      console.error('Failed to load proposal contract:', error);
+      setError('Contract is not available yet for this accepted proposal.');
+    }
   };
 
   const handleCreateContract = (proposal: ProposalViewModel) => {
@@ -296,7 +334,10 @@ export default function ProposalsInboxScreen() {
             jobGroups={jobGroups}
             onStatusFilterChange={setProposalStatusFilter}
             onViewDetail={handleViewDetail}
-            onCreateContract={handleCreateContract}
+            onEditDraft={handleEditDraft}
+            onViewAnswers={handleViewAnswers}
+            onWithdraw={handleWithdraw}
+            onViewContract={handleViewContract}
             onCompetitionMatrix={openCompetitionMatrix}
           />
         )}
@@ -352,6 +393,7 @@ export default function ProposalsInboxScreen() {
                       onViewDetail={handleViewDetail}
                       onAccept={handleAccept}
                       onReject={handleReject}
+                      onViewAnswers={handleViewAnswers}
                       onCreateContract={handleCreateContract}
                     />
                   ))}
