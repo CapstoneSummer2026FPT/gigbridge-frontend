@@ -280,7 +280,7 @@
   font-weight: 600;
 }
 
-/* Hourly Rate Display matching brand theme variables */
+/* Preferred pricing display matching brand theme variables */
 .freelancer-profile-rate-container {
   text-align: right;
   background: var(--gb-glass-bg);

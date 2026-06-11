@@ -175,7 +175,7 @@ export const generateContractHTML = (
               </div>
               <div class="detail-row">
                 <span class="detail-label">Contract Type:</span>
-                <span class="detail-value">${contract.paymentType === 0 ? 'Fixed Price' : 'Hourly Rate'}</span>
+                <span class="detail-value">Fixed Price</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Total Budget:</span>

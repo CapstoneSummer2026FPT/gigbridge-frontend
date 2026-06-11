@@ -27,8 +27,6 @@ export default function PostJobScreen() {
     skills: [] as string[],
     budgetMin: '',
     budgetMax: '',
-    jobType: 'fixed' as 'fixed' | 'hourly',
-    experienceLevel: 'intermediate' as 'entry' | 'intermediate' | 'expert',
     deadline: '',
     isRemote: true,
   });
@@ -182,14 +180,6 @@ export default function PostJobScreen() {
             {/* Budget */}
             <div className="glass-card p-5">
               <label className="text-primary text-sm font-semibold block mb-3">Budget</label>
-              <div className="flex gap-3 mb-4">
-                {['fixed', 'hourly'].map(type => (
-                  <button key={type} onClick={() => setForm({ ...form, jobType: type as 'fixed' | 'hourly' })}
-                    className={`budget-type-btn flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all ${form.jobType === type ? 'active' : ''}`}>
-                    {type === 'fixed' ? '💰 Fixed Price' : '⏱️ Hourly Rate'}
-                  </button>
-                ))}
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <input type="number" placeholder="Min" value={form.budgetMin}
@@ -226,25 +216,6 @@ export default function PostJobScreen() {
                     Onsite
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Experience Level */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">Experience Level</label>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { value: 'entry', label: 'Entry', sub: '$10–$40/hr', emoji: '🌱' },
-                  { value: 'intermediate', label: 'Mid-Level', sub: '$40–$80/hr', emoji: '⚡' },
-                  { value: 'expert', label: 'Expert', sub: '$80–$200/hr', emoji: '🚀' },
-                ].map(level => (
-                  <button key={level.value} onClick={() => setForm({ ...form, experienceLevel: level.value as any })}
-                    className={`experience-level-btn p-3 rounded-xl text-center transition-all ${form.experienceLevel === level.value ? 'active' : ''}`}>
-                    <span className="experience-level-emoji text-xl mb-1 block">{level.emoji}</span>
-                    <p className="text-primary text-sm font-medium">{level.label}</p>
-                    <p className="experience-level-sub text-xs">{level.sub}</p>
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -296,7 +267,7 @@ export default function PostJobScreen() {
                 {form.category && <span className="badge-cyan text-xs mb-3 inline-block">{form.category}</span>}
                 {form.budgetMin && (
                   <p className="preview-budget text-sm text-primary mb-2 font-medium">
-                    ${parseInt(form.budgetMin).toLocaleString()}–${parseInt(form.budgetMax || '0').toLocaleString()} · {form.jobType}
+                    ${parseInt(form.budgetMin).toLocaleString()}–${parseInt(form.budgetMax || '0').toLocaleString()} · Fixed
                   </p>
                 )}
                 <div className="flex flex-wrap gap-1 mb-3">
@@ -330,11 +301,11 @@ export default function PostJobScreen() {
 
             {/* Budget Estimator */}
             <div className="glass-card p-5">
-              <p className="text-primary text-sm font-semibold mb-3">💰 Market Rate</p>
+              <p className="text-primary text-sm font-semibold mb-3">💰 Market Range</p>
               {form.category ? (
                 <div>
                   <p className="market-rate-hint text-xs mb-2">Average for {form.category}:</p>
-                  <p className="market-rate-value text-xl font-black">$50–$120/hr</p>
+                  <p className="market-rate-value text-xl font-black">$1,000–$12,000/project</p>
                   <p className="market-rate-hint text-xs mt-1">Based on 2,847 recent projects</p>
                 </div>
               ) : (

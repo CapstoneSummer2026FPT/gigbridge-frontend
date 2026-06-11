@@ -15,12 +15,6 @@ type LegacyJobFilters = JobPostQueryParams & {
   aiRecommended?: boolean;
 };
 
-const experienceLevelMap: Record<number, Job['experienceLevel']> = {
-  0: 'entry',
-  1: 'intermediate',
-  2: 'expert',
-};
-
 const formatPostedAt = (createdAt?: string): string => {
   if (!createdAt) return '';
 
@@ -42,8 +36,7 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   skills: job.skillNames || [],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
-  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
-  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
+  jobType: 'fixed',
   status: 'open',
   proposalCount: 0,
   viewCount: 0,
@@ -61,9 +54,8 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   skills: job.skills?.map(skill => skill.skillName) || [],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
-  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
-  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
-  deadline: job.applicationDeadline ?? undefined,
+  jobType: 'fixed',
+  deadline: job.endDate ?? undefined,
   status: 'open',
   proposalCount: 0,
   viewCount: 0,

@@ -14,14 +14,12 @@ export async function getJobs(params?: {
   skills?: string[];
   minBudget?: number;
   maxBudget?: number;
-  experienceLevel?: string;
 }): Promise<Job[]> {
   const queryParams = new URLSearchParams();
   if (params?.category) queryParams.set('category', params.category);
   if (params?.skills) queryParams.set('skills', params.skills.join(','));
   if (params?.minBudget) queryParams.set('minBudget', params.minBudget.toString());
   if (params?.maxBudget) queryParams.set('maxBudget', params.maxBudget.toString());
-  if (params?.experienceLevel) queryParams.set('experienceLevel', params.experienceLevel);
 
   const response = await fetch(`${API_BASE}?${queryParams}`);
   if (!response.ok) throw new Error('Failed to fetch jobs');

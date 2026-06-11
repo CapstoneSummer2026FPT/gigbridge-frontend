@@ -11,11 +11,6 @@ export enum ContractStatus {
   PendingSignature = 4,
 }
 
-export enum PaymentType {
-  Fixed = 0,
-  Hourly = 1,
-}
-
 export enum MilestoneStatus {
   Pending = 0,
   Approved = 1,
@@ -35,7 +30,6 @@ export interface Contract {
   title: string;
   description?: string;
   total_budget: number;
-  payment_type: PaymentType;
   status: ContractStatus;
   start_date: string;
   end_date: string | null;
@@ -54,7 +48,6 @@ export interface ContractDto {
   title: string;
   description?: string;
   totalBudget: number;
-  paymentType: PaymentType;
   status: ContractStatus;
   startDate?: string;
   endDate?: string;
@@ -72,7 +65,6 @@ export interface CreateContractDto {
   title: string;
   description?: string;
   totalBudget: number;
-  paymentType: PaymentType;
   startDate?: string;
   endDate?: string;
 }
@@ -81,7 +73,6 @@ export interface UpdateContractDto {
   title?: string;
   description?: string;
   totalBudget?: number;
-  paymentType?: PaymentType;
   startDate?: string;
   endDate?: string;
   status?: ContractStatus;

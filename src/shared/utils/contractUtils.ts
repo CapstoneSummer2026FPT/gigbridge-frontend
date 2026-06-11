@@ -1,4 +1,4 @@
-import type { ContractStatus, PaymentType } from '../../types/models/Contract';
+import type { ContractStatus } from '../../types/models/Contract';
 import { MilestoneStatus } from '../../types/models/Contract';
 
 /**
@@ -29,17 +29,6 @@ export const getContractStatusClass = (status: ContractStatus | number): string 
     4: 'contract-status-pending-signature',
   };
   return `contract-status ${statusMap[status] || 'contract-status-unknown'}`;
-};
-
-/**
- * Get human-readable label for payment type
- */
-export const getPaymentTypeLabel = (paymentType: PaymentType | number): string => {
-  const typeMap: Record<number, string> = {
-    0: 'Fixed Price',
-    1: 'Hourly Rate',
-  };
-  return typeMap[paymentType] || 'Unknown';
 };
 
 /**
@@ -131,15 +120,13 @@ export const generateContractSummary = (data: {
   amount: number;
   startDate: string;
   endDate?: string;
-  paymentType: PaymentType | number;
 }): string => {
   const duration = data.endDate ? calculateContractDuration(data.startDate, data.endDate) : 0;
-  const paymentLabel = getPaymentTypeLabel(data.paymentType);
 
   return `Contract: ${data.title}
 Client: ${data.clientName}
 Freelancer: ${data.freelancerName}
-Amount: ${formatContractAmount(data.amount)} (${paymentLabel})
+Amount: ${formatContractAmount(data.amount)} (Fixed Price)
 Duration: ${duration} days
 Start Date: ${formatContractDate(data.startDate)}
 ${data.endDate ? `End Date: ${formatContractDate(data.endDate)}` : ''}`;

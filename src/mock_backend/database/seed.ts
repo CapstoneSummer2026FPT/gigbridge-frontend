@@ -3,7 +3,7 @@ import type { Job, Proposal, Review } from '../types/legacy';
 import type { Project } from '../../types/models/Project';
 import type { Message, Notification } from '../../types/models/Message';
 import { UserRole } from '../../types/models/User';
-import { FreelancerProfile as FreelancerProfileType, ClientProfile as ClientProfileType, ExperienceLevel, Availability, CompanySize } from '../../types/models/Profile';
+import { FreelancerProfile as FreelancerProfileType, ClientProfile as ClientProfileType, Availability, CompanySize } from '../../types/models/Profile';
 
 // ─── Demo Users for Quick Login ───────────────────────────────────────
 export const DEMO_USERS: User[] = [
@@ -181,8 +181,6 @@ export const SEED_FREELANCER_PROFILES: FreelancerProfileType[] = [
     user_id: 'demo_freelancer_001',
     title: 'Full-Stack Developer',
     bio: 'Experienced developer with 5+ years building modern web applications',
-    hourly_rate: 75,
-    experience_level: ExperienceLevel.Expert,
     availability: Availability.Available,
     location: 'San Francisco, CA',
     profile_completion_score: 95,
@@ -195,8 +193,6 @@ export const SEED_FREELANCER_PROFILES: FreelancerProfileType[] = [
     user_id: 'u_freelancer_1',
     title: 'Senior Full-Stack React Developer',
     bio: 'I build blazing-fast, scalable web applications with React, Next.js, and Node.js. With 7+ years of experience, I specialize in e-commerce platforms, SaaS products, and AI-powered applications.',
-    hourly_rate: 95,
-    experience_level: ExperienceLevel.Expert,
     availability: Availability.Available,
     location: 'San Francisco, CA',
     profile_completion_score: 94,
@@ -209,8 +205,6 @@ export const SEED_FREELANCER_PROFILES: FreelancerProfileType[] = [
     user_id: 'u_freelancer_2',
     title: 'UI/UX Designer & Motion Expert',
     bio: 'Award-winning UI/UX designer with a passion for creating beautiful, user-centric digital experiences. I combine strategic thinking with exceptional visual design.',
-    hourly_rate: 80,
-    experience_level: ExperienceLevel.Expert,
     availability: Availability.Busy,
     location: 'New York, NY',
     profile_completion_score: 98,
@@ -223,8 +217,6 @@ export const SEED_FREELANCER_PROFILES: FreelancerProfileType[] = [
     user_id: 'u_freelancer_3',
     title: 'Data Scientist & ML Engineer',
     bio: 'Machine learning specialist with expertise in NLP, computer vision, and predictive analytics. I transform raw data into actionable insights.',
-    hourly_rate: 110,
-    experience_level: ExperienceLevel.Intermediate,
     availability: Availability.Available,
     location: 'Austin, TX',
     profile_completion_score: 76,
@@ -285,7 +277,6 @@ export const SEED_JOBS: Job[] = [
     budgetMin: 5000,
     budgetMax: 8000,
     jobType: 'fixed',
-    experienceLevel: 'expert',
     deadline: '2026-05-15',
     status: 'open',
     proposalCount: 14,
@@ -306,7 +297,6 @@ export const SEED_JOBS: Job[] = [
     budgetMin: 3000,
     budgetMax: 5000,
     jobType: 'fixed',
-    experienceLevel: 'intermediate',
     deadline: '2026-05-30',
     status: 'open',
     proposalCount: 8,
@@ -327,7 +317,6 @@ export const SEED_JOBS: Job[] = [
     budgetMin: 6000,
     budgetMax: 10000,
     jobType: 'fixed',
-    experienceLevel: 'expert',
     deadline: '2026-06-01',
     status: 'open',
     proposalCount: 5,
@@ -347,8 +336,7 @@ export const SEED_JOBS: Job[] = [
     skills: ['React', 'Node.js', 'WebSocket', 'PostgreSQL', 'D3.js'],
     budgetMin: 100,
     budgetMax: 150,
-    jobType: 'hourly',
-    experienceLevel: 'intermediate',
+    jobType: 'fixed',
     status: 'open',
     proposalCount: 22,
     viewCount: 495,
@@ -368,7 +356,6 @@ export const SEED_JOBS: Job[] = [
     budgetMin: 4000,
     budgetMax: 7000,
     jobType: 'fixed',
-    experienceLevel: 'expert',
     status: 'open',
     proposalCount: 6,
     viewCount: 134,
@@ -387,8 +374,7 @@ export const SEED_JOBS: Job[] = [
     skills: ['Technical Writing', 'Markdown', 'API Documentation', 'SEO'],
     budgetMin: 50,
     budgetMax: 80,
-    jobType: 'hourly',
-    experienceLevel: 'intermediate',
+    jobType: 'fixed',
     status: 'open',
     proposalCount: 31,
     viewCount: 612,
