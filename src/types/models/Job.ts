@@ -2,11 +2,6 @@
  * Job Models - JOB_POSTS, JOB_POST_SKILLS, JOB_POST_ATTACHMENTS tables
  */
 
-export enum BudgetType {
-  Fixed = 0,
-  Hourly = 1,
-}
-
 export enum JobStatus {
   Draft = 0,
   Open = 1,
@@ -20,7 +15,6 @@ export interface JobPost {
   title: string;
   description: string;
   category_id: string;
-  budget_type: BudgetType;
   budget_min: number;
   budget_max: number;
   currency: string;
@@ -55,8 +49,7 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed' | 'hourly';
-  experienceLevel: 'entry' | 'intermediate' | 'expert';
+  jobType: 'fixed';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
   statusValue?: JobStatus | number | null;
@@ -81,10 +74,8 @@ export interface JobPostSummaryDto {
   jobPostsId: string;
   title: string;
   descriptionPreview: string;
-  budgetType: BudgetType;
   budgetMin?: number | null;
   budgetMax?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   createdAt: string;
   skillNames: string[];
@@ -108,17 +99,14 @@ export interface JobPostDetailDto {
   clientProfilesId: string;
   title: string;
   description: string;
-  budgetType: BudgetType;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
   endDate?: string | null;
-  applicationDeadline?: string | null;
   createdAt: string;
   status?: JobStatus | number | null;
   visibility?: number | null;
@@ -130,18 +118,15 @@ export interface CreateJobPostRequest {
   title: string;
   description: string;
   categoryId?: string | null;
-  budgetType: BudgetType | number;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
   endDate?: string | null;
-  applicationDeadline?: string | null;
   skillIds: string[];
 }
 

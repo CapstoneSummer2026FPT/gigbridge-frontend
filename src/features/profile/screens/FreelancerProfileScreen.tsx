@@ -246,11 +246,11 @@ export default function FreelancerProfileScreen() {
                 </div>
               </div>
 
-              {/* Hourly Rate - Right Side */}
+              {/* Preferred Pricing - Right Side */}
               <div className="freelancer-profile-rate-container">
-                <p>Hourly Rate</p>
-                <p>${profile?.hourly_rate || 75}<span>/hr</span></p>
-                <p>in VND</p>
+                <p>Preferred Pricing</p>
+                <p>Fixed<span> price</span></p>
+                <p>project based</p>
               </div>
             </div>
           </div>

@@ -63,11 +63,11 @@ export const ProposalCard: FC<ProposalCardProps> = ({
       {/* Cover Letter */}
       <p className="proposal-cover-letter">{proposal.coverLetter || 'No cover letter provided.'}</p>
 
-      {/* Metadata: Rate, Duration, AI Flag */}
+      {/* Metadata: Budget, Duration, AI Flag */}
       <div className="proposal-review-meta">
         <div>
           <DollarSign size={14} />
-          <span>${(proposal.proposedRate || 0).toLocaleString()}/project</span>
+          <span>${(proposal.proposedBudget || 0).toLocaleString()}/project</span>
         </div>
         <div>
           <Clock size={14} />

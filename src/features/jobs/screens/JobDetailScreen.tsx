@@ -21,7 +21,6 @@ type ManageJobPostState = {
   description: string;
   status: 'Draft' | 'Open' | 'Closed' | 'Cancelled';
   budget: number;
-  budgetType: 'Fixed' | 'Hourly';
   duration: string;
   skills: string[];
   proposals: number;
@@ -37,10 +36,9 @@ const toJobFromManageState = (job: ManageJobPostState): Job => ({
   description: job.description,
   category: 'All',
   skills: job.skills,
-  budgetMin: job.budgetType === 'Hourly' ? job.budget : job.budget,
-  budgetMax: job.budgetType === 'Hourly' ? job.budget : job.budget,
-  jobType: job.budgetType === 'Hourly' ? 'hourly' : 'fixed',
-  experienceLevel: 'intermediate',
+  budgetMin: job.budget,
+  budgetMax: job.budget,
+  jobType: 'fixed',
   status: job.status.toLowerCase() === 'cancelled' ? 'closed' : job.status.toLowerCase() as Job['status'],
   proposalCount: job.proposals,
   viewCount: 0,
@@ -293,8 +291,7 @@ export default function JobDetailScreen() {
               <div className="job-detail-quick-stats">
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} - $${job.budgetMax.toLocaleString()}` },
-                  { label: 'Work type', value: job.jobType === 'fixed' ? 'Fixed Price' : 'Hourly Rate' },
-                  { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
+                  { label: 'Work type', value: 'Fixed Price' },
                   { label: 'Deadline', value: job.deadline || 'Flexible' },
                 ].map(item => (
                   <div key={item.label} className="job-detail-stat-card">
@@ -320,7 +317,7 @@ export default function JobDetailScreen() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-3">
-                    {['Skills Match', 'Experience Fit', 'Budget Align'].map((factor, i) => (
+                    {['Skills Match', 'Profile Fit', 'Budget Align'].map((factor, i) => (
                       <div key={factor} className="text-center">
                         <div className="progress-bar-gb mb-1">
                           <div className="progress-bar-gb-fill" style={{ width: `${[92, 88, 95][i]}%` }} />
@@ -431,8 +428,7 @@ export default function JobDetailScreen() {
               <div className="space-y-3">
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} – $${job.budgetMax.toLocaleString()}` },
-                  { label: 'Type', value: job.jobType === 'fixed' ? 'Fixed Price' : 'Hourly Rate' },
-                  { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
+                  { label: 'Type', value: 'Fixed Price' },
                   { label: 'Location', value: 'Remote Worldwide' },
                   { label: 'Proposals', value: `${job.proposalCount} submitted` },
                   { label: 'Deadline', value: job.deadline || 'Flexible' },

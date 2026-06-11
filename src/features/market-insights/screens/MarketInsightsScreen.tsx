@@ -58,11 +58,11 @@ export default function MarketInsightsScreen() {
 
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Average Rates by Skill */}
+          {/* Average Project Budgets by Skill */}
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-primary font-semibold">Average Hourly Rates</h2>
-              <span className="badge-cyan text-xs">$/hr</span>
+              <h2 className="text-primary font-semibold">Average Project Budgets</h2>
+              <span className="badge-cyan text-xs">$/project</span>
             </div>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={averageRatesBySkill} layout="vertical">
@@ -74,7 +74,7 @@ export default function MarketInsightsScreen() {
                 </defs>
                 <XAxis key="market-rates-xaxis" type="number" tick={{ fill: '#8892A4', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
                 <YAxis key="market-rates-yaxis" type="category" dataKey="skill" tick={{ fill: '#8892A4', fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
-                <Tooltip key="market-rates-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v}/hr`, 'Rate']} />
+                <Tooltip key="market-rates-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v}k/project`, 'Budget']} />
                 <Bar key="market-rates-bar" dataKey="rate" radius={[0, 4, 4, 0]} fill="url(#marketBarGrad2026)" isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
@@ -145,17 +145,17 @@ export default function MarketInsightsScreen() {
           </div>
         </div>
 
-        {/* Demand vs Rate Radar */}
+        {/* Demand vs Budget Radar */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="glass-card p-6">
-            <h2 className="text-primary font-semibold mb-4">Skills: Demand vs Rate Radar</h2>
+            <h2 className="text-primary font-semibold mb-4">Skills: Demand vs Budget Radar</h2>
             <ResponsiveContainer width="100%" height={300}>
               <RadarChart data={RADAR_DATA}>
                 <PolarGrid key="radar-grid" stroke="rgba(255,255,255,0.06)" />
                 <PolarAngleAxis key="radar-angle" dataKey="category" tick={{ fill: '#8892A4', fontSize: 11 }} />
                 <PolarRadiusAxis key="radar-radius" tick={false} axisLine={false} />
                 <Radar key="radar-demand" name="Demand" dataKey="demand" stroke="#0077FF" fill="#0077FF" fillOpacity={0.15} />
-                <Radar key="radar-rate" name="Rate Index" dataKey="rate" stroke="#9F4BFF" fill="#9F4BFF" fillOpacity={0.15} />
+                <Radar key="radar-rate" name="Budget Index" dataKey="rate" stroke="#9F4BFF" fill="#9F4BFF" fillOpacity={0.15} />
                 <Tooltip key="radar-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 10, color: 'white' }} />
               </RadarChart>
             </ResponsiveContainer>
@@ -170,8 +170,8 @@ export default function MarketInsightsScreen() {
             </div>
             <div className="space-y-4">
               {[
-                { title: '🚀 Hottest Skill: AI/ML Integration', body: 'Demand surged 142% YoY. Average rate reached $125/hr. Expected to grow another 60% by Q4 2026.', borderClass: 'border-purple' },
-                { title: '📈 Fastest Growing: React + AI Skills', body: 'Developers combining React with AI integration command 35% higher rates than React-only developers.', borderClass: 'border-cyan' },
+                { title: '🚀 Hottest Skill: AI/ML Integration', body: 'Demand surged 142% YoY. Average project budget index reached $12.5K. Expected to grow another 60% by Q4 2026.', borderClass: 'border-purple' },
+                { title: '📈 Fastest Growing: React + AI Skills', body: 'Developers combining React with AI integration command 35% higher project budgets than React-only developers.', borderClass: 'border-cyan' },
                 { title: '💡 Career Advice', body: 'Top earners in 2026 combine core programming skills with domain expertise in AI, fintech, or healthcare.', borderClass: 'border-green' },
                 { title: '⚠️ Market Watch', body: 'Pure frontend roles declining 8% as AI tools automate routine UI tasks. Focus on architecture and AI integration.', borderClass: 'border-amber' },
               ].map((item, i) => (

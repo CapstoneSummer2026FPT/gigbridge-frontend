@@ -11,7 +11,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import { ContractStatus, PaymentType, MilestoneStatus } from '../../../types/models/Contract';
+import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import {
   getContractStatusLabel,
@@ -51,7 +51,6 @@ interface FreelancerProfile {
   profileImageUrl?: string;
   avatarUrl?: string;
   headline?: string;
-  hourlyRate?: number;
   verificationStatus?: 'Verified' | 'Pending' | 'Unverified';
 }
 
@@ -194,7 +193,7 @@ export default function ViewContractDetailsScreen() {
       details: `Contract "${contractData.title}" created from proposal`,
       metadata: {
         budget: contractData.totalBudget,
-        paymentType: contractData.paymentType === PaymentType.Fixed ? 'Fixed' : 'Hourly'
+        contractType: 'Fixed Price',
       }
     });
 
@@ -482,7 +481,7 @@ export default function ViewContractDetailsScreen() {
                 <div className="flex flex-col gap-1 bg-secondary/15 border border-border/20 rounded-2xl p-4">
                   <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Payment Type</span>
                   <span className="text-sm font-bold text-foreground mt-1">
-                    {contract.paymentType === PaymentType.Fixed ? 'Fixed Price' : 'Hourly Rate'}
+                    Fixed Price
                   </span>
                 </div>
 
@@ -845,12 +844,6 @@ export default function ViewContractDetailsScreen() {
                             <Mail size={11} />
                             {contract.freelancerProfile.email}
                           </a>
-                        )}
-                        {contract.freelancerProfile.hourlyRate && (
-                          <p className="text-emerald-500 font-bold text-xs flex items-center gap-0.5 mt-0.5">
-                            <DollarSign size={12} />
-                            ${contract.freelancerProfile.hourlyRate}/hr
-                          </p>
                         )}
                         {contract.freelancerProfile.verificationStatus === 'Verified' && (
                           <div className="flex items-center gap-1 mt-1 text-emerald-500 text-[10px] font-bold">

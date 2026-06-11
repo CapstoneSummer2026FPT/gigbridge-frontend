@@ -16,7 +16,7 @@ export interface Proposal {
   job_post_id: string;
   freelancer_profile_id: string;
   cover_letter: string;
-  proposed_rate: number;
+  proposed_budget: number;
   proposed_duration: string;
   status: ProposalStatus;
   is_ai_generated: boolean;
@@ -63,7 +63,7 @@ export interface ProposalDto {
   freelancerProfilesId: string;
   freelancerName: string;
   coverLetter: string;
-  proposedRate: number;
+  proposedBudget: number;
   proposedDuration: string;
   status: ProposalStatus | number;
   submittedAt: string;

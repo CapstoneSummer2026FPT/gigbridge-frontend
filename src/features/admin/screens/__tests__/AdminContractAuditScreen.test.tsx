@@ -33,7 +33,6 @@ const mockContract: ContractDto = {
   title: 'Web Development Project',
   description: 'A comprehensive web development project',
   totalBudget: 5000,
-  paymentType: 0,
   status: ContractStatus.Active,
   startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
   endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),

@@ -11,7 +11,6 @@ interface ProfileFormData {
   lastName: string;
   title: string;
   bio: string;
-  hourlyRate: number;
   availability: string;
   phone: string;
   address: string;
@@ -63,7 +62,6 @@ export default function EditFreelancerProfileScreen() {
     lastName: 'Smith',
     title: mockProfile?.title || 'Senior React Developer',
     bio: mockProfile?.bio || '',
-    hourlyRate: 75,
     availability: 'available-soon',
     phone: '+1 (555) 987-6543',
     address: '456 Developer Ave, San Francisco, CA 94102',
@@ -143,11 +141,6 @@ export default function EditFreelancerProfileScreen() {
           newErrors.dateOfBirth = 'MSG29: You can not be born in the future!!';
         }
       }
-    }
-
-    // Hourly Rate validation (BR-34)
-    if (formData.hourlyRate <= 0 || isNaN(formData.hourlyRate)) {
-      newErrors.hourlyRate = 'MSG33: Please enter a valid hourly rate';
     }
 
     setErrors(newErrors);
@@ -238,7 +231,7 @@ export default function EditFreelancerProfileScreen() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'hourlyRate' ? parseFloat(value) : value
+      [name]: value
     }));
     // Clear error for this field
     if (errors[name]) {
@@ -364,24 +357,6 @@ export default function EditFreelancerProfileScreen() {
                 />
                 {errors.title && (
                   <p className="edit-freelancer-profile-form-error">{errors.title}</p>
-                )}
-              </div>
-
-              {/* Hourly Rate */}
-              <div className="edit-freelancer-profile-form-group">
-                <label className="edit-freelancer-profile-form-label">Hourly Rate (VND) *</label>
-                <input
-                  type="number"
-                  name="hourlyRate"
-                  value={formData.hourlyRate}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                  className="edit-freelancer-profile-form-input"
-                  placeholder="Enter hourly rate"
-                />
-                {errors.hourlyRate && (
-                  <p className="edit-freelancer-profile-form-error">{errors.hourlyRate}</p>
                 )}
               </div>
 

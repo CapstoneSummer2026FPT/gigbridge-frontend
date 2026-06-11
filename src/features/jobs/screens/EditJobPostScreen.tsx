@@ -19,10 +19,8 @@ export default function EditJobPostScreen() {
     title: 'Build E-Commerce Platform',
     description: 'Need a scalable e-commerce platform with React frontend and Node.js backend. Must include user authentication, product catalog, shopping cart, payment integration.',
     budget: 5000,
-    budgetType: 'Fixed' as 'Fixed' | 'Hourly',
     duration: '2-4 weeks',
     category: 'Web Development',
-    level: 'Intermediate',
     skills: ['React', 'Node.js', 'PostgreSQL'],
   });
 
@@ -154,20 +152,6 @@ export default function EditJobPostScreen() {
               </div>
               {errors.budget && <div className="form-error"><AlertCircle size={14} />{errors.budget}</div>}
             </div>
-
-            <div className="form-group">
-              <label className="form-label">Budget Type *</label>
-              <select
-                value={formData.budgetType}
-                onChange={(e) =>
-                  handleInputChange('budgetType', e.target.value)
-                }
-                className="form-select"
-              >
-                <option value="Fixed">Fixed Price</option>
-                <option value="Hourly">Hourly Rate</option>
-              </select>
-            </div>
           </div>
 
           {/* Duration */}
@@ -190,7 +174,7 @@ export default function EditJobPostScreen() {
             {errors.duration && <div className="form-error"><AlertCircle size={14} />{errors.duration}</div>}
           </div>
 
-          {/* Category & Level Row */}
+          {/* Category */}
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Category</label>
@@ -203,19 +187,6 @@ export default function EditJobPostScreen() {
                 <option value="Mobile App">Mobile App</option>
                 <option value="UI/UX Design">UI/UX Design</option>
                 <option value="Graphic Design">Graphic Design</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Experience Level</label>
-              <select
-                value={formData.level}
-                onChange={(e) => handleInputChange('level', e.target.value)}
-                className="form-select"
-              >
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Expert">Expert</option>
               </select>
             </div>
           </div>

@@ -117,16 +117,16 @@ export default function FreelancerDashboardScreen() {
           </div>
 
           <div className="space-y-4">
-            {/* Hourly Rate */}
+            {/* Preferred Pricing */}
             <div className="glass-card neon-border-green p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs mb-1 freelancer-dash-rate-label">Hourly Rate</p>
-                  <p className="text-2xl font-black text-primary">${profile?.hourly_rate || 75}<span className="text-sm opacity-50">/hr</span></p>
+                  <p className="text-xs mb-1 freelancer-dash-rate-label">Preferred Pricing</p>
+                  <p className="text-2xl font-black text-primary">Fixed<span className="text-sm opacity-50"> price</span></p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs mb-1 freelancer-dash-rate-label">Market Avg.</p>
-                  <p className="text-sm font-semibold freelancer-dash-market-avg">$72/hr ↑</p>
+                  <p className="text-sm font-semibold freelancer-dash-market-avg">$4.8K/project ↑</p>
                 </div>
               </div>
             </div>
@@ -177,7 +177,7 @@ export default function FreelancerDashboardScreen() {
                         {job.isAiRecommended && <span className="badge-cyan text-[10px]">⚡ AI Pick</span>}
                       </div>
                       <p className="text-xs mb-2 freelancer-dash-job-meta">
-                        ${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()} · {job.jobType === 'fixed' ? 'Fixed Price' : '/hr'} · Remote
+                        ${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()} · Fixed Price · Remote
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {job.skills.slice(0, 4).map((s, idx) => <span key={`${job.id}-skill-${idx}`} className="tag-pill">{s}</span>)}

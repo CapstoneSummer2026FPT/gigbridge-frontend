@@ -76,8 +76,6 @@ export default function PostJobScreen() {
     skills: [] as string[],
     budgetMin: '',
     budgetMax: '',
-    jobType: 'fixed' as 'fixed' | 'hourly',
-    experienceLevel: 'intermediate' as 'entry' | 'intermediate' | 'expert',
     deadline: '',
     isRemote: true,
   });

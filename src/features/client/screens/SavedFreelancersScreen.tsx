@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { Heart, Search, Star, MapPin, DollarSign, Briefcase, MessageSquare, Eye, Trash2, Filter } from 'lucide-react';
+import { Heart, Search, Star, MessageSquare, Eye, Trash2 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import '../../admin/styles/admin-users-screen.css';
 
@@ -11,7 +11,7 @@ interface SavedFreelancer {
   title: string;
   rating: number;
   reviewCount: number;
-  hourlyRate: number;
+  projectBudget: number;
   location: string;
   skills: string[];
   completedJobs: number;
@@ -29,7 +29,7 @@ const MOCK_SAVED_FREELANCERS: SavedFreelancer[] = [
     title: 'Senior Full-Stack Developer',
     rating: 4.9,
     reviewCount: 47,
-    hourlyRate: 85,
+    projectBudget: 8500,
     location: 'San Francisco, CA',
     skills: ['React', 'Node.js', 'TypeScript', 'AWS'],
     completedJobs: 132,
@@ -44,7 +44,7 @@ const MOCK_SAVED_FREELANCERS: SavedFreelancer[] = [
     title: 'UI/UX Designer',
     rating: 5.0,
     reviewCount: 35,
-    hourlyRate: 70,
+    projectBudget: 5200,
     location: 'New York, NY',
     skills: ['Figma', 'Adobe XD', 'Prototyping', 'User Research'],
     completedJobs: 89,
@@ -59,7 +59,7 @@ const MOCK_SAVED_FREELANCERS: SavedFreelancer[] = [
     title: 'Mobile App Developer',
     rating: 4.8,
     reviewCount: 62,
-    hourlyRate: 90,
+    projectBudget: 11000,
     location: 'Austin, TX',
     skills: ['React Native', 'Flutter', 'iOS', 'Android'],
     completedJobs: 156,
@@ -74,7 +74,7 @@ const MOCK_SAVED_FREELANCERS: SavedFreelancer[] = [
     title: 'Data Scientist',
     rating: 4.7,
     reviewCount: 28,
-    hourlyRate: 95,
+    projectBudget: 14000,
     location: 'Seattle, WA',
     skills: ['Python', 'Machine Learning', 'TensorFlow', 'SQL'],
     completedJobs: 73,
@@ -227,8 +227,8 @@ export default function SavedFreelancersScreen() {
 
                 <div className="grid grid-cols-3 gap-3 mb-4 pt-4 border-t border-white/5">
                   <div>
-                    <p className="text-xs text-muted mb-1">Hourly Rate</p>
-                    <p className="text-sm font-bold text-green">${freelancer.hourlyRate}/hr</p>
+                    <p className="text-xs text-muted mb-1">Typical Budget</p>
+                    <p className="text-sm font-bold text-green">${freelancer.projectBudget.toLocaleString()}/project</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted mb-1">Jobs Done</p>
