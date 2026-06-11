@@ -43,7 +43,7 @@ export default function ProposalsInboxScreen() {
       try {
         setLoading(true);
         const response = isClient
-          ? await proposalGetAPI.getAllProposals()
+          ? await proposalGetAPI.getClientAllProposals()
           : await proposalGetAPI.getMyProposals();
         setProposals(response.data?.length ? response.data.map((proposal, index) => ({
           ...proposal,
@@ -125,7 +125,7 @@ export default function ProposalsInboxScreen() {
   // Update proposal status
   const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     try {
-      await proposalPutAPI.updateProposalStatus(proposalId, String(status));
+      await proposalPutAPI.updateProposalStatus(proposalId, Number(status));
       setProposals(prev =>
         prev.map(proposal =>
           proposal.proposalsId === proposalId
@@ -238,21 +238,28 @@ export default function ProposalsInboxScreen() {
     setProposalDetail({ proposal, mode });
   };
 
-  const handleAccept = (proposalId: string) => {
-    updateProposalStatus(proposalId, 2);
+  const handleShortlist = (proposalId: string) => {
+    updateProposalStatus(proposalId, 1);
   };
 
   const handleReject = (proposalId: string) => {
     updateProposalStatus(proposalId, 3);
   };
 
-  const handleCreateContract = (proposal: ProposalViewModel) => {
-    setCreateContractProposal(proposal);
-  };
-
-  const handleContractSubmit = async (contractData: ContractData) => {
-    console.log('Creating contract:', contractData);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  const handleStartNegotiation = async (proposalId: string) => {
+    try {
+      setLoading(true);
+      const res = await proposalPutAPI.startNegotiation(proposalId);
+      if (res.success && res.data) {
+        navigate(`/messages?conversation=${res.data}`);
+      } else {
+        alert(res.message || 'Failed to start negotiation');
+      }
+    } catch (err) {
+      console.error('Start negotiation error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -356,10 +363,10 @@ export default function ProposalsInboxScreen() {
                       proposal={proposal}
                       isClient={isClient}
                       onViewDetail={handleViewDetail}
-                      onAccept={handleAccept}
+                      onShortlist={handleShortlist}
                       onReject={handleReject}
+                      onStartNegotiation={handleStartNegotiation}
                       onBoost={boostProposal}
-                      onCreateContract={handleCreateContract}
                     />
                   ))}
 

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Wallet, CreditCard, DollarSign, ArrowRight, CheckCircle, AlertCircle, XCircle, Coins } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 
 type PaymentMethod = 'card' | 'paypal' | 'bank';
@@ -22,8 +24,38 @@ export default function WalletDepositScreen() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [currentBalance, setCurrentBalance] = useState<number>(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
 
-  const currentBalance = 2450.50; // Current Gig Coin balance
+  // Parse URL search params for redirect feedback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('result');
+    if (result === 'success') {
+      setSuccess(true);
+    } else if (result === 'cancel') {
+      setErrorText('Thanh toán đã bị hủy bởi người dùng.');
+    }
+  }, []);
+
+  // Fetch actual wallet balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        setLoadingBalance(true);
+        const res = await walletGetAPI.getMyWallet();
+        if (res.success && res.data) {
+          setCurrentBalance(res.data.availableTokens);
+        }
+      } catch (err) {
+        console.error('Failed to load wallet balance:', err);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+    fetchBalance();
+  }, []);
 
   // Calculate Gig Coins based on currency
   const calculateGigCoins = (amount: number, curr: Currency): number => {
@@ -44,15 +76,29 @@ export default function WalletDepositScreen() {
 
   const handleDeposit = async () => {
     setProcessing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setProcessing(false);
-    setSuccess(true);
+    setErrorText(null);
+    try {
+      const returnUrl = window.location.origin + '/wallet/deposit?result=success';
+      const cancelUrl = window.location.origin + '/wallet/deposit?result=cancel';
+      
+      const res = await walletPostAPI.createTopUp({
+        tokenAmount: gigCoinsToReceive,
+        returnUrl,
+        cancelUrl,
+      });
 
-    // Redirect after success
-    setTimeout(() => {
-      navigate('/wallet/history');
-    }, 2000);
+      if (res.success && res.data && res.data.checkoutUrl) {
+        // Redirect same tab to PayOS checkout page
+        window.location.href = res.data.checkoutUrl;
+      } else {
+        setErrorText(res.message || 'Không thể khởi tạo giao dịch nạp tiền.');
+        setProcessing(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorText('Đã xảy ra lỗi trong quá trình khởi tạo thanh toán.');
+      setProcessing(false);
+    }
   };
 
   if (success) {
@@ -65,28 +111,21 @@ export default function WalletDepositScreen() {
                 <CheckCircle size={48} className="text-green" />
               </div>
               <h2 className="text-2xl font-bold text-primary mb-2">Nạp Tiền Thành Công!</h2>
-              <p className="text-sm text-secondary mb-4">
-                Bạn đã nạp {currency === 'VND'
-                  ? `${finalAmount.toLocaleString('vi-VN')} VND`
-                  : `$${finalAmount.toFixed(2)} USD`}
+              <p className="text-xs text-secondary mb-4">
+                Giao dịch nạp tiền của bạn đã hoàn tất.
               </p>
-              <div className="glass-card p-4 mb-4">
-                <p className="text-xs text-muted mb-1">Gig Coins Nhận Được</p>
-                <div className="flex items-center justify-center gap-2">
-                  <Coins className="text-amber-400" size={24} />
-                  <p className="text-3xl font-bold text-amber-400">{gigCoinsToReceive.toLocaleString()}</p>
-                </div>
-              </div>
               <div className="glass-card p-4 mb-6">
-                <p className="text-xs text-muted mb-1">Số Dư Mới</p>
+                <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
                 <div className="flex items-center justify-center gap-2">
                   <Coins className="text-green" size={20} />
-                  <p className="text-2xl font-bold text-green">{newBalance.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green">
+                    {loadingBalance ? 'Loading...' : currentBalance.toLocaleString()}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => navigate('/wallet/history')}
-                className="btn-cyan w-full px-6 py-3"
+                className="btn-cyan w-full px-6 py-3 font-semibold"
               >
                 Xem Lịch Sử Giao Dịch
               </button>
@@ -120,12 +159,21 @@ export default function WalletDepositScreen() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Column - Deposit Form */}
             <div className="lg:col-span-2 space-y-6">
+              {errorText && (
+                <div className="bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl p-4 flex items-center gap-3">
+                  <AlertCircle size={20} className="shrink-0" />
+                  <span className="text-sm font-semibold">{errorText}</span>
+                </div>
+              )}
+
               {/* Current Balance */}
               <div className="glass-card p-6">
                 <p className="text-xs text-muted mb-2">Số Dư Hiện Tại</p>
                 <div className="flex items-center gap-2">
                   <Coins className="text-green" size={32} />
-                  <p className="text-3xl font-bold text-green">{currentBalance.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-green">
+                    {loadingBalance ? 'Loading...' : currentBalance.toLocaleString()}
+                  </p>
                   <span className="text-sm text-secondary">Gig Coins</span>
                 </div>
               </div>
@@ -334,7 +382,7 @@ export default function WalletDepositScreen() {
                     <div className="flex items-center gap-1">
                       <Coins className="text-primary" size={14} />
                       <span className="text-primary font-semibold">
-                        {currentBalance.toLocaleString()}
+                        {loadingBalance ? 'Loading...' : currentBalance.toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -347,7 +395,7 @@ export default function WalletDepositScreen() {
                   <div className="flex items-center gap-2 justify-end">
                     <Coins className="text-green" size={24} />
                     <span className="text-2xl font-bold text-green">
-                      {newBalance.toLocaleString()}
+                      {loadingBalance ? 'Loading...' : newBalance.toLocaleString()}
                     </span>
                   </div>
                 </div>
