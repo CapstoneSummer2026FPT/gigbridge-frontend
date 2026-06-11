@@ -1,19 +1,31 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import {
   Bot,
   Sparkles,
-  ChevronRight,
   X,
   Plus,
   Calendar,
   Globe,
   Upload,
   Eye,
+  Save,
+  Rocket,
+  AlertCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobPostAPI } from '../../../api/jobAPI/POST';
-import type { CreateJobPostRequest } from '../../../types/models/Job';
+import { jobPostAPI, jobPutAPI, jobQuestionAPI } from '../../../api/jobAPI';
+import {
+  JobStatus,
+  type CreateJobPostQuestionRequest,
+  type CreateJobPostRequest,
+} from '../../../types/models/Job';
+import {
+  clearStoredCreateJobQuestions,
+  normalizeCreateJobQuestions,
+  readStoredCreateJobQuestions,
+} from '../utils/jobPostQuestionDraft';
 import '../styles/PostJobScreen.css';
 
 const CATEGORIES = [
@@ -41,11 +53,19 @@ const experienceLevelMap = {
   expert: 2,
 } as const;
 
+type SubmitIntent = 'draft' | 'publish';
+
+type PostJobLocationState = {
+  questions?: CreateJobPostQuestionRequest[];
+};
+
 export default function PostJobScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitIntent, setSubmitIntent] = useState<SubmitIntent | null>(null);
+  const [submitError, setSubmitError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [skillInput, setSkillInput] = useState('');
 
@@ -61,6 +81,24 @@ export default function PostJobScreen() {
     deadline: '',
     isRemote: true,
   });
+
+  const pendingQuestions = useMemo(() => {
+    const routeQuestions = (location.state as PostJobLocationState | null)?.questions;
+
+    if (Array.isArray(routeQuestions) && routeQuestions.length > 0) {
+      return routeQuestions;
+    }
+
+    return readStoredCreateJobQuestions();
+  }, [location.state]);
+
+  const isSubmitting = submitIntent !== null;
+
+  useEffect(() => {
+    if (pendingQuestions.length === 0) {
+      navigate('/jobs/post/questions', { replace: true });
+    }
+  }, [navigate, pendingQuestions.length]);
 
   const suggestedSkills = SKILLS_SUGGESTIONS[form.category] || [];
   const remainingSkills = suggestedSkills.filter(skill => !form.skills.includes(skill));
@@ -145,68 +183,136 @@ export default function PostJobScreen() {
     };
   };
 
-  const handleNextStep = async () => {
+  const setSubmissionError = (message: string) => {
+    setSubmitError(message);
+    toast.error(message);
+  };
+
+  const validateForm = () => {
     if (!form.title || !form.category || !form.description) {
-      alert('Please fill in all required fields');
-      return;
+      setSubmissionError('Please fill in all required fields.');
+      return false;
     }
 
     const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
     const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
 
     if (budgetMin !== null && Number.isNaN(budgetMin)) {
-      alert('Budget min is invalid');
-      return;
+      setSubmissionError('Budget min is invalid.');
+      return false;
     }
 
     if (budgetMax !== null && Number.isNaN(budgetMax)) {
-      alert('Budget max is invalid');
-      return;
+      setSubmissionError('Budget max is invalid.');
+      return false;
     }
 
     if (budgetMin !== null && budgetMax !== null && budgetMin > budgetMax) {
-      alert('Budget min must be less than or equal to budget max');
-      return;
+      setSubmissionError('Budget min must be less than or equal to budget max.');
+      return false;
     }
 
+    if (![6, 8, 10].includes(pendingQuestions.length)) {
+      setSubmissionError('Please create 6, 8, or 10 questions before continuing.');
+      return false;
+    }
+
+    const normalizedQuestions = normalizeCreateJobQuestions(pendingQuestions);
+
+    if (normalizedQuestions.some(question => !question.questionText)) {
+      setSubmissionError('All JobPost questions must be filled.');
+      return false;
+    }
+
+    if (normalizedQuestions.some(question => question.questionText.length > 1000)) {
+      setSubmissionError('QuestionText must not exceed 1000 characters.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (intent: SubmitIntent) => {
+    if (!validateForm()) return;
+
+    const normalizedQuestions = normalizeCreateJobQuestions(pendingQuestions);
+
     try {
-      setIsSubmitting(true);
+      setSubmitIntent(intent);
+      setSubmitError('');
 
       const request = buildCreateJobPostRequest();
       const response = await jobPostAPI.createJobPost(request);
 
       if (!response.success || !response.data) {
-        alert(response.message || 'Failed to create job post');
+        setSubmissionError(response.message || 'Failed to create JobPost.');
         return;
       }
 
-      navigate('/jobs/post/interview-questions', {
-        state: {
-          jobPostId: response.data,
-          jobData: form,
-        },
+      const jobPostId = response.data;
+      const questionsResponse = await jobQuestionAPI.createBulkJobPostQuestions(jobPostId, {
+        questions: normalizedQuestions,
       });
+
+      if (!questionsResponse.success) {
+        setSubmissionError(
+          questionsResponse.message
+            || 'JobPost was created, but questions could not be saved. You can manage questions from My Jobs.'
+        );
+        return;
+      }
+
+      if (intent === 'publish') {
+        const publishResponse = await jobPutAPI.updateJobPostStatus(jobPostId, {
+          status: JobStatus.Open,
+        });
+
+        if (!publishResponse.success) {
+          setSubmissionError(
+            publishResponse.message
+              || 'JobPost and questions were created, but publishing failed. The JobPost may still be in Draft status.'
+          );
+          return;
+        }
+      }
+
+      clearStoredCreateJobQuestions();
+      toast.success(intent === 'publish'
+        ? 'JobPost published successfully.'
+        : 'JobPost saved as draft successfully.');
+      navigate('/jobs/my-jobs');
     } catch (error) {
       console.error('Failed to create job post:', error);
-      alert('Failed to create job post');
+      setSubmissionError('Failed to create JobPost.');
     } finally {
-      setIsSubmitting(false);
+      setSubmitIntent(null);
     }
   };
+
+  if (pendingQuestions.length === 0) {
+    return null;
+  }
 
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <p className="post-job-header-subtitle text-sm mb-1">Post a New Job</p>
+          <p className="post-job-header-subtitle text-sm mb-1">Step 2 of 2</p>
           <h1 className="post-job-header text-3xl font-black text-primary">
             Describe Your Project
           </h1>
           <p className="post-job-header-description mt-2">
-            Our AI will help you write the perfect job post to attract top talent
+            Complete the JobPost details, then save it as Draft or publish it after questions are saved.
           </p>
         </div>
+
+        {submitError && (
+          <div className="glass-card p-4 mb-6 flex items-start gap-3">
+            <AlertCircle size={18} className="text-red flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red">{submitError}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
@@ -502,11 +608,12 @@ export default function PostJobScreen() {
             </div>
 
             {/* Submit */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={() => setShowPreview(!showPreview)}
-                className="preview-btn flex items-center gap-2 px-5 py-3 rounded-xl text-sm transition-all"
+                disabled={isSubmitting}
+                className="preview-btn flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm transition-all disabled:opacity-40"
               >
                 <Eye size={16} />
                 Preview
@@ -514,7 +621,22 @@ export default function PostJobScreen() {
 
               <button
                 type="button"
-                onClick={handleNextStep}
+                onClick={() => handleSubmit('draft')}
+                disabled={
+                  isSubmitting ||
+                  !form.title ||
+                  !form.category ||
+                  !form.description
+                }
+                className="btn-ghost-cyan flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-40"
+              >
+                <Save size={16} />
+                {submitIntent === 'draft' ? 'Saving Draft...' : 'Save as Draft'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSubmit('publish')}
                 disabled={
                   isSubmitting ||
                   !form.title ||
@@ -523,16 +645,34 @@ export default function PostJobScreen() {
                 }
                 className="btn-cyan flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-40"
               >
-                {isSubmitting
-                  ? 'Creating JobPost...'
-                  : 'Next Step: AI Interview Questions'}
-                <ChevronRight size={16} />
+                <Rocket size={16} />
+                {submitIntent === 'publish' ? 'Publishing...' : 'Publish'}
               </button>
             </div>
           </div>
 
           {/* Right Panel: Live Preview + AI Orb */}
           <div className="space-y-5">
+            <div className="glass-card p-5">
+              <p className="preview-label text-xs font-semibold mb-3">
+                QUESTIONS READY
+              </p>
+              <p className="text-2xl font-black text-primary mb-1">
+                {pendingQuestions.length}
+              </p>
+              <p className="text-xs text-secondary mb-4">
+                Questions will be created immediately after the JobPost is saved as Draft.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/jobs/post/questions')}
+                disabled={isSubmitting}
+                className="btn-ghost-cyan w-full py-2 text-sm disabled:opacity-40"
+              >
+                Edit Questions
+              </button>
+            </div>
+
             {/* Floating AI Orb */}
             <div className="ai-orb-card glass-card p-5 text-center">
               <div

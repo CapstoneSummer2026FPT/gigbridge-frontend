@@ -198,7 +198,7 @@ export default function ManageJobPostsScreen() {
           <p className="manage-jobs-subtitle">
             Manage your job posts - {jobPosts.length} total
           </p>
-          <button onClick={() => navigate('/jobs/post')} className="manage-jobs-new-btn">
+          <button onClick={() => navigate('/jobs/post/questions')} className="manage-jobs-new-btn">
             + New Job Post
           </button>
         </div>
@@ -256,7 +256,7 @@ export default function ManageJobPostsScreen() {
               </p>
               {!searchQuery && (
                 <button
-                  onClick={() => navigate('/jobs/post')}
+                  onClick={() => navigate('/jobs/post/questions')}
                   className="manage-jobs-empty-btn"
                 >
                   Post a New Job

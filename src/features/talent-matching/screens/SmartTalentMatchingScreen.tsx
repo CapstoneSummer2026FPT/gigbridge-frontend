@@ -89,7 +89,7 @@ export default function SmartTalentMatchingScreen() {
               <Crown size={16} />
               {premiumEnabled ? 'Premium Active' : 'Standard Mode'}
             </button>
-            <button type="button" className="smart-match-secondary" onClick={() => navigate('/jobs/post')}>
+            <button type="button" className="smart-match-secondary" onClick={() => navigate('/jobs/post/questions')}>
               <Briefcase size={16} />
               Post Job
             </button>

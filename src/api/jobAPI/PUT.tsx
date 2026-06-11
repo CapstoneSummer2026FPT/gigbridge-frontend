@@ -1,5 +1,9 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type {
+  UpdateJobPostStatusRequest,
+  UpdateJobPostVisibilityRequest,
+} from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
 
@@ -9,9 +13,10 @@ export const jobPutAPI = {
    */
   updateJobPostStatus: async (
     jobPostId: string,
-    status: number
+    payload: number | UpdateJobPostStatusRequest
   ): Promise<ApiResponse<boolean>> => {
-    return apiService.patch<boolean>(`${jobPostsUrl}/${jobPostId}/status`, { status });
+    const body = typeof payload === 'number' ? { status: payload } : payload;
+    return apiService.patch<boolean>(`${jobPostsUrl}/${jobPostId}/status`, body);
   },
 
   /**
@@ -19,8 +24,9 @@ export const jobPutAPI = {
    */
   updateJobPostVisibility: async (
     jobPostId: string,
-    visibility: number
+    payload: number | UpdateJobPostVisibilityRequest
   ): Promise<ApiResponse<boolean>> => {
-    return apiService.patch<boolean>(`${jobPostsUrl}/${jobPostId}/visibility`, { visibility });
+    const body = typeof payload === 'number' ? { visibility: payload } : payload;
+    return apiService.patch<boolean>(`${jobPostsUrl}/${jobPostId}/visibility`, body);
   },
 };

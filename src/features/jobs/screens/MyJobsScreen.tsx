@@ -1,67 +1,99 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import {
+  Ban,
   Briefcase,
-  Search,
-  Plus,
-  Edit,
-  XCircle,
-  Eye,
-  Users,
   Calendar,
   CheckCircle,
   Clock,
-  Ban,
+  Edit,
+  Eye,
+  HelpCircle,
+  Plus,
+  Search,
+  Users,
+  XCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobGetAPI } from '../../../api/jobAPI/GET';
-import { jobPutAPI } from '../../../api/jobAPI/PUT';
-import type { Job } from '../../../types/models/Job';
+import { jobGetAPI, jobPutAPI } from '../../../api/jobAPI';
+import {
+  BudgetType,
+  JobStatus,
+  type JobPostSummaryDto,
+} from '../../../types/models/Job';
 import '../../admin/styles/admin-users-screen.css';
 
-type JobStatus = 'all' | 'open' | 'in_progress' | 'closed' | 'cancelled';
+type JobStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
+type BudgetDisplayType = 'fixed' | 'hourly';
 
 interface MyJob {
   id: string;
   title: string;
   description: string;
   budget: number;
-  budgetType: 'fixed' | 'hourly';
-  status: 'open' | 'in_progress' | 'closed' | 'cancelled';
+  budgetType: BudgetDisplayType;
+  status: JobStatus | null;
+  visibility: number | null;
   proposalsCount: number;
   viewsCount: number;
   createdAt: string;
-  deadline?: string;
   skills: string[];
 }
 
-const mapJobStatus = (status?: string): MyJob['status'] => {
-  switch (status) {
-    case 'open':
-      return 'open';
-    case 'in_progress':
-      return 'in_progress';
-    case 'closed':
-      return 'closed';
-    case 'cancelled':
-      return 'cancelled';
-    default:
-      return 'open';
+const validStatusValues = new Set<number>([
+  JobStatus.Draft,
+  JobStatus.Open,
+  JobStatus.Closed,
+  JobStatus.Cancelled,
+]);
+
+const getKnownStatus = (status?: JobStatus | number | null): JobStatus | null => {
+  if (typeof status !== 'number' || !validStatusValues.has(status)) {
+    return null;
   }
+
+  return status as JobStatus;
 };
 
-const mapJobToMyJob = (job: Job): MyJob => ({
-  id: job.id,
+const getVisibility = (visibility?: number | null): number | null =>
+  typeof visibility === 'number' ? visibility : null;
+
+const getStatusFilterValue = (status: JobStatus | null): JobStatusFilter => {
+  if (status === JobStatus.Draft) return 'draft';
+  if (status === JobStatus.Open) return 'open';
+  if (status === JobStatus.Closed) return 'closed';
+  if (status === JobStatus.Cancelled) return 'cancelled';
+  return 'unknown';
+};
+
+const getStatusLabel = (status: JobStatus | null) => {
+  if (status === JobStatus.Draft) return 'Draft';
+  if (status === JobStatus.Open) return 'Open';
+  if (status === JobStatus.Closed) return 'Closed';
+  if (status === JobStatus.Cancelled) return 'Cancelled';
+  return 'Unknown';
+};
+
+const getVisibilityLabel = (visibility: number | null) => {
+  if (visibility === 0) return 'Public';
+  if (visibility === 1) return 'Private';
+  if (visibility === 2) return 'InviteOnly';
+  return 'Unknown';
+};
+
+const mapSummaryToMyJob = (job: JobPostSummaryDto): MyJob => ({
+  id: job.jobPostsId,
   title: job.title,
-  description: job.description,
+  description: job.descriptionPreview,
   budget: job.budgetMax || job.budgetMin || 0,
-  budgetType: job.jobType,
-  status: mapJobStatus(job.status),
-  proposalsCount: job.proposalCount || 0,
-  viewsCount: job.viewCount || 0,
-  createdAt: job.postedAt || new Date().toISOString(),
-  deadline: job.deadline,
-  skills: job.skills || [],
+  budgetType: job.budgetType === BudgetType.Hourly ? 'hourly' : 'fixed',
+  status: getKnownStatus(job.status),
+  visibility: getVisibility(job.visibility),
+  proposalsCount: 0,
+  viewsCount: 0,
+  createdAt: job.createdAt || new Date().toISOString(),
+  skills: job.skillNames || [],
 });
 
 export default function MyJobsScreen() {
@@ -70,9 +102,9 @@ export default function MyJobsScreen() {
   const [jobs, setJobs] = useState<MyJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<JobStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>('all');
   const [showCloseModal, setShowCloseModal] = useState<MyJob | null>(null);
   const [showCancelModal, setShowCancelModal] = useState<MyJob | null>(null);
 
@@ -81,11 +113,16 @@ export default function MyJobsScreen() {
       setLoading(true);
       setError('');
 
-      const data = await jobGetAPI.getClientJobs();
+      const response = await jobGetAPI.getMyJobPosts();
 
-      setJobs(data.map(mapJobToMyJob));
-    } catch (error) {
-      console.error('Failed to fetch my jobs:', error);
+      if (!response.success) {
+        setError(response.message || 'Failed to load your job posts. Please try again.');
+        return;
+      }
+
+      setJobs((response.data || []).map(mapSummaryToMyJob));
+    } catch (fetchError) {
+      console.error('Failed to fetch my jobs:', fetchError);
       setError('Failed to load your job posts. Please try again.');
     } finally {
       setLoading(false);
@@ -97,15 +134,17 @@ export default function MyJobsScreen() {
   }, []);
 
   const stats = useMemo(() => {
-    const open = jobs.filter(j => j.status === 'open').length;
-    const inProgress = jobs.filter(j => j.status === 'in_progress').length;
-    const closed = jobs.filter(j => j.status === 'closed').length;
-    const totalProposals = jobs.reduce((sum, j) => sum + j.proposalsCount, 0);
+    const draft = jobs.filter(job => job.status === JobStatus.Draft).length;
+    const open = jobs.filter(job => job.status === JobStatus.Open).length;
+    const closed = jobs.filter(job => job.status === JobStatus.Closed).length;
+    const unknown = jobs.filter(job => job.status === null).length;
+    const totalProposals = jobs.reduce((sum, job) => sum + job.proposalsCount, 0);
 
     return {
+      draft,
       open,
-      inProgress,
       closed,
+      unknown,
       totalProposals,
       total: jobs.length,
     };
@@ -122,17 +161,18 @@ export default function MyJobsScreen() {
         job.skills.some(skill => skill.toLowerCase().includes(search));
 
       const matchesStatus =
-        statusFilter === 'all' || job.status === statusFilter;
+        statusFilter === 'all' || getStatusFilterValue(job.status) === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
   }, [jobs, searchQuery, statusFilter]);
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'open') return <span className="badge-green text-xs">Open</span>;
-    if (status === 'in_progress') return <span className="badge-cyan text-xs">In Progress</span>;
-    if (status === 'closed') return <span className="badge-gray text-xs">Closed</span>;
-    return <span className="badge-red text-xs">Cancelled</span>;
+  const getStatusBadge = (status: JobStatus | null) => {
+    if (status === JobStatus.Draft) return <span className="badge-gray text-xs">Draft</span>;
+    if (status === JobStatus.Open) return <span className="badge-green text-xs">Open</span>;
+    if (status === JobStatus.Closed) return <span className="badge-gray text-xs">Closed</span>;
+    if (status === JobStatus.Cancelled) return <span className="badge-red text-xs">Cancelled</span>;
+    return <span className="badge-amber text-xs">Unknown</span>;
   };
 
   const formatDate = (date: string) => {
@@ -151,37 +191,71 @@ export default function MyJobsScreen() {
 
   const updateJobStatus = async (
     jobId: string,
-    status: number,
-    localStatus: MyJob['status']
+    status: JobStatus,
+    successMessage: string
   ) => {
     try {
+      setUpdatingJobId(jobId);
       setError('');
-      const response = await jobPutAPI.updateJobPostStatus(jobId, status);
+
+      const response = await jobPutAPI.updateJobPostStatus(jobId, { status });
 
       if (!response.success) {
-        setError(response.message || 'Failed to update job status.');
+        setError(response.message || 'Failed to update JobPost status.');
         return;
       }
 
-      setJobs(prev => prev.map(job => job.id === jobId ? { ...job, status: localStatus } : job));
-    } catch (error) {
-      console.error('Failed to update job status:', error);
-      setError('Failed to update job status. Please try again.');
+      setJobs(prev =>
+        prev.map(job => job.id === jobId ? { ...job, status } : job)
+      );
+      toast.success(successMessage);
+    } catch (updateError) {
+      console.error('Failed to update job status:', updateError);
+      setError('Failed to update JobPost status. Please try again.');
     } finally {
+      setUpdatingJobId(null);
       setShowCloseModal(null);
       setShowCancelModal(null);
     }
   };
 
-  const handleCloseJob = (jobId: string) => updateJobStatus(jobId, 2, 'closed');
+  const updateJobVisibility = async (jobId: string, visibility: number) => {
+    try {
+      setUpdatingJobId(jobId);
+      setError('');
 
-  const handleCancelJob = (jobId: string) => updateJobStatus(jobId, 3, 'cancelled');
+      const response = await jobPutAPI.updateJobPostVisibility(jobId, { visibility });
+
+      if (!response.success) {
+        setError(response.message || 'Failed to update JobPost visibility.');
+        return;
+      }
+
+      setJobs(prev =>
+        prev.map(job => job.id === jobId ? { ...job, visibility } : job)
+      );
+      toast.success('JobPost visibility updated successfully.');
+    } catch (updateError) {
+      console.error('Failed to update job visibility:', updateError);
+      setError('Failed to update JobPost visibility. Please try again.');
+    } finally {
+      setUpdatingJobId(null);
+    }
+  };
+
+  const navigateToQuestions = (job: MyJob) => {
+    navigate(`/client/job-posts/${job.id}/questions`, {
+      state: {
+        status: job.status,
+        title: job.title,
+      },
+    });
+  };
 
   return (
     <AppLayout>
       <div className="w-full max-w-[100vw] overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -189,11 +263,11 @@ export default function MyJobsScreen() {
                 <span className="badge-cyan text-xs">My Jobs</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-primary">Job Posts</h1>
-              <p className="text-sm text-secondary mt-1">Manage your job postings</p>
+              <p className="text-sm text-secondary mt-1">Manage your JobPosts, visibility, status, and questions</p>
             </div>
 
             <button
-              onClick={() => navigate('/jobs/post')}
+              onClick={() => navigate('/jobs/post/questions')}
               className="btn-cyan px-4 py-2 text-sm flex items-center gap-2"
             >
               <Plus size={16} />
@@ -201,39 +275,14 @@ export default function MyJobsScreen() {
             </button>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 sm:gap-4 mb-8">
             {[
-              {
-                label: 'Total Jobs',
-                value: stats.total.toString(),
-                icon: <Briefcase size={16} />,
-                color: 'cyan',
-              },
-              {
-                label: 'Open',
-                value: stats.open.toString(),
-                icon: <CheckCircle size={16} />,
-                color: 'green',
-              },
-              {
-                label: 'In Progress',
-                value: stats.inProgress.toString(),
-                icon: <Clock size={16} />,
-                color: 'amber',
-              },
-              {
-                label: 'Closed',
-                value: stats.closed.toString(),
-                icon: <XCircle size={16} />,
-                color: 'gray',
-              },
-              {
-                label: 'Total Proposals',
-                value: stats.totalProposals.toString(),
-                icon: <Users size={16} />,
-                color: 'purple',
-              },
+              { label: 'Total Jobs', value: stats.total.toString(), icon: <Briefcase size={16} />, color: 'cyan' },
+              { label: 'Draft', value: stats.draft.toString(), icon: <Clock size={16} />, color: 'amber' },
+              { label: 'Open', value: stats.open.toString(), icon: <CheckCircle size={16} />, color: 'green' },
+              { label: 'Closed', value: stats.closed.toString(), icon: <XCircle size={16} />, color: 'gray' },
+              { label: 'Unknown', value: stats.unknown.toString(), icon: <HelpCircle size={16} />, color: 'purple' },
+              { label: 'Proposals', value: stats.totalProposals.toString(), icon: <Users size={16} />, color: 'purple' },
             ].map(stat => (
               <div key={stat.label} className="stat-card">
                 <div className="flex items-center justify-between mb-2">
@@ -249,7 +298,6 @@ export default function MyJobsScreen() {
             ))}
           </div>
 
-          {/* Filters */}
           <div className="glass-card p-4 mb-6">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
@@ -260,7 +308,7 @@ export default function MyJobsScreen() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={event => setSearchQuery(event.target.value)}
                   placeholder="Search jobs..."
                   className="input-gb w-full py-2.5 text-sm"
                   style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
@@ -268,14 +316,15 @@ export default function MyJobsScreen() {
               </div>
               <select
                 value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as JobStatus)}
+                onChange={event => setStatusFilter(event.target.value as JobStatusFilter)}
                 className="input-gb px-4 py-2.5 text-sm cursor-pointer"
               >
                 <option value="all">All Status</option>
+                <option value="draft">Draft</option>
                 <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
                 <option value="closed">Closed</option>
                 <option value="cancelled">Cancelled</option>
+                <option value="unknown">Unknown</option>
               </select>
             </div>
           </div>
@@ -289,7 +338,6 @@ export default function MyJobsScreen() {
             </div>
           )}
 
-          {/* Jobs List */}
           {loading ? (
             <div className="glass-card p-12 text-center">
               <Briefcase size={48} className="mx-auto mb-4 text-muted" />
@@ -297,7 +345,7 @@ export default function MyJobsScreen() {
                 Loading jobs...
               </p>
               <p className="text-sm text-secondary">
-                Please wait while we fetch your job posts.
+                Please wait while we fetch your JobPosts.
               </p>
             </div>
           ) : (
@@ -311,6 +359,9 @@ export default function MyJobsScreen() {
                           {job.title}
                         </h3>
                         {getStatusBadge(job.status)}
+                        <span className="badge-cyan text-xs">
+                          {getVisibilityLabel(job.visibility)}
+                        </span>
                       </div>
 
                       <p className="text-sm text-secondary mb-3 line-clamp-2">
@@ -356,28 +407,22 @@ export default function MyJobsScreen() {
                         {job.viewsCount}
                       </p>
                     </div>
-
                     <div>
-                      <p className="text-xs text-muted mb-1">Posted</p>
+                      <p className="text-xs text-muted mb-1">Created</p>
                       <p className="text-sm font-semibold text-primary flex items-center gap-1">
                         <Calendar size={14} />
                         {formatDate(job.createdAt)}
                       </p>
                     </div>
-
-                    {job.deadline && (
-                      <div>
-                        <p className="text-xs text-muted mb-1">Deadline</p>
-                        <p className="text-sm font-semibold text-primary flex items-center gap-1">
-                          <Calendar size={14} />
-                          {formatDate(job.deadline)}
-                        </p>
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-xs text-muted mb-1">Status</p>
+                      <p className="text-sm font-semibold text-primary">
+                        {getStatusLabel(job.status)}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2 pt-4 border-t border-white/5">
+                  <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-white/5">
                     <button
                       onClick={() => navigate(`/jobs/${job.id}`)}
                       className="btn-ghost-cyan px-4 py-2 text-xs flex items-center gap-1.5"
@@ -385,6 +430,38 @@ export default function MyJobsScreen() {
                       <Eye size={14} />
                       View Details
                     </button>
+
+                    <button
+                      onClick={() => navigateToQuestions(job)}
+                      className="btn-ghost-cyan px-4 py-2 text-xs flex items-center gap-1.5"
+                    >
+                      <HelpCircle size={14} />
+                      Manage Questions
+                    </button>
+
+                    <select
+                      value={job.visibility ?? ''}
+                      onChange={event => updateJobVisibility(job.id, Number(event.target.value))}
+                      disabled={updatingJobId === job.id}
+                      className="input-gb px-3 py-2 text-xs cursor-pointer disabled:opacity-40"
+                      title="Update visibility"
+                    >
+                      <option value="" disabled>Visibility Unknown</option>
+                      <option value="0">Public</option>
+                      <option value="1">Private</option>
+                      <option value="2">InviteOnly</option>
+                    </select>
+
+                    {job.status === JobStatus.Draft && (
+                      <button
+                        onClick={() => updateJobStatus(job.id, JobStatus.Open, 'JobPost published successfully.')}
+                        disabled={updatingJobId === job.id}
+                        className="btn-green px-4 py-2 text-xs flex items-center gap-1.5 disabled:opacity-40"
+                      >
+                        <CheckCircle size={14} />
+                        Publish
+                      </button>
+                    )}
 
                     {job.proposalsCount > 0 && (
                       <button
@@ -396,7 +473,7 @@ export default function MyJobsScreen() {
                       </button>
                     )}
 
-                    {job.status === 'open' && (
+                    {job.status === JobStatus.Open && (
                       <>
                         <button
                           onClick={() => navigate(`/jobs/edit/${job.id}`)}
@@ -434,10 +511,10 @@ export default function MyJobsScreen() {
                     No jobs found
                   </p>
                   <p className="text-sm text-secondary mb-6">
-                    Start by posting your first job
+                    Start by creating your question set and JobPost details.
                   </p>
                   <button
-                    onClick={() => navigate('/jobs/post')}
+                    onClick={() => navigate('/jobs/post/questions')}
                     className="btn-cyan px-6 py-3"
                   >
                     Post a Job
@@ -449,7 +526,6 @@ export default function MyJobsScreen() {
         </div>
       </div>
 
-      {/* Close Job Modal */}
       {showCloseModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -457,7 +533,7 @@ export default function MyJobsScreen() {
         >
           <div
             className="glass-card max-w-lg w-full p-6"
-            onClick={e => e.stopPropagation()}
+            onClick={event => event.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-full bg-green/20 flex items-center justify-center">
@@ -465,10 +541,10 @@ export default function MyJobsScreen() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-primary">
-                  Close Job Posting
+                  Close JobPost
                 </h2>
                 <p className="text-xs text-muted">
-                  Mark this job as completed
+                  Mark this JobPost as closed
                 </p>
               </div>
             </div>
@@ -482,17 +558,6 @@ export default function MyJobsScreen() {
               </p>
             </div>
 
-            <div className="bg-green/10 border border-green/20 rounded-lg p-4 mb-6">
-              <p className="text-sm text-primary mb-1">
-                Closing this job will:
-              </p>
-              <ul className="text-xs text-secondary space-y-1 ml-4">
-                <li>• Stop accepting new proposals</li>
-                <li>• Mark the job as successfully completed</li>
-                <li>• Hide it from job search results</li>
-              </ul>
-            </div>
-
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCloseModal(null)}
@@ -501,8 +566,13 @@ export default function MyJobsScreen() {
                 Cancel
               </button>
               <button
-                onClick={() => handleCloseJob(showCloseModal.id)}
-                className="btn-green flex-1 px-6 py-2 flex items-center justify-center gap-2"
+                onClick={() => updateJobStatus(
+                  showCloseModal.id,
+                  JobStatus.Closed,
+                  'JobPost closed successfully.'
+                )}
+                disabled={updatingJobId === showCloseModal.id}
+                className="btn-green flex-1 px-6 py-2 flex items-center justify-center gap-2 disabled:opacity-40"
               >
                 <CheckCircle size={16} />
                 Close Job
@@ -512,7 +582,6 @@ export default function MyJobsScreen() {
         </div>
       )}
 
-      {/* Cancel Job Modal */}
       {showCancelModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -520,7 +589,7 @@ export default function MyJobsScreen() {
         >
           <div
             className="glass-card max-w-lg w-full p-6"
-            onClick={e => e.stopPropagation()}
+            onClick={event => event.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-full bg-red/20 flex items-center justify-center">
@@ -528,7 +597,7 @@ export default function MyJobsScreen() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-primary">
-                  Cancel Job Posting
+                  Cancel JobPost
                 </h2>
                 <p className="text-xs text-muted">
                   This action cannot be undone
@@ -548,17 +617,6 @@ export default function MyJobsScreen() {
               </p>
             </div>
 
-            <div className="bg-red/10 border border-red/20 rounded-lg p-4 mb-6">
-              <p className="text-sm font-semibold text-primary mb-1">
-                Warning
-              </p>
-              <p className="text-xs text-secondary">
-                Cancelling this job will permanently remove it and notify all
-                freelancers who submitted proposals. Consider closing the job
-                instead if it was completed successfully.
-              </p>
-            </div>
-
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCancelModal(null)}
@@ -567,8 +625,13 @@ export default function MyJobsScreen() {
                 Keep Job
               </button>
               <button
-                onClick={() => handleCancelJob(showCancelModal.id)}
-                className="btn-red flex-1 px-6 py-2 flex items-center justify-center gap-2"
+                onClick={() => updateJobStatus(
+                  showCancelModal.id,
+                  JobStatus.Cancelled,
+                  'JobPost cancelled successfully.'
+                )}
+                disabled={updatingJobId === showCancelModal.id}
+                className="btn-red flex-1 px-6 py-2 flex items-center justify-center gap-2 disabled:opacity-40"
               >
                 <Ban size={16} />
                 Cancel Job
