@@ -13,6 +13,8 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 
 const VND_PER_TOKEN = 1000;
@@ -206,6 +208,7 @@ export default function WalletDepositScreen() {
                 </div>
               )}
               <div className="glass-card p-4 mb-6">
+                <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
                 <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
                 <div className="flex items-center justify-center gap-2">
                   <Coins className="text-green" size={20} />
