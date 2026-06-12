@@ -1,31 +1,20 @@
 /* INVITE FREELANCER TO JOB MODAL - GIGBRIDGE DESIGN SYSTEM
-   Design Read: Job invitation modal for clients to invite freelancers
-   Audience: Clients browsing freelancer profiles
-   Dials: VARIANCE 6 (professional clean), MOTION 6 (smooth spring), DENSITY 4 (spacious/readable)
-   Aesthetic: Cyan Signal (#0077FF) accent, card-based structure, conversational tone
-   Anti-Slop Discipline:
-   - Fixed positioning with z-index 999 to prevent header overlap
-   - Centered modal with safe viewport constraints
-   - Spring physics on all interactions (stiffness 100, damping 20)
-   - Token-based colors from design-component-patterns.md
-   - Proper focus management and keyboard navigation
-   - Responsive breakpoints: 640px, 768px, 1024px, 1440px
+   Redesigned to use theme variables and a horizontal two-column grid matching the premium profile style.
 */
 
 /* ===== OVERLAY ===== */
 .invite-freelancer-overlay {
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: 99999; /* Boosted z-index to ensure it sits on top of all navbars */
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(10, 15, 28, 0.65);
-  backdrop-filter: blur(5px);
+  background: rgba(10, 15, 28, 0.45);
+  backdrop-filter: blur(8px);
   min-height: 100vh;
   min-height: 100dvh;
-  /* Safe area for notches and safe zones */
   padding-top: max(1rem, env(safe-area-inset-top));
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
   padding-left: max(1rem, env(safe-area-inset-left));
@@ -36,17 +25,16 @@
 /* ===== MODAL CONTAINER ===== */
 .invite-freelancer-modal {
   position: relative;
-  width: min(600px, 100%);
-  max-height: 85dvh;
-  max-height: 85vh;
-  border: 1px solid rgba(226, 232, 240, 0.5);
-  border-radius: 2.5rem;
-  background: #ffffff;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  width: min(900px, 95%); /* Expanded width for a horizontal layout */
+  max-height: 95dvh;
+  max-height: 95vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Center modal and prevent header overlap */
   margin: auto;
   transform-origin: center bottom;
 }
@@ -64,20 +52,20 @@
   border: none;
   border-radius: 0.5rem;
   background: transparent;
-  color: #71717A;
+  color: var(--muted-foreground);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.33, 0.66, 0.66, 1);
   z-index: 10;
 }
 
 .invite-freelancer-close:hover {
-  background: rgba(0, 119, 255, 0.08);
-  color: #0077FF;
+  background: rgba(23, 130, 252, 0.08);
+  color: var(--gb-cyan);
   transform: scale(1.1);
 }
 
 .invite-freelancer-close:focus {
-  outline: 2px solid #0077FF;
+  outline: 2px solid var(--gb-cyan);
   outline-offset: 2px;
 }
 
@@ -85,8 +73,8 @@
 .invite-freelancer-header {
   flex-shrink: 0;
   padding: 2rem 2rem 1.5rem;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-  background: #F9FAFB;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
 }
 
 .invite-freelancer-title-group {
@@ -103,15 +91,14 @@
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 0.5rem;
-  background: rgba(0, 119, 255, 0.12);
-  color: #0077FF;
+  background: rgba(23, 130, 252, 0.12);
+  color: var(--gb-cyan);
   flex-shrink: 0;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
 .invite-freelancer-title-group h2 {
   margin: 0 0 0.25rem 0;
-  color: #18181B;
+  color: var(--foreground);
   font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -119,7 +106,7 @@
 
 .invite-freelancer-title-group p {
   margin: 0;
-  color: #71717A;
+  color: var(--muted-foreground);
   font-size: 0.8rem;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -165,83 +152,98 @@
   height: 18px;
 }
 
-/* ===== CONTENT SCROLLABLE ===== */
-.invite-freelancer-content {
+/* ===== CONTENT GRID ===== */
+.invite-freelancer-content-grid {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
   padding: 2rem;
   scroll-behavior: smooth;
-  background: #ffffff;
+  background: var(--card);
+}
+
+@media (min-width: 768px) {
+  .invite-freelancer-content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    overflow-y: visible; /* Avoid internal scrolling on desktop */
+  }
+}
+
+.invite-grid-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 /* Custom scrollbar styling */
-.invite-freelancer-content::-webkit-scrollbar {
+.invite-freelancer-content-grid::-webkit-scrollbar {
   width: 8px;
 }
 
-.invite-freelancer-content::-webkit-scrollbar-track {
+.invite-freelancer-content-grid::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.invite-freelancer-content::-webkit-scrollbar-thumb {
-  background: rgba(0, 119, 255, 0.2);
+.invite-freelancer-content-grid::-webkit-scrollbar-thumb {
+  background: rgba(23, 130, 252, 0.2);
   border-radius: 4px;
 }
 
-.invite-freelancer-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 119, 255, 0.4);
+.invite-freelancer-content-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(23, 130, 252, 0.4);
 }
 
 /* ===== SECTIONS ===== */
 .invite-section {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .invite-section-title {
   margin: 0;
-  color: #18181B;
-  font-size: 0.95rem;
+  color: var(--foreground);
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid rgba(226, 232, 240, 0.5);
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border);
 }
 
 /* ===== INFO CARD ===== */
 .invite-info-card {
-  padding: 1.25rem;
-  border: 1px solid rgba(226, 232, 240, 0.5);
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: #F9FAFB;
+  background: var(--background);
   transition: all 0.2s cubic-bezier(0.33, 0.66, 0.66, 1);
 }
 
 .invite-info-card:hover {
-  border-color: #0077FF;
-  background: #ffffff;
+  border-color: var(--gb-cyan);
+  background: var(--card);
 }
 
 .invite-info-label {
   display: block;
-  color: #94A3B8;
+  color: var(--muted-foreground);
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .invite-info-value {
   display: block;
-  color: #18181B;
-  font-size: 1.05rem;
+  color: var(--foreground);
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -249,11 +251,11 @@
 .invite-job-selector {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .invite-label {
-  color: #71717A;
+  color: var(--muted-foreground);
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -265,7 +267,7 @@
 }
 
 .invite-char-count {
-  color: #94A3B8;
+  color: var(--muted-foreground);
   font-size: 0.7rem;
   font-weight: 600;
 }
@@ -273,10 +275,10 @@
 .invite-select {
   height: 2.75rem;
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(226, 232, 240, 0.5);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: #F9FAFB;
-  color: #18181B;
+  background: var(--background);
+  color: var(--foreground);
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
@@ -289,15 +291,15 @@
 }
 
 .invite-select:hover:not(:disabled) {
-  border-color: #0077FF;
-  background-color: #ffffff;
+  border-color: var(--gb-cyan);
+  background-color: var(--card);
 }
 
 .invite-select:focus {
   outline: none;
-  border-color: #0077FF;
-  background-color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.1);
+  border-color: var(--gb-cyan);
+  background-color: var(--card);
+  box-shadow: 0 0 0 3px rgba(23, 130, 252, 0.1);
 }
 
 .invite-select:disabled {
@@ -306,7 +308,7 @@
 }
 
 .invite-select.has-value {
-  color: #18181B;
+  color: var(--foreground);
   font-weight: 700;
 }
 
@@ -317,21 +319,21 @@
 
 /* ===== JOB PREVIEW ===== */
 .invite-job-preview {
-  padding: 1.25rem;
-  border: 1px solid rgba(0, 119, 255, 0.15);
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(23, 130, 252, 0.15);
   border-radius: 0.5rem;
-  background: rgba(0, 119, 255, 0.04);
+  background: rgba(23, 130, 252, 0.04);
   transition: all 0.2s ease;
 }
 
 .invite-job-preview-item {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .invite-preview-label {
-  color: #94A3B8;
+  color: var(--muted-foreground);
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -340,7 +342,7 @@
 
 .invite-preview-value {
   margin: 0;
-  color: #18181B;
+  color: var(--foreground);
   font-size: 0.95rem;
   font-weight: 700;
 }
@@ -350,7 +352,7 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.85rem 1.125rem;
+  padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   background: rgba(251, 191, 36, 0.08);
   border: 1px solid rgba(251, 191, 36, 0.25);
@@ -371,30 +373,30 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 2.5rem 1.5rem;
-  border: 2px dashed rgba(226, 232, 240, 0.5);
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+  border: 2px dashed var(--border);
   border-radius: 0.75rem;
-  background: #F9FAFB;
+  background: var(--background);
   text-align: center;
 }
 
 .invite-empty-state svg {
   width: 32px;
   height: 32px;
-  color: #94A3B8;
+  color: var(--muted-foreground);
 }
 
 .invite-empty-state p {
   margin: 0;
-  color: #18181B;
+  color: var(--foreground);
   font-size: 0.95rem;
   font-weight: 700;
 }
 
 .invite-empty-hint {
   display: block;
-  color: #71717A;
+  color: var(--muted-foreground);
   font-size: 0.8rem;
   font-weight: 500;
 }
@@ -403,39 +405,39 @@
 .invite-textarea-field {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.5rem;
 }
 
 .invite-textarea {
-  min-height: 5rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid rgba(226, 232, 240, 0.5);
+  min-height: 4.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: #F9FAFB;
-  color: #18181B;
+  background: var(--background);
+  color: var(--foreground);
   font-size: 0.9rem;
   font-weight: 500;
   font-family: inherit;
-  line-height: 1.5;
+  line-height: 1.4;
   resize: none;
   transition: all 0.2s ease;
 }
 
 .invite-textarea::placeholder {
-  color: #94A3B8;
+  color: var(--muted-foreground);
   opacity: 0.7;
 }
 
 .invite-textarea:hover {
-  border-color: #0077FF;
-  background: #ffffff;
+  border-color: var(--gb-cyan);
+  background: var(--card);
 }
 
 .invite-textarea:focus {
   outline: none;
-  border-color: #0077FF;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.1);
+  border-color: var(--gb-cyan);
+  background: var(--card);
+  box-shadow: 0 0 0 3px rgba(23, 130, 252, 0.1);
 }
 
 .invite-textarea:disabled {
@@ -445,7 +447,7 @@
 
 .invite-textarea-hint {
   display: block;
-  color: #71717A;
+  color: var(--muted-foreground);
   font-size: 0.75rem;
   font-weight: 500;
   margin-top: 0.25rem;
@@ -453,27 +455,27 @@
 
 /* ===== PREVIEW BOX ===== */
 .invite-preview-box {
-  padding: 1.5rem;
-  border: 1px solid rgba(0, 119, 255, 0.15);
+  padding: 1.25rem;
+  border: 1px solid rgba(23, 130, 252, 0.15);
   border-radius: 0.5rem;
-  background: rgba(0, 119, 255, 0.04);
+  background: rgba(23, 130, 252, 0.04);
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .invite-preview-item-detail {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .invite-preview-item-detail .invite-preview-label {
-  color: #94A3B8;
+  color: var(--muted-foreground);
 }
 
 .invite-preview-item-detail .invite-preview-value {
-  color: #18181B;
+  color: var(--foreground);
   font-weight: 700;
   font-size: 0.95rem;
 }
@@ -483,9 +485,9 @@
   flex-shrink: 0;
   display: flex;
   gap: 1rem;
-  padding: 1.75rem 2rem;
-  border-top: 1px solid rgba(226, 232, 240, 0.5);
-  background: #F9FAFB;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--background);
 }
 
 .invite-btn {
@@ -514,15 +516,15 @@
 
 /* Cancel Button */
 .cancel-btn {
-  color: #18181B;
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.5);
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 .cancel-btn:hover:not(:disabled) {
-  border-color: #0077FF;
-  color: #0077FF;
-  background: rgba(0, 119, 255, 0.04);
+  border-color: var(--gb-cyan);
+  color: var(--gb-cyan);
+  background: rgba(23, 130, 252, 0.04);
   transform: translateY(-1px);
 }
 
@@ -532,12 +534,12 @@
 
 /* Submit Button */
 .submit-btn {
-  color: white;
-  background: #0077FF;
+  color: var(--primary-foreground);
+  background: var(--gb-cyan);
   border: none;
   position: relative;
   font-weight: 800;
-  box-shadow: 0 8px 16px rgba(0, 119, 255, 0.25), 0 0 1px rgba(0, 119, 255, 0.3);
+  box-shadow: 0 8px 16px rgba(23, 130, 252, 0.2);
 }
 
 .submit-btn::before {
@@ -550,9 +552,8 @@
 }
 
 .submit-btn:hover:not(:disabled) {
-  box-shadow: 0 12px 24px rgba(0, 119, 255, 0.35), 0 0 1px rgba(0, 119, 255, 0.4);
+  box-shadow: 0 12px 24px rgba(23, 130, 252, 0.3);
   transform: translateY(-2px);
-  background: #0056cc;
 }
 
 .submit-btn:hover:not(:disabled)::before {
@@ -561,7 +562,7 @@
 
 .submit-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(0, 119, 255, 0.2), 0 0 1px rgba(0, 119, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(23, 130, 252, 0.15);
 }
 
 /* Loading spinner */
@@ -606,7 +607,7 @@
     right: 1.25rem;
   }
 
-  .invite-freelancer-content {
+  .invite-freelancer-content-grid {
     gap: 1.5rem;
     padding: 1.5rem;
   }
@@ -653,7 +654,7 @@
     right: 1rem;
   }
 
-  .invite-freelancer-content {
+  .invite-freelancer-content-grid {
     gap: 1.25rem;
     padding: 1.25rem;
   }

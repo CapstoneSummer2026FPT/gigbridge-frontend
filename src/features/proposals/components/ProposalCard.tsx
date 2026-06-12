@@ -11,6 +11,7 @@ interface ProposalCardProps {
   onReject: (proposalId: string) => void;
   onStartNegotiation: (proposalId: string) => void;
   onBoost?: (proposal: ProposalViewModel) => void;
+  onGoToWorkspace?: (proposal: ProposalViewModel) => void;
 }
 
 export const ProposalCard: FC<ProposalCardProps> = ({
@@ -21,6 +22,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   onReject,
   onStartNegotiation,
   onBoost,
+  onGoToWorkspace,
 }) => {
   
   const statusLabel =

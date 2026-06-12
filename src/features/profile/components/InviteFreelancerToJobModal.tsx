@@ -194,158 +194,164 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
           )}
         </AnimatePresence>
 
-        {/* Content - Scrollable */}
-        <div className="invite-freelancer-content" ref={contentRef}>
-          {/* Freelancer Info Section */}
-          <section className="invite-section">
-            <h3 className="invite-section-title">Freelancer Information</h3>
-            <motion.div
-              className="invite-info-card"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-            >
-              <span className="invite-info-label">Name</span>
-              <strong className="invite-info-value">{freelancerName}</strong>
-            </motion.div>
-          </section>
-
-          {/* Job Selection Section */}
-          <section className="invite-section">
-            <h3 className="invite-section-title">Select Job</h3>
-
-            {availableJobs.length === 0 ? (
+        {/* Content - Two-column Grid on Desktop */}
+        <div className="invite-freelancer-content-grid" ref={contentRef}>
+          {/* Left Column */}
+          <div className="invite-grid-col">
+            {/* Freelancer Info Section */}
+            <section className="invite-section">
+              <h3 className="invite-section-title">Freelancer Information</h3>
               <motion.div
-                className="invite-empty-state"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                className="invite-info-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
               >
-                <AlertCircle size={32} />
-                <p>No open jobs available</p>
-                <span className="invite-empty-hint">Create a job post first to send invitations</span>
+                <span className="invite-info-label">Name</span>
+                <strong className="invite-info-value">{freelancerName}</strong>
               </motion.div>
-            ) : (
-              <motion.div
-                className="invite-job-selector"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <label htmlFor="job-select" className="invite-label">
-                  <span>Choose a job</span>
-                </label>
-                <select
-                  id="job-select"
-                  className={`invite-select ${selectedJobId ? 'has-value' : ''} ${isJobInvited ? 'is-invited' : ''}`}
-                  value={selectedJobId}
-                  onChange={(e) => {
-                    setSelectedJobId(e.target.value);
-                    setError('');
-                  }}
-                  disabled={loading || success || availableJobs.length === 0}
-                >
-                  <option value="">Select an open job...</option>
-                  {availableJobs.map(job => (
-                    <option key={job.id} value={job.id} disabled={isAlreadyInvited?.(job.id)}>
-                      {job.title}
-                      {isAlreadyInvited?.(job.id) ? ' (Already invited)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </motion.div>
-            )}
+            </section>
 
-            {/* Job Details Preview */}
-            <AnimatePresence>
-              {selectedJob && (
+            {/* Job Selection Section */}
+            <section className="invite-section">
+              <h3 className="invite-section-title">Select Job</h3>
+
+              {availableJobs.length === 0 ? (
                 <motion.div
-                  className="invite-job-preview"
-                  initial={{ opacity: 0, y: 10, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: 'auto' }}
-                  exit={{ opacity: 0, y: -10, height: 0 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                  className="invite-empty-state"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                 >
-                  <div className="invite-job-preview-item">
-                    <span className="invite-preview-label">Job Title</span>
-                    <p className="invite-preview-value">{selectedJob.title}</p>
-                  </div>
+                  <AlertCircle size={32} />
+                  <p>No open jobs available</p>
+                  <span className="invite-empty-hint">Create a job post first to send invitations</span>
+                </motion.div>
+              ) : (
+                <motion.div
+                  className="invite-job-selector"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <label htmlFor="job-select" className="invite-label">
+                    <span>Choose a job</span>
+                  </label>
+                  <select
+                    id="job-select"
+                    className={`invite-select ${selectedJobId ? 'has-value' : ''} ${isJobInvited ? 'is-invited' : ''}`}
+                    value={selectedJobId}
+                    onChange={(e) => {
+                      setSelectedJobId(e.target.value);
+                      setError('');
+                    }}
+                    disabled={loading || success || availableJobs.length === 0}
+                  >
+                    <option value="">Select an open job...</option>
+                    {availableJobs.map(job => (
+                      <option key={job.id} value={job.id} disabled={isAlreadyInvited?.(job.id)}>
+                        {job.title}
+                        {isAlreadyInvited?.(job.id) ? ' (Already invited)' : ''}
+                      </option>
+                    ))}
+                  </select>
                 </motion.div>
               )}
-            </AnimatePresence>
 
-            {/* Already Invited Warning */}
-            <AnimatePresence>
-              {selectedJobId && isJobInvited && (
-                <motion.div
-                  className="invite-warning-box"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <AlertCircle size={18} />
-                  <span>This freelancer was already invited to this job</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </section>
+              {/* Job Details Preview */}
+              <AnimatePresence>
+                {selectedJob && (
+                  <motion.div
+                    className="invite-job-preview"
+                    initial={{ opacity: 0, y: 10, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, y: -10, height: 0 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                  >
+                    <div className="invite-job-preview-item">
+                      <span className="invite-preview-label">Job Title</span>
+                      <p className="invite-preview-value">{selectedJob.title}</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-          {/* Message Section */}
-          <section className="invite-section">
-            <h3 className="invite-section-title">Optional Message</h3>
-            <motion.label
-              className="invite-textarea-field"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <span className="invite-label">
-                <span>Add a personal message</span>
-                <span className="invite-char-count">
-                  {message.length}/{500}
+              {/* Already Invited Warning */}
+              <AnimatePresence>
+                {selectedJobId && isJobInvited && (
+                  <motion.div
+                    className="invite-warning-box"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <AlertCircle size={18} />
+                    <span>This freelancer was already invited to this job</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
+          </div>
+
+          {/* Right Column */}
+          <div className="invite-grid-col">
+            {/* Message Section */}
+            <section className="invite-section">
+              <h3 className="invite-section-title">Optional Message</h3>
+              <motion.label
+                className="invite-textarea-field"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+              >
+                <span className="invite-label">
+                  <span>Add a personal message</span>
+                  <span className="invite-char-count">
+                    {message.length}/{500}
+                  </span>
                 </span>
-              </span>
-              <textarea
-                className="invite-textarea"
-                placeholder="Tell the freelancer why you think they're a great fit for this job..."
-                value={message}
-                onChange={(e) => {
-                  if (e.target.value.length <= 500) {
-                    setMessage(e.target.value);
-                  }
-                }}
-                disabled={loading || success}
-                rows={4}
-                maxLength={500}
-              />
-              <span className="invite-textarea-hint">
-                A personal message can increase the freelancer's likelihood of accepting
-              </span>
-            </motion.label>
-          </section>
+                <textarea
+                  className="invite-textarea"
+                  placeholder="Tell the freelancer why you think they're a great fit for this job..."
+                  value={message}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 500) {
+                      setMessage(e.target.value);
+                    }
+                  }}
+                  disabled={loading || success}
+                  rows={4}
+                  maxLength={500}
+                />
+                <span className="invite-textarea-hint">
+                  A personal message can increase likelihood of acceptance
+                </span>
+              </motion.label>
+            </section>
 
-          {/* Invitation Details Section */}
-          <section className="invite-section">
-            <h3 className="invite-section-title">What the Freelancer Will See</h3>
-            <motion.div
-              className="invite-preview-box"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="invite-preview-item-detail">
-                <span className="invite-preview-label">Notification Type</span>
-                <p className="invite-preview-value">Job Invitation</p>
-              </div>
-              <div className="invite-preview-item-detail">
-                <span className="invite-preview-label">Available Until</span>
-                <p className="invite-preview-value">7 days from now</p>
-              </div>
-              <div className="invite-preview-item-detail">
-                <span className="invite-preview-label">Response Options</span>
-                <p className="invite-preview-value">Accept to create a Shortlisted proposal</p>
-              </div>
-            </motion.div>
-          </section>
+            {/* Invitation Details Section */}
+            <section className="invite-section">
+              <h3 className="invite-section-title">What the Freelancer Will See</h3>
+              <motion.div
+                className="invite-preview-box"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="invite-preview-item-detail">
+                  <span className="invite-preview-label">Notification Type</span>
+                  <p className="invite-preview-value">Job Invitation</p>
+                </div>
+                <div className="invite-preview-item-detail">
+                  <span className="invite-preview-label">Available Until</span>
+                  <p className="invite-preview-value">7 days from now</p>
+                </div>
+                <div className="invite-preview-item-detail">
+                  <span className="invite-preview-label">Response Options</span>
+                  <p className="invite-preview-value">Accept to create a Shortlisted proposal</p>
+                </div>
+              </motion.div>
+            </section>
+          </div>
         </div>
 
         {/* Actions Footer */}
