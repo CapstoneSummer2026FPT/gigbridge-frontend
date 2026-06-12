@@ -382,9 +382,6 @@ export default function MyJobsScreen() {
                       <p className="text-2xl font-bold text-green">
                         ${job.budget.toLocaleString()}
                       </p>
-                      <p className="text-xs text-muted capitalize">
-                        {job.budgetType}
-                      </p>
                     </div>
                   </div>
 
