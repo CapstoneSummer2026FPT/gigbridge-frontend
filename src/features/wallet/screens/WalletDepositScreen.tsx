@@ -279,13 +279,16 @@ export default function WalletDepositScreen() {
                     <CheckCircle size={20} className="text-cyan" />
                   </div>
                 </div>
+                <p className="text-xs text-muted mt-3">
+                  Báº¡n sáº½ chá»n QR Code, ngÃ¢n hÃ ng hoáº·c tháº» ná»™i Ä‘á»‹a á»Ÿ bÆ°á»›c thanh toÃ¡n PayOS tiáº¿p theo.
+                </p>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {[
                     { icon: <QrCode size={14} />, label: 'QR Code' },
                     { icon: <Building2 size={14} />, label: 'Ngân hàng' },
                     { icon: <CreditCard size={14} />, label: 'Thẻ nội địa' },
                   ].map(m => (
-                    <div key={m.label} className="flex items-center gap-1.5 p-2 glass-card text-xs text-secondary justify-center">
+                    <div key={m.label} className="flex items-center gap-1.5 p-2 rounded-lg border border-white/10 bg-white/5 text-xs text-secondary justify-center">
                       {m.icon}
                       {m.label}
                     </div>
