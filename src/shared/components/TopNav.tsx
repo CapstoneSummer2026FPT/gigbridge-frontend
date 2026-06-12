@@ -6,6 +6,7 @@ import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
 import { useApp, AppTheme } from '../../app/providers/AppProvider';
+import { walletGetAPI } from '../../api/walletAPI/GET';
 import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
 import { CompactLanguageSwitcher, CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -31,6 +32,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [searchVal, setSearchVal] = useState('');
 
   // Safely get app context - might be null for guest users
@@ -49,7 +51,6 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const isAuthenticated = appContext?.isAuthenticated || false;
 
   // Wallet and notification data
-  const walletBalance = user?.gigcoin_balance || 0;
   const { notifications, unreadCount, markAsRead } = useUserNotifications(user, {
     pageSize: 8,
     pollMs: 45000,
