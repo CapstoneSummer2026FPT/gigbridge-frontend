@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
+import type { ProposalDetailDto, ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
 import { jobGetAPI } from '../jobAPI/GET';
 
 const proposalsUrl = 'Proposals';
@@ -38,6 +38,22 @@ export const proposalGetAPI = {
   },
 
   /**
+   * GET /api/Proposals/{proposalId}
+   * Authenticated proposal detail for client/freelancer owners.
+   */
+  getProposalDetail: async (id: string): Promise<ApiResponse<ProposalDetailDto>> => {
+    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/${id}`);
+  },
+
+  /**
+   * GET /api/Proposals/job/{jobPostId}/my-proposal
+   * Freelancer-only proposal detail for a job post.
+   */
+  getMyProposalByJobPost: async (jobPostId: string): Promise<ApiResponse<ProposalDetailDto>> => {
+    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/job/${jobPostId}/my-proposal`);
+  },
+
+  /**
    * Client all proposals assembler
    * Combines all job posts and their proposals.
    */
@@ -66,10 +82,11 @@ export const proposalGetAPI = {
       return proposalGetAPI.getProposalsByJobPost(filters.jobId);
     }
 
-    return proposalGetAPI.getAllProposals();
+    return proposalGetAPI.getMyProposals();
   },
 
-  getProposalById: async (id: string): Promise<ApiResponse<ProposalDto>> => {
-    return apiService.get<ProposalDto>(`${proposalsUrl}/${id}`);
+  getProposalById: async (id: string) => {
+    const response = await proposalGetAPI.getProposalDetail(id);
+    return response.data;
   },
 };

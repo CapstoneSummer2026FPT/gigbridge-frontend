@@ -1,150 +1,277 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import {
-  Briefcase, Search, Plus, Edit, Eye, Users, Calendar,
-  CheckCircle, Clock, Ban, XCircle, TrendingUp, DollarSign,
-  Sparkles, ChevronDown, LayoutGrid, AlignJustify, FileText,
+  Ban,
+  Briefcase,
+  Calendar,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Edit,
+  Eye,
+  HelpCircle,
+  LayoutGrid,
+  AlignJustify,
+  Plus,
+  Search,
+  Users,
+  XCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { useApp } from '../../../app/providers/AppProvider';
+import { jobGetAPI, jobPutAPI } from '../../../api/jobAPI';
+import {
+  JobStatus,
+  type JobPostSummaryDto,
+} from '../../../types/models/Job';
 import '../styles/my-jobs-screen.css';
 
-type JobStatus = 'all' | 'open' | 'in_progress' | 'closed' | 'cancelled';
+type JobStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
 interface MyJob {
   id: string;
   title: string;
   description: string;
   budget: number;
-  status: 'open' | 'in_progress' | 'closed' | 'cancelled';
+  status: JobStatus | null;
+  visibility: number | null;
   proposalsCount: number;
   viewsCount: number;
   createdAt: string;
-  deadline?: string;
   skills: string[];
 }
 
-const MOCK_JOBS: MyJob[] = [
-  {
-    id: 'job_1',
-    title: 'E-commerce Website Development',
-    description: 'Looking for an experienced web developer to build a modern e-commerce platform with React and Node.js. Must have strong knowledge of payment integrations and scalable architecture.',
-    budget: 5000,
-    status: 'open',
-    proposalsCount: 12,
-    viewsCount: 145,
-    createdAt: '2026-05-10T10:00:00Z',
-    deadline: '2026-06-10T10:00:00Z',
-    skills: ['React', 'Node.js', 'MongoDB', 'Payment Integration'],
-  },
-  {
-    id: 'job_2',
-    title: 'Mobile App UI/UX Design',
-    description: 'Need a creative designer for a fitness tracking mobile app. Must have experience with modern design trends and interactive prototyping.',
-    budget: 2800,
-    status: 'in_progress',
-    proposalsCount: 8,
-    viewsCount: 98,
-    createdAt: '2026-05-05T14:30:00Z',
-    skills: ['Figma', 'UI/UX', 'Mobile Design', 'Prototyping'],
-  },
-  {
-    id: 'job_3',
-    title: 'SEO Optimization for Blog',
-    description: 'Looking for SEO expert to optimize our tech blog for better search rankings. Focus on on-page SEO, backlink strategy, and performance analytics.',
-    budget: 1200,
-    status: 'closed',
-    proposalsCount: 15,
-    viewsCount: 203,
-    createdAt: '2026-04-20T09:00:00Z',
-    skills: ['SEO', 'Content Writing', 'Analytics', 'Keyword Research'],
-  },
-  {
-    id: 'job_4',
-    title: 'Data Analysis Project',
-    description: 'Need data analyst to work on customer behavior analysis using Python and SQL. Deliverables include dashboards and written insights.',
-    budget: 3500,
-    status: 'cancelled',
-    proposalsCount: 6,
-    viewsCount: 67,
-    createdAt: '2026-04-15T11:00:00Z',
-    skills: ['Python', 'SQL', 'Data Visualization', 'Statistics'],
-  },
-  {
-    id: 'job_5',
-    title: 'Brand Identity Design',
-    description: 'Looking for a skilled brand designer to create a comprehensive brand identity including logo, color palette, typography, and brand guidelines.',
-    budget: 1800,
-    status: 'open',
-    proposalsCount: 5,
-    viewsCount: 82,
-    createdAt: '2026-06-01T08:00:00Z',
-    deadline: '2026-07-01T08:00:00Z',
-    skills: ['Branding', 'Logo Design', 'Illustrator', 'Typography'],
-  },
-];
+const validStatusValues = new Set<number>([
+  JobStatus.Draft,
+  JobStatus.Open,
+  JobStatus.Closed,
+  JobStatus.Cancelled,
+]);
 
-const STATUS_TABS: { key: JobStatus; label: string; activeClass: string }[] = [
-  { key: 'all',         label: 'All Jobs',    activeClass: 'active-cyan'   },
-  { key: 'open',        label: 'Open',        activeClass: 'active-green'  },
-  { key: 'in_progress', label: 'In Progress', activeClass: 'active-amber'  },
-  { key: 'closed',      label: 'Closed',      activeClass: 'active-gray'   },
-  { key: 'cancelled',   label: 'Cancelled',   activeClass: 'active-red'    },
-];
+const getKnownStatus = (status?: JobStatus | number | null): JobStatus | null => {
+  if (typeof status !== 'number' || !validStatusValues.has(status)) {
+    return null;
+  }
+
+  return status as JobStatus;
+};
+
+const getVisibility = (visibility?: number | null): number | null =>
+  typeof visibility === 'number' ? visibility : null;
+
+const getStatusFilterValue = (status: JobStatus | null): JobStatusFilter => {
+  if (status === JobStatus.Draft) return 'draft';
+  if (status === JobStatus.Open) return 'open';
+  if (status === JobStatus.Closed) return 'closed';
+  if (status === JobStatus.Cancelled) return 'cancelled';
+  return 'unknown';
+};
+
+const getStatusLabel = (status: JobStatus | null) => {
+  if (status === JobStatus.Draft) return 'Draft';
+  if (status === JobStatus.Open) return 'Open';
+  if (status === JobStatus.Closed) return 'Closed';
+  if (status === JobStatus.Cancelled) return 'Cancelled';
+  return 'Unknown';
+};
+
+const getVisibilityLabel = (visibility: number | null) => {
+  if (visibility === 0) return 'Public';
+  if (visibility === 1) return 'Private';
+  if (visibility === 2) return 'InviteOnly';
+  return 'Unknown';
+};
 
 const STATUS_BADGE: Record<string, string> = {
-  open:        'mj-badge-open',
-  in_progress: 'mj-badge-progress',
-  closed:      'mj-badge-closed',
-  cancelled:   'mj-badge-cancelled',
+  draft:     'mj-badge-draft',
+  open:      'mj-badge-open',
+  closed:    'mj-badge-closed',
+  cancelled: 'mj-badge-cancelled',
+  unknown:   'mj-badge-unknown',
 };
-const STATUS_LABEL: Record<string, string> = {
-  open: 'Open', in_progress: 'In Progress', closed: 'Closed', cancelled: 'Cancelled',
-};
+
+const mapSummaryToMyJob = (job: JobPostSummaryDto): MyJob => ({
+  id: job.jobPostsId,
+  title: job.title,
+  description: job.descriptionPreview,
+  budget: job.budgetMax || job.budgetMin || 0,
+  status: getKnownStatus(job.status),
+  visibility: getVisibility(job.visibility),
+  proposalsCount: 0,
+  viewsCount: 0,
+  createdAt: job.createdAt || new Date().toISOString(),
+  skills: job.skillNames || [],
+});
+
+const STATUS_TABS: { key: JobStatusFilter; label: string; activeClass: string }[] = [
+  { key: 'all',       label: 'All Jobs',   activeClass: 'active-cyan'  },
+  { key: 'draft',     label: 'Draft',      activeClass: 'active-amber' },
+  { key: 'open',      label: 'Open',       activeClass: 'active-green' },
+  { key: 'closed',    label: 'Closed',     activeClass: 'active-gray'  },
+  { key: 'cancelled', label: 'Cancelled',  activeClass: 'active-red'   },
+  { key: 'unknown',   label: 'Unknown',    activeClass: 'active-amber' },
+];
 
 export default function MyJobsScreen() {
   const navigate = useNavigate();
-  const { user } = useApp();
+
+  const [jobs, setJobs] = useState<MyJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<JobStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>('all');
   const [isCompact, setIsCompact] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState<MyJob | null>(null);
   const [showCancelModal, setShowCancelModal] = useState<MyJob | null>(null);
 
-  const stats = useMemo(() => {
-    const open        = MOCK_JOBS.filter(j => j.status === 'open').length;
-    const inProgress  = MOCK_JOBS.filter(j => j.status === 'in_progress').length;
-    const closed      = MOCK_JOBS.filter(j => j.status === 'closed').length;
-    const cancelled   = MOCK_JOBS.filter(j => j.status === 'cancelled').length;
-    const totalProposals = MOCK_JOBS.reduce((s, j) => s + j.proposalsCount, 0);
-    const totalViews     = MOCK_JOBS.reduce((s, j) => s + j.viewsCount, 0);
-    return { open, inProgress, closed, cancelled, totalProposals, totalViews, total: MOCK_JOBS.length };
+  const fetchMyJobs = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const response = await jobGetAPI.getMyJobPosts();
+
+      if (!response.success) {
+        setError(response.message || 'Failed to load your job posts. Please try again.');
+        return;
+      }
+
+      setJobs((response.data || []).map(mapSummaryToMyJob));
+    } catch (fetchError) {
+      console.error('Failed to fetch my jobs:', fetchError);
+      setError('Failed to load your job posts. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyJobs();
   }, []);
 
+  const stats = useMemo(() => {
+    const draft = jobs.filter(job => job.status === JobStatus.Draft).length;
+    const open = jobs.filter(job => job.status === JobStatus.Open).length;
+    const closed = jobs.filter(job => job.status === JobStatus.Closed).length;
+    const cancelled = jobs.filter(job => job.status === JobStatus.Cancelled).length;
+    const unknown = jobs.filter(job => job.status === null).length;
+    const totalProposals = jobs.reduce((sum, job) => sum + job.proposalsCount, 0);
+    const totalViews = jobs.reduce((sum, job) => sum + job.viewsCount, 0);
+
+    return {
+      draft,
+      open,
+      closed,
+      cancelled,
+      unknown,
+      totalProposals,
+      totalViews,
+      total: jobs.length,
+    };
+  }, [jobs]);
+
   const filteredJobs = useMemo(() => {
-    return MOCK_JOBS.filter(job => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch = !q ||
-        job.title.toLowerCase().includes(q) ||
-        job.description.toLowerCase().includes(q) ||
-        job.skills.some(s => s.toLowerCase().includes(q));
-      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+    return jobs.filter(job => {
+      const search = searchQuery.toLowerCase();
+
+      const matchesSearch =
+        searchQuery === '' ||
+        job.title.toLowerCase().includes(search) ||
+        job.description.toLowerCase().includes(search) ||
+        job.skills.some(skill => skill.toLowerCase().includes(search));
+
+      const matchesStatus =
+        statusFilter === 'all' || getStatusFilterValue(job.status) === statusFilter;
+
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, statusFilter]);
+  }, [jobs, searchQuery, statusFilter]);
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const formatDate = (date: string) => {
+    const parsedDate = new Date(date);
 
-  const handleCloseJob  = (id: string) => { console.log('Closing:', id); setShowCloseModal(null); };
-  const handleCancelJob = (id: string) => { console.log('Cancelling:', id); setShowCancelModal(null); };
+    if (Number.isNaN(parsedDate.getTime())) {
+      return date;
+    }
+
+    return parsedDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const updateJobStatus = async (
+    jobId: string,
+    status: JobStatus,
+    successMessage: string
+  ) => {
+    try {
+      setUpdatingJobId(jobId);
+      setError('');
+
+      const response = await jobPutAPI.updateJobPostStatus(jobId, { status });
+
+      if (!response.success) {
+        setError(response.message || 'Failed to update JobPost status.');
+        return;
+      }
+
+      setJobs(prev =>
+        prev.map(job => job.id === jobId ? { ...job, status } : job)
+      );
+      toast.success(successMessage);
+    } catch (updateError) {
+      console.error('Failed to update job status:', updateError);
+      setError('Failed to update JobPost status. Please try again.');
+    } finally {
+      setUpdatingJobId(null);
+      setShowCloseModal(null);
+      setShowCancelModal(null);
+    }
+  };
+
+  const updateJobVisibility = async (jobId: string, visibility: number) => {
+    try {
+      setUpdatingJobId(jobId);
+      setError('');
+
+      const response = await jobPutAPI.updateJobPostVisibility(jobId, { visibility });
+
+      if (!response.success) {
+        setError(response.message || 'Failed to update JobPost visibility.');
+        return;
+      }
+
+      setJobs(prev =>
+        prev.map(job => job.id === jobId ? { ...job, visibility } : job)
+      );
+      toast.success('JobPost visibility updated successfully.');
+    } catch (updateError) {
+      console.error('Failed to update job visibility:', updateError);
+      setError('Failed to update JobPost visibility. Please try again.');
+    } finally {
+      setUpdatingJobId(null);
+    }
+  };
+
+  const navigateToQuestions = (job: MyJob) => {
+    navigate(`/client/job-posts/${job.id}/questions`, {
+      state: {
+        status: job.status,
+        title: job.title,
+      },
+    });
+  };
 
   const STAT_CARDS = [
-    { label: 'Total Jobs',    value: stats.total,         icon: <Briefcase  size={18}/>, bg: 'mj-bg-cyan',   color: 'mj-cyan'   },
-    { label: 'Open',          value: stats.open,          icon: <CheckCircle size={18}/>, bg: 'mj-bg-green', color: 'mj-green'  },
-    { label: 'In Progress',   value: stats.inProgress,    icon: <Clock      size={18}/>, bg: 'mj-bg-amber',  color: 'mj-amber'  },
-    { label: 'Total Proposals', value: stats.totalProposals, icon: <Users  size={18}/>, bg: 'mj-bg-purple',  color: 'mj-purple' },
-    { label: 'Total Views',   value: stats.totalViews,    icon: <Eye        size={18}/>, bg: 'mj-bg-cyan',   color: 'mj-cyan'   },
+    { label: 'Total Jobs',    value: stats.total,          icon: <Briefcase   size={18}/>, bg: 'mj-bg-cyan',   color: 'mj-cyan'   },
+    { label: 'Draft',         value: stats.draft,          icon: <Clock       size={18}/>, bg: 'mj-bg-amber',  color: 'mj-amber'  },
+    { label: 'Open',          value: stats.open,           icon: <CheckCircle size={18}/>, bg: 'mj-bg-green',  color: 'mj-green'  },
+    { label: 'Closed',        value: stats.closed,         icon: <XCircle     size={18}/>, bg: 'mj-bg-gray',   color: 'mj-gray'   },
+    { label: 'Unknown',       value: stats.unknown,        icon: <HelpCircle  size={18}/>, bg: 'mj-bg-amber',  color: 'mj-amber'  },
+    { label: 'Proposals',     value: stats.totalProposals,  icon: <Users      size={18}/>, bg: 'mj-bg-purple', color: 'mj-purple' },
   ];
 
   return (
@@ -173,7 +300,7 @@ export default function MyJobsScreen() {
             {/* Post Job CTA */}
             <div style={{ marginTop: 20 }}>
               <button
-                onClick={() => navigate('/jobs/post')}
+                onClick={() => navigate('/jobs/post/questions')}
                 className="mj-action-btn mj-btn-primary"
                 style={{ padding: '10px 22px', fontSize: 13 }}
               >
@@ -231,10 +358,11 @@ export default function MyJobsScreen() {
                         padding: '1px 6px',
                         fontSize: 10,
                       }}>
-                        {tab.key === 'open' ? stats.open
-                          : tab.key === 'in_progress' ? stats.inProgress
+                        {tab.key === 'draft' ? stats.draft
+                          : tab.key === 'open' ? stats.open
                           : tab.key === 'closed' ? stats.closed
-                          : stats.cancelled}
+                          : tab.key === 'cancelled' ? stats.cancelled
+                          : stats.unknown}
                       </span>
                     )}
                   </button>
@@ -260,12 +388,34 @@ export default function MyJobsScreen() {
 
             {/* Results count */}
             <div style={{ marginTop: 10, fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
-              Showing <strong style={{ color: '#374151' }}>{filteredJobs.length}</strong> of {MOCK_JOBS.length} jobs
+              Showing <strong style={{ color: '#374151' }}>{filteredJobs.length}</strong> of {jobs.length} jobs
             </div>
           </div>
 
+          {/* Error */}
+          {error && (
+            <div className="mj-card" style={{ padding: 16, marginBottom: 24, textAlign: 'center' }}>
+              <p style={{ fontSize: 14, color: '#ef4444', marginBottom: 12 }}>{error}</p>
+              <button className="mj-action-btn mj-btn-cyan" onClick={fetchMyJobs}>
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* ── Jobs List ── */}
-          {filteredJobs.length === 0 ? (
+          {loading ? (
+            <div className="mj-card mj-empty">
+              <div className="mj-empty-icon-wrap">
+                <Briefcase size={36} className="mj-cyan" />
+              </div>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">
+                Loading jobs...
+              </p>
+              <p style={{ fontSize: 14, color: '#6b7280' }}>
+                Please wait while we fetch your JobPosts.
+              </p>
+            </div>
+          ) : filteredJobs.length === 0 ? (
             <div className="mj-card mj-empty">
               <div className="mj-empty-icon-wrap">
                 <Briefcase size={36} className="mj-cyan" />
@@ -276,7 +426,7 @@ export default function MyJobsScreen() {
               <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
                 {searchQuery ? 'Try adjusting your search or filter.' : 'Start by posting your first job.'}
               </p>
-              <button onClick={() => navigate('/jobs/post')} className="mj-action-btn mj-btn-primary">
+              <button onClick={() => navigate('/jobs/post/questions')} className="mj-action-btn mj-btn-primary">
                 <Plus size={16} /> Post a Job
               </button>
             </div>
@@ -290,8 +440,11 @@ export default function MyJobsScreen() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                         <h3 className="mj-job-title">{job.title}</h3>
-                        <span className={`mj-badge ${STATUS_BADGE[job.status]}`}>
-                          {STATUS_LABEL[job.status]}
+                        <span className={`mj-badge ${STATUS_BADGE[getStatusFilterValue(job.status)] || 'mj-badge-unknown'}`}>
+                          {getStatusLabel(job.status)}
+                        </span>
+                        <span className="mj-badge mj-badge-cyan">
+                          {getVisibilityLabel(job.visibility)}
                         </span>
                       </div>
                       {!isCompact && (
@@ -333,14 +486,12 @@ export default function MyJobsScreen() {
                         <Calendar size={13} /> {formatDate(job.createdAt)}
                       </div>
                     </div>
-                    {job.deadline && (
-                      <div>
-                        <div className="mj-meta-label">Deadline</div>
-                        <div className="mj-meta-value mj-amber">
-                          <Calendar size={13} /> {formatDate(job.deadline)}
-                        </div>
+                    <div>
+                      <div className="mj-meta-label">Status</div>
+                      <div className="mj-meta-value">
+                        {getStatusLabel(job.status)}
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
@@ -349,12 +500,42 @@ export default function MyJobsScreen() {
                     <button onClick={() => navigate(`/jobs/${job.id}`)} className="mj-action-btn mj-btn-cyan">
                       <Eye size={14} /> View Details
                     </button>
+
+                    <button onClick={() => navigateToQuestions(job)} className="mj-action-btn mj-btn-cyan">
+                      <HelpCircle size={14} /> Manage Questions
+                    </button>
+
+                    <select
+                      value={job.visibility ?? ''}
+                      onChange={event => updateJobVisibility(job.id, Number(event.target.value))}
+                      disabled={updatingJobId === job.id}
+                      className="mj-input"
+                      style={{ width: 'auto', padding: '6px 12px', fontSize: 12 }}
+                      title="Update visibility"
+                    >
+                      <option value="" disabled>Visibility</option>
+                      <option value="0">Public</option>
+                      <option value="1">Private</option>
+                      <option value="2">InviteOnly</option>
+                    </select>
+
+                    {job.status === JobStatus.Draft && (
+                      <button
+                        onClick={() => updateJobStatus(job.id, JobStatus.Open, 'JobPost published successfully.')}
+                        disabled={updatingJobId === job.id}
+                        className="mj-action-btn mj-btn-green"
+                      >
+                        <CheckCircle size={14} /> Publish
+                      </button>
+                    )}
+
                     {job.proposalsCount > 0 && (
                       <button onClick={() => navigate(`/proposals?job=${job.id}`)} className="mj-action-btn mj-btn-cyan">
                         <Users size={14} /> Proposals ({job.proposalsCount})
                       </button>
                     )}
-                    {job.status === 'open' && (
+
+                    {job.status === JobStatus.Open && (
                       <>
                         <button onClick={() => navigate(`/jobs/edit/${job.id}`)} className="mj-action-btn mj-btn-cyan">
                           <Edit size={14} /> Edit
@@ -414,7 +595,16 @@ export default function MyJobsScreen() {
               <button onClick={() => setShowCloseModal(null)} className="mj-action-btn" style={{ flex: 1, justifyContent: 'center', padding: '11px', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={() => handleCloseJob(showCloseModal.id)} className="mj-action-btn mj-btn-primary" style={{ flex: 1, justifyContent: 'center', padding: '11px', fontSize: 14 }}>
+              <button
+                onClick={() => updateJobStatus(
+                  showCloseModal.id,
+                  JobStatus.Closed,
+                  'JobPost closed successfully.'
+                )}
+                disabled={updatingJobId === showCloseModal.id}
+                className="mj-action-btn mj-btn-primary"
+                style={{ flex: 1, justifyContent: 'center', padding: '11px', fontSize: 14 }}
+              >
                 <CheckCircle size={16} /> Close Job
               </button>
             </div>
@@ -454,7 +644,16 @@ export default function MyJobsScreen() {
               <button onClick={() => setShowCancelModal(null)} className="mj-action-btn" style={{ flex: 1, justifyContent: 'center', padding: '11px', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
                 Keep Job
               </button>
-              <button onClick={() => handleCancelJob(showCancelModal.id)} className="mj-action-btn mj-btn-red" style={{ flex: 1, justifyContent: 'center', padding: '11px', fontSize: 14, borderRadius: 12, background: '#EF4444', color: '#fff', border: 'none' }}>
+              <button
+                onClick={() => updateJobStatus(
+                  showCancelModal.id,
+                  JobStatus.Cancelled,
+                  'JobPost cancelled successfully.'
+                )}
+                disabled={updatingJobId === showCancelModal.id}
+                className="mj-action-btn mj-btn-red"
+                style={{ flex: 1, justifyContent: 'center', padding: '11px', fontSize: 14, borderRadius: 12, background: '#EF4444', color: '#fff', border: 'none' }}
+              >
                 <Ban size={16} /> Cancel Job
               </button>
             </div>

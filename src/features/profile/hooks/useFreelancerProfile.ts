@@ -5,6 +5,7 @@ import { MOCK_BROWSE_JOBS } from '../../jobs/mock/data-for-BrowseJobsScreen';
 import { getStoredReviews, saveStoredReviews, type ReviewViewModel } from '../../reviews/mock/data-for-Reviews';
 import type { InviteFreelancerData } from '../components/InviteFreelancerToJobModal';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
 
 export function useFreelancerProfile(targetId: string, currentUser: any) {
   const [profileData, setProfileData] = useState({
@@ -36,6 +37,7 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
+  const [openClientJobs, setOpenClientJobs] = useState<Array<{ id: string; title: string; status: string }>>([]);
 
   // Create Review popup states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -109,11 +111,27 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     setCurrentPage(1);
   }, [targetId]);
 
-  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open').map(job => ({
-    id: job.id,
-    title: job.title,
-    status: job.status,
-  }));
+  useEffect(() => {
+    const fetchOpenClientJobs = async () => {
+      if (!currentUser) return;
+      try {
+        const jobs = await jobGetAPI.getClientJobs();
+        setOpenClientJobs(
+          jobs
+            .filter(job => job.status === 'open')
+            .map(job => ({
+              id: job.id,
+              title: job.title,
+              status: job.status,
+            }))
+        );
+      } catch (error) {
+        console.error('Failed to fetch client jobs for invite modal:', error);
+        setOpenClientJobs([]);
+      }
+    };
+    fetchOpenClientJobs();
+  }, [currentUser]);
   
   const isAlreadyInvitedToJob = (jobId: string): boolean => {
     const inviteKey = `${targetId}_${jobId}`;

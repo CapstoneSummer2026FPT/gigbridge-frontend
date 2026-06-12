@@ -40,7 +40,7 @@ function getClientNavItems(t: any): NavItem[] {
       label: 'Jobs',
       icon: <Briefcase size={18} />,
       children: [
-        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post', badge: 'AI', badgeType: 'cyan' },
+        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post/questions', badge: 'AI', badgeType: 'cyan' },
         { label: 'My Jobs', icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
       ],
     },

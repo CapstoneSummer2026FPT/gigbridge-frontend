@@ -5,8 +5,8 @@
 export enum JobStatus {
   Draft = 0,
   Open = 1,
-  InProgress = 2,
-  Closed = 3,
+  Closed = 2,
+  Cancelled = 3,
 }
 
 export interface JobPost {
@@ -51,7 +51,9 @@ export interface Job {
   budgetMax: number;
   jobType: 'fixed';
   deadline?: string;
-  status: 'draft' | 'open' | 'in_progress' | 'closed';
+  status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
+  statusValue?: JobStatus | number | null;
+  visibility?: number | null;
   proposalCount: number;
   viewCount: number;
   aiMatchScore?: number;
@@ -77,6 +79,8 @@ export interface JobPostSummaryDto {
   locationType?: number | null;
   createdAt: string;
   skillNames: string[];
+  status?: JobStatus | number | null;
+  visibility?: number | null;
 }
 
 export interface JobPostSkillDto {
@@ -104,6 +108,8 @@ export interface JobPostDetailDto {
   location?: string | null;
   endDate?: string | null;
   createdAt: string;
+  status?: JobStatus | number | null;
+  visibility?: number | null;
   skills: JobPostSkillDto[];
   attachments: JobPostAttachmentDto[];
 }
@@ -122,4 +128,53 @@ export interface CreateJobPostRequest {
   visibility?: number | null;
   endDate?: string | null;
   skillIds: string[];
+}
+
+export interface JobPostQuestionDto {
+  jobPostQuestionsId: string;
+  jobPostsId: string;
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface CreateJobPostQuestionRequest {
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface CreateBulkJobPostQuestionsRequest {
+  questions: CreateJobPostQuestionRequest[];
+}
+
+export interface UpdateJobPostQuestionRequest {
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface UpdateJobPostQuestionRequiredRequest {
+  isRequired: boolean;
+}
+
+export interface UpdateBulkJobPostQuestionItemRequest {
+  jobPostQuestionsId: string;
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface UpdateBulkJobPostQuestionsRequest {
+  questions: UpdateBulkJobPostQuestionItemRequest[];
+}
+
+export interface UpdateJobPostStatusRequest {
+  status: number;
+}
+
+export interface UpdateJobPostVisibilityRequest {
+  visibility: number;
 }
