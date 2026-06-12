@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { 
   Briefcase, CheckCircle, Clock, DollarSign, Eye, FileText, 
-  Sparkles, XCircle, Search, ArrowLeft, Send, ShieldAlert, Rocket
+  Sparkles, XCircle, Search, ArrowLeft, Send, ShieldAlert, Rocket, ArrowRightLeft
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -104,47 +104,55 @@ export default function FreelancerProposalsScreen() {
     setBoostSuccess(`Successfully boosted proposal using ${boostAmount} tokens!`);
   };
 
-  const handleGoToWorkspace = async (proposal: ProposalViewModel) => {
-    const existingProject = DB.getProjects().find(
-      p => p.jobId === proposal.jobPostsId && p.freelancerId === proposal.freelancerProfilesId
+  const handleGoToNegotiation = (proposal: ProposalViewModel) => {
+    const conversations = DB.getConversations();
+    let existingConv = conversations.find(
+      c =>
+        (c.participantId === proposal.freelancerProfilesId || c.participantName === proposal.freelancerName) &&
+        (c.job.id === proposal.jobPostsId || c.job.title === proposal.jobTitle)
     );
 
-    let projectId = existingProject?.id;
+    let convId = existingConv?.id;
 
-    if (!existingProject) {
-      projectId = `proj_${Date.now()}`;
-      const newProject = {
-        id: projectId,
-        jobId: proposal.jobPostsId || 'job_1',
-        clientId: 'u_client_1',
-        freelancerId: proposal.freelancerProfilesId || 'u_freelancer_1',
-        title: proposal.jobTitle || 'Untitled Workspace Project',
-        description: proposal.coverLetter || 'Workspace conversation.',
-        totalBudget: proposal.proposedBudget || 0,
-        paidAmount: 0,
-        status: 'active' as const,
-        startDate: new Date().toISOString().split('T')[0],
-        conversationId: `conv_${Date.now()}`,
-        progress: 0,
-        milestones: [
-          {
-            id: `m_${Date.now()}_1`,
-            title: 'Initial Setup',
-            description: 'First milestone of workspace',
-            amount: proposal.proposedBudget ? Math.round(proposal.proposedBudget * 0.3) : 500,
-            dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString().split('T')[0],
-            status: 'in_progress' as const,
-          }
-        ],
+    if (existingConv) {
+      existingConv.roomType = 'negotiation';
+      existingConv.roomId = 'room_negotiation';
+      existingConv.conversationType = 0; // 0 = JobNegotiation
+    } else {
+      convId = `conv_${Date.now()}`;
+      // Find client user if possible, else default
+      const client = DB.getUsers().find(u => u.role === 0) || { id: 'u_client_1', full_name: 'Client' };
+
+      const newConv = {
+        id: convId,
+        roomType: 'negotiation' as const,
+        roomId: 'room_negotiation',
+        participantId: client.id,
+        participantName: client.full_name,
+        participantAvatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${client.full_name}`,
+        participantRole: 'Client',
+        participantCompany: 'TechCorp',
+        participantOnline: true,
+        job: {
+          id: proposal.jobPostsId || 'job_1',
+          title: proposal.jobTitle || 'Untitled Job',
+          budget: proposal.proposedBudget ? `$${proposal.proposedBudget.toLocaleString()}` : '$3,000',
+          category: 'Development',
+        },
+        lastMessage: 'Cuộc trò chuyện đàm phán đã được tạo.',
+        lastMessageAt: new Date().toISOString(),
+        unreadCount: 0,
+        isMuted: false,
+        conversationType: 0, // 0 = JobNegotiation
       };
 
-      DB.addProject(newProject);
+      DB.addConversation(newConv);
 
       const initMessage = {
         id: `msg_${Date.now()}`,
-        conversationId: newProject.conversationId,
-        senderId: 'u_client_1',
-        content: `Hi ${proposal.freelancerName || 'Freelancer'}! Workspace is now active. Let's discuss details here.`,
+        conversationId: convId,
+        senderId: client.id,
+        content: `Hi ${user?.full_name || 'Freelancer'}! Đề xuất của bạn đã được chấp nhận. Hãy thảo luận chi tiết về phạm vi công việc và giá cả ở đây.`,
         type: 'text' as const,
         createdAt: new Date().toISOString(),
         isRead: true,
@@ -152,7 +160,7 @@ export default function FreelancerProposalsScreen() {
       DB.addMessage(initMessage);
     }
 
-    navigate(`/workspace/${projectId}`);
+    navigate('/messages', { state: { activeConvId: convId } });
   };
 
   return (
@@ -293,7 +301,7 @@ export default function FreelancerProposalsScreen() {
                       <span className="text-xs font-bold capitalize">{getStatusLabel(activeProposal.status)}</span>
                       <span className="text-[10px] text-muted-foreground mt-0.5">
                         {activeProposal.status === 2 
-                          ? 'Congratulations! The client has accepted your proposal. Click below to go to the project workspace.' 
+                          ? 'Congratulations! The client has accepted your proposal. Click below to enter the negotiation room.' 
                           : activeProposal.status === 3 
                           ? 'The client decided to go with another freelancer.' 
                           : 'The client is currently reviewing your application.'}
@@ -306,11 +314,11 @@ export default function FreelancerProposalsScreen() {
                 <div className="flex items-center gap-3 mt-4 border-t border-border pt-6">
                   {activeProposal.status === 2 ? (
                     <button
-                      onClick={() => handleGoToWorkspace(activeProposal)}
-                      className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-lg shadow-blue-500/15 transition-all flex items-center gap-2 cursor-pointer border-none"
+                      onClick={() => handleGoToNegotiation(activeProposal)}
+                      className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm shadow-teal-500/10 active:scale-[0.98]"
                     >
-                      <Briefcase size={16} />
-                      <span>Go to Workspace</span>
+                      <ArrowRightLeft size={16} />
+                      <span>Vào đàm phán</span>
                     </button>
                   ) : activeProposal.status === 0 ? (
                     <div className="flex flex-wrap items-center gap-3">

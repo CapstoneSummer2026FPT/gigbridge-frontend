@@ -29,6 +29,7 @@ import ScreenProposalAnswerQuestion from '../features/proposals/screens/ScreenPr
 import ViewProposalAnswersScreen from '../features/proposals/screens/ViewProposalAnswersScreen';
 import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen';
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
+import MessagesScreen from '../features/messages/screens/MessagesScreen';
 import AIAssistantScreen from '../features/ai-assistant/screens/AIAssistantScreen';
 import AIInterviewScreen from '../features/ai-interview/screens/AIInterviewScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
@@ -182,10 +183,13 @@ export const router = createBrowserRouter([
       { path: 'contracts/:contractId/signature', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
       { path: 'freelancer/contracts', element: <ProtectedRoute requireAuth requireSetup><FreelancerContractScreen /></ProtectedRoute> },
 
+      // Messages - requires authentication and setup
+      { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><MessagesScreen /></ProtectedRoute> },
+
       // Workspace - requires authentication and setup
       { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
       { path: 'workspace/:id', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
-      { path: 'workspace/:projectId/freelancer-contract', element: <ProtectedRoute requireAuth requireSetup><FreelancerRegisterContractScreen /></ProtectedRoute> },
+      { path: ':projectId/freelancer-contract', element: <ProtectedRoute requireAuth requireSetup><FreelancerRegisterContractScreen /></ProtectedRoute> },
 
       // AI Features - requires authentication and setup
       { path: 'ai-assistant', element: <ProtectedRoute requireAuth requireSetup><AIAssistantScreen /></ProtectedRoute> },

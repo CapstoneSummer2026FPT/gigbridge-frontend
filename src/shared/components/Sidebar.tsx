@@ -62,6 +62,13 @@ function getClientNavItems(t: any): NavItem[] {
       ],
     },
     {
+      label: 'Messages',
+      icon: <MessageSquare size={18} />,
+      path: '/messages',
+      badge: '3',
+      badgeType: 'cyan',
+    },
+    {
       label: t('nav.aiAssistant'),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
@@ -113,6 +120,13 @@ function getFreelancerNavItems(t: any): NavItem[] {
         { label: 'Contracts', icon: <FileText size={18} />, path: '/contracts' },
         { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
       ],
+    },
+    {
+      label: 'Messages',
+      icon: <MessageSquare size={18} />,
+      path: '/messages',
+      badge: '1',
+      badgeType: 'cyan',
     },
     {
       label: t('nav.aiAssistant'),

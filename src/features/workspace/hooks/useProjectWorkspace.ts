@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import { DB, SEED_PROJECTS, SEED_MESSAGES } from '../../../mock_backend';
+import type { Message } from '../../../types';
 import { projectGetAPI } from '../../../api/projectAPI/GET';
 import { projectPutAPI } from '../../../api/projectAPI/PUT';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
@@ -14,21 +15,12 @@ export function useProjectWorkspace(initialProjectId: string) {
 
   const [activeProjectId, setActiveProjectId] = useState(initialProjectId || 'proj_1');
   const [showInfo, setShowInfo] = useState(true);
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
-  const [showDealPrice, setShowDealPrice] = useState(false);
-  const [dealPriceInput, setDealPriceInput] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [aiMessage, setAiMessage] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // Deal proposal states
-  const [dealStatus, setDealStatus] = useState<'idle' | 'pending_client' | 'declined' | 'agreed'>(
-    !isClient ? 'pending_client' : 'idle'
-  );
-  const [proposedPrice, setProposedPrice] = useState(!isClient ? '1500' : '0');
 
   const [aiChat, setAiChat] = useState<{ role: string; content: string }[]>([
     { role: 'ai', content: 'Hello! I\'m your AI Work Assistant. I can help you with project updates, code reviews, milestone planning, and much more. What do you need today?' }
@@ -108,16 +100,9 @@ export function useProjectWorkspace(initialProjectId: string) {
   const isPartnerOnline = currentProjData.online;
 
   // Manage message lists per project/conversation
-  const [projectMessagesMap, setProjectMessagesMap] = useState<Record<string, any[]>>({
+  const [projectMessagesMap, setProjectMessagesMap] = useState<Record<string, Message[]>>({
     proj_1: [
-      ...SEED_MESSAGES.map(m => ({ ...m, senderId: m.senderId === 'u_client_1' ? 'client' : 'freelancer' })),
-      ...(!isClient ? [{
-        id: 'deal_mock_1',
-        senderId: 'client', // Sent by client, so freelancer sees it as incoming proposal
-        content: '1500',
-        type: 'deal' as const,
-        createdAt: new Date(Date.now() - 5000).toISOString(),
-      }] : [])
+      ...SEED_MESSAGES.map(m => ({ ...m, senderId: m.senderId === 'u_client_1' ? 'client' : 'freelancer' }))
     ],
     proj_2: [
       { id: 'm_p2_1', senderId: 'other', content: 'Hi! I am starting on the API gateway setup.', type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), isRead: true },
@@ -203,85 +188,7 @@ export function useProjectWorkspace(initialProjectId: string) {
     }, 1000);
   };
 
-  const handleProposeDeal = () => {
-    if (!dealPriceInput.trim()) return;
-    const newPrice = dealPriceInput;
-    const newMsg = {
-      id: `deal_${Date.now()}`,
-      senderId: user?.id || (isClient ? 'client' : 'freelancer'),
-      content: newPrice,
-      type: 'deal',
-      createdAt: new Date().toISOString(),
-    };
-    setProjectMessagesMap(prev => ({
-      ...prev,
-      [activeProjectId]: [...(prev[activeProjectId] || []), newMsg]
-    }));
-    setProposedPrice(newPrice);
-    setDealStatus('pending_client');
-    setDealPriceInput('');
-    setShowDealPrice(false);
-  };
-
-  const handleAcceptDeal = async (msgId: string, amount: string) => {
-    setDealStatus('agreed');
-    if (project) {
-      project.totalBudget = parseFloat(amount) || project.totalBudget;
-    }
-    
-    const confirmMsg = {
-      id: `msg_confirm_${Date.now()}`,
-      senderId: user?.id || (isClient ? 'client' : 'freelancer'),
-      content: `Accepted proposal for $${amount} USD. Mức giá đã được thống nhất.`,
-      type: 'text' as const,
-      createdAt: new Date().toISOString(),
-    };
-
-    setProjectMessagesMap(prev => {
-      const updated = (prev[activeProjectId] || []).map(m => 
-        m.id === msgId ? { ...m, content: amount } : m
-      );
-      return {
-        ...prev,
-        [activeProjectId]: [...updated, confirmMsg]
-      };
-    });
-
-    try {
-      // reasonable API call to update project or send message
-      await messagePostAPI.sendMessage(confirmMsg);
-    } catch (e) {
-      console.warn(e);
-    }
-  };
-
-  const handleDeclineDeal = async (msgId: string) => {
-    setDealStatus('declined');
-
-    const declineMsg = {
-      id: `msg_decline_${Date.now()}`,
-      senderId: user?.id || (isClient ? 'client' : 'freelancer'),
-      content: `Freelancer đã từ chối mức giá đề xuất này.`,
-      type: 'text' as const,
-      createdAt: new Date().toISOString(),
-    };
-
-    setProjectMessagesMap(prev => {
-      const updated = (prev[activeProjectId] || []).map(m => 
-        m.id === msgId ? { ...m, content: m.content } : m
-      );
-      return {
-        ...prev,
-        [activeProjectId]: [...updated, declineMsg]
-      };
-    });
-
-    try {
-      await messagePostAPI.sendMessage(declineMsg);
-    } catch (e) {
-      console.warn(e);
-    }
-  };
+  // Removed deal handlers
 
   const handleSimulateAttachment = () => {
     const attachMsg = {
@@ -335,12 +242,6 @@ export function useProjectWorkspace(initialProjectId: string) {
     setActiveProjectId,
     showInfo,
     setShowInfo,
-    showAIAssistant,
-    setShowAIAssistant,
-    showDealPrice,
-    setShowDealPrice,
-    dealPriceInput,
-    setDealPriceInput,
     messageInput,
     setMessageInput,
     aiMessage,
@@ -349,8 +250,6 @@ export function useProjectWorkspace(initialProjectId: string) {
     setIsFavorited,
     isBlocked,
     setIsBlocked,
-    dealStatus,
-    proposedPrice,
     aiChat,
     project,
     mockProjects,
@@ -363,9 +262,6 @@ export function useProjectWorkspace(initialProjectId: string) {
     projectMessages,
     handleSendMessage,
     handleSendAiMessage,
-    handleProposeDeal,
-    handleAcceptDeal,
-    handleDeclineDeal,
     handleSimulateAttachment,
     handleCreateMockMilestone,
     chatEndRef,

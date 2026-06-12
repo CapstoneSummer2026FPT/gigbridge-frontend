@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useLocation } from 'react-router';
 import { 
   ShieldCheck, PenTool, Trash, Check, ChevronLeft, Send, AlertTriangle
 } from 'lucide-react';
@@ -9,7 +9,9 @@ import '../../jobs/styles/PostJobScreen.css';
 
 export default function FreelancerRegisterContractScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { projectId } = useParams<{ projectId: string }>();
+  const incomingConvId = location.state?.conversationId;
 
   // Fetch project details
   const project = DB.getProjects().find(p => p.id === projectId) || DB.getProjects()[0];
@@ -121,11 +123,8 @@ export default function FreelancerRegisterContractScreen() {
   };
 
   const handleBack = () => {
-    if (project) {
-      navigate(`/workspace/${project.id}`);
-    } else {
-      navigate('/freelancer/dashboard');
-    }
+    const targetConvId = incomingConvId || 'conv_neg_1';
+    navigate('/messages', { state: { activeConvId: targetConvId } });
   };
 
   const handleSubmit = async () => {
@@ -146,6 +145,10 @@ export default function FreelancerRegisterContractScreen() {
       if (project) {
         project.status = 'active';
       }
+      
+      // Update conversation type in DB to ContractWorkroom (1)
+      const targetConvId = incomingConvId || 'conv_neg_1';
+      DB.updateConversation(targetConvId, { conversationType: 1 });
       
       // Simulate contract save
       console.log('Freelancer Contract Signed:', contractForm);
@@ -381,7 +384,7 @@ export default function FreelancerRegisterContractScreen() {
             className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-muted-foreground hover:bg-muted transition-all cursor-pointer flex items-center gap-1.5"
           >
             <ChevronLeft size={16} />
-            Quay lại Workspace
+            Quay lại đoạn chat
           </button>
           <button 
             type="button"

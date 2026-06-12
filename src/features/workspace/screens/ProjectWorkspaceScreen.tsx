@@ -1,19 +1,13 @@
 import { useNavigate } from 'react-router';
-import { 
-  ArrowLeft, Ban, CreditCard, Plus, Send, 
-  Paperclip, Smile, Sparkles, CheckCircle, Circle, Download, 
-  FileText, Image as ImageIcon, Table, Info, X 
+import {
+  ArrowLeft, Ban, Send, Plus,
+  Paperclip, Smile, Sparkles, CheckCircle, Circle, Download,
+  FileText, Image as ImageIcon, Table, Info, X, CreditCard
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import '../styles/project-workspace-screen.css';
 
-const AI_QUICK_SUGGESTIONS = [
-  'Summarize project progress',
-  'Draft status update for partner',
-  'Suggest next milestone steps',
-  'Review files list',
-];
 
 export default function ProjectWorkspaceScreen() {
   const navigate = useNavigate();
@@ -27,10 +21,6 @@ export default function ProjectWorkspaceScreen() {
     setShowInfo,
     showAIAssistant,
     setShowAIAssistant,
-    showDealPrice,
-    setShowDealPrice,
-    dealPriceInput,
-    setDealPriceInput,
     messageInput,
     setMessageInput,
     aiMessage,
@@ -39,8 +29,6 @@ export default function ProjectWorkspaceScreen() {
     setIsFavorited,
     isBlocked,
     setIsBlocked,
-    dealStatus,
-    proposedPrice,
     aiChat,
     project,
     mockProjects,
@@ -53,9 +41,6 @@ export default function ProjectWorkspaceScreen() {
     projectMessages,
     handleSendMessage,
     handleSendAiMessage,
-    handleProposeDeal,
-    handleAcceptDeal,
-    handleDeclineDeal,
     handleSimulateAttachment,
     handleCreateMockMilestone,
     chatEndRef,
@@ -67,7 +52,7 @@ export default function ProjectWorkspaceScreen() {
         {/* Top Header */}
         <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm">
           <div className="flex items-center gap-6">
-            <button 
+            <button
               onClick={() => navigate('/projects')}
               className="flex items-center gap-2 text-muted-foreground hover:text-[var(--gb-cyan)] transition-colors group cursor-pointer"
             >
@@ -76,7 +61,7 @@ export default function ProjectWorkspaceScreen() {
             </button>
             <div className="flex flex-col">
               <h1 className="font-headline-md text-base font-bold text-foreground">{currentProjData.titleLong}</h1>
-              <button 
+              <button
                 onClick={() => navigate(`/jobs/${project.jobId}`)}
                 className="text-[10px] text-[var(--gb-cyan)] font-bold hover:underline uppercase tracking-widest text-left mt-0.5 cursor-pointer"
               >
@@ -85,7 +70,7 @@ export default function ProjectWorkspaceScreen() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => navigate(`/contracts/contract_1`)}
               className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all uppercase tracking-widest cursor-pointer"
             >
@@ -105,7 +90,7 @@ export default function ProjectWorkspaceScreen() {
               {mockProjects.map(proj => {
                 const isActive = proj.id === activeProjectId;
                 return (
-                  <div 
+                  <div
                     key={proj.id}
                     onClick={() => {
                       setActiveProjectId(proj.id);
@@ -158,7 +143,7 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={() => setShowInfo(!showInfo)}
                   className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-all cursor-pointer ${showInfo ? 'bg-[var(--gb-cyan)]/10 border-[var(--gb-cyan)]/30 text-[var(--gb-cyan)]' : 'text-muted-foreground'}`}
                   title="Toggle Project Info"
@@ -168,40 +153,7 @@ export default function ProjectWorkspaceScreen() {
               </div>
             </div>
 
-            {/* Agreed Deal Price Banner for Freelancer */}
-            {dealStatus === 'agreed' && !isClient && (
-              <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-4 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
-                    <CheckCircle size={20} />
-                  </div>
-                  <div className="flex flex-col">
-                    <h4 className="text-sm font-bold text-foreground">Mức giá đã được thống nhất</h4>
-                    <p className="text-xs text-muted-foreground">Vui lòng tiến hành ký hợp đồng để bắt đầu công việc.</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => navigate(`/workspace/${activeProjectId}/freelancer-contract`)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-                >
-                  <span>Đi tới trang ký hợp đồng</span>
-                  <span>→</span>
-                </button>
-              </div>
-            )}
-
-            {/* Agreed Deal Price Banner for Client */}
-            {dealStatus === 'agreed' && isClient && (
-              <div className="bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 px-6 py-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
-                <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] flex items-center justify-center text-white flex-shrink-0 shadow-sm">
-                  <CheckCircle size={20} />
-                </div>
-                <div className="flex flex-col">
-                  <h4 className="text-sm font-bold text-foreground">Mức giá đã được thống nhất</h4>
-                  <p className="text-xs text-muted-foreground">Freelancer đã đồng ý, cùng đợi freelancer tạo hợp đồng.</p>
-                </div>
-              </div>
-            )}
+            {/* Banners removed */}
 
             {/* Message History */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
@@ -237,58 +189,6 @@ export default function ProjectWorkspaceScreen() {
                             </div>
                           </div>
                         </div>
-                      ) : msg.type === 'deal' ? (
-                        <div className="bg-card border border-border rounded-2xl p-4 shadow-md max-w-md my-2">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)]">
-                              <CreditCard size={20} />
-                            </div>
-                            <div>
-                              <h3 className="font-headline-sm text-sm text-foreground font-bold">New Deal Proposal</h3>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                {dealStatus === 'pending_client' ? 'In Negotiation' : dealStatus === 'agreed' ? 'Agreed' : 'Declined'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="space-y-4">
-                            <div className="space-y-1">
-                              <label className="text-xs font-semibold text-muted-foreground">Proposed Deal Price</label>
-                              <div className="text-xl font-bold text-[var(--gb-cyan)]">
-                                ${msg.content} USD
-                              </div>
-                            </div>
-                            {dealStatus === 'pending_client' ? (
-                              isClient ? (
-                                <div className="text-xs text-muted-foreground bg-muted p-2 rounded-lg text-center font-medium">
-                                  Waiting for partner response...
-                                </div>
-                              ) : (
-                                <div className="flex gap-2">
-                                  <button 
-                                    onClick={() => handleAcceptDeal(msg.id, msg.content)}
-                                    className="flex-1 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-2 rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
-                                  >
-                                    Đồng ý
-                                  </button>
-                                  <button 
-                                    onClick={() => handleDeclineDeal(msg.id)}
-                                    className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
-                                  >
-                                    Từ chối
-                                  </button>
-                                </div>
-                              )
-                            ) : dealStatus === 'agreed' ? (
-                              <div className="text-xs text-emerald-600 bg-emerald-500/10 p-2.5 rounded-lg text-center font-bold">
-                                {isClient ? 'Freelancer đã đồng ý, cùng đợi freelancer tạo hợp đồng' : 'Mức giá đã được thống nhất'}
-                              </div>
-                            ) : (
-                              <div className="text-xs text-red-500 bg-red-500/10 p-2.5 rounded-lg text-center font-bold">
-                                {isClient ? 'Freelancer đã từ chối mức giá này' : 'Bạn đã từ chối mức giá này'}
-                              </div>
-                            )}
-                          </div>
-                        </div>
                       ) : (
                         <div className={`p-4 rounded-2xl shadow-sm border ${isMe ? 'bg-[var(--gb-cyan)] text-white border-transparent rounded-br-none' : 'bg-card text-foreground border-border rounded-bl-none'}`}>
                           <p className="text-sm">{msg.content}</p>
@@ -296,7 +196,7 @@ export default function ProjectWorkspaceScreen() {
                       )}
                       <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <span className="text-[10px] text-muted-foreground">
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
                         {isMe && (
                           <span className="text-[12px] text-[var(--gb-cyan)] font-bold">✓✓</span>
@@ -312,7 +212,7 @@ export default function ProjectWorkspaceScreen() {
             {/* Input Area */}
             <div className="p-6 bg-card border-t border-border">
               <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
-                
+
                 {/* AI Assistant Popup */}
                 {showAIAssistant && (
                   <div className="absolute bottom-full right-0 mb-4 w-80 bg-card rounded-2xl shadow-xl border border-border overflow-hidden z-[70] animate-in fade-in slide-in-from-bottom-4">
@@ -334,9 +234,9 @@ export default function ProjectWorkspaceScreen() {
                     </div>
                     <div className="p-3 border-t border-border bg-card">
                       <div className="relative">
-                        <input 
-                          type="text" 
-                          placeholder="Ask AI..." 
+                        <input
+                          type="text"
+                          placeholder="Ask AI..."
                           value={aiMessage}
                           onChange={e => setAiMessage(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleSendAiMessage(); }}
@@ -346,57 +246,13 @@ export default function ProjectWorkspaceScreen() {
                           <Send size={14} />
                         </button>
                       </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {AI_QUICK_SUGGESTIONS.slice(0, 2).map(s => (
-                          <button 
-                            key={s} 
-                            onClick={() => { setAiMessage(s); }}
-                            className="text-[9px] px-2 py-0.5 bg-muted rounded border border-border text-muted-foreground hover:bg-border transition-colors cursor-pointer"
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Deal Price Window popup */}
-                {showDealPrice && (
-                  <div className="p-4 border-b border-border bg-muted/50 rounded-t-2xl animate-in fade-in slide-in-from-bottom-2">
-                    <div className="flex flex-col gap-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Propose Deal Price</span>
-                        <span className="text-[var(--gb-cyan)] font-bold text-sm">$</span>
-                      </div>
-                      <input 
-                        type="number" 
-                        placeholder="Enter proposed price (USD)" 
-                        value={dealPriceInput}
-                        onChange={e => setDealPriceInput(e.target.value)}
-                        className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
-                      />
-                      <div className="flex justify-between gap-2 mt-1">
-                        <button 
-                          onClick={() => setShowDealPrice(false)} 
-                          className="flex-1 py-2 text-xs font-bold text-muted-foreground hover:bg-muted rounded-lg transition-colors uppercase tracking-widest cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button 
-                          onClick={handleProposeDeal}
-                          className="flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer"
-                        >
-                          Agree
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <textarea 
-                  className="w-full bg-transparent border-none focus:outline-none p-4 resize-none min-h-[56px] text-sm focus:ring-0" 
-                  placeholder="Type your message here..." 
+                <textarea
+                  className="w-full bg-transparent border-none focus:outline-none p-4 resize-none min-h-[56px] text-sm focus:ring-0"
+                  placeholder="Type your message here..."
                   rows={1}
                   value={messageInput}
                   onChange={e => setMessageInput(e.target.value)}
@@ -407,42 +263,25 @@ export default function ProjectWorkspaceScreen() {
                     }
                   }}
                 />
-                
+
                 <div className="flex justify-between items-center px-4 pb-4">
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={handleSimulateAttachment}
-                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer" 
+                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
                       title="Attach File"
                     >
                       <Paperclip size={18} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => setMessageInput(prev => prev + '😊')}
-                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer" 
+                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
                       title="Add Emoji"
                     >
                       <Smile size={18} />
                     </button>
-                    <button 
-                      onClick={() => setShowAIAssistant(!showAIAssistant)}
-                      className={`w-9 h-9 flex items-center justify-center rounded-full transition-all cursor-pointer ${showAIAssistant ? 'text-[var(--gb-cyan)] bg-muted' : 'text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted'}`}
-                      title="AI Assistant"
-                    >
-                      <Sparkles size={18} />
-                    </button>
-                    <div className="w-px h-6 bg-border mx-1"></div>
-                    {isClient && (
-                      <button 
-                        onClick={() => setShowDealPrice(!showDealPrice)}
-                        title="Propose Deal Price" 
-                        className="w-9 h-9 flex items-center justify-center bg-[var(--gb-cyan)]/10 hover:bg-[var(--gb-cyan)] hover:text-white rounded-full transition-all active:scale-95 text-[var(--gb-cyan)] cursor-pointer"
-                      >
-                        <Plus size={18} />
-                      </button>
-                    )}
                   </div>
-                  <button 
+                  <button
                     onClick={handleSendMessage}
                     className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-10 px-6 rounded-full flex items-center gap-2 font-semibold transition-all active:scale-95 shadow-lg shadow-blue-500/20 cursor-pointer"
                   >
@@ -455,7 +294,7 @@ export default function ProjectWorkspaceScreen() {
           </section>
 
           {/* Column 3: Contextual Info (Right Pane - Collapsible) */}
-          <aside 
+          <aside
             className={`flex flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto custom-scrollbar ${showInfo ? 'w-80 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
           >
             {/* Profile Section */}
@@ -464,13 +303,13 @@ export default function ProjectWorkspaceScreen() {
               <h3 className="font-headline-md text-base font-bold">{partnerName}</h3>
               <p className="text-xs text-muted-foreground mb-4">{partnerTitle} at {partnerCompany}</p>
               <div className="flex justify-center gap-2">
-                <button 
+                <button
                   onClick={() => navigate(`/profile/${isClient ? 'freelancer' : 'client'}/${isClient ? project.freelancerId : project.clientId}`)}
                   className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
                 >
                   VIEW PROFILE
                 </button>
-                <button 
+                <button
                   onClick={() => setIsFavorited(!isFavorited)}
                   className={`text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider transition-all cursor-pointer ${isFavorited ? 'bg-[var(--gb-cyan)] text-white font-bold' : 'bg-secondary text-foreground hover:bg-muted'}`}
                 >
@@ -484,9 +323,9 @@ export default function ProjectWorkspaceScreen() {
               <div className="flex justify-between items-center mb-6">
                 <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">Milestone Management</h4>
                 {isClient && (
-                  <button 
+                  <button
                     onClick={handleCreateMockMilestone}
-                    className="w-8 h-8 flex items-center justify-center bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] rounded-lg hover:bg-[var(--gb-cyan)] hover:text-white transition-all cursor-pointer" 
+                    className="w-8 h-8 flex items-center justify-center bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] rounded-lg hover:bg-[var(--gb-cyan)] hover:text-white transition-all cursor-pointer"
                     title="Create Milestone"
                   >
                     <Plus size={16} />
@@ -498,9 +337,9 @@ export default function ProjectWorkspaceScreen() {
                 {project.milestones.map((milestone) => {
                   const isCompleted = milestone.status === 'paid' || milestone.status === 'approved';
                   const isInProgress = milestone.status === 'in_progress';
-                  
+
                   return (
-                    <div 
+                    <div
                       key={milestone.id}
                       className={`border border-border rounded-xl p-3 shadow-sm ${isCompleted ? 'bg-card' : isInProgress ? 'bg-card border-[var(--gb-cyan)]/35' : 'bg-muted/30 opacity-80'}`}
                     >
@@ -556,7 +395,7 @@ export default function ProjectWorkspaceScreen() {
                   { name: 'UI_Moodboard_v1.zip', size: '18.5 MB', date: 'Oct 13', icon: <ImageIcon className="text-[var(--gb-cyan)]" /> },
                   { name: 'Project_Timeline.xlsx', size: '120 KB', date: 'Oct 11', icon: <Table className="text-green-500" /> }
                 ].map(file => (
-                  <div 
+                  <div
                     key={file.name}
                     onClick={() => alert(`Simulating download of ${file.name}`)}
                     className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
@@ -575,7 +414,7 @@ export default function ProjectWorkspaceScreen() {
             </div>
 
             <div className="mt-auto p-6 bg-muted/30 border-t border-border">
-              <button 
+              <button
                 onClick={() => {
                   setIsBlocked(!isBlocked);
                   alert(isBlocked ? 'Contact unblocked.' : 'Contact blocked.');
