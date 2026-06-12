@@ -1,0 +1,184 @@
+/**
+ * Messages Screen CSS
+ * Based on project-workspace-screen.css
+ */
+
+/* ── Conversation Settings dropdown ────────────────────────────────────────── */
+.msg-conv-settings-menu {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+.white .msg-conv-settings-menu {
+  box-shadow: 0 8px 30px rgba(84, 112, 235, 0.12), 0 0 0 1px rgba(84,112,235,0.08);
+}
+
+/* Negotiation request bubble – teal border variant */
+.msg-deal-bubble.border-teal-500\/30 {
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+
+.messages-page {
+  --messages-border: rgba(255, 255, 255, 0.08);
+  --messages-accent: #00f0ff;
+  --messages-accent-border: rgba(0, 240, 255, 0.3);
+  background: var(--gb-bg-primary, #0a0f1c);
+}
+
+.white .messages-page {
+  --messages-border: rgba(84, 112, 235, 0.16);
+  --messages-accent: #3656d4;
+  background: #f7f8fc;
+}
+
+/* Room accordion */
+.msg-room-header {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.msg-room-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.white .msg-room-header:hover {
+  background: rgba(84, 112, 235, 0.06);
+}
+
+.msg-room-chevron {
+  transition: transform 0.25s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.msg-room-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Conversation item */
+.msg-conv-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.msg-conv-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.white .msg-conv-item:hover {
+  background: rgba(84, 112, 235, 0.05);
+}
+
+.msg-conv-item.active {
+  background: rgba(0, 240, 255, 0.06);
+  border-left: 3px solid var(--messages-accent);
+}
+
+.white .msg-conv-item.active {
+  background: rgba(84, 112, 235, 0.08);
+  border-left-color: #3656d4;
+}
+
+/* Go to Workspace button */
+.msg-goto-workspace-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: calc(100% - 2rem);
+  margin: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--messages-accent), #0096ff);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  box-shadow: 0 4px 18px rgba(0, 240, 255, 0.25);
+}
+
+.msg-goto-workspace-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(0, 240, 255, 0.35);
+}
+
+.white .msg-goto-workspace-btn {
+  background: linear-gradient(135deg, #3656d4, #14b8a6);
+  box-shadow: 0 4px 18px rgba(84, 112, 235, 0.3);
+}
+
+/* Job info badge in chat header */
+.msg-job-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+
+.msg-job-badge.invited {
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+  border-color: rgba(20, 184, 166, 0.3);
+}
+
+.msg-job-badge.negotiation {
+  background: rgba(0, 240, 255, 0.1);
+  color: var(--messages-accent);
+  border-color: var(--messages-accent-border);
+}
+
+.white .msg-job-badge.negotiation {
+  color: #3656d4;
+  border-color: rgba(84, 112, 235, 0.3);
+  background: rgba(84, 112, 235, 0.08);
+}
+
+/* Deal bubble */
+.msg-deal-bubble {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1rem;
+  max-width: 380px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* custom-scrollbar (same as workspace) */
+.messages-custom-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.messages-custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-custom-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+.messages-custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
