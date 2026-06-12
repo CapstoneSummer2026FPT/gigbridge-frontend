@@ -1,139 +1,170 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import {
-  History, Search, Eye, ArrowUpRight, ArrowDownRight, Coins,
-  XCircle, Loader2, RefreshCw, Wallet
-} from 'lucide-react';
+import { History, Search, Download, Eye, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, Wallet, RefreshCw, XCircle, UploadCloud } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { walletGetAPI, WalletTransactionResponse } from '../../../api/walletAPI/GET';
+import { Transaction, TransactionType, TransactionStatus } from '../../../types/models/Financial';
 import '../../admin/styles/admin-users-screen.css';
 
-// ── Backend enum maps ──────────────────────────────────────────
-// type: 0=Unknown, 1=TopUp, 2=EscrowFund, 3=EscrowRelease, 4=AdminCredit, 5=Payout
-// status: 0=Pending, 1=Succeeded, 2=Failed, 3=Cancelled
+type TransactionFilter = 'all' | 'deposit' | 'withdrawal' | 'subscription' | 'refund';
+type StatusFilter = 'all' | 'completed' | 'pending' | 'failed';
 
-const TX_TYPE_LABELS: Record<number, string> = {
-  0: 'Khác',
-  1: 'Nạp tiền',
-  2: 'Escrow Fund',
-  3: 'Escrow Release',
-  4: 'Admin Credit',
-  5: 'Rút tiền',
-};
-
-const TX_STATUS_LABELS: Record<number, string> = {
-  0: 'Chờ xử lý',
-  1: 'Thành công',
-  2: 'Thất bại',
-  3: 'Đã hủy',
-};
-
-type TypeFilter = 'all' | '1' | '2' | '3' | '4' | '5';
-type StatusFilter = 'all' | '0' | '1' | '2' | '3';
-
-/** Format VND */
-function fmtVnd(n: number): string {
-  return new Intl.NumberFormat('vi-VN').format(n);
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+// Mock transaction data
+const MOCK_TRANSACTIONS: Transaction[] = [
+  {
+    trans_TransactionsId: 'trans_1',
+    wal_WalletsId: 'wal_1',
+    SubscriptionId: 'sub_1',
+    Type: TransactionType.Subscription,
+    Amount: 29.99,
+    Currency: 'USD',
+    Status: TransactionStatus.Completed,
+    Description: 'GigBridge Pro - Monthly Subscription',
+    CreatedAt: '2026-05-16T10:00:00Z',
+    CompletedAt: '2026-05-16T10:00:05Z',
+  },
+  {
+    trans_TransactionsId: 'trans_2',
+    wal_WalletsId: 'wal_1',
+    Type: TransactionType.Deposit,
+    Amount: 500.00,
+    Currency: 'USD',
+    Status: TransactionStatus.Completed,
+    Description: 'Wallet deposit via Credit Card',
+    CreatedAt: '2026-05-15T13:45:00Z',
+    CompletedAt: '2026-05-15T13:45:10Z',
+  },
+  {
+    trans_TransactionsId: 'trans_3',
+    wal_WalletsId: 'wal_1',
+    Type: TransactionType.Withdrawal,
+    Amount: 1200.00,
+    Currency: 'USD',
+    Status: TransactionStatus.Completed,
+    Description: 'Withdrawal to Bank Account - Project Payment',
+    CreatedAt: '2026-05-10T14:20:00Z',
+    CompletedAt: '2026-05-10T14:25:30Z',
+  },
+  {
+    trans_TransactionsId: 'trans_4',
+    wal_WalletsId: 'wal_1',
+    Type: TransactionType.Deposit,
+    Amount: 250.00,
+    Currency: 'USD',
+    Status: TransactionStatus.Pending,
+    Description: 'Wallet deposit via PayPal',
+    CreatedAt: '2026-05-16T15:00:00Z',
+  },
+  {
+    trans_TransactionsId: 'trans_5',
+    wal_WalletsId: 'wal_1',
+    Type: TransactionType.Deposit,
+    Amount: 100.00,
+    Currency: 'USD',
+    Status: TransactionStatus.Completed,
+    Description: 'Wallet deposit via Credit Card',
+    CreatedAt: '2026-05-08T11:30:00Z',
+    CompletedAt: '2026-05-08T11:30:08Z',
+  },
+  {
+    trans_TransactionsId: 'trans_6',
+    wal_WalletsId: 'wal_1',
+    Type: TransactionType.Withdrawal,
+    Amount: 850.00,
+    Currency: 'USD',
+    Status: TransactionStatus.Completed,
+    Description: 'Withdrawal to Bank Account',
+    CreatedAt: '2026-05-05T09:15:00Z',
+    CompletedAt: '2026-05-05T09:20:15Z',
+  },
+  {
+    trans_TransactionsId: 'trans_7',
+    wal_WalletsId: 'wal_1',
+    SubscriptionId: 'sub_2',
+    Type: TransactionType.Refund,
+    Amount: 29.99,
+    Currency: 'USD',
+    Status: TransactionStatus.Completed,
+    Description: 'Refund for cancelled subscription',
+    CreatedAt: '2026-05-03T11:30:00Z',
+    CompletedAt: '2026-05-03T11:35:00Z',
+  },
+  {
+    trans_TransactionsId: 'trans_8',
+    wal_WalletsId: 'wal_1',
+    Type: TransactionType.Deposit,
+    Amount: 50.00,
+    Currency: 'USD',
+    Status: TransactionStatus.Failed,
+    Description: 'Wallet deposit via Credit Card - Payment Failed',
+    CreatedAt: '2026-05-01T16:00:00Z',
+  },
+];
 
 export default function WalletHistoryScreen() {
   const navigate = useNavigate();
-  const [transactions, setTransactions] = useState<WalletTransactionResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<TransactionFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [viewTx, setViewTx] = useState<WalletTransactionResponse | null>(null);
+  const [viewTransaction, setViewTransaction] = useState<Transaction | null>(null);
 
-  // ── Load transactions ──
-  const loadTransactions = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await walletGetAPI.getTransactions(100);
-      if (res.success && res.data) {
-        setTransactions(res.data);
-      } else {
-        setError(res.message || 'Không thể tải lịch sử giao dịch.');
-      }
-    } catch (err: any) {
-      console.error('Failed to load transactions:', err);
-      setError(err?.message || 'Lỗi kết nối máy chủ.');
-    } finally {
-      setLoading(false);
-    }
+  const stats = useMemo(() => {
+    const completed = MOCK_TRANSACTIONS.filter(t => t.Status === TransactionStatus.Completed);
+    const totalDeposits = completed.filter(t => t.Type === TransactionType.Deposit).reduce((sum, t) => sum + t.Amount, 0);
+    const totalWithdrawals = completed.filter(t => t.Type === TransactionType.Withdrawal).reduce((sum, t) => sum + t.Amount, 0);
+    const totalSubscriptions = completed.filter(t => t.Type === TransactionType.Subscription).reduce((sum, t) => sum + t.Amount, 0);
+    const pending = MOCK_TRANSACTIONS.filter(t => t.Status === TransactionStatus.Pending).length;
+
+    return { totalDeposits, totalWithdrawals, totalSubscriptions, pending, totalTransactions: MOCK_TRANSACTIONS.length };
   }, []);
 
-  useEffect(() => {
-    loadTransactions();
-  }, [loadTransactions]);
+  const filteredTransactions = useMemo(() => {
+    return MOCK_TRANSACTIONS.filter(trans => {
+      const matchesSearch = searchQuery === '' ||
+        trans.Description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        trans.trans_TransactionsId.toLowerCase().includes(searchQuery.toLowerCase());
 
-  // ── Stats ──
-  const stats = useMemo(() => {
-    const succeeded = transactions.filter(t => t.status === 1);
-    const totalTopUp = succeeded.filter(t => t.type === 1).reduce((s, t) => s + t.tokenAmount, 0);
-    const totalEscrow = succeeded.filter(t => t.type === 2).reduce((s, t) => s + t.tokenAmount, 0);
-    const pending = transactions.filter(t => t.status === 0).length;
+      const matchesType = typeFilter === 'all' || trans.Type === typeFilter;
+      const matchesStatus = statusFilter === 'all' || trans.Status === statusFilter;
 
-    return { totalTopUp, totalEscrow, pending, totalTransactions: transactions.length };
-  }, [transactions]);
-
-  // ── Filter ──
-  const filtered = useMemo(() => {
-    return transactions.filter(tx => {
-      const matchSearch =
-        searchQuery === '' ||
-        tx.walletTransactionId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (tx.gatewayOrderCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (tx.note || '').toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchType = typeFilter === 'all' || tx.type === Number(typeFilter);
-      const matchStatus = statusFilter === 'all' || tx.status === Number(statusFilter);
-
-      return matchSearch && matchType && matchStatus;
+      return matchesSearch && matchesType && matchesStatus;
     });
-  }, [transactions, searchQuery, typeFilter, statusFilter]);
+  }, [searchQuery, typeFilter, statusFilter]);
 
-  // ── Badge helpers ──
-  const getStatusBadge = (status: number) => {
-    switch (status) {
-      case 0: return <span className="badge-amber text-xs">{TX_STATUS_LABELS[0]}</span>;
-      case 1: return <span className="badge-green text-xs">{TX_STATUS_LABELS[1]}</span>;
-      case 2: return <span className="badge-red text-xs">{TX_STATUS_LABELS[2]}</span>;
-      case 3: return <span className="badge-gray text-xs">{TX_STATUS_LABELS[3]}</span>;
-      default: return <span className="badge-gray text-xs">N/A</span>;
-    }
+  const getStatusBadge = (status: TransactionStatus) => {
+    if (status === TransactionStatus.Completed) return <span className="badge-green text-xs">Completed</span>;
+    if (status === TransactionStatus.Pending) return <span className="badge-amber text-xs">Pending</span>;
+    if (status === TransactionStatus.Failed) return <span className="badge-red text-xs">Failed</span>;
+    return <span className="badge-gray text-xs">Cancelled</span>;
   };
 
-  const getTypeBadge = (type: number) => {
-    switch (type) {
-      case 1: return <span className="badge-green text-xs">{TX_TYPE_LABELS[1]}</span>;
-      case 2: return <span className="badge-purple text-xs">{TX_TYPE_LABELS[2]}</span>;
-      case 3: return <span className="badge-cyan text-xs">{TX_TYPE_LABELS[3]}</span>;
-      case 4: return <span className="badge-cyan text-xs">{TX_TYPE_LABELS[4]}</span>;
-      case 5: return <span className="badge-red text-xs">{TX_TYPE_LABELS[5]}</span>;
-      default: return <span className="badge-gray text-xs">{TX_TYPE_LABELS[0]}</span>;
-    }
+  const getTypeBadge = (type: TransactionType) => {
+    if (type === TransactionType.Deposit) return <span className="badge-green text-xs">Deposit</span>;
+    if (type === TransactionType.Withdrawal) return <span className="badge-red text-xs">Withdrawal</span>;
+    if (type === TransactionType.Subscription) return <span className="badge-purple text-xs">Subscription</span>;
+    return <span className="badge-cyan text-xs">Refund</span>;
   };
 
-  const getTypeIcon = (type: number) => {
-    if (type === 1 || type === 4) return <ArrowUpRight size={16} className="text-green" />;
-    if (type === 5) return <ArrowDownRight size={16} className="text-red" />;
-    return <Coins size={16} className="text-cyan" />;
+  const getTypeIcon = (type: TransactionType) => {
+    if (type === TransactionType.Deposit) return <ArrowUpRight size={16} className="text-green" />;
+    if (type === TransactionType.Withdrawal) return <ArrowDownRight size={16} className="text-red" />;
+    if (type === TransactionType.Subscription) return <CreditCard size={16} className="text-purple" />;
+    return <RefreshCw size={16} className="text-cyan" />;
   };
 
-  const isCredit = (type: number) => type === 1 || type === 3 || type === 4;
+  const canUploadPaymentProof = (trans: Transaction) => (
+    trans.Status === TransactionStatus.Pending
+    && (trans.Type === TransactionType.Deposit || trans.Type === TransactionType.Subscription)
+  );
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   return (
     <AppLayout>
@@ -146,34 +177,23 @@ export default function WalletHistoryScreen() {
                 <History size={20} className="text-cyan" />
                 <span className="badge-cyan text-xs">Transactions</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">Lịch Sử Giao Dịch</h1>
-              <p className="text-sm text-secondary mt-1">Xem toàn bộ lịch sử giao dịch ví</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-primary">Transaction History</h1>
+              <p className="text-sm text-secondary mt-1">View all your wallet transactions</p>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={loadTransactions}
-                className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2"
-              >
-                <RefreshCw size={14} />
-                Tải lại
-              </button>
-              <button
-                onClick={() => navigate('/wallet/deposit')}
-                className="btn-cyan px-4 py-2 text-sm flex items-center gap-2"
-              >
-                <Coins size={14} />
-                Nạp Tiền
-              </button>
-            </div>
+            <button className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
+              <Download size={14} />
+              Export
+            </button>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
             {[
-              { label: 'Tổng Nạp', value: `${fmtVnd(stats.totalTopUp)} tokens`, icon: <ArrowUpRight size={16} />, color: 'green' },
-              { label: 'Escrow', value: `${fmtVnd(stats.totalEscrow)} tokens`, icon: <Coins size={16} />, color: 'purple' },
-              { label: 'Đang Chờ', value: stats.pending.toString(), icon: <Loader2 size={16} />, color: 'amber' },
-              { label: 'Tổng GD', value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
+              { label: 'Total Deposits', value: `$${stats.totalDeposits.toFixed(2)}`, icon: <ArrowUpRight size={16} />, color: 'green' },
+              { label: 'Total Withdrawals', value: `$${stats.totalWithdrawals.toFixed(2)}`, icon: <ArrowDownRight size={16} />, color: 'red' },
+              { label: 'Subscriptions', value: `$${stats.totalSubscriptions.toFixed(2)}`, icon: <CreditCard size={16} />, color: 'purple' },
+              { label: 'Pending', value: stats.pending.toString(), icon: <DollarSign size={16} />, color: 'amber' },
+              { label: 'All Transactions', value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
             ].map(stat => (
               <div key={stat.label} className="stat-card">
                 <div className="flex items-center justify-between mb-2">
@@ -194,148 +214,112 @@ export default function WalletHistoryScreen() {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Tìm kiếm theo ID, mã đơn, ghi chú..."
+                  placeholder="Search transactions..."
                   className="input-gb w-full py-2.5 text-sm"
                   style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
                 />
               </div>
               <select
                 value={typeFilter}
-                onChange={e => setTypeFilter(e.target.value as TypeFilter)}
+                onChange={e => setTypeFilter(e.target.value as TransactionFilter)}
                 className="input-gb px-4 py-2.5 text-sm cursor-pointer"
               >
-                <option value="all">Tất cả loại</option>
-                <option value="1">Nạp tiền</option>
-                <option value="2">Escrow Fund</option>
-                <option value="3">Escrow Release</option>
-                <option value="4">Admin Credit</option>
-                <option value="5">Rút tiền</option>
+                <option value="all">All Types</option>
+                <option value="deposit">Deposit</option>
+                <option value="withdrawal">Withdrawal</option>
+                <option value="subscription">Subscription</option>
+                <option value="refund">Refund</option>
               </select>
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value as StatusFilter)}
                 className="input-gb px-4 py-2.5 text-sm cursor-pointer"
               >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="0">Chờ xử lý</option>
-                <option value="1">Thành công</option>
-                <option value="2">Thất bại</option>
-                <option value="3">Đã hủy</option>
+                <option value="all">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
               </select>
             </div>
           </div>
 
-          {/* Loading state */}
-          {loading && (
-            <div className="glass-card p-12 text-center">
-              <Loader2 size={40} className="mx-auto mb-4 text-cyan animate-spin" />
-              <p className="text-sm text-secondary">Đang tải giao dịch...</p>
-            </div>
-          )}
-
-          {/* Error state */}
-          {!loading && error && (
-            <div className="glass-card p-12 text-center">
-              <XCircle size={40} className="mx-auto mb-4 text-red" />
-              <p className="text-lg font-semibold text-primary mb-2">Lỗi</p>
-              <p className="text-sm text-secondary mb-4">{error}</p>
-              <button onClick={loadTransactions} className="btn-cyan px-6 py-2 text-sm">
-                Thử Lại
-              </button>
-            </div>
-          )}
-
-          {/* Transaction list */}
-          {!loading && !error && (
-            <div className="space-y-3">
-              {filtered.map(tx => (
-                <div key={tx.walletTransactionId} className="glass-card p-5 hover:border-cyan/30 transition-all">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-                        {getTypeIcon(tx.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <p className="text-sm font-bold text-primary">
-                            {TX_TYPE_LABELS[tx.type] || 'Giao dịch'}
-                          </p>
-                          {getTypeBadge(tx.type)}
-                          {getStatusBadge(tx.status)}
-                        </div>
-                        {tx.note && (
-                          <p className="text-xs text-secondary mb-1 truncate">{tx.note}</p>
-                        )}
-                        <p className="text-xs text-muted">{formatDate(tx.createdAt)}</p>
-                      </div>
+          {/* Transactions List */}
+          <div className="space-y-3">
+            {filteredTransactions.map(trans => (
+              <div key={trans.trans_TransactionsId} className="glass-card p-5 hover:border-cyan/30 transition-all">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                      {getTypeIcon(trans.Type)}
                     </div>
-                    <div className="text-right ml-4 flex-shrink-0">
-                      <div className="flex items-center gap-1 justify-end">
-                        <Coins size={16} className={isCredit(tx.type) ? 'text-green' : 'text-red'} />
-                        <p className={`text-xl font-bold ${isCredit(tx.type) ? 'text-green' : 'text-red'}`}>
-                          {isCredit(tx.type) ? '+' : '-'}{fmtVnd(tx.tokenAmount)}
-                        </p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <p className="text-sm font-bold text-primary">{trans.Description}</p>
+                        {getTypeBadge(trans.Type)}
+                        {getStatusBadge(trans.Status)}
                       </div>
-                      <p className="text-xs text-muted mt-0.5">{fmtVnd(tx.vndAmount)} ₫</p>
+                      <p className="text-xs text-muted mb-1">ID: {trans.trans_TransactionsId}</p>
+                      <p className="text-xs text-secondary">{formatDate(trans.CreatedAt)}</p>
                     </div>
                   </div>
+                  <div className="text-right ml-4">
+                    <p className={`text-xl font-bold ${trans.Type === TransactionType.Deposit || trans.Type === TransactionType.Refund ? 'text-green' : 'text-red'}`}>
+                      {trans.Type === TransactionType.Deposit || trans.Type === TransactionType.Refund ? '+' : '-'}${trans.Amount.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted">{trans.Currency}</p>
+                  </div>
+                </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex items-center gap-4 text-xs text-muted flex-wrap">
-                      {tx.gatewayProvider && (
-                        <span>Provider: {tx.gatewayProvider}</span>
-                      )}
-                      {tx.gatewayOrderCode && (
-                        <span>Order: {tx.gatewayOrderCode}</span>
-                      )}
-                      {tx.completedAt && (
-                        <span>Hoàn thành: {formatDate(tx.completedAt)}</span>
-                      )}
-                    </div>
+                <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                  <div className="flex items-center gap-4 text-xs text-muted">
+                    {trans.CompletedAt && (
+                      <span>Completed: {formatDate(trans.CompletedAt)}</span>
+                    )}
+                    {trans.SubscriptionId && (
+                      <span>Sub ID: {trans.SubscriptionId}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {canUploadPaymentProof(trans) && (
+                      <button
+                        onClick={() => navigate(`/wallet/payment-proof/${trans.trans_TransactionsId}`)}
+                        className="text-xs text-amber hover:underline flex items-center gap-1"
+                      >
+                        <UploadCloud size={12} />
+                        Upload Payment Proof
+                      </button>
+                    )}
                     <button
-                      onClick={() => setViewTx(tx)}
+                      onClick={() => setViewTransaction(trans)}
                       className="text-xs text-cyan hover:underline flex items-center gap-1"
                     >
                       <Eye size={12} />
-                      Chi tiết
+                      View Details
                     </button>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {/* Empty state */}
-              {filtered.length === 0 && (
-                <div className="glass-card p-12 text-center">
-                  <History size={48} className="mx-auto mb-4 text-muted" />
-                  <p className="text-lg font-semibold text-primary mb-2">Chưa có giao dịch</p>
-                  <p className="text-sm text-secondary mb-4">
-                    {searchQuery || typeFilter !== 'all' || statusFilter !== 'all'
-                      ? 'Thử thay đổi bộ lọc'
-                      : 'Hãy nạp tiền để bắt đầu'}
-                  </p>
-                  {typeFilter === 'all' && statusFilter === 'all' && !searchQuery && (
-                    <button
-                      onClick={() => navigate('/wallet/deposit')}
-                      className="btn-cyan px-6 py-2 text-sm"
-                    >
-                      Nạp Tiền Ngay
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+            {filteredTransactions.length === 0 && (
+              <div className="glass-card p-12 text-center">
+                <History size={48} className="mx-auto mb-4 text-muted" />
+                <p className="text-lg font-semibold text-primary mb-2">No transactions found</p>
+                <p className="text-sm text-secondary">Try adjusting your filters</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Transaction Detail Modal */}
-      {viewTx && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setViewTx(null)}>
+      {viewTransaction && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setViewTransaction(null)}>
           <div className="glass-card max-w-2xl w-full p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-primary">Chi Tiết Giao Dịch</h2>
+              <h2 className="text-2xl font-bold text-primary">Transaction Details</h2>
               <button
-                onClick={() => setViewTx(null)}
+                onClick={() => setViewTransaction(null)}
                 className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
               >
                 <XCircle size={20} className="text-red" />
@@ -347,77 +331,50 @@ export default function WalletHistoryScreen() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      {getTypeBadge(viewTx.type)}
-                      {getStatusBadge(viewTx.status)}
+                      {getTypeBadge(viewTransaction.Type)}
+                      {getStatusBadge(viewTransaction.Status)}
                     </div>
-                    <p className="text-sm text-secondary">{viewTx.note || TX_TYPE_LABELS[viewTx.type]}</p>
+                    <p className="text-sm text-secondary">{viewTransaction.Description}</p>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-1 justify-end">
-                      <Coins size={20} className={isCredit(viewTx.type) ? 'text-green' : 'text-red'} />
-                      <p className={`text-3xl font-bold ${isCredit(viewTx.type) ? 'text-green' : 'text-red'}`}>
-                        {isCredit(viewTx.type) ? '+' : '-'}{fmtVnd(viewTx.tokenAmount)}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted mt-1">{fmtVnd(viewTx.vndAmount)} ₫</p>
+                    <p className={`text-3xl font-bold ${viewTransaction.Type === TransactionType.Deposit || viewTransaction.Type === TransactionType.Refund ? 'text-green' : 'text-red'}`}>
+                      {viewTransaction.Type === TransactionType.Deposit || viewTransaction.Type === TransactionType.Refund ? '+' : '-'}${viewTransaction.Amount.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted">{viewTransaction.Currency}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted mb-1">Transaction ID</p>
-                    <p className="text-primary font-mono text-xs break-all">{viewTx.walletTransactionId}</p>
+                    <p className="text-primary font-mono text-xs">{viewTransaction.trans_TransactionsId}</p>
                   </div>
                   <div>
                     <p className="text-muted mb-1">Wallet ID</p>
-                    <p className="text-primary font-mono text-xs break-all">{viewTx.walletId}</p>
+                    <p className="text-primary font-mono text-xs">{viewTransaction.wal_WalletsId}</p>
                   </div>
-                  {viewTx.gatewayProvider && (
-                    <div>
-                      <p className="text-muted mb-1">Gateway Provider</p>
-                      <p className="text-primary">{viewTx.gatewayProvider}</p>
-                    </div>
-                  )}
-                  {viewTx.gatewayOrderCode && (
-                    <div>
-                      <p className="text-muted mb-1">Order Code</p>
-                      <p className="text-primary font-mono text-xs">{viewTx.gatewayOrderCode}</p>
-                    </div>
-                  )}
-                  {viewTx.gatewayTransactionCode && (
-                    <div>
-                      <p className="text-muted mb-1">Transaction Code</p>
-                      <p className="text-primary font-mono text-xs">{viewTx.gatewayTransactionCode}</p>
-                    </div>
-                  )}
-                  {viewTx.contractId && (
-                    <div>
-                      <p className="text-muted mb-1">Contract ID</p>
-                      <p className="text-primary font-mono text-xs break-all">{viewTx.contractId}</p>
-                    </div>
-                  )}
-                  {viewTx.idempotencyKey && (
+                  {viewTransaction.SubscriptionId && (
                     <div className="col-span-2">
-                      <p className="text-muted mb-1">Idempotency Key</p>
-                      <p className="text-primary font-mono text-xs break-all">{viewTx.idempotencyKey}</p>
+                      <p className="text-muted mb-1">Subscription ID</p>
+                      <p className="text-primary font-mono text-xs">{viewTransaction.SubscriptionId}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-muted mb-1">Loại</p>
-                    <p className="text-primary">{TX_TYPE_LABELS[viewTx.type] || 'N/A'}</p>
+                    <p className="text-muted mb-1">Type</p>
+                    <p className="text-primary capitalize">{viewTransaction.Type}</p>
                   </div>
                   <div>
-                    <p className="text-muted mb-1">Trạng thái</p>
-                    <p className="text-primary">{TX_STATUS_LABELS[viewTx.status] || 'N/A'}</p>
+                    <p className="text-muted mb-1">Status</p>
+                    <p className="text-primary capitalize">{viewTransaction.Status}</p>
                   </div>
                   <div>
-                    <p className="text-muted mb-1">Ngày tạo</p>
-                    <p className="text-primary">{formatDate(viewTx.createdAt)}</p>
+                    <p className="text-muted mb-1">Created At</p>
+                    <p className="text-primary">{formatDate(viewTransaction.CreatedAt)}</p>
                   </div>
-                  {viewTx.completedAt && (
+                  {viewTransaction.CompletedAt && (
                     <div>
-                      <p className="text-muted mb-1">Hoàn thành</p>
-                      <p className="text-primary">{formatDate(viewTx.completedAt)}</p>
+                      <p className="text-muted mb-1">Completed At</p>
+                      <p className="text-primary">{formatDate(viewTransaction.CompletedAt)}</p>
                     </div>
                   )}
                 </div>
@@ -426,10 +383,14 @@ export default function WalletHistoryScreen() {
 
             <div className="flex justify-end gap-3 mt-6">
               <button
-                onClick={() => setViewTx(null)}
+                onClick={() => setViewTransaction(null)}
                 className="btn-ghost-cyan px-6 py-2"
               >
-                Đóng
+                Close
+              </button>
+              <button className="btn-cyan px-6 py-2 flex items-center gap-2">
+                <Download size={16} />
+                Download Receipt
               </button>
             </div>
           </div>

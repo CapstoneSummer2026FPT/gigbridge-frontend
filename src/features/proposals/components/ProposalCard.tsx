@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
-import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature, MessageSquare } from 'lucide-react';
+import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature, Briefcase } from 'lucide-react';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import type { ProposalViewModel } from '../types';
 import { getStatusClass, getStatusLabel } from '../utils/statusHelpers';
@@ -9,22 +9,20 @@ interface ProposalCardProps {
   proposal: ProposalViewModel;
   isClient?: boolean;
   onViewDetail: (proposal: ProposalViewModel, mode: 'detail' | 'score' | 'cv') => void;
-  onShortlist: (proposalId: string) => void;
+  onAccept: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
-  onViewAnswers?: (proposal: ProposalViewModel) => void;
-  onCreateContract?: (proposal: ProposalViewModel) => void;
-  onStartNegotiation?: (proposalId: string) => void;
+  onBoost?: (proposal: ProposalViewModel) => void;
+  onGoToWorkspace?: (proposal: ProposalViewModel) => void;
 }
 
 export const ProposalCard: FC<ProposalCardProps> = ({
   proposal,
   isClient = false,
   onViewDetail,
-  onShortlist,
+  onAccept,
   onReject,
-  onViewAnswers,
-  onCreateContract,
-  onStartNegotiation,
+  onBoost,
+  onGoToWorkspace,
 }) => {
   const status = Number(proposal.status);
   const statusLabel = getStatusLabel(proposal.status);
@@ -101,29 +99,28 @@ export const ProposalCard: FC<ProposalCardProps> = ({
 
       {/* Actions */}
       {isClient ? (
-        /* CLIENT VIEW: Shortlist/Reject/Negotiate/ViewAnswers/CreateContract */
+        /* CLIENT VIEW: Accept/Reject + Menu/ViewAnswers/CreateContract */
         <div className="proposal-review-actions">
-          {accepted ? (
+          {proposal.status === 2 ? (
             <motion.button
               className="proposal-create-contract-btn"
-              onClick={() => onCreateContract?.(proposal)}
+              onClick={() => onGoToWorkspace?.(proposal)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white' }}
             >
-              <FileSignature size={15} />
-              Create Contract
+              <Briefcase size={15} />
+              Go to Workspace
             </motion.button>
-          ) : canClientReview ? (
+          ) : (
             <>
               <motion.button
                 className="proposal-accept-btn"
-                onClick={() => onShortlist(proposal.proposalsId)}
+                onClick={() => onAccept(proposal.proposalsId)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <CheckCircle size={15} />
-                Shortlist
+                Accept
               </motion.button>
               <motion.button
                 className="proposal-reject-btn"
@@ -135,33 +132,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
                 Reject
               </motion.button>
             </>
-          ) : null}
-
-          {onStartNegotiation && status !== ProposalStatus.Rejected && status !== ProposalStatus.Withdrawn && (
-            <motion.button
-              className="proposal-create-contract-btn"
-              onClick={() => onStartNegotiation(proposal.proposalsId)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white' }}
-            >
-              <MessageSquare size={15} />
-              Start Negotiation
-            </motion.button>
           )}
-
-          {onViewAnswers && (
-            <motion.button
-              className="proposal-view-btn"
-              onClick={() => onViewAnswers(proposal)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <FileSignature size={15} />
-              View Answers
-            </motion.button>
-          )}
-
           <motion.button
             className="proposal-view-btn"
             onClick={() => onViewDetail(proposal, 'detail')}
@@ -171,6 +142,8 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <Eye size={15} />
             Details
           </motion.button>
+
+
         </div>
       ) : (
         /* FREELANCER VIEW */

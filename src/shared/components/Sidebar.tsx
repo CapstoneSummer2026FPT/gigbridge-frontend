@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, User, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, History, Coins
+  ChevronDown
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -82,14 +82,6 @@ function getClientNavItems(t: any): NavItem[] {
       path: '/market-insights',
     },
     {
-      label: 'Ví',
-      icon: <Wallet size={18} />,
-      children: [
-        { label: 'Nạp Tiền', icon: <Coins size={18} />, path: '/wallet/deposit' },
-        { label: 'Lịch Sử GD', icon: <History size={18} />, path: '/wallet/history' },
-      ],
-    },
-    {
       label: 'Financial Overview',
       icon: <BarChart2 size={18} />,
       path: '/financial-overview',
@@ -141,13 +133,11 @@ function getFreelancerNavItems(t: any): NavItem[] {
       path: '/market-insights',
     },
     {
-      label: 'Ví',
-      icon: <Wallet size={18} />,
-      children: [
-        { label: 'Nạp Tiền', icon: <Coins size={18} />, path: '/wallet/deposit' },
-        { label: 'Lịch Sử GD', icon: <History size={18} />, path: '/wallet/history' },
-        { label: 'Early Payout', icon: <Zap size={18} />, path: '/wallet/early-payout', badge: 'PRO', badgeType: 'purple' },
-      ],
+      label: 'Early Payout',
+      icon: <Zap size={18} />,
+      path: '/wallet/early-payout',
+      badge: 'PRO',
+      badgeType: 'purple',
     },
   ];
 }

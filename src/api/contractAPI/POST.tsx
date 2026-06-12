@@ -70,42 +70,4 @@ export const contractPostAPI = {
       formData
     );
   },
-
-  /**
-   * POST /api/contracts/{contractId}/details/submit
-   */
-  submitDetails: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/submit`);
-  },
-
-  /**
-   * POST /api/contracts/{contractId}/details/confirm
-   */
-  confirmDetails: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/confirm`);
-  },
-
-  /**
-   * POST /api/contracts/{contractId}/details/request-change
-   */
-  requestChange: async (contractId: string, reason: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/details/request-change`, { reason });
-  },
-
-  /**
-   * POST /api/contracts/{contractId}/escrow/fund
-   */
-  fundEscrow: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/escrow/fund`);
-  },
-
-  /**
-   * POST /api/contracts/{contractId}/sign
-   */
-  sign: async (
-    contractId: string,
-    payload: { signatureImageUrl: string; signatureWidth?: number; signatureHeight?: number }
-  ): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/sign`, payload);
-  },
 };

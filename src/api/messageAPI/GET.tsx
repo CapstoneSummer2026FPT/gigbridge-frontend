@@ -1,55 +1,7 @@
-import { apiService } from '../../service/apiService';
-import type { ApiResponse } from '../../types/common';
-
-export interface ConversationSummaryResponse {
-  conversationId: string;
-  conversationType: number;
-  title?: string | null;
-  jobPostId?: string | null;
-  proposalId?: string | null;
-  contractId?: string | null;
-  disputeId?: string | null;
-  status: number;
-  unreadCount: number;
-  createdAt: string;
-  lastMessageAt?: string | null;
-  lastMessage?: any | null;
-}
-
-export interface ConversationMessageResponse {
-  messageId: string;
-  conversationId: string;
-  senderUserId?: string | null;
-  messageType: number;
-  content?: string | null;
-  replyToMessageId?: string | null;
-  metadata?: string | null;
-  sentAt: string;
-  editedAt?: string | null;
-  isDeleted: boolean;
-  attachments: any[];
-}
+import { messageHandlers } from '../../mock_backend';
 
 export const messageGetAPI = {
-  /**
-   * GET /api/conversations
-   */
-  getConversations: async (): Promise<ApiResponse<ConversationSummaryResponse[]>> => {
-    return apiService.get<ConversationSummaryResponse[]>('conversations');
-  },
-
-  /**
-   * GET /api/messages/conversation/{conversationId}
-   */
-  getConversationMessages: async (
-    conversationId: string,
-    before?: string,
-    pageSize: number = 30
-  ): Promise<ApiResponse<ConversationMessageResponse[]>> => {
-    const params: Record<string, any> = { pageSize };
-    if (before) {
-      params.before = before;
-    }
-    return apiService.get<ConversationMessageResponse[]>(`messages/conversation/${conversationId}`, params);
+  getConversationMessages: async (conversationId: string) => {
+    return await messageHandlers.getConversationMessages(conversationId);
   },
 };

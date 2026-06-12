@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign, Plus, KeyRound, Phone } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { adminAPI, adminPostAPI } from '../../../api/adminAPI';
+import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
 import { UserRole } from '../../../types';
 import '../styles/admin-users-screen.css';
@@ -58,10 +58,6 @@ export default function AdminUsersScreen() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2} | null>(null);
   const [editForm, setEditForm] = useState({firstName: '', lastName: '', email: ''});
-  const [creditTokenUser, setCreditTokenUser] = useState<User | null>(null);
-  const [creditAmount, setCreditAmount] = useState<number>(100);
-  const [creditNote, setCreditNote] = useState<string>('');
-  const [creditingInProgress, setCreditingInProgress] = useState<boolean>(false);
 
   // Real API state
   const [users, setUsers] = useState<User[]>([]);
@@ -135,35 +131,6 @@ export default function AdminUsersScreen() {
   const handleChangeRole = async (userId: string, newRole: 0 | 1 | 2) => {
     alert('Role changes are not yet supported through the API.');
     setShowActionMenu(null);
-  };
-
-  const handleCreditWallet = async () => {
-    if (!creditTokenUser) return;
-    if (creditAmount <= 0) {
-      alert('Amount must be greater than 0.');
-      return;
-    }
-    setCreditingInProgress(true);
-    try {
-      const res = await adminPostAPI.creditWallet(creditTokenUser.id, {
-        tokenAmount: creditAmount,
-        note: creditNote || undefined,
-      });
-      if (res.success) {
-        alert(`Successfully credited ${creditAmount} tokens to ${creditTokenUser.full_name}'s wallet.`);
-        setCreditTokenUser(null);
-        setCreditAmount(100);
-        setCreditNote('');
-        await loadUsers();
-      } else {
-        alert(res.message || 'Failed to credit wallet.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('An error occurred while crediting wallet.');
-    } finally {
-      setCreditingInProgress(false);
-    }
   };
 
   const handleCreateUser = async () => {
@@ -477,18 +444,7 @@ export default function AdminUsersScreen() {
                                   Set as Admin
                                 </button>
 
-                                 <button
-                                   onClick={() => {
-                                     setCreditTokenUser(user);
-                                     setShowActionMenu(null);
-                                   }}
-                                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
-                                 >
-                                   <DollarSign size={14} />
-                                   Credit Tokens
-                                 </button>
-
-                                 <div className="h-px my-1 dropdown-divider" />
+                                <div className="h-px my-1 dropdown-divider" />
 
                                 <button
                                   onClick={() => {
@@ -1032,76 +988,6 @@ export default function AdminUsersScreen() {
                   {confirmAction.type === 'ban' && 'Ban User'}
                   {confirmAction.type === 'unban' && 'Unban User'}
                   {confirmAction.type === 'role' && 'Change Role'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Credit Tokens Modal */}
-        {creditTokenUser && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setCreditTokenUser(null)}>
-            <div className="glass-card max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-primary">Credit Wallet Tokens</h3>
-                <button
-                  onClick={() => setCreditTokenUser(null)}
-                  className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
-                >
-                  <XCircle size={18} className="text-red" />
-                </button>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3 p-4 glass-card">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white">
-                    {creditTokenUser.first_name?.charAt(0) || ''}{creditTokenUser.last_name?.charAt(0) || ''}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-primary">{creditTokenUser.full_name}</p>
-                    <p className="text-xs text-secondary">{creditTokenUser.email}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs text-secondary mb-2 block font-semibold">Token Amount</label>
-                  <input
-                    type="number"
-                    value={creditAmount}
-                    onChange={e => setCreditAmount(Number(e.target.value))}
-                    className="input-gb w-full px-4 py-2 text-sm text-foreground bg-secondary/15 border border-border/30 rounded-xl"
-                    placeholder="Enter token amount"
-                    min="1"
-                  />
-                  <span className="text-[10px] text-muted-foreground mt-1 block">
-                    = {new Intl.NumberFormat('vi-VN').format(creditAmount * 1000)} VND
-                  </span>
-                </div>
-
-                <div>
-                  <label className="text-xs text-secondary mb-2 block font-semibold">Note / Reason</label>
-                  <input
-                    type="text"
-                    value={creditNote}
-                    onChange={e => setCreditNote(e.target.value)}
-                    className="input-gb w-full px-4 py-2 text-sm text-foreground bg-secondary/15 border border-border/30 rounded-xl"
-                    placeholder="e.g. Compensation, Promo credits"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setCreditTokenUser(null)}
-                  className="flex-1 btn-ghost-cyan px-4 py-2"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreditWallet}
-                  disabled={creditingInProgress || creditAmount <= 0}
-                  className="flex-1 btn-cyan px-4 py-2 font-semibold disabled:opacity-50"
-                >
-                  {creditingInProgress ? 'Crediting...' : 'Confirm Credit'}
                 </button>
               </div>
             </div>

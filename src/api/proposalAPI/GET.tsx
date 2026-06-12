@@ -1,7 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { ProposalDetailDto, ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
-import { jobGetAPI } from '../jobAPI/GET';
 
 const proposalsUrl = 'Proposals';
 
@@ -86,7 +85,7 @@ export const proposalGetAPI = {
   },
 
   getProposalById: async (id: string) => {
-    const response = await proposalGetAPI.getProposalDetail(id);
-    return response.data;
+    const response = await proposalGetAPI.getAllProposals();
+    return response.data?.find(proposal => proposal.proposalsId === id);
   },
 };
