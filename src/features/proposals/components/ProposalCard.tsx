@@ -1,7 +1,9 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
 import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature, MessageSquare } from 'lucide-react';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import { ProposalStatus } from '../../../types/models/Proposal';
+import type { ProposalViewModel } from '../types';
+import { getStatusClass, getStatusLabel } from '../utils/statusHelpers';
 
 interface ProposalCardProps {
   proposal: ProposalViewModel;
@@ -9,9 +11,9 @@ interface ProposalCardProps {
   onViewDetail: (proposal: ProposalViewModel, mode: 'detail' | 'score' | 'cv') => void;
   onShortlist: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
-  onStartNegotiation: (proposalId: string) => void;
-  onBoost?: (proposal: ProposalViewModel) => void;
-  onGoToWorkspace?: (proposal: ProposalViewModel) => void;
+  onViewAnswers?: (proposal: ProposalViewModel) => void;
+  onCreateContract?: (proposal: ProposalViewModel) => void;
+  onStartNegotiation?: (proposalId: string) => void;
 }
 
 export const ProposalCard: FC<ProposalCardProps> = ({
@@ -20,29 +22,14 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   onViewDetail,
   onShortlist,
   onReject,
+  onViewAnswers,
+  onCreateContract,
   onStartNegotiation,
-  onBoost,
-  onGoToWorkspace,
 }) => {
-  
-  const statusLabel =
-    proposal.status === 0
-      ? 'Pending'
-      : proposal.status === 1
-        ? 'Shortlisted'
-        : proposal.status === 2
-          ? 'Accepted'
-          : proposal.status === 3
-            ? 'Rejected'
-            : 'Withdrawn';
-
-  const getStatusColor = (status: number | undefined) => {
-    if (status === 0) return 'proposal-status-pending';
-    if (status === 1) return 'proposal-status-shortlisted';
-    if (status === 2) return 'proposal-status-accepted';
-    if (status === 3) return 'proposal-status-rejected';
-    return 'proposal-status-withdrawn';
-  };
+  const status = Number(proposal.status);
+  const statusLabel = getStatusLabel(proposal.status);
+  const canClientReview = status === ProposalStatus.Pending || status === ProposalStatus.Shortlisted;
+  const accepted = status === ProposalStatus.Accepted;
 
   return (
     <motion.div
@@ -65,7 +52,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
           </div>
         </div>
         <div className="proposal-card-side">
-          <span className={`proposal-status ${getStatusColor(proposal.status)}`}>{statusLabel}</span>
+          <span className={getStatusClass(proposal.status)}>{statusLabel}</span>
           {proposal.interviewScore && (
             <span className="proposal-score-pill">
               <span style={{ fontSize: '0.65rem' }}>Score</span>
@@ -94,11 +81,6 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <span>AI Generated</span>
           </div>
         )}
-        {(proposal.boostedTokenAmount || 0) > 0 && (
-          <div style={{ background: 'rgba(159, 75, 255, 0.12)', color: '#7c3aed' }}>
-            <span>Boosted {proposal.boostedTokenAmount}x</span>
-          </div>
-        )}
       </div>
 
       {/* Interface Grid: IDs and dates */}
@@ -119,9 +101,43 @@ export const ProposalCard: FC<ProposalCardProps> = ({
 
       {/* Actions */}
       {isClient ? (
-        /* CLIENT VIEW: Shortlist/Reject/Negotiate */
+        /* CLIENT VIEW: Shortlist/Reject/Negotiate/ViewAnswers/CreateContract */
         <div className="proposal-review-actions">
-          {proposal.status !== 3 && (
+          {accepted ? (
+            <motion.button
+              className="proposal-create-contract-btn"
+              onClick={() => onCreateContract?.(proposal)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: 'white' }}
+            >
+              <FileSignature size={15} />
+              Create Contract
+            </motion.button>
+          ) : canClientReview ? (
+            <>
+              <motion.button
+                className="proposal-accept-btn"
+                onClick={() => onShortlist(proposal.proposalsId)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <CheckCircle size={15} />
+                Shortlist
+              </motion.button>
+              <motion.button
+                className="proposal-reject-btn"
+                onClick={() => onReject(proposal.proposalsId)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <XCircle size={15} />
+                Reject
+              </motion.button>
+            </>
+          ) : null}
+
+          {onStartNegotiation && status !== ProposalStatus.Rejected && status !== ProposalStatus.Withdrawn && (
             <motion.button
               className="proposal-create-contract-btn"
               onClick={() => onStartNegotiation(proposal.proposalsId)}
@@ -134,39 +150,15 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             </motion.button>
           )}
 
-          {proposal.status === 0 && (
+          {onViewAnswers && (
             <motion.button
-              className="proposal-accept-btn"
-              onClick={() => onShortlist(proposal.proposalsId)}
+              className="proposal-view-btn"
+              onClick={() => onViewAnswers(proposal)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <CheckCircle size={15} />
-              Shortlist
-            </motion.button>
-          )}
-
-          {proposal.status !== 3 && (
-            <motion.button
-              className="proposal-reject-btn"
-              onClick={() => onReject(proposal.proposalsId)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <XCircle size={15} />
-              Reject
-            </motion.button>
-          )}
-
-          {proposal.status === 3 && (
-            <motion.button
-              className="proposal-accept-btn"
-              onClick={() => onShortlist(proposal.proposalsId)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <CheckCircle size={15} />
-              Reconsider (Shortlist)
+              <FileSignature size={15} />
+              View Answers
             </motion.button>
           )}
 
@@ -181,7 +173,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
           </motion.button>
         </div>
       ) : (
-        /* FREELANCER VIEW: Boost + Menu */
+        /* FREELANCER VIEW */
         <div className="proposal-review-actions">
           <motion.button
             className="proposal-view-btn"
@@ -192,17 +184,6 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <Eye size={15} />
             Details
           </motion.button>
-          {proposal.status === 0 && onBoost && (
-            <motion.button
-              className="proposal-boost-btn"
-              onClick={() => onBoost(proposal)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Sparkles size={15} />
-              Boost
-            </motion.button>
-          )}
         </div>
       )}
     </motion.div>
