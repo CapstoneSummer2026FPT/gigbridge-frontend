@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, User, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown
+  ChevronDown, Wallet, History, Coins
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -48,7 +48,8 @@ function getClientNavItems(t: any): NavItem[] {
       label: 'Freelancers',
       icon: <Search size={18} />,
       children: [
-        { label: 'Saved Freelancers', icon: <Bookmark size={18} />, path: '/freelancers/saved' },
+        { label: 'Smart Matching', icon: <Zap size={18} />, path: '/talent-matching', badge: 'PRO', badgeType: 'purple' },
+        { label: 'Saved Freelancers', icon: <Bookmark size={18} />, path: '/talent-matching?tab=saved' },
       ],
     },
     {
@@ -67,27 +68,24 @@ function getClientNavItems(t: any): NavItem[] {
       badge: 'NEW',
       badgeType: 'cyan',
     },
-    {
-      label: 'Smart Matching',
-      icon: <Zap size={18} />,
-      path: '/talent-matching',
-      badge: 'PRO',
-      badgeType: 'purple',
-    },
+
     {
       label: t('nav.marketInsights'),
       icon: <TrendingUp size={18} />,
       path: '/market-insights',
     },
     {
+      label: 'Ví',
+      icon: <Wallet size={18} />,
+      children: [
+        { label: 'Nạp Tiền', icon: <Coins size={18} />, path: '/wallet/deposit' },
+        { label: 'Lịch Sử GD', icon: <History size={18} />, path: '/wallet/history' },
+      ],
+    },
+    {
       label: 'Financial Overview',
       icon: <BarChart2 size={18} />,
       path: '/financial-overview',
-    },
-    {
-      label: t('nav.messages'),
-      icon: <MessageSquare size={18} />,
-      path: '/messages',
     },
   ];
 }
@@ -129,16 +127,13 @@ function getFreelancerNavItems(t: any): NavItem[] {
       path: '/market-insights',
     },
     {
-      label: 'Early Payout',
-      icon: <Zap size={18} />,
-      path: '/wallet/early-payout',
-      badge: 'PRO',
-      badgeType: 'purple',
-    },
-    {
-      label: t('nav.messages'),
-      icon: <MessageSquare size={18} />,
-      path: '/messages',
+      label: 'Ví',
+      icon: <Wallet size={18} />,
+      children: [
+        { label: 'Nạp Tiền', icon: <Coins size={18} />, path: '/wallet/deposit' },
+        { label: 'Lịch Sử GD', icon: <History size={18} />, path: '/wallet/history' },
+        { label: 'Early Payout', icon: <Zap size={18} />, path: '/wallet/early-payout', badge: 'PRO', badgeType: 'purple' },
+      ],
     },
   ];
 }
@@ -363,29 +358,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </nav>
 
       {/* Bottom Links */}
-      <div className="sidebar-bottom">
-        <button
-          onClick={() => navigate('/profile/' + (role === 1 ? 'freelancer' : 'client') + '/' + user?.id)}
-          className="sidebar-item w-full"
-        >
-          <User size={18} />
-          <span>Profile</span>
-        </button>
-        <button onClick={() => navigate('/notifications')} className="sidebar-item w-full">
-          <Bell size={18} />
-          <span>Notifications</span>
-        </button>
-        <button onClick={() => navigate('/settings')} className="sidebar-item w-full">
-          <Settings size={18} />
-          <span>Settings</span>
-        </button>
-        {role === 2 && (
+      {role === 2 && (
+        <div className="sidebar-bottom">
           <button onClick={() => navigate('/admin')} className="sidebar-item w-full">
             <Shield size={18} />
             <span>Admin Panel</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* AI Pro Badge */}
       {role !== 2 && (

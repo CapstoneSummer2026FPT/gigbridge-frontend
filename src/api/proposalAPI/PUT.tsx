@@ -31,4 +31,11 @@ export const proposalPutAPI = {
   ): Promise<ApiResponse<boolean>> => {
     return apiService.put<boolean>(`${proposalsUrl}/${id}`, payload);
   },
+
+  /**
+   * POST /api/conversations/proposal/{proposalId}/negotiation
+   */
+  startNegotiation: async (proposalId: string): Promise<ApiResponse<string>> => {
+    return apiService.post<string>(`conversations/proposal/${proposalId}/negotiation`);
+  },
 };

@@ -96,7 +96,7 @@ export default function ScreenProposalAnswerQuestion() {
     if (flowState.proposalId) {
       const response = await proposalPutAPI.updateProposal(flowState.proposalId, {
         coverLetter: payload.coverLetter,
-        proposedRate: payload.proposedBudget,
+        proposedBudget: payload.proposedBudget,
         proposedDuration: payload.proposedDuration,
         status,
       });

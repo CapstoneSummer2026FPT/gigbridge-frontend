@@ -47,7 +47,7 @@ export interface CreateProposalRequest {
 
 export interface UpdateProposalRequest {
   coverLetter?: string | null;
-  proposedRate?: number | null;
+  proposedBudget?: number | null;
   proposedDuration?: string | null;
   status?: ProposalStatus | number;
 }
@@ -77,7 +77,7 @@ export interface ProposalDetailDto {
   freelancerProfileId: string;
   freelancerName?: string | null;
   coverLetter?: string | null;
-  proposedRate?: number | null;
+  proposedBudget?: number | null;
   proposedDuration?: string | null;
   status: ProposalStatus | number;
   submittedAt?: string | null;

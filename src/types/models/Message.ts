@@ -4,11 +4,22 @@
 
 export interface Message {
   id: string;
-  contract_id: string;
-  sender_id: string;
-  receiver_id: string;
   content: string;
-  is_read: boolean;
+  
+  // Frontend & Mock backend properties
+  conversationId?: string;
+  senderId?: string;
+  type?: string;
+  createdAt?: string;
+  isRead?: boolean;
+  fileUrl?: string;
+  fileName?: string;
+
+  // DB/Backend schema compatibility properties
+  contract_id?: string;
+  sender_id?: string;
+  receiver_id?: string;
+  is_read?: boolean;
 }
 
 export interface Review {

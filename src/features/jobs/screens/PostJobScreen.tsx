@@ -71,13 +71,15 @@ export default function PostJobScreen() {
 
   const [form, setForm] = useState({
     title: '',
-    category: '',
+    category: 'Web Development',
     description: '',
     skills: [] as string[],
     budgetMin: '',
     budgetMax: '',
     deadline: '',
+    jobType: 'fixed' as 'fixed' | 'hourly',
     isRemote: true,
+    experienceLevel: 'intermediate' as 'entry' | 'intermediate' | 'expert',
   });
 
   const pendingQuestions = useMemo(() => {
@@ -151,18 +153,12 @@ export default function PostJobScreen() {
       // Current UI only has category name, so send null for now.
       categoryId: null,
 
-      // Enum BudgetType: 0=Fixed, 1=Hourly
-      budgetType: form.jobType === 'hourly' ? 1 : 0,
-
       budgetMin: form.budgetMin ? Number(form.budgetMin) : null,
       budgetMax: form.budgetMax ? Number(form.budgetMax) : null,
       currency: 'USD',
 
       estimatedDuration: null,
       maxHires: 1,
-
-      // Enum ExperienceLevel: 0=Entry, 1=Intermediate, 2=Expert
-      experienceLevelRequired: experienceLevelMap[form.experienceLevel],
 
       // Enum LocationType: 0=Remote, 1=OnSite, 2=Hybrid
       locationType: form.isRemote ? 0 : 1,

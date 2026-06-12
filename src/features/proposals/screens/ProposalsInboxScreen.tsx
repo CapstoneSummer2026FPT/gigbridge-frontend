@@ -7,7 +7,9 @@ import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
+import type { CreateContractDto } from '../../../types/models/Contract';
 import { ProposalCard, ProposalDetailModal, CreateContractModal, type ContractData, ProposalToolbar, PaginationToolbar, FreelancerProposalView, ClientProposalSidebar } from '../components';
 import type { JobProposalGroup, ProposalDetailMode, ProposalStatusValue, ProposalStatusFilter, ProposalSortBy, ProposalViewModel } from '../types';
 import { canViewContract, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
@@ -253,8 +255,8 @@ export default function ProposalsInboxScreen() {
     setProposalDetail({ proposal, mode });
   };
 
-  const handleAccept = (proposalId: string) => {
-    updateProposalStatus(proposalId, ProposalStatus.Accepted);
+  const handleShortlist = (proposalId: string) => {
+    updateProposalStatus(proposalId, ProposalStatus.Shortlisted);
   };
 
   const handleReject = (proposalId: string) => {
@@ -297,13 +299,63 @@ export default function ProposalsInboxScreen() {
     }
   };
 
+  const handleStartNegotiation = async (proposalId: string) => {
+    try {
+      setLoading(true);
+      const res = await proposalPutAPI.startNegotiation(proposalId);
+      if (res.success && res.data) {
+        navigate(`/messages?conversation=${res.data}`);
+      } else {
+        alert(res.message || 'Failed to start negotiation');
+      }
+    } catch (err) {
+      console.error('Start negotiation error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateContract = (proposal: ProposalViewModel) => {
     setCreateContractProposal(proposal);
   };
 
   const handleContractSubmit = async (contractData: ContractData) => {
-    console.log('Creating contract:', contractData);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      setLoading(true);
+      setError('');
+      
+      const createDto: CreateContractDto = {
+        jobPostId: createContractProposal?.jobPostsId || '',
+        proposalId: createContractProposal?.proposalsId || '',
+        clientProfileId: user?.id || '',
+        freelancerProfileId: createContractProposal?.freelancerProfilesId || '',
+        title: createContractProposal?.jobTitle || 'Contract',
+        description: createContractProposal?.coverLetter || '',
+        totalBudget: Number(contractData.proposedBudget),
+        startDate: contractData.startDate,
+        endDate: contractData.endDate,
+      };
+
+      const res = await contractPostAPI.createContractFromProposal(createDto);
+      if (res.success && res.data) {
+        setSuccessMessage('Contract created successfully.');
+        setCreateContractProposal(null);
+        setProposals(prev =>
+          prev.map(p =>
+            p.proposalsId === createContractProposal?.proposalsId
+              ? { ...p, status: ProposalStatus.Accepted }
+              : p
+          )
+        );
+      } else {
+        setError(res.message || 'Failed to create contract.');
+      }
+    } catch (err: any) {
+      console.error('Failed to create contract:', err);
+      setError(err.message || 'Failed to create contract.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -391,10 +443,11 @@ export default function ProposalsInboxScreen() {
                       proposal={proposal}
                       isClient={isClient}
                       onViewDetail={handleViewDetail}
-                      onAccept={handleAccept}
+                      onShortlist={handleShortlist}
                       onReject={handleReject}
                       onViewAnswers={handleViewAnswers}
                       onCreateContract={handleCreateContract}
+                      onStartNegotiation={handleStartNegotiation}
                     />
                   ))}
 

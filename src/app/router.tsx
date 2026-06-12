@@ -15,10 +15,14 @@ import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerD
 import PostJobScreen from '../features/jobs/screens/PostJobScreen';
 import CreateJobPostQuestionsScreen from '../features/jobs/screens/CreateJobPostQuestionsScreen';
 import ManageJobPostQuestionsScreen from '../features/jobs/screens/ManageJobPostQuestionsScreen';
+import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
+import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
+import EditFreelancerProfileScreen from '../features/profile/screens/EditFreelancerProfileScreen';
+import ManageFreelancerContentScreen from '../features/profile/screens/ManageFreelancerContentScreen';
 import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
 import CreateProposalScreen from '../features/proposals/screens/CreateProposalScreen';
 import ScreenProposalAnswerQuestion from '../features/proposals/screens/ScreenProposalAnswerQuestion';
@@ -39,6 +43,8 @@ import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
 import MarketInsightsScreen from '../features/market-insights/screens/MarketInsightsScreen';
 import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
+import CreateReviewScreen from '../features/reviews/screens/CreateReviewScreen';
+import SmartTalentMatchingScreen from '../features/talent-matching/screens/SmartTalentMatchingScreen';
 import AboutScreen from '../features/company/screens/AboutScreen';
 import CareersScreen from '../features/company/screens/CareersScreen';
 import FAQScreen from '../features/company/screens/FAQScreen';
@@ -49,7 +55,21 @@ import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
-import ViewContractDetailsScreen from '../features/contracts/screens/ViewContractDetailsScreen';
+import UploadPaymentProofScreen from '../features/wallet/screens/UploadPaymentProofScreen';
+import EarlyPayoutScreen from '../features/wallet/screens/EarlyPayoutScreen';
+import {
+  ApproveMilestoneScreen,
+  CreateEsignContractScreen,
+  EsignDocumentSigningScreen,
+  FreelancerContractScreen,
+  FreelancerRegisterContractScreen,
+  ManageContractScreen,
+  ManageMilestonesScreen,
+  SignatureWorkflowScreen,
+  SubmitMilestoneDeliverableScreen,
+  ViewContractDetailsScreen,
+} from '../features/contracts';
+import SavedJobsScreen from '../features/jobs/screens/SavedJobsScreen';
 
 // Import router styles
 import './styles/router.css';
@@ -129,7 +149,9 @@ export const router = createBrowserRouter([
       { path: 'jobs/post/questions', element: <ProtectedRoute requireAuth requireSetup><CreateJobPostQuestionsScreen /></ProtectedRoute> },
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
       { path: 'jobs/post/interview-questions', element: <Navigate to="/jobs/post/questions" replace /> },
+      { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
       { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
@@ -138,6 +160,9 @@ export const router = createBrowserRouter([
       // Profiles - requires authentication
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/freelancer/:id/edit', element: <ProtectedRoute requireAuth><EditFreelancerProfileScreen /></ProtectedRoute> },
+      { path: 'profile/client/:id/edit', element: <ProtectedRoute requireAuth><EditClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/manage-content', element: <ProtectedRoute requireAuth><ManageFreelancerContentScreen /></ProtectedRoute> },
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
@@ -148,10 +173,19 @@ export const router = createBrowserRouter([
 
       // Contracts - requires authentication and setup
       { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
+      { path: 'contracts/create', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/manage', element: <ProtectedRoute requireAuth requireSetup><ManageContractScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup><ManageMilestonesScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/milestones/:milestoneId/approve', element: <ProtectedRoute requireAuth requireSetup><ApproveMilestoneScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/milestones/:milestoneId/submit', element: <ProtectedRoute requireAuth requireSetup><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/signature', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
+      { path: 'freelancer/contracts', element: <ProtectedRoute requireAuth requireSetup><FreelancerContractScreen /></ProtectedRoute> },
 
       // Workspace - requires authentication and setup
       { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
       { path: 'workspace/:id', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
+      { path: 'workspace/:projectId/freelancer-contract', element: <ProtectedRoute requireAuth requireSetup><FreelancerRegisterContractScreen /></ProtectedRoute> },
 
       // AI Features - requires authentication and setup
       { path: 'ai-assistant', element: <ProtectedRoute requireAuth requireSetup><AIAssistantScreen /></ProtectedRoute> },
@@ -163,6 +197,8 @@ export const router = createBrowserRouter([
       // Wallet & Subscription - requires authentication and setup
       { path: 'wallet/deposit', element: <ProtectedRoute requireAuth requireSetup><WalletDepositScreen /></ProtectedRoute> },
       { path: 'wallet/history', element: <ProtectedRoute requireAuth requireSetup><WalletHistoryScreen /></ProtectedRoute> },
+      { path: 'wallet/upload-proof', element: <ProtectedRoute requireAuth requireSetup><UploadPaymentProofScreen /></ProtectedRoute> },
+      { path: 'wallet/early-payout', element: <ProtectedRoute requireAuth requireSetup><EarlyPayoutScreen /></ProtectedRoute> },
       { path: 'buy-gigcoin', element: <ProtectedRoute requireAuth requireSetup><BuyGigcoinScreen /></ProtectedRoute> },
       { path: 'subscription', element: <ProtectedRoute requireAuth requireSetup><SubscriptionScreen /></ProtectedRoute> },
       { path: 'financial-overview', element: <ProtectedRoute requireAuth requireSetup><FinancialOverviewScreen /></ProtectedRoute> },
@@ -181,8 +217,14 @@ export const router = createBrowserRouter([
       // Market Insights - public
       { path: 'market-insights', element: <MarketInsightsScreen /> },
 
+      // Talent Matching - requires authentication
+      { path: 'talent-matching', element: <ProtectedRoute requireAuth requireSetup><SmartTalentMatchingScreen /></ProtectedRoute> },
+
       // Notifications - requires authentication
       { path: 'notifications', element: <ProtectedRoute requireAuth><NotificationsScreen /></ProtectedRoute> },
+
+      // Reviews
+      { path: 'reviews/create', element: <ProtectedRoute requireAuth requireSetup><CreateReviewScreen /></ProtectedRoute> },
 
       // Company Pages - public
       { path: 'about', element: <AboutScreen /> },

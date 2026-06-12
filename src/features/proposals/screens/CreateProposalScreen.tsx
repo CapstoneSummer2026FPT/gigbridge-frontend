@@ -72,7 +72,7 @@ export default function CreateProposalScreen() {
         const duration = parseProposedDuration(detail.proposedDuration);
         setForm({
           coverLetter: detail.coverLetter || '',
-          proposedRate: detail.proposedRate ? String(detail.proposedRate) : '',
+          proposedRate: detail.proposedBudget ? String(detail.proposedBudget) : '',
           durationValue: duration.durationValue,
           durationUnit: duration.durationUnit,
         });
@@ -182,7 +182,7 @@ export default function CreateProposalScreen() {
       const id = proposalId || proposal?.proposalId || '';
       const response = await proposalPutAPI.updateProposal(id, {
         coverLetter: payload.coverLetter,
-        proposedRate: payload.proposedRate,
+        proposedBudget: payload.proposedBudget,
         proposedDuration: payload.proposedDuration,
         status,
       });
