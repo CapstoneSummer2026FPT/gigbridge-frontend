@@ -59,6 +59,7 @@ export const DB = {
   getProjectById: (id: string) => db.projects.find(p => p.id === id),
   getProjectsByClient: (clientId: string) => db.projects.filter(p => p.clientId === clientId),
   getProjectsByFreelancer: (freelancerId: string) => db.projects.filter(p => p.freelancerId === freelancerId),
+  addProject: (project: Project) => { db.projects.push(project); return project; },
 
   // Messages
   getMessagesByConversation: (convId: string) => db.messages.filter(m => m.conversationId === convId),

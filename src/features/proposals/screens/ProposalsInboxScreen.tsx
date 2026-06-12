@@ -1,39 +1,14 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
-import { BarChart2, X, Users } from 'lucide-react';
-import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { proposalGetAPI } from '../../../api/proposalAPI/GET';
-import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
-import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
-import { ProposalCard, ProposalDetailModal, CreateContractModal, type ContractData, ProposalToolbar, PaginationToolbar, FreelancerProposalView, ClientProposalSidebar } from '../components';
-import type { JobProposalGroup, ProposalDetailMode, ProposalStatusValue, ProposalStatusFilter, ProposalSortBy } from '../types';
-import { getStatusLabel } from '../utils/statusHelpers';
-import '../styles/proposals-inbox-screen.css';
+import ClientProposalsScreen from './ClientProposalsScreen';
+import FreelancerProposalsScreen from './FreelancerProposalsScreen';
 
 export default function ProposalsInboxScreen() {
-  const { user, role } = useApp();
-  const [proposals, setProposals] = useState<ProposalViewModel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [managingJob, setManagingJob] = useState<JobProposalGroup | null>(null);
-  const [proposalStatusFilter, setProposalStatusFilter] = useState<ProposalStatusFilter>('all');
-  const [proposalSortBy, setProposalSortBy] = useState<ProposalSortBy>('interviewScore');
-  const [proposalDetail, setProposalDetail] = useState<{ proposal: ProposalViewModel; mode: ProposalDetailMode } | null>(null);
-  const [createContractProposal, setCreateContractProposal] = useState<ProposalViewModel | null>(null);
-  const [isPremiumFreelancer] = useState(true);
-  const [tokenBalance, setTokenBalance] = useState(120);
-  const [boostAmount, setBoostAmount] = useState(10);
-  const [boostError, setBoostError] = useState('');
-  const [boostSuccess, setBoostSuccess] = useState('');
-  const [competitionJob, setCompetitionJob] = useState<JobProposalGroup | null>(null);
-  const [competitionError, setCompetitionError] = useState('');
-  const [jobMenuOpen, setJobMenuOpen] = useState<string | null>(null);
-  const [proposalsPerPage, setProposalsPerPage] = useState(10);
-  const [currentProposalPage, setCurrentProposalPage] = useState(1);
-  const [showToolbars, setShowToolbars] = useState(true);
-  const proposalCardsRef = useRef<HTMLDivElement>(null);
-  const lastScrollYRef = useRef(0);
+  const { role } = useApp();
 
-  const isClient = role === 0;
+  // If role is Client (0), render the Client workspace. Otherwise, render the Freelancer workspace.
+  if (role === 0) {
+    return <ClientProposalsScreen />;
+  }
 
   // Fetch proposals
   useEffect(() => {
