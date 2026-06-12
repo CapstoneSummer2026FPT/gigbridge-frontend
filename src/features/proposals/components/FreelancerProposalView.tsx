@@ -14,7 +14,7 @@ interface FreelancerProposalViewProps {
   onStatusFilterChange: (status: ProposalStatusFilter) => void;
   onViewDetail: (proposal: ProposalViewModel, mode: ProposalDetailMode) => void;
   onBoost: (proposal: ProposalViewModel) => void;
-  onCreateContract: (proposal: ProposalViewModel) => void;
+  onGoToWorkspace: (proposal: ProposalViewModel) => void;
   onCompetitionMatrix: (job: JobProposalGroup) => void;
 }
 
@@ -27,7 +27,7 @@ export function FreelancerProposalView({
   onStatusFilterChange,
   onViewDetail,
   onBoost,
-  onCreateContract,
+  onGoToWorkspace,
   onCompetitionMatrix,
 }: FreelancerProposalViewProps) {
   const navigate = useNavigate();
