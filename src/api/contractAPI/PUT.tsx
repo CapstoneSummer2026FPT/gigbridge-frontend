@@ -1,10 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { UpdateContractDto, ContractDto, Milestone } from '../../types/models/Contract';
-import { MilestoneStatus } from '../../types/models/Contract';
-
-const contractsUrl = 'Contracts';
-const milestonesUrl = 'Milestones';
+import type {
+  UpdateContractDetailsRequest,
+  UpdateContractDto,
+  ContractDto,
+  Milestone,
+} from '../../types/models/Contract';
 
 export const contractPutAPI = {
   /**
@@ -12,10 +13,15 @@ export const contractPutAPI = {
    * Update contract details
    */
   updateContract: async (
-    id: string,
-    data: UpdateContractDto
+    _id: string,
+    _data: UpdateContractDto
   ): Promise<ApiResponse<ContractDto>> => {
-    return apiService.put<ContractDto>(`${contractsUrl}/${id}`, data);
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'General contract updates are not exposed by the current backend contract API. Use updateDetails for contract terms.',
+      data: undefined,
+    };
   },
 
   /**
@@ -23,10 +29,15 @@ export const contractPutAPI = {
    * Update contract status
    */
   updateContractStatus: async (
-    contractId: string,
-    status: number
+    _contractId: string,
+    _status: number
   ): Promise<ApiResponse<ContractDto>> => {
-    return apiService.put<ContractDto>(`${contractsUrl}/${contractId}/status`, { status });
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Contract status updates are handled by workflow endpoints in the current backend API.',
+      data: undefined,
+    };
   },
 
   /**
@@ -34,10 +45,15 @@ export const contractPutAPI = {
    * Update milestone status
    */
   updateMilestoneStatus: async (
-    milestoneId: string,
-    status: number
+    _milestoneId: string,
+    _status: number
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.put<Milestone>(`${milestonesUrl}/${milestoneId}/status`, { status });
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Milestone status updates require contract workflow endpoints in the current backend API.',
+      data: undefined,
+    };
   },
 
   /**
@@ -45,10 +61,15 @@ export const contractPutAPI = {
    * Update milestone details
    */
   updateMilestone: async (
-    milestoneId: string,
-    data: Partial<Milestone>
+    _milestoneId: string,
+    _data: Partial<Milestone>
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.put<Milestone>(`${milestonesUrl}/${milestoneId}`, data);
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Direct milestone updates are not exposed by the current backend contract API.',
+      data: undefined,
+    };
   },
 
   /**
@@ -56,21 +77,7 @@ export const contractPutAPI = {
    */
   updateDetails: async (
     contractId: string,
-    data: {
-      scopeOfWork: string;
-      paymentTerms: string;
-      intellectualPropertyTerms: string;
-      confidentialityTerms: string;
-      cancellationTerms: string;
-      disputeTerms: string;
-      milestones: Array<{
-        milestoneId?: string | null;
-        title: string;
-        amount: number;
-        dueDate?: string | null;
-        sortOrder?: number | null;
-      }>;
-    }
+    data: UpdateContractDetailsRequest
   ): Promise<ApiResponse<any>> => {
     return apiService.put<any>(`contracts/${contractId}/details`, data);
   },

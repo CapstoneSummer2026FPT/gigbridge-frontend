@@ -95,7 +95,7 @@ export default function SmartTalentMatchingScreen() {
 
   // Filters State
   const [jobTypes, setJobTypes] = useState<string[]>(['Fixed Price', 'Hourly Contract']);
-  const [hourlyRate, setHourlyRate] = useState<number>(200);
+  const [rateCeiling, setRateCeiling] = useState<number>(200);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [minSuccessRate, setMinSuccessRate] = useState<number | null>(null);
 
@@ -167,7 +167,7 @@ export default function SmartTalentMatchingScreen() {
       }
 
       // Hourly Rate range slider filter
-      if (meta.rate > hourlyRate) {
+      if (meta.rate > rateCeiling) {
         return false;
       }
 
@@ -186,7 +186,7 @@ export default function SmartTalentMatchingScreen() {
 
       return true;
     });
-  }, [basePool, activeTab, favorites, query, jobTypes, hourlyRate, selectedSkills, minSuccessRate]);
+  }, [basePool, activeTab, favorites, query, jobTypes, rateCeiling, selectedSkills, minSuccessRate]);
 
   const inviteTalent = (talentId: string) => {
     setInvitedIds(prev => prev.includes(talentId) ? prev : [...prev, talentId]);
@@ -207,7 +207,7 @@ export default function SmartTalentMatchingScreen() {
   const clearAllFilters = () => {
     setQuery('');
     setJobTypes(['Fixed Price', 'Hourly Contract']);
-    setHourlyRate(200);
+    setRateCeiling(200);
     setSelectedSkills([]);
     setMinSuccessRate(null);
   };
@@ -374,7 +374,7 @@ export default function SmartTalentMatchingScreen() {
                       Max Hourly Rate
                     </label>
                     <span className="text-xs font-bold text-blue-600 black:text-blue-400">
-                      ${hourlyRate}/hr
+                      ${rateCeiling}/hr
                     </span>
                   </div>
                   <input
@@ -382,8 +382,8 @@ export default function SmartTalentMatchingScreen() {
                     min="40"
                     max="200"
                     step="5"
-                    value={hourlyRate}
-                    onChange={e => setHourlyRate(parseInt(e.target.value))}
+                    value={rateCeiling}
+                    onChange={e => setRateCeiling(parseInt(e.target.value))}
                     className="w-full h-1.5 bg-gray-200 black:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                   <div className="flex justify-between text-[10px] text-gray-400 mt-1">

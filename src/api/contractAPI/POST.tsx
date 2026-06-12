@@ -2,18 +2,20 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { CreateContractDto, ContractDto, GenerateContractPdfDto } from '../../types/models/Contract';
 
-const contractsUrl = 'Contracts';
-const milestonesUrl = 'Milestones';
-
 export const contractPostAPI = {
   /**
    * POST /api/Contracts/from-proposal
    * Create contract from accepted proposal
    */
   createContractFromProposal: async (
-    data: CreateContractDto
+    _data: CreateContractDto
   ): Promise<ApiResponse<ContractDto>> => {
-    return apiService.post<ContractDto>(`${contractsUrl}/from-proposal`, data);
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Creating contracts from proposals is handled by the backend workflow and is not exposed as a direct frontend API route.',
+      data: undefined,
+    };
   },
 
   /**
@@ -21,10 +23,15 @@ export const contractPostAPI = {
    * Generate PDF document for contract
    */
   generateContractPdf: async (
-    contractId: string,
-    data?: GenerateContractPdfDto
+    _contractId: string,
+    _data?: GenerateContractPdfDto
   ): Promise<ApiResponse<{ pdfUrl: string }>> => {
-    return apiService.post<{ pdfUrl: string }>(`${contractsUrl}/${contractId}/generate-pdf`, data || {});
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Contract PDF generation is not exposed by the current backend contract API.',
+      data: undefined,
+    };
   },
 
   /**
@@ -32,12 +39,15 @@ export const contractPostAPI = {
    * Send contract to freelancer for signature
    */
   sendForSignature: async (
-    contractId: string,
-    freelancerEmail?: string
+    _contractId: string,
+    _freelancerEmail?: string
   ): Promise<ApiResponse<{ signatureUrl: string }>> => {
-    return apiService.post<{ signatureUrl: string }>(`${contractsUrl}/${contractId}/send-for-signature`, {
-      freelancerEmail,
-    });
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Sending contracts for signature is handled by the current sign endpoint.',
+      data: undefined,
+    };
   },
 
   /**
@@ -45,13 +55,15 @@ export const contractPostAPI = {
    * Submit deliverables for a milestone (freelancer only)
    */
   submitMilestoneDeliverables: async (
-    milestoneId: string,
-    formData: FormData
+    _milestoneId: string,
+    _formData: FormData
   ): Promise<ApiResponse<{ success: boolean; message: string }>> => {
-    return apiService.post<{ success: boolean; message: string }>(
-      `${milestonesUrl}/${milestoneId}/submit-deliverables`,
-      formData
-    );
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Milestone deliverable uploads are not exposed by the current backend contract API.',
+      data: undefined,
+    };
   },
 
   /**
@@ -59,16 +71,15 @@ export const contractPostAPI = {
    * Upload milestone attachment files
    */
   uploadMilestoneAttachment: async (
-    milestoneId: string,
-    file: File
+    _milestoneId: string,
+    _file: File
   ): Promise<ApiResponse<{ id: string; fileName: string; fileUrl: string }>> => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    return apiService.post<{ id: string; fileName: string; fileUrl: string }>(
-      `${milestonesUrl}/${milestoneId}/attachments`,
-      formData
-    );
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'Milestone attachments are not exposed by the current backend contract API.',
+      data: undefined,
+    };
   },
 
   /**

@@ -18,6 +18,7 @@ import ManageJobPostQuestionsScreen from '../features/jobs/screens/ManageJobPost
 import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
+import MyJobsScreen from '@/features/jobs/screens/MyJobsScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
 import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
@@ -44,7 +45,6 @@ import AdminNotificationsScreen from '../features/admin/screens/AdminNotificatio
 import MarketInsightsScreen from '../features/market-insights/screens/MarketInsightsScreen';
 import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
 import CreateReviewScreen from '../features/reviews/screens/CreateReviewScreen';
-import SmartTalentMatchingScreen from '../features/talent-matching/screens/SmartTalentMatchingScreen';
 import AboutScreen from '../features/company/screens/AboutScreen';
 import CareersScreen from '../features/company/screens/CareersScreen';
 import FAQScreen from '../features/company/screens/FAQScreen';
@@ -55,26 +55,15 @@ import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
-import ViewContractDetailsScreen from '../features/contracts/screens/ViewContractDetailsScreen';
-import UploadPaymentProofScreen from '../features/wallet/screens/UploadPaymentProofScreen';
-import EarlyPayoutScreen from '../features/wallet/screens/EarlyPayoutScreen';
+
 import {
-  ApproveMilestoneScreen,
-  CreateEsignContractScreen,
-  EsignDocumentSigningScreen,
-  FreelancerContractScreen,
   FreelancerRegisterContractScreen,
-  ManageContractScreen,
-  ManageMilestonesScreen,
-  SignatureWorkflowScreen,
-  SubmitMilestoneDeliverableScreen,
   ViewContractDetailsScreen,
 } from '../features/contracts';
 
 // Import router styles
 import './styles/router.css';
 import { UserRole } from '../types';
-import MyJobsScreen from '@/features/jobs/screens/MyJobsScreen';
 
 function NotFound() {
   return (
@@ -91,10 +80,10 @@ function NotFound() {
 
 /**
  * RootLayout - Critical component that wraps all routes with AppProvider
- * 
+ *
  * This ensures AppContext is available to all child routes through React Router's Outlet.
  * Structure: RootLayout > AppProvider > Outlet > [All Screen Components]
- * 
+ *
  * ⚠️ DO NOT move AppProvider outside of router tree or context will not propagate correctly!
  */
 function RootLayout() {
@@ -154,9 +143,6 @@ export const router = createBrowserRouter([
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
       { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
-      { path: 'jobs/browse', element: <BrowseJobsScreen /> },
-      { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
-      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostsScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
 
       // Profiles - requires authentication

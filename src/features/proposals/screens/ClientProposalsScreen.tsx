@@ -8,9 +8,10 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
-import { DB } from '../../../mock_backend';
-import type { Project } from '../../../types/models/Project';
-import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { ProposalStatus } from '../../../types/models/Proposal';
+import type { ProposalViewModel } from '../types';
 import type { JobProposalGroup, ProposalStatusFilter, ProposalSortBy, ProposalStatusValue } from '../types';
 import '../../workspace/styles/project-workspace-screen.css';
 
@@ -32,28 +33,28 @@ export default function ClientProposalsScreen() {
       if (!user) return;
       try {
         setLoading(true);
-        const response = await proposalGetAPI.getAllProposals();
-        setProposals(response.data?.length ? response.data.map((proposal, index) => ({
+        const jobsResponse = await jobGetAPI.getMyJobPosts();
+        if (!jobsResponse.success) {
+          setProposals([]);
+          return;
+        }
+
+        const proposalResponses = await Promise.all(
+          (jobsResponse.data || []).map(job => proposalGetAPI.getProposalsByJobPost(job.jobPostsId))
+        );
+
+        setProposals(proposalResponses.flatMap(response => response.data || []).map((proposal, index) => ({
           ...proposal,
           updatedAt: proposal.reviewedAt || proposal.submittedAt,
-          isAIGenerated: index % 2 === 0,
+          isAIGenerated: false,
           interviewScore: Math.max(58, 96 - index * 7),
           rankingScore: Math.max(58, 96 - index * 7),
           boostedTokenAmount: 0,
-          attachments: [
-            {
-              propoAttach_ProposalAttachmentsId: `api_attach_${proposal.proposalsId}`,
-              propo_ProposalsId: proposal.proposalsId,
-              fileName: `${proposal.freelancerName || 'Freelancer'}_CV.pdf`,
-              fileUrl: '#',
-              fileSize: 700000 + index * 42000,
-              createdAt: proposal.submittedAt,
-            },
-          ],
-        })) : MOCK_PROPOSALS);
+          attachments: [],
+        })));
       } catch (error) {
         console.error('Failed to fetch proposals:', error);
-        setProposals(MOCK_PROPOSALS);
+        setProposals([]);
       } finally {
         setLoading(false);
       }
@@ -130,7 +131,7 @@ export default function ClientProposalsScreen() {
   // Actions
   const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     try {
-      await proposalPutAPI.updateProposalStatus(proposalId, String(status));
+      await proposalPutAPI.updateProposalStatus(proposalId, status);
       setProposals(prev =>
         prev.map(proposal =>
           proposal.proposalsId === proposalId
@@ -143,55 +144,14 @@ export default function ClientProposalsScreen() {
     }
   };
 
-  const handleGoToWorkspace = async (proposal: ProposalViewModel) => {
-    const existingProject = DB.getProjects().find(
-      p => p.jobId === proposal.jobPostsId && p.freelancerId === proposal.freelancerProfilesId
-    );
-
-    let projectId = existingProject?.id;
-
-    if (!existingProject) {
-      projectId = `proj_${Date.now()}`;
-      const newProject: Project = {
-        id: projectId,
-        jobId: proposal.jobPostsId || 'job_1',
-        clientId: user?.id || 'u_client_1',
-        freelancerId: proposal.freelancerProfilesId || 'u_freelancer_1',
-        title: proposal.jobTitle || 'Untitled Workspace Project',
-        description: proposal.coverLetter || 'Workspace conversation.',
-        totalBudget: proposal.proposedBudget || 0,
-        paidAmount: 0,
-        status: 'active',
-        startDate: new Date().toISOString().split('T')[0],
-        conversationId: `conv_${Date.now()}`,
-        progress: 0,
-        milestones: [
-          {
-            id: `m_${Date.now()}_1`,
-            title: 'Initial Setup',
-            description: 'First milestone of workspace',
-            amount: proposal.proposedBudget ? Math.round(proposal.proposedBudget * 0.3) : 500,
-            dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString().split('T')[0],
-            status: 'in_progress',
-          }
-        ],
-      };
-
-      DB.addProject(newProject);
-
-      const initMessage = {
-        id: `msg_${Date.now()}`,
-        conversationId: newProject.conversationId,
-        senderId: user?.id || 'u_client_1',
-        content: `Hi ${proposal.freelancerName || 'Freelancer'}! Workspace is now active. Let's discuss details here.`,
-        type: 'text' as const,
-        createdAt: new Date().toISOString(),
-        isRead: true,
-      };
-      DB.addMessage(initMessage);
+  const handleViewContract = async (proposal: ProposalViewModel) => {
+    const response = await contractGetAPI.getContractByJobPost(proposal.jobPostsId);
+    if (response.success && response.data) {
+      navigate(`/contracts/${response.data.contractsId}`);
+      return;
     }
 
-    navigate(`/workspace/${projectId}`);
+    alert(response.message || 'Contract is not available yet for this accepted proposal.');
   };
 
   return (
@@ -275,10 +235,10 @@ export default function ClientProposalsScreen() {
                   className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
                 >
                   <option value="all">All Proposals</option>
-                  <option value="0">Pending</option>
-                  <option value="1">Shortlisted</option>
-                  <option value="2">Accepted</option>
-                  <option value="3">Rejected</option>
+                  <option value={String(ProposalStatus.Pending)}>Pending</option>
+                  <option value={String(ProposalStatus.Shortlisted)}>Shortlisted</option>
+                  <option value={String(ProposalStatus.Accepted)}>Accepted</option>
+                  <option value={String(ProposalStatus.Rejected)}>Rejected</option>
                 </select>
               </div>
 
@@ -295,7 +255,7 @@ export default function ClientProposalsScreen() {
                   <option value="interviewScore">Interview Score</option>
                   <option value="status">Status</option>
                   <option value="rate">Proposed Rate</option>
-                  <option value="date">Submission Date</option>
+                  <option value="submittedAt">Submission Date</option>
                 </select>
               </div>
             </div>
@@ -310,8 +270,8 @@ export default function ClientProposalsScreen() {
                 ) : (
                   filteredProposals.map(p => {
                     const isActive = p.proposalsId === activeProposalId;
-                    const isAccepted = p.status === 2;
-                    const isRejected = p.status === 3;
+                    const isAccepted = p.status === ProposalStatus.Accepted;
+                    const isRejected = p.status === ProposalStatus.Rejected;
                     return (
                       <div
                         key={p.proposalsId}
@@ -381,15 +341,15 @@ export default function ClientProposalsScreen() {
 
                     {/* Proposal Action Buttons */}
                     <div className="flex items-center gap-3 mt-4 border-t border-border pt-6">
-                      {activeProposal.status === 2 ? (
+                      {activeProposal.status === ProposalStatus.Accepted ? (
                         <button
-                          onClick={() => handleGoToWorkspace(activeProposal)}
+                          onClick={() => handleViewContract(activeProposal)}
                           className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-lg shadow-blue-500/15 transition-all flex items-center gap-2 cursor-pointer border-none"
                         >
                           <Briefcase size={16} />
-                          <span>Go to Workspace</span>
+                          <span>View Contract</span>
                         </button>
-                      ) : activeProposal.status === 3 ? (
+                      ) : activeProposal.status === ProposalStatus.Rejected ? (
                         <div className="flex items-center gap-2 text-red-500 font-bold text-sm bg-red-500/5 px-4 py-2 rounded-xl border border-red-500/10">
                           <XCircle size={16} />
                           <span>Proposal Rejected</span>
@@ -397,14 +357,14 @@ export default function ClientProposalsScreen() {
                       ) : (
                         <>
                           <button
-                            onClick={() => updateProposalStatus(activeProposal.proposalsId, 2)}
+                            onClick={() => updateProposalStatus(activeProposal.proposalsId, ProposalStatus.Accepted)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
                           >
                             <CheckCircle size={16} />
                             Accept Proposal
                           </button>
                           <button
-                            onClick={() => updateProposalStatus(activeProposal.proposalsId, 3)}
+                            onClick={() => updateProposalStatus(activeProposal.proposalsId, ProposalStatus.Rejected)}
                             className="bg-transparent border border-border text-muted-foreground hover:text-red-500 hover:border-red-500/30 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
                           >
                             <XCircle size={16} />

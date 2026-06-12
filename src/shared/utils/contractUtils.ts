@@ -6,12 +6,17 @@ import { MilestoneStatus } from '../../types/models/Contract';
  */
 export const getContractStatusLabel = (status: ContractStatus | number): string => {
   const statusMap: Record<number, string> = {
-    [-1]: 'Draft',
-    0: 'Active',
-    1: 'Completed',
-    2: 'Cancelled',
-    3: 'Disputed',
-    4: 'Pending Signature',
+    0: 'Draft',
+    1: 'Pending Freelancer Selection',
+    2: 'In Negotiation',
+    3: 'Pending Contract Details',
+    4: 'Pending Contract Confirmation',
+    5: 'Pending Escrow',
+    6: 'Pending Signature',
+    7: 'Active',
+    8: 'Completed',
+    9: 'Cancelled',
+    10: 'Disputed',
   };
   return statusMap[status] || 'Unknown';
 };
@@ -21,12 +26,17 @@ export const getContractStatusLabel = (status: ContractStatus | number): string 
  */
 export const getContractStatusClass = (status: ContractStatus | number): string => {
   const statusMap: Record<number, string> = {
-    [-1]: 'contract-status-draft',
-    0: 'contract-status-active',
-    1: 'contract-status-completed',
-    2: 'contract-status-cancelled',
-    3: 'contract-status-disputed',
+    0: 'contract-status-draft',
+    1: 'contract-status-pending-signature',
+    2: 'contract-status-pending-signature',
+    3: 'contract-status-pending-signature',
     4: 'contract-status-pending-signature',
+    5: 'contract-status-pending-signature',
+    6: 'contract-status-pending-signature',
+    7: 'contract-status-active',
+    8: 'contract-status-completed',
+    9: 'contract-status-cancelled',
+    10: 'contract-status-disputed',
   };
   return `contract-status ${statusMap[status] || 'contract-status-unknown'}`;
 };
@@ -136,14 +146,27 @@ ${data.endDate ? `End Date: ${formatContractDate(data.endDate)}` : ''}`;
  * Check if contract can be modified
  */
 export const canModifyContract = (status: ContractStatus | number): boolean => {
-  return status === -1 || status === 4 || status === 0;
+  return (
+    status === ContractStatus.Draft ||
+    status === ContractStatus.InNegotiation ||
+    status === ContractStatus.PendingContractDetails ||
+    status === ContractStatus.PendingContractConfirmation
+  );
 };
 
 /**
  * Check if contract can be cancelled
  */
 export const canCancelContract = (status: ContractStatus | number): boolean => {
-  return status === -1 || status === 4 || status === 0;
+  return (
+    status === ContractStatus.Draft ||
+    status === ContractStatus.InNegotiation ||
+    status === ContractStatus.PendingContractDetails ||
+    status === ContractStatus.PendingContractConfirmation ||
+    status === ContractStatus.PendingEscrow ||
+    status === ContractStatus.PendingSignature ||
+    status === ContractStatus.Active
+  );
 };
 
 /**
@@ -186,12 +209,12 @@ export const getPlaceholderSignature = (): string => {
 export const getMilestoneStatusLabel = (status: MilestoneStatus | number): string => {
   const statusMap: Record<number, string> = {
     0: 'Pending',
-    1: 'Approved',
-    2: 'Paid',
-    3: 'Not Started',
-    4: 'In Progress',
-    5: 'Submitted for Review',
-    6: 'Revision Required',
+    1: 'In Progress',
+    2: 'Submitted',
+    3: 'Approved',
+    4: 'Payment Proof Uploaded',
+    5: 'Payment Confirmed',
+    6: 'Disputed',
   };
   return statusMap[status] || 'Unknown';
 };
@@ -202,11 +225,11 @@ export const getMilestoneStatusLabel = (status: MilestoneStatus | number): strin
 export const getMilestoneStatusClass = (status: MilestoneStatus | number): string => {
   const statusMap: Record<number, string> = {
     0: 'milestone-status-pending',
-    1: 'milestone-status-approved',
-    2: 'milestone-status-paid',
-    3: 'milestone-status-not-started',
-    4: 'milestone-status-in-progress',
-    5: 'milestone-status-submitted',
+    1: 'milestone-status-in-progress',
+    2: 'milestone-status-submitted',
+    3: 'milestone-status-approved',
+    4: 'milestone-status-submitted',
+    5: 'milestone-status-paid',
     6: 'milestone-status-revision',
   };
   return `milestone-status ${statusMap[status] || 'milestone-status-unknown'}`;
@@ -225,13 +248,13 @@ export const isMilestoneOverdue = (dueDate: string | Date): boolean => {
  */
 export const calculateMilestoneCompletion = (status: MilestoneStatus | number): number => {
   const completionMap: Record<number, number> = {
-    0: 0,    // Pending
-    1: 50,   // Approved
-    2: 100,  // Paid
-    3: 0,    // Not Started
-    4: 45,   // In Progress
-    5: 80,   // Submitted for Review
-    6: 55,   // Revision Required
+    0: 0,
+    1: 45,
+    2: 80,
+    3: 90,
+    4: 95,
+    5: 100,
+    6: 55,
   };
   return completionMap[status] || 0;
 };

@@ -315,9 +315,9 @@ Contract Audit Report
 Generated: ${new Date().toLocaleString()}
 Total Contracts: ${filteredContracts.length}
 
-=======================================
+---------------------------------------
 SUMMARY STATISTICS
-=======================================
+---------------------------------------
 Total Contracts: ${contracts.length}
 Active: ${calculateStats().active}
 Completed: ${calculateStats().completed}
@@ -327,9 +327,9 @@ Violations: ${calculateStats().violations}
 Overdue: ${calculateStats().overdue}
 At Risk: ${calculateStats().atRisk}
 
-=======================================
+---------------------------------------
 CONTRACTS DETAIL
-=======================================
+---------------------------------------
 ${filteredContracts.map((c, idx) => `
 ${idx + 1}. ${c.title}
    ID: ${c.contractsId}

@@ -76,11 +76,9 @@ export interface JobPostSummaryDto {
   descriptionPreview: string;
   budgetMin?: number | null;
   budgetMax?: number | null;
-  locationType?: number | null;
   createdAt: string;
+  eloPoints: number;
   skillNames: string[];
-  status?: JobStatus | number | null;
-  visibility?: number | null;
 }
 
 export interface JobPostSkillDto {
@@ -104,12 +102,9 @@ export interface JobPostDetailDto {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  locationType?: number | null;
   location?: string | null;
   endDate?: string | null;
   createdAt: string;
-  status?: JobStatus | number | null;
-  visibility?: number | null;
   skills: JobPostSkillDto[];
   attachments: JobPostAttachmentDto[];
 }
@@ -123,7 +118,6 @@ export interface CreateJobPostRequest {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
   endDate?: string | null;

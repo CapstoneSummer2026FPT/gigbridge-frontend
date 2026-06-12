@@ -7,9 +7,11 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
-import { DB } from '../../../mock_backend';
-import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
-import type { ProposalStatusFilter } from '../types';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { ProposalStatus } from '../../../types/models/Proposal';
+import type { Job } from '../../../types/models/Job';
+import type { ProposalStatusFilter, ProposalViewModel } from '../types';
 import { getStatusLabel, getStatusClass } from '../utils/statusHelpers';
 import '../../workspace/styles/project-workspace-screen.css';
 
@@ -26,6 +28,7 @@ export default function FreelancerProposalsScreen() {
   const [boostAmount, setBoostAmount] = useState(10);
   const [boostError, setBoostError] = useState('');
   const [boostSuccess, setBoostSuccess] = useState('');
+  const [relatedJobDetails, setRelatedJobDetails] = useState<Job | null>(null);
 
   // Fetch proposals
   useEffect(() => {
@@ -37,14 +40,14 @@ export default function FreelancerProposalsScreen() {
         setProposals(response.data?.length ? response.data.map((proposal, index) => ({
           ...proposal,
           updatedAt: proposal.reviewedAt || proposal.submittedAt,
-          isAIGenerated: index % 2 === 0,
+          isAIGenerated: false,
           interviewScore: Math.max(58, 96 - index * 7),
           rankingScore: Math.max(58, 96 - index * 7),
           boostedTokenAmount: 0,
-        })) : MOCK_PROPOSALS.filter(p => p.freelancerProfilesId === 'freelancer_1')); // Filter to show freelancer's mock proposals
+        })) : []);
       } catch (error) {
         console.error('Failed to fetch proposals:', error);
-        setProposals(MOCK_PROPOSALS);
+        setProposals([]);
       } finally {
         setLoading(false);
       }
@@ -72,11 +75,24 @@ export default function FreelancerProposalsScreen() {
     return filteredProposals.find(p => p.proposalsId === activeProposalId) || null;
   }, [filteredProposals, activeProposalId]);
 
-  // Fetch related job details from DB
-  const relatedJobDetails = useMemo(() => {
-    if (!activeProposal) return null;
-    return DB.getJobById(activeProposal.jobPostsId || '') || null;
-  }, [activeProposal]);
+  useEffect(() => {
+    const fetchRelatedJobDetails = async () => {
+      if (!activeProposal?.jobPostsId) {
+        setRelatedJobDetails(null);
+        return;
+      }
+
+      try {
+        const response = await jobGetAPI.getJobById(activeProposal.jobPostsId);
+        setRelatedJobDetails(response.job);
+      } catch (error) {
+        console.error('Failed to fetch related job details:', error);
+        setRelatedJobDetails(null);
+      }
+    };
+
+    fetchRelatedJobDetails();
+  }, [activeProposal?.jobPostsId]);
 
   const handleBoost = (proposal: ProposalViewModel) => {
     setBoostError('');
@@ -104,55 +120,14 @@ export default function FreelancerProposalsScreen() {
     setBoostSuccess(`Successfully boosted proposal using ${boostAmount} tokens!`);
   };
 
-  const handleGoToWorkspace = async (proposal: ProposalViewModel) => {
-    const existingProject = DB.getProjects().find(
-      p => p.jobId === proposal.jobPostsId && p.freelancerId === proposal.freelancerProfilesId
-    );
-
-    let projectId = existingProject?.id;
-
-    if (!existingProject) {
-      projectId = `proj_${Date.now()}`;
-      const newProject = {
-        id: projectId,
-        jobId: proposal.jobPostsId || 'job_1',
-        clientId: 'u_client_1',
-        freelancerId: proposal.freelancerProfilesId || 'u_freelancer_1',
-        title: proposal.jobTitle || 'Untitled Workspace Project',
-        description: proposal.coverLetter || 'Workspace conversation.',
-        totalBudget: proposal.proposedBudget || 0,
-        paidAmount: 0,
-        status: 'active' as const,
-        startDate: new Date().toISOString().split('T')[0],
-        conversationId: `conv_${Date.now()}`,
-        progress: 0,
-        milestones: [
-          {
-            id: `m_${Date.now()}_1`,
-            title: 'Initial Setup',
-            description: 'First milestone of workspace',
-            amount: proposal.proposedBudget ? Math.round(proposal.proposedBudget * 0.3) : 500,
-            dueDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString().split('T')[0],
-            status: 'in_progress' as const,
-          }
-        ],
-      };
-
-      DB.addProject(newProject);
-
-      const initMessage = {
-        id: `msg_${Date.now()}`,
-        conversationId: newProject.conversationId,
-        senderId: 'u_client_1',
-        content: `Hi ${proposal.freelancerName || 'Freelancer'}! Workspace is now active. Let's discuss details here.`,
-        type: 'text' as const,
-        createdAt: new Date().toISOString(),
-        isRead: true,
-      };
-      DB.addMessage(initMessage);
+  const handleViewContract = async (proposal: ProposalViewModel) => {
+    const response = await contractGetAPI.getContractByJobPost(proposal.jobPostsId);
+    if (response.success && response.data) {
+      navigate(`/contracts/${response.data.contractsId}`);
+      return;
     }
 
-    navigate(`/workspace/${projectId}`);
+    setBoostError(response.message || 'Contract is not available yet for this accepted proposal.');
   };
 
   return (
@@ -208,10 +183,10 @@ export default function FreelancerProposalsScreen() {
                 className="bg-background border border-border rounded-lg text-[10px] px-2 py-1 focus:outline-none cursor-pointer text-foreground font-bold"
               >
                 <option value="all">All</option>
-                <option value="0">Pending</option>
-                <option value="1">Shortlisted</option>
-                <option value="2">Accepted</option>
-                <option value="3">Rejected</option>
+                <option value={String(ProposalStatus.Pending)}>Pending</option>
+                <option value={String(ProposalStatus.Shortlisted)}>Shortlisted</option>
+                <option value={String(ProposalStatus.Accepted)}>Accepted</option>
+                <option value={String(ProposalStatus.Rejected)}>Rejected</option>
               </select>
             </div>
             
@@ -223,8 +198,8 @@ export default function FreelancerProposalsScreen() {
               ) : (
                 filteredProposals.map(p => {
                   const isActive = p.proposalsId === activeProposalId;
-                  const accepted = p.status === 2;
-                  const rejected = p.status === 3;
+                  const accepted = p.status === ProposalStatus.Accepted;
+                  const rejected = p.status === ProposalStatus.Rejected;
                   return (
                     <div
                       key={p.proposalsId}
@@ -304,15 +279,15 @@ export default function FreelancerProposalsScreen() {
 
                 {/* Action controls */}
                 <div className="flex items-center gap-3 mt-4 border-t border-border pt-6">
-                  {activeProposal.status === 2 ? (
+                  {activeProposal.status === ProposalStatus.Accepted ? (
                     <button
-                      onClick={() => handleGoToWorkspace(activeProposal)}
+                      onClick={() => handleViewContract(activeProposal)}
                       className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-lg shadow-blue-500/15 transition-all flex items-center gap-2 cursor-pointer border-none"
                     >
                       <Briefcase size={16} />
-                      <span>Go to Workspace</span>
+                      <span>View Contract</span>
                     </button>
-                  ) : activeProposal.status === 0 ? (
+                  ) : activeProposal.status === ProposalStatus.Pending ? (
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="flex items-center gap-2">
                         <input 

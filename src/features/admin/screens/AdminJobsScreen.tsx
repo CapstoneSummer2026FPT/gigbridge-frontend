@@ -23,7 +23,7 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
   proposalCount: 0,
   viewCount: 0,
   postedAt: job.createdAt,
-  isRemote: job.locationType == null || job.locationType === 0,
+  isRemote: true,
   gigcoin_cost: 0,
 });
 
