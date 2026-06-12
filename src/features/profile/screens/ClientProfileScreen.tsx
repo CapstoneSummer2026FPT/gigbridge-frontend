@@ -1,12 +1,10 @@
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, CheckCircle, Briefcase, DollarSign, Users, TrendingUp, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MessageSquare, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, Bookmark } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Star, MapPin, CheckCircle, Briefcase, Users, TrendingUp, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, Bookmark } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
-import { SEED_CLIENT_PROFILES } from '../../../mock_backend/database/seed';
-import { getStoredReviews, saveStoredReviews, type ReviewViewModel } from '../../reviews/mock/data-for-Reviews';
+import { useClientProfile } from '../hooks/useClientProfile';
+import { getCompanySizeLabel, CLIENT_TRUST_BADGES } from '../utils/profileUtils';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
 
@@ -16,91 +14,47 @@ export default function ClientProfileScreen() {
   const { user: currentUser } = useApp();
 
   const targetId = id || 'u_client_1';
-  const user = DB.getUserById(targetId) || DB.getUserById('u_client_1')!;
-  const profile = SEED_CLIENT_PROFILES.find(p => p.user_id === targetId) || SEED_CLIENT_PROFILES[0];
-  const jobs = DB.getJobsByClient(targetId);
 
-  // Mock trust score
-  const [trustScore] = useState(88);
-  const [isSaved, setIsSaved] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const {
+    loading,
+    profileData,
+    trustScore,
+    isSaved,
+    showMoreMenu,
+    currentPage,
+    reviewsList,
+    showReviewModal,
+    reviewRating,
+    reviewComment,
+    reviewAnonymous,
+    averageRating,
+    distribution,
+    totalPages,
+    paginatedReviews,
+    jobs,
+    setIsSaved,
+    setShowMoreMenu,
+    setCurrentPage,
+    setReviewRating,
+    setReviewComment,
+    setReviewAnonymous,
+    setShowReviewModal,
+    handleSaveClient,
+    handleAddReview,
+  } = useClientProfile(targetId, currentUser);
 
-  // Dynamic reviews list state
-  const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
-
-  // Create Review popup states
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewAnonymous, setReviewAnonymous] = useState(false);
-
-  // Sync reviews list on targetId load
-  useEffect(() => {
-    setReviewsList(
-      getStoredReviews()
-        .filter(review => review.revieweeId === targetId)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--gb-cyan)]"></div>
+        </div>
+      </AppLayout>
     );
-    setCurrentPage(1);
-  }, [targetId]);
+  }
 
-  const handleSaveClient = () => {
-    setIsSaved(!isSaved);
-  };
-
-  const handleAddReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reviewComment.trim()) return;
-
-    const newReview: ReviewViewModel = {
-      id: `rev_${Date.now()}`,
-      contractId: 'contract_3',
-      reviewerId: currentUser?.id || 'u_freelancer_1',
-      reviewerName: currentUser?.full_name || 'Anonymous Freelancer',
-      revieweeId: targetId,
-      rating: reviewRating,
-      comment: reviewComment.trim(),
-      isAnonymous: reviewAnonymous,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedAll = [newReview, ...getStoredReviews()];
-    saveStoredReviews(updatedAll);
-    
-    // Update local state to trigger instant re-render
-    setReviewsList(updatedAll.filter(review => review.revieweeId === targetId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    
-    // Reset modal states
-    setReviewComment('');
-    setReviewRating(5);
-    setReviewAnonymous(false);
-    setShowReviewModal(false);
-    setCurrentPage(1);
-  };
-
-  const getCompanySizeLabel = (size?: string | number) => {
-    if (size === 0 || size === '0' || size === 'Small' || size === 'small') return 'Small Team (10-50)';
-    if (size === 1 || size === '1' || size === 'Medium' || size === 'medium') return 'Medium Enterprise (50-250)';
-    if (size === 2 || size === '2' || size === 'Large' || size === 'large') return 'Large Corporation (250+)';
-    return String(size || 'Small Team (10-50)');
-  };
-
-  const averageRating = reviewsList.length
-    ? reviewsList.reduce((sum, review) => sum + review.rating, 0) / reviewsList.length
-    : 0;
-
-  // Distribution chart computation
-  const distribution = [5, 4, 3, 2, 1].map(star => {
-    const count = reviewsList.filter(r => r.rating === star).length;
-    const percentage = reviewsList.length ? (count / reviewsList.length) * 100 : 0;
-    return { star, count, percentage };
-  });
-
-  // Pagination for reviews
-  const reviewsPerPage = 2;
-  const totalPages = Math.max(1, Math.ceil(reviewsList.length / reviewsPerPage));
-  const paginatedReviews = reviewsList.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
+  const user = profileData.user;
+  const profile = profileData.profile;
 
   return (
     <AppLayout>
@@ -187,13 +141,6 @@ export default function ClientProfileScreen() {
                   </button>
                 ) : (
                   <>
-                    <button 
-                      onClick={() => navigate(`/messages?user=${user.id}`)}
-                      className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer border border-transparent flex-shrink-0"
-                    >
-                      <MessageSquare size={18} />
-                      Message
-                    </button>
                     <button 
                       onClick={handleSaveClient} 
                       className={`glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0 ${isSaved ? 'text-[var(--gb-cyan)] border-[var(--gb-cyan)]/50' : 'text-on-surface-variant'}`}
@@ -320,7 +267,7 @@ export default function ClientProfileScreen() {
                       <stop offset="100%" stopColor="var(--gb-purple)" />
                     </linearGradient>
                   </defs>
-                  <circle className="drop-shadow-lg" cx="50" cy="50" fill="transparent" r="42" stroke="url(#trustGradient)" stroke-dasharray="263.89" stroke-dashoffset={263.89 - (trustScore / 100) * 263.89} strokeLinecap="round" strokeWidth="8"></circle>
+                  <circle className="score-circle drop-shadow-lg" cx="50" cy="50" fill="transparent" r="42" stroke="url(#trustGradient)" strokeLinecap="round" strokeWidth="8" style={{ '--score-percent': trustScore } as React.CSSProperties}></circle>
                 </svg>
                 <div className="flex flex-col items-center">
                   <span className="font-display-lg text-[48px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--gb-cyan)] to-[var(--gb-purple)]">
@@ -423,17 +370,12 @@ export default function ClientProfileScreen() {
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col justify-start h-full">
               <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">Trust & Verification</h2>
               <div className="grid grid-cols-2 gap-3 flex-1">
-                {[
-                  { label: 'Identity Verified', color: '#22C55E', icon: <CheckCircle size={16} /> },
-                  { label: 'Payment Verified', color: '#0077FF', icon: <DollarSign size={16} /> },
-                  { label: 'Top Client', color: '#F59E0B', icon: <Star size={16} /> },
-                  { label: 'Repeat Hirer', color: '#9F4BFF', icon: <Users size={16} /> },
-                ].map(badge => (
+                {CLIENT_TRUST_BADGES.map(badge => (
                   <div 
                     key={badge.label} 
                     className="flex flex-col items-center justify-center p-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-center hover:border-[var(--gb-cyan)]/30 transition-colors"
                   >
-                    <div className="w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center mb-2" style={{ color: badge.color }}>
+                    <div className={`w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center mb-2 ${badge.styleClass}`}>
                       {badge.icon}
                     </div>
                     <span className="font-label-md text-[10px] text-on-surface font-bold break-words w-full">{badge.label}</span>
@@ -482,8 +424,8 @@ export default function ClientProfileScreen() {
                           <span className="font-label-md text-label-md w-4">{star}</span>
                           <div className="flex-1 h-2.5 bg-surface-container-highest rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-primary rounded-full" 
-                              style={{ width: `${percentage}%` }}
+                              className="progress-bar-fill h-full bg-primary rounded-full" 
+                              style={{ '--progress-width': `${percentage}%` } as React.CSSProperties}
                             />
                           </div>
                           <span className="font-label-md text-label-md w-4 text-right text-on-surface-variant">{count}</span>

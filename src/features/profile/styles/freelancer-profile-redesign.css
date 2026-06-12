@@ -190,3 +190,23 @@
   letter-spacing: 0.05em;
   font-weight: 600;
 }
+
+/* Centralized dynamic helper styles */
+.score-circle {
+  stroke-dasharray: 263.89;
+  stroke-dashoffset: calc(263.89 - (var(--score-percent, 0) / 100) * 263.89);
+}
+
+.progress-bar-fill {
+  width: var(--progress-width, 0%);
+}
+
+.portfolio-project-image {
+  background-image: var(--bg-image);
+}
+
+/* Badge icon colors styling */
+.badge-icon-green { color: #22C55E; }
+.badge-icon-blue { color: #0077FF; }
+.badge-icon-amber { color: #F59E0B; }
+.badge-icon-purple { color: #9F4BFF; }

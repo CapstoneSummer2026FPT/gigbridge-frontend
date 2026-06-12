@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
-import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature } from 'lucide-react';
+import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature, Briefcase } from 'lucide-react';
 import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
 
 interface ProposalCardProps {
@@ -10,7 +10,7 @@ interface ProposalCardProps {
   onAccept: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
   onBoost?: (proposal: ProposalViewModel) => void;
-  onCreateContract?: (proposal: ProposalViewModel) => void;
+  onGoToWorkspace?: (proposal: ProposalViewModel) => void;
 }
 
 export const ProposalCard: FC<ProposalCardProps> = ({
@@ -20,7 +20,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   onAccept,
   onReject,
   onBoost,
-  onCreateContract,
+  onGoToWorkspace,
 }) => {
   
   const statusLabel =
@@ -122,12 +122,12 @@ export const ProposalCard: FC<ProposalCardProps> = ({
           {proposal.status === 2 ? (
             <motion.button
               className="proposal-create-contract-btn"
-              onClick={() => onCreateContract?.(proposal)}
+              onClick={() => onGoToWorkspace?.(proposal)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <FileSignature size={15} />
-              Create E-sign Contract
+              <Briefcase size={15} />
+              Go to Workspace
             </motion.button>
           ) : (
             <>

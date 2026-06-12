@@ -1,14 +1,11 @@
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, CheckCircle, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, MessageSquare, BriefcaseBusiness, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Star, MapPin, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, BriefcaseBusiness, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, CheckCircle } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
-import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
-import { MOCK_BROWSE_JOBS } from '../../jobs/mock/data-for-BrowseJobsScreen';
-import { getStoredReviews, saveStoredReviews, type ReviewViewModel } from '../../reviews/mock/data-for-Reviews';
-import { InviteFreelancerToJobModal, type InviteFreelancerData } from '../components/InviteFreelancerToJobModal';
+import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
+import { FREELANCER_TRUST_BADGES } from '../utils/profileUtils';
+import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
 
@@ -18,133 +15,58 @@ export default function FreelancerProfileScreen() {
   const { user: currentUser } = useApp();
 
   const targetId = id || 'u_freelancer_1';
-  const user = DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!;
-  const profile = SEED_FREELANCER_PROFILES.find(p => p.user_id === targetId) || SEED_FREELANCER_PROFILES[0];
 
-  // Mock premium/vacation status
-  const [isPremium] = useState(true); // Mock: user is premium
-  const [isIdentityVerified] = useState(true); // Mock: identity verified
-  
-  // Trust score and CV
-  const [trustScore] = useState(92); // Mock: trust score 0-100
-  const [cvFile] = useState<{ name: string; url: string } | null>({
-    name: 'john_doe_resume.pdf',
-    url: '#'
-  });
+  const {
+    loading,
+    profileData,
+    isPremium,
+    isIdentityVerified,
+    trustScore,
+    cvFile,
+    isSaved,
+    showJobInviteModal,
+    showMoreMenu,
+    currentPage,
+    reviewsList,
+    showReviewModal,
+    reviewRating,
+    reviewComment,
+    reviewAnonymous,
+    openClientJobs,
+    averageRating,
+    distribution,
+    totalPages,
+    paginatedReviews,
+    strokeDashoffset,
+    setIsSaved,
+    setShowJobInviteModal,
+    setShowMoreMenu,
+    setCurrentPage,
+    setReviewRating,
+    setReviewComment,
+    setReviewAnonymous,
+    setShowReviewModal,
+    isAlreadyInvitedToJob,
+    handleSaveFreelancer,
+    handleSendJobInvite,
+    handleAddReview,
+  } = useFreelancerProfile(targetId, currentUser);
 
-  // Bookmark and menu functionality
-  const [isSaved, setIsSaved] = useState(false);
-  const [showJobInviteModal, setShowJobInviteModal] = useState(false);
-  const [sentJobInvites, setSentJobInvites] = useState<string[]>([]);
-  
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Dynamic reviews list state
-  const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
-
-  // Create Review popup states
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewAnonymous, setReviewAnonymous] = useState(false);
-
-  // Sync reviews list on targetId load
-  useEffect(() => {
-    setReviewsList(
-      getStoredReviews()
-        .filter(review => review.revieweeId === targetId)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--gb-cyan)]"></div>
+        </div>
+      </AppLayout>
     );
-    setCurrentPage(1);
-  }, [targetId]);
+  }
 
-  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open').map(job => ({
-    id: job.id,
-    title: job.title,
-    status: job.status,
-  }));
-  
-  const isAlreadyInvitedToJob = (jobId: string): boolean => {
-    const inviteKey = `${targetId}_${jobId}`;
-    return sentJobInvites.includes(inviteKey);
-  };
-
-  const averageRating = reviewsList.length
-    ? reviewsList.reduce((sum, review) => sum + review.rating, 0) / reviewsList.length
-    : 0;
-
-  const handleSaveFreelancer = () => {
-    setIsSaved(!isSaved);
-  };
-
-  const handleSendJobInvite = async (data: InviteFreelancerData) => {
-    const inviteKey = `${data.freelancerId}_${data.jobId}`;
-    
-    if (sentJobInvites.includes(inviteKey)) {
-      throw new Error('This freelancer was already invited to this job.');
-    }
-
-    setSentJobInvites(prev => [...prev, inviteKey]);
-  };
-
-  const handleAddReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reviewComment.trim()) return;
-
-    const newReview: ReviewViewModel = {
-      id: `rev_${Date.now()}`,
-      contractId: 'contract_1',
-      reviewerId: currentUser?.id || 'u_client_1',
-      reviewerName: currentUser?.full_name || 'Anonymous Client',
-      revieweeId: targetId,
-      rating: reviewRating,
-      comment: reviewComment.trim(),
-      isAnonymous: reviewAnonymous,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedAll = [newReview, ...getStoredReviews()];
-    saveStoredReviews(updatedAll);
-    
-    // Update local state to trigger instant re-render
-    setReviewsList(updatedAll.filter(review => review.revieweeId === targetId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    
-    // Reset modal states
-    setReviewComment('');
-    setReviewRating(5);
-    setReviewAnonymous(false);
-    setShowReviewModal(false);
-    setCurrentPage(1);
-  };
-
-  const mockSkills = ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'];
-  
-  const mockExperience = [
-    { company: 'Tech Startup', title: 'Senior Developer', years: '2021-Present' },
-    { company: 'Design Agency', title: 'Full Stack Developer', years: '2019-2021' },
-  ];
-
-  const mockPortfolio = [
-    { title: 'E-Commerce Platform', tech: 'React, Node.js, MongoDB', image: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop' },
-    { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
-  ];
-
-  // Distribution chart computation
-  const distribution = [5, 4, 3, 2, 1].map(star => {
-    const count = reviewsList.filter(r => r.rating === star).length;
-    const percentage = reviewsList.length ? (count / reviewsList.length) * 100 : 0;
-    return { star, count, percentage };
-  });
-
-  // Pagination for reviews
-  const reviewsPerPage = 2;
-  const totalPages = Math.max(1, Math.ceil(reviewsList.length / reviewsPerPage));
-  const paginatedReviews = reviewsList.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
-
-  // ELO Score radial offset
-  const circumference = 263.89;
-  const strokeDashoffset = circumference - (trustScore / 100) * circumference;
+  const user = profileData.user;
+  const profile = profileData.profile as any;
+  const mockSkills = profileData.skills;
+  const mockExperience = profileData.experience;
+  const mockPortfolio = profileData.portfolio;
 
   return (
     <AppLayout>
@@ -232,15 +154,7 @@ export default function FreelancerProfileScreen() {
                     Invite to Job
                   </button>
                 )}
-                {currentUser?.role === 0 && (
-                  <button 
-                    onClick={() => navigate(`/messages?user=${user.id}`)}
-                    className="glass-overlay text-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0"
-                  >
-                    <MessageSquare size={18} />
-                    Message
-                  </button>
-                )}
+
                 {currentUser?.role !== 1 && (
                   <button 
                     onClick={handleSaveFreelancer} 
