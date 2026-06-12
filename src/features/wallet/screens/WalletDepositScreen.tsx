@@ -279,9 +279,6 @@ export default function WalletDepositScreen() {
                     <CheckCircle size={20} className="text-cyan" />
                   </div>
                 </div>
-                <p className="text-xs text-muted mt-3">
-                  Báº¡n sáº½ chá»n QR Code, ngÃ¢n hÃ ng hoáº·c tháº» ná»™i Ä‘á»‹a á»Ÿ bÆ°á»›c thanh toÃ¡n PayOS tiáº¿p theo.
-                </p>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {[
                     { icon: <QrCode size={14} />, label: 'QR Code' },

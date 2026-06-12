@@ -57,7 +57,6 @@ import WalletDepositScreen from '../features/wallet/screens/WalletDepositScreen'
 import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
-import WalletMockCheckoutScreen from '../features/wallet/screens/WalletMockCheckoutScreen';
 import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
 import UploadPaymentProofScreen from '../features/wallet/screens/UploadPaymentProofScreen';
 import EarlyPayoutScreen from '../features/wallet/screens/EarlyPayoutScreen';
@@ -197,7 +196,6 @@ export const router = createBrowserRouter([
 
       // Wallet & Subscription - requires authentication and setup
       { path: 'wallet/deposit', element: <ProtectedRoute requireAuth requireSetup><WalletDepositScreen /></ProtectedRoute> },
-      { path: 'wallet/mock-checkout', element: <ProtectedRoute requireAuth requireSetup><WalletMockCheckoutScreen /></ProtectedRoute> },
       { path: 'wallet/history', element: <ProtectedRoute requireAuth requireSetup><WalletHistoryScreen /></ProtectedRoute> },
       { path: 'wallet/payment-proof/:transactionId', element: <ProtectedRoute requireAuth requireSetup><UploadPaymentProofScreen /></ProtectedRoute> },
       { path: 'wallet/early-payout', element: <ProtectedRoute requireAuth requireSetup><EarlyPayoutScreen /></ProtectedRoute> },
