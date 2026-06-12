@@ -1,12 +1,55 @@
-import { messageHandlers } from '../../mock_backend';
-import type { Message } from '../../types/models/Message';
+import { apiService } from '../../service/apiService';
+import type { ApiResponse } from '../../types/common';
+
+export interface SendMessageRequest {
+  conversationId: string;
+  clientMessageId: string;
+  content?: string;
+  replyToMessageId?: string;
+  attachments?: any[];
+}
+
+export interface CreateFinalOfferRequest {
+  conversationId: string;
+  finalPrice: number;
+  scopeSummary?: string;
+  startDate?: string;
+  endDate?: string;
+  clientNote?: string;
+}
+
+export interface RespondFinalOfferRequest {
+  negotiationOfferId: string;
+  response: number; // Accept=0, RequestChange=1, Decline=2
+  reason?: string;
+}
 
 export const messagePostAPI = {
-  sendMessage: async (data: Partial<Message>) => {
-    return await messageHandlers.sendMessage(data);
+  /**
+   * POST /api/messages
+   */
+  sendMessage: async (payload: SendMessageRequest): Promise<ApiResponse<any>> => {
+    return apiService.post<any>('messages', payload);
   },
 
-  markAsRead: async (messageIds: string[]) => {
-    return await messageHandlers.markAsRead(messageIds);
+  /**
+   * POST /api/conversations/{conversationId}/read/{messageId}
+   */
+  markAsRead: async (conversationId: string, messageId: string): Promise<ApiResponse<boolean>> => {
+    return apiService.post<boolean>(`conversations/${conversationId}/read/${messageId}`);
+  },
+
+  /**
+   * POST /api/negotiation-offers
+   */
+  createFinalOffer: async (payload: CreateFinalOfferRequest): Promise<ApiResponse<string>> => {
+    return apiService.post<string>('negotiation-offers', payload);
+  },
+
+  /**
+   * POST /api/negotiation-offers/respond
+   */
+  respondFinalOffer: async (payload: RespondFinalOfferRequest): Promise<ApiResponse<boolean>> => {
+    return apiService.post<boolean>('negotiation-offers/respond', payload);
   },
 };
