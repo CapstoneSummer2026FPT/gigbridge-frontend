@@ -18,22 +18,105 @@ export const contractGetAPI = {
 
   /**
    * GET /api/Contracts/my-contracts
-   * User contracts list (client or freelancer)
+   * User contracts list (client or freelancer) via conversation lookups
    */
   getMyContracts: async (
     params: ContractQueryParams = {}
   ): Promise<ApiResponse<ContractDto[]>> => {
-    return apiService.get<ContractDto[]>(`${contractsUrl}/my-contracts`, params);
+    try {
+      const convRes = await apiService.get<any[]>('conversations');
+      if (!convRes.success || !convRes.data) {
+        return { success: false, statusCode: convRes.statusCode, message: convRes.message, data: [] };
+      }
+      const uniqueJobPostIds = Array.from(new Set(
+        convRes.data
+          .filter(c => c.contractId || c.ContractId)
+          .map(c => c.jobPostId || c.JobPostId)
+      ));
+      const contracts: ContractDto[] = [];
+      for (const jobPostId of uniqueJobPostIds) {
+        const contractRes = await apiService.get<any>(`${contractsUrl}/job/${jobPostId}`);
+        if (contractRes.success && contractRes.data) {
+          // Normalize to frontend ContractDto structure if needed
+          const contract = contractRes.data;
+          contracts.push({
+            contractsId: contract.contractId || contract.contractsId,
+            jobPostsId: contract.jobPostId || contract.jobPostsId,
+            clientProfilesId: contract.clientProfileId || contract.clientProfilesId,
+            freelancerProfilesId: contract.freelancerProfileId || contract.freelancerProfilesId,
+            proposalsId: contract.proposalId || contract.proposalsId,
+            title: contract.title,
+            description: contract.description,
+            totalBudget: contract.totalBudget,
+            status: contract.status,
+            startDate: contract.startDate,
+            endDate: contract.endDate,
+            esignContractPdfUrl: contract.esignContractPdfUrl,
+            createdAt: contract.createdAt,
+            updatedAt: contract.updatedAt,
+          });
+        }
+      }
+      return { success: true, statusCode: 200, message: 'Success', data: contracts };
+    } catch (err: any) {
+      return { success: false, statusCode: 500, message: err.message || 'Failed to retrieve user contracts', data: [] };
+    }
   },
 
   /**
    * GET /api/Contracts/{id}
-   * Get contract by ID
+   * Get contract by ID via conversation lookups
    */
   getContractById: async (
     id: string
   ): Promise<ApiResponse<ContractDto>> => {
-    return apiService.get<ContractDto>(`${contractsUrl}/${id}`);
+    try {
+      const convRes = await apiService.get<any[]>('conversations');
+      if (convRes.success && convRes.data) {
+        const conversation = convRes.data.find(c => (c.contractId || c.ContractId) === id);
+        const jobPostId = conversation?.jobPostId || conversation?.JobPostId;
+        if (jobPostId) {
+          const contractRes = await apiService.get<any>(`${contractsUrl}/job/${jobPostId}`);
+          if (contractRes.success && contractRes.data) {
+            const contract = contractRes.data;
+            return {
+              success: true,
+              statusCode: 200,
+              message: 'Success',
+              data: {
+                contractsId: contract.contractId || contract.contractsId,
+                jobPostsId: contract.jobPostId || contract.jobPostsId,
+                clientProfilesId: contract.clientProfileId || contract.clientProfilesId,
+                freelancerProfilesId: contract.freelancerProfileId || contract.freelancerProfilesId,
+                proposalsId: contract.proposalId || contract.proposalsId,
+                title: contract.title,
+                description: contract.description,
+                totalBudget: contract.totalBudget,
+                status: contract.status,
+                startDate: contract.startDate,
+                endDate: contract.endDate,
+                esignContractPdfUrl: contract.esignContractPdfUrl,
+                createdAt: contract.createdAt,
+                updatedAt: contract.updatedAt,
+              }
+            };
+          }
+        }
+      }
+      return {
+        success: false,
+        statusCode: 404,
+        message: 'Contract not found',
+        data: undefined as any
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        statusCode: 500,
+        message: err.message || 'Failed to get contract details',
+        data: undefined as any
+      };
+    }
   },
 
   /**

@@ -95,7 +95,7 @@ const getActionUrl = (notification: any, type: UiNotificationType): string | und
     case 'payment':
       return '/wallet/history';
     case 'message':
-      return '/messages';
+      return referenceId ? `/workspace/${referenceId}` : '/projects';
     case 'dispute':
       return '/admin/disputes';
     case 'review':

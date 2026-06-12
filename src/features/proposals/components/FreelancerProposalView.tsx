@@ -10,6 +10,8 @@ interface FreelancerProposalViewProps {
   jobGroups: JobProposalGroup[];
   onStatusFilterChange: (status: ProposalStatusFilter) => void;
   onViewDetail: (proposal: ProposalViewModel, mode: ProposalDetailMode) => void;
+  onBoost: (proposal: ProposalViewModel) => void;
+  onGoToWorkspace: (proposal: ProposalViewModel) => void;
   onEditDraft: (proposal: ProposalViewModel) => void;
   onViewAnswers: (proposal: ProposalViewModel) => void;
   onWithdraw: (proposal: ProposalViewModel) => void;
@@ -24,6 +26,8 @@ export function FreelancerProposalView({
   jobGroups,
   onStatusFilterChange,
   onViewDetail,
+  onBoost,
+  onGoToWorkspace,
   onEditDraft,
   onViewAnswers,
   onWithdraw,

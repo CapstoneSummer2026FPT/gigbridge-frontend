@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { BarChart2, X, Users } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
+import ClientProposalsScreen from './ClientProposalsScreen';
+import FreelancerProposalsScreen from './FreelancerProposalsScreen';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -19,6 +21,12 @@ const toProposalViewModel = (proposal: ProposalDto): ProposalViewModel => ({
 });
 
 export default function ProposalsInboxScreen() {
+  const { role } = useApp();
+
+  // If role is Client (0), render the Client workspace. Otherwise, render the Freelancer workspace.
+  if (role === 0) {
+    return <ClientProposalsScreen />;
+  }
   const { user, role } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,6 +65,27 @@ export default function ProposalsInboxScreen() {
 
       try {
         setLoading(true);
+        const response = isClient
+          ? await proposalGetAPI.getClientAllProposals()
+          : await proposalGetAPI.getMyProposals();
+        setProposals(response.data?.length ? response.data.map((proposal, index) => ({
+          ...proposal,
+          updatedAt: proposal.reviewedAt || proposal.submittedAt,
+          isAIGenerated: index % 2 === 0,
+          interviewScore: Math.max(58, 96 - index * 7),
+          rankingScore: Math.max(58, 96 - index * 7),
+          boostedTokenAmount: 0,
+          attachments: [
+            {
+              propoAttach_ProposalAttachmentsId: `api_attach_${proposal.proposalsId}`,
+              propo_ProposalsId: proposal.proposalsId,
+              fileName: `${proposal.freelancerName || 'Freelancer'}_CV.pdf`,
+              fileUrl: '#',
+              fileSize: 700000 + index * 42000,
+              createdAt: proposal.submittedAt,
+            },
+          ],
+        })) : MOCK_PROPOSALS);
         setError('');
 
         if (isClient) {
@@ -169,6 +198,7 @@ export default function ProposalsInboxScreen() {
   // Update proposal status
   const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     try {
+      await proposalPutAPI.updateProposalStatus(proposalId, Number(status));
       setError('');
       setSuccessMessage('');
       const response = await proposalPutAPI.updateProposalStatus(proposalId, status);
@@ -253,6 +283,8 @@ export default function ProposalsInboxScreen() {
     setProposalDetail({ proposal, mode });
   };
 
+  const handleShortlist = (proposalId: string) => {
+    updateProposalStatus(proposalId, 1);
   const handleAccept = (proposalId: string) => {
     updateProposalStatus(proposalId, ProposalStatus.Accepted);
   };
@@ -297,13 +329,20 @@ export default function ProposalsInboxScreen() {
     }
   };
 
-  const handleCreateContract = (proposal: ProposalViewModel) => {
-    setCreateContractProposal(proposal);
-  };
-
-  const handleContractSubmit = async (contractData: ContractData) => {
-    console.log('Creating contract:', contractData);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  const handleStartNegotiation = async (proposalId: string) => {
+    try {
+      setLoading(true);
+      const res = await proposalPutAPI.startNegotiation(proposalId);
+      if (res.success && res.data) {
+        navigate(`/messages?conversation=${res.data}`);
+      } else {
+        alert(res.message || 'Failed to start negotiation');
+      }
+    } catch (err) {
+      console.error('Start negotiation error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -391,8 +430,10 @@ export default function ProposalsInboxScreen() {
                       proposal={proposal}
                       isClient={isClient}
                       onViewDetail={handleViewDetail}
-                      onAccept={handleAccept}
+                      onShortlist={handleShortlist}
                       onReject={handleReject}
+                      onStartNegotiation={handleStartNegotiation}
+                      onBoost={boostProposal}
                       onViewAnswers={handleViewAnswers}
                       onCreateContract={handleCreateContract}
                     />

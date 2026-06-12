@@ -1,5 +1,7 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
+import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature, MessageSquare } from 'lucide-react';
+import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
 import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature } from 'lucide-react';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import type { ProposalViewModel } from '../types';
@@ -9,8 +11,11 @@ interface ProposalCardProps {
   proposal: ProposalViewModel;
   isClient?: boolean;
   onViewDetail: (proposal: ProposalViewModel, mode: 'detail' | 'score' | 'cv') => void;
-  onAccept: (proposalId: string) => void;
+  onShortlist: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
+  onStartNegotiation: (proposalId: string) => void;
+  onBoost?: (proposal: ProposalViewModel) => void;
+  onGoToWorkspace?: (proposal: ProposalViewModel) => void;
   onViewAnswers?: (proposal: ProposalViewModel) => void;
   onCreateContract?: (proposal: ProposalViewModel) => void;
 }
@@ -19,8 +24,11 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   proposal,
   isClient = false,
   onViewDetail,
-  onAccept,
+  onShortlist,
   onReject,
+  onStartNegotiation,
+  onBoost,
+  onGoToWorkspace,
   onViewAnswers,
   onCreateContract,
 }) => {
@@ -99,17 +107,55 @@ export const ProposalCard: FC<ProposalCardProps> = ({
 
       {/* Actions */}
       {isClient ? (
-        /* CLIENT VIEW: Accept/Reject + Menu */
+        /* CLIENT VIEW: Shortlist/Reject/Negotiate */
         <div className="proposal-review-actions">
+          {proposal.status !== 3 && (
           {accepted ? (
             <motion.button
               className="proposal-create-contract-btn"
-              onClick={() => onCreateContract?.(proposal)}
+              onClick={() => onStartNegotiation(proposal.proposalsId)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white' }}
+            >
+              <MessageSquare size={15} />
+              Start Negotiation
+            </motion.button>
+          )}
+
+          {proposal.status === 0 && (
+            <motion.button
+              className="proposal-accept-btn"
+              onClick={() => onShortlist(proposal.proposalsId)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <FileSignature size={15} />
-              Create E-sign Contract
+              <CheckCircle size={15} />
+              Shortlist
+            </motion.button>
+          )}
+
+          {proposal.status !== 3 && (
+            <motion.button
+              className="proposal-reject-btn"
+              onClick={() => onReject(proposal.proposalsId)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <XCircle size={15} />
+              Reject
+            </motion.button>
+          )}
+
+          {proposal.status === 3 && (
+            <motion.button
+              className="proposal-accept-btn"
+              onClick={() => onShortlist(proposal.proposalsId)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <CheckCircle size={15} />
+              Reconsider (Shortlist)
             </motion.button>
           ) : canClientReview ? (
             <>
@@ -144,6 +190,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
               View Answers
             </motion.button>
           )}
+
           <motion.button
             className="proposal-view-btn"
             onClick={() => onViewDetail(proposal, 'detail')}
@@ -153,8 +200,6 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <Eye size={15} />
             Details
           </motion.button>
-
-
         </div>
       ) : (
         /* FREELANCER VIEW */

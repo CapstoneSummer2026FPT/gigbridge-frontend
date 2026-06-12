@@ -15,10 +15,14 @@ import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerD
 import PostJobScreen from '../features/jobs/screens/PostJobScreen';
 import CreateJobPostQuestionsScreen from '../features/jobs/screens/CreateJobPostQuestionsScreen';
 import ManageJobPostQuestionsScreen from '../features/jobs/screens/ManageJobPostQuestionsScreen';
+import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
+import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
+import EditFreelancerProfileScreen from '../features/profile/screens/EditFreelancerProfileScreen';
+import ManageFreelancerContentScreen from '../features/profile/screens/ManageFreelancerContentScreen';
 import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
 import CreateProposalScreen from '../features/proposals/screens/CreateProposalScreen';
 import ScreenProposalAnswerQuestion from '../features/proposals/screens/ScreenProposalAnswerQuestion';
@@ -39,6 +43,8 @@ import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
 import MarketInsightsScreen from '../features/market-insights/screens/MarketInsightsScreen';
 import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
+import CreateReviewScreen from '../features/reviews/screens/CreateReviewScreen';
+import SmartTalentMatchingScreen from '../features/talent-matching/screens/SmartTalentMatchingScreen';
 import AboutScreen from '../features/company/screens/AboutScreen';
 import CareersScreen from '../features/company/screens/CareersScreen';
 import FAQScreen from '../features/company/screens/FAQScreen';
@@ -50,6 +56,20 @@ import FinancialOverviewScreen from '../features/wallet/screens/FinancialOvervie
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
 import ViewContractDetailsScreen from '../features/contracts/screens/ViewContractDetailsScreen';
+import UploadPaymentProofScreen from '../features/wallet/screens/UploadPaymentProofScreen';
+import EarlyPayoutScreen from '../features/wallet/screens/EarlyPayoutScreen';
+import {
+  ApproveMilestoneScreen,
+  CreateEsignContractScreen,
+  EsignDocumentSigningScreen,
+  FreelancerContractScreen,
+  FreelancerRegisterContractScreen,
+  ManageContractScreen,
+  ManageMilestonesScreen,
+  SignatureWorkflowScreen,
+  SubmitMilestoneDeliverableScreen,
+  ViewContractDetailsScreen,
+} from '../features/contracts';
 
 // Import router styles
 import './styles/router.css';
@@ -133,11 +153,18 @@ export const router = createBrowserRouter([
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
       { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
+      { path: 'jobs/browse', element: <BrowseJobsScreen /> },
+      { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostsScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
 
       // Profiles - requires authentication
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/freelancer/:id/edit', element: <ProtectedRoute requireAuth><EditFreelancerProfileScreen /></ProtectedRoute> },
+      { path: 'profile/client/:id/edit', element: <ProtectedRoute requireAuth><EditClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/manage-content', element: <ProtectedRoute requireAuth><ManageFreelancerContentScreen /></ProtectedRoute> },
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
@@ -152,6 +179,7 @@ export const router = createBrowserRouter([
       // Workspace - requires authentication and setup
       { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
       { path: 'workspace/:id', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
+      { path: 'workspace/:projectId/freelancer-contract', element: <ProtectedRoute requireAuth requireSetup><FreelancerRegisterContractScreen /></ProtectedRoute> },
 
       // AI Features - requires authentication and setup
       { path: 'ai-assistant', element: <ProtectedRoute requireAuth requireSetup><AIAssistantScreen /></ProtectedRoute> },
@@ -183,6 +211,7 @@ export const router = createBrowserRouter([
 
       // Notifications - requires authentication
       { path: 'notifications', element: <ProtectedRoute requireAuth><NotificationsScreen /></ProtectedRoute> },
+      { path: 'reviews/create', element: <ProtectedRoute requireAuth requireSetup><CreateReviewScreen /></ProtectedRoute> },
 
       // Company Pages - public
       { path: 'about', element: <AboutScreen /> },
