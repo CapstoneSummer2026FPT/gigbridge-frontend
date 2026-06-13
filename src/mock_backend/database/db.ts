@@ -2,13 +2,13 @@ import {
   DEMO_USERS,
   SEED_USERS, SEED_FREELANCER_PROFILES, SEED_CLIENT_PROFILES,
   SEED_JOBS, SEED_PROPOSALS, SEED_PROJECTS, SEED_MESSAGES,
-  SEED_NOTIFICATIONS, SEED_REVIEWS, MARKET_INSIGHTS
+  SEED_NOTIFICATIONS, SEED_REVIEWS, MARKET_INSIGHTS, SEED_CONVERSATIONS
 } from './seed';
 import type { User } from '../../types/models/User';
 import type { FreelancerProfile, ClientProfile } from '../../types/models/Profile';
 import type { Job, Proposal, Review } from '../types/legacy';
 import type { Project } from '../../types/models/Project';
-import type { Message, Notification } from '../../types/models/Message';
+import type { Message, Notification, MsgConversation } from '../../types/models/Message';
 
 // In-memory database
 const db = {
@@ -22,6 +22,7 @@ const db = {
   notifications: [...SEED_NOTIFICATIONS] as Notification[],
   reviews: [...SEED_REVIEWS] as Review[],
   marketInsights: MARKET_INSIGHTS,
+  conversations: [...SEED_CONVERSATIONS] as MsgConversation[],
 };
 
 export const DB = {
@@ -62,8 +63,22 @@ export const DB = {
   addProject: (project: Project) => { db.projects.push(project); return project; },
 
   // Messages
+  getMessages: () => db.messages,
   getMessagesByConversation: (convId: string) => db.messages.filter(m => m.conversationId === convId),
   addMessage: (msg: Message) => { db.messages.push(msg); return msg; },
+
+  // Conversations
+  getConversations: () => db.conversations,
+  getConversationById: (id: string) => db.conversations.find(c => c.id === id),
+  addConversation: (conv: MsgConversation) => { db.conversations.push(conv); return conv; },
+  updateConversation: (id: string, fields: Partial<MsgConversation>) => {
+    const conv = db.conversations.find(c => c.id === id);
+    if (conv) {
+      Object.assign(conv, fields);
+      return conv;
+    }
+    return null;
+  },
 
   // Notifications
   getNotificationsByUser: (userId: string) => db.notifications.filter(n => n.userId === userId),

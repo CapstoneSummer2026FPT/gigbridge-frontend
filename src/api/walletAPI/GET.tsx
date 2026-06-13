@@ -30,18 +30,10 @@ export interface WalletTransactionResponse {
 }
 
 export const walletGetAPI = {
-  /**
-   * GET /api/wallet
-   * Get the current user's wallet balances.
-   */
   getMyWallet: async (): Promise<ApiResponse<WalletResponse>> => {
     return apiService.get<WalletResponse>('wallet');
   },
 
-  /**
-   * GET /api/wallet/transactions
-   * Get wallet transaction history.
-   */
   getTransactions: async (limit: number = 50): Promise<ApiResponse<WalletTransactionResponse[]>> => {
     return apiService.get<WalletTransactionResponse[]>('wallet/transactions', { limit });
   },

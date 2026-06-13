@@ -1,25 +1,177 @@
 /**
- * Message & Review Models - MESSAGES & REVIEWS tables
+ * Message & Conversation Models
+ * Mirrors backend Domain.Entities: Message, MessageAttachment, Conversation, ConversationParticipant
  */
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+/**
+ * Enum MessageType: 0=Text, 1=Image, 2=File, 3=System,
+ * 4=FinalOffer, 5=ContractEvent, 6=MilestoneEvent, 7=PaymentEvent, 8=DisputeEvent
+ */
+export enum MessageType {
+  Text = 0,
+  Image = 1,
+  File = 2,
+  System = 3,
+  FinalOffer = 4,
+  ContractEvent = 5,
+  MilestoneEvent = 6,
+  PaymentEvent = 7,
+  DisputeEvent = 8,
+}
+
+/**
+ * Enum ConversationType: 0=JobNegotiation, 1=ContractWorkroom, 2=Dispute, 3=Support
+ */
+export enum ConversationType {
+  JobNegotiation = 0,
+  ContractWorkroom = 1,
+  Dispute = 2,
+  Support = 3,
+  JobInvitedRoom = 4,
+}
+
+/**
+ * Enum ConversationStatus: 0=Active, 1=Archived, 2=Closed
+ */
+export enum ConversationStatus {
+  Active = 0,
+  Archived = 1,
+  Closed = 2,
+}
+
+/**
+ * Enum ParticipantRole: 0=Client, 1=Freelancer, 2=Admin, 3=Support
+ */
+export enum ParticipantRole {
+  Client = 0,
+  Freelancer = 1,
+  Admin = 2,
+  Support = 3,
+}
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+
+/** Mirrors backend: Domain.Entities.MessageAttachment */
+export interface IMessageAttachment {
+  messageAttachmentsId: string;
+  messagesId: string;
+  fileName: string;
+  fileUrl: string;
+  storageProvider: string;
+  storageObjectKey?: string | null;
+  mimeType: string;
+  fileExtension?: string | null;
+  fileSizeBytes: number;
+  createdAt: string; // ISO 8601
+}
+
+/** Mirrors backend: Domain.Entities.Message */
+export interface IMessage {
+  messagesId: string;
+  conversationsId: string;
+  senderUserId?: string | null;
+  messageType: MessageType;
+  content?: string | null;
+  replyToMessageId?: string | null;
+  metadata?: string | null;          // JSON string – varies by messageType
+  clientMessageId?: string | null;   // Optimistic-UI dedup key
+  sentAt: string;                    // ISO 8601
+  editedAt?: string | null;
+  deletedForEveryoneAt?: string | null;
+  deletedForSenderAt?: string | null;
+
+  // Navigation (populated when included by API)
+  messageAttachments?: IMessageAttachment[];
+  replyToMessage?: IMessage | null;
+}
+
+/** Mirrors backend: Domain.Entities.ConversationParticipant */
+export interface IConversationParticipant {
+  conversationParticipantId: string;
+  conversationsId: string;
+  userId: string;
+  participantRole: ParticipantRole;
+  joinedAt: string;   // ISO 8601
+  leftAt?: string | null;
+  lastReadMessageId?: string | null;
+  lastReadAt?: string | null;
+  unreadCount: number;
+  isMuted: boolean;
+  isPinned: boolean;
+  isArchived: boolean;
+  deletedAt?: string | null;
+}
+
+/** Mirrors backend: Domain.Entities.Conversation */
+export interface IConversation {
+  conversationsId: string;
+  conversationType: ConversationType;
+  title?: string | null;
+  jobPostsId?: string | null;
+  proposalsId?: string | null;
+  contractsId?: string | null;
+  disputesId?: string | null;
+  createdByUserId: string;
+  lastMessageId?: string | null;
+  lastMessageAt?: string | null;
+  status: ConversationStatus;
+  createdAt: string;   // ISO 8601
+  updatedAt?: string | null;
+  deletedAt?: string | null;
+
+  // Navigation (populated when included by API)
+  lastMessage?: IMessage | null;
+  messages?: IMessage[];
+  participants?: IConversationParticipant[];
+}
+
+// ─── Legacy / Review ──────────────────────────────────────────────────────────
+
+export type RoomType = 'invited' | 'negotiation';
+
+export interface JobInfo {
+  id: string;
+  title: string;
+  budget: string;
+  category: string;
+}
+
+export interface MsgConversation {
+  id: string;
+  roomType: RoomType;
+  roomId: string;
+  participantId: string;
+  participantName: string;
+  participantAvatar: string;
+  participantRole: string;
+  participantCompany: string;
+  participantOnline: boolean;
+  job: JobInfo;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  isMuted: boolean;
+  dealStatus?: 'idle' | 'pending_freelancer' | 'agreed' | 'declined' | 'pending_client';
+  proposedPrice?: string;
+  conversationType?: number; // 0=JobNegotiation, 1=ContractWorkroom, etc.
+}
+
+/** @deprecated Use IMessage instead */
 export interface Message {
   id: string;
   content: string;
-  
-  // Frontend & Mock backend properties
   conversationId?: string;
   senderId?: string;
-  type?: string;
+  type?: string; // 'text' | 'file' | 'deal' | 'negotiation_request' | 'system'
   createdAt?: string;
   isRead?: boolean;
   fileUrl?: string;
   fileName?: string;
-
-  // DB/Backend schema compatibility properties
-  contract_id?: string;
-  sender_id?: string;
-  receiver_id?: string;
-  is_read?: boolean;
+  dealStatus?: 'pending_freelancer' | 'agreed' | 'declined' | 'pending_client' | 'idle';
+  negotiationStatus?: 'pending' | 'accepted' | 'declined';
+  proposedPrice?: string;
 }
 
 export interface Review {

@@ -1,7 +1,7 @@
 import type { User, FreelancerProfile, ClientProfile } from '../../types/models/User';
 import type { Job, Proposal, Review } from '../types/legacy';
 import type { Project } from '../../types/models/Project';
-import type { Message, Notification } from '../../types/models/Message';
+import type { Message, Notification, MsgConversation } from '../../types/models/Message';
 import { UserRole } from '../../types/models/User';
 import { FreelancerProfile as FreelancerProfileType, ClientProfile as ClientProfileType, Availability, CompanySize } from '../../types/models/Profile';
 
@@ -459,6 +459,127 @@ export const SEED_PROJECTS: Project[] = [
   },
 ];
 
+export const SEED_CONVERSATIONS: MsgConversation[] = [
+  // ── Invited Jobs ─────────────────────────────────────────────────────────
+  {
+    id: 'conv_inv_1',
+    roomType: 'invited',
+    roomId: 'room_invited',
+    participantId: 'usr_jordan',
+    participantName: 'Jordan Mitchell',
+    participantAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBeoKX1UynnkJ0b15ZqIqe0FGcJAeG-r0lmmDdDbCq_9lfPGs986ViSmQIz5X5Je-lT6mt1f75tc_3qUuEj_9zyqagKr9dnTiny_lzGv1OzrAGTpTIxTodcVIqD7Bxkd6FTFccqY2Ca6bKdb2VKNwcgZqYmTzZcj09OMTiNdybLbnS-wb_WxJhyeAJ_NARjM5HidZjgCFbCUZup_7-G2arZi-NMogLhwxyla0vxK5a0xl2w4XcMLfEc4KRaPz-CMm2twhh6r8nOs3Tb',
+    participantRole: 'CTO',
+    participantCompany: 'TechFlow Inc.',
+    participantOnline: true,
+    job: {
+      id: 'job_1001',
+      title: 'E-Commerce Platform Redesign',
+      budget: '$3,000 – $5,000',
+      category: 'UI/UX Design',
+    },
+    lastMessage: 'We think your portfolio is an amazing fit for our project!',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    unreadCount: 2,
+    isMuted: false,
+    conversationType: 4, // JobInvitedRoom
+  },
+  {
+    id: 'conv_inv_2',
+    roomType: 'invited',
+    roomId: 'room_invited',
+    participantId: 'usr_sarah',
+    participantName: 'Sarah Chen',
+    participantAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCdLF72GSJAKTKAXQJTmZPrytHCNef0EG6PBa8RxPaGWZgX7RUdjbX130CZ1pIpbSfMGEx3KmopHX4jgiUbvhq6B5TXukEAT_AIiPOGs1SN4BRjDw61FLdp7frEThStyzCBbY7xelVeQlLA_EORhwu3gKWwfg9K26LgEOXbaWEpWdbw5ERIR1Eam3X2TJd6HMAqxsgwJuDdY-t9Dje5H0mM4kqDh2NfF7j8H4TnEPcCHTTrJnt8V3uQVeztENLHWLKKQk05XkftCx_j',
+    participantRole: 'Product Manager',
+    participantCompany: 'FinovaTech',
+    participantOnline: false,
+    job: {
+      id: 'job_1002',
+      title: 'Fintech Mobile App — React Native',
+      budget: '$5,000 – $8,000',
+      category: 'Mobile Development',
+    },
+    lastMessage: 'Would love to chat about your React Native experience.',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    unreadCount: 0,
+    isMuted: false,
+    conversationType: 4, // JobInvitedRoom
+  },
+
+  // ── Negotiation ───────────────────────────────────────────────────────────
+  {
+    id: 'conv_neg_1',
+    roomType: 'negotiation',
+    roomId: 'room_negotiation',
+    participantId: 'usr_alex',
+    participantName: 'Alex Johnson',
+    participantAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt226TXncFjd6zQyyFNqkOAKj-pTYClfBHUGbG7EsCTL5gzWQbF5K-mojkZ1u9U91izwjnV--bOtLgKPwMjODHfOuVpg5nOAxiXsve-4RdrP3GeYe6L9llw_G0e7TExXaCWHruulVFEUP-acilXdvARPO-JVC17ShH6ztqc9CUYzp9r2Duy95bm3YrKoT0XmazmW2mgGKr4H_BYRs6iYRH0ATn2UaEHxrBE1AFiTPLNgtYDGnskVHrXWmKPI5nDsP3KsJHRYgTs29I',
+    participantRole: 'Project Manager',
+    participantCompany: 'StartupXYZ',
+    participantOnline: true,
+    job: {
+      id: 'proj_1', // map to project ID
+      title: 'SaaS Dashboard Analytics Build',
+      budget: '$2,000 – $4,000',
+      category: 'Full-Stack Development',
+    },
+    lastMessage: "Let's settle on $2,500 for the full scope.",
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    unreadCount: 1,
+    isMuted: false,
+    dealStatus: 'pending_freelancer',
+    proposedPrice: '2500',
+    conversationType: 0, // JobNegotiation
+  },
+  {
+    id: 'conv_neg_2',
+    roomType: 'negotiation',
+    roomId: 'room_negotiation',
+    participantId: 'usr_david',
+    participantName: 'David Chen',
+    participantAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt226TXncFjd6zQyyFNqkOAKj-pTYClfBHUGbG7EsCTL5gzWQbF5K-mojkZ1u9U91izwjnV--bOtLgKPwMjODHfOuVpg5nOAxiXsve-4RdrP3GeYe6L9llw_G0e7TExXaCWHruulVFEUP-acilXdvARPO-JVC17ShH6ztqc9CUYzp9r2Duy95bm3YrKoT0XmazmW2mgGKr4H_BYRs6iYRH0ATn2UaEHxrBE1AFiTPLNgtYDGnskVHrXWmKPI5nDsP3KsJHRYgTs29I',
+    participantRole: 'Lead Architect',
+    participantCompany: 'DevOps Studio',
+    participantOnline: true,
+    job: {
+      id: 'job_2002',
+      title: 'Cloud Infrastructure Setup (AWS)',
+      budget: '$1,500 – $3,000',
+      category: 'DevOps / Cloud',
+    },
+    lastMessage: 'Can you do $1,800 with a 2-week timeline?',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(),
+    unreadCount: 0,
+    isMuted: false,
+    dealStatus: 'idle',
+    conversationType: 0, // JobNegotiation
+  },
+  {
+    id: 'conv_neg_3',
+    roomType: 'negotiation',
+    roomId: 'room_negotiation',
+    participantId: 'usr_emily',
+    participantName: 'Emily Watson',
+    participantAvatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Emily',
+    participantRole: 'Marketing Director',
+    participantCompany: 'BrandBoost',
+    participantOnline: false,
+    job: {
+      id: 'job_2003',
+      title: 'Brand Identity & Logo Design',
+      budget: '$800 – $1,500',
+      category: 'Graphic Design',
+    },
+    lastMessage: 'We agreed on $1,200 — excited to work with you!',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    unreadCount: 0,
+    isMuted: false,
+    dealStatus: 'agreed',
+    proposedPrice: '1200',
+    conversationType: 0, // JobNegotiation
+  },
+];
+
 // ─── Messages ─────────────────────────────────────
 export const SEED_MESSAGES: Message[] = [
   { id: 'msg_1', conversationId: 'conv_1', senderId: 'u_client_1', content: 'Hi Alex! Looking forward to working together on this project.', type: 'text', createdAt: '2026-04-02T11:00:00Z', isRead: true },
@@ -469,6 +590,82 @@ export const SEED_MESSAGES: Message[] = [
   { id: 'msg_6', conversationId: 'conv_1', senderId: 'u_client_1', content: 'This looks great! The component hierarchy makes sense. Approved!', type: 'text', createdAt: '2026-04-03T09:00:00Z', isRead: true },
   { id: 'msg_7', conversationId: 'conv_1', senderId: 'u_freelancer_1', content: 'Just completed the milestone 1 - Architecture & Setup. The Next.js project is bootstrapped with TypeScript, ESLint, Prettier, and Husky pre-commit hooks. CI/CD pipeline is configured on GitHub Actions. Ready for review!', type: 'text', createdAt: '2026-04-13T16:30:00Z', isRead: true },
   { id: 'msg_8', conversationId: 'conv_1', senderId: 'u_client_1', content: 'Excellent work! Milestone approved. Working on payment for this milestone now.', type: 'text', createdAt: '2026-04-13T17:00:00Z', isRead: false },
+  // conv_inv_1
+  {
+    id: 'mi_1', conversationId: 'conv_inv_1', senderId: 'usr_jordan',
+    content: 'Hi! We found your profile through GigBridge and we love your UI/UX work.',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), isRead: true,
+  },
+  {
+    id: 'mi_2', conversationId: 'conv_inv_1', senderId: 'usr_jordan',
+    content: 'We think your portfolio is an amazing fit for our e-commerce redesign project!',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(), isRead: false,
+  },
+
+  // conv_inv_2
+  {
+    id: 'mi_3', conversationId: 'conv_inv_2', senderId: 'usr_sarah',
+    content: 'Hello! I came across your React Native projects and was impressed.',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), isRead: true,
+  },
+  {
+    id: 'mi_4', conversationId: 'conv_inv_2', senderId: 'current_user',
+    content: 'Thank you Sarah! I\'d love to hear more about the project scope.',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3.5).toISOString(), isRead: true,
+  },
+  {
+    id: 'mi_5', conversationId: 'conv_inv_2', senderId: 'usr_sarah',
+    content: 'Would love to chat about your React Native experience.',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), isRead: true,
+  },
+
+  // conv_neg_1
+  {
+    id: 'mn_1', conversationId: 'conv_neg_1', senderId: 'current_user',
+    content: 'I reviewed the requirements. I can deliver the full scope for $3,000.',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), isRead: true,
+  },
+  {
+    id: 'mn_2', conversationId: 'conv_neg_1', senderId: 'usr_alex',
+    content: 'That\'s a bit over our budget. Can we discuss flexibility?',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), isRead: true,
+  },
+  {
+    id: 'mn_3', conversationId: 'conv_neg_1', senderId: 'usr_alex',
+    content: '2500',
+    type: 'deal', createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), isRead: false,
+    dealStatus: 'pending_freelancer',
+  },
+
+  // conv_neg_2
+  {
+    id: 'mn_4', conversationId: 'conv_neg_2', senderId: 'current_user',
+    content: 'Hi David, I can set up the full AWS infrastructure. Looking at $2,200.',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(), isRead: true,
+  },
+  {
+    id: 'mn_5', conversationId: 'conv_neg_2', senderId: 'usr_david',
+    content: 'Can you do $1,800 with a 2-week timeline?',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), isRead: true,
+  },
+
+  // conv_neg_3
+  {
+    id: 'mn_6', conversationId: 'conv_neg_3', senderId: 'current_user',
+    content: 'My rate for the full brand identity package is $1,200.',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(), isRead: true,
+  },
+  {
+    id: 'mn_7', conversationId: 'conv_neg_3', senderId: 'usr_emily',
+    content: '1200',
+    type: 'deal', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 25).toISOString(), isRead: true,
+    dealStatus: 'agreed',
+  },
+  {
+    id: 'mn_8', conversationId: 'conv_neg_3', senderId: 'usr_emily',
+    content: 'We agreed on $1,200 — excited to work with you!',
+    type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), isRead: true,
+  },
 ];
 
 // ─── Notifications ────────────────────────────────

@@ -43,15 +43,4 @@ export const adminPostAPI = {
   broadcastNotification: async (payload: AdminBroadcastNotificationPayload): Promise<ApiResponse<null>> => {
     return apiService.post<null>('admin/notifications/broadcast', payload);
   },
-
-  /**
-   * POST /api/admin/wallets/{userId}/credit
-   * Overrides and credits tokens directly to a user's wallet (Admin role required).
-   */
-  creditWallet: async (
-    userId: string,
-    payload: { tokenAmount: number; note?: string; idempotencyKey?: string }
-  ): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`admin/wallets/${userId}/credit`, payload);
-  },
 };

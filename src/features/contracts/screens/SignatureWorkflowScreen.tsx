@@ -3,8 +3,6 @@ import { useNavigate, useParams } from 'react-router';
 import { AlertCircle, CheckCircle, Clock, FileText, Loader, PenTool, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { contractPostAPI } from '../../../api/contractAPI/POST';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
@@ -37,50 +35,29 @@ export default function SignatureWorkflowScreen() {
   // Load contract data
   useEffect(() => {
     const loadContract = async () => {
-      if (!contractId) return;
       try {
         setLoading(true);
-        setError('');
-        const res = await contractGetAPI.getContractById(contractId);
-        if (res.success && res.data) {
-          setContract(res.data);
-          const alreadySigned = localStorage.getItem(`contract-signature-${contractId}-${user?.id}`);
-          if (res.data.status !== ContractStatus.PendingSignature) {
-            setError('This contract is not in signature pending state.');
-          }
-        } else {
-          if (import.meta.env.VITE_USE_MOCK === 'true') {
-            const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-            if (mockContract) {
-              setContract(mockContract);
-              if (mockContract.status !== ContractStatus.PendingSignature) {
-                setError('MSG55: You have already signed this document');
-              }
-            } else {
-              setError('Contract not found in mock data');
-            }
-          } else {
-            setError(res.message || 'Failed to load contract details');
-          }
+        const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
+        if (!mockContract) {
+          throw new Error('Contract not found');
+        }
+
+        setContract(mockContract);
+        const alreadySigned = localStorage.getItem(`contract-signature-${contractId}-${user?.id}`);
+        if (mockContract.status !== ContractStatus.PendingSignature || alreadySigned) {
+          setError('MSG55: You have already signed this document');
         }
       } catch (err) {
         console.error('Failed to load contract:', err);
-        if (import.meta.env.VITE_USE_MOCK === 'true') {
-          const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-          if (mockContract) {
-            setContract(mockContract);
-          } else {
-            setError('Failed to load contract details');
-          }
-        } else {
-          setError('Failed to load contract details');
-        }
+        setError('Failed to load contract details');
       } finally {
         setLoading(false);
       }
     };
 
-    loadContract();
+    if (contractId) {
+      loadContract();
+    }
   }, [contractId, user?.id]);
 
   // Initialize canvas for signature capture
@@ -162,24 +139,24 @@ export default function SignatureWorkflowScreen() {
       // Get signature as data URL
       const signatureImage = canvasRef.toDataURL('image/png');
 
-      const res = await contractPostAPI.sign(contract.contractsId, {
-        signatureImageUrl: signatureImage,
-        signatureWidth: 300,
-        signatureHeight: 100,
+      // In a real app, this would send the signature to the backend
+      console.log('Submitting signature:', {
+        contractId: contract.contractsId,
+        signatureImage,
+        timestamp: new Date().toISOString(),
+        userId: user?.id,
+        ipAddress: 'Client IP',
+        userAgent: navigator.userAgent,
       });
 
-      if (res.success) {
-        localStorage.setItem(`contract-signature-${contract.contractsId}-${user?.id}`, new Date().toISOString());
-        setSuccess('Signature captured and contract signed successfully!');
-        setSignatureStep('confirm');
+      localStorage.setItem(`contract-signature-${contract.contractsId}-${user?.id}`, new Date().toISOString());
+      setSuccess('Signature captured and contract signed successfully!');
+      setSignatureStep('confirm');
 
-        // Navigate back to contract details after a delay
-        setTimeout(() => {
-          navigate(`/contracts/${contract.contractsId}`);
-        }, 2000);
-      } else {
-        setError(res.message || 'Failed to submit signature. Please try again.');
-      }
+      // Navigate back to contract details after a delay
+      setTimeout(() => {
+        navigate(`/contracts/${contract.contractsId}`);
+      }, 2000);
     } catch (err) {
       console.error('Failed to submit signature:', err);
       setError('Failed to submit signature. Please try again.');

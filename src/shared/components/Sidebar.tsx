@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, User, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, History, Coins
+  ChevronDown
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -40,7 +40,7 @@ function getClientNavItems(t: any): NavItem[] {
       label: 'Jobs',
       icon: <Briefcase size={18} />,
       children: [
-        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post', badge: 'AI', badgeType: 'cyan' },
+        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post/questions', badge: 'AI', badgeType: 'cyan' },
         { label: 'My Jobs', icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
       ],
     },
@@ -62,6 +62,13 @@ function getClientNavItems(t: any): NavItem[] {
       ],
     },
     {
+      label: 'Messages',
+      icon: <MessageSquare size={18} />,
+      path: '/messages',
+      badge: '3',
+      badgeType: 'cyan',
+    },
+    {
       label: t('nav.aiAssistant'),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
@@ -73,14 +80,6 @@ function getClientNavItems(t: any): NavItem[] {
       label: t('nav.marketInsights'),
       icon: <TrendingUp size={18} />,
       path: '/market-insights',
-    },
-    {
-      label: 'Ví',
-      icon: <Wallet size={18} />,
-      children: [
-        { label: 'Nạp Tiền', icon: <Coins size={18} />, path: '/wallet/deposit' },
-        { label: 'Lịch Sử GD', icon: <History size={18} />, path: '/wallet/history' },
-      ],
     },
     {
       label: 'Financial Overview',
@@ -115,6 +114,13 @@ function getFreelancerNavItems(t: any): NavItem[] {
       ],
     },
     {
+      label: 'Messages',
+      icon: <MessageSquare size={18} />,
+      path: '/messages',
+      badge: '1',
+      badgeType: 'cyan',
+    },
+    {
       label: t('nav.aiAssistant'),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
@@ -127,13 +133,11 @@ function getFreelancerNavItems(t: any): NavItem[] {
       path: '/market-insights',
     },
     {
-      label: 'Ví',
-      icon: <Wallet size={18} />,
-      children: [
-        { label: 'Nạp Tiền', icon: <Coins size={18} />, path: '/wallet/deposit' },
-        { label: 'Lịch Sử GD', icon: <History size={18} />, path: '/wallet/history' },
-        { label: 'Early Payout', icon: <Zap size={18} />, path: '/wallet/early-payout', badge: 'PRO', badgeType: 'purple' },
-      ],
+      label: 'Early Payout',
+      icon: <Zap size={18} />,
+      path: '/wallet/early-payout',
+      badge: 'PRO',
+      badgeType: 'purple',
     },
   ];
 }

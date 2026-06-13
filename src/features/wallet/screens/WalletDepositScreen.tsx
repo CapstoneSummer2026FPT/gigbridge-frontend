@@ -1,12 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, CheckCircle, AlertCircle, Coins, Loader2, QrCode, Building2, CreditCard, Clock } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowRight,
+  Building2,
+  CheckCircle,
+  Coins,
+  CreditCard,
+  Loader2,
+  QrCode,
+} from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 
-// Exchange rate: 1 Gig Coin = 1,000 VND
 const VND_PER_TOKEN = 1000;
 const MIN_VND = 10_000;
 const MAX_VND = 250_000_000;
@@ -14,20 +22,22 @@ const LAST_PAYOS_ORDER_CODE_KEY = 'gigbridge:lastPayOsTopUpOrderCode';
 
 const QUICK_AMOUNTS_VND = [50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000];
 
-/** Format VND with dot separator */
 function fmtVnd(amount: number): string {
   return new Intl.NumberFormat('vi-VN').format(amount);
 }
 
-/** Generate a simple idempotency key */
 function makeIdempotencyKey(): string {
   return `topup_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function WalletDepositScreen() {
   const navigate = useNavigate();
+  const syncAttemptedRef = useRef<number | null>(null);
 
-  // State
   const [selectedVnd, setSelectedVnd] = useState<number>(100_000);
   const [customVnd, setCustomVnd] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -37,28 +47,11 @@ export default function WalletDepositScreen() {
   const [currentBalance, setCurrentBalance] = useState<number>(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
-  const syncAttemptedRef = useRef<number | null>(null);
 
-  // Parse redirect query params from PayOS
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const result = params.get('result');
-    const orderCode = Number(params.get('orderCode') || window.localStorage.getItem(LAST_PAYOS_ORDER_CODE_KEY));
-    if (result === 'success') {
-      setReturnSuccess(true);
-      if (Number.isSafeInteger(orderCode) && orderCode > 0) {
-        setReturnOrderCode(orderCode);
-      }
-      // Clean URL without reload
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (result === 'cancel') {
-      setErrorText('Thanh toán đã bị hủy bởi người dùng.');
-      window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
+  const finalVnd = customVnd ? parseInt(customVnd, 10) || 0 : selectedVnd;
+  const tokenAmount = finalVnd / VND_PER_TOKEN;
+  const isAmountValid = finalVnd >= MIN_VND && finalVnd <= MAX_VND;
 
-  // Fetch wallet balance
   const fetchBalance = async () => {
     try {
       setLoadingBalance(true);
@@ -68,16 +61,40 @@ export default function WalletDepositScreen() {
       } else {
         setErrorText(res.message || 'Không thể tải số dư ví.');
       }
-    } catch (err) {
-      console.error('Failed to load wallet balance:', err);
-      setErrorText('Không thể kết nối tới máy chủ.');
+    } catch (error) {
+      console.error('Failed to load wallet balance:', error);
+      setErrorText(getErrorMessage(error, 'Không thể kết nối tới máy chủ.'));
     } finally {
       setLoadingBalance(false);
     }
   };
 
   useEffect(() => {
-    fetchBalance();
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('result');
+    const status = params.get('status');
+    const isCancelled = result === 'cancel' || params.get('cancel') === 'true' || status === 'CANCELLED';
+    const fallbackOrderCode = window.localStorage.getItem(LAST_PAYOS_ORDER_CODE_KEY);
+    const orderCode = Number(params.get('orderCode') || fallbackOrderCode);
+
+    if (result === 'success' && !isCancelled) {
+      setReturnSuccess(true);
+      if (Number.isSafeInteger(orderCode) && orderCode > 0) {
+        setReturnOrderCode(orderCode);
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    if (isCancelled) {
+      setErrorText('Thanh toán đã bị hủy bởi người dùng.');
+      window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchBalance();
   }, []);
 
   useEffect(() => {
@@ -118,9 +135,9 @@ export default function WalletDepositScreen() {
         if (!synced) {
           setErrorText('PayOS đã trả về thành công. Hệ thống đang chờ xác nhận giao dịch, vui lòng tải lại số dư sau ít phút.');
         }
-      } catch (err: any) {
-        console.error('PayOS sync error:', err);
-        setErrorText(err?.message || 'Không thể đồng bộ trạng thái thanh toán PayOS.');
+      } catch (error) {
+        console.error('PayOS sync error:', error);
+        setErrorText(getErrorMessage(error, 'Không thể đồng bộ trạng thái thanh toán PayOS.'));
       } finally {
         setSyncingReturn(false);
       }
@@ -129,21 +146,17 @@ export default function WalletDepositScreen() {
     void syncReturnedTopUp();
   }, [returnSuccess, returnOrderCode]);
 
-  // Derived values
-  const finalVnd = customVnd ? parseInt(customVnd, 10) || 0 : selectedVnd;
-  const tokenAmount = finalVnd / VND_PER_TOKEN;
-  const isAmountValid = finalVnd >= MIN_VND && finalVnd <= MAX_VND;
-
-  // Submit top-up
   const handleDeposit = async () => {
-    if (!isAmountValid || processing) return;
+    if (!isAmountValid || processing) {
+      return;
+    }
 
     setProcessing(true);
     setErrorText(null);
 
     try {
-      const returnUrl = window.location.origin + '/wallet/deposit?result=success';
-      const cancelUrl = window.location.origin + '/wallet/deposit?result=cancel';
+      const returnUrl = `${window.location.origin}/wallet/deposit?result=success`;
+      const cancelUrl = `${window.location.origin}/wallet/deposit?result=cancel`;
 
       const res = await walletPostAPI.createTopUp({
         tokenAmount,
@@ -156,20 +169,19 @@ export default function WalletDepositScreen() {
         if (res.data.gatewayOrderCode) {
           window.localStorage.setItem(LAST_PAYOS_ORDER_CODE_KEY, res.data.gatewayOrderCode);
         }
-        // Redirect to PayOS payment page
         window.location.href = res.data.checkoutUrl;
-      } else {
-        setErrorText(res.message || 'Không thể khởi tạo giao dịch nạp tiền.');
-        setProcessing(false);
+        return;
       }
-    } catch (err: any) {
-      console.error('Top-up error:', err);
-      setErrorText(err?.message || 'Đã xảy ra lỗi trong quá trình khởi tạo thanh toán.');
+
+      setErrorText(res.message || 'Không thể khởi tạo giao dịch nạp tiền.');
+      setProcessing(false);
+    } catch (error) {
+      console.error('Top-up error:', error);
+      setErrorText(getErrorMessage(error, 'Đã xảy ra lỗi trong quá trình khởi tạo thanh toán.'));
       setProcessing(false);
     }
   };
 
-  // ── Success return view ──
   if (returnSuccess) {
     return (
       <AppLayout>
@@ -177,7 +189,7 @@ export default function WalletDepositScreen() {
           <div className="max-w-md w-full mx-4">
             <div className="glass-card p-8 text-center">
               <div className="w-20 h-20 rounded-full bg-amber-400/20 flex items-center justify-center mx-auto mb-6 animate-pulse">
-                <Clock size={48} className="text-amber-400" />
+                <Loader2 size={48} className="text-amber-400 animate-spin" />
               </div>
               <h2 className="text-2xl font-bold text-primary mb-2">Đang Xác Nhận Giao Dịch</h2>
               <p className="text-sm text-secondary mb-6">
@@ -204,7 +216,7 @@ export default function WalletDepositScreen() {
               </div>
               <div className="space-y-3">
                 <button
-                  onClick={() => { fetchBalance(); }}
+                  onClick={() => { void fetchBalance(); }}
                   className="btn-ghost-cyan w-full px-6 py-3 font-semibold flex items-center justify-center gap-2"
                   disabled={syncingReturn}
                 >
@@ -225,19 +237,17 @@ export default function WalletDepositScreen() {
     );
   }
 
-  // ── Main deposit form ──
   return (
     <AppLayout>
       <div className="w-full max-w-[100vw] overflow-x-hidden">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-          {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-2">
               <Coins size={20} className="text-amber-400" />
               <span className="badge-green text-xs">Nạp Tiền</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-primary">Nạp Gig Coin</h1>
-            <p className="text-sm text-secondary mt-1">Thanh toán qua PayOS – Chuyển khoản ngân hàng / QR Code</p>
+            <p className="text-sm text-secondary mt-1">Thanh toán qua PayOS - Chuyển khoản ngân hàng / QR Code</p>
             <div className="flex items-center gap-2 mt-3 p-3 glass-card inline-flex">
               <Coins className="text-amber-400" size={16} />
               <span className="text-xs text-secondary font-semibold">1 Token = {fmtVnd(VND_PER_TOKEN)} VND</span>
@@ -245,9 +255,7 @@ export default function WalletDepositScreen() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Form */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Error alert */}
               {errorText && (
                 <div className="bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl p-4 flex items-center gap-3">
                   <AlertCircle size={20} className="shrink-0" />
@@ -255,7 +263,6 @@ export default function WalletDepositScreen() {
                 </div>
               )}
 
-              {/* Current Balance */}
               <div className="glass-card p-6">
                 <p className="text-xs text-muted mb-2">Số Dư Hiện Tại</p>
                 <div className="flex items-center gap-2">
@@ -271,10 +278,9 @@ export default function WalletDepositScreen() {
                 </div>
               </div>
 
-              {/* Quick Amounts */}
               <div className="glass-card p-6">
                 <h3 className="text-lg font-bold text-primary mb-4">Chọn Số Tiền</h3>
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                   {QUICK_AMOUNTS_VND.map(amount => (
                     <button
                       key={amount}
@@ -285,7 +291,7 @@ export default function WalletDepositScreen() {
                           : 'glass-button text-secondary hover:bg-white/5'
                       }`}
                     >
-                      <div>{fmtVnd(amount)} ₫</div>
+                      <div>{fmtVnd(amount)} đ</div>
                       <div className="text-xs opacity-60 mt-1">
                         <Coins className="inline w-3 h-3 mr-1" />
                         {fmtVnd(amount / VND_PER_TOKEN)} tokens
@@ -294,44 +300,35 @@ export default function WalletDepositScreen() {
                   ))}
                 </div>
 
-                {/* Custom amount */}
-                <div>
-                  <label className="block text-sm font-semibold text-primary mb-2">Số Tiền Tùy Chỉnh (VND)</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-semibold">₫</span>
-                    <input
-                      type="number"
-                      value={customVnd}
-                      onChange={e => setCustomVnd(e.target.value)}
-                      placeholder="Nhập số tiền VND"
-                      className="input-gb w-full pl-10 py-3 text-sm"
-                      min={MIN_VND}
-                      max={MAX_VND}
-                    />
-                  </div>
-                  <p className="text-xs text-muted mt-2">
-                    Tối thiểu: {fmtVnd(MIN_VND)} VND · Tối đa: {fmtVnd(MAX_VND)} VND
-                  </p>
-                  {customVnd && parseInt(customVnd) > 0 && (
-                    <div className="mt-2 p-2 bg-amber-400/10 rounded-lg">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-secondary">Tokens nhận được:</span>
-                        <span className="text-amber-400 font-bold flex items-center gap-1">
-                          <Coins size={14} />
-                          {fmtVnd(parseInt(customVnd) / VND_PER_TOKEN)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {customVnd && parseInt(customVnd) > 0 && parseInt(customVnd) < MIN_VND && (
-                    <p className="text-xs text-red-400 mt-1">
-                      Số tiền phải tối thiểu {fmtVnd(MIN_VND)} VND
-                    </p>
-                  )}
+                <label className="block text-sm font-semibold text-primary mb-2">Số Tiền Tùy Chỉnh (VND)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-semibold">đ</span>
+                  <input
+                    type="number"
+                    value={customVnd}
+                    onChange={event => setCustomVnd(event.target.value)}
+                    placeholder="Nhập số tiền VND"
+                    className="input-gb w-full pl-10 py-3 text-sm"
+                    min={MIN_VND}
+                    max={MAX_VND}
+                  />
                 </div>
+                <p className="text-xs text-muted mt-2">
+                  Tối thiểu: {fmtVnd(MIN_VND)} VND - Tối đa: {fmtVnd(MAX_VND)} VND
+                </p>
+                {customVnd && parseInt(customVnd, 10) > 0 && (
+                  <div className="mt-2 p-2 bg-amber-400/10 rounded-lg">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-secondary">Tokens nhận được:</span>
+                      <span className="text-amber-400 font-bold flex items-center gap-1">
+                        <Coins size={14} />
+                        {fmtVnd((parseInt(customVnd, 10) || 0) / VND_PER_TOKEN)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Payment Method - PayOS only */}
               <div className="glass-card p-6">
                 <h3 className="text-lg font-bold text-primary mb-4">Phương Thức Thanh Toán</h3>
                 <div className="bg-cyan/10 border-2 border-cyan rounded-xl p-4">
@@ -340,8 +337,8 @@ export default function WalletDepositScreen() {
                       <QrCode size={24} className="text-cyan" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-primary">PayOS – Thanh Toán Trực Tuyến</p>
-                      <p className="text-xs text-secondary mt-0.5">QR Code · Chuyển khoản ngân hàng · Ví điện tử</p>
+                      <p className="text-sm font-bold text-primary">PayOS - Thanh Toán Trực Tuyến</p>
+                      <p className="text-xs text-secondary mt-0.5">QR Code - Chuyển khoản ngân hàng - Ví điện tử</p>
                     </div>
                     <CheckCircle size={20} className="text-cyan" />
                   </div>
@@ -351,16 +348,15 @@ export default function WalletDepositScreen() {
                     { icon: <QrCode size={14} />, label: 'QR Code' },
                     { icon: <Building2 size={14} />, label: 'Ngân hàng' },
                     { icon: <CreditCard size={14} />, label: 'Thẻ nội địa' },
-                  ].map(m => (
-                    <div key={m.label} className="flex items-center gap-1.5 p-2 rounded-lg border border-white/10 bg-white/5 text-xs text-secondary justify-center">
-                      {m.icon}
-                      {m.label}
+                  ].map(method => (
+                    <div key={method.label} className="flex items-center gap-1.5 p-2 rounded-lg border border-white/10 bg-white/5 text-xs text-secondary justify-center">
+                      {method.icon}
+                      {method.label}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Security Notice */}
               <div className="bg-cyan/10 border border-cyan/20 rounded-lg p-4">
                 <div className="flex gap-3">
                   <AlertCircle size={20} className="text-cyan flex-shrink-0 mt-0.5" />
@@ -374,7 +370,6 @@ export default function WalletDepositScreen() {
               </div>
             </div>
 
-            {/* Right Column - Summary */}
             <div className="lg:col-span-1">
               <div className="glass-card p-6 sticky top-24">
                 <h3 className="text-lg font-bold text-primary mb-4">Tóm Tắt</h3>
@@ -382,21 +377,17 @@ export default function WalletDepositScreen() {
                 <div className="space-y-3 mb-4 pb-4 border-b border-white/5">
                   <div className="flex justify-between text-sm">
                     <span className="text-secondary">Số Tiền Nạp</span>
-                    <span className="text-primary font-semibold">
-                      {fmtVnd(finalVnd)} ₫
-                    </span>
+                    <span className="text-primary font-semibold">{fmtVnd(finalVnd)} đ</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-secondary">Phí Xử Lý</span>
-                    <span className="text-green font-semibold">0 ₫</span>
+                    <span className="text-green font-semibold">0 đ</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-secondary">Tokens Nhận</span>
                     <div className="flex items-center gap-1">
                       <Coins className="text-amber-400" size={14} />
-                      <span className="text-amber-400 font-bold">
-                        {fmtVnd(tokenAmount)}
-                      </span>
+                      <span className="text-amber-400 font-bold">{fmtVnd(tokenAmount)}</span>
                     </div>
                   </div>
                 </div>
