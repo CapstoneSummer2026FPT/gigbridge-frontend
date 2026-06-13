@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowRight, CheckCircle, AlertCircle, Coins, Loader2, QrCode, Building2, CreditCard, Clock } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -10,6 +10,7 @@ import '../../admin/styles/admin-users-screen.css';
 const VND_PER_TOKEN = 1000;
 const MIN_VND = 10_000;
 const MAX_VND = 250_000_000;
+const LAST_PAYOS_ORDER_CODE_KEY = 'gigbridge:lastPayOsTopUpOrderCode';
 
 const QUICK_AMOUNTS_VND = [50_000, 100_000, 200_000, 500_000, 1_000_000, 2_000_000];
 
@@ -31,20 +32,28 @@ export default function WalletDepositScreen() {
   const [customVnd, setCustomVnd] = useState('');
   const [processing, setProcessing] = useState(false);
   const [returnSuccess, setReturnSuccess] = useState(false);
+  const [returnOrderCode, setReturnOrderCode] = useState<number | null>(null);
+  const [syncingReturn, setSyncingReturn] = useState(false);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const syncAttemptedRef = useRef<number | null>(null);
 
   // Parse redirect query params from PayOS
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const result = params.get('result');
+    const orderCode = Number(params.get('orderCode') || window.localStorage.getItem(LAST_PAYOS_ORDER_CODE_KEY));
     if (result === 'success') {
       setReturnSuccess(true);
+      if (Number.isSafeInteger(orderCode) && orderCode > 0) {
+        setReturnOrderCode(orderCode);
+      }
       // Clean URL without reload
       window.history.replaceState({}, '', window.location.pathname);
     } else if (result === 'cancel') {
       setErrorText('Thanh toán đã bị hủy bởi người dùng.');
+      window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -71,6 +80,55 @@ export default function WalletDepositScreen() {
     fetchBalance();
   }, []);
 
+  useEffect(() => {
+    if (!returnSuccess || !returnOrderCode || syncAttemptedRef.current === returnOrderCode) {
+      return;
+    }
+
+    syncAttemptedRef.current = returnOrderCode;
+
+    const syncReturnedTopUp = async () => {
+      setSyncingReturn(true);
+      setErrorText(null);
+
+      try {
+        let synced = false;
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const syncRes = await walletPostAPI.syncPayOsTopUp({ orderCode: returnOrderCode });
+          if (!syncRes.success) {
+            setErrorText(syncRes.message || 'Không thể đồng bộ giao dịch PayOS.');
+            break;
+          }
+
+          if (syncRes.data?.status === 1) {
+            synced = true;
+            window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
+            break;
+          }
+
+          if (attempt < 4) {
+            await new Promise(resolve => window.setTimeout(resolve, 3000));
+          }
+        }
+
+        await fetchBalance();
+        window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+
+        if (!synced) {
+          setErrorText('PayOS đã trả về thành công. Hệ thống đang chờ xác nhận giao dịch, vui lòng tải lại số dư sau ít phút.');
+        }
+      } catch (err: any) {
+        console.error('PayOS sync error:', err);
+        setErrorText(err?.message || 'Không thể đồng bộ trạng thái thanh toán PayOS.');
+      } finally {
+        setSyncingReturn(false);
+      }
+    };
+
+    void syncReturnedTopUp();
+  }, [returnSuccess, returnOrderCode]);
+
   // Derived values
   const finalVnd = customVnd ? parseInt(customVnd, 10) || 0 : selectedVnd;
   const tokenAmount = finalVnd / VND_PER_TOKEN;
@@ -95,6 +153,9 @@ export default function WalletDepositScreen() {
       });
 
       if (res.success && res.data?.checkoutUrl) {
+        if (res.data.gatewayOrderCode) {
+          window.localStorage.setItem(LAST_PAYOS_ORDER_CODE_KEY, res.data.gatewayOrderCode);
+        }
         // Redirect to PayOS payment page
         window.location.href = res.data.checkoutUrl;
       } else {
@@ -122,6 +183,11 @@ export default function WalletDepositScreen() {
               <p className="text-sm text-secondary mb-6">
                 Thanh toán của bạn đang được xử lý. Số dư sẽ được cập nhật sau khi PayOS xác nhận.
               </p>
+              {errorText && (
+                <div className="bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl p-3 mb-4 text-sm font-semibold">
+                  {errorText}
+                </div>
+              )}
               <div className="glass-card p-4 mb-6">
                 <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
                 <div className="flex items-center justify-center gap-2">
@@ -140,8 +206,9 @@ export default function WalletDepositScreen() {
                 <button
                   onClick={() => { fetchBalance(); }}
                   className="btn-ghost-cyan w-full px-6 py-3 font-semibold flex items-center justify-center gap-2"
+                  disabled={syncingReturn}
                 >
-                  <Loader2 size={16} />
+                  <Loader2 size={16} className={syncingReturn ? 'animate-spin' : ''} />
                   Tải lại số dư
                 </button>
                 <button

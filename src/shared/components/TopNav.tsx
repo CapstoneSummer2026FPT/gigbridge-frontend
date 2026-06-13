@@ -73,10 +73,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
     void fetchWalletBalance();
     const intervalId = window.setInterval(fetchWalletBalance, 30000);
+    window.addEventListener('gigbridge-wallet-updated', fetchWalletBalance);
 
     return () => {
       isMounted = false;
       window.clearInterval(intervalId);
+      window.removeEventListener('gigbridge-wallet-updated', fetchWalletBalance);
     };
   }, [location.pathname, location.search, role, user?.id]);
 

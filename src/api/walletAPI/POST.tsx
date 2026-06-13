@@ -1,5 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { WalletTransactionResponse } from './GET';
 
 export interface CreateWalletTopUpRequest {
   tokenAmount: number;
@@ -19,6 +20,10 @@ export interface CreateWalletTopUpResponse {
   status: number;
 }
 
+export interface SyncPayOsTopUpRequest {
+  orderCode: number;
+}
+
 export const walletPostAPI = {
   /**
    * POST /api/wallet/top-ups
@@ -26,5 +31,13 @@ export const walletPostAPI = {
    */
   createTopUp: async (payload: CreateWalletTopUpRequest): Promise<ApiResponse<CreateWalletTopUpResponse>> => {
     return apiService.post<CreateWalletTopUpResponse>('wallet/top-ups', payload);
+  },
+
+  /**
+   * POST /api/wallet/top-ups/payos/sync
+   * Sync PayOS status after hosted checkout redirects back to the app.
+   */
+  syncPayOsTopUp: async (payload: SyncPayOsTopUpRequest): Promise<ApiResponse<WalletTransactionResponse>> => {
+    return apiService.post<WalletTransactionResponse>('wallet/top-ups/payos/sync', payload);
   },
 };
