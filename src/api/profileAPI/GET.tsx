@@ -1,5 +1,5 @@
 import { apiService } from '../../service/apiService';
-import type { FreelancerProfileDetailDto } from '../../types/models/Profile';
+import type { ClientProfileDetailDto, FreelancerProfileDetailDto } from '../../types/models/Profile';
 
 export const profileGetAPI = {
   getFreelancerProfile: async (userId: string) => {
@@ -11,7 +11,7 @@ export const profileGetAPI = {
   },
 
   getClientProfile: async (userId: string) => {
-    return await apiService.get(`Profile/client/${userId}`);
+    return await apiService.get<ClientProfileDetailDto>(`Profile/client/${userId}`);
   },
 
   getAllFreelancers: async (filters?: { skills?: string[]; availabilityStatus?: string; minRating?: number }) => {
