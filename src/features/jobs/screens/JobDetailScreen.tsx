@@ -4,13 +4,15 @@ import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Video, Send, B
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
-import { jobPostAPI } from '../../../api/jobAPI/POST';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { userGetAPI } from '../../../api/userAPI/GET';
 import type { Job } from '../../../mock_backend/types/legacy';
 import type { User } from '../../../types/models/User';
-import type { ClientProfile } from '../../../types/models/Profile';
 import { UserRole } from '../../../types/models/User';
+import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
+import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import '../styles/job-detail-screen.css';
 
 type ManageJobPostState = {
@@ -66,7 +68,9 @@ export default function JobDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [gigcoinBalance, setGigcoinBalance] = useState<number | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-  const [hasApplied, setHasApplied] = useState(false);
+  const [myProposal, setMyProposal] = useState<ProposalDetailDto | null>(null);
+  const [proposalLoading, setProposalLoading] = useState(false);
+  const [proposalMessage, setProposalMessage] = useState('');
 
   // Fetch job details from API
   useEffect(() => {
@@ -102,6 +106,37 @@ export default function JobDetailScreen() {
     const stored = window.localStorage.getItem('gb_saved_jobs');
     setSavedJobs(stored ? JSON.parse(stored) : []);
   }, []);
+
+  useEffect(() => {
+    const fetchMyProposal = async () => {
+      if (!id || role !== UserRole.Freelancer || !user) {
+        setMyProposal(null);
+        return;
+      }
+
+      try {
+        setProposalLoading(true);
+        setProposalMessage('');
+        const response = await proposalGetAPI.getMyProposalByJobPost(id);
+
+        if (response.success && response.data) {
+          setMyProposal(response.data);
+          return;
+        }
+
+        if (response.statusCode === 404) {
+          setMyProposal(null);
+          return;
+        }
+
+        setProposalMessage(response.message || 'Proposal status could not be loaded.');
+      } finally {
+        setProposalLoading(false);
+      }
+    };
+
+    fetchMyProposal();
+  }, [id, role, user]);
 
   const toggleSavedJob = () => {
     if (!job) return;
@@ -160,12 +195,10 @@ export default function JobDetailScreen() {
     setIsSubmitting(true);
     try {
       await proposalPostAPI.createProposal({
-        jobId: job.id,
-        freelancerId: user.id,
-        clientId: job.clientId,
+        jobPostsId: job.id,
         coverLetter: proposalData.coverLetter,
-        bidAmount: parseInt(proposalData.bidAmount),
-        deliveryDays: parseInt(proposalData.deliveryDays),
+        proposedBudget: Number(proposalData.bidAmount),
+        proposedDuration: `${Math.max(1, Number(proposalData.deliveryDays) || 1)} days`,
       });
       setShowProposalForm(false);
       navigate('/proposals');
@@ -178,21 +211,32 @@ export default function JobDetailScreen() {
 
   const handleApplyJob = async () => {
     if (!job || !user) return;
-    
     setIsApplying(true);
     try {
-      await jobPostAPI.applyJob(job.id, user.id);
-      setHasApplied(true);
-      // Update gigcoin balance
-      if (gigcoinBalance !== null) {
-        setGigcoinBalance(gigcoinBalance - (job.gigcoin_cost || 0));
-      }
-      // Redirect to AI interview screen after successful application
-      setTimeout(() => {
-        navigate('/ai-interview');
-      }, 500);
+      navigate(`/proposals/create/${job.id}`);
     } catch (error) {
-      console.error('Failed to apply for job:', error);
+      console.error('Failed to start proposal:', error);
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleWithdrawProposal = async () => {
+    if (!myProposal) return;
+
+    setIsApplying(true);
+    setProposalMessage('');
+    try {
+      const response = await proposalPatchAPI.updateProposalStatus(myProposal.proposalId, {
+        status: ProposalStatus.Withdrawn,
+      });
+
+      if (!response.success) {
+        setProposalMessage(response.message || 'Proposal could not be withdrawn.');
+        return;
+      }
+
+      setMyProposal(prev => prev ? { ...prev, status: ProposalStatus.Withdrawn } : prev);
     } finally {
       setIsApplying(false);
     }
@@ -434,6 +478,11 @@ export default function JobDetailScreen() {
             {role === UserRole.Freelancer && (
               <div className="glass-card p-5">
                 <h2 className="text-primary font-semibold mb-4 text-sm">Apply to Job</h2>
+                {proposalMessage && (
+                  <div className="mb-4 p-3 rounded-lg text-xs text-amber-600" style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                    {proposalMessage}
+                  </div>
+                )}
                 
                 {/* Gigcoin Cost Display */}
                 <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
@@ -453,10 +502,47 @@ export default function JobDetailScreen() {
                 </div>
 
                 {/* Apply Button or Insufficient Balance Message */}
-                {hasApplied ? (
-                  <div className="p-3 rounded-lg flex items-center gap-2" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                    <CheckCircle size={16} className="text-green" />
-                    <span className="text-xs text-green font-medium">Already applied to this job</span>
+                {proposalLoading ? (
+                  <div className="p-3 rounded-lg text-xs text-muted-foreground" style={{ background: 'rgba(148, 163, 184, 0.08)', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
+                    Loading proposal status...
+                  </div>
+                ) : myProposal ? (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg flex items-center gap-2" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                      <CheckCircle size={16} className="text-green" />
+                      <span className="text-xs text-green font-medium">{getStatusLabel(myProposal.status)} proposal</span>
+                    </div>
+
+                    {canEditProposal(myProposal.status) && (
+                      <button
+                        onClick={() => navigate(`/proposals/${myProposal.proposalId}/edit`)}
+                        className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2"
+                      >
+                        <Edit3 size={14} />
+                        Continue Editing
+                      </button>
+                    )}
+
+                    {canWithdrawProposal(myProposal.status) && (
+                      <button
+                        onClick={handleWithdrawProposal}
+                        disabled={isApplying}
+                        className="w-full py-2.5 text-sm flex items-center justify-center gap-2 rounded-xl font-semibold cursor-pointer"
+                        style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' }}
+                      >
+                        Withdraw
+                      </button>
+                    )}
+
+                    {canViewProposalAnswers(myProposal.status) && (
+                      <button
+                        onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}
+                        className="w-full py-2.5 text-sm flex items-center justify-center gap-2 rounded-xl font-semibold cursor-pointer job-detail-client-card"
+                      >
+                        <FileText size={14} />
+                        View Answers
+                      </button>
+                    )}
                   </div>
                 ) : canApplyWithGigcoins ? (
                   <button 
@@ -464,9 +550,9 @@ export default function JobDetailScreen() {
                     disabled={isApplying}
                     className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
                     {isApplying ? (
-                      <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Applying...</>
+                      <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Opening...</>
                     ) : (
-                      <><Zap size={14} />Apply Now</>
+                      <><Zap size={14} />Apply JobPost</>
                     )}
                   </button>
                 ) : (

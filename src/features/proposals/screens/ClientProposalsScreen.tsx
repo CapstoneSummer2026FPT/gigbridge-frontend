@@ -8,11 +8,13 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
-import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
+import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { DB } from '../../../mock_backend';
 import type { Project } from '../../../types/models/Project';
+import { ProposalStatus } from '../../../types/models/Proposal';
 import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
 import type { JobProposalGroup, ProposalStatusFilter, ProposalSortBy, ProposalStatusValue } from '../types';
+import { getStatusLabel } from '../utils/statusHelpers';
 import '../../workspace/styles/project-workspace-screen.css';
 
 export default function ClientProposalsScreen() {
@@ -131,7 +133,7 @@ export default function ClientProposalsScreen() {
   // Actions
   const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     try {
-      await proposalPutAPI.updateProposalStatus(proposalId, String(status));
+      await proposalPatchAPI.updateProposalStatus(proposalId, { status });
       setProposals(prev =>
         prev.map(proposal =>
           proposal.proposalsId === proposalId
@@ -140,13 +142,6 @@ export default function ClientProposalsScreen() {
         )
       );
       
-      // If accepted (status === 2), auto redirect to negotiation room
-      if (status === 2) {
-        const prop = proposals.find(p => p.proposalsId === proposalId);
-        if (prop) {
-          handleGoToNegotiation({ ...prop, status: 2 });
-        }
-      }
     } catch (error) {
       console.error('Failed to update proposal status:', error);
     }
@@ -289,10 +284,11 @@ export default function ClientProposalsScreen() {
                   className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
                 >
                   <option value="all">All Proposals</option>
-                  <option value="0">Pending</option>
-                  <option value="1">Shortlisted</option>
-                  <option value="2">Accepted</option>
-                  <option value="3">Rejected</option>
+                  <option value="1">Pending</option>
+                  <option value="2">Shortlisted</option>
+                  <option value="3">Accepted</option>
+                  <option value="4">Rejected</option>
+                  <option value="5">Withdrawn</option>
                 </select>
               </div>
 
@@ -324,8 +320,9 @@ export default function ClientProposalsScreen() {
                 ) : (
                   filteredProposals.map(p => {
                     const isActive = p.proposalsId === activeProposalId;
-                    const isAccepted = p.status === 2;
-                    const isRejected = p.status === 3;
+                    const isAccepted = Number(p.status) === ProposalStatus.Accepted;
+                    const isRejected = Number(p.status) === ProposalStatus.Rejected || Number(p.status) === ProposalStatus.Withdrawn;
+                    const isShortlisted = Number(p.status) === ProposalStatus.Shortlisted;
                     return (
                       <div
                         key={p.proposalsId}
@@ -339,13 +336,15 @@ export default function ClientProposalsScreen() {
                             {p.freelancerName || 'Applicant'}
                           </span>
                           <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                            isAccepted 
-                              ? 'bg-emerald-500/10 text-emerald-500' 
-                              : isRejected 
-                              ? 'bg-red-500/10 text-red-500' 
+                            isAccepted
+                              ? 'bg-emerald-500/10 text-emerald-500'
+                              : isRejected
+                              ? 'bg-red-500/10 text-red-500'
+                              : isShortlisted
+                              ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
                               : 'bg-amber-500/10 text-amber-500'
                           }`}>
-                            {isAccepted ? 'Accepted' : isRejected ? 'Rejected' : 'Pending'}
+                            {getStatusLabel(p.status)}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
@@ -395,15 +394,15 @@ export default function ClientProposalsScreen() {
 
                     {/* Proposal Action Buttons */}
                     <div className="flex items-center gap-3 mt-4 border-t border-border pt-6">
-                      {activeProposal.status === 2 ? (
+                      {Number(activeProposal.status) === ProposalStatus.Accepted ? (
                         <button
-                          onClick={() => handleGoToNegotiation(activeProposal)}
+                          disabled
                           className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm shadow-teal-500/10 active:scale-[0.98]"
                         >
-                          <ArrowRightLeft size={16} />
+                          <CheckCircle size={16} />
                           <span>Vào đàm phán</span>
                         </button>
-                      ) : activeProposal.status === 3 ? (
+                      ) : Number(activeProposal.status) === ProposalStatus.Rejected ? (
                         <div className="flex items-center gap-2 text-red-500 font-bold text-sm bg-red-500/5 px-4 py-2 rounded-xl border border-red-500/10">
                           <XCircle size={16} />
                           <span>Proposal Rejected</span>
@@ -411,14 +410,14 @@ export default function ClientProposalsScreen() {
                       ) : (
                         <>
                           <button
-                            onClick={() => updateProposalStatus(activeProposal.proposalsId, 2)}
+                            onClick={() => updateProposalStatus(activeProposal.proposalsId, ProposalStatus.Accepted)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
                           >
                             <CheckCircle size={16} />
                             Accept Proposal
                           </button>
                           <button
-                            onClick={() => updateProposalStatus(activeProposal.proposalsId, 3)}
+                            onClick={() => updateProposalStatus(activeProposal.proposalsId, ProposalStatus.Rejected)}
                             className="bg-transparent border border-border text-muted-foreground hover:text-red-500 hover:border-red-500/30 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
                           >
                             <XCircle size={16} />

@@ -1,7 +1,17 @@
-import { proposalHandlers } from '../../mock_backend';
+import { apiService } from '../../service/apiService';
+import type { ApiResponse } from '../../types/common';
+import type { UpdateProposalRequest } from '../../types/models/Proposal';
+
+const proposalsUrl = 'Proposals';
 
 export const proposalPutAPI = {
-  updateProposalStatus: async (id: string, status: string) => {
-    return await proposalHandlers.updateProposalStatus(id, status);
+  /**
+   * PUT /api/Proposals/{proposalId}
+   */
+  updateProposal: async (
+    proposalId: string,
+    data: UpdateProposalRequest
+  ): Promise<ApiResponse<boolean>> => {
+    return apiService.put<boolean>(`${proposalsUrl}/${proposalId}`, data);
   },
 };

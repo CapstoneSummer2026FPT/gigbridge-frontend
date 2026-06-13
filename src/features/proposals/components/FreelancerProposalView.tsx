@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { BarChart2, Briefcase, CheckCircle, Clock, Eye, FileText, Rocket } from 'lucide-react';
+import { BarChart2, Briefcase, Clock, Eye, FileText, Rocket } from 'lucide-react';
 import { ProposalCard } from './ProposalCard';
 import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
 import type { JobProposalGroup, ProposalDetailMode, ProposalStatusFilter } from '../types';
@@ -45,17 +45,18 @@ export function FreelancerProposalView({
       <div className="freelancer-proposals-toolbar">
         <div>
           <h2>My Proposals & Applications</h2>
-          <p>Sorted by submitted date, newest first. Accepted proposals link to their contract.</p>
+          <p>Sorted by submitted date, newest first.</p>
         </div>
         <label>
           <span>Filter by status</span>
           <select value={statusFilter} onChange={event => onStatusFilterChange(event.target.value as ProposalStatusFilter)}>
             <option value="all">All statuses</option>
-            <option value="0">Pending</option>
-            <option value="1">Shortlisted</option>
-            <option value="2">Accepted</option>
-            <option value="3">Rejected</option>
-            <option value="4">Withdrawn</option>
+            <option value="0">Draft</option>
+            <option value="1">Pending</option>
+            <option value="2">Shortlisted</option>
+            <option value="3">Accepted</option>
+            <option value="4">Rejected</option>
+            <option value="5">Withdrawn</option>
           </select>
         </label>
       </div>
@@ -74,7 +75,6 @@ export function FreelancerProposalView({
       ) : (
         <div className="freelancer-proposal-list">
           {sortedProposals.map(proposal => {
-            const accepted = getStatusLabel(proposal.status) === 'Accepted';
             const relatedJob = jobGroups.find(group => group.jobPostsId === proposal.jobPostsId);
 
             return (
@@ -126,12 +126,6 @@ export function FreelancerProposalView({
                     <FileText size={15} />
                     Proposal Details
                   </button>
-                  {accepted && (
-                    <button className="proposal-accepted-contract-btn" onClick={() => navigate('/contracts')}>
-                      <CheckCircle size={15} />
-                      View Contract
-                    </button>
-                  )}
                   {getStatusLabel(proposal.status) === 'Pending' && (
                     <button className="proposal-boost-btn" onClick={() => onBoost(proposal)}>
                       <Rocket size={15} />
