@@ -1,10 +1,14 @@
 export { jobGetAPI } from './GET';
 export { jobPostAPI } from './POST';
 export { jobPutAPI } from './PUT';
+export { jobPatchAPI } from './PATCH';
+export { jobDeleteAPI } from './DELETE';
 
 import { jobGetAPI } from './GET';
 import { jobPostAPI } from './POST';
 import { jobPutAPI } from './PUT';
+import { jobPatchAPI } from './PATCH';
+import { jobDeleteAPI } from './DELETE';
 
 export const jobAPI = {
   getPublicJobPosts: jobGetAPI.getPublicJobPosts,
@@ -12,6 +16,17 @@ export const jobAPI = {
   getAllJobPosts: jobGetAPI.getAllJobPosts,
   getMyJobPosts: jobGetAPI.getMyJobPosts,
   getMyAppliedJobPosts: jobGetAPI.getMyAppliedJobPosts,
+  getJobPostQuestions: jobGetAPI.getJobPostQuestions,
   createJobPost: jobPostAPI.createJobPost,
+  createJobPostQuestion: jobPostAPI.createJobPostQuestion,
+  createBulkJobPostQuestions: jobPostAPI.createBulkJobPostQuestions,
+  updateJobPostQuestion: jobPatchAPI.updateJobPostQuestion,
+  updateJobPostQuestionRequired: jobPatchAPI.updateJobPostQuestionRequired,
+  updateBulkJobPostQuestions: jobPatchAPI.updateBulkJobPostQuestions,
+  updateJobPostStatus: jobPatchAPI.updateJobPostStatus,
+  updateJobPostVisibility: jobPatchAPI.updateJobPostVisibility,
+  deleteJobPostQuestion: jobDeleteAPI.deleteJobPostQuestion,
   put: jobPutAPI,
+  patch: jobPatchAPI,
+  delete: jobDeleteAPI,
 };

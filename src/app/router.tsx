@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router';
+import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router';
 import { AppProvider, useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 
@@ -16,7 +16,8 @@ import PostJobScreen from '../features/jobs/screens/PostJobScreen';
 import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
-import ManageJobPostsScreen from '../features/jobs/screens/ManageJobPostsScreen';
+import MyJobsScreen from '../features/jobs/screens/MyJobsScreen';
+import ManageJobPostQuestionsScreen from '../features/jobs/screens/ManageJobPostQuestionsScreen';
 import EditJobPostScreen from '../features/jobs/screens/EditJobPostScreen';
 import SavedJobsScreen from '../features/jobs/screens/SavedJobsScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
@@ -25,6 +26,9 @@ import EditClientProfileScreen from '../features/profile/screens/EditClientProfi
 import EditFreelancerProfileScreen from '../features/profile/screens/EditFreelancerProfileScreen';
 import ManageFreelancerContentScreen from '../features/profile/screens/ManageFreelancerContentScreen';
 import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
+import CreateProposalScreen from '../features/proposals/screens/CreateProposalScreen';
+import ScreenProposalAnswerQuestion from '../features/proposals/screens/ScreenProposalAnswerQuestion';
+import ViewProposalAnswersScreen from '../features/proposals/screens/ViewProposalAnswersScreen';
 import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen';
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
 import MessagesScreen from '../features/messages/screens/MessagesScreen';
@@ -130,6 +134,11 @@ function ContractListRoute() {
   return role === UserRole.Freelancer ? <FreelancerContractScreen /> : <ManageContractScreen />;
 }
 
+function NavigateToProposalCreate() {
+  const { jobPostId } = useParams<{ jobPostId: string }>();
+  return <Navigate to={`/proposals/create/${jobPostId || ''}`} replace />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -157,9 +166,10 @@ export const router = createBrowserRouter([
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <BrowseJobsScreen /> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
-      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostsScreen /></ProtectedRoute> },
+      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
       { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup><EditJobPostScreen /></ProtectedRoute> },
+      { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
 
       // Profiles - requires authentication
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
@@ -170,6 +180,11 @@ export const router = createBrowserRouter([
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
+      { path: 'proposals/create/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><NavigateToProposalCreate /></ProtectedRoute> },
+      { path: 'proposals/:proposalId/edit', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'proposals/create/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ScreenProposalAnswerQuestion /></ProtectedRoute> },
+      { path: 'proposals/:proposalId/answers', element: <ProtectedRoute requireAuth requireSetup><ViewProposalAnswersScreen /></ProtectedRoute> },
 
       // Contracts - requires authentication and setup
       { path: 'contracts', element: <ProtectedRoute requireAuth requireSetup><ContractListRoute /></ProtectedRoute> },

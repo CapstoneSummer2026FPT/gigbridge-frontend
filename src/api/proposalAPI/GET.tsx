@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
+import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
 
@@ -26,6 +26,26 @@ export const proposalGetAPI = {
   },
 
   /**
+   * GET /api/Proposals/{proposalId}
+   * Proposal detail for the owning client or freelancer.
+   */
+  getProposalDetail: async (
+    proposalId: string
+  ): Promise<ApiResponse<ProposalDetailDto>> => {
+    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/${proposalId}`);
+  },
+
+  /**
+   * GET /api/Proposals/job/{jobPostId}/my-proposal
+   * Current freelancer's proposal for a job post.
+   */
+  getMyProposalByJobPost: async (
+    jobPostId: string
+  ): Promise<ApiResponse<ProposalDetailDto>> => {
+    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/job/${jobPostId}/my-proposal`);
+  },
+
+  /**
    * GET /api/Proposals/job/{jobPostId}/proposals
    * Client-only proposals for a job post.
    */
@@ -36,7 +56,17 @@ export const proposalGetAPI = {
     return apiService.get<ProposalDto[]>(`${proposalsUrl}/job/${jobPostId}/proposals`, params);
   },
 
-  // Older mock-only helpers are no longer backed by the current controller.
+  /**
+   * GET /api/Proposals/{proposalId}/answers
+   * Proposal answers visible to the owning client or freelancer.
+   */
+  getProposalAnswers: async (
+    proposalId: string
+  ): Promise<ApiResponse<ProposalAnswerDto[]>> => {
+    return apiService.get<ProposalAnswerDto[]>(`${proposalsUrl}/${proposalId}/answers`);
+  },
+
+  // Backward-compatible helpers for older screens.
   getProposals: async (filters?: { jobId?: string; freelancerId?: string; clientId?: string }) => {
     if (filters?.jobId) {
       return proposalGetAPI.getProposalsByJobPost(filters.jobId);
@@ -46,7 +76,7 @@ export const proposalGetAPI = {
   },
 
   getProposalById: async (id: string) => {
-    const response = await proposalGetAPI.getAllProposals();
-    return response.data?.find(proposal => proposal.proposalsId === id);
+    const response = await proposalGetAPI.getProposalDetail(id);
+    return response.data;
   },
 };
