@@ -55,6 +55,32 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     pollMs: 45000,
   });
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchWalletBalance = async () => {
+      if (!user || role === 2) {
+        setWalletBalance(0);
+        return;
+      }
+
+      const response = await walletGetAPI.getMyWallet();
+      if (isMounted && response.success && response.data) {
+        setWalletBalance(response.data.availableTokens);
+      }
+    };
+
+    void fetchWalletBalance();
+    const intervalId = window.setInterval(fetchWalletBalance, 30000);
+    window.addEventListener('gigbridge-wallet-updated', fetchWalletBalance);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('gigbridge-wallet-updated', fetchWalletBalance);
+    };
+  }, [location.pathname, location.search, role, user?.id]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchVal.trim()) navigate(`/jobs/browse?q=${encodeURIComponent(searchVal.trim())}`);
