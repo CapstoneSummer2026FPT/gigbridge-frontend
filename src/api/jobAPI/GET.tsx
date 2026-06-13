@@ -4,6 +4,7 @@ import type {
   Job,
   JobPostDetailDto,
   JobPostQueryParams,
+  JobPostQuestionDto,
   JobPostSummaryDto,
 } from '../../types/models/Job';
 
@@ -134,6 +135,14 @@ export const jobGetAPI = {
     params: JobPostQueryParams = {}
   ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
     return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/my-applications`, params);
+  },
+
+  /**
+   * GET /api/JobPosts/{jobPostId}/questions
+   * Questions attached to a job post.
+   */
+  getJobPostQuestions: async (jobPostId: string): Promise<ApiResponse<JobPostQuestionDto[]>> => {
+    return apiService.get<JobPostQuestionDto[]>(`${jobPostsUrl}/${jobPostId}/questions`);
   },
 
   // Backward-compatible aliases for older screens.

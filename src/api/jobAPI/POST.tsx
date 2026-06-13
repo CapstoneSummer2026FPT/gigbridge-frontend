@@ -1,6 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { CreateJobPostRequest } from '../../types/models/Job';
+import type {
+  CreateBulkJobPostQuestionsRequest,
+  CreateJobPostQuestionRequest,
+  CreateJobPostRequest,
+  JobPostQuestionDto,
+} from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
 
@@ -11,6 +16,28 @@ export const jobPostAPI = {
    */
   createJobPost: async (data: CreateJobPostRequest): Promise<ApiResponse<string>> => {
     return apiService.post<string>(jobPostsUrl, data);
+  },
+
+  /**
+   * POST /api/JobPosts/{jobPostId}/questions
+   * Client-only create one question for a draft job post.
+   */
+  createJobPostQuestion: async (
+    jobPostId: string,
+    data: CreateJobPostQuestionRequest
+  ): Promise<ApiResponse<JobPostQuestionDto>> => {
+    return apiService.post<JobPostQuestionDto>(`${jobPostsUrl}/${jobPostId}/questions`, data);
+  },
+
+  /**
+   * POST /api/JobPosts/{jobPostId}/questions/bulk
+   * Client-only bulk create questions for a draft job post.
+   */
+  createBulkJobPostQuestions: async (
+    jobPostId: string,
+    data: CreateBulkJobPostQuestionsRequest
+  ): Promise<ApiResponse<JobPostQuestionDto[]>> => {
+    return apiService.post<JobPostQuestionDto[]>(`${jobPostsUrl}/${jobPostId}/questions/bulk`, data);
   },
 
   // Backward-compatible alias for older screens/forms.
