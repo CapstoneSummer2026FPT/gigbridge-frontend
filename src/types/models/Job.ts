@@ -95,6 +95,28 @@ export interface JobPostSummaryDto {
   visibility?: JobPostVisibility | number | null;
 }
 
+export interface GetMyJobPostDto {
+  jobPostsId: string;
+  clientProfilesId: string;
+  title: string;
+  description: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string | null;
+  estimatedDuration?: string | null;
+  maxHires?: number | null;
+  location?: string | null;
+  status: JobPostStatus | number;
+  visibility?: JobPostVisibility | number | null;
+  endDate?: string | null;
+  isAigenerated?: boolean | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  proposalCount: number;
+}
+
 export interface JobPostSkillDto {
   skillsId: string;
   skillName: string;
@@ -124,6 +146,29 @@ export interface JobPostDetailDto {
   attachments: JobPostAttachmentDto[];
 }
 
+export interface GetMyJobPostDetailDto {
+  jobPostsId: string;
+  clientProfilesId: string;
+  title: string;
+  description: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string | null;
+  estimatedDuration?: string | null;
+  maxHires?: number | null;
+  location?: string | null;
+  visibility?: JobPostVisibility | number | null;
+  status: JobPostStatus | number;
+  endDate?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  skills: JobPostSkillDto[];
+  attachments: JobPostAttachmentDto[];
+  proposalCount: number;
+}
+
 export interface CreateJobPostRequest {
   title: string;
   description: string;
@@ -135,6 +180,26 @@ export interface CreateJobPostRequest {
   maxHires?: number | null;
   location?: string | null;
   visibility?: number | null;
+  endDate?: string | null;
+  skillIds: string[];
+}
+
+export interface CreateDraftJobPostResponse {
+  jobPostId: string;
+  status: JobPostStatus | number;
+}
+
+export interface UpdateJobPostRequest {
+  title: string;
+  description: string;
+  categoryId?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string | null;
+  estimatedDuration?: string | null;
+  maxHires?: number | null;
+  location?: string | null;
+  visibility: JobPostVisibility | number;
   endDate?: string | null;
   skillIds: string[];
 }

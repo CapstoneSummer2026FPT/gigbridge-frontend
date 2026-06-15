@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Video, Send, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText } from 'lucide-react';
+import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -11,39 +11,48 @@ import { userGetAPI } from '../../../api/userAPI/GET';
 import type { Job } from '../../../mock_backend/types/legacy';
 import type { User } from '../../../types/models/User';
 import { UserRole } from '../../../types/models/User';
+import { JobPostStatus, type GetMyJobPostDetailDto } from '../../../types/models/Job';
 import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import '../styles/job-detail-screen.css';
 
-type ManageJobPostState = {
-  id: string;
-  title: string;
-  description: string;
-  status: 'Draft' | 'Open' | 'Closed' | 'Cancelled';
-  budget: number;
-  duration: string;
-  skills: string[];
-  proposals: number;
-  createdAt: string;
+const formatPostedAt = (createdAt?: string): string => {
+  if (!createdAt) return '';
+
+  const createdTime = new Date(createdAt).getTime();
+  if (Number.isNaN(createdTime)) return createdAt;
+
+  const diffDays = Math.max(0, Math.floor((Date.now() - createdTime) / 86400000));
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return '1 day ago';
+  return `${diffDays} days ago`;
 };
 
-type JobLocationState = ManageJobPostState | Job;
+const toLegacyStatusFromJobPost = (status: number | string | null | undefined): Job['status'] => {
+  const value = Number(status);
+  if (value === JobPostStatus.Draft) return 'draft';
+  if (value === JobPostStatus.Open) return 'open';
+  if (value === JobPostStatus.Closed) return 'closed';
+  if (value === JobPostStatus.Cancelled) return 'cancelled';
+  return 'draft';
+};
 
-const toJobFromManageState = (job: ManageJobPostState): Job => ({
-  id: job.id,
-  clientId: '',
+const toJobFromClientDetail = (job: GetMyJobPostDetailDto): Job => ({
+  id: job.jobPostsId,
+  clientId: job.clientProfilesId,
   title: job.title,
   description: job.description,
-  category: 'All',
-  skills: job.skills,
-  budgetMin: job.budget,
-  budgetMax: job.budget,
+  category: job.categoryName || 'All',
+  skills: job.skills?.map(skill => skill.skillName) || [],
+  budgetMin: job.budgetMin ?? 0,
+  budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
-  status: job.status.toLowerCase() === 'cancelled' ? 'closed' : job.status.toLowerCase() as Job['status'],
-  proposalCount: job.proposals,
+  deadline: job.endDate ?? undefined,
+  status: toLegacyStatusFromJobPost(job.status),
+  proposalCount: job.proposalCount,
   viewCount: 0,
-  postedAt: job.createdAt,
-  isRemote: true,
+  postedAt: formatPostedAt(job.createdAt),
+  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
 });
 
@@ -51,11 +60,12 @@ const formatStatus = (status: Job['status']) =>
   status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
 export default function JobDetailScreen() {
-  const { id } = useParams();
+  const { id, jobPostId } = useParams<{ id?: string; jobPostId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, role } = useApp();
-  const fallbackJob = (location.state as { job?: JobLocationState } | null)?.job;
+  const activeJobPostId = jobPostId || id;
+  const isClientMode = location.pathname.startsWith('/jobs/my-jobs/');
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [showProposalForm, setShowProposalForm] = useState(false);
   const [proposalData, setProposalData] = useState({ coverLetter: '', bidAmount: '', deliveryDays: '' });
@@ -75,32 +85,49 @@ export default function JobDetailScreen() {
   // Fetch job details from API
   useEffect(() => {
     const fetchJobDetails = async () => {
-      if (!id) return;
+      if (!activeJobPostId) {
+        setJob(null);
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
-        const data = await jobGetAPI.getJobById(id);
+
+        if (isClientMode) {
+          const response = await jobGetAPI.getMyJobPostById(activeJobPostId);
+
+          if (!response.data) {
+            throw new Error(response.message || 'Job post not found');
+          }
+
+          setJob(toJobFromClientDetail(response.data));
+          setClient(null);
+          setClientProfile(null);
+          setSimilarJobs([]);
+          return;
+        }
+
+        const data = await jobGetAPI.getJobById(activeJobPostId);
         setJob(data.job);
         setClient(data.client || null);
         setClientProfile(data.clientProfile || null);
         
         // Fetch similar jobs
         const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
-        setSimilarJobs(allJobs.filter(j => j.id !== id).slice(0, 3));
+        setSimilarJobs(allJobs.filter(j => j.id !== activeJobPostId).slice(0, 3));
       } catch (error) {
         console.error('Failed to fetch job details:', error);
-        if (fallbackJob && fallbackJob.id === id) {
-          setJob('budgetMin' in fallbackJob ? fallbackJob : toJobFromManageState(fallbackJob));
-          setClient(null);
-          setClientProfile(null);
-          setSimilarJobs([]);
-        }
+        setJob(null);
+        setClient(null);
+        setClientProfile(null);
+        setSimilarJobs([]);
       } finally {
         setLoading(false);
       }
     };
     fetchJobDetails();
-  }, [id, fallbackJob]);
+  }, [activeJobPostId, isClientMode]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('gb_saved_jobs');
@@ -109,7 +136,7 @@ export default function JobDetailScreen() {
 
   useEffect(() => {
     const fetchMyProposal = async () => {
-      if (!id || role !== UserRole.Freelancer || !user) {
+      if (!activeJobPostId || isClientMode || role !== UserRole.Freelancer || !user) {
         setMyProposal(null);
         return;
       }
@@ -117,7 +144,7 @@ export default function JobDetailScreen() {
       try {
         setProposalLoading(true);
         setProposalMessage('');
-        const response = await proposalGetAPI.getMyProposalByJobPost(id);
+        const response = await proposalGetAPI.getMyProposalByJobPost(activeJobPostId);
 
         if (response.success && response.data) {
           setMyProposal(response.data);
@@ -136,7 +163,7 @@ export default function JobDetailScreen() {
     };
 
     fetchMyProposal();
-  }, [id, role, user]);
+  }, [activeJobPostId, isClientMode, role, user]);
 
   const toggleSavedJob = () => {
     if (!job) return;
@@ -257,8 +284,8 @@ export default function JobDetailScreen() {
       <AppLayout>
         <div className="max-w-6xl mx-auto text-center py-20">
           <p className="text-primary font-semibold">Job not found</p>
-          <button className="btn-cyan mt-4 px-4 py-2 text-sm" onClick={() => navigate('/jobs/my-jobs')}>
-            Back to My Jobs
+          <button className="btn-cyan mt-4 px-4 py-2 text-sm" onClick={() => navigate(isClientMode ? '/jobs/my-jobs' : '/jobs/browse')}>
+            {isClientMode ? 'Back to My Jobs' : 'Browse Jobs'}
           </button>
         </div>
       </AppLayout>
@@ -291,17 +318,19 @@ export default function JobDetailScreen() {
                     <div className="flex items-center gap-1"><Clock size={14} />Posted {job.postedAt}</div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="p-2 rounded-lg transition-all job-detail-client-card" onClick={toggleSavedJob}>
-                    <Bookmark size={16} fill={savedJobs.includes(job.id) ? 'currentColor' : 'none'} />
-                  </button>
-                  <button className="p-2 rounded-lg transition-all job-detail-client-card">
-                    <Share2 size={16} />
-                  </button>
-                </div>
+                {!isClientMode && (
+                  <div className="flex gap-2">
+                    <button className="p-2 rounded-lg transition-all job-detail-client-card" onClick={toggleSavedJob}>
+                      <Bookmark size={16} fill={savedJobs.includes(job.id) ? 'currentColor' : 'none'} />
+                    </button>
+                    <button className="p-2 rounded-lg transition-all job-detail-client-card">
+                      <Share2 size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {role === UserRole.Client && (
+              {isClientMode && role === UserRole.Client && (
                 <div className="job-detail-client-actions">
                   <button
                     className="job-detail-primary-action"
@@ -388,6 +417,7 @@ export default function JobDetailScreen() {
             </div>
 
             {/* Similar Jobs */}
+            {!isClientMode && (
             <div className="glass-card p-6">
               <h2 className="text-primary font-semibold mb-4">Similar Jobs</h2>
               <div className="space-y-3">
@@ -406,11 +436,13 @@ export default function JobDetailScreen() {
                 ))}
               </div>
             </div>
+            )}
           </div>
 
           {/* Right Sidebar */}
           <div className="space-y-5">
             {/* Client Info */}
+            {!isClientMode && (
             <div className="glass-card p-5">
               <h2 className="text-primary font-semibold mb-4 text-sm">About the Client</h2>
               <div className="flex items-center gap-3 mb-4">
@@ -454,6 +486,7 @@ export default function JobDetailScreen() {
                 View Client Profile
               </button>
             </div>
+            )}
 
             {/* Job Details Summary */}
             <div className="glass-card p-5">
@@ -475,7 +508,7 @@ export default function JobDetailScreen() {
             </div>
 
             {/* Apply Job Section */}
-            {role === UserRole.Freelancer && (
+            {!isClientMode && role === UserRole.Freelancer && (
               <div className="glass-card p-5">
                 <h2 className="text-primary font-semibold mb-4 text-sm">Apply to Job</h2>
                 {proposalMessage && (

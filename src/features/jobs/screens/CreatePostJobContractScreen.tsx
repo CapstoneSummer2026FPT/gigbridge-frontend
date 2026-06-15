@@ -128,7 +128,7 @@ export default function CreatePostJobContractScreen() {
   };
 
   const handleBack = () => {
-    navigate('/jobs/post', { state: { jobData } });
+    navigate('/jobs/post', { state: { jobData, jobPostId } });
   };
 
   const handleSubmit = async () => {

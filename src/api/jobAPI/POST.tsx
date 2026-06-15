@@ -2,6 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
   CreateBulkJobPostQuestionsRequest,
+  CreateDraftJobPostResponse,
   CreateJobPostQuestionRequest,
   CreateJobPostRequest,
   JobPostQuestionDto,
@@ -16,6 +17,14 @@ export const jobPostAPI = {
    */
   createJobPost: async (data: CreateJobPostRequest): Promise<ApiResponse<string>> => {
     return apiService.post<string>(jobPostsUrl, data);
+  },
+
+  /**
+   * POST /api/JobPosts/draft
+   * Client-only draft-first job post creation.
+   */
+  createDraftJobPost: async (): Promise<ApiResponse<CreateDraftJobPostResponse>> => {
+    return apiService.post<CreateDraftJobPostResponse>(`${jobPostsUrl}/draft`);
   },
 
   /**

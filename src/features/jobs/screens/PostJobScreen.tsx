@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import {
   Bot, Sparkles, X, Plus, ChevronRight,
@@ -7,7 +7,7 @@ import {
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
-import { JobPostStatus, JobPostVisibility, type CreateJobPostRequest } from '../../../types/models/Job';
+import { JobPostStatus, JobPostVisibility, type UpdateJobPostRequest } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
 
 const CATEGORIES = ['Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile', 'Video'];
@@ -32,15 +32,43 @@ interface QuestionInput {
 const createEmptyQuestions = (count: number, existing: QuestionInput[] = []): QuestionInput[] =>
   Array.from({ length: count }, (_, index) => existing[index] ?? { questionText: '', isRequired: true });
 
+let draftJobPostRequest: Promise<string> | null = null;
+
+const createDraftJobPostOnce = async (): Promise<string> => {
+  if (!draftJobPostRequest) {
+    draftJobPostRequest = jobAPI.createDraftJobPost()
+      .then(response => {
+        const data = response.data as any;
+        const jobPostId = data?.jobPostId ?? data?.JobPostId;
+
+        if (!response.success || !jobPostId) {
+          throw new Error(response.message || 'Draft JobPost could not be created.');
+        }
+
+        return String(jobPostId);
+      })
+      .finally(() => {
+        draftJobPostRequest = null;
+      });
+  }
+
+  return draftJobPostRequest;
+};
+
 export default function PostJobScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const initialJobData = location.state?.jobData;
+  const initialJobPostId = location.state?.jobPostId ? String(location.state.jobPostId) : null;
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [skillInput, setSkillInput] = useState('');
   const [submitMode, setSubmitMode] = useState<SubmitMode | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [jobPostId, setJobPostId] = useState<string | null>(initialJobPostId);
+  const [isDraftInitializing, setIsDraftInitializing] = useState(!initialJobPostId);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftRequestAttempt, setDraftRequestAttempt] = useState(0);
 
   const [form, setForm] = useState({
     title: initialJobData?.title || '',
@@ -69,12 +97,46 @@ export default function PostJobScreen() {
   const suggestedSkills = SKILLS_SUGGESTIONS[form.category] || [];
   const remainingSkills = suggestedSkills.filter(skill => !form.skills.includes(skill));
   const isSubmitting = submitMode !== null;
+  const isActionDisabled = isSubmitting || isDraftInitializing || !jobPostId;
 
   const previewTitle = form.title.trim() || 'Untitled Job Post';
   const questionsWithOrder = useMemo(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
     [questions]
   );
+
+  useEffect(() => {
+    if (jobPostId) {
+      setIsDraftInitializing(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsDraftInitializing(true);
+    setDraftError(null);
+
+    createDraftJobPostOnce()
+      .then(createdJobPostId => {
+        if (!isMounted) return;
+        setJobPostId(createdJobPostId);
+        setErrorMessage(null);
+      })
+      .catch(error => {
+        if (!isMounted) return;
+        const message = error instanceof Error ? error.message : 'Draft JobPost could not be created.';
+        setDraftError(message);
+        setErrorMessage(message);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsDraftInitializing(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [jobPostId, draftRequestAttempt]);
 
   const insertMarkdown = (before: string, after: string) => {
     setForm(prev => ({ ...prev, description: prev.description + before + after }));
@@ -144,7 +206,7 @@ export default function PostJobScreen() {
     return null;
   };
 
-  const buildCreateRequest = (): CreateJobPostRequest => ({
+  const buildUpdateRequest = (): UpdateJobPostRequest => ({
     title: form.title.trim(),
     description: form.description.trim(),
     categoryId: null,
@@ -159,7 +221,24 @@ export default function PostJobScreen() {
     skillIds: [],
   });
 
-  const submitCreateFlow = async (mode: SubmitMode) => {
+  const saveQuestions = async (currentJobPostId: string) => {
+    return jobAPI.createBulkJobPostQuestions(currentJobPostId, {
+      questions: questionsWithOrder.map(question => ({
+        questionText: question.questionText.trim(),
+        orderIndex: question.orderIndex,
+        isRequired: question.isRequired,
+      })),
+    });
+  };
+
+  const submitDraftFlow = async (mode: SubmitMode) => {
+    if (!jobPostId) {
+      const message = 'Draft JobPost is not ready yet.';
+      setErrorMessage(message);
+      toast.error(message);
+      return;
+    }
+
     const validationError = validateForm();
     if (validationError) {
       setErrorMessage(validationError);
@@ -170,26 +249,19 @@ export default function PostJobScreen() {
     setSubmitMode(mode);
     setErrorMessage(null);
 
-    const createResponse = await jobAPI.createJobPost(buildCreateRequest());
-    if (!createResponse.success || !createResponse.data) {
-      const message = createResponse.message || 'JobPost could not be created.';
+    const updateRequest = buildUpdateRequest();
+    const updateResponse = await jobAPI.updateJobPost(jobPostId, updateRequest);
+    if (!updateResponse.success) {
+      const message = updateResponse.message || 'JobPost could not be saved.';
       setErrorMessage(message);
       toast.error(message);
       setSubmitMode(null);
       return;
     }
 
-    const jobPostId = String(createResponse.data);
-    const questionsResponse = await jobAPI.createBulkJobPostQuestions(jobPostId, {
-      questions: questionsWithOrder.map(question => ({
-        questionText: question.questionText.trim(),
-        orderIndex: question.orderIndex,
-        isRequired: question.isRequired,
-      })),
-    });
-
+    const questionsResponse = await saveQuestions(jobPostId);
     if (!questionsResponse.success) {
-      const message = 'JobPost was created, but questions could not be saved. Please manage questions from My Jobs.';
+      const message = 'JobPost was saved, but questions could not be saved. Please manage questions from My Jobs.';
       setErrorMessage(message);
       toast.error(message);
       setSubmitMode(null);
@@ -199,7 +271,7 @@ export default function PostJobScreen() {
     if (mode === 'publish') {
       const publishResponse = await jobAPI.updateJobPostStatus(jobPostId, { status: JobPostStatus.Open });
       if (!publishResponse.success) {
-        const message = 'JobPost and questions were created, but publishing failed. Please publish it later from My Jobs.';
+        const message = 'JobPost and questions were saved, but publishing failed. Please publish it later from My Jobs.';
         setErrorMessage(message);
         toast.error(message);
         setSubmitMode(null);
@@ -212,7 +284,7 @@ export default function PostJobScreen() {
         state: {
           jobPostId,
           jobData: {
-            ...buildCreateRequest(),
+            ...updateRequest,
             category: form.category,
             skills: form.skills,
             deadline: form.deadline,
@@ -261,6 +333,25 @@ export default function PostJobScreen() {
         {errorMessage && (
           <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold">
             {errorMessage}
+          </div>
+        )}
+
+        {isDraftInitializing && (
+          <div className="mb-6 bg-[var(--gb-cyan)]/10 border border-[var(--gb-cyan)]/20 text-[var(--gb-cyan)] rounded-xl px-4 py-3 text-sm font-semibold">
+            Preparing draft...
+          </div>
+        )}
+
+        {draftError && !isDraftInitializing && !jobPostId && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <span>{draftError}</span>
+            <button
+              type="button"
+              onClick={() => setDraftRequestAttempt(attempt => attempt + 1)}
+              className="px-4 py-2 rounded-full font-bold text-xs bg-red-500 text-white hover:bg-red-600 transition-all cursor-pointer border-none"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -537,24 +628,24 @@ export default function PostJobScreen() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               type="button"
-              onClick={() => submitCreateFlow('draft')}
-              disabled={isSubmitting}
+              onClick={() => submitDraftFlow('draft')}
+              disabled={isActionDisabled}
               className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
             >
               <Save size={16} /> {renderSubmitLabel('draft', 'Save as Draft')}
             </button>
             <button
               type="button"
-              onClick={() => submitCreateFlow('publish')}
-              disabled={isSubmitting}
+              onClick={() => submitDraftFlow('publish')}
+              disabled={isActionDisabled}
               className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-purple)] text-white hover:bg-[var(--gb-purple)]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none"
             >
               <Send size={16} /> {renderSubmitLabel('publish', 'Publish')}
             </button>
             <button
               type="button"
-              onClick={() => submitCreateFlow('contract')}
-              disabled={isSubmitting}
+              onClick={() => submitDraftFlow('contract')}
+              disabled={isActionDisabled}
               className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
             >
               <Check size={16} />

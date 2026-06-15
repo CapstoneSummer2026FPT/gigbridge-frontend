@@ -167,6 +167,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/browse', element: <BrowseJobsScreen /> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/my-jobs/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><JobDetailScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
       { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup><EditJobPostScreen /></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
