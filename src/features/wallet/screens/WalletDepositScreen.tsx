@@ -36,11 +36,87 @@ export default function WalletDepositScreen() {
     }
   };
 
-  const finalAmount = customAmount ? parseFloat(customAmount) : selectedAmount;
-  const gigCoinsToReceive = calculateGigCoins(finalAmount, currency);
-  const newBalance = currentBalance + gigCoinsToReceive;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('result');
+    const status = params.get('status');
+    const isCancelled = result === 'cancel' || params.get('cancel') === 'true' || status === 'CANCELLED';
+    const fallbackOrderCode = window.localStorage.getItem(LAST_PAYOS_ORDER_CODE_KEY);
+    const orderCode = Number(params.get('orderCode') || fallbackOrderCode);
 
-  const depositAmounts = currency === 'VND' ? DEPOSIT_AMOUNTS_VND : DEPOSIT_AMOUNTS_USD;
+    if (result === 'success' && !isCancelled) {
+      setReturnSuccess(true);
+      if (Number.isSafeInteger(orderCode) && orderCode > 0) {
+        setReturnOrderCode(orderCode);
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    if (isCancelled) {
+      setErrorText('Thanh toán đã bị hủy bởi người dùng.');
+      window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
+      if (Number.isSafeInteger(orderCode) && orderCode > 0) {
+        walletPostAPI.syncPayOsTopUp({ orderCode }).catch(err => {
+          console.error('Failed to sync cancelled payment status:', err);
+        });
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchBalance();
+  }, []);
+
+  useEffect(() => {
+    if (!returnSuccess || !returnOrderCode || syncAttemptedRef.current === returnOrderCode) {
+      return;
+    }
+
+    syncAttemptedRef.current = returnOrderCode;
+
+    const syncReturnedTopUp = async () => {
+      setSyncingReturn(true);
+      setErrorText(null);
+
+      try {
+        let synced = false;
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const syncRes = await walletPostAPI.syncPayOsTopUp({ orderCode: returnOrderCode });
+          if (!syncRes.success) {
+            setErrorText(syncRes.message || 'Không thể đồng bộ giao dịch PayOS.');
+            break;
+          }
+
+          if (syncRes.data?.status === 1) {
+            synced = true;
+            window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
+            break;
+          }
+
+          if (attempt < 4) {
+            await new Promise(resolve => window.setTimeout(resolve, 3000));
+          }
+        }
+
+        await fetchBalance();
+        window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+
+        if (!synced) {
+          setErrorText('PayOS đã trả về thành công. Hệ thống đang chờ xác nhận giao dịch, vui lòng tải lại số dư sau ít phút.');
+        }
+      } catch (error) {
+        console.error('PayOS sync error:', error);
+        setErrorText(getErrorMessage(error, 'Không thể đồng bộ trạng thái thanh toán PayOS.'));
+      } finally {
+        setSyncingReturn(false);
+      }
+    };
+
+    void syncReturnedTopUp();
+  }, [returnSuccess, returnOrderCode]);
 
   const handleDeposit = async () => {
     setProcessing(true);
@@ -249,42 +325,16 @@ export default function WalletDepositScreen() {
                       <p className="text-sm font-semibold">Thẻ Tín Dụng / Ghi Nợ</p>
                       <p className="text-xs opacity-60">Visa, Mastercard, Amex</p>
                     </div>
-                  </button>
-
-                  <button
-                    onClick={() => setPaymentMethod('paypal')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                      paymentMethod === 'paypal'
-                        ? 'bg-cyan/20 text-cyan border-2 border-cyan'
-                        : 'glass-button text-secondary hover:bg-white/5'
-                    }`}
-                  >
-                    <Wallet size={20} />
-                    <div className="text-left flex-1">
-                      <p className="text-sm font-semibold">PayPal</p>
-                      <p className="text-xs opacity-60">Nhanh & bảo mật</p>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-primary">Thanh Toán Trực Tuyến</p>
+                      <p className="text-xs text-secondary mt-0.5">QR Code - Chuyển khoản ngân hàng - Ví điện tử</p>
                     </div>
-                  </button>
-
-                  <button
-                    onClick={() => setPaymentMethod('bank')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                      paymentMethod === 'bank'
-                        ? 'bg-cyan/20 text-cyan border-2 border-cyan'
-                        : 'glass-button text-secondary hover:bg-white/5'
-                    }`}
-                  >
-                    <DollarSign size={20} />
-                    <div className="text-left flex-1">
-                      <p className="text-sm font-semibold">Chuyển Khoản Ngân Hàng</p>
-                      <p className="text-xs opacity-60">2-3 ngày làm việc</p>
-                    </div>
-                  </button>
+                    <CheckCircle size={20} className="text-cyan" />
+                  </div>
                 </div>
               </div>
 
-              {/* Security Notice */}
-              <div className="bg-cyan/10 border border-cyan/20 rounded-lg p-4">
+              <div className="bg-cyan/10 borderthì  border-cyan/20 rounded-lg p-4">
                 <div className="flex gap-3">
                   <AlertCircle size={20} className="text-cyan flex-shrink-0 mt-0.5" />
                   <div>
