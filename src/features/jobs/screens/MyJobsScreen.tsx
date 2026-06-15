@@ -375,7 +375,7 @@ export default function MyJobsScreen() {
 
                     <hr className="mj-divider" style={{ margin: '16px 0' }} />
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <button onClick={() => navigate(`/jobs/${job.jobPostsId}`)} className="mj-action-btn mj-btn-cyan">
+                      <button onClick={() => navigate(`/jobs/my-jobs/${job.jobPostsId}`)} className="mj-action-btn mj-btn-cyan">
                         <Eye size={14} /> View Detail
                       </button>
                       <button onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)} className="mj-action-btn mj-btn-cyan">

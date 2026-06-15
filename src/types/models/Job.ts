@@ -146,6 +146,29 @@ export interface JobPostDetailDto {
   attachments: JobPostAttachmentDto[];
 }
 
+export interface GetMyJobPostDetailDto {
+  jobPostsId: string;
+  clientProfilesId: string;
+  title: string;
+  description: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string | null;
+  estimatedDuration?: string | null;
+  maxHires?: number | null;
+  location?: string | null;
+  visibility?: JobPostVisibility | number | null;
+  status: JobPostStatus | number;
+  endDate?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  skills: JobPostSkillDto[];
+  attachments: JobPostAttachmentDto[];
+  proposalCount: number;
+}
+
 export interface CreateJobPostRequest {
   title: string;
   description: string;

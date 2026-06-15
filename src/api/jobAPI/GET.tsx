@@ -2,6 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import { JobPostStatus } from '../../types/models/Job';
 import type {
+  GetMyJobPostDetailDto,
   GetMyJobPostDto,
   Job,
   JobPostDetailDto,
@@ -76,6 +77,25 @@ const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
   gigcoin_cost: 0,
 });
 
+const toLegacyJobFromMyJobDetail = (job: GetMyJobPostDetailDto): Job => ({
+  id: job.jobPostsId,
+  clientId: job.clientProfilesId,
+  title: job.title,
+  description: job.description,
+  category: job.categoryName || 'All',
+  skills: job.skills?.map(skill => skill.skillName) || [],
+  budgetMin: job.budgetMin ?? 0,
+  budgetMax: job.budgetMax ?? 0,
+  jobType: 'fixed',
+  deadline: job.endDate ?? undefined,
+  status: toLegacyStatusFromJobPost(job.status),
+  proposalCount: job.proposalCount,
+  viewCount: 0,
+  postedAt: formatPostedAt(job.createdAt),
+  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
+  gigcoin_cost: 0,
+});
+
 const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   id: job.jobPostsId,
   clientId: job.clientProfilesId,
@@ -133,8 +153,20 @@ export const jobGetAPI = {
    * GET /api/JobPosts/{id}
    * Public job post detail.
    */
-  getJobPostDetail: async (id: string): Promise<ApiResponse<JobPostDetailDto>> => {
+  getPublicJobById: async (id: string): Promise<ApiResponse<JobPostDetailDto>> => {
     return apiService.get<JobPostDetailDto>(`${jobPostsUrl}/${id}`);
+  },
+
+  getJobPostDetail: async (id: string): Promise<ApiResponse<JobPostDetailDto>> => {
+    return jobGetAPI.getPublicJobById(id);
+  },
+
+  /**
+   * GET /api/JobPosts/my-jobs/{jobPostId}
+   * Client-owned job post detail.
+   */
+  getMyJobPostById: async (jobPostId: string): Promise<ApiResponse<GetMyJobPostDetailDto>> => {
+    return apiService.get<GetMyJobPostDetailDto>(`${jobPostsUrl}/my-jobs/${jobPostId}`);
   },
 
   /**
@@ -182,7 +214,7 @@ export const jobGetAPI = {
   },
 
   getJobById: async (id: string): Promise<{ job: Job; client: null; clientProfile: null }> => {
-    const response = await jobGetAPI.getJobPostDetail(id);
+    const response = await jobGetAPI.getPublicJobById(id);
 
     if (!response.data) {
       throw new Error(response.message || 'Job post not found');
@@ -190,6 +222,20 @@ export const jobGetAPI = {
 
     return {
       job: toLegacyJobFromDetail(response.data),
+      client: null,
+      clientProfile: null,
+    };
+  },
+
+  getClientJobById: async (id: string): Promise<{ job: Job; client: null; clientProfile: null }> => {
+    const response = await jobGetAPI.getMyJobPostById(id);
+
+    if (!response.data) {
+      throw new Error(response.message || 'Job post not found');
+    }
+
+    return {
+      job: toLegacyJobFromMyJobDetail(response.data),
       client: null,
       clientProfile: null,
     };

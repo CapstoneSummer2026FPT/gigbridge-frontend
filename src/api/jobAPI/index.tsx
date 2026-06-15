@@ -12,7 +12,9 @@ import { jobDeleteAPI } from './DELETE';
 
 export const jobAPI = {
   getPublicJobPosts: jobGetAPI.getPublicJobPosts,
+  getPublicJobById: jobGetAPI.getPublicJobById,
   getJobPostDetail: jobGetAPI.getJobPostDetail,
+  getMyJobPostById: jobGetAPI.getMyJobPostById,
   getAllJobPosts: jobGetAPI.getAllJobPosts,
   getMyJobPosts: jobGetAPI.getMyJobPosts,
   getMyAppliedJobPosts: jobGetAPI.getMyAppliedJobPosts,
