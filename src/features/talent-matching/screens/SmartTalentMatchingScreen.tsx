@@ -226,7 +226,7 @@ export default function SmartTalentMatchingScreen() {
             </p>
           </div>
           
-          <div className="flex flex-col items-end gap-4 w-full md:w-auto shrink-0 font-sans">
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto shrink-0 font-sans">
             <div className="glass-panel p-1 rounded-full flex gap-1 shadow-sm w-full md:w-auto justify-center">
               <button
                 onClick={() => handleTabChange('all')}
@@ -290,6 +290,14 @@ export default function SmartTalentMatchingScreen() {
                 Saved Talent ({favorites.length})
               </button>
             </div>
+
+            <button
+              onClick={() => navigate('/jobs/post/questions')}
+              className="px-6 py-2.5 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
+            >
+              <Briefcase size={14} />
+              Post Job
+            </button>
           </div>
         </header>
 

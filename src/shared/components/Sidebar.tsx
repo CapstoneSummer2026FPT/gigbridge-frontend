@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, User, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown
+  ChevronDown, Wallet
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -40,7 +40,7 @@ function getClientNavItems(t: any): NavItem[] {
       label: 'Jobs',
       icon: <Briefcase size={18} />,
       children: [
-        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post', badge: 'AI', badgeType: 'cyan' },
+        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post/questions', badge: 'AI', badgeType: 'cyan' },
         { label: 'My Jobs', icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
       ],
     },
@@ -80,6 +80,14 @@ function getClientNavItems(t: any): NavItem[] {
       label: t('nav.marketInsights'),
       icon: <TrendingUp size={18} />,
       path: '/market-insights',
+    },
+    {
+      label: t('nav.wallet'),
+      icon: <Wallet size={18} />,
+      children: [
+        { label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+      ],
     },
     {
       label: 'Financial Overview',
@@ -131,6 +139,14 @@ function getFreelancerNavItems(t: any): NavItem[] {
       label: t('nav.marketInsights'),
       icon: <TrendingUp size={18} />,
       path: '/market-insights',
+    },
+    {
+      label: t('nav.wallet'),
+      icon: <Wallet size={18} />,
+      children: [
+        { label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+      ],
     },
     {
       label: 'Early Payout',

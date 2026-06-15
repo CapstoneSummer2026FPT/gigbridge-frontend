@@ -38,6 +38,24 @@ export interface ProposalQueryParams {
   PageSize?: number;
 }
 
+export interface CreateProposalRequest {
+  jobPostsId: string;
+  coverLetter?: string | null;
+  proposedBudget?: number | null;
+  proposedDuration?: string | null;
+}
+
+export interface UpdateProposalRequest {
+  coverLetter?: string | null;
+  proposedBudget?: number | null;
+  proposedDuration?: string | null;
+  status?: ProposalStatus | number;
+}
+
+export interface UpdateProposalStatusRequest {
+  status: ProposalStatus | number;
+}
+
 export interface ProposalDto {
   proposalsId: string;
   jobPostsId: string;
@@ -65,23 +83,6 @@ export interface ProposalDetailDto {
   submittedAt?: string | null;
   updatedAt?: string | null;
   isAigenerated?: boolean | null;
-}
-
-export interface CreateProposalRequest {
-  jobPostsId: string;
-  coverLetter: string;
-  proposedBudget: number;
-  proposedDuration?: string | null;
-}
-
-export interface UpdateProposalRequest {
-  coverLetter?: string | null;
-  proposedBudget: number;
-  proposedDuration?: string | null;
-}
-
-export interface UpdateProposalStatusRequest {
-  status: ProposalStatus | number;
 }
 
 export interface ProposalAnswerDto {

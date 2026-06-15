@@ -13,6 +13,7 @@ import ProfileSetupScreen from '../features/onboarding/screens/ProfileSetupScree
 import ClientDashboardScreen from '../features/dashboard/screens/ClientDashboardScreen';
 import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerDashboardScreen';
 import PostJobScreen from '../features/jobs/screens/PostJobScreen';
+import CreateJobPostQuestionsScreen from '../features/jobs/screens/CreateJobPostQuestionsScreen';
 import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
@@ -97,11 +98,11 @@ function NotFound() {
 
 /**
  * RootLayout - Critical component that wraps all routes with AppProvider
- * 
+ *
  * This ensures AppContext is available to all child routes through React Router's Outlet.
  * Structure: RootLayout > AppProvider > Outlet > [All Screen Components]
- * 
- * ⚠️ DO NOT move AppProvider outside of router tree or context will not propagate correctly!
+ *
+ * DO NOT move AppProvider outside of router tree or context will not propagate correctly!
  */
 function RootLayout() {
   return (
@@ -162,7 +163,9 @@ export const router = createBrowserRouter([
       { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
 
       // Jobs - requires authentication
+      { path: 'jobs/post/questions', element: <ProtectedRoute requireAuth requireSetup><CreateJobPostQuestionsScreen /></ProtectedRoute> },
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
+      { path: 'jobs/post/interview-questions', element: <Navigate to="/jobs/post/questions" replace /> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <BrowseJobsScreen /> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
@@ -190,13 +193,18 @@ export const router = createBrowserRouter([
       // Contracts - requires authentication and setup
       { path: 'contracts', element: <ProtectedRoute requireAuth requireSetup><ContractListRoute /></ProtectedRoute> },
       { path: 'contracts/create/:proposalId', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
+      { path: 'contracts/create', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/disputes/create', element: <ProtectedRoute requireAuth requireSetup><CreateDisputeScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/documents/:documentId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/manage', element: <ProtectedRoute requireAuth requireSetup><ManageContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup><ManageMilestonesScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones/:milestoneId/approve', element: <ProtectedRoute requireAuth requireSetup><ApproveMilestoneScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/milestones/:milestoneId/submit', element: <ProtectedRoute requireAuth requireSetup><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/deliverables/:milestoneId', element: <ProtectedRoute requireAuth requireSetup><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/signature', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
+      { path: 'freelancer/contracts', element: <ProtectedRoute requireAuth requireSetup><FreelancerContractScreen /></ProtectedRoute> },
 
       // Messages - requires authentication and setup
       { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><MessagesScreen /></ProtectedRoute> },
@@ -218,6 +226,7 @@ export const router = createBrowserRouter([
       { path: 'wallet/deposit', element: <ProtectedRoute requireAuth requireSetup><WalletDepositScreen /></ProtectedRoute> },
       { path: 'wallet/history', element: <ProtectedRoute requireAuth requireSetup><WalletHistoryScreen /></ProtectedRoute> },
       { path: 'wallet/payment-proof/:transactionId', element: <ProtectedRoute requireAuth requireSetup><UploadPaymentProofScreen /></ProtectedRoute> },
+      { path: 'wallet/upload-proof', element: <ProtectedRoute requireAuth requireSetup><UploadPaymentProofScreen /></ProtectedRoute> },
       { path: 'wallet/early-payout', element: <ProtectedRoute requireAuth requireSetup><EarlyPayoutScreen /></ProtectedRoute> },
       { path: 'buy-gigcoin', element: <ProtectedRoute requireAuth requireSetup><BuyGigcoinScreen /></ProtectedRoute> },
       { path: 'subscription', element: <ProtectedRoute requireAuth requireSetup><SubscriptionScreen /></ProtectedRoute> },
