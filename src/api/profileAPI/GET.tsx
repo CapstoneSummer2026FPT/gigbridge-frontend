@@ -15,7 +15,7 @@ export const profileGetAPI = {
   },
 
   getAllFreelancers: async (filters?: { skills?: string[]; availabilityStatus?: string; minRating?: number }) => {
-    return await apiService.get('Profile/freelancer', filters || {});
+    return await apiService.get<FreelancerProfileDetailDto[]>('Profile/freelancer', filters || {});
   },
 
   getCompanySizes: async () => {

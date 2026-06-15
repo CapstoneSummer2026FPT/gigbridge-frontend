@@ -89,6 +89,11 @@ export default function WalletDepositScreen() {
     if (isCancelled) {
       setErrorText('Thanh toán đã bị hủy bởi người dùng.');
       window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
+      if (Number.isSafeInteger(orderCode) && orderCode > 0) {
+        walletPostAPI.syncPayOsTopUp({ orderCode }).catch(err => {
+          console.error('Failed to sync cancelled payment status:', err);
+        });
+      }
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -337,27 +342,15 @@ export default function WalletDepositScreen() {
                       <QrCode size={24} className="text-cyan" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-primary">PayOS - Thanh Toán Trực Tuyến</p>
+                      <p className="text-sm font-bold text-primary">Thanh Toán Trực Tuyến</p>
                       <p className="text-xs text-secondary mt-0.5">QR Code - Chuyển khoản ngân hàng - Ví điện tử</p>
                     </div>
                     <CheckCircle size={20} className="text-cyan" />
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {[
-                    { icon: <QrCode size={14} />, label: 'QR Code' },
-                    { icon: <Building2 size={14} />, label: 'Ngân hàng' },
-                    { icon: <CreditCard size={14} />, label: 'Thẻ nội địa' },
-                  ].map(method => (
-                    <div key={method.label} className="flex items-center gap-1.5 p-2 rounded-lg border border-white/10 bg-white/5 text-xs text-secondary justify-center">
-                      {method.icon}
-                      {method.label}
-                    </div>
-                  ))}
-                </div>
               </div>
 
-              <div className="bg-cyan/10 border border-cyan/20 rounded-lg p-4">
+              <div className="bg-cyan/10 borderthì  border-cyan/20 rounded-lg p-4">
                 <div className="flex gap-3">
                   <AlertCircle size={20} className="text-cyan flex-shrink-0 mt-0.5" />
                   <div>
