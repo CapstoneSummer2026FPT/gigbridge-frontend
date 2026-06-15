@@ -1,43 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import {
-  Bot,
-  Sparkles,
-  X,
-  Plus,
-  Calendar,
-  Globe,
-  Upload,
-  Eye,
-  Save,
-  Rocket,
-  AlertCircle,
+  Bot, Sparkles, X, Plus, ChevronRight,
+  Bold, Italic, Underline, List, ListOrdered, Check, Save, Send
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobPostAPI, jobPutAPI, jobQuestionAPI } from '../../../api/jobAPI';
-import {
-  JobStatus,
-  type CreateJobPostQuestionRequest,
-  type CreateJobPostRequest,
-} from '../../../types/models/Job';
-import {
-  clearStoredCreateJobQuestions,
-  normalizeCreateJobQuestions,
-  readStoredCreateJobQuestions,
-} from '../utils/jobPostQuestionDraft';
+import { jobAPI } from '../../../api/jobAPI';
+import { JobPostStatus, JobPostVisibility, type UpdateJobPostRequest } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
 
-const CATEGORIES = [
-  'Web Development',
-  'Design',
-  'Data Science',
-  'Marketing',
-  'Writing',
-  'DevOps',
-  'Mobile',
-  'Video',
-];
+const CATEGORIES = ['Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile', 'Video'];
+const QUESTION_COUNTS = [6, 8, 10] as const;
+const MAX_QUESTION_LENGTH = 1000;
 
 const SKILLS_SUGGESTIONS: Record<string, string[]> = {
   'Web Development': ['React', 'TypeScript', 'Next.js', 'Node.js', 'GraphQL', 'Vue.js', 'Angular'],
@@ -47,740 +22,636 @@ const SKILLS_SUGGESTIONS: Record<string, string[]> = {
   Writing: ['Technical Writing', 'SEO', 'Content Strategy', 'Copywriting'],
 };
 
-const experienceLevelMap = {
-  entry: 0,
-  intermediate: 1,
-  expert: 2,
-} as const;
+type SubmitMode = 'draft' | 'publish' | 'contract';
 
-type SubmitIntent = 'draft' | 'publish';
+interface QuestionInput {
+  questionText: string;
+  isRequired: boolean;
+}
 
-type PostJobLocationState = {
-  questions?: CreateJobPostQuestionRequest[];
+const createEmptyQuestions = (count: number, existing: QuestionInput[] = []): QuestionInput[] =>
+  Array.from({ length: count }, (_, index) => existing[index] ?? { questionText: '', isRequired: true });
+
+let draftJobPostRequest: Promise<string> | null = null;
+
+const createDraftJobPostOnce = async (): Promise<string> => {
+  if (!draftJobPostRequest) {
+    draftJobPostRequest = jobAPI.createDraftJobPost()
+      .then(response => {
+        const data = response.data as any;
+        const jobPostId = data?.jobPostId ?? data?.JobPostId;
+
+        if (!response.success || !jobPostId) {
+          throw new Error(response.message || 'Draft JobPost could not be created.');
+        }
+
+        return String(jobPostId);
+      })
+      .finally(() => {
+        draftJobPostRequest = null;
+      });
+  }
+
+  return draftJobPostRequest;
 };
 
 export default function PostJobScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const initialJobData = location.state?.jobData;
+  const initialJobPostId = location.state?.jobPostId ? String(location.state.jobPostId) : null;
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [submitIntent, setSubmitIntent] = useState<SubmitIntent | null>(null);
-  const [submitError, setSubmitError] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
   const [skillInput, setSkillInput] = useState('');
+  const [submitMode, setSubmitMode] = useState<SubmitMode | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [jobPostId, setJobPostId] = useState<string | null>(initialJobPostId);
+  const [isDraftInitializing, setIsDraftInitializing] = useState(!initialJobPostId);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftRequestAttempt, setDraftRequestAttempt] = useState(0);
 
   const [form, setForm] = useState({
-    title: '',
-    category: 'Web Development',
-    description: '',
-    skills: [] as string[],
-    budgetMin: '',
-    budgetMax: '',
-    deadline: '',
-    jobType: 'fixed' as 'fixed' | 'hourly',
-    isRemote: true,
-    experienceLevel: 'intermediate' as 'entry' | 'intermediate' | 'expert',
+    title: initialJobData?.title || '',
+    category: initialJobData?.category || 'Web Development',
+    description: initialJobData?.description || '',
+    skills: initialJobData?.skills || [] as string[],
+    budgetMin: initialJobData?.budgetMin !== undefined ? String(initialJobData.budgetMin) : '',
+    budgetMax: initialJobData?.budgetMax !== undefined ? String(initialJobData.budgetMax) : '',
+    currency: initialJobData?.currency || 'USD',
+    estimatedDuration: initialJobData?.estimatedDuration || '',
+    maxHires: initialJobData?.maxHires !== undefined ? String(initialJobData.maxHires) : '',
+    location: initialJobData?.location || '',
+    visibility: String(initialJobData?.visibility ?? JobPostVisibility.Public),
+    deadline: initialJobData?.deadline || initialJobData?.endDate?.split?.('T')?.[0] || '',
   });
 
-  const pendingQuestions = useMemo(() => {
-    const routeQuestions = (location.state as PostJobLocationState | null)?.questions;
-
-    if (Array.isArray(routeQuestions) && routeQuestions.length > 0) {
-      return routeQuestions;
-    }
-
-    return readStoredCreateJobQuestions();
-  }, [location.state]);
-
-  const isSubmitting = submitIntent !== null;
-
-  useEffect(() => {
-    if (pendingQuestions.length === 0) {
-      navigate('/jobs/post/questions', { replace: true });
-    }
-  }, [navigate, pendingQuestions.length]);
+  const [questionCount, setQuestionCount] = useState<(typeof QUESTION_COUNTS)[number]>(6);
+  const [questions, setQuestions] = useState<QuestionInput[]>(() => {
+    const initialQuestions = initialJobData?.interviewQuestions?.map((question: any) => ({
+      questionText: question.questionText || question.question || '',
+      isRequired: question.isRequired ?? true,
+    })) || [];
+    return createEmptyQuestions(6, initialQuestions);
+  });
 
   const suggestedSkills = SKILLS_SUGGESTIONS[form.category] || [];
   const remainingSkills = suggestedSkills.filter(skill => !form.skills.includes(skill));
+  const isSubmitting = submitMode !== null;
+  const isActionDisabled = isSubmitting || isDraftInitializing || !jobPostId;
+
+  const previewTitle = form.title.trim() || 'Untitled Job Post';
+  const questionsWithOrder = useMemo(
+    () => questions.map((question, index) => ({ ...question, orderIndex: index })),
+    [questions]
+  );
+
+  useEffect(() => {
+    if (jobPostId) {
+      setIsDraftInitializing(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsDraftInitializing(true);
+    setDraftError(null);
+
+    createDraftJobPostOnce()
+      .then(createdJobPostId => {
+        if (!isMounted) return;
+        setJobPostId(createdJobPostId);
+        setErrorMessage(null);
+      })
+      .catch(error => {
+        if (!isMounted) return;
+        const message = error instanceof Error ? error.message : 'Draft JobPost could not be created.';
+        setDraftError(message);
+        setErrorMessage(message);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsDraftInitializing(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [jobPostId, draftRequestAttempt]);
+
+  const insertMarkdown = (before: string, after: string) => {
+    setForm(prev => ({ ...prev, description: prev.description + before + after }));
+  };
+
+  const addSkill = (skill: string) => {
+    if (!form.skills.includes(skill) && form.skills.length < 10) {
+      setForm(prev => ({ ...prev, skills: [...prev.skills, skill] }));
+    }
+    setSkillInput('');
+  };
+
+  const removeSkill = (skill: string) => {
+    setForm(prev => ({ ...prev, skills: prev.skills.filter(item => item !== skill) }));
+  };
 
   const generateDescription = async () => {
     if (!form.title || !form.category) return;
 
     setIsGenerating(true);
-
-    try {
-      const response = await jobPostAPI.generateAIDescription();
-
-      if (!response.success) {
-        alert(response.message || 'AI job description generation is not available yet.');
-      }
-    } catch (error) {
-      console.error('Failed to generate description:', error);
-      alert('AI job description generation is not available yet.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const addSkill = (skill: string) => {
-    const value = skill.trim();
-
-    if (!value) return;
-
-    if (!form.skills.includes(value) && form.skills.length < 10) {
-      setForm(prev => ({
-        ...prev,
-        skills: [...prev.skills, value],
-      }));
-    }
-
-    setSkillInput('');
-  };
-
-  const removeSkill = (skill: string) => {
+    const skillsText = form.skills.length > 0 ? ` Required skills: ${form.skills.join(', ')}.` : '';
     setForm(prev => ({
       ...prev,
-      skills: prev.skills.filter(item => item !== skill),
+      description: `We are looking for a skilled ${form.category.toLowerCase()} professional for ${form.title}. Describe your relevant experience, delivery approach, timeline expectations, and examples of similar work.${skillsText}`,
     }));
+    setIsGenerating(false);
   };
 
-  const buildCreateJobPostRequest = (): CreateJobPostRequest => {
-    return {
-      title: form.title.trim(),
-      description: form.description.trim(),
-
-      // Backend currently expects Guid? CategoryId.
-      // Current UI only has category name, so send null for now.
-      categoryId: null,
-
-      budgetMin: form.budgetMin ? Number(form.budgetMin) : null,
-      budgetMax: form.budgetMax ? Number(form.budgetMax) : null,
-      currency: 'USD',
-
-      estimatedDuration: null,
-      maxHires: 1,
-
-      // Enum LocationType: 0=Remote, 1=OnSite, 2=Hybrid
-      locationType: form.isRemote ? 0 : 1,
-      location: form.isRemote ? 'Remote' : 'Onsite',
-
-      // Enum JobPostVisibility: 0=Public, 1=Private, 2=InviteOnly
-      visibility: 0,
-
-      endDate: form.deadline
-        ? new Date(form.deadline).toISOString()
-        : null,
-
-      // Backend expects Guid[] SkillIds.
-      // Current UI only stores skill names, so send empty array for now.
-      skillIds: [],
-    };
+  const handleQuestionCountChange = (count: (typeof QUESTION_COUNTS)[number]) => {
+    setQuestionCount(count);
+    setQuestions(prev => createEmptyQuestions(count, prev));
   };
 
-  const setSubmissionError = (message: string) => {
-    setSubmitError(message);
-    toast.error(message);
+  const updateQuestion = (index: number, patch: Partial<QuestionInput>) => {
+    setQuestions(prev => prev.map((question, idx) => idx === index ? { ...question, ...patch } : question));
   };
 
   const validateForm = () => {
-    if (!form.title || !form.category || !form.description) {
-      setSubmissionError('Please fill in all required fields.');
-      return false;
-    }
+    if (!form.title.trim()) return 'Job title is required.';
+    if (form.title.trim().length > 200) return 'Job title must not exceed 200 characters.';
+    if (!form.description.trim()) return 'Job description is required.';
 
     const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
     const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
 
-    if (budgetMin !== null && Number.isNaN(budgetMin)) {
-      setSubmissionError('Budget min is invalid.');
-      return false;
+    if (budgetMin !== null && (Number.isNaN(budgetMin) || budgetMin < 0)) return 'Budget min must be greater than or equal to 0.';
+    if (budgetMax !== null && (Number.isNaN(budgetMax) || budgetMax < 0)) return 'Budget max must be greater than or equal to 0.';
+    if (budgetMin !== null && budgetMax !== null && budgetMax < budgetMin) return 'Budget max must be greater than or equal to budget min.';
+
+    const maxHires = form.maxHires ? Number(form.maxHires) : null;
+    if (maxHires !== null && (!Number.isInteger(maxHires) || maxHires <= 0)) return 'Max hires must be a positive whole number.';
+
+    if (form.deadline) {
+      const endDate = new Date(`${form.deadline}T23:59:59`);
+      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) return 'End date must be in the future.';
     }
 
-    if (budgetMax !== null && Number.isNaN(budgetMax)) {
-      setSubmissionError('Budget max is invalid.');
-      return false;
+    const orderIndexes = questionsWithOrder.map(question => question.orderIndex);
+    if (new Set(orderIndexes).size !== orderIndexes.length) return 'Question order indexes must be unique.';
+
+    for (const question of questionsWithOrder) {
+      if (!question.questionText.trim()) return 'Every question must have non-empty text.';
+      if (question.questionText.length > MAX_QUESTION_LENGTH) return 'Question text must not exceed 1000 characters.';
+      if (!Number.isInteger(question.orderIndex) || question.orderIndex < 0) return 'Question order index must be valid.';
     }
 
-    if (budgetMin !== null && budgetMax !== null && budgetMin > budgetMax) {
-      setSubmissionError('Budget min must be less than or equal to budget max.');
-      return false;
-    }
-
-    if (![6, 8, 10].includes(pendingQuestions.length)) {
-      setSubmissionError('Please create 6, 8, or 10 questions before continuing.');
-      return false;
-    }
-
-    const normalizedQuestions = normalizeCreateJobQuestions(pendingQuestions);
-
-    if (normalizedQuestions.some(question => !question.questionText)) {
-      setSubmissionError('All JobPost questions must be filled.');
-      return false;
-    }
-
-    if (normalizedQuestions.some(question => question.questionText.length > 1000)) {
-      setSubmissionError('QuestionText must not exceed 1000 characters.');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (intent: SubmitIntent) => {
-    if (!validateForm()) return;
-
-    const normalizedQuestions = normalizeCreateJobQuestions(pendingQuestions);
-
-    try {
-      setSubmitIntent(intent);
-      setSubmitError('');
-
-      const request = buildCreateJobPostRequest();
-      const response = await jobPostAPI.createJobPost(request);
-
-      if (!response.success || !response.data) {
-        setSubmissionError(response.message || 'Failed to create JobPost.');
-        return;
-      }
-
-      const jobPostId = response.data;
-      const questionsResponse = await jobQuestionAPI.createBulkJobPostQuestions(jobPostId, {
-        questions: normalizedQuestions,
-      });
-
-      if (!questionsResponse.success) {
-        setSubmissionError(
-          questionsResponse.message
-            || 'JobPost was created, but questions could not be saved. You can manage questions from My Jobs.'
-        );
-        return;
-      }
-
-      if (intent === 'publish') {
-        const publishResponse = await jobPutAPI.updateJobPostStatus(jobPostId, {
-          status: JobStatus.Open,
-        });
-
-        if (!publishResponse.success) {
-          setSubmissionError(
-            publishResponse.message
-              || 'JobPost and questions were created, but publishing failed. The JobPost may still be in Draft status.'
-          );
-          return;
-        }
-      }
-
-      clearStoredCreateJobQuestions();
-      toast.success(intent === 'publish'
-        ? 'JobPost published successfully.'
-        : 'JobPost saved as draft successfully.');
-      navigate('/jobs/my-jobs');
-    } catch (error) {
-      console.error('Failed to create job post:', error);
-      setSubmissionError('Failed to create JobPost.');
-    } finally {
-      setSubmitIntent(null);
-    }
-  };
-
-  if (pendingQuestions.length === 0) {
     return null;
-  }
+  };
+
+  const buildUpdateRequest = (): UpdateJobPostRequest => ({
+    title: form.title.trim(),
+    description: form.description.trim(),
+    categoryId: null,
+    budgetMin: form.budgetMin ? Number(form.budgetMin) : null,
+    budgetMax: form.budgetMax ? Number(form.budgetMax) : null,
+    currency: form.currency.trim() || 'USD',
+    estimatedDuration: form.estimatedDuration.trim() || null,
+    maxHires: form.maxHires ? Number(form.maxHires) : null,
+    location: form.location.trim() || null,
+    visibility: Number(form.visibility),
+    endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
+    skillIds: [],
+  });
+
+  const saveQuestions = async (currentJobPostId: string) => {
+    return jobAPI.createBulkJobPostQuestions(currentJobPostId, {
+      questions: questionsWithOrder.map(question => ({
+        questionText: question.questionText.trim(),
+        orderIndex: question.orderIndex,
+        isRequired: question.isRequired,
+      })),
+    });
+  };
+
+  const submitDraftFlow = async (mode: SubmitMode) => {
+    if (!jobPostId) {
+      const message = 'Draft JobPost is not ready yet.';
+      setErrorMessage(message);
+      toast.error(message);
+      return;
+    }
+
+    const validationError = validateForm();
+    if (validationError) {
+      setErrorMessage(validationError);
+      toast.error(validationError);
+      return;
+    }
+
+    setSubmitMode(mode);
+    setErrorMessage(null);
+
+    const updateRequest = buildUpdateRequest();
+    const updateResponse = await jobAPI.updateJobPost(jobPostId, updateRequest);
+    if (!updateResponse.success) {
+      const message = updateResponse.message || 'JobPost could not be saved.';
+      setErrorMessage(message);
+      toast.error(message);
+      setSubmitMode(null);
+      return;
+    }
+
+    const questionsResponse = await saveQuestions(jobPostId);
+    if (!questionsResponse.success) {
+      const message = 'JobPost was saved, but questions could not be saved. Please manage questions from My Jobs.';
+      setErrorMessage(message);
+      toast.error(message);
+      setSubmitMode(null);
+      return;
+    }
+
+    if (mode === 'publish') {
+      const publishResponse = await jobAPI.updateJobPostStatus(jobPostId, { status: JobPostStatus.Open });
+      if (!publishResponse.success) {
+        const message = 'JobPost and questions were saved, but publishing failed. Please publish it later from My Jobs.';
+        setErrorMessage(message);
+        toast.error(message);
+        setSubmitMode(null);
+        return;
+      }
+    }
+
+    if (mode === 'contract') {
+      navigate('/jobs/post/contract', {
+        state: {
+          jobPostId,
+          jobData: {
+            ...updateRequest,
+            category: form.category,
+            skills: form.skills,
+            deadline: form.deadline,
+            interviewQuestions: questionsWithOrder,
+          },
+        },
+      });
+      return;
+    }
+
+    toast.success(mode === 'publish' ? 'JobPost published successfully.' : 'JobPost saved as draft.');
+    navigate('/jobs/my-jobs');
+  };
+
+  const renderSubmitLabel = (mode: SubmitMode, label: string) => submitMode === mode ? 'Submitting...' : label;
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <p className="post-job-header-subtitle text-sm mb-1">Step 2 of 2</p>
-          <h1 className="post-job-header text-3xl font-black text-primary">
-            Describe Your Project
-          </h1>
-          <p className="post-job-header-description mt-2">
-            Complete the JobPost details, then save it as Draft or publish it after questions are saved.
-          </p>
+      <div className="max-w-[1440px] mx-auto px-6 py-8 relative">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(159,75,255,0.02),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(0,119,255,0.02),transparent_50%)] opacity-50 pointer-events-none" />
+
+        <div className="flex flex-col gap-6 items-center mb-8">
+          <div className="flex justify-center w-full">
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground text-center uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
+          </div>
+
+          <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm">1</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">Step 1</span>
+                <span className="text-xs text-foreground font-bold">Project Details</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex items-center gap-3 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">2</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 2</span>
+                <span className="text-xs text-muted-foreground font-bold">Contract Setup</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {submitError && (
-          <div className="glass-card p-4 mb-6 flex items-start gap-3">
-            <AlertCircle size={18} className="text-red flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red">{submitError}</p>
+        {errorMessage && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold">
+            {errorMessage}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
-          <div className="lg:col-span-2 space-y-5">
-            {/* Job Title */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-2">
-                Job Title *
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Senior React Developer for E-commerce Platform"
-                value={form.title}
-                onChange={event => setForm({ ...form, title: event.target.value })}
-                className="input-gb w-full px-4 py-3"
-              />
-              <p className="input-hint text-xs mt-2">
-                Be specific — better titles attract better candidates
-              </p>
-            </div>
+        {isDraftInitializing && (
+          <div className="mb-6 bg-[var(--gb-cyan)]/10 border border-[var(--gb-cyan)]/20 text-[var(--gb-cyan)] rounded-xl px-4 py-3 text-sm font-semibold">
+            Preparing draft...
+          </div>
+        )}
 
-            {/* Category */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Category *
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(category => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setForm({ ...form, category })}
-                    className={`category-btn px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                      form.category === category ? 'active' : ''
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
+        {draftError && !isDraftInitializing && !jobPostId && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <span>{draftError}</span>
+            <button
+              type="button"
+              onClick={() => setDraftRequestAttempt(attempt => attempt + 1)}
+              className="px-4 py-2 rounded-full font-bold text-xs bg-red-500 text-white hover:bg-red-600 transition-all cursor-pointer border-none"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-7 flex flex-col gap-6 bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">Job Details</h2>
+
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Senior Frontend Engineer"
+                  value={form.title}
+                  onChange={event => setForm({ ...form, title: event.target.value })}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
+                />
               </div>
-            </div>
 
-            {/* Skills */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Required Skills
-              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={event => setForm({ ...form, category: event.target.value })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground"
+                  >
+                    {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground">Category is shown locally until category IDs are exposed by the backend.</p>
+                </div>
 
-              <div className="flex flex-wrap gap-2 mb-3">
-                {form.skills.map(skill => (
-                  <span key={skill} className="flex items-center gap-1 badge-cyan">
-                    {skill}
-                    <button
-                      type="button"
-                      onClick={() => removeSkill(skill)}
-                      className="hover:opacity-70"
-                    >
-                      <X size={10} />
-                    </button>
-                  </span>
-                ))}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visibility</label>
+                  <select
+                    value={form.visibility}
+                    onChange={event => setForm({ ...form, visibility: event.target.value })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground"
+                  >
+                    <option value={JobPostVisibility.Public}>Public</option>
+                    <option value={JobPostVisibility.Private}>Private</option>
+                    <option value={JobPostVisibility.InviteOnly}>Invite Only</option>
+                  </select>
+                </div>
+              </div>
 
-                <div className="relative">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
+                <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
+                  {form.skills.map(skill => (
+                    <span key={skill} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      {skill}
+                      <button type="button" onClick={() => removeSkill(skill)} className="hover:text-red-500 transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center">
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
                   <input
                     type="text"
+                    placeholder="Add a skill..."
                     value={skillInput}
                     onChange={event => setSkillInput(event.target.value)}
                     onKeyDown={event => {
-                      if (event.key === 'Enter' && skillInput.trim()) {
+                      if (event.key === 'Enter') {
                         event.preventDefault();
-                        addSkill(skillInput);
+                        if (skillInput.trim()) addSkill(skillInput.trim());
                       }
                     }}
-                    placeholder="+ Add skill"
-                    className="input-gb px-3 py-1 text-sm w-28"
+                    className="flex-grow bg-transparent border-none focus:ring-0 px-2 py-1 text-sm min-w-[150px] outline-none text-foreground"
+                  />
+                </div>
+                {remainingSkills.length > 0 && (
+                  <div className="mt-1">
+                    <p className="text-[10px] text-muted-foreground mb-2">Suggested for {form.category}:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {remainingSkills.slice(0, 5).map(skill => (
+                        <button
+                          key={skill}
+                          type="button"
+                          onClick={() => addSkill(skill)}
+                          className="flex items-center gap-1 tag-pill text-xs px-2.5 py-1 rounded-full bg-muted hover:bg-muted/80 text-foreground transition-all cursor-pointer border-none"
+                        >
+                          <Plus size={10} /> {skill}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Description *</label>
+                  <button
+                    type="button"
+                    onClick={generateDescription}
+                    disabled={isGenerating || !form.title || !form.category}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] border border-[var(--gb-cyan)]/20 hover:bg-[var(--gb-cyan)]/20 transition-all disabled:opacity-40 cursor-pointer"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-[var(--gb-cyan)] border-t-transparent animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Bot size={13} />
+                        <Sparkles size={11} />
+                        Draft Description
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="border border-border rounded-xl overflow-hidden shadow-sm flex flex-col bg-background focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
+                  <div className="bg-muted/30 border-b border-border px-3 py-2 flex items-center gap-1.5">
+                    <button className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center" type="button" onClick={() => insertMarkdown('**', '**')} title="Bold"><Bold size={14} /></button>
+                    <button className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center" type="button" onClick={() => insertMarkdown('*', '*')} title="Italic"><Italic size={14} /></button>
+                    <button className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center" type="button" onClick={() => insertMarkdown('<u>', '</u>')} title="Underline"><Underline size={14} /></button>
+                    <div className="w-[1px] h-4 bg-border mx-1" />
+                    <button className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center" type="button" onClick={() => insertMarkdown('\n- ', '')} title="Bullet List"><List size={14} /></button>
+                    <button className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center" type="button" onClick={() => insertMarkdown('\n1. ', '')} title="Numbered List"><ListOrdered size={14} /></button>
+                  </div>
+                  <textarea
+                    value={form.description}
+                    onChange={event => setForm({ ...form, description: event.target.value })}
+                    placeholder="Describe the role, responsibilities, and ideal candidate..."
+                    rows={6}
+                    className="w-full bg-transparent border-none px-4 py-3 text-sm placeholder:text-muted-foreground focus:ring-0 resize-y min-h-[150px] outline-none leading-relaxed text-foreground"
                   />
                 </div>
               </div>
 
-              {remainingSkills.length > 0 && (
-                <div>
-                  <p className="input-hint text-xs mb-2">
-                    Suggested for {form.category}:
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {remainingSkills.slice(0, 5).map(skill => (
-                      <button
-                        key={skill}
-                        type="button"
-                        onClick={() => addSkill(skill)}
-                        className="flex items-center gap-1 tag-pill text-xs"
-                      >
-                        <Plus size={10} />
-                        {skill}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Description with AI Generator */}
-            <div className="glass-card p-5">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-primary text-sm font-semibold">
-                  Job Description *
-                </label>
-
-                <button
-                  type="button"
-                  onClick={generateDescription}
-                  disabled={isGenerating || !form.title || !form.category}
-                  className="ai-generate-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40"
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="ai-generate-spinner w-4 h-4 rounded-full border-2 border-[#0077FF] border-t-transparent animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Bot size={14} />
-                      <Sparkles size={12} />
-                      AI Generate
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <textarea
-                value={form.description}
-                onChange={event => setForm({ ...form, description: event.target.value })}
-                placeholder="Describe your project requirements, deliverables, and expectations..."
-                rows={12}
-                className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed"
-              />
-
-              {form.description && (
-                <div className="ai-generated-indicator flex items-center gap-2 mt-2">
-                  <Bot size={12} />
-                  <p className="text-xs">
-                    AI-generated description — review and customize as needed
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Budget */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Budget
-              </label>
-
-              <div className="flex gap-3 mb-4">
-                {(['fixed', 'hourly'] as const).map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setForm({ ...form, jobType: type })}
-                    className={`budget-type-btn flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all ${
-                      form.jobType === type ? 'active' : ''
-                    }`}
-                  >
-                    {type === 'fixed' ? '💰 Fixed Price' : '⏱️ Hourly Rate'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Budget Min</label>
                   <input
                     type="number"
-                    placeholder="Min"
+                    min="0"
+                    placeholder="Minimum budget"
                     value={form.budgetMin}
                     onChange={event => setForm({ ...form, budgetMin: event.target.value })}
-                    className="input-gb w-full px-4 py-3"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
                   />
                 </div>
-
-                <div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Budget Max</label>
                   <input
                     type="number"
-                    placeholder="Max"
+                    min="0"
+                    placeholder="Maximum budget"
                     value={form.budgetMax}
                     onChange={event => setForm({ ...form, budgetMax: event.target.value })}
-                    className="input-gb w-full px-4 py-3"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Deadline & Location */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="glass-card p-5">
-                <label className="text-primary text-sm font-semibold block mb-3">
-                  Deadline
-                </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Currency</label>
+                  <input
+                    type="text"
+                    value={form.currency}
+                    onChange={event => setForm({ ...form, currency: event.target.value.toUpperCase().slice(0, 3) })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estimated Duration</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2-4 weeks"
+                    value={form.estimatedDuration}
+                    onChange={event => setForm({ ...form, estimatedDuration: event.target.value })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Max Hires</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    value={form.maxHires}
+                    onChange={event => setForm({ ...form, maxHires: event.target.value })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
+                  />
+                </div>
+              </div>
 
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Location</label>
+                  <input
+                    type="text"
+                    placeholder="Remote, Ho Chi Minh City, ..."
+                    value={form.location}
+                    onChange={event => setForm({ ...form, location: event.target.value })}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</label>
                   <input
                     type="date"
                     value={form.deadline}
                     onChange={event => setForm({ ...form, deadline: event.target.value })}
-                    className="input-gb w-full px-4 py-3 text-sm"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground"
                   />
                 </div>
               </div>
-
-              <div className="glass-card p-5">
-                <label className="text-primary text-sm font-semibold block mb-3">
-                  Work Type
-                </label>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, isRemote: true })}
-                    className={`work-type-btn flex-1 py-2 rounded-xl text-sm transition-all ${
-                      form.isRemote ? 'active' : ''
-                    }`}
-                  >
-                    <Globe size={12} className="inline mr-1" />
-                    Remote
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, isRemote: false })}
-                    className={`work-type-btn flex-1 py-2 rounded-xl text-sm transition-all ${
-                      !form.isRemote ? 'active' : ''
-                    }`}
-                  >
-                    Onsite
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Experience Level */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Experience Level
-              </label>
-
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { value: 'entry', label: 'Entry', sub: '$10–$40/hr', emoji: '🌱' },
-                  { value: 'intermediate', label: 'Mid-Level', sub: '$40–$80/hr', emoji: '⚡' },
-                  { value: 'expert', label: 'Expert', sub: '$80–$200/hr', emoji: '🚀' },
-                ].map(level => (
-                  <button
-                    key={level.value}
-                    type="button"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        experienceLevel: level.value as 'entry' | 'intermediate' | 'expert',
-                      })
-                    }
-                    className={`experience-level-btn p-3 rounded-xl text-center transition-all ${
-                      form.experienceLevel === level.value ? 'active' : ''
-                    }`}
-                  >
-                    <span className="experience-level-emoji text-xl mb-1 block">
-                      {level.emoji}
-                    </span>
-                    <p className="text-primary text-sm font-medium">
-                      {level.label}
-                    </p>
-                    <p className="experience-level-sub text-xs">
-                      {level.sub}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Attachments */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Attachments <span className="input-hint">(optional)</span>
-              </label>
-
-              <div className="upload-zone">
-                <Upload size={24} className="upload-icon mx-auto mb-2" />
-                <p className="upload-text text-sm font-medium text-primary">
-                  Drop files here or click to upload
-                </p>
-                <p className="upload-hint text-xs mt-1">
-                  PDF, DOC, PNG, ZIP · Max 50MB
-                </p>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => setShowPreview(!showPreview)}
-                disabled={isSubmitting}
-                className="preview-btn flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm transition-all disabled:opacity-40"
-              >
-                <Eye size={16} />
-                Preview
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSubmit('draft')}
-                disabled={
-                  isSubmitting ||
-                  !form.title ||
-                  !form.category ||
-                  !form.description
-                }
-                className="btn-ghost-cyan flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-40"
-              >
-                <Save size={16} />
-                {submitIntent === 'draft' ? 'Saving Draft...' : 'Save as Draft'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSubmit('publish')}
-                disabled={
-                  isSubmitting ||
-                  !form.title ||
-                  !form.category ||
-                  !form.description
-                }
-                className="btn-cyan flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-40"
-              >
-                <Rocket size={16} />
-                {submitIntent === 'publish' ? 'Publishing...' : 'Publish'}
-              </button>
             </div>
           </div>
 
-          {/* Right Panel: Live Preview + AI Orb */}
-          <div className="space-y-5">
-            <div className="glass-card p-5">
-              <p className="preview-label text-xs font-semibold mb-3">
-                QUESTIONS READY
-              </p>
-              <p className="text-2xl font-black text-primary mb-1">
-                {pendingQuestions.length}
-              </p>
-              <p className="text-xs text-secondary mb-4">
-                Questions will be created immediately after the JobPost is saved as Draft.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate('/jobs/post/questions')}
-                disabled={isSubmitting}
-                className="btn-ghost-cyan w-full py-2 text-sm disabled:opacity-40"
-              >
-                Edit Questions
-              </button>
+          <div className="lg:col-span-5 flex flex-col gap-6 bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
+              <div className="flex items-center gap-2">
+                <Bot className="text-[var(--gb-purple)]" size={20} />
+                <h2 className="text-lg font-bold text-foreground">JobPost Questions</h2>
+              </div>
             </div>
 
-            {/* Floating AI Orb */}
-            <div className="ai-orb-card glass-card p-5 text-center">
-              <div
-                className="ai-orb w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center animate-orb cursor-pointer"
-                onClick={generateDescription}
-              >
-                <Bot size={32} />
-              </div>
-
-              <p className="text-primary font-semibold mb-1">
-                AI Job Generator
-              </p>
-
-              <p className="ai-orb-description text-xs mb-4">
-                Fill in title & category, then click the orb to generate a professional job description
-              </p>
-
-              <button
-                type="button"
-                onClick={generateDescription}
-                disabled={isGenerating || !form.title || !form.category}
-                className="btn-cyan w-full py-2 text-sm disabled:opacity-40"
-              >
-                {isGenerating ? 'Generating...' : '✨ Generate Description'}
-              </button>
+            <div className="flex flex-wrap gap-2">
+              {QUESTION_COUNTS.map(count => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => handleQuestionCountChange(count)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                    questionCount === count
+                      ? 'bg-[var(--gb-cyan)] text-white border-[var(--gb-cyan)]'
+                      : 'bg-background text-muted-foreground border-border hover:text-foreground'
+                  }`}
+                >
+                  {count} Questions
+                </button>
+              ))}
             </div>
 
-            {/* Job Preview */}
-            {showPreview && form.title && (
-              <div className="glass-card p-5">
-                <p className="preview-label text-xs font-semibold mb-3">
-                  PREVIEW
-                </p>
-
-                <h3 className="text-primary font-semibold mb-2">
-                  {form.title || 'Job Title'}
-                </h3>
-
-                {form.category && (
-                  <span className="badge-cyan text-xs mb-3 inline-block">
-                    {form.category}
-                  </span>
-                )}
-
-                {form.budgetMin && (
-                  <p className="preview-budget text-sm text-primary mb-2 font-medium">
-                    ${parseInt(form.budgetMin).toLocaleString()}–
-                    ${parseInt(form.budgetMax || '0').toLocaleString()} · {form.jobType}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {form.skills.map(skill => (
-                    <span key={skill} className="tag-pill text-xs">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-
-                {form.description && (
-                  <p className="preview-description text-xs leading-relaxed line-clamp-4">
-                    {form.description.split('\n')[0]}...
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Tips */}
-            <div className="glass-card p-5">
-              <p className="text-primary text-sm font-semibold mb-3">
-                💡 Pro Tips
-              </p>
-
-              <div className="space-y-3">
-                {[
-                  'Specific titles get 2x more proposals',
-                  'Jobs with 5+ skills attract senior talent',
-                  'Clear budgets increase proposal quality',
-                  'AI-generated descriptions get 60% more applicants',
-                ].map((tip, index) => (
-                  <div key={index} className="tips-item flex items-start gap-2">
-                    <div className="tips-bullet w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" />
-                    <p className="tips-text text-xs">
-                      {tip}
-                    </p>
+            <div className="space-y-3">
+              {questionsWithOrder.map((question, index) => (
+                <div key={index} className="bg-background border border-border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Question {index + 1} · Order {question.orderIndex}</span>
+                    <label className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={question.isRequired}
+                        onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
+                      />
+                      Required
+                    </label>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Budget Estimator */}
-            <div className="glass-card p-5">
-              <p className="text-primary text-sm font-semibold mb-3">
-                💰 Market Rate
-              </p>
-
-              {form.category ? (
-                <div>
-                  <p className="market-rate-hint text-xs mb-2">
-                    Average for {form.category}:
-                  </p>
-                  <p className="market-rate-value text-xl font-black">
-                    $50–$120/hr
-                  </p>
-                  <p className="market-rate-hint text-xs mt-1">
-                    Based on 2,847 recent projects
-                  </p>
+                  <textarea
+                    value={question.questionText}
+                    maxLength={MAX_QUESTION_LENGTH}
+                    onChange={event => updateQuestion(index, { questionText: event.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
+                    rows={3}
+                    placeholder="Enter a question applicants must answer..."
+                  />
+                  <div className="text-right mt-1 text-[10px] text-muted-foreground">{question.questionText.length}/{MAX_QUESTION_LENGTH}</div>
                 </div>
-              ) : (
-                <p className="market-rate-hint text-xs">
-                  Select a category to see market rates
-                </p>
-              )}
+              ))}
             </div>
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm max-w-[1440px] mx-auto">
+          <div className="hidden md:flex flex-col">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
+            <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => submitDraftFlow('draft')}
+              disabled={isActionDisabled}
+              className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
+            >
+              <Save size={16} /> {renderSubmitLabel('draft', 'Save as Draft')}
+            </button>
+            <button
+              type="button"
+              onClick={() => submitDraftFlow('publish')}
+              disabled={isActionDisabled}
+              className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-purple)] text-white hover:bg-[var(--gb-purple)]/90 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none"
+            >
+              <Send size={16} /> {renderSubmitLabel('publish', 'Publish')}
+            </button>
+            <button
+              type="button"
+              onClick={() => submitDraftFlow('contract')}
+              disabled={isActionDisabled}
+              className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
+            >
+              <Check size={16} />
+              <span>{renderSubmitLabel('contract', 'Next: Create Contract')}</span>
+              <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
+            </button>
           </div>
         </div>
       </div>

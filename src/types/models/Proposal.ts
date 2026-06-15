@@ -86,29 +86,31 @@ export interface ProposalDetailDto {
 }
 
 export interface ProposalAnswerDto {
-  proposalAnswersId: string | null;
+  proposalAnswersId?: string | null;
   proposalsId: string;
   jobPostQuestionsId: string;
   questionText: string;
   orderIndex: number;
   isRequired: boolean;
-  answerText: string | null;
+  answerText?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
 
 export interface CreateProposalAnswerRequest {
   jobPostQuestionId: string;
-  answerText: string | null;
+  answerText?: string | null;
 }
 
 export interface UpdateProposalAnswerRequest {
-  answerText: string | null;
+  answerText?: string | null;
+}
+
+export interface UpdateBulkProposalAnswerItemRequest {
+  jobPostQuestionId: string;
+  answerText?: string | null;
 }
 
 export interface UpdateBulkProposalAnswersRequest {
-  answers: Array<{
-    jobPostQuestionId: string;
-    answerText: string | null;
-  }>;
+  answers: UpdateBulkProposalAnswerItemRequest[];
 }

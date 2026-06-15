@@ -10,18 +10,26 @@ export const proposalStatusLabels: Record<ProposalStatus, string> = {
   [ProposalStatus.Withdrawn]: 'Withdrawn',
 };
 
-export const canWithdrawProposal = (status: ProposalViewModel['status'] | number | null | undefined) => {
+type ProposalStatusInput = ProposalViewModel['status'] | number | string | null | undefined;
+
+export const canSubmitDraftProposal = (status: ProposalStatusInput) =>
+  Number(status) === ProposalStatus.Draft;
+
+export const canWithdrawProposal = (status: ProposalStatusInput) => {
   const normalizedStatus = Number(status);
   return normalizedStatus === ProposalStatus.Pending || normalizedStatus === ProposalStatus.Shortlisted;
 };
 
-export const canEditProposal = (status: ProposalViewModel['status'] | number | null | undefined) =>
+export const canEditProposal = (status: ProposalStatusInput) =>
   Number(status) === ProposalStatus.Draft;
 
-export const canViewContract = (status: ProposalViewModel['status'] | number | null | undefined) =>
+export const canViewContract = (status: ProposalStatusInput) =>
   Number(status) === ProposalStatus.Accepted;
 
-export const getStatusLabel = (status: ProposalViewModel['status'] | string | null | undefined) => {
+export const canViewProposalAnswers = (status: ProposalStatusInput) =>
+  Number.isFinite(Number(status));
+
+export const getStatusLabel = (status: ProposalStatusInput) => {
   const normalizedStatus = Number(status);
   if (normalizedStatus in proposalStatusLabels) {
     return proposalStatusLabels[normalizedStatus as ProposalStatus];
@@ -30,7 +38,7 @@ export const getStatusLabel = (status: ProposalViewModel['status'] | string | nu
   return 'Pending';
 };
 
-export const getStatusClass = (status: ProposalViewModel['status'] | string | null | undefined) => {
+export const getStatusClass = (status: ProposalStatusInput) => {
   const label = getStatusLabel(status).toLowerCase();
   if (label === 'draft') return 'proposal-status proposal-status-draft';
   if (label === 'shortlisted') return 'proposal-status proposal-status-shortlisted';

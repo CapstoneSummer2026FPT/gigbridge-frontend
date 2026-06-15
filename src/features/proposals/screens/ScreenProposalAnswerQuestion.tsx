@@ -1,295 +1,249 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
-import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle, FileText, HelpCircle, Save } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router';
+import { ArrowLeft, Save, Send } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobQuestionAPI } from '../../../api/jobAPI';
-import { proposalAnswerAPI } from '../../../api/proposalAPI/ANSWERS';
-import { proposalPostAPI } from '../../../api/proposalAPI/POST';
-import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
+import { ProposalStatus, type ProposalAnswerDto } from '../../../types/models/Proposal';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
-import { ProposalStatus } from '../../../types/models/Proposal';
-import { buildProposalPayload, type ProposalAnswerFlowState } from '../utils/proposalDraft';
-import '../styles/create-proposal-screen.css';
 
-type AnswerMap = Record<string, string>;
-
-const getQuestionId = (question: JobPostQuestionDto) => question.jobPostQuestionsId;
+type AnswerRouteState = {
+  proposalId?: string;
+  jobPostId?: string;
+};
 
 export default function ScreenProposalAnswerQuestion() {
-  const { jobPostId } = useParams<{ jobPostId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const flowState = location.state as ProposalAnswerFlowState | null;
+  const { jobPostId: routeJobPostId } = useParams<{ jobPostId: string }>();
+  const routeState = (location.state || {}) as AnswerRouteState;
+  const search = new URLSearchParams(location.search);
+
+  const proposalId = routeState.proposalId || search.get('proposalId') || '';
+  const jobPostId = routeState.jobPostId || routeJobPostId || '';
 
   const [questions, setQuestions] = useState<JobPostQuestionDto[]>([]);
-  const [answers, setAnswers] = useState<AnswerMap>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [validationError, setValidationError] = useState('');
 
-  const currentJobPostId = jobPostId || flowState?.jobPostId || '';
+  const sortedQuestions = useMemo(
+    () => [...questions].sort((a, b) => a.orderIndex - b.orderIndex),
+    [questions]
+  );
 
   useEffect(() => {
-    const loadQuestions = async () => {
-      if (!currentJobPostId) return;
+    const load = async () => {
+      if (!proposalId || !jobPostId) {
+        setError('Proposal or JobPost id is missing.');
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
         setError('');
 
-        const response = await jobQuestionAPI.getJobPostQuestions(currentJobPostId);
+        const [questionsResponse, answersResponse] = await Promise.all([
+          jobGetAPI.getJobPostQuestions(jobPostId),
+          proposalGetAPI.getProposalAnswers(proposalId),
+        ]);
 
-        if (!response.success) {
-          setError(response.message || 'Failed to load JobPost questions.');
-          setQuestions([]);
+        if (!questionsResponse.success) {
+          setError(questionsResponse.message || 'Questions could not be loaded.');
           return;
         }
 
-        const sortedQuestions = [...(response.data || [])].sort((a, b) => a.orderIndex - b.orderIndex);
-        setQuestions(sortedQuestions);
-        setAnswers(
-          sortedQuestions.reduce<AnswerMap>((accumulator, question) => {
-            accumulator[getQuestionId(question)] = '';
-            return accumulator;
-          }, {})
-        );
-      } catch (loadError) {
-        console.error('Failed to load JobPost questions:', loadError);
-        setError('Failed to load JobPost questions.');
+        const loadedQuestions = questionsResponse.data || [];
+        setQuestions(loadedQuestions);
+
+        const answerMap: Record<string, string> = {};
+        if (answersResponse.success && answersResponse.data) {
+          answersResponse.data.forEach((answer: ProposalAnswerDto) => {
+            answerMap[answer.jobPostQuestionsId] = answer.answerText || '';
+          });
+        }
+        loadedQuestions.forEach(question => {
+          answerMap[question.jobPostQuestionsId] = answerMap[question.jobPostQuestionsId] || '';
+        });
+        setAnswers(answerMap);
       } finally {
         setLoading(false);
       }
     };
 
-    loadQuestions();
-  }, [currentJobPostId]);
+    load();
+  }, [proposalId, jobPostId]);
 
-  const requiredQuestionCount = useMemo(
-    () => questions.filter(question => question.isRequired).length,
-    [questions]
-  );
+  const validate = (requireAllRequired: boolean) => {
+    for (const question of sortedQuestions) {
+      const value = answers[question.jobPostQuestionsId] || '';
+      if (value.length > 4000) {
+        return 'Answers must not exceed 4000 characters.';
+      }
+      if (requireAllRequired && question.isRequired && !value.trim()) {
+        return `Answer is required for question ${question.orderIndex}.`;
+      }
+    }
+    return '';
+  };
 
-  const validateRequiredAnswers = () => {
-    const unansweredRequired = questions.filter(question =>
-      question.isRequired && !answers[getQuestionId(question)]?.trim()
-    );
-
-    if (unansweredRequired.length > 0) {
-      setValidationError('Please answer all required questions before submitting.');
+  const saveAnswers = async (submit: boolean) => {
+    const validationMessage = validate(submit);
+    if (validationMessage) {
+      setError(validationMessage);
       return false;
     }
 
-    setValidationError('');
-    return true;
-  };
+    const payloadAnswers = sortedQuestions
+      .filter(question => {
+        if (submit) return true;
+        return Boolean((answers[question.jobPostQuestionsId] || '').trim());
+      })
+      .map(question => ({
+        jobPostQuestionId: question.jobPostQuestionsId,
+        answerText: answers[question.jobPostQuestionsId] || '',
+      }));
 
-  const saveProposal = async (status: ProposalStatus) => {
-    if (!flowState?.form || !currentJobPostId) {
-      throw new Error('Proposal form data is missing. Please start the proposal again.');
+    if (payloadAnswers.length === 0) {
+      return true;
     }
 
-    const payload = buildProposalPayload(currentJobPostId, flowState.form);
-
-    if (flowState.proposalId) {
-      const response = await proposalPutAPI.updateProposal(flowState.proposalId, {
-        coverLetter: payload.coverLetter,
-        proposedBudget: payload.proposedBudget,
-        proposedDuration: payload.proposedDuration,
-        status,
-      });
-
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to update proposal.');
-      }
-
-      return flowState.proposalId;
-    }
-
-    const response = await proposalPostAPI.createProposal(payload);
-
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to create proposal.');
-    }
-
-    return response.data;
-  };
-
-  const saveAnswers = async (proposalId: string) => {
-    const response = await proposalAnswerAPI.updateBulkProposalAnswers(proposalId, {
-      answers: questions.map(question => ({
-        jobPostQuestionId: getQuestionId(question),
-        answerText: answers[getQuestionId(question)]?.trim() || null,
-      })),
+    const response = await proposalPatchAPI.updateBulkProposalAnswers(proposalId, {
+      answers: payloadAnswers,
     });
 
     if (!response.success) {
-      throw new Error(response.message || 'Proposal was saved, but answers could not be saved.');
+      setError(response.message || 'Answers could not be saved.');
+      return false;
     }
+
+    return true;
   };
 
   const handleSaveDraft = async () => {
+    setSaving(true);
     setError('');
-    setValidationError('');
+    const saved = await saveAnswers(false);
+    setSaving(false);
+    if (saved) {
+      navigate('/proposals');
+    }
+  };
 
-    try {
-      setSaving(true);
-      const proposalId = await saveProposal(ProposalStatus.Draft);
-      await saveAnswers(proposalId);
-      toast.success('Proposal draft saved successfully.');
-      navigate('/proposals', {
-        state: { successMessage: 'Proposal draft saved successfully.' },
-      });
-    } catch (saveError) {
-      console.error('Failed to save proposal draft answers:', saveError);
-      setError(saveError instanceof Error ? saveError.message : 'Failed to save proposal draft.');
-    } finally {
+  const handleSubmit = async () => {
+    setSaving(true);
+    setError('');
+    const saved = await saveAnswers(true);
+    if (!saved) {
       setSaving(false);
+      return;
     }
+
+    const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, {
+      status: ProposalStatus.Pending,
+    });
+
+    setSaving(false);
+    if (!statusResponse.success) {
+      setError(statusResponse.message || 'Answers were saved, but proposal could not be submitted.');
+      return;
+    }
+
+    navigate('/proposals');
   };
 
-  const handleSubmitProposal = async () => {
-    setError('');
-    if (!validateRequiredAnswers()) return;
-
-    try {
-      setSubmitting(true);
-      const proposalId = await saveProposal(ProposalStatus.Pending);
-      await saveAnswers(proposalId);
-      toast.success('Proposal submitted successfully.');
-      navigate('/proposals', {
-        state: { successMessage: 'Proposal submitted successfully.' },
-      });
-    } catch (submitError) {
-      console.error('Failed to submit proposal answers:', submitError);
-      setError(submitError instanceof Error ? submitError.message : 'Failed to submit proposal.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (!flowState?.form || !currentJobPostId) {
-    return <Navigate to={currentJobPostId ? `/proposals/create/${currentJobPostId}` : '/jobs/browse'} replace />;
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto py-16 text-center text-muted-foreground">Loading questions...</div>
+      </AppLayout>
+    );
   }
 
   return (
     <AppLayout>
-      <div className="create-proposal-page">
-        <div className="create-proposal-header">
-          <button className="create-proposal-back" type="button" onClick={() => navigate(-1)}>
-            <ArrowLeft size={16} />
-          </button>
-          <div>
-            <p>Proposal Questions</p>
-            <h1>Answer JobPost Questions</h1>
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto py-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
 
-        <div className="create-proposal-layout">
-          <section className="create-proposal-form glass-card">
-            <div className="create-proposal-form-title">
-              <HelpCircle size={18} />
-              <div>
-                <h2>Question Answers</h2>
-                <p>Required questions must be answered before submitting. Drafts can be saved anytime.</p>
-              </div>
-            </div>
-
-            {loading && <div className="create-proposal-loading">Loading questions...</div>}
-            {error && <div className="create-proposal-alert">{error}</div>}
-            {validationError && <div className="create-proposal-alert">{validationError}</div>}
-
-            {!loading && questions.length === 0 && (
-              <div className="proposal-answer-empty">
-                <FileText size={30} />
-                <p>No JobPost questions were found.</p>
-              </div>
-            )}
-
-            {!loading && questions.length > 0 && (
-              <div className="proposal-answer-list">
-                {questions.map((question, index) => {
-                  const questionId = getQuestionId(question);
-
-                  return (
-                    <label key={questionId} className="proposal-answer-question-card">
-                      <span>
-                        Question {index + 1}
-                        {question.isRequired ? <em>Required</em> : <i>Optional</i>}
-                      </span>
-                      <strong>{question.questionText}</strong>
-                      <textarea
-                        value={answers[questionId] || ''}
-                        onChange={event => {
-                          setAnswers(prev => ({ ...prev, [questionId]: event.target.value }));
-                          setValidationError('');
-                        }}
-                        placeholder="Write your answer..."
-                        className="input-gb"
-                        rows={5}
-                        maxLength={4000}
-                        disabled={saving || submitting}
-                      />
-                      <small>{(answers[questionId] || '').length}/4000 characters</small>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="create-proposal-actions">
-              <button
-                type="button"
-                className="create-proposal-secondary"
-                onClick={() => navigate(`/proposals/create/${currentJobPostId}`)}
-                disabled={saving || submitting}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                className="create-proposal-secondary"
-                onClick={handleSaveDraft}
-                disabled={loading || saving || submitting}
-              >
-                <Save size={15} />
-                {saving ? 'Saving Draft...' : 'Save as Draft'}
-              </button>
-              <button
-                type="button"
-                className="btn-cyan create-proposal-submit"
-                onClick={handleSubmitProposal}
-                disabled={loading || saving || submitting}
-              >
-                <CheckCircle size={15} />
-                {submitting ? 'Submitting...' : 'Submit Proposal'}
-              </button>
-            </div>
-          </section>
-
-          <aside className="create-proposal-summary glass-card">
-            <div className="create-proposal-summary-title">
-              <FileText size={18} />
-              <h2>Answer Summary</h2>
-            </div>
-            <div className="create-proposal-summary-row">
-              <span>Total questions</span>
-              <strong>{questions.length}</strong>
-            </div>
-            <div className="create-proposal-summary-row">
-              <span>Required</span>
-              <strong>{requiredQuestionCount}</strong>
-            </div>
-            <div className="create-proposal-summary-row">
-              <span>Answered</span>
-              <strong>{Object.values(answers).filter(answer => answer.trim()).length}</strong>
-            </div>
-            <p className="proposal-answer-note">
-              Save as Draft keeps the proposal editable. Submit Proposal sends it as Pending.
+        <div className="glass-card p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-primary">JobPost Questions</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Save answers as draft or submit your proposal when required answers are complete.
             </p>
-          </aside>
+          </div>
+
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+              {error}
+            </div>
+          )}
+
+          {sortedQuestions.length === 0 ? (
+            <div className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
+              This JobPost has no questions.
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {sortedQuestions.map(question => (
+                <label key={question.jobPostQuestionsId} className="block">
+                  <span className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold text-foreground">
+                    <span>
+                      {question.orderIndex}. {question.questionText}
+                    </span>
+                    {question.isRequired && (
+                      <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
+                        Required
+                      </span>
+                    )}
+                  </span>
+                  <textarea
+                    rows={5}
+                    value={answers[question.jobPostQuestionsId] || ''}
+                    onChange={event => setAnswers(prev => ({
+                      ...prev,
+                      [question.jobPostQuestionsId]: event.target.value,
+                    }))}
+                    className="w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]"
+                    placeholder="Write your answer..."
+                  />
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {(answers[question.jobPostQuestionsId] || '').length}/4000 characters
+                  </span>
+                </label>
+              ))}
+
+              <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-border">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground hover:bg-muted/20 disabled:opacity-60"
+                >
+                  <Save size={16} />
+                  Save as Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+                >
+                  <Send size={16} />
+                  Submit Proposal
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>
