@@ -17,7 +17,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
-import type { JobPostSummaryDto } from '../../../types/models/Job';
+import type { GetMyJobPostDto } from '../../../types/models/Job';
 import {
   ProposalStatus,
   type ProposalDetailDto,
@@ -59,7 +59,7 @@ export default function ClientProposalsScreen() {
     [location.search]
   );
 
-  const [jobs, setJobs] = useState<JobPostSummaryDto[]>([]);
+  const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [jobsError, setJobsError] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(selectedJobFromQuery);
@@ -282,7 +282,7 @@ export default function ClientProposalsScreen() {
                     >
                       <h3 className="text-sm font-semibold truncate text-foreground">{job.title}</h3>
                       <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1">
-                        {job.descriptionPreview || 'No description preview.'}
+                        {job.description || 'No description.'}
                       </p>
                     </div>
                   );

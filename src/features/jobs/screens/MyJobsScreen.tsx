@@ -11,7 +11,7 @@ import { jobAPI } from '../../../api/jobAPI';
 import {
   JobPostStatus,
   JobPostVisibility,
-  type JobPostSummaryDto,
+  type GetMyJobPostDto,
 } from '../../../types/models/Job';
 import '../styles/my-jobs-screen.css';
 
@@ -67,7 +67,7 @@ const visibilityIcon = (visibility?: number | null) => {
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-const formatBudget = (job: JobPostSummaryDto) => {
+const formatBudget = (job: GetMyJobPostDto) => {
   const min = job.budgetMin ?? null;
   const max = job.budgetMax ?? null;
 
@@ -79,7 +79,7 @@ const formatBudget = (job: JobPostSummaryDto) => {
 
 export default function MyJobsScreen() {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<JobPostSummaryDto[]>([]);
+  const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [isCompact, setIsCompact] = useState(false);
@@ -130,8 +130,9 @@ export default function MyJobsScreen() {
     return jobs.filter(job => {
       const matchesSearch = !query ||
         job.title.toLowerCase().includes(query) ||
-        job.descriptionPreview.toLowerCase().includes(query) ||
-        (job.skillNames || []).some(skill => skill.toLowerCase().includes(query));
+        job.description.toLowerCase().includes(query) ||
+        (job.categoryName || '').toLowerCase().includes(query) ||
+        (job.location || '').toLowerCase().includes(query);
 
       const matchesStatus = statusFilter === 'all' || statusToFilter(job.status) === statusFilter;
 
@@ -139,11 +140,11 @@ export default function MyJobsScreen() {
     });
   }, [jobs, searchQuery, statusFilter]);
 
-  const updateLocalJob = (jobPostId: string, patch: Partial<JobPostSummaryDto>) => {
+  const updateLocalJob = (jobPostId: string, patch: Partial<GetMyJobPostDto>) => {
     setJobs(prev => prev.map(job => job.jobPostsId === jobPostId ? { ...job, ...patch } : job));
   };
 
-  const patchStatus = async (job: JobPostSummaryDto, status: JobPostStatus, successMessage: string) => {
+  const patchStatus = async (job: GetMyJobPostDto, status: JobPostStatus, successMessage: string) => {
     setPendingJobId(job.jobPostsId);
     const response = await jobAPI.updateJobPostStatus(job.jobPostsId, { status });
     setPendingJobId(null);
@@ -157,7 +158,7 @@ export default function MyJobsScreen() {
     toast.success(successMessage);
   };
 
-  const patchVisibility = async (job: JobPostSummaryDto, visibility: JobPostVisibility) => {
+  const patchVisibility = async (job: GetMyJobPostDto, visibility: JobPostVisibility) => {
     setPendingJobId(job.jobPostsId);
     const response = await jobAPI.updateJobPostVisibility(job.jobPostsId, { visibility });
     setPendingJobId(null);
@@ -171,10 +172,10 @@ export default function MyJobsScreen() {
     toast.success('Visibility updated.');
   };
 
-  const canPublish = (job: JobPostSummaryDto) => job.status === JobPostStatus.Draft;
-  const canClose = (job: JobPostSummaryDto) => job.status === JobPostStatus.Open;
-  const canCancel = (job: JobPostSummaryDto) => job.status === JobPostStatus.Open || job.status === JobPostStatus.Draft;
-  const canChangeVisibility = (job: JobPostSummaryDto) => job.visibility !== undefined && job.visibility !== null;
+  const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
+  const canClose = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open;
+  const canCancel = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open || job.status === JobPostStatus.Draft;
+  const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined && job.visibility !== null;
 
   return (
     <AppLayout>
@@ -330,15 +331,12 @@ export default function MyJobsScreen() {
                           </span>
                         </div>
                         {!isCompact && (
-                          <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.descriptionPreview}</p>
+                          <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.description}</p>
                         )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {(job.skillNames || []).slice(0, 5).map(skill => (
-                            <span key={skill} className="mj-skill-tag">{skill}</span>
-                          ))}
-                          {(job.skillNames || []).length > 5 && (
-                            <span className="mj-skill-tag" style={{ opacity: 0.6 }}>+{job.skillNames.length - 5}</span>
-                          )}
+                          {job.categoryName && <span className="mj-skill-tag">{job.categoryName}</span>}
+                          {job.location && <span className="mj-skill-tag">{job.location}</span>}
+                          {job.estimatedDuration && <span className="mj-skill-tag">{job.estimatedDuration}</span>}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -352,7 +350,7 @@ export default function MyJobsScreen() {
                       <div>
                         <div className="mj-meta-label">Proposals</div>
                         <div className="mj-meta-value mj-purple">
-                          <Users size={13} /> Unknown
+                          <Users size={13} /> {job.proposalCount}
                         </div>
                       </div>
                       <div>

@@ -1,6 +1,8 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import { JobPostStatus } from '../../types/models/Job';
 import type {
+  GetMyJobPostDto,
   Job,
   JobPostDetailDto,
   JobPostQueryParams,
@@ -43,6 +45,34 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
+  gigcoin_cost: 0,
+});
+
+const toLegacyStatusFromJobPost = (status: number | string | null | undefined): Job['status'] => {
+  const value = Number(status);
+  if (value === JobPostStatus.Draft) return 'draft';
+  if (value === JobPostStatus.Open) return 'open';
+  if (value === JobPostStatus.Closed) return 'closed';
+  if (value === JobPostStatus.Cancelled) return 'cancelled';
+  return 'draft';
+};
+
+const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
+  id: job.jobPostsId,
+  clientId: job.clientProfilesId,
+  title: job.title,
+  description: job.description,
+  category: job.categoryName || 'All',
+  skills: [],
+  budgetMin: job.budgetMin ?? 0,
+  budgetMax: job.budgetMax ?? 0,
+  jobType: 'fixed',
+  deadline: job.endDate ?? undefined,
+  status: toLegacyStatusFromJobPost(job.status),
+  proposalCount: job.proposalCount,
+  viewCount: 0,
+  postedAt: formatPostedAt(job.createdAt),
+  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
 });
 
@@ -123,8 +153,8 @@ export const jobGetAPI = {
    */
   getMyJobPosts: async (
     params: JobPostQueryParams = {}
-  ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
-    return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/my-jobs`, params);
+  ): Promise<ApiResponse<GetMyJobPostDto[]>> => {
+    return apiService.get<GetMyJobPostDto[]>(`${jobPostsUrl}/my-jobs`, params);
   },
 
   /**
@@ -167,6 +197,6 @@ export const jobGetAPI = {
 
   getClientJobs: async (params: JobPostQueryParams = {}): Promise<Job[]> => {
     const response = await jobGetAPI.getMyJobPosts(params);
-    return (response.data || []).map(toLegacyJobFromSummary);
+    return (response.data || []).map(toLegacyJobFromMyJob);
   },
 };
