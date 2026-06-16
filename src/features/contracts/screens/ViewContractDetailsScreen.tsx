@@ -11,7 +11,8 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import { ContractStatus, PaymentType, MilestoneStatus } from '../../../types/models/Contract';
+import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 import {
   getContractStatusLabel,
   getContractStatusClass,
@@ -50,7 +51,6 @@ interface FreelancerProfile {
   profileImageUrl?: string;
   avatarUrl?: string;
   headline?: string;
-  hourlyRate?: number;
   verificationStatus?: 'Verified' | 'Pending' | 'Unverified';
 }
 
@@ -93,7 +93,7 @@ export default function ViewContractDetailsScreen() {
     const userProfileId = (user as any).profileId || user.id;
 
     // Admin role check
-    const isAdmin = user.role === 2 || user.role === 'Admin' || user.role === 'admin';
+    const isAdmin = user.role === UserRole.Admin;
     if (isAdmin) {
       setUserRole('admin');
       return;
@@ -102,14 +102,14 @@ export default function ViewContractDetailsScreen() {
     const isMock = contract.contractsId.startsWith('contract_mock_') || contract.contractsId.includes('mock');
 
     // Check if user is client
-    const isClient = user.role === 0 || user.role === 'Client' || user.role === 'client';
+    const isClient = user.role === UserRole.Client;
     if (contract.clientProfilesId === userProfileId || (!((user as any).profileId) && isClient) || (isMock && isClient)) {
       setUserRole('client');
       return;
     }
 
     // Check if user is freelancer
-    const isFreelancer = user.role === 1 || user.role === 'Freelancer' || user.role === 'freelancer';
+    const isFreelancer = user.role === UserRole.Freelancer;
     if (contract.freelancerProfilesId === userProfileId || (!((user as any).profileId) && isFreelancer) || (isMock && isFreelancer)) {
       setUserRole('freelancer');
       return;
@@ -193,7 +193,7 @@ export default function ViewContractDetailsScreen() {
       details: `Contract "${contractData.title}" created from proposal`,
       metadata: {
         budget: contractData.totalBudget,
-        paymentType: contractData.paymentType === PaymentType.Fixed ? 'Fixed' : 'Hourly'
+        contractType: 'Fixed Price',
       }
     });
 
@@ -481,7 +481,7 @@ export default function ViewContractDetailsScreen() {
                 <div className="flex flex-col gap-1 bg-secondary/15 border border-border/20 rounded-2xl p-4">
                   <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Payment Type</span>
                   <span className="text-sm font-bold text-foreground mt-1">
-                    {contract.paymentType === PaymentType.Fixed ? 'Fixed Price' : 'Hourly Rate'}
+                    Fixed Price
                   </span>
                 </div>
 
@@ -759,6 +759,18 @@ export default function ViewContractDetailsScreen() {
                   </motion.button>
                 )}
 
+                {(userRole === 'client' || userRole === 'freelancer') && contract.status === ContractStatus.Completed && (
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
+                    className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
+                  >
+                    <Star size={17} />
+                    Leave Review
+                  </motion.button>
+                )}
+
                 {(userRole === 'client' || userRole === 'freelancer') && contract.status === ContractStatus.Active && (
                   <motion.button 
                     whileHover={{ y: -2 }}
@@ -844,12 +856,6 @@ export default function ViewContractDetailsScreen() {
                             <Mail size={11} />
                             {contract.freelancerProfile.email}
                           </a>
-                        )}
-                        {contract.freelancerProfile.hourlyRate && (
-                          <p className="text-emerald-500 font-bold text-xs flex items-center gap-0.5 mt-0.5">
-                            <DollarSign size={12} />
-                            ${contract.freelancerProfile.hourlyRate}/hr
-                          </p>
                         )}
                         {contract.freelancerProfile.verificationStatus === 'Verified' && (
                           <div className="flex items-center gap-1 mt-1 text-emerald-500 text-[10px] font-bold">

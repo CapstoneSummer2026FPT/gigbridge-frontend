@@ -6,11 +6,11 @@ import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
 import { useApp, AppTheme } from '../../app/providers/AppProvider';
-import { DB } from '../../mock_backend';
+import { walletGetAPI } from '../../api/walletAPI/GET';
 import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
 import { CompactLanguageSwitcher, CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useTranslation } from '../../hooks/useTranslation';
-import { MOCK_TOP_NAV_NOTIFICATIONS } from '../../features/notifications/mock/data-for-TopNav';
+import { useUserNotifications } from '../../features/notifications/hooks/useUserNotifications';
 import Button from './Button';
 
 interface TopNavProps {
@@ -32,6 +32,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [searchVal, setSearchVal] = useState('');
 
   // Safely get app context - might be null for guest users
@@ -50,15 +51,36 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const isAuthenticated = appContext?.isAuthenticated || false;
 
   // Wallet and notification data
-  const walletBalance = user?.gigcoin_balance || 0;
-  const dbNotifications = user ? DB.getNotificationsByUser(user.id) : [];
-  const fallbackNotifications = user
-    ? MOCK_TOP_NAV_NOTIFICATIONS.filter(n => n.userId === user.id)
-    : [];
-  const notifications = dbNotifications.length > 0
-    ? dbNotifications
-    : (fallbackNotifications.length > 0 ? fallbackNotifications : MOCK_TOP_NAV_NOTIFICATIONS.slice(0, 4));
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const { notifications, unreadCount, markAsRead } = useUserNotifications(user, {
+    pageSize: 8,
+    pollMs: 45000,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchWalletBalance = async () => {
+      if (!user || role === 2) {
+        setWalletBalance(0);
+        return;
+      }
+
+      const response = await walletGetAPI.getMyWallet();
+      if (isMounted && response.success && response.data) {
+        setWalletBalance(response.data.availableTokens);
+      }
+    };
+
+    void fetchWalletBalance();
+    const intervalId = window.setInterval(fetchWalletBalance, 30000);
+    window.addEventListener('gigbridge-wallet-updated', fetchWalletBalance);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('gigbridge-wallet-updated', fetchWalletBalance);
+    };
+  }, [location.pathname, location.search, role, user?.id]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -355,13 +377,22 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               <div className="absolute right-0 top-12 w-80 rounded-2xl p-3 z-50 dropdown-menu">
                 <div className="flex items-center justify-between mb-3 px-2">
                   <p className="text-primary font-semibold text-sm">Notifications</p>
-                  <button onClick={() => navigate('/notifications')} className="text-xs text-cyan">See all</button>
+                  <button
+                    onClick={() => { setShowNotifs(false); navigate('/notifications'); }}
+                    className="text-xs text-cyan"
+                  >
+                    See all
+                  </button>
                 </div>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
                   {notifications.length > 0 ? (
                     notifications.slice(0, 5).map(n => (
                       <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
-                        onClick={() => { setShowNotifs(false); navigate(n.actionUrl || '/notifications'); }}>
+                        onClick={() => {
+                          void markAsRead(n.id);
+                          setShowNotifs(false);
+                          navigate(n.actionUrl || '/notifications');
+                        }}>
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-primary text-xs font-medium">{n.title}</p>
                           {!n.isRead && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />}

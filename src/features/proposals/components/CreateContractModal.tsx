@@ -1,18 +1,18 @@
 import { FC, useState, useRef, useEffect } from 'react';
 import { X, FileSignature, BadgeCheck, DollarSign, Clock, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../types';
 import '../styles/create-contract-modal.css';
 
 export interface ContractData {
   proposalId: string;
   freelancerName: string;
   jobTitle: string;
-  proposedRate: number;
+  proposedBudget: number;
   proposedDuration: string;
   startDate: string;
   endDate: string;
-  paymentSchedule: 'fixed' | 'milestone' | 'hourly';
+  paymentSchedule: 'fixed' | 'milestone';
   clientSignature: string;
   agreedToTerms: boolean;
   createdAt: string;
@@ -81,15 +81,7 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
 
   const endDate = calculateEndDate();
 
-  // Determine payment schedule based on rate
-  const getPaymentSchedule = (): 'fixed' | 'milestone' | 'hourly' => {
-    if (proposal.proposedDuration === '0' || proposal.proposedDuration === 'Flexible') {
-      return 'hourly';
-    }
-    return 'fixed';
-  };
-
-  const paymentSchedule = getPaymentSchedule();
+  const paymentSchedule: ContractData['paymentSchedule'] = 'fixed';
 
   // Handle signature input
   const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,7 +119,7 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
       proposalId: proposal.proposalsId,
       freelancerName: proposal.freelancerName || 'Unknown',
       jobTitle: proposal.jobTitle || 'Untitled Job',
-      proposedRate: proposal.proposedRate || 0,
+      proposedBudget: proposal.proposedBudget || 0,
       proposedDuration: proposal.proposedDuration || '0',
       startDate,
       endDate: endDate || new Date().toISOString().split('T')[0],
@@ -260,8 +252,8 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.15 }}
               >
-                <span>Proposed Rate</span>
-                <strong>${(proposal.proposedRate || 0).toLocaleString()}</strong>
+                <span>Proposed Budget</span>
+                <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
               </motion.div>
             </div>
           </section>
@@ -282,7 +274,7 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
                 </div>
                 <p className="contract-term-value">
                   {proposal.proposedDuration === 'Flexible' || proposal.proposedDuration === '0'
-                    ? 'Flexible / Hourly'
+                    ? 'Flexible'
                     : `${proposal.proposedDuration} days`}
                 </p>
               </motion.div>
@@ -297,7 +289,7 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
                   <DollarSign size={16} />
                   <span>Total Amount</span>
                 </div>
-                <p className="contract-term-value">${(proposal.proposedRate || 0).toLocaleString()}</p>
+                <p className="contract-term-value">${(proposal.proposedBudget || 0).toLocaleString()}</p>
               </motion.div>
 
               <motion.div
@@ -311,7 +303,7 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
                   <span>Payment Schedule</span>
                 </div>
                 <p className="contract-term-value">
-                  {paymentSchedule === 'hourly' ? 'Hourly Rate' : paymentSchedule === 'milestone' ? 'Milestone Based' : 'Fixed Price'}
+                  {paymentSchedule === 'milestone' ? 'Milestone Based' : 'Fixed Price'}
                 </p>
               </motion.div>
             </div>
@@ -452,7 +444,7 @@ export const CreateContractModal: FC<CreateContractModalProps> = ({
                 <li>Respect intellectual property rights and confidentiality agreements</li>
                 <li>Complete work by the agreed end date or notify of delays</li>
                 <li>
-                  Follow payment terms: {paymentSchedule === 'hourly' ? 'Payment for hours worked' : paymentSchedule === 'milestone' ? 'Payment upon milestone completion' : 'Full payment upon project completion or per milestones'}
+                  Follow payment terms: {paymentSchedule === 'milestone' ? 'Payment upon milestone completion' : 'Full payment upon project completion or per milestones'}
                 </li>
                 <li>Resolve disputes through GigBridge&apos;s dispute resolution process</li>
               </ul>

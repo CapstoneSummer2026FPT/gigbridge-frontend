@@ -717,7 +717,10 @@ export default function ManageContractScreen() {
                               )}
                               
                               {contract.status === ContractStatus.Completed && (
-                                <button className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
+                                  className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
+                                >
                                   <Star size={13} />
                                   Leave Review
                                 </button>

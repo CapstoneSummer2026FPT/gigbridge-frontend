@@ -1,11 +1,11 @@
-import { notificationHandlers } from '../../mock_backend';
+import { apiService } from '../../service/apiService';
 
 export const notificationGetAPI = {
-  getUserNotifications: async (userId: string) => {
-    return await notificationHandlers.getUserNotifications(userId);
+  getUserNotifications: async (params: { page?: number; pageSize?: number; unreadOnly?: boolean } = {}) => {
+    return apiService.get('Notifications', params);
   },
 
-  getUnreadCount: async (userId: string) => {
-    return await notificationHandlers.getUnreadCount(userId);
+  getUnreadCount: async () => {
+    return apiService.get('Notifications/unread-count');
   },
 };

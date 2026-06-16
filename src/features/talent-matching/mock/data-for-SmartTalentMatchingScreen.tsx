@@ -7,7 +7,7 @@ export interface MatchingJobPost {
   budgetMin: number;
   budgetMax: number;
   status: 'Open' | 'Closed' | 'Draft';
-  workType: 'Fixed Price' | 'Hourly';
+  workType: 'Fixed Price';
 }
 
 export interface TalentMatchFreelancer {
@@ -16,7 +16,7 @@ export interface TalentMatchFreelancer {
   title: string;
   location: string;
   avatarUrl: string;
-  hourlyRate: number;
+  projectBudget: number;
   category: string;
   industryExperience: string[];
   skills: string[];
@@ -70,7 +70,7 @@ export const MOCK_MATCHING_JOBS: MatchingJobPost[] = [
     budgetMin: 2000,
     budgetMax: 3500,
     status: 'Open',
-    workType: 'Hourly',
+    workType: 'Fixed Price',
   },
   {
     id: 'match_job_4',
@@ -92,7 +92,7 @@ export const MOCK_TALENT_POOL: TalentMatchFreelancer[] = [
     title: 'Senior React and Node.js Engineer',
     location: 'Austin, US',
     avatarUrl: 'https://i.pravatar.cc/120?img=12',
-    hourlyRate: 78,
+    projectBudget: 6200,
     category: 'Web Development',
     industryExperience: ['SaaS', 'FinTech', 'Analytics'],
     skills: ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Chart.js', 'AWS'],
@@ -108,7 +108,7 @@ export const MOCK_TALENT_POOL: TalentMatchFreelancer[] = [
     title: 'Product Designer and Flutter Specialist',
     location: 'Da Nang, VN',
     avatarUrl: 'https://i.pravatar.cc/120?img=32',
-    hourlyRate: 54,
+    projectBudget: 4800,
     category: 'Mobile',
     industryExperience: ['Travel', 'Marketplace', 'Booking'],
     skills: ['Flutter', 'Figma', 'Firebase', 'UX Research', 'Design Systems'],
@@ -124,7 +124,7 @@ export const MOCK_TALENT_POOL: TalentMatchFreelancer[] = [
     title: 'Full-stack Analytics Developer',
     location: 'Toronto, CA',
     avatarUrl: 'https://i.pravatar.cc/120?img=15',
-    hourlyRate: 92,
+    projectBudget: 7600,
     category: 'Web Development',
     industryExperience: ['SaaS', 'Healthcare', 'Data Platforms'],
     skills: ['React', 'TypeScript', 'Python', 'PostgreSQL', 'D3.js', 'Node.js'],
@@ -140,7 +140,7 @@ export const MOCK_TALENT_POOL: TalentMatchFreelancer[] = [
     title: 'Backend Engineer',
     location: 'Berlin, DE',
     avatarUrl: 'https://i.pravatar.cc/120?img=47',
-    hourlyRate: 68,
+    projectBudget: 5400,
     category: 'Web Development',
     industryExperience: ['E-commerce', 'SaaS'],
     skills: ['Node.js', 'PostgreSQL', 'Docker', 'Redis', 'REST API'],
@@ -156,7 +156,7 @@ export const MOCK_TALENT_POOL: TalentMatchFreelancer[] = [
     title: 'Mobile App Engineer',
     location: 'Manila, PH',
     avatarUrl: 'https://i.pravatar.cc/120?img=25',
-    hourlyRate: 46,
+    projectBudget: 3900,
     category: 'Mobile',
     industryExperience: ['Travel', 'Education'],
     skills: ['Flutter', 'Firebase', 'React Native', 'Dart', 'API Integration'],
@@ -179,7 +179,7 @@ export function rankTalentForJob(job: MatchingJobPost, talentPool: TalentMatchFr
       const skillScore = Math.round((matchedSkills.length / job.skills.length) * 48);
       const categoryScore = freelancer.category === job.category ? 18 : 0;
       const industryScore = freelancer.industryExperience.includes(job.industry) ? 10 : 0;
-      const estimatedProjectCost = freelancer.hourlyRate * 80;
+      const estimatedProjectCost = freelancer.projectBudget;
       const budgetScore = estimatedProjectCost >= job.budgetMin && estimatedProjectCost <= job.budgetMax
         ? 12
         : estimatedProjectCost < job.budgetMax * 1.2 ? 7 : 2;

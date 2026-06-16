@@ -2,6 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
   Job,
+  JobStatus,
   JobPostDetailDto,
   JobPostQueryParams,
   JobPostSummaryDto,
@@ -19,6 +20,13 @@ const experienceLevelMap: Record<number, Job['experienceLevel']> = {
   0: 'entry',
   1: 'intermediate',
   2: 'expert',
+};
+
+const statusMap: Record<number, Job['status']> = {
+  0: 'draft',
+  1: 'open',
+  2: 'closed',
+  3: 'cancelled',
 };
 
 const formatPostedAt = (createdAt?: string): string => {
@@ -44,11 +52,14 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   budgetMax: job.budgetMax ?? 0,
   jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
   experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
-  status: 'open',
+  status: typeof job.status === 'number' ? statusMap[job.status] ?? 'open' : 'open',
+  statusValue: (typeof job.status === 'number' ? job.status : null) as JobStatus | number | null,
+  visibility: job.visibility ?? null,
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
+  eloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
 
@@ -63,12 +74,15 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   budgetMax: job.budgetMax ?? 0,
   jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
   experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
-  deadline: job.applicationDeadline ?? undefined,
-  status: 'open',
+  deadline: job.endDate ?? job.applicationDeadline ?? undefined,
+  status: typeof job.status === 'number' ? statusMap[job.status] ?? 'open' : 'open',
+  statusValue: (typeof job.status === 'number' ? job.status : null) as JobStatus | number | null,
+  visibility: job.visibility ?? null,
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
+  eloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
 

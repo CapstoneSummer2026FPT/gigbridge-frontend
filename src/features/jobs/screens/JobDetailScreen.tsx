@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Video, Send, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText } from 'lucide-react';
+import { toast } from 'sonner';
+import { Clock, DollarSign, Users, Globe, Star, CheckCircle, Bot, Bookmark, Share2, ChevronRight, Edit3, FileText } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
-import { jobPostAPI } from '../../../api/jobAPI/POST';
-import { proposalPostAPI } from '../../../api/proposalAPI/POST';
-import { userGetAPI } from '../../../api/userAPI/GET';
-import type { Job } from '../../../mock_backend/types/legacy';
+import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import type { Job } from '../../../types/models/Job';
 import type { User } from '../../../types/models/User';
-import type { ClientProfile } from '../../../types/models/Profile';
 import { UserRole } from '../../../types/models/User';
+import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
+import { canEditProposal, canViewContract, canWithdrawProposal, getStatusClass, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import '../styles/job-detail-screen.css';
 
 type ManageJobPostState = {
@@ -19,7 +21,6 @@ type ManageJobPostState = {
   description: string;
   status: 'Draft' | 'Open' | 'Closed' | 'Cancelled';
   budget: number;
-  budgetType: 'Fixed' | 'Hourly';
   duration: string;
   skills: string[];
   proposals: number;
@@ -35,10 +36,9 @@ const toJobFromManageState = (job: ManageJobPostState): Job => ({
   description: job.description,
   category: 'All',
   skills: job.skills,
-  budgetMin: job.budgetType === 'Hourly' ? job.budget : job.budget,
-  budgetMax: job.budgetType === 'Hourly' ? job.budget : job.budget,
-  jobType: job.budgetType === 'Hourly' ? 'hourly' : 'fixed',
-  experienceLevel: 'intermediate',
+  budgetMin: job.budget,
+  budgetMax: job.budget,
+  jobType: 'fixed',
   status: job.status.toLowerCase() === 'cancelled' ? 'closed' : job.status.toLowerCase() as Job['status'],
   proposalCount: job.proposals,
   viewCount: 0,
@@ -57,18 +57,18 @@ export default function JobDetailScreen() {
   const { user, role } = useApp();
   const fallbackJob = (location.state as { job?: JobLocationState } | null)?.job;
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
-  const [showProposalForm, setShowProposalForm] = useState(false);
-  const [proposalData, setProposalData] = useState({ coverLetter: '', bidAmount: '', deliveryDays: '' });
-  const [isGeneratingProposal, setIsGeneratingProposal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [client, setClient] = useState<User | null>(null);
   const [clientProfile, setClientProfile] = useState<any>(null);
   const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [gigcoinBalance, setGigcoinBalance] = useState<number | null>(null);
-  const [isApplying, setIsApplying] = useState(false);
-  const [hasApplied, setHasApplied] = useState(false);
+  const [myProposal, setMyProposal] = useState<ProposalDetailDto | null>(null);
+  const [proposalStatusLoading, setProposalStatusLoading] = useState(false);
+  const [proposalStatusError, setProposalStatusError] = useState('');
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [acceptedContractId, setAcceptedContractId] = useState<string | null>(null);
+  const [contractLookupLoading, setContractLookupLoading] = useState(false);
+  const [contractLookupMessage, setContractLookupMessage] = useState('');
 
   // Fetch job details from API
   useEffect(() => {
@@ -105,6 +105,73 @@ export default function JobDetailScreen() {
     setSavedJobs(stored ? JSON.parse(stored) : []);
   }, []);
 
+  const loadMyProposalStatus = useCallback(async () => {
+    if (!job?.id || role !== UserRole.Freelancer) {
+      setMyProposal(null);
+      return;
+    }
+
+    try {
+      setProposalStatusLoading(true);
+      setProposalStatusError('');
+
+      const response = await proposalGetAPI.getMyProposalByJobPost(job.id);
+
+      if (response.success && response.data) {
+        setMyProposal(response.data);
+        return;
+      }
+
+      setMyProposal(null);
+
+      if (response.statusCode !== 404) {
+        setProposalStatusError(response.message || 'Failed to load your proposal status.');
+      }
+    } catch (error) {
+      console.error('Failed to load proposal status:', error);
+      setProposalStatusError('Failed to load your proposal status.');
+      setMyProposal(null);
+    } finally {
+      setProposalStatusLoading(false);
+    }
+  }, [job?.id, role]);
+
+  useEffect(() => {
+    loadMyProposalStatus();
+  }, [loadMyProposalStatus]);
+
+  useEffect(() => {
+    const loadAcceptedContract = async () => {
+      if (!myProposal?.proposalId || !canViewContract(myProposal.status)) {
+        setAcceptedContractId(null);
+        setContractLookupMessage('');
+        return;
+      }
+
+      try {
+        setContractLookupLoading(true);
+        setContractLookupMessage('');
+        const response = await contractGetAPI.getContractByProposal(myProposal.proposalId);
+
+        if (response.success && response.data?.contractsId) {
+          setAcceptedContractId(response.data.contractsId);
+          return;
+        }
+
+        setAcceptedContractId(null);
+        setContractLookupMessage(response.message || 'Contract is not available yet.');
+      } catch (error) {
+        console.error('Failed to load accepted proposal contract:', error);
+        setAcceptedContractId(null);
+        setContractLookupMessage('Contract is not available yet.');
+      } finally {
+        setContractLookupLoading(false);
+      }
+    };
+
+    loadAcceptedContract();
+  }, [myProposal?.proposalId, myProposal?.status]);
+
   const toggleSavedJob = () => {
     if (!job) return;
     if (!user || role !== UserRole.Freelancer) {
@@ -118,85 +185,30 @@ export default function JobDetailScreen() {
     });
   };
 
-  // Fetch gigcoin balance for freelancers
-  useEffect(() => {
-    const fetchGigcoinBalance = async () => {
-      if (role === UserRole.Freelancer && user) {
-        try {
-          const balance = await userGetAPI.getGigcoinBalance(user.id);
-          setGigcoinBalance(balance.gigcoin_balance);
-        } catch (error) {
-          console.error('Failed to fetch gigcoin balance:', error);
-        }
+  const handleWithdrawProposal = async () => {
+    if (!myProposal?.proposalId || !canWithdrawProposal(myProposal.status)) return;
+
+    const confirmed = window.confirm('Withdraw this proposal? You will not be able to apply again for this JobPost.');
+    if (!confirmed) return;
+
+    try {
+      setWithdrawing(true);
+      setProposalStatusError('');
+
+      const response = await proposalPutAPI.updateProposalStatus(myProposal.proposalId, ProposalStatus.Withdrawn);
+
+      if (!response.success) {
+        setProposalStatusError(response.message || 'Failed to withdraw proposal.');
+        return;
       }
-    };
-    fetchGigcoinBalance();
-  }, [user, role]);
 
-  const generateAIProposal = async () => {
-    if (!job || !user || !client) return;
-    
-    setIsGeneratingProposal(true);
-    try {
-      const freelancerProfile = user; // Would get from profile API
-      const coverLetter = await proposalPostAPI.generateAICoverLetter(
-        job.title,
-        job.skills
-      );
-      
-      setProposalData({
-        coverLetter,
-        bidAmount: Math.round((job.budgetMin + job.budgetMax) / 2).toString(),
-        deliveryDays: '28',
-      });
+      toast.success('Proposal withdrawn successfully.');
+      await loadMyProposalStatus();
     } catch (error) {
-      console.error('Failed to generate proposal:', error);
+      console.error('Failed to withdraw proposal:', error);
+      setProposalStatusError('Failed to withdraw proposal.');
     } finally {
-      setIsGeneratingProposal(false);
-    }
-  };
-
-  const handleSubmitProposal = async () => {
-    if (!job || !user) return;
-    
-    setIsSubmitting(true);
-    try {
-      await proposalPostAPI.createProposal({
-        jobId: job.id,
-        freelancerId: user.id,
-        clientId: job.clientId,
-        coverLetter: proposalData.coverLetter,
-        bidAmount: parseInt(proposalData.bidAmount),
-        deliveryDays: parseInt(proposalData.deliveryDays),
-      });
-      setShowProposalForm(false);
-      navigate('/proposals');
-    } catch (error) {
-      console.error('Failed to submit proposal:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleApplyJob = async () => {
-    if (!job || !user) return;
-    
-    setIsApplying(true);
-    try {
-      await jobPostAPI.applyJob(job.id, user.id);
-      setHasApplied(true);
-      // Update gigcoin balance
-      if (gigcoinBalance !== null) {
-        setGigcoinBalance(gigcoinBalance - (job.gigcoin_cost || 0));
-      }
-      // Redirect to AI interview screen after successful application
-      setTimeout(() => {
-        navigate('/ai-interview');
-      }, 500);
-    } catch (error) {
-      console.error('Failed to apply for job:', error);
-    } finally {
-      setIsApplying(false);
+      setWithdrawing(false);
     }
   };
 
@@ -222,9 +234,6 @@ export default function JobDetailScreen() {
       </AppLayout>
     );
   }
-
-  const applicationCost = job.gigcoin_cost || 0;
-  const canApplyWithGigcoins = applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost);
 
   return (
     <AppLayout>
@@ -282,8 +291,7 @@ export default function JobDetailScreen() {
               <div className="job-detail-quick-stats">
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} - $${job.budgetMax.toLocaleString()}` },
-                  { label: 'Work type', value: job.jobType === 'fixed' ? 'Fixed Price' : 'Hourly Rate' },
-                  { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
+                  { label: 'Work type', value: 'Fixed Price' },
                   { label: 'Deadline', value: job.deadline || 'Flexible' },
                 ].map(item => (
                   <div key={item.label} className="job-detail-stat-card">
@@ -309,7 +317,7 @@ export default function JobDetailScreen() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-3">
-                    {['Skills Match', 'Experience Fit', 'Budget Align'].map((factor, i) => (
+                    {['Skills Match', 'Profile Fit', 'Budget Align'].map((factor, i) => (
                       <div key={factor} className="text-center">
                         <div className="progress-bar-gb mb-1">
                           <div className="progress-bar-gb-fill" style={{ width: `${[92, 88, 95][i]}%` }} />
@@ -420,8 +428,7 @@ export default function JobDetailScreen() {
               <div className="space-y-3">
                 {[
                   { label: 'Budget', value: `$${job.budgetMin.toLocaleString()} – $${job.budgetMax.toLocaleString()}` },
-                  { label: 'Type', value: job.jobType === 'fixed' ? 'Fixed Price' : 'Hourly Rate' },
-                  { label: 'Experience', value: job.experienceLevel.charAt(0).toUpperCase() + job.experienceLevel.slice(1) },
+                  { label: 'Type', value: 'Fixed Price' },
                   { label: 'Location', value: 'Remote Worldwide' },
                   { label: 'Proposals', value: `${job.proposalCount} submitted` },
                   { label: 'Deadline', value: job.deadline || 'Flexible' },
@@ -438,47 +445,70 @@ export default function JobDetailScreen() {
             {role === UserRole.Freelancer && (
               <div className="glass-card p-5">
                 <h2 className="text-primary font-semibold mb-4 text-sm">Apply to Job</h2>
-                
-                {/* Gigcoin Cost Display */}
-                <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs job-detail-desc">Application Cost</span>
-                    <div className="flex items-center gap-1">
-                      <Zap size={14} className="text-purple" />
-                      <span className="text-sm font-semibold text-primary">{applicationCost} GigCoins</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs job-detail-desc">Your Balance</span>
-                    <span className={`text-sm font-semibold ${applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost) ? 'text-green' : 'text-red'}`}>
-                      {applicationCost === 0 && gigcoinBalance === null ? 'Not required' : `${gigcoinBalance !== null ? gigcoinBalance : '...'} GigCoins`}
-                    </span>
-                  </div>
-                </div>
+                <p className="text-xs job-detail-desc mb-4">
+                  Submit a focused proposal for this JobPost. You can review the job details before sending.
+                </p>
 
-                {/* Apply Button or Insufficient Balance Message */}
-                {hasApplied ? (
-                  <div className="p-3 rounded-lg flex items-center gap-2" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                    <CheckCircle size={16} className="text-green" />
-                    <span className="text-xs text-green font-medium">Already applied to this job</span>
-                  </div>
-                ) : canApplyWithGigcoins ? (
-                  <button 
-                    onClick={handleApplyJob}
-                    disabled={isApplying}
-                    className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
-                    {isApplying ? (
-                      <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Applying...</>
-                    ) : (
-                      <><Zap size={14} />Apply Now</>
+                {proposalStatusLoading && (
+                  <div className="job-detail-proposal-state">Checking your proposal status...</div>
+                )}
+
+                {proposalStatusError && (
+                  <div className="job-detail-proposal-error">{proposalStatusError}</div>
+                )}
+
+                {!proposalStatusLoading && myProposal && (
+                  <div className="job-detail-proposal-actions-stack">
+                    <span className={getStatusClass(myProposal.status)}>{getStatusLabel(myProposal.status)}</span>
+
+                    {canEditProposal(myProposal.status) && (
+                      <button
+                        onClick={() => navigate(`/proposals/${myProposal.proposalId}/edit`)}
+                        className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2"
+                      >
+                        <FileText size={14} />
+                        Continue Editing
+                      </button>
                     )}
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => navigate('/buy-gigcoin')}
-                    className="btn-purple w-full py-2.5 text-sm flex items-center justify-center gap-2">
-                    <Zap size={14} />
-                    Buy GigCoins
+
+                    {canWithdrawProposal(myProposal.status) && (
+                      <button
+                        onClick={handleWithdrawProposal}
+                        disabled={withdrawing}
+                        className="job-detail-secondary-action w-full justify-center"
+                      >
+                        {withdrawing ? 'Withdrawing...' : 'Withdraw'}
+                      </button>
+                    )}
+
+                    {canViewContract(myProposal.status) && (
+                      <>
+                        {contractLookupLoading && (
+                          <div className="job-detail-proposal-state">Checking contract...</div>
+                        )}
+                        {!contractLookupLoading && acceptedContractId && (
+                          <button
+                            onClick={() => navigate(`/contracts/${acceptedContractId}`)}
+                            className="job-detail-primary-action w-full justify-center"
+                          >
+                            <CheckCircle size={14} />
+                            View Contract
+                          </button>
+                        )}
+                        {!contractLookupLoading && !acceptedContractId && contractLookupMessage && (
+                          <div className="job-detail-proposal-state">{contractLookupMessage}</div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {!proposalStatusLoading && !myProposal && (
+                  <button
+                    onClick={() => navigate(`/proposals/create/${job.id}`)}
+                    className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
+                    <FileText size={14} />
+                    Apply JobPost
                   </button>
                 )}
               </div>

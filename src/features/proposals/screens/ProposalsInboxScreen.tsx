@@ -1,29 +1,41 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { BarChart2, X, Users } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
-import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
+import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
+import type { CreateContractDto } from '../../../types/models/Contract';
 import { ProposalCard, ProposalDetailModal, CreateContractModal, type ContractData, ProposalToolbar, PaginationToolbar, FreelancerProposalView, ClientProposalSidebar } from '../components';
-import type { JobProposalGroup, ProposalDetailMode, ProposalStatusValue, ProposalStatusFilter, ProposalSortBy } from '../types';
-import { getStatusLabel } from '../utils/statusHelpers';
+import type { JobProposalGroup, ProposalDetailMode, ProposalStatusValue, ProposalStatusFilter, ProposalSortBy, ProposalViewModel } from '../types';
+import { canViewContract, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
 import '../styles/proposals-inbox-screen.css';
+
+const toProposalViewModel = (proposal: ProposalDto): ProposalViewModel => ({
+  ...proposal,
+  updatedAt: proposal.reviewedAt || proposal.submittedAt,
+});
 
 export default function ProposalsInboxScreen() {
   const { user, role } = useApp();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [proposals, setProposals] = useState<ProposalViewModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState(
+    (location.state as { successMessage?: string } | null)?.successMessage || ''
+  );
   const [managingJob, setManagingJob] = useState<JobProposalGroup | null>(null);
   const [proposalStatusFilter, setProposalStatusFilter] = useState<ProposalStatusFilter>('all');
   const [proposalSortBy, setProposalSortBy] = useState<ProposalSortBy>('interviewScore');
   const [proposalDetail, setProposalDetail] = useState<{ proposal: ProposalViewModel; mode: ProposalDetailMode } | null>(null);
   const [createContractProposal, setCreateContractProposal] = useState<ProposalViewModel | null>(null);
-  const [isPremiumFreelancer] = useState(true);
-  const [tokenBalance, setTokenBalance] = useState(120);
-  const [boostAmount, setBoostAmount] = useState(10);
-  const [boostError, setBoostError] = useState('');
-  const [boostSuccess, setBoostSuccess] = useState('');
   const [competitionJob, setCompetitionJob] = useState<JobProposalGroup | null>(null);
   const [competitionError, setCompetitionError] = useState('');
   const [jobMenuOpen, setJobMenuOpen] = useState<string | null>(null);
@@ -34,45 +46,70 @@ export default function ProposalsInboxScreen() {
   const lastScrollYRef = useRef(0);
 
   const isClient = role === 0;
+  const selectedJobId = searchParams.get('job');
 
   // Fetch proposals
   useEffect(() => {
     const fetchProposals = async () => {
-      if (!user) return;
+      if (!user) {
+        setProposals([]);
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
-        const response = isClient
-          ? await proposalGetAPI.getAllProposals()
-          : await proposalGetAPI.getMyProposals();
-        setProposals(response.data?.length ? response.data.map((proposal, index) => ({
-          ...proposal,
-          updatedAt: proposal.reviewedAt || proposal.submittedAt,
-          isAIGenerated: index % 2 === 0,
-          interviewScore: Math.max(58, 96 - index * 7),
-          rankingScore: Math.max(58, 96 - index * 7),
-          boostedTokenAmount: 0,
-          attachments: [
-            {
-              propoAttach_ProposalAttachmentsId: `api_attach_${proposal.proposalsId}`,
-              propo_ProposalsId: proposal.proposalsId,
-              fileName: `${proposal.freelancerName || 'Freelancer'}_CV.pdf`,
-              fileUrl: '#',
-              fileSize: 700000 + index * 42000,
-              createdAt: proposal.submittedAt,
-            },
-          ],
-        })) : MOCK_PROPOSALS);
+        setError('');
+
+        if (isClient) {
+          const jobsResponse = await jobGetAPI.getMyJobPosts();
+
+          if (!jobsResponse.success) {
+            setError(jobsResponse.message || 'Failed to fetch your job posts.');
+            setProposals([]);
+            return;
+          }
+
+          const jobs = jobsResponse.data || [];
+          const targetJobs = selectedJobId
+            ? jobs.filter(job => job.jobPostsId === selectedJobId)
+            : jobs;
+
+          const proposalResponses = await Promise.all(
+            targetJobs.map(job => proposalGetAPI.getProposalsByJobPost(job.jobPostsId))
+          );
+
+          const failedResponse = proposalResponses.find(response => !response.success);
+          if (failedResponse) {
+            setError(failedResponse.message || 'Failed to fetch proposals.');
+            setProposals([]);
+            return;
+          }
+
+          setProposals(proposalResponses.flatMap(response => response.data || []).map(toProposalViewModel));
+          return;
+        }
+
+        const response = await proposalGetAPI.getMyProposals();
+
+        if (!response.success) {
+          setError(response.message || 'Failed to fetch proposals.');
+          setProposals([]);
+          return;
+        }
+
+        setProposals((response.data || []).map(toProposalViewModel));
       } catch (error) {
         console.error('Failed to fetch proposals:', error);
-        setProposals(MOCK_PROPOSALS);
+        setError('Failed to fetch proposals.');
+        setProposals([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProposals();
-  }, [user, isClient]);
+  }, [user, isClient, selectedJobId]);
 
   // Scroll detection for showing/hiding toolbars
   useEffect(() => {
@@ -122,10 +159,27 @@ export default function ProposalsInboxScreen() {
     return Array.from(groups.values()).sort((a, b) => b.proposals.length - a.proposals.length);
   }, [proposals]);
 
+  useEffect(() => {
+    if (!isClient || !selectedJobId || jobGroups.length === 0) return;
+
+    const selectedGroup = jobGroups.find(group => group.jobPostsId === selectedJobId);
+    if (selectedGroup) {
+      setManagingJob(selectedGroup);
+    }
+  }, [isClient, jobGroups, selectedJobId]);
+
   // Update proposal status
   const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     try {
-      await proposalPutAPI.updateProposalStatus(proposalId, String(status));
+      setError('');
+      setSuccessMessage('');
+      const response = await proposalPutAPI.updateProposalStatus(proposalId, status);
+
+      if (!response.success) {
+        setError(response.message || 'Failed to update proposal status.');
+        return;
+      }
+
       setProposals(prev =>
         prev.map(proposal =>
           proposal.proposalsId === proposalId
@@ -133,8 +187,10 @@ export default function ProposalsInboxScreen() {
             : proposal
         )
       );
+      setSuccessMessage('Proposal status updated successfully.');
     } catch (error) {
       console.error('Failed to update proposal status:', error);
+      setError('Failed to update proposal status.');
     }
   };
 
@@ -146,10 +202,9 @@ export default function ProposalsInboxScreen() {
       : items.filter(proposal => String(proposal.status) === proposalStatusFilter);
 
     return [...filtered].sort((a, b) => {
-      if ((a.boostedTokenAmount || 0) !== (b.boostedTokenAmount || 0)) return (b.boostedTokenAmount || 0) - (a.boostedTokenAmount || 0);
       if (proposalSortBy === 'interviewScore') return (b.interviewScore || 0) - (a.interviewScore || 0);
       if (proposalSortBy === 'status') return Number(a.status) - Number(b.status);
-      if (proposalSortBy === 'rate') return (b.proposedRate || 0) - (a.proposedRate || 0);
+      if (proposalSortBy === 'rate') return (b.proposedBudget || 0) - (a.proposedBudget || 0);
       return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
     });
   }, [managingJob, proposalSortBy, proposalStatusFilter]);
@@ -168,47 +223,9 @@ export default function ProposalsInboxScreen() {
     setCurrentProposalPage(1);
   };
 
-  // Boost proposal logic
-  const boostProposal = (proposal: ProposalViewModel) => {
-    setBoostError('');
-    setBoostSuccess('');
-
-    if (!isPremiumFreelancer) {
-      setBoostError('MSG45: This feature requires a Premium subscription');
-      return;
-    }
-
-    if (getStatusLabel(proposal.status) !== 'Pending') {
-      setBoostError('Only pending proposals can be boosted.');
-      return;
-    }
-
-    if (tokenBalance < boostAmount) {
-      setBoostError('MSG46: Insufficient balance. Please top up your wallet.');
-      return;
-    }
-
-    setTokenBalance(prev => prev - boostAmount);
-    setProposals(prev => prev.map(item => item.proposalsId === proposal.proposalsId
-      ? {
-          ...item,
-          boostedTokenAmount: (item.boostedTokenAmount || 0) + boostAmount,
-          rankingScore: (item.rankingScore || item.interviewScore || 0) + boostAmount,
-          updatedAt: new Date().toISOString(),
-        }
-      : item
-    ));
-    setBoostSuccess(`Boost successful. ${boostAmount} tokens deducted and ranking score increased.`);
-  };
-
   // Competition matrix logic
   const openCompetitionMatrix = (job: JobProposalGroup) => {
     setCompetitionError('');
-
-    if (!isPremiumFreelancer) {
-      setCompetitionError('MSG45: This feature requires a Premium subscription');
-      return;
-    }
 
     if (job.proposals.length < 3) {
       setCompetitionError('MSG74: Not enough data for analysis (minimum 3 proposals required)');
@@ -220,7 +237,7 @@ export default function ProposalsInboxScreen() {
 
   const competitionStats = useMemo(() => {
     if (!competitionJob) return null;
-    const rates = competitionJob.proposals.map(proposal => proposal.proposedRate || 0);
+    const rates = competitionJob.proposals.map(proposal => proposal.proposedBudget || 0);
     const scores = competitionJob.proposals.map(proposal => proposal.interviewScore || 0);
     return {
       minBid: Math.min(...rates),
@@ -238,12 +255,64 @@ export default function ProposalsInboxScreen() {
     setProposalDetail({ proposal, mode });
   };
 
-  const handleAccept = (proposalId: string) => {
-    updateProposalStatus(proposalId, 2);
+  const handleShortlist = (proposalId: string) => {
+    updateProposalStatus(proposalId, ProposalStatus.Shortlisted);
   };
 
   const handleReject = (proposalId: string) => {
-    updateProposalStatus(proposalId, 3);
+    updateProposalStatus(proposalId, ProposalStatus.Rejected);
+  };
+
+  const handleWithdraw = async (proposal: ProposalViewModel) => {
+    if (!canWithdrawProposal(proposal.status)) return;
+
+    const confirmed = window.confirm('Withdraw this proposal?');
+    if (!confirmed) return;
+
+    await updateProposalStatus(proposal.proposalsId, ProposalStatus.Withdrawn);
+  };
+
+  const handleEditDraft = (proposal: ProposalViewModel) => {
+    navigate(`/proposals/${proposal.proposalsId}/edit`);
+  };
+
+  const handleViewAnswers = (proposal: ProposalViewModel) => {
+    navigate(`/proposals/${proposal.proposalsId}/answers`);
+  };
+
+  const handleViewContract = async (proposal: ProposalViewModel) => {
+    if (!canViewContract(proposal.status)) return;
+
+    try {
+      setError('');
+      const response = await contractGetAPI.getContractByProposal(proposal.proposalsId);
+
+      if (response.success && response.data?.contractsId) {
+        navigate(`/contracts/${response.data.contractsId}`);
+        return;
+      }
+
+      setError(response.message || 'Contract is not available yet for this accepted proposal.');
+    } catch (error) {
+      console.error('Failed to load proposal contract:', error);
+      setError('Contract is not available yet for this accepted proposal.');
+    }
+  };
+
+  const handleStartNegotiation = async (proposalId: string) => {
+    try {
+      setLoading(true);
+      const res = await proposalPutAPI.startNegotiation(proposalId);
+      if (res.success && res.data) {
+        navigate(`/messages?conversation=${res.data}`);
+      } else {
+        alert(res.message || 'Failed to start negotiation');
+      }
+    } catch (err) {
+      console.error('Start negotiation error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateContract = (proposal: ProposalViewModel) => {
@@ -251,8 +320,42 @@ export default function ProposalsInboxScreen() {
   };
 
   const handleContractSubmit = async (contractData: ContractData) => {
-    console.log('Creating contract:', contractData);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      setLoading(true);
+      setError('');
+      
+      const createDto: CreateContractDto = {
+        jobPostId: createContractProposal?.jobPostsId || '',
+        proposalId: createContractProposal?.proposalsId || '',
+        clientProfileId: user?.id || '',
+        freelancerProfileId: createContractProposal?.freelancerProfilesId || '',
+        title: createContractProposal?.jobTitle || 'Contract',
+        description: createContractProposal?.coverLetter || '',
+        totalBudget: Number(contractData.proposedBudget),
+        startDate: contractData.startDate,
+        endDate: contractData.endDate,
+      };
+
+      const res = await contractPostAPI.createContractFromProposal(createDto);
+      if (res.success && res.data) {
+        setSuccessMessage('Contract created successfully.');
+        setCreateContractProposal(null);
+        setProposals(prev =>
+          prev.map(p =>
+            p.proposalsId === createContractProposal?.proposalsId
+              ? { ...p, status: ProposalStatus.Accepted }
+              : p
+          )
+        );
+      } else {
+        setError(res.message || 'Failed to create contract.');
+      }
+    } catch (err: any) {
+      console.error('Failed to create contract:', err);
+      setError(err.message || 'Failed to create contract.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -269,26 +372,9 @@ export default function ProposalsInboxScreen() {
           </div>
         </div>
 
-        {!isClient && (
-          <div className="proposal-premium-strip">
-            <div>
-              <span>Premium Freelancer</span>
-              <strong>{isPremiumFreelancer ? 'Active' : 'Inactive'}</strong>
-            </div>
-            <div>
-              <span>Token Balance</span>
-              <strong>{tokenBalance}</strong>
-            </div>
-            <label>
-              <span>Boost tokens</span>
-              <input type="number" min="1" value={boostAmount} onChange={event => setBoostAmount(Math.max(1, Number(event.target.value) || 1))} />
-            </label>
-          </div>
-        )}
-
-        {(boostError || boostSuccess || competitionError) && (
-          <div className={`proposal-feedback ${boostError || competitionError ? 'error' : 'success'}`}>
-            {boostError || competitionError || boostSuccess}
+        {(error || successMessage || competitionError) && (
+          <div className={`proposal-feedback ${error || competitionError ? 'error' : 'success'}`}>
+            {error || competitionError || successMessage}
           </div>
         )}
 
@@ -298,11 +384,12 @@ export default function ProposalsInboxScreen() {
             proposals={proposals}
             statusFilter={proposalStatusFilter}
             jobGroups={jobGroups}
-            isClient={isClient}
             onStatusFilterChange={setProposalStatusFilter}
             onViewDetail={handleViewDetail}
-            onBoost={boostProposal}
-            onCreateContract={handleCreateContract}
+            onEditDraft={handleEditDraft}
+            onViewAnswers={handleViewAnswers}
+            onWithdraw={handleWithdraw}
+            onViewContract={handleViewContract}
             onCompetitionMatrix={openCompetitionMatrix}
           />
         )}
@@ -356,10 +443,11 @@ export default function ProposalsInboxScreen() {
                       proposal={proposal}
                       isClient={isClient}
                       onViewDetail={handleViewDetail}
-                      onAccept={handleAccept}
+                      onShortlist={handleShortlist}
                       onReject={handleReject}
-                      onBoost={boostProposal}
+                      onViewAnswers={handleViewAnswers}
                       onCreateContract={handleCreateContract}
+                      onStartNegotiation={handleStartNegotiation}
                     />
                   ))}
 

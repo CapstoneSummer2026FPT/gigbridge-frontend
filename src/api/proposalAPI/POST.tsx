@@ -1,12 +1,23 @@
-import { proposalHandlers } from '../../mock_backend';
-import type { Proposal } from '../../types/models/Job';
+import { apiService } from '../../service/apiService';
+import type { ApiResponse } from '../../types/common';
+import type { CreateProposalRequest } from '../../types/models/Proposal';
+
+const proposalsUrl = 'Proposals';
 
 export const proposalPostAPI = {
-  createProposal: async (data: Partial<Proposal>) => {
-    return await proposalHandlers.createProposal(data);
+  /**
+   * POST /api/Proposals
+   * Freelancer-only proposal submission.
+   */
+  createProposal: async (data: CreateProposalRequest): Promise<ApiResponse<string>> => {
+    return apiService.post<string>(proposalsUrl, data);
   },
 
-  generateAICoverLetter: async (jobTitle: string, freelancerSkills: string[]) => {
-    return await proposalHandlers.generateAICoverLetter(jobTitle, freelancerSkills);
+  generateAICoverLetter: async (): Promise<ApiResponse<never>> => {
+    return {
+      success: false,
+      statusCode: 501,
+      message: 'AI cover letter generation is not exposed by ProposalsController.',
+    };
   },
 };

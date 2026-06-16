@@ -1,4 +1,4 @@
-import { ContractStatus, MilestoneStatus, PaymentType, type ContractDto, type Milestone } from '../../../types/models/Contract';
+import { ContractStatus, MilestoneStatus, type ContractDto, type Milestone } from '../../../types/models/Contract';
 
 export interface MockContractWithMilestones extends ContractDto {
   milestones: Array<Milestone & { percentageComplete: number; isOverdue: boolean }>;
@@ -19,7 +19,6 @@ export const MOCK_CONTRACTS_FOR_SCREENS: MockContractWithMilestones[] = [
     title: 'SaaS Analytics Dashboard Contract',
     description: 'Fixed-price contract for dashboards, role-based access, reporting, and production deployment.',
     totalBudget: 8500,
-    paymentType: PaymentType.Fixed,
     status: ContractStatus.Active,
     startDate: '2026-05-05',
     endDate: '2026-07-01',
@@ -43,7 +42,6 @@ export const MOCK_CONTRACTS_FOR_SCREENS: MockContractWithMilestones[] = [
     title: 'Mobile Booking App Redesign',
     description: 'Design system, mobile booking funnel redesign, prototype, and implementation review.',
     totalBudget: 6200,
-    paymentType: PaymentType.Fixed,
     status: ContractStatus.Completed,
     startDate: '2026-03-12',
     endDate: '2026-04-28',
@@ -68,7 +66,6 @@ export const MOCK_CONTRACTS_FOR_SCREENS: MockContractWithMilestones[] = [
     title: 'AI Interview Module Integration',
     description: 'Integrate AI interview invitations, score dashboard, and notification events.',
     totalBudget: 7400,
-    paymentType: PaymentType.Fixed,
     status: ContractStatus.Disputed,
     startDate: '2026-05-20',
     endDate: '2026-07-05',
@@ -93,7 +90,6 @@ export const MOCK_CONTRACTS_FOR_SCREENS: MockContractWithMilestones[] = [
     title: 'Data Pipeline Audit and Optimization',
     description: 'Audit Airflow DAGs, optimize warehouse queries, and document data quality checks.',
     totalBudget: 5100,
-    paymentType: PaymentType.Fixed,
     status: ContractStatus.Active,
     startDate: '2026-04-18',
     endDate: '2026-06-18',
@@ -117,7 +113,6 @@ export const MOCK_CONTRACTS_FOR_SCREENS: MockContractWithMilestones[] = [
     title: 'Landing Page Conversion Sprint',
     description: 'Redesign hero, pricing section, and lead capture flow for a B2B campaign.',
     totalBudget: 2800,
-    paymentType: PaymentType.Fixed,
     status: ContractStatus.Cancelled,
     startDate: '2026-02-02',
     endDate: '2026-02-20',
@@ -139,7 +134,6 @@ export const MOCK_CONTRACTS_FOR_SCREENS: MockContractWithMilestones[] = [
     title: 'Premium CRM Automation Contract',
     description: 'Pending e-signature contract generated from an accepted proposal with premium NDA and IP protection clauses.',
     totalBudget: 9600,
-    paymentType: PaymentType.Fixed,
     status: ContractStatus.PendingSignature,
     startDate: '2026-06-10',
     endDate: '2026-08-15',

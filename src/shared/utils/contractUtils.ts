@@ -1,17 +1,21 @@
-import type { ContractStatus, PaymentType } from '../../types/models/Contract';
-import { MilestoneStatus } from '../../types/models/Contract';
+import { ContractStatus, MilestoneStatus } from '../../types/models/Contract';
 
 /**
  * Get human-readable status label for contract status enum
  */
 export const getContractStatusLabel = (status: ContractStatus | number): string => {
   const statusMap: Record<number, string> = {
-    [-1]: 'Draft',
-    0: 'Active',
-    1: 'Completed',
-    2: 'Cancelled',
-    3: 'Disputed',
-    4: 'Pending Signature',
+    0: 'Draft',
+    1: 'Pending Freelancer Selection',
+    2: 'In Negotiation',
+    3: 'Pending Contract Details',
+    4: 'Pending Contract Confirmation',
+    5: 'Pending Escrow',
+    6: 'Pending Signature',
+    7: 'Active',
+    8: 'Completed',
+    9: 'Cancelled',
+    10: 'Disputed',
   };
   return statusMap[status] || 'Unknown';
 };
@@ -21,25 +25,19 @@ export const getContractStatusLabel = (status: ContractStatus | number): string 
  */
 export const getContractStatusClass = (status: ContractStatus | number): string => {
   const statusMap: Record<number, string> = {
-    [-1]: 'contract-status-draft',
-    0: 'contract-status-active',
-    1: 'contract-status-completed',
-    2: 'contract-status-cancelled',
-    3: 'contract-status-disputed',
-    4: 'contract-status-pending-signature',
+    0: 'contract-status-draft',
+    1: 'contract-status-pending',
+    2: 'contract-status-pending',
+    3: 'contract-status-pending',
+    4: 'contract-status-pending',
+    5: 'contract-status-pending',
+    6: 'contract-status-pending-signature',
+    7: 'contract-status-active',
+    8: 'contract-status-completed',
+    9: 'contract-status-cancelled',
+    10: 'contract-status-disputed',
   };
   return `contract-status ${statusMap[status] || 'contract-status-unknown'}`;
-};
-
-/**
- * Get human-readable label for payment type
- */
-export const getPaymentTypeLabel = (paymentType: PaymentType | number): string => {
-  const typeMap: Record<number, string> = {
-    0: 'Fixed Price',
-    1: 'Hourly Rate',
-  };
-  return typeMap[paymentType] || 'Unknown';
 };
 
 /**
@@ -131,15 +129,13 @@ export const generateContractSummary = (data: {
   amount: number;
   startDate: string;
   endDate?: string;
-  paymentType: PaymentType | number;
 }): string => {
   const duration = data.endDate ? calculateContractDuration(data.startDate, data.endDate) : 0;
-  const paymentLabel = getPaymentTypeLabel(data.paymentType);
 
   return `Contract: ${data.title}
 Client: ${data.clientName}
 Freelancer: ${data.freelancerName}
-Amount: ${formatContractAmount(data.amount)} (${paymentLabel})
+Amount: ${formatContractAmount(data.amount)} (Fixed Price)
 Duration: ${duration} days
 Start Date: ${formatContractDate(data.startDate)}
 ${data.endDate ? `End Date: ${formatContractDate(data.endDate)}` : ''}`;
@@ -149,14 +145,22 @@ ${data.endDate ? `End Date: ${formatContractDate(data.endDate)}` : ''}`;
  * Check if contract can be modified
  */
 export const canModifyContract = (status: ContractStatus | number): boolean => {
-  return status === -1 || status === 4 || status === 0;
+  return status === ContractStatus.Draft ||
+    status === ContractStatus.PendingContractDetails ||
+    status === ContractStatus.PendingContractConfirmation ||
+    status === ContractStatus.PendingSignature ||
+    status === ContractStatus.Active;
 };
 
 /**
  * Check if contract can be cancelled
  */
 export const canCancelContract = (status: ContractStatus | number): boolean => {
-  return status === -1 || status === 4 || status === 0;
+  return status === ContractStatus.Draft ||
+    status === ContractStatus.PendingContractDetails ||
+    status === ContractStatus.PendingContractConfirmation ||
+    status === ContractStatus.PendingSignature ||
+    status === ContractStatus.Active;
 };
 
 /**

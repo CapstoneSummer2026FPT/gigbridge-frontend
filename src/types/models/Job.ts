@@ -2,16 +2,11 @@
  * Job Models - JOB_POSTS, JOB_POST_SKILLS, JOB_POST_ATTACHMENTS tables
  */
 
-export enum BudgetType {
-  Fixed = 0,
-  Hourly = 1,
-}
-
 export enum JobStatus {
   Draft = 0,
   Open = 1,
-  InProgress = 2,
-  Closed = 3,
+  Closed = 2,
+  Cancelled = 3,
 }
 
 export interface JobPost {
@@ -20,7 +15,6 @@ export interface JobPost {
   title: string;
   description: string;
   category_id: string;
-  budget_type: BudgetType;
   budget_min: number;
   budget_max: number;
   currency: string;
@@ -55,14 +49,16 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed' | 'hourly';
-  experienceLevel: 'entry' | 'intermediate' | 'expert';
+  jobType: 'fixed';
   deadline?: string;
-  status: 'draft' | 'open' | 'in_progress' | 'closed';
+  status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
+  statusValue?: JobStatus | number | null;
+  visibility?: number | null;
   proposalCount: number;
   viewCount: number;
   aiMatchScore?: number;
   isAiRecommended?: boolean;
+  eloPoints?: number;
   postedAt: string;
   isRemote: boolean;
   gigcoin_cost: number;
@@ -79,13 +75,16 @@ export interface JobPostSummaryDto {
   jobPostsId: string;
   title: string;
   descriptionPreview: string;
-  budgetType: BudgetType;
   budgetMin?: number | null;
   budgetMax?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
+  budgetType?: number | null;
+  experienceLevelRequired?: number | null;
+  eloPoints?: number;
   createdAt: string;
   skillNames: string[];
+  status?: JobStatus | number | null;
+  visibility?: number | null;
 }
 
 export interface JobPostSkillDto {
@@ -104,17 +103,21 @@ export interface JobPostDetailDto {
   clientProfilesId: string;
   title: string;
   description: string;
-  budgetType: BudgetType;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
+  budgetType?: number | null;
+  experienceLevelRequired?: number | null;
   applicationDeadline?: string | null;
+  endDate?: string | null;
   createdAt: string;
+  eloPoints?: number;
+  status?: JobStatus | number | null;
+  visibility?: number | null;
   skills: JobPostSkillDto[];
   attachments: JobPostAttachmentDto[];
 }
@@ -123,16 +126,99 @@ export interface CreateJobPostRequest {
   title: string;
   description: string;
   categoryId?: string | null;
-  budgetType: BudgetType | number;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  experienceLevelRequired?: number | null;
   locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
-  applicationDeadline?: string | null;
+  endDate?: string | null;
   skillIds: string[];
+}
+
+export interface JobPostQuestionDto {
+  jobPostQuestionsId: string;
+  jobPostsId: string;
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface CreateJobPostQuestionRequest {
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface CreateBulkJobPostQuestionsRequest {
+  questions: CreateJobPostQuestionRequest[];
+}
+
+export interface UpdateJobPostQuestionRequest {
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface UpdateJobPostQuestionRequiredRequest {
+  isRequired: boolean;
+}
+
+export interface UpdateBulkJobPostQuestionItemRequest {
+  jobPostQuestionsId: string;
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface UpdateBulkJobPostQuestionsRequest {
+  questions: UpdateBulkJobPostQuestionItemRequest[];
+}
+
+export interface UpdateJobPostStatusRequest {
+  status: number;
+}
+
+export interface UpdateJobPostVisibilityRequest {
+  visibility: number;
+}
+
+export interface Review {
+  reviewId?: string;
+  id?: string;
+  contractId?: string;
+  jobPostId?: string;
+  jobId?: string;
+  reviewerId: string;
+  reviewerName?: string | null;
+  revieweeId: string;
+  rating: number;
+  comment?: string | null;
+  communicationRating?: number | null;
+  qualityRating?: number | null;
+  timelinessRating?: number | null;
+  isVisible?: boolean;
+  isAnonymous?: boolean;
+  createdAt: string;
+  skills?: string[];
+}
+
+export interface CreateReviewRequest {
+  contractId: string;
+  rating: number;
+  comment?: string | null;
+  communicationRating?: number | null;
+  qualityRating?: number | null;
+  timelinessRating?: number | null;
+  isAnonymous: boolean;
+}
+
+export interface ReviewStats {
+  averageRating: number;
+  totalReviews: number;
+  ratingDistribution: Record<number, number>;
 }

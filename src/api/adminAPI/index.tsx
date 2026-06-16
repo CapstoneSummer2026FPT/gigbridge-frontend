@@ -21,6 +21,7 @@ export const adminAPI = {
   createUser: adminPostAPI.createUser,
   createFAQ: adminPostAPI.createFAQ,
   createFAQCategory: adminPostAPI.createFAQCategory,
+  broadcastNotification: adminPostAPI.broadcastNotification,
   updateUser: adminPutAPI.updateUser,
   updateFAQ: adminPutAPI.updateFAQ,
   updateFAQCategory: adminPutAPI.updateFAQCategory,

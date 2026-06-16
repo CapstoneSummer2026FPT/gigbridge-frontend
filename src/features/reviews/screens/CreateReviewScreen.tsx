@@ -1,32 +1,27 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Star } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { useApp } from '../../../app/providers/AppProvider';
-import { getStoredReviews, saveStoredReviews, type ReviewViewModel } from '../mock/data-for-Reviews';
+import { reviewPostAPI } from '../../../api/reviewAPI/POST';
 import '../styles/reviews-screen.css';
 
 export default function CreateReviewScreen() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { user } = useApp();
-  const contractId = params.get('contract') || 'contract_1';
-  const revieweeId = params.get('reviewee') || 'u_freelancer_1';
+  const contractId = params.get('contractId') ?? params.get('contract') ?? '';
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const reviews = useMemo(() => getStoredReviews(), []);
-  const alreadyReviewed = reviews.some(review => review.contractId === contractId && review.reviewerId === (user?.id || 'current_user'));
-
-  const submitReview = () => {
+  const submitReview = async () => {
     setError('');
     setSuccess('');
 
-    if (alreadyReviewed) {
-      setError('MSG54: You have already reviewed this contract');
+    if (!contractId) {
+      setError('Contract id is required to submit a review.');
       return;
     }
 
@@ -40,19 +35,20 @@ export default function CreateReviewScreen() {
       return;
     }
 
-    const newReview: ReviewViewModel = {
-      id: `rev_${Date.now()}`,
+    setIsSubmitting(true);
+    const response = await reviewPostAPI.createReview({
       contractId,
-      reviewerId: user?.id || 'current_user',
-      reviewerName: user?.full_name || 'Current User',
-      revieweeId,
       rating,
       comment,
       isAnonymous,
-      createdAt: new Date().toISOString(),
-    };
+    });
+    setIsSubmitting(false);
 
-    saveStoredReviews([newReview, ...reviews]);
+    if (!response.success) {
+      setError(response.message || 'Could not submit review.');
+      return;
+    }
+
     setSuccess('Review submitted and rating updated.');
     window.setTimeout(() => navigate(-1), 900);
   };
@@ -86,7 +82,9 @@ export default function CreateReviewScreen() {
           {error && <p className="review-error">{error}</p>}
           {success && <p className="review-success">{success}</p>}
 
-          <button className="review-submit" onClick={submitReview}>Submit Review</button>
+          <button className="review-submit" onClick={submitReview} disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit Review'}
+          </button>
         </div>
       </div>
     </AppLayout>

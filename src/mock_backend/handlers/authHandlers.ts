@@ -203,8 +203,6 @@ export const authHandlers = {
       user_id: userId,
       title: profileData.title || '',
       bio: profileData.bio || '',
-      hourly_rate: profileData.hourly_rate || 0,
-      experience_level: profileData.experience_level || 0,
       availability: profileData.availability || 0,
       location: profileData.location || '',
       profile_completion_score: 50,
