@@ -3,23 +3,24 @@ import { useNavigate, useLocation } from 'react-router';
 import { 
   ShieldCheck, PenTool, Trash, Check, ChevronLeft, Send
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { useApp } from '../../../app/providers/AppProvider';
+import { jobHandlers } from '../../../mock_backend';
 import '../styles/PostJobScreen.css';
 
 export default function CreatePostJobContractScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useApp();
 
   const jobData = location.state?.jobData;
-  const jobPostId = location.state?.jobPostId;
 
   useEffect(() => {
-    if (!jobData || !jobPostId) {
-      toast.error('Created JobPost data is missing. Redirecting to Job Creation step.');
+    if (!jobData) {
+      alert('Job details are missing. Redirecting to Job Creation step.');
       navigate('/jobs/post');
     }
-  }, [jobData, jobPostId, navigate]);
+  }, [jobData, navigate]);
 
   const [contractForm, setContractForm] = useState({
     title: jobData?.title ? `${jobData.title} Contract` : '',
@@ -128,7 +129,7 @@ export default function CreatePostJobContractScreen() {
   };
 
   const handleBack = () => {
-    navigate('/jobs/post', { state: { jobData, jobPostId } });
+    navigate('/jobs/post', { state: { jobData } });
   };
 
   const handleSubmit = async () => {
@@ -150,14 +151,26 @@ export default function CreatePostJobContractScreen() {
     setIsSubmitting(true);
 
     try {
-      console.log('Contract setup confirmed for JobPost:', jobPostId, contractForm);
-      toast.success('Contract setup confirmed for the created JobPost.');
+      const finalJobData = {
+        ...jobData,
+        title: contractForm.title,
+        description: contractForm.description,
+        budgetMin: parseFloat(contractForm.budget) || 0,
+        budgetMax: parseFloat(contractForm.budget) || 0,
+        deadline: contractForm.endDate,
+      };
+
+      await jobHandlers.createJob(finalJobData);
+      
+      // Simulate contract save
+      console.log('Contract finalized and sent:', contractForm);
+      
       setIsSubmitting(false);
-      navigate('/jobs/my-jobs');
+      navigate('/client/dashboard');
     } catch (e) {
       console.error(e);
       setIsSubmitting(false);
-      alert('Failed to confirm contract setup. Please try again.');
+      alert('Failed to post job and contract. Please try again.');
     }
   };
 

@@ -9,19 +9,6 @@ export enum JobStatus {
   Cancelled = 3,
 }
 
-export enum JobPostStatus {
-  Draft = 0,
-  Open = 1,
-  Closed = 2,
-  Cancelled = 3,
-}
-
-export enum JobPostVisibility {
-  Public = 0,
-  Private = 1,
-  InviteOnly = 2,
-}
-
 export interface JobPost {
   id: string;
   client_profile_id: string;
@@ -62,12 +49,11 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed' | 'hourly';
-  experienceLevel?: 'entry' | 'intermediate' | 'expert';
+  jobType: 'fixed';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
-  statusValue?: JobStatus | JobPostStatus | number | null;
-  visibility?: JobPostVisibility | number | null;
+  statusValue?: JobStatus | number | null;
+  visibility?: number | null;
   proposalCount: number;
   viewCount: number;
   aiMatchScore?: number;
@@ -97,30 +83,8 @@ export interface JobPostSummaryDto {
   eloPoints?: number;
   createdAt: string;
   skillNames: string[];
-  status?: JobStatus | JobPostStatus | number | null;
-  visibility?: JobPostVisibility | number | null;
-}
-
-export interface GetMyJobPostDto {
-  jobPostsId: string;
-  clientProfilesId: string;
-  title: string;
-  description: string;
-  categoryId?: string | null;
-  categoryName?: string | null;
-  budgetMin?: number | null;
-  budgetMax?: number | null;
-  currency?: string | null;
-  estimatedDuration?: string | null;
-  maxHires?: number | null;
-  location?: string | null;
-  status: JobPostStatus | JobStatus | number;
-  visibility?: JobPostVisibility | number | null;
-  endDate?: string | null;
-  isAigenerated?: boolean | null;
-  createdAt: string;
-  updatedAt?: string | null;
-  proposalCount: number;
+  status?: JobStatus | number | null;
+  visibility?: number | null;
 }
 
 export interface JobPostSkillDto {
@@ -152,33 +116,10 @@ export interface JobPostDetailDto {
   endDate?: string | null;
   createdAt: string;
   eloPoints?: number;
-  status?: JobStatus | JobPostStatus | number | null;
-  visibility?: JobPostVisibility | number | null;
+  status?: JobStatus | number | null;
+  visibility?: number | null;
   skills: JobPostSkillDto[];
   attachments: JobPostAttachmentDto[];
-}
-
-export interface GetMyJobPostDetailDto {
-  jobPostsId: string;
-  clientProfilesId: string;
-  title: string;
-  description: string;
-  categoryId?: string | null;
-  categoryName?: string | null;
-  budgetMin?: number | null;
-  budgetMax?: number | null;
-  currency?: string | null;
-  estimatedDuration?: string | null;
-  maxHires?: number | null;
-  location?: string | null;
-  visibility?: JobPostVisibility | number | null;
-  status: JobPostStatus | JobStatus | number;
-  endDate?: string | null;
-  createdAt: string;
-  updatedAt?: string | null;
-  skills: JobPostSkillDto[];
-  attachments: JobPostAttachmentDto[];
-  proposalCount: number;
 }
 
 export interface CreateJobPostRequest {
@@ -193,27 +134,6 @@ export interface CreateJobPostRequest {
   locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
-  endDate?: string | null;
-  skillIds: string[];
-}
-
-export interface CreateDraftJobPostResponse {
-  jobPostId: string;
-  status: JobPostStatus | number;
-}
-
-export interface UpdateJobPostRequest {
-  title: string;
-  description: string;
-  categoryId?: string | null;
-  budgetMin?: number | null;
-  budgetMax?: number | null;
-  currency?: string | null;
-  estimatedDuration?: string | null;
-  maxHires?: number | null;
-  locationType?: number | null;
-  location?: string | null;
-  visibility: JobPostVisibility | number;
   endDate?: string | null;
   skillIds: string[];
 }
@@ -260,11 +180,11 @@ export interface UpdateBulkJobPostQuestionsRequest {
 }
 
 export interface UpdateJobPostStatusRequest {
-  status: JobPostStatus | JobStatus | number;
+  status: number;
 }
 
 export interface UpdateJobPostVisibilityRequest {
-  visibility: JobPostVisibility | number;
+  visibility: number;
 }
 
 export interface Review {

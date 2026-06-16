@@ -1,14 +1,10 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import { JobPostStatus } from '../../types/models/Job';
 import type {
-  GetMyJobPostDetailDto,
-  GetMyJobPostDto,
   Job,
   JobStatus,
   JobPostDetailDto,
   JobPostQueryParams,
-  JobPostQuestionDto,
   JobPostSummaryDto,
 } from '../../types/models/Job';
 
@@ -64,53 +60,6 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
   eloPoints: job.eloPoints ?? 100,
-  gigcoin_cost: 0,
-});
-
-const toLegacyStatusFromJobPost = (status: number | string | null | undefined): Job['status'] => {
-  const value = Number(status);
-  if (value === JobPostStatus.Draft) return 'draft';
-  if (value === JobPostStatus.Open) return 'open';
-  if (value === JobPostStatus.Closed) return 'closed';
-  if (value === JobPostStatus.Cancelled) return 'cancelled';
-  return 'draft';
-};
-
-const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
-  id: job.jobPostsId,
-  clientId: job.clientProfilesId,
-  title: job.title,
-  description: job.description,
-  category: job.categoryName || 'All',
-  skills: [],
-  budgetMin: job.budgetMin ?? 0,
-  budgetMax: job.budgetMax ?? 0,
-  jobType: 'fixed',
-  deadline: job.endDate ?? undefined,
-  status: toLegacyStatusFromJobPost(job.status),
-  proposalCount: job.proposalCount,
-  viewCount: 0,
-  postedAt: formatPostedAt(job.createdAt),
-  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
-  gigcoin_cost: 0,
-});
-
-const toLegacyJobFromMyJobDetail = (job: GetMyJobPostDetailDto): Job => ({
-  id: job.jobPostsId,
-  clientId: job.clientProfilesId,
-  title: job.title,
-  description: job.description,
-  category: job.categoryName || 'All',
-  skills: job.skills?.map(skill => skill.skillName) || [],
-  budgetMin: job.budgetMin ?? 0,
-  budgetMax: job.budgetMax ?? 0,
-  jobType: 'fixed',
-  deadline: job.endDate ?? undefined,
-  status: toLegacyStatusFromJobPost(job.status),
-  proposalCount: job.proposalCount,
-  viewCount: 0,
-  postedAt: formatPostedAt(job.createdAt),
-  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
 });
 
@@ -175,20 +124,8 @@ export const jobGetAPI = {
    * GET /api/JobPosts/{id}
    * Public job post detail.
    */
-  getPublicJobById: async (id: string): Promise<ApiResponse<JobPostDetailDto>> => {
-    return apiService.get<JobPostDetailDto>(`${jobPostsUrl}/${id}`);
-  },
-
   getJobPostDetail: async (id: string): Promise<ApiResponse<JobPostDetailDto>> => {
-    return jobGetAPI.getPublicJobById(id);
-  },
-
-  /**
-   * GET /api/JobPosts/my-jobs/{jobPostId}
-   * Client-owned job post detail.
-   */
-  getMyJobPostById: async (jobPostId: string): Promise<ApiResponse<GetMyJobPostDetailDto>> => {
-    return apiService.get<GetMyJobPostDetailDto>(`${jobPostsUrl}/my-jobs/${jobPostId}`);
+    return apiService.get<JobPostDetailDto>(`${jobPostsUrl}/${id}`);
   },
 
   /**
@@ -207,8 +144,8 @@ export const jobGetAPI = {
    */
   getMyJobPosts: async (
     params: JobPostQueryParams = {}
-  ): Promise<ApiResponse<GetMyJobPostDto[]>> => {
-    return apiService.get<GetMyJobPostDto[]>(`${jobPostsUrl}/my-jobs`, params);
+  ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
+    return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/my-jobs`, params);
   },
 
   /**
@@ -221,14 +158,6 @@ export const jobGetAPI = {
     return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/my-applications`, params);
   },
 
-  /**
-   * GET /api/JobPosts/{jobPostId}/questions
-   * Questions attached to a job post.
-   */
-  getJobPostQuestions: async (jobPostId: string): Promise<ApiResponse<JobPostQuestionDto[]>> => {
-    return apiService.get<JobPostQuestionDto[]>(`${jobPostsUrl}/${jobPostId}/questions`);
-  },
-
   // Backward-compatible aliases for older screens.
   getJobs: async (params: LegacyJobFilters = {}): Promise<Job[]> => {
     const response = await jobGetAPI.getPublicJobPosts(params);
@@ -236,7 +165,7 @@ export const jobGetAPI = {
   },
 
   getJobById: async (id: string): Promise<{ job: Job; client: null; clientProfile: null }> => {
-    const response = await jobGetAPI.getPublicJobById(id);
+    const response = await jobGetAPI.getJobPostDetail(id);
 
     if (!response.data) {
       throw new Error(response.message || 'Job post not found');
@@ -249,22 +178,8 @@ export const jobGetAPI = {
     };
   },
 
-  getClientJobById: async (id: string): Promise<{ job: Job; client: null; clientProfile: null }> => {
-    const response = await jobGetAPI.getMyJobPostById(id);
-
-    if (!response.data) {
-      throw new Error(response.message || 'Job post not found');
-    }
-
-    return {
-      job: toLegacyJobFromMyJobDetail(response.data),
-      client: null,
-      clientProfile: null,
-    };
-  },
-
   getClientJobs: async (params: JobPostQueryParams = {}): Promise<Job[]> => {
     const response = await jobGetAPI.getMyJobPosts(params);
-    return (response.data || []).map(toLegacyJobFromMyJob);
+    return (response.data || []).map(toLegacyJobFromSummary);
   },
 };
