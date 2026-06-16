@@ -50,6 +50,7 @@
     "gsap": "^3.15.0",
     "i18next": "^26.2.0",
     "i18next-browser-languagedetector": "^8.2.1",
+    "@microsoft/signalr": "^8.0.7",
     "input-otp": "1.4.2",
     "lucide-react": "0.487.0",
     "motion": "12.23.24",

@@ -292,7 +292,7 @@ export default function SmartTalentMatchingScreen() {
             </div>
 
             <button
-              onClick={() => navigate('/jobs/post/questions')}
+              onClick={() => navigate('/jobs/post')}
               className="px-6 py-2.5 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
             >
               <Briefcase size={14} />

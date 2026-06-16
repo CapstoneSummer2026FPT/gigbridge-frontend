@@ -11,6 +11,7 @@ import '../styles/messages-screen.css';
 
 export default function MessagesScreen() {
   const {
+    loading,
     user,
     role,
     isClient,
@@ -52,6 +53,48 @@ export default function MessagesScreen() {
     totalUnread,
     formatTime,
   } = useMessages();
+
+  if (loading) {
+    return (
+      <AppLayout fullWidth>
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-5rem)] bg-background">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--gb-cyan)] mb-4"></div>
+          <p className="text-sm text-muted-foreground font-semibold">Loading messages...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (conversationsState.length === 0) {
+    return (
+      <AppLayout fullWidth>
+        <div className="messages-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
+          <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm">
+            <div className="flex items-center gap-3">
+              <MessageSquare size={20} className="text-[var(--gb-cyan)]" />
+              <div>
+                <h1 className="font-headline-md text-base font-bold text-foreground">Messages</h1>
+                <p className="text-[10px] text-muted-foreground">All caught up!</p>
+              </div>
+            </div>
+          </header>
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <MessageSquare size={48} className="text-muted-foreground mb-4 opacity-55" />
+            <h2 className="text-lg font-bold mb-2">No Conversations Yet</h2>
+            <p className="text-sm text-muted-foreground text-center max-w-sm mb-6">
+              When you apply for a job or start a negotiation, your conversations will appear here.
+            </p>
+            <button
+              onClick={() => navigate('/projects')}
+              className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm px-6 py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/10 active:scale-95 cursor-pointer border-none"
+            >
+              Go to Workspace
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout fullWidth>

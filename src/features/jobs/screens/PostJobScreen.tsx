@@ -101,7 +101,7 @@ export default function PostJobScreen() {
 
   const previewTitle = form.title.trim() || 'Untitled Job Post';
   const questionsWithOrder = useMemo(
-    () => questions.map((question, index) => ({ ...question, orderIndex: index })),
+    () => questions.map((question, index) => ({ ...question, orderIndex: index + 1 })),
     [questions]
   );
 
@@ -200,7 +200,7 @@ export default function PostJobScreen() {
     for (const question of questionsWithOrder) {
       if (!question.questionText.trim()) return 'Every question must have non-empty text.';
       if (question.questionText.length > MAX_QUESTION_LENGTH) return 'Question text must not exceed 1000 characters.';
-      if (!Number.isInteger(question.orderIndex) || question.orderIndex < 0) return 'Question order index must be valid.';
+      if (!Number.isInteger(question.orderIndex) || question.orderIndex < 1) return 'Question order index must be valid.';
     }
 
     return null;

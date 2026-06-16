@@ -13,7 +13,6 @@ import ProfileSetupScreen from '../features/onboarding/screens/ProfileSetupScree
 import ClientDashboardScreen from '../features/dashboard/screens/ClientDashboardScreen';
 import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerDashboardScreen';
 import PostJobScreen from '../features/jobs/screens/PostJobScreen';
-import CreateJobPostQuestionsScreen from '../features/jobs/screens/CreateJobPostQuestionsScreen';
 import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
@@ -163,9 +162,9 @@ export const router = createBrowserRouter([
       { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
 
       // Jobs - requires authentication
-      { path: 'jobs/post/questions', element: <ProtectedRoute requireAuth requireSetup><CreateJobPostQuestionsScreen /></ProtectedRoute> },
+      { path: 'jobs/post/questions', element: <Navigate to="/jobs/post" replace /> },
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
-      { path: 'jobs/post/interview-questions', element: <Navigate to="/jobs/post/questions" replace /> },
+      { path: 'jobs/post/interview-questions', element: <Navigate to="/jobs/post" replace /> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <BrowseJobsScreen /> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },

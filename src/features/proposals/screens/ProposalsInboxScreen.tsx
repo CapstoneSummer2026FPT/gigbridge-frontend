@@ -5,6 +5,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
+import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -173,7 +174,7 @@ export default function ProposalsInboxScreen() {
     try {
       setError('');
       setSuccessMessage('');
-      const response = await proposalPutAPI.updateProposalStatus(proposalId, status);
+      const response = await proposalPatchAPI.updateProposalStatus(proposalId, { status });
 
       if (!response.success) {
         setError(response.message || 'Failed to update proposal status.');
