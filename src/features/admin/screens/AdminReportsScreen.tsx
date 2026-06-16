@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { AlertTriangle, Ban, CheckCircle, Clock, Eye, Flag, Search, User, XCircle } from 'lucide-react';
 import { adminAPI } from '../../../api/adminAPI';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -44,9 +44,10 @@ const formatDate = (date?: string | null) => {
 
 export default function AdminReportsScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [reports, setReports] = useState<ReportDto[]>([]);
   const [statsReports, setStatsReports] = useState<ReportDto[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') ?? '');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [viewReport, setViewReport] = useState<ReportDto | null>(null);
@@ -58,6 +59,7 @@ export default function AdminReportsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reportedEntityType = searchParams.get('reportedEntityType') || undefined;
 
   const loadReports = useCallback(async () => {
     setIsLoading(true);
@@ -69,6 +71,7 @@ export default function AdminReportsScreen() {
       search: searchQuery.trim() || undefined,
       status: statusFilter === 'all' ? undefined : Number(statusFilter),
       type: typeFilter === 'all' ? undefined : Number(typeFilter),
+      reportedEntityType,
     });
 
     if (response.success && response.data) {
@@ -83,7 +86,11 @@ export default function AdminReportsScreen() {
     }
 
     setIsLoading(false);
-  }, [currentPage, searchQuery, statusFilter, typeFilter]);
+  }, [currentPage, searchQuery, statusFilter, typeFilter, reportedEntityType]);
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') ?? '');
+  }, [searchParams]);
 
   const loadStats = useCallback(async () => {
     const response = await adminAPI.getReports({ page: 1, pageSize: 200 });
@@ -174,6 +181,12 @@ export default function AdminReportsScreen() {
   const canModerate = (report: ReportDto) =>
     report.status === ReportStatus.Pending || report.status === ReportStatus.Reviewing;
 
+  const userProfilePath = (userId: string, role?: number | null) => {
+    if (role === 0) return `/profile/client/${userId}`;
+    if (role === 1) return `/profile/freelancer/${userId}`;
+    return null;
+  };
+
   return (
     <AppLayout>
       <div className="w-full max-w-[100vw] overflow-x-hidden">
@@ -184,7 +197,7 @@ export default function AdminReportsScreen() {
                 <Flag size={20} className="text-red" />
                 <span className="badge-red text-xs">Content Moderation</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">User Reports</h1>
+              <h1 className="text-2xl sm:text-3xl font-black text-primary">Report Manager</h1>
               <p className="text-sm text-secondary mt-1">Review and manage user-submitted reports</p>
             </div>
           </div>
@@ -453,10 +466,12 @@ export default function AdminReportsScreen() {
                           <p className="text-xs text-secondary">{viewReport.reporter.email}</p>
                         </div>
                       </div>
-                      <button onClick={() => navigate(`/profile/${viewReport.reporter.id}`)} className="text-xs text-cyan hover:underline flex items-center gap-1">
-                        <User size={12} />
-                        View Profile
-                      </button>
+                      {userProfilePath(viewReport.reporter.id, viewReport.reporter.role) && (
+                        <button onClick={() => navigate(userProfilePath(viewReport.reporter.id, viewReport.reporter.role)!)} className="text-xs text-cyan hover:underline flex items-center gap-1">
+                          <User size={12} />
+                          View Profile
+                        </button>
+                      )}
                     </div>
 
                     <div className="glass-card p-4">
@@ -470,6 +485,12 @@ export default function AdminReportsScreen() {
                           <p className="text-xs text-secondary truncate">{viewReport.targetSummary?.description || viewReport.targetSummary?.email || viewReport.reportedEntityId}</p>
                         </div>
                       </div>
+                      {viewReport.reportedEntityType === 'User' && userProfilePath(viewReport.reportedEntityId, viewReport.targetSummary?.role) && (
+                        <button onClick={() => navigate(userProfilePath(viewReport.reportedEntityId, viewReport.targetSummary?.role)!)} className="text-xs text-cyan hover:underline flex items-center gap-1">
+                          <User size={12} />
+                          View Profile
+                        </button>
+                      )}
                     </div>
                   </div>
 

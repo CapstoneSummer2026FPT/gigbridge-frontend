@@ -18,6 +18,7 @@ export interface ReportUserSummaryDto {
   id: string;
   fullName: string;
   email: string;
+  role: number;
 }
 
 export interface ReportTargetSummaryDto {
@@ -26,6 +27,7 @@ export interface ReportTargetSummaryDto {
   title?: string | null;
   description?: string | null;
   email?: string | null;
+  role?: number | null;
   rating?: number | null;
 }
 
@@ -51,6 +53,13 @@ export interface ReportsResponse {
   pageSize: number;
   totalItems: number;
   totalPages: number;
+}
+
+export interface CreateReportPayload {
+  reportedEntityId: string;
+  reportedEntityType: string;
+  type: ReportType;
+  reason: string;
 }
 
 export interface GetReportsParams {
