@@ -61,6 +61,7 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
+  const [openClientJobs, setOpenClientJobs] = useState<Array<{ id: string; title: string; status: string }>>([]);
 
   // Create Review popup states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -140,11 +141,27 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     fetchReviews();
   }, [targetId]);
 
-  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open').map(job => ({
-    id: job.id,
-    title: job.title,
-    status: job.status,
-  }));
+  useEffect(() => {
+    const fetchOpenClientJobs = async () => {
+      if (!currentUser) return;
+      try {
+        const jobs = await jobGetAPI.getClientJobs();
+        setOpenClientJobs(
+          jobs
+            .filter(job => job.status === 'open')
+            .map(job => ({
+              id: job.id,
+              title: job.title,
+              status: job.status,
+            }))
+        );
+      } catch (error) {
+        console.error('Failed to fetch client jobs for invite modal:', error);
+        setOpenClientJobs([]);
+      }
+    };
+    fetchOpenClientJobs();
+  }, [currentUser]);
   
   const isAlreadyInvitedToJob = (jobId: string): boolean => {
     const inviteKey = `${targetId}_${jobId}`;

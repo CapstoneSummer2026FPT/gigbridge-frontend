@@ -1,9 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { FAQCategoryDto, FAQDto, UpdateFAQCategoryPayload, UpdateFAQPayload } from '../../types/models/FAQ';
+import type { ResolveReportPayload, UpdateReportStatusPayload } from '../../types/models/Report';
 import type { AdminUserDto, UpdateUserPayload } from '../../types/models/User';
 
 const Admin_Api_Base_Url = '/admin';
+const Admin_Reports_Api_Base_Url = '/reports/admin';
 
 export const adminPutAPI = {
   /**
@@ -44,5 +46,13 @@ export const adminPutAPI = {
 
   updateFAQCategory: async (id: number, payload: UpdateFAQCategoryPayload): Promise<ApiResponse<FAQCategoryDto>> => {
     return apiService.put<FAQCategoryDto>(`${Admin_Api_Base_Url}/faq/categories/${id}`, payload);
+  },
+
+  updateReportStatus: async (reportId: string, payload: UpdateReportStatusPayload): Promise<ApiResponse<object>> => {
+    return apiService.put<object>(`${Admin_Reports_Api_Base_Url}/${reportId}/status`, payload);
+  },
+
+  resolveReport: async (reportId: string, payload: ResolveReportPayload): Promise<ApiResponse<object>> => {
+    return apiService.put<object>(`${Admin_Reports_Api_Base_Url}/${reportId}/resolve`, payload);
   },
 };

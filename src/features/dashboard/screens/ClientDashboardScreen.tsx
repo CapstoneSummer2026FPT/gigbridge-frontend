@@ -52,7 +52,7 @@ export default function ClientDashboardScreen() {
             <p className="mt-1 client-dash-greeting">You have <span className="client-dash-highlight font-semibold">{pendingProposals.length} new proposals</span> to review</p>
           </div>
           <button className="btn-cyan px-5 py-3 flex items-center gap-2 text-sm self-start md:self-auto"
-            onClick={() => navigate('/jobs/post')}>
+            onClick={() => navigate('/jobs/post/questions')}>
             <PlusCircle size={18} />
             Post a New Job
           </button>
@@ -203,7 +203,7 @@ export default function ClientDashboardScreen() {
           <div className="grid md:grid-cols-2 gap-4">
             {AI_SUGGESTIONS.map((s, i) => (
               <div key={i} className="p-4 rounded-xl cursor-pointer transition-all client-dash-ai-card"
-                onClick={() => navigate('/jobs/post')}>
+                onClick={() => navigate('/jobs/post/questions')}>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <h3 className="text-primary font-medium text-sm">{s.title}</h3>
                   <span className="match-score high text-[10px]">⚡ {s.match}</span>

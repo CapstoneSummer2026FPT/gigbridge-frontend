@@ -1,243 +1,220 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import {
-  ArrowLeft,
-  ArrowUpDown,
-  CheckCircle,
-  Clock,
-  DollarSign,
-  Eye,
-  FileText,
-  Filter,
-  Info,
-  Users,
-  XCircle,
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate } from 'react-router';
+import { 
+  Briefcase, CheckCircle, Clock, DollarSign, Eye, FileText, 
+  Sparkles, XCircle, Search, Users, ArrowLeft, Download, Info, Check, Filter, ArrowUpDown,
+  ArrowRightLeft
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobAPI } from '../../../api/jobAPI';
+import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
-import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
-import type { GetMyJobPostDto } from '../../../types/models/Job';
-import {
-  ProposalStatus,
-  type ProposalDetailDto,
-  type ProposalDto,
-} from '../../../types/models/Proposal';
-import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
-import { getStatusLabel } from '../utils/statusHelpers';
+import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
+import { DB } from '../../../mock_backend';
+import type { Project } from '../../../types/models/Project';
+import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { JobProposalGroup, ProposalStatusFilter, ProposalSortBy, ProposalStatusValue } from '../types';
 import '../../workspace/styles/project-workspace-screen.css';
-
-type SortBy = 'submittedAt' | 'status' | 'rate';
-
-const statusBadgeClass = (status: number | string | null | undefined) => {
-  const value = Number(status);
-  if (value === ProposalStatus.Accepted) return 'bg-emerald-500/10 text-emerald-500';
-  if (value === ProposalStatus.Rejected || value === ProposalStatus.Withdrawn) return 'bg-red-500/10 text-red-500';
-  if (value === ProposalStatus.Shortlisted) return 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]';
-  return 'bg-amber-500/10 text-amber-500';
-};
-
-const formatCurrency = (value?: number | null) =>
-  typeof value === 'number' ? `$${value.toLocaleString()}` : 'Not specified';
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return 'Not available';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-};
-
-const canClientUpdateStatus = (status: number | string | null | undefined) => {
-  const value = Number(status);
-  return value === ProposalStatus.Pending || value === ProposalStatus.Shortlisted;
-};
 
 export default function ClientProposalsScreen() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const selectedJobFromQuery = useMemo(
-    () => new URLSearchParams(location.search).get('job'),
-    [location.search]
-  );
-
-  const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(true);
-  const [jobsError, setJobsError] = useState('');
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(selectedJobFromQuery);
-
-  const [proposals, setProposals] = useState<ProposalDto[]>([]);
-  const [proposalsLoading, setProposalsLoading] = useState(false);
-  const [proposalsError, setProposalsError] = useState('');
+  const { user } = useApp();
+  
+  const [proposals, setProposals] = useState<ProposalViewModel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeProposalId, setActiveProposalId] = useState<string | null>(null);
-
-  const [proposalDetail, setProposalDetail] = useState<ProposalDetailDto | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState('');
-  const [statusMessage, setStatusMessage] = useState('');
-  const [updatingStatus, setUpdatingStatus] = useState<ProposalStatusValue | null>(null);
-
+  
   const [statusFilter, setStatusFilter] = useState<ProposalStatusFilter>('all');
-  const [sortBy, setSortBy] = useState<SortBy>('submittedAt');
+  const [sortBy, setSortBy] = useState<ProposalSortBy>('interviewScore');
 
+  // Fetch proposals
   useEffect(() => {
-    setSelectedJobId(selectedJobFromQuery);
-  }, [selectedJobFromQuery]);
-
-  useEffect(() => {
-    const loadJobs = async () => {
-      setJobsLoading(true);
-      setJobsError('');
-
-      const response = await jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 });
-      if (!response.success || !response.data) {
-        setJobs([]);
-        setJobsError(response.message || 'Unable to load your JobPosts.');
-        setJobsLoading(false);
-        return;
-      }
-
-      setJobs(response.data);
-      setJobsLoading(false);
-
-      if (!selectedJobId && response.data.length > 0) {
-        setSelectedJobId(response.data[0].jobPostsId);
+    const fetchProposals = async () => {
+      if (!user) return;
+      try {
+        setLoading(true);
+        const response = await proposalGetAPI.getAllProposals();
+        setProposals(response.data?.length ? response.data.map((proposal, index) => ({
+          ...proposal,
+          updatedAt: proposal.reviewedAt || proposal.submittedAt,
+          isAIGenerated: index % 2 === 0,
+          interviewScore: Math.max(58, 96 - index * 7),
+          rankingScore: Math.max(58, 96 - index * 7),
+          boostedTokenAmount: 0,
+          attachments: [
+            {
+              propoAttach_ProposalAttachmentsId: `api_attach_${proposal.proposalsId}`,
+              propo_ProposalsId: proposal.proposalsId,
+              fileName: `${proposal.freelancerName || 'Freelancer'}_CV.pdf`,
+              fileUrl: '#',
+              fileSize: 700000 + index * 42000,
+              createdAt: proposal.submittedAt,
+            },
+          ],
+        })) : MOCK_PROPOSALS);
+      } catch (error) {
+        console.error('Failed to fetch proposals:', error);
+        setProposals(MOCK_PROPOSALS);
+      } finally {
+        setLoading(false);
       }
     };
+    fetchProposals();
+  }, [user]);
 
-    loadJobs();
-  }, []);
-
-  useEffect(() => {
-    const loadProposals = async () => {
-      if (!selectedJobId) {
-        setProposals([]);
-        setActiveProposalId(null);
-        setProposalDetail(null);
+  // Group proposals by job
+  const jobGroups = useMemo<JobProposalGroup[]>(() => {
+    const groups = new Map<string, JobProposalGroup>();
+    proposals.forEach(proposal => {
+      const id = proposal.jobPostsId || 'unknown-job';
+      const current = groups.get(id);
+      if (current) {
+        current.proposals.push(proposal);
         return;
       }
-
-      setProposalsLoading(true);
-      setProposalsError('');
-      setStatusMessage('');
-      setProposalDetail(null);
-
-      const response = await proposalGetAPI.getProposalsByJobPost(selectedJobId, {
-        pageIndex: 1,
-        pageSize: 100,
+      groups.set(id, {
+        jobPostsId: id,
+        jobTitle: proposal.jobTitle || 'Untitled JobPost',
+        proposals: [proposal],
       });
+    });
+    return Array.from(groups.values()).sort((a, b) => b.proposals.length - a.proposals.length);
+  }, [proposals]);
 
-      if (!response.success || !response.data) {
-        setProposals([]);
-        setActiveProposalId(null);
-        setProposalsError(response.message || 'Unable to load proposals for this JobPost.');
-        setProposalsLoading(false);
-        return;
-      }
-
-      setProposals(response.data);
-      setActiveProposalId(response.data[0]?.proposalsId || null);
-      setProposalsLoading(false);
-    };
-
-    loadProposals();
-  }, [selectedJobId]);
-
+  // Auto-select first job and first proposal
   useEffect(() => {
-    const loadProposalDetail = async () => {
-      if (!activeProposalId) {
-        setProposalDetail(null);
-        setDetailError('');
-        return;
-      }
+    if (jobGroups.length > 0 && !activeJobId) {
+      setActiveJobId(jobGroups[0].jobPostsId);
+    }
+  }, [jobGroups, activeJobId]);
 
-      setDetailLoading(true);
-      setDetailError('');
+  const activeJob = useMemo(() => {
+    return jobGroups.find(group => group.jobPostsId === activeJobId) || null;
+  }, [jobGroups, activeJobId]);
 
-      const response = await proposalGetAPI.getProposalDetail(activeProposalId);
-      if (!response.success || !response.data) {
-        setProposalDetail(null);
-        setDetailError(response.message || 'Unable to load proposal detail.');
-        setDetailLoading(false);
-        return;
-      }
-
-      setProposalDetail(response.data);
-      setDetailLoading(false);
-    };
-
-    loadProposalDetail();
-  }, [activeProposalId]);
-
-  const selectedJob = useMemo(
-    () => jobs.find(job => job.jobPostsId === selectedJobId) || null,
-    [jobs, selectedJobId]
-  );
-
-  const displayJobTitle = selectedJob?.title || proposals[0]?.jobTitle || 'Selected JobPost';
-
+  // Filter & sort proposals for the active job
   const filteredProposals = useMemo(() => {
-    const items = statusFilter === 'all'
-      ? proposals
-      : proposals.filter(proposal => String(proposal.status) === statusFilter);
+    if (!activeJob) return [];
+    let items = activeJob.proposals;
+    
+    if (statusFilter !== 'all') {
+      items = items.filter(p => String(p.status) === statusFilter);
+    }
 
     return [...items].sort((a, b) => {
+      if ((a.boostedTokenAmount || 0) !== (b.boostedTokenAmount || 0)) {
+        return (b.boostedTokenAmount || 0) - (a.boostedTokenAmount || 0);
+      }
+      if (sortBy === 'interviewScore') return (b.interviewScore || 0) - (a.interviewScore || 0);
       if (sortBy === 'status') return Number(a.status) - Number(b.status);
       if (sortBy === 'rate') return (b.proposedBudget || 0) - (a.proposedBudget || 0);
       return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
     });
-  }, [proposals, statusFilter, sortBy]);
+  }, [activeJob, statusFilter, sortBy]);
 
+  // Auto-select first proposal in the filtered list
   useEffect(() => {
-    if (filteredProposals.length === 0) {
+    if (filteredProposals.length > 0) {
+      // If the current active proposal is not in the filtered list, select the first one
+      if (!filteredProposals.some(p => p.proposalsId === activeProposalId)) {
+        setActiveProposalId(filteredProposals[0].proposalsId);
+      }
+    } else {
       setActiveProposalId(null);
-      return;
-    }
-
-    if (!activeProposalId || !filteredProposals.some(proposal => proposal.proposalsId === activeProposalId)) {
-      setActiveProposalId(filteredProposals[0].proposalsId);
     }
   }, [filteredProposals, activeProposalId]);
 
-  const activeProposal = useMemo(
-    () => filteredProposals.find(proposal => proposal.proposalsId === activeProposalId) || null,
-    [filteredProposals, activeProposalId]
-  );
+  const activeProposal = useMemo(() => {
+    return filteredProposals.find(p => p.proposalsId === activeProposalId) || null;
+  }, [filteredProposals, activeProposalId]);
 
-  const handleSelectJob = (jobPostId: string) => {
-    setSelectedJobId(jobPostId);
-    navigate(`/proposals?job=${jobPostId}`, { replace: true });
+  // Actions
+  const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
+    try {
+      await proposalPutAPI.updateProposalStatus(proposalId, String(status));
+      setProposals(prev =>
+        prev.map(proposal =>
+          proposal.proposalsId === proposalId
+            ? { ...proposal, status, reviewedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+            : proposal
+        )
+      );
+      
+      // If accepted (status === 2), auto redirect to negotiation room
+      if (status === 2) {
+        const prop = proposals.find(p => p.proposalsId === proposalId);
+        if (prop) {
+          handleGoToNegotiation({ ...prop, status: 2 });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update proposal status:', error);
+    }
   };
 
-  const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
-    setUpdatingStatus(status);
-    setStatusMessage('');
+  const handleGoToNegotiation = (proposal: ProposalViewModel) => {
+    const conversations = DB.getConversations();
+    let existingConv = conversations.find(
+      c =>
+        (c.participantId === proposal.freelancerProfilesId || c.participantName === proposal.freelancerName) &&
+        (c.job.id === proposal.jobPostsId || c.job.title === proposal.jobTitle)
+    );
 
-    const response = await proposalPatchAPI.updateProposalStatus(proposalId, { status });
-    setUpdatingStatus(null);
+    let convId = existingConv?.id;
 
-    if (!response.success) {
-      setStatusMessage(response.message || 'Unable to update proposal status.');
-      return;
+    if (existingConv) {
+      existingConv.roomType = 'negotiation';
+      existingConv.roomId = 'room_negotiation';
+      existingConv.conversationType = 0; // 0 = JobNegotiation
+    } else {
+      convId = `conv_${Date.now()}`;
+      const newConv = {
+        id: convId,
+        roomType: 'negotiation' as const,
+        roomId: 'room_negotiation',
+        participantId: proposal.freelancerProfilesId || 'u_freelancer_1',
+        participantName: proposal.freelancerName || 'Freelancer',
+        participantAvatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${proposal.freelancerName || 'freelancer'}`,
+        participantRole: 'Freelancer',
+        participantCompany: 'Independent',
+        participantOnline: true,
+        job: {
+          id: proposal.jobPostsId || 'job_1',
+          title: proposal.jobTitle || 'Untitled Job',
+          budget: proposal.proposedBudget ? `$${proposal.proposedBudget.toLocaleString()}` : '$3,000',
+          category: 'Development',
+        },
+        lastMessage: 'Cuộc trò chuyện đàm phán đã được tạo.',
+        lastMessageAt: new Date().toISOString(),
+        unreadCount: 0,
+        isMuted: false,
+        conversationType: 0, // 0 = JobNegotiation
+      };
+
+      DB.addConversation(newConv);
+
+      const initMessage = {
+        id: `msg_${Date.now()}`,
+        conversationId: convId,
+        senderId: user?.id || 'u_client_1',
+        content: `Hi ${proposal.freelancerName || 'Freelancer'}! Đề xuất của bạn đã được chấp nhận. Hãy thảo luận chi tiết về phạm vi công việc và giá cả ở đây.`,
+        type: 'text' as const,
+        createdAt: new Date().toISOString(),
+        isRead: true,
+      };
+      DB.addMessage(initMessage);
     }
 
-    const now = new Date().toISOString();
-    setProposals(prev => prev.map(proposal =>
-      proposal.proposalsId === proposalId
-        ? { ...proposal, status, reviewedAt: now }
-        : proposal
-    ));
-    setProposalDetail(prev => prev && prev.proposalId === proposalId
-      ? { ...prev, status, updatedAt: now }
-      : prev
-    );
-    setStatusMessage('Proposal status updated.');
+    navigate('/messages', { state: { activeConvId: convId } });
   };
 
   return (
     <AppLayout fullWidth>
       <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
+        {/* Top Header */}
         <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm">
           <div className="flex items-center gap-6">
-            <button
+            <button 
               onClick={() => navigate('/client/dashboard')}
               className="flex items-center gap-2 text-muted-foreground hover:text-[var(--gb-cyan)] transition-colors group cursor-pointer"
             >
@@ -247,43 +224,48 @@ export default function ClientProposalsScreen() {
             <div className="flex flex-col">
               <h1 className="font-headline-md text-base font-bold text-foreground">Proposals Workspace</h1>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest text-left mt-0.5">
-                Review proposals from real JobPost data
+                Review and manage applicants' proposals
               </p>
             </div>
           </div>
         </header>
 
+        {/* 3-Column Proposals Workspace Layout */}
         <div className="flex flex-1 overflow-hidden">
+          
+          {/* Column 1: Job Posts List (Left Pane) */}
           <section className="w-80 border-r border-border flex flex-col bg-card">
             <div className="p-4 border-b border-border flex justify-between items-center bg-muted/10">
-              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-bold">JobPosts</span>
-              <span className="bg-[var(--gb-cyan)]/15 text-[var(--gb-cyan)] text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {jobs.length}
-              </span>
+              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-bold">Job Openings</span>
+              <span className="bg-[var(--gb-cyan)]/15 text-[var(--gb-cyan)] text-[10px] font-bold px-2 py-0.5 rounded-full">{jobGroups.length}</span>
             </div>
-
+            
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {jobsLoading ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">Loading JobPosts...</div>
-              ) : jobsError ? (
-                <div className="p-8 text-center text-xs text-red-500">{jobsError}</div>
-              ) : jobs.length === 0 ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">No JobPosts found.</div>
+              {loading ? (
+                <div className="p-8 text-center text-xs text-muted-foreground">Loading openings...</div>
+              ) : jobGroups.length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground">No active job posts with proposals.</div>
               ) : (
-                jobs.map(job => {
-                  const isActive = job.jobPostsId === selectedJobId;
+                jobGroups.map(group => {
+                  const isActive = group.jobPostsId === activeJobId;
                   return (
                     <div
-                      key={job.jobPostsId}
-                      onClick={() => handleSelectJob(job.jobPostsId)}
+                      key={group.jobPostsId}
+                      onClick={() => {
+                        setActiveJobId(group.jobPostsId);
+                        setActiveProposalId(null);
+                      }}
                       className={`border-b border-border/50 p-4 cursor-pointer transition-all hover:bg-muted/30 ${
                         isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''
                       }`}
                     >
-                      <h3 className="text-sm font-semibold truncate text-foreground">{job.title}</h3>
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1">
-                        {job.description || 'No description.'}
-                      </p>
+                      <h3 className="text-sm font-semibold truncate text-foreground">{group.jobTitle}</h3>
+                      <div className="flex gap-2 items-center mt-2">
+                        <Users size={12} className="text-muted-foreground" />
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          {group.proposals.length} proposal{group.proposals.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </div>
                   );
                 })
@@ -291,82 +273,87 @@ export default function ClientProposalsScreen() {
             </div>
           </section>
 
+          {/* Column 2: Proposals List & Detail Area (Center Pane) */}
           <section className="flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm">
+            
+            {/* Toolbar Filters */}
             <div className="glass-header px-6 py-3.5 border-b border-border flex justify-between items-center flex-wrap gap-4">
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Selected JobPost</p>
-                <h2 className="text-sm font-bold text-foreground truncate max-w-[360px]">{displayJobTitle}</h2>
-              </div>
-
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
                   <Filter size={13} />
-                  Status
+                  Status:
                 </span>
-                <select
+                <select 
                   value={statusFilter}
-                  onChange={event => setStatusFilter(event.target.value as ProposalStatusFilter)}
+                  onChange={e => setStatusFilter(e.target.value as ProposalStatusFilter)}
                   className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
                 >
-                  <option value="all">All</option>
-                  <option value="1">Pending</option>
-                  <option value="2">Shortlisted</option>
-                  <option value="3">Accepted</option>
-                  <option value="4">Rejected</option>
-                  <option value="5">Withdrawn</option>
+                  <option value="all">All Proposals</option>
+                  <option value="0">Pending</option>
+                  <option value="1">Shortlisted</option>
+                  <option value="2">Accepted</option>
+                  <option value="3">Rejected</option>
                 </select>
+              </div>
 
+              <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
                   <ArrowUpDown size={13} />
-                  Sort
+                  Sort:
                 </span>
-                <select
+                <select 
                   value={sortBy}
-                  onChange={event => setSortBy(event.target.value as SortBy)}
+                  onChange={e => setSortBy(e.target.value as ProposalSortBy)}
                   className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
                 >
-                  <option value="submittedAt">Submission Date</option>
+                  <option value="interviewScore">Interview Score</option>
                   <option value="status">Status</option>
-                  <option value="rate">Proposed Budget</option>
+                  <option value="rate">Proposed Rate</option>
+                  <option value="date">Submission Date</option>
                 </select>
               </div>
             </div>
 
+            {/* List and Detail Split Layout within Center Pane */}
             <div className="flex flex-1 overflow-hidden">
+              
+              {/* Proposals Cards List (Sub-Column Left) */}
               <div className="w-80 border-r border-border flex flex-col bg-card/40 overflow-y-auto custom-scrollbar">
-                {!selectedJobId ? (
-                  <div className="p-8 text-center text-xs text-muted-foreground">Select a JobPost to view proposals.</div>
-                ) : proposalsLoading ? (
-                  <div className="p-8 text-center text-xs text-muted-foreground">Loading proposals...</div>
-                ) : proposalsError ? (
-                  <div className="p-8 text-center text-xs text-red-500">{proposalsError}</div>
-                ) : filteredProposals.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-muted-foreground">No proposals found for this JobPost.</div>
+                {filteredProposals.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-muted-foreground">No proposals match filters.</div>
                 ) : (
-                  filteredProposals.map(proposal => {
-                    const isActive = proposal.proposalsId === activeProposalId;
+                  filteredProposals.map(p => {
+                    const isActive = p.proposalsId === activeProposalId;
+                    const isAccepted = p.status === 2;
+                    const isRejected = p.status === 3;
                     return (
                       <div
-                        key={proposal.proposalsId}
-                        onClick={() => setActiveProposalId(proposal.proposalsId)}
+                        key={p.proposalsId}
+                        onClick={() => setActiveProposalId(p.proposalsId)}
                         className={`p-4 border-b border-border/50 cursor-pointer transition-all hover:bg-muted/40 flex flex-col gap-1.5 ${
                           isActive ? 'bg-[var(--gb-cyan)]/5 border-r-2 border-r-[var(--gb-cyan)]' : ''
                         }`}
                       >
-                        <div className="flex justify-between items-center gap-2">
+                        <div className="flex justify-between items-center">
                           <span className="text-xs font-bold text-foreground truncate max-w-[140px]">
-                            {proposal.freelancerName || 'Applicant'}
+                            {p.freelancerName || 'Applicant'}
                           </span>
-                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${statusBadgeClass(proposal.status)}`}>
-                            {getStatusLabel(proposal.status)}
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                            isAccepted 
+                              ? 'bg-emerald-500/10 text-emerald-500' 
+                              : isRejected 
+                              ? 'bg-red-500/10 text-red-500' 
+                              : 'bg-amber-500/10 text-amber-500'
+                          }`}>
+                            {isAccepted ? 'Accepted' : isRejected ? 'Rejected' : 'Pending'}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                          {proposal.coverLetter || 'No cover letter.'}
+                          {p.coverLetter || 'No cover letter.'}
                         </p>
                         <div className="flex justify-between items-center text-[10px] text-muted-foreground font-semibold mt-1">
-                          <span>{formatCurrency(proposal.proposedBudget)}</span>
-                          <span>{proposal.proposedDuration || 'No duration'}</span>
+                          <span>${p.proposedBudget?.toLocaleString()}</span>
+                          <span>{p.proposedDuration} days</span>
                         </div>
                       </div>
                     );
@@ -374,91 +361,70 @@ export default function ClientProposalsScreen() {
                 )}
               </div>
 
+              {/* Proposal Detailed View (Sub-Column Right) */}
               <div className="flex-1 flex flex-col bg-card/20 overflow-y-auto custom-scrollbar p-6">
-                {detailLoading ? (
-                  <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading proposal detail...</div>
-                ) : detailError ? (
-                  <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">{detailError}</div>
-                ) : activeProposal && proposalDetail ? (
+                {activeProposal ? (
                   <div className="flex flex-col gap-6">
-                    <div className="flex justify-between items-start border-b border-border pb-4 gap-4">
+                    {/* Header Info */}
+                    <div className="flex justify-between items-start border-b border-border pb-4">
                       <div>
-                        <h2 className="text-lg font-bold text-foreground">{proposalDetail.freelancerName || activeProposal.freelancerName || 'Freelancer Proposal'}</h2>
+                        <h2 className="text-lg font-bold text-foreground">{activeProposal.freelancerName || 'Freelancer Proposal'}</h2>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Submitted {formatDateTime(proposalDetail.submittedAt || activeProposal.submittedAt)}
+                          Submitted on {activeProposal.submittedAt ? new Date(activeProposal.submittedAt).toLocaleDateString() : 'Recently'}
                         </p>
                       </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(proposalDetail.status)}`}>
-                        {getStatusLabel(proposalDetail.status)}
-                      </span>
-                    </div>
-
-                    {statusMessage && (
-                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-600">
-                        {statusMessage}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded-xl border border-border bg-background p-4">
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Proposed Budget</span>
-                        <p className="text-base font-bold text-foreground mt-1">{formatCurrency(proposalDetail.proposedBudget)}</p>
-                      </div>
-                      <div className="rounded-xl border border-border bg-background p-4">
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Duration</span>
-                        <p className="text-base font-bold text-foreground mt-1">{proposalDetail.proposedDuration || 'Not specified'}</p>
+                      <div className="flex gap-4">
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Proposed Rate</span>
+                          <span className="text-base font-bold text-foreground">${activeProposal.proposedBudget?.toLocaleString()}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Duration</span>
+                          <span className="text-base font-bold text-foreground">{activeProposal.proposedDuration} Days</span>
+                        </div>
                       </div>
                     </div>
 
+                    {/* Proposal Cover Letter */}
                     <div className="flex flex-col gap-2">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Cover Letter</h4>
                       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-background p-4 rounded-xl border border-border">
-                        {proposalDetail.coverLetter || 'No cover letter provided.'}
+                        {activeProposal.coverLetter || 'No cover letter provided.'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3 mt-4 border-t border-border pt-6 flex-wrap">
-                      <button
-                        onClick={() => navigate(`/proposals/${proposalDetail.proposalId}/answers`)}
-                        className="bg-background border border-border text-foreground hover:bg-muted/20 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
-                      >
-                        <FileText size={16} />
-                        View Answers
-                      </button>
-
-                      {canClientUpdateStatus(proposalDetail.status) ? (
+                    {/* Proposal Action Buttons */}
+                    <div className="flex items-center gap-3 mt-4 border-t border-border pt-6">
+                      {activeProposal.status === 2 ? (
+                        <button
+                          onClick={() => handleGoToNegotiation(activeProposal)}
+                          className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm shadow-teal-500/10 active:scale-[0.98]"
+                        >
+                          <ArrowRightLeft size={16} />
+                          <span>Vào đàm phán</span>
+                        </button>
+                      ) : activeProposal.status === 3 ? (
+                        <div className="flex items-center gap-2 text-red-500 font-bold text-sm bg-red-500/5 px-4 py-2 rounded-xl border border-red-500/10">
+                          <XCircle size={16} />
+                          <span>Proposal Rejected</span>
+                        </div>
+                      ) : (
                         <>
-                          {Number(proposalDetail.status) === ProposalStatus.Pending && (
-                            <button
-                              onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Shortlisted)}
-                              disabled={updatingStatus !== null}
-                              className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
-                            >
-                              <Users size={16} />
-                              {updatingStatus === ProposalStatus.Shortlisted ? 'Shortlisting...' : 'Shortlist'}
-                            </button>
-                          )}
                           <button
-                            onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Accepted)}
-                            disabled={updatingStatus !== null}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
+                            onClick={() => updateProposalStatus(activeProposal.proposalsId, 2)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
                           >
                             <CheckCircle size={16} />
-                            {updatingStatus === ProposalStatus.Accepted ? 'Accepting...' : 'Accept'}
+                            Accept Proposal
                           </button>
                           <button
-                            onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Rejected)}
-                            disabled={updatingStatus !== null}
+                            onClick={() => updateProposalStatus(activeProposal.proposalsId, 3)}
                             className="bg-transparent border border-border text-muted-foreground hover:text-red-500 hover:border-red-500/30 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
                           >
                             <XCircle size={16} />
-                            {updatingStatus === ProposalStatus.Rejected ? 'Rejecting...' : 'Reject'}
+                            Reject
                           </button>
                         </>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Status actions are unavailable for {getStatusLabel(proposalDetail.status)} proposals.
-                        </span>
                       )}
                     </div>
                   </div>
@@ -469,46 +435,80 @@ export default function ClientProposalsScreen() {
                   </div>
                 )}
               </div>
+
             </div>
           </section>
 
+          {/* Column 3: Freelancer Profile / Detail Panel (Right Pane) */}
           <section className="w-80 border-l border-border flex flex-col bg-card p-6 overflow-y-auto custom-scrollbar">
-            {proposalDetail ? (
-              <div className="flex flex-col gap-5">
-                <div className="pb-4 border-b border-border">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider text-muted-foreground mb-1">Proposal Summary</h3>
-                  <h2 className="text-base font-bold text-foreground leading-snug">{proposalDetail.jobPostTitle || displayJobTitle}</h2>
-                  <div className={`inline-flex mt-3 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(proposalDetail.status)}`}>
-                    {getStatusLabel(proposalDetail.status)}
+            {activeProposal ? (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col items-center text-center gap-3 pb-6 border-b border-border">
+                  <div className="relative">
+                    <img 
+                      alt={activeProposal.freelancerName} 
+                      className="w-20 h-20 rounded-full object-cover border-4 border-background shadow-md" 
+                      src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${activeProposal.freelancerName || activeProposal.freelancerProfilesId}`} 
+                    />
+                    <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-card rounded-full"></span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground">{activeProposal.freelancerName || 'Applicant'}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Freelancer Developer</p>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 text-xs">
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Freelancer</span>
-                    <strong className="text-foreground text-right">{proposalDetail.freelancerName || 'Unknown'}</strong>
+                {/* Match Suitability Score */}
+                <div className="flex flex-col gap-2 bg-background p-4 rounded-xl border border-border">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Interview Suitability</span>
+                    <span className="text-xs font-bold text-[var(--gb-cyan)]">{activeProposal.interviewScore || 85}%</span>
                   </div>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Budget</span>
-                    <strong className="text-foreground">{formatCurrency(proposalDetail.proposedBudget)}</strong>
+                  <div className="w-full bg-muted/40 h-2 rounded-full overflow-hidden mt-1">
+                    <div 
+                      className="bg-gradient-to-r from-[var(--gb-cyan)] to-[var(--gb-purple)] h-full rounded-full" 
+                      style={{ width: `${activeProposal.interviewScore || 85}%` }}
+                    />
                   </div>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Submitted</span>
-                    <strong className="text-foreground text-right">{formatDateTime(proposalDetail.submittedAt)}</strong>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Reviewed</span>
-                    <strong className="text-foreground text-right">{formatDateTime(proposalDetail.updatedAt || activeProposal?.reviewedAt)}</strong>
-                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
+                    Based on manual interview answers and criteria match evaluation.
+                  </p>
+                </div>
+
+                {/* Attachments */}
+                <div className="flex flex-col gap-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Attachments</h4>
+                  {activeProposal.attachments && activeProposal.attachments.map(att => (
+                    <div 
+                      key={att.propoAttach_ProposalAttachmentsId}
+                      className="flex items-center justify-between p-3 bg-background border border-border rounded-xl hover:bg-muted/10 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileText size={16} className="text-[var(--gb-cyan)] flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate max-w-[150px]">{att.fileName}</p>
+                          <p className="text-[9px] text-muted-foreground mt-0.5">{(att.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => alert('Simulating attachment download')}
+                        className="text-muted-foreground hover:text-[var(--gb-cyan)] transition-colors cursor-pointer bg-transparent border-none p-1 flex items-center"
+                        title="Download file"
+                      >
+                        <Download size={14} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : (
               <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground">
                 <Info size={30} className="opacity-25 mb-2" />
-                <p className="text-xs">No proposal selected.</p>
+                <p className="text-xs">No applicant selected.</p>
               </div>
             )}
           </section>
+
         </div>
       </div>
     </AppLayout>
