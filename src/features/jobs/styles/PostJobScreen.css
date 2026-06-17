@@ -279,3 +279,52 @@
   margin-top: 0.25rem;
   color: var(--gb-text-secondary);
 }
+
+@media (max-width: 768px) {
+  .post-job-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .category-btn,
+  .budget-type-btn,
+  .work-type-btn,
+  .preview-btn,
+  .ai-generate-btn {
+    justify-content: center;
+    min-height: 2.5rem;
+  }
+
+  .budget-type-btn,
+  .work-type-btn {
+    flex-basis: 100%;
+  }
+
+  .upload-zone {
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .post-job-header-subtitle,
+  .post-job-header-description,
+  .input-hint,
+  .tips-text,
+  .upload-hint {
+    line-height: 1.5;
+  }
+
+  .ai-orb {
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .ai-generated-indicator,
+  .tips-item {
+    align-items: flex-start;
+  }
+
+  .preview-btn,
+  .ai-generate-btn {
+    width: 100%;
+  }
+}

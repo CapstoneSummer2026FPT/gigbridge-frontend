@@ -278,7 +278,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   };
 
   const handleNavigate = (path: string) => {
-    navigate(path);
+    if (path === '/ai-assistant') {
+      window.dispatchEvent(new CustomEvent('toggle-ai-assistant', { detail: { open: true } }));
+    } else {
+      navigate(path);
+    }
     if (onClose) onClose();
   };
 
