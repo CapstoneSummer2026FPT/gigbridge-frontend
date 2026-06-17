@@ -69,7 +69,7 @@ export interface Job {
   viewCount: number;
   aiMatchScore?: number;
   isAiRecommended?: boolean;
-  eloPoints?: number;
+  clientEloPoints?: number;
   postedAt: string;
   isRemote: boolean;
   gigcoin_cost: number;
@@ -93,7 +93,6 @@ export interface JobPostSummaryDto {
   experienceLevelRequired?: number | null;
   eloPoints?: number;
   createdAt: string;
-  eloPoints?: number;
   skillNames: string[];
   status?: JobPostStatus | number | null;
   visibility?: JobPostVisibility | number | null;

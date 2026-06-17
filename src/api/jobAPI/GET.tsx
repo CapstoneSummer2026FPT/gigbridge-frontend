@@ -59,7 +59,7 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
-  eloPoints: job.eloPoints ?? 100,
+  clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
 
@@ -129,7 +129,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
-  eloPoints: job.eloPoints ?? 100,
+  clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
 
