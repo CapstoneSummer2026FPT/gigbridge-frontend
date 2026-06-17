@@ -102,7 +102,7 @@ const getActionUrl = (notification: any, type: UiNotificationType): string | und
     case 'dispute':
       return '/admin/disputes';
     case 'review':
-      return '/reviews/create';
+      return referenceId ? `/reviews/create?contractId=${referenceId}` : '/reviews/create';
     default:
       return '/notifications';
   }

@@ -1,8 +1,9 @@
-import { reviewHandlers } from '../../mock_backend';
-import type { Review } from '../../types/models/Job';
+import { apiService } from '../../service/apiService';
+import type { ApiResponse } from '../../types/common';
+import type { CreateReviewRequest, Review } from '../../types/models/Job';
 
 export const reviewPostAPI = {
-  createReview: async (data: Partial<Review>) => {
-    return await reviewHandlers.createReview(data);
+  createReview: async (data: CreateReviewRequest): Promise<ApiResponse<Review>> => {
+    return await apiService.post<Review>('Reviews', data);
   },
 };

@@ -12,6 +12,7 @@ export interface UserDTO {
   isSetup: boolean;
   preferredLanguage?: string | null;
   provider?: string | null;
+  eloPoints?: number;
   createdAt: string;
   updatedAt?: string | null;
 }

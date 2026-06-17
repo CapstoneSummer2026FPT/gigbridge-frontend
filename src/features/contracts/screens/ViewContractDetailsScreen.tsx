@@ -759,6 +759,18 @@ export default function ViewContractDetailsScreen() {
                   </motion.button>
                 )}
 
+                {(userRole === 'client' || userRole === 'freelancer') && contract.status === ContractStatus.Completed && (
+                  <motion.button
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
+                    className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
+                  >
+                    <Star size={17} />
+                    Leave Review
+                  </motion.button>
+                )}
+
                 {(userRole === 'client' || userRole === 'freelancer') && contract.status === ContractStatus.Active && (
                   <motion.button 
                     whileHover={{ y: -2 }}

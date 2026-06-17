@@ -74,6 +74,7 @@ const mapUserDTOToUser = (userDTO: UserDTO | any): User => {
     last_login_at: null,
     login_failed_time: null,
     access_failed_count: 0,
+    elo_points: getField<number>(userDTO, 'eloPoints', 'EloPoints') ?? 100,
     gigcoin_balance: 0,
     created_at: createdAt,
     updated_at: updatedAt,

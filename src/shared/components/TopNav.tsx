@@ -6,6 +6,7 @@ import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
 import { useApp, AppTheme } from '../../app/providers/AppProvider';
+import { walletGetAPI } from '../../api/walletAPI/GET';
 import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
 import { CompactLanguageSwitcher, CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -31,6 +32,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [searchVal, setSearchVal] = useState('');
 
   // Safely get app context - might be null for guest users
@@ -54,6 +56,32 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     pageSize: 8,
     pollMs: 45000,
   });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchWalletBalance = async () => {
+      if (!user || role === 2) {
+        setWalletBalance(0);
+        return;
+      }
+
+      const response = await walletGetAPI.getMyWallet();
+      if (isMounted && response.success && response.data) {
+        setWalletBalance(response.data.availableTokens);
+      }
+    };
+
+    void fetchWalletBalance();
+    const intervalId = window.setInterval(fetchWalletBalance, 30000);
+    window.addEventListener('gigbridge-wallet-updated', fetchWalletBalance);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('gigbridge-wallet-updated', fetchWalletBalance);
+    };
+  }, [location.pathname, location.search, role, user?.id]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

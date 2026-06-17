@@ -18,6 +18,7 @@ import {
   Zap,
   ChevronDown,
   ChevronRight,
+  Star,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -411,6 +412,16 @@ export default function FreelancerContractScreen() {
                                 title={isExpanded ? 'Collapse' : 'Expand'}
                               >
                                 <ChevronDown size={16} />
+                              </button>
+                            )}
+
+                            {contract.status === ContractStatus.Completed && (
+                              <button
+                                onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
+                                className="p-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-xl flex items-center justify-center text-amber-500 transition-all duration-200 cursor-pointer"
+                                title="Leave review"
+                              >
+                                <Star size={16} />
                               </button>
                             )}
                           </div>
