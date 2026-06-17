@@ -20,7 +20,7 @@ export function AppLayout({
   excludeMeshGradient = false,
 }: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   // Safely get app context - might throw if not within provider
   let user = null;
   try {
@@ -30,7 +30,7 @@ export function AppLayout({
     // Context not available - guest mode
     user = null;
   }
-  
+
   const hasSidebar = showSidebar && !!user;
 
   const toggleSidebar = () => {
@@ -51,8 +51,8 @@ export function AppLayout({
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
             {/* Overlay for mobile */}
             {isSidebarOpen && (
-              <div 
-                className="sidebar-overlay" 
+              <div
+                className="sidebar-overlay"
                 onClick={closeSidebar}
                 aria-hidden="true"
               />
@@ -72,6 +72,8 @@ export function AppLayout({
           )}
         </main>
       </div>
+
+      {user && <AIAssistantWidget />}
 
       {user && <AIAssistantWidget />}
     </div>
