@@ -48,3 +48,40 @@
   background: rgba(239, 68, 68, 0.05);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
+
+@media (max-width: 768px) {
+  .settings-screen {
+    width: 100%;
+  }
+
+  .settings-screen > .mb-8 {
+    margin-bottom: 1.5rem;
+  }
+
+  .settings-screen > .mb-8 h1 {
+    font-size: 1.875rem;
+    line-height: 1.15;
+  }
+
+  .settings-screen .sidebar-item {
+    justify-content: flex-start;
+    min-height: 2.75rem;
+  }
+
+  .settings-screen .glass-card {
+    padding: 1rem;
+  }
+
+  .settings-screen .glass-card > .flex,
+  .settings-screen .glass-card form .flex,
+  .settings-screen .glass-card label.flex,
+  .settings-screen .glass-card div[class*="justify-between"] {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .settings-screen .glass-card button {
+    max-width: 100%;
+  }
+}

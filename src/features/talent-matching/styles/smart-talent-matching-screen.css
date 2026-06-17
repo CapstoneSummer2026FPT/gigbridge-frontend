@@ -116,3 +116,25 @@
 .compact-layout .bento-card .mt-auto {
   display: none !important;
 }
+
+@media (max-width: 640px) {
+  .compact-layout .bento-card {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    padding: 14px !important;
+  }
+
+  .compact-layout .bento-card > div:first-child {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .compact-layout .bento-card .grid-cols-3 {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .compact-layout .bento-card .grid-cols-3 > div {
+    flex: 1 1 100px !important;
+  }
+}
