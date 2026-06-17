@@ -342,7 +342,7 @@ export default function PostJobScreen() {
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
                 <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
-                  {form.skills.map(skill => (
+                  {form.skills.map((skill: string) => (
                     <span key={skill} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                       {skill}
                       <button

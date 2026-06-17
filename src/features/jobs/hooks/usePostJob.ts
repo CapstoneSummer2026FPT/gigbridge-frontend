@@ -60,7 +60,7 @@ export function usePostJob() {
     title: initialJobData?.title || '',
     category: initialJobData?.category || 'Web Development',
     description: initialJobData?.description || '',
-    skills: initialJobData?.skills || [] as string[],
+    skills: (initialJobData?.skills || []) as string[],
     budgetMin: initialJobData?.budgetMin !== undefined ? String(initialJobData.budgetMin) : '',
     budgetMax: initialJobData?.budgetMax !== undefined ? String(initialJobData.budgetMax) : '',
     currency: initialJobData?.currency || 'USD',
