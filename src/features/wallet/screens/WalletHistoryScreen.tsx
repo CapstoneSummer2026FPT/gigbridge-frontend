@@ -177,7 +177,9 @@ export default function WalletHistoryScreen() {
                 <History size={20} className="text-cyan" />
                 <span className="badge-cyan text-xs">Transactions</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">Transaction History</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                Transaction <span className="text-blue-600 black:text-blue-400 italic font-light">History</span>
+              </h1>
               <p className="text-sm text-secondary mt-1">View all your wallet transactions</p>
             </div>
             <button className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">

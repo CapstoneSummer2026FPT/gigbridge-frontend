@@ -4,19 +4,15 @@ import {
   AlertTriangle,
   Award,
   Bot,
-  Briefcase,
   CheckCircle2,
   ChevronDown,
-  DollarSign,
   Heart,
   Info,
   Grid,
   List,
   MapPin,
-  RefreshCw,
   Rocket,
   Search,
-  SlidersHorizontal,
   Sparkles,
   Star,
   Trophy,
@@ -67,7 +63,7 @@ export default function SmartTalentMatchingScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const initialTab = tabParam === 'saved' ? 'saved' : tabParam === 'all' ? 'all' : 'matches';
-  
+
   const openJobs = MOCK_MATCHING_JOBS.filter(job => job.status === 'Open');
   const [selectedJobId, setSelectedJobId] = useState(openJobs[0]?.id || '');
   const [premiumEnabled, setPremiumEnabled] = useState(true);
@@ -114,7 +110,7 @@ export default function SmartTalentMatchingScreen() {
     if (activeTab === 'matches') {
       return isPremiumClient ? rankedMatches : [];
     }
-    
+
     // Map full pool to match layout structures
     return MOCK_TALENT_POOL.map(talent => {
       const matchInRanked = rankedMatches.find(r => r.id === talent.id);
@@ -173,7 +169,7 @@ export default function SmartTalentMatchingScreen() {
 
       // Industry expertise (skills selection tags)
       if (selectedSkills.length > 0) {
-        const hasSkill = selectedSkills.some(skill => 
+        const hasSkill = selectedSkills.some(skill =>
           talent.skills.some(ts => ts.toLowerCase() === skill.toLowerCase())
         );
         if (!hasSkill) return false;
@@ -193,13 +189,13 @@ export default function SmartTalentMatchingScreen() {
   };
 
   const toggleFavorite = (talentId: string) => {
-    setFavorites(prev => 
+    setFavorites(prev =>
       prev.includes(talentId) ? prev.filter(id => id !== talentId) : [...prev, talentId]
     );
   };
 
   const toggleSkillFilter = (skill: string) => {
-    setSelectedSkills(prev => 
+    setSelectedSkills(prev =>
       prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
     );
   };
@@ -214,7 +210,7 @@ export default function SmartTalentMatchingScreen() {
 
   return (
     <AppLayout>
-      <div className="mesh-gradient-bg min-h-screen text-foreground font-sans p-6 rounded-3xl mt-4">
+      <>
         {/* Header & Tabs Section */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8 relative z-50">
           <div className="max-w-2xl">
@@ -225,34 +221,32 @@ export default function SmartTalentMatchingScreen() {
               Connecting enterprise teams with elite freelancers. Precision matched, verified, and ready to scale your next big idea.
             </p>
           </div>
-          
+
           <div className="flex flex-col items-end gap-4 w-full md:w-auto shrink-0 font-sans">
             <div className="glass-panel p-1 rounded-full flex gap-1 shadow-sm w-full md:w-auto justify-center">
               <button
                 onClick={() => handleTabChange('all')}
-                className={`px-6 py-2.5 rounded-full text-xs font-semibold transition-all ${
-                  activeTab === 'all'
+                className={`px-6 py-2.5 rounded-full text-xs font-semibold transition-all ${activeTab === 'all'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
-                }`}
+                  }`}
               >
                 All Freelancers
               </button>
-              
+
               <div className="relative group z-[100]">
                 <button
                   onClick={() => handleTabChange('matches')}
-                  className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 shadow-sm hover:scale-105 ${
-                    activeTab === 'matches'
+                  className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 shadow-sm hover:scale-105 ${activeTab === 'matches'
                       ? 'bg-purple-600 text-white'
                       : 'bg-purple-100 black:bg-purple-950 text-purple-900 black:text-purple-100'
-                  }`}
+                    }`}
                 >
                   <Sparkles size={14} className="fill-current" />
                   Best Matches: {selectedJob ? selectedJob.title : 'Select Job'}
                   <ChevronDown size={14} />
                 </button>
-                
+
                 {/* Dropdown Options */}
                 <div className="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
                   <div className="glass-panel rounded-xl shadow-xl p-2">
@@ -266,11 +260,10 @@ export default function SmartTalentMatchingScreen() {
                           setSelectedJobId(job.id);
                           handleTabChange('matches');
                         }}
-                        className={`w-full text-left block px-4 py-3 hover:bg-gray-100 black:hover:bg-gray-800 rounded-lg text-sm transition-colors ${
-                          selectedJobId === job.id
+                        className={`w-full text-left block px-4 py-3 hover:bg-gray-100 black:hover:bg-gray-800 rounded-lg text-sm transition-colors ${selectedJobId === job.id
                             ? 'bg-purple-50 black:bg-purple-900/30 text-purple-700 black:text-purple-300 font-medium'
                             : 'text-gray-700 black:text-gray-300'
-                        }`}
+                          }`}
                       >
                         {job.title}
                       </button>
@@ -281,11 +274,10 @@ export default function SmartTalentMatchingScreen() {
 
               <button
                 onClick={() => handleTabChange('saved')}
-                className={`px-6 py-2.5 rounded-full text-xs font-semibold transition-all ${
-                  activeTab === 'saved'
+                className={`px-6 py-2.5 rounded-full text-xs font-semibold transition-all ${activeTab === 'saved'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
-                }`}
+                  }`}
               >
                 Saved Talent ({favorites.length})
               </button>
@@ -295,7 +287,7 @@ export default function SmartTalentMatchingScreen() {
 
         {/* Filters and main grid layout */}
         <div className="grid grid-cols-12 gap-6 items-start">
-          
+
           {/* Left: Minimal Filters */}
           <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-24 space-y-8">
             <div className="glass-panel p-6 rounded-2xl shadow-sm">
@@ -390,11 +382,10 @@ export default function SmartTalentMatchingScreen() {
                         <button
                           key={skill}
                           onClick={() => toggleSkillFilter(skill)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                            isSelected
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${isSelected
                               ? 'bg-blue-600 text-white shadow-sm'
                               : 'bg-gray-100 black:bg-gray-800 text-gray-700 black:text-gray-300 hover:bg-gray-200 black:hover:bg-gray-700'
-                          }`}
+                            }`}
                         >
                           {skill}
                         </button>
@@ -411,31 +402,28 @@ export default function SmartTalentMatchingScreen() {
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => setMinSuccessRate(90)}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${
-                        minSuccessRate === 90
+                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${minSuccessRate === 90
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'border-gray-200 black:border-gray-800 hover:border-blue-600 black:hover:border-blue-400 text-gray-700 black:text-gray-300'
-                      }`}
+                        }`}
                     >
                       90%+
                     </button>
                     <button
                       onClick={() => setMinSuccessRate(95)}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${
-                        minSuccessRate === 95
+                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${minSuccessRate === 95
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'border-gray-200 black:border-gray-800 hover:border-blue-600 black:hover:border-blue-400 text-gray-700 black:text-gray-300'
-                      }`}
+                        }`}
                     >
                       95%+
                     </button>
                     <button
                       onClick={() => setMinSuccessRate(null)}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${
-                        minSuccessRate === null
+                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${minSuccessRate === null
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'border-gray-200 black:border-gray-800 hover:border-blue-600 black:hover:border-blue-400 text-gray-700 black:text-gray-300'
-                      }`}
+                        }`}
                     >
                       Any
                     </button>
@@ -459,11 +447,10 @@ export default function SmartTalentMatchingScreen() {
               <button
                 type="button"
                 onClick={() => setPremiumEnabled(!premiumEnabled)}
-                className={`w-full py-3 font-bold rounded-xl relative z-10 transition-all text-xs hover:shadow-lg ${
-                  premiumEnabled
+                className={`w-full py-3 font-bold rounded-xl relative z-10 transition-all text-xs hover:shadow-lg ${premiumEnabled
                     ? 'bg-white text-blue-600 hover:bg-gray-100'
                     : 'bg-yellow-500 text-gray-900 hover:bg-yellow-400'
-                }`}
+                  }`}
               >
                 {premiumEnabled ? 'Premium Enabled' : 'Upgrade Now'}
               </button>
@@ -472,7 +459,7 @@ export default function SmartTalentMatchingScreen() {
 
           {/* Center: Talent List */}
           <section className={`col-span-12 lg:col-span-6 space-y-6 ${isCompact ? 'compact-layout' : ''}`}>
-            
+
             {/* Top Toolbar */}
             <div className="flex items-center justify-between glass-panel p-3 rounded-2xl shadow-sm relative z-30">
               <div className="flex items-center gap-3">
@@ -490,11 +477,10 @@ export default function SmartTalentMatchingScreen() {
                         <button
                           key={val}
                           onClick={() => setPerPage(val)}
-                          className={`w-full text-left block px-3 py-2 rounded-lg text-xs transition-colors ${
-                            perPage === val
+                          className={`w-full text-left block px-3 py-2 rounded-lg text-xs transition-colors ${perPage === val
                               ? 'bg-blue-600 text-white'
                               : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
-                          }`}
+                            }`}
                         >
                           {val}
                         </button>
@@ -520,22 +506,20 @@ export default function SmartTalentMatchingScreen() {
               <div className="flex items-center gap-2 bg-gray-100 black:bg-gray-800 p-1 rounded-xl font-sans">
                 <button
                   onClick={() => setIsCompact(false)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    !isCompact
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!isCompact
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-gray-600 black:text-gray-400 hover:bg-gray-200 black:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <Grid size={14} />
                   Default
                 </button>
                 <button
                   onClick={() => setIsCompact(true)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    isCompact
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isCompact
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-gray-600 black:text-gray-400 hover:bg-gray-200 black:hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   <List size={14} />
                   Compact
@@ -601,7 +585,7 @@ export default function SmartTalentMatchingScreen() {
                         (e.target as HTMLImageElement).src = `https://i.pravatar.cc/150?u=${talent.id}`;
                       }}
                     />
-                    
+
                     {score >= 95 && (
                       <div className="verified-badge-top absolute top-3 left-3 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 shadow-sm">
                         <CheckCircle2 size={12} className="fill-current" />
@@ -630,21 +614,19 @@ export default function SmartTalentMatchingScreen() {
                       <div className="flex gap-2 shrink-0">
                         <button
                           onClick={() => toggleFavorite(talent.id)}
-                          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${
-                            isFavorite
+                          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${isFavorite
                               ? 'bg-red-50 black:bg-red-950/20 border-red-200 black:border-red-800 text-red-500'
                               : 'border-gray-200 black:border-gray-800 text-gray-500 black:text-gray-400 hover:bg-gray-100 black:hover:bg-gray-800'
-                          }`}
+                            }`}
                         >
                           <Heart size={18} className={isFavorite ? 'fill-current' : ''} />
                         </button>
                         <button
                           onClick={() => inviteTalent(talent.id)}
-                          className={`px-5 py-2 rounded-full text-xs font-bold transition-all hover:scale-[1.02] ${
-                            invited
+                          className={`px-5 py-2 rounded-full text-xs font-bold transition-all hover:scale-[1.02] ${invited
                               ? 'bg-green-100 black:bg-green-950/30 text-green-700 black:text-green-300 border border-green-200 black:border-green-800'
                               : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md'
-                          }`}
+                            }`}
                         >
                           {invited ? 'Invited' : 'Invite'}
                         </button>
@@ -709,7 +691,7 @@ export default function SmartTalentMatchingScreen() {
 
           {/* Right: Activity & Leaderboard */}
           <aside className="col-span-12 lg:col-span-3 space-y-6">
-            
+
             {/* Boost Ad */}
             <div className="glass-panel rounded-3xl p-6 overflow-hidden bg-blue-50/20 black:bg-blue-950/5 relative group shadow-sm">
               <div className="relative z-10">
@@ -745,7 +727,7 @@ export default function SmartTalentMatchingScreen() {
                   Global
                 </span>
               </div>
-              
+
               <div className="space-y-4">
                 {/* User 1 */}
                 <div className="flex items-center gap-4 group cursor-pointer hover:bg-gray-100 black:hover:bg-gray-800 p-2 rounded-xl transition-all">
@@ -810,7 +792,7 @@ export default function SmartTalentMatchingScreen() {
                   </div>
                 </div>
               </div>
-              
+
               <button className="w-full mt-6 text-center text-xs text-blue-600 black:text-blue-400 font-bold hover:underline transition-colors">
                 View All Rankings
               </button>
@@ -818,7 +800,7 @@ export default function SmartTalentMatchingScreen() {
           </aside>
 
         </div>
-      </div>
+      </>
     </AppLayout>
   );
 }
