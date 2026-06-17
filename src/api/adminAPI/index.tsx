@@ -31,4 +31,5 @@ export const adminAPI = {
   deleteUser: adminDeleteAPI.deleteUser,
   deleteFAQ: adminDeleteAPI.deleteFAQ,
   deleteFAQCategory: adminDeleteAPI.deleteFAQCategory,
+  deleteNotification: adminDeleteAPI.deleteNotification,
 };

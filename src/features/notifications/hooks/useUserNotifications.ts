@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { notificationGetAPI, notificationPutAPI } from '../../../api/notificationAPI';
+import { notificationDeleteAPI, notificationGetAPI, notificationPutAPI } from '../../../api/notificationAPI';
 import { DB } from '../../../mock_backend';
 import { MOCK_TOP_NAV_NOTIFICATIONS } from '../mock/data-for-TopNav';
 import type { User } from '../../../types/models/User';
@@ -18,6 +18,9 @@ export type UiNotificationType =
 
 export interface UiNotification {
   id: string;
+  readTargetId: string;
+  source: 'Personal' | 'Broadcast';
+  broadcastRecipientId?: string;
   userId?: string;
   type: UiNotificationType;
   title: string;
@@ -110,9 +113,21 @@ const normalizeNotification = (notification: any): UiNotification => {
   const title = getField<string>(notification, 'title', 'Title') ?? 'Notification';
   const body = getField<string>(notification, 'body', 'message', 'content', 'Message', 'Content') ?? '';
   const createdAt = getField<string>(notification, 'createdAt', 'CreatedAt') ?? new Date().toISOString();
+  const source = getField<string>(notification, 'source', 'Source') === 'Broadcast' ? 'Broadcast' : 'Personal';
+  const id = String(getField(notification, 'id', 'Id', 'notificationId', 'NotificationId') ?? crypto.randomUUID());
+  const broadcastRecipientId = getField<string>(notification, 'broadcastRecipientId', 'BroadcastRecipientId');
+  const readTargetId = String(
+    getField(notification, 'readTargetId', 'ReadTargetId') ??
+    broadcastRecipientId ??
+    getField(notification, 'notificationId', 'NotificationId') ??
+    id
+  );
 
   return {
-    id: String(getField(notification, 'id', 'Id', 'notificationId', 'NotificationId') ?? crypto.randomUUID()),
+    id,
+    readTargetId,
+    source,
+    broadcastRecipientId,
     userId: getField<string>(notification, 'userId', 'user_id', 'UserId'),
     type,
     title,
@@ -181,14 +196,21 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
     [notifications]
   );
 
-  const markAsRead = useCallback(async (notificationId: string) => {
+  const markAsRead = useCallback(async (notification: UiNotification) => {
     setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === notificationId ? { ...notification, isRead: true } : notification
+      prev.map(item =>
+        item.id === notification.id && item.readTargetId === notification.readTargetId
+          ? { ...item, isRead: true }
+          : item
       )
     );
 
-    await notificationPutAPI.markNotificationRead(notificationId);
+    if (notification.source === 'Broadcast') {
+      await notificationPutAPI.markBroadcastNotificationRead(notification.broadcastRecipientId ?? notification.readTargetId);
+      return;
+    }
+
+    await notificationPutAPI.markNotificationRead(notification.readTargetId);
   }, []);
 
   const markAllAsRead = useCallback(async () => {
@@ -198,6 +220,19 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
     await notificationPutAPI.markAllRead();
   }, [user]);
 
+  const deleteNotification = useCallback(async (notification: UiNotification) => {
+    setNotifications(prev =>
+      prev.filter(item => !(item.id === notification.id && item.readTargetId === notification.readTargetId))
+    );
+
+    if (notification.source === 'Broadcast') {
+      await notificationDeleteAPI.deleteBroadcastNotification(notification.broadcastRecipientId ?? notification.readTargetId);
+      return;
+    }
+
+    await notificationDeleteAPI.deleteNotification(notification.readTargetId);
+  }, []);
+
   return {
     notifications,
     unreadCount,
@@ -206,5 +241,6 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
     refresh: loadNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
   };
 }

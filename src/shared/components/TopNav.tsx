@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, DollarSign, CreditCard, TrendingUp, History, Moon, Sun, Coins } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, DollarSign, CreditCard, TrendingUp, History, Moon, Sun, Coins, Trash2 } from 'lucide-react';
 import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
@@ -50,7 +50,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
   // Wallet and notification data
   const walletBalance = user?.gigcoin_balance || 0;
-  const { notifications, unreadCount, markAsRead } = useUserNotifications(user, {
+  const { notifications, unreadCount, markAsRead, deleteNotification } = useUserNotifications(user, {
     pageSize: 8,
     pollMs: 45000,
   });
@@ -362,13 +362,24 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                     notifications.slice(0, 5).map(n => (
                       <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
                         onClick={() => {
-                          void markAsRead(n.id);
+                          void markAsRead(n);
                           setShowNotifs(false);
-                          navigate(n.actionUrl || '/notifications');
                         }}>
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-primary text-xs font-medium">{n.title}</p>
-                          {!n.isRead && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-cyan" />}
+                            <button
+                              className="p-0.5 text-secondary hover:text-red transition-colors"
+                              aria-label="Delete notification"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void deleteNotification(n);
+                              }}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
                         <p className="text-xs mt-0.5 line-clamp-2 text-secondary">{n.body}</p>
                       </div>

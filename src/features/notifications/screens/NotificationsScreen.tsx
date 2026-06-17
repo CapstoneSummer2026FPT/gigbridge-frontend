@@ -30,7 +30,7 @@ export default function NotificationsScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
   const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'messages'>('all');
-  const { notifications: allNotifs, unreadCount, isLoading, markAsRead, markAllAsRead } = useUserNotifications(user, {
+  const { notifications: allNotifs, unreadCount, isLoading, markAsRead, markAllAsRead, deleteNotification } = useUserNotifications(user, {
     pageSize: 20,
     pollMs: 45000,
   });
@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
                       border: notif.isRead ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,240,255,0.12)',
                     }}
                     onClick={() => {
-                      void markAsRead(notif.id);
+                      void markAsRead(notif);
                       navigate(notif.actionUrl || '/notifications');
                     }}>
                     {/* Icon */}
@@ -122,7 +122,14 @@ export default function NotificationsScreen() {
                       </div>
                       <p className="text-sm mt-1 leading-relaxed text-secondary">{notif.body}</p>
                     </div>
-                    <button className="opacity-0 group-hover:opacity-100 p-1 transition-all text-secondary">
+                    <button
+                      className="opacity-0 group-hover:opacity-100 p-1 transition-all text-secondary hover:text-red"
+                      aria-label="Delete notification"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void deleteNotification(notif);
+                      }}
+                    >
                       <Trash2 size={14} />
                     </button>
                   </div>

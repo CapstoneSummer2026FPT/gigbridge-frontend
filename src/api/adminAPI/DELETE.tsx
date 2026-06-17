@@ -20,4 +20,8 @@ export const adminDeleteAPI = {
   deleteFAQCategory: async (id: number): Promise<ApiResponse<object>> => {
     return apiService.delete<object>(`${Admin_Api_Base_Url}/faq/categories/${id}`);
   },
+
+  deleteNotification: async (id: string): Promise<ApiResponse<object>> => {
+    return apiService.delete<object>(`${Admin_Api_Base_Url}/notifications/${id}`);
+  },
 };

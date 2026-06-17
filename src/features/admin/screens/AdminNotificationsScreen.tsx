@@ -33,6 +33,8 @@ const ADMIN_BROADCAST_TARGETS: { value: AdminBroadcastTarget; label: string }[] 
   { value: 3, label: 'Admins' },
 ];
 
+const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // Mock data
 const MOCK_NOTIFICATIONS: AdminNotification[] = [
   {
@@ -145,20 +147,21 @@ export default function AdminNotificationsScreen() {
     scheduleDate: '',
     scheduleTime: '',
   });
+  const [notifications, setNotifications] = useState<AdminNotification[]>(MOCK_NOTIFICATIONS);
 
   const stats = useMemo(() => {
-    const total = MOCK_NOTIFICATIONS.length;
-    const scheduled = MOCK_NOTIFICATIONS.filter(n => n.Status === NotificationStatus.Scheduled).length;
-    const sent = MOCK_NOTIFICATIONS.filter(n => n.Status === NotificationStatus.Sent).length;
-    const failed = MOCK_NOTIFICATIONS.filter(n => n.Status === NotificationStatus.Failed).length;
-    const totalReads = MOCK_NOTIFICATIONS.reduce((sum, n) => sum + (n.ReadBy?.length || 0), 0);
+    const total = notifications.length;
+    const scheduled = notifications.filter(n => n.Status === NotificationStatus.Scheduled).length;
+    const sent = notifications.filter(n => n.Status === NotificationStatus.Sent).length;
+    const failed = notifications.filter(n => n.Status === NotificationStatus.Failed).length;
+    const totalReads = notifications.reduce((sum, n) => sum + (n.ReadBy?.length || 0), 0);
     const avgReadRate = sent > 0 ? Math.round((totalReads / (sent * 10)) * 100) : 0; // Assuming ~10 users per notification
 
     return { total, scheduled, sent, failed, totalReads, avgReadRate };
-  }, []);
+  }, [notifications]);
 
   const filteredNotifications = useMemo(() => {
-    return MOCK_NOTIFICATIONS.filter(notif => {
+    return notifications.filter(notif => {
       const matchesSearch = searchQuery === '' ||
         notif.Title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         notif.Message.toLowerCase().includes(searchQuery.toLowerCase());
@@ -173,7 +176,7 @@ export default function AdminNotificationsScreen() {
 
       return matchesSearch && matchesStatus && matchesTab;
     });
-  }, [searchQuery, statusFilter, activeTab]);
+  }, [notifications, searchQuery, statusFilter, activeTab]);
 
   const getStatusBadge = (status: NotificationStatus) => {
     if (status === NotificationStatus.Sent) return <span className="badge-green text-xs">Sent</span>;
@@ -376,9 +379,26 @@ export default function AdminNotificationsScreen() {
     setIsTestSending(false);
   };
 
-  const handleDeleteNotification = (id: string) => {
-    console.log('Deleting notification:', id);
-    // Here you would make API call to backend
+  const handleDeleteNotification = async (id: string) => {
+    if (!window.confirm('Delete this notification?')) {
+      return;
+    }
+
+    if (!GUID_PATTERN.test(id)) {
+      setNotifications(prev => prev.filter(notification => notification.notif_NotificationId !== id));
+      setViewNotification(prev => prev?.notif_NotificationId === id ? null : prev);
+      return;
+    }
+
+    const response = await adminAPI.deleteNotification(id);
+
+    if (response.success) {
+      setNotifications(prev => prev.filter(notification => notification.notif_NotificationId !== id));
+      setViewNotification(prev => prev?.notif_NotificationId === id ? null : prev);
+      return;
+    }
+
+    alert(response.message || 'Failed to delete notification.');
   };
 
   const handleCancelScheduled = (id: string) => {
@@ -726,15 +746,13 @@ export default function AdminNotificationsScreen() {
                       Cancel
                     </button>
                   )}
-                  {(notif.Status === NotificationStatus.Failed || notif.Status === NotificationStatus.Cancelled) && (
-                    <button
-                      onClick={() => handleDeleteNotification(notif.notif_NotificationId)}
-                      className="btn-ghost-red px-3 py-1.5 text-xs flex items-center gap-1.5 flex-1"
-                    >
-                      <Trash2 size={14} />
-                      Delete
-                    </button>
-                  )}
+                  <button
+                    onClick={() => void handleDeleteNotification(notif.notif_NotificationId)}
+                    className="btn-ghost-red px-3 py-1.5 text-xs flex items-center gap-1.5 flex-1"
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
