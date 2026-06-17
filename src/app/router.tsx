@@ -30,7 +30,6 @@ import ViewProposalAnswersScreen from '../features/proposals/screens/ViewProposa
 import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen';
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
 import MessagesScreen from '../features/messages/screens/MessagesScreen';
-import AIAssistantScreen from '../features/ai-assistant/screens/AIAssistantScreen';
 import AIInterviewScreen from '../features/ai-interview/screens/AIInterviewScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import AdminDashboardScreen from '../features/admin/screens/AdminDashboardScreen';
@@ -192,8 +191,7 @@ export const router = createBrowserRouter([
       { path: 'workspace/:id', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
       { path: ':projectId/freelancer-contract', element: <ProtectedRoute requireAuth requireSetup><FreelancerRegisterContractScreen /></ProtectedRoute> },
 
-      // AI Features - requires authentication and setup
-      { path: 'ai-assistant', element: <ProtectedRoute requireAuth requireSetup><AIAssistantScreen /></ProtectedRoute> },
+      { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },
       { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
 
       // Settings - requires authentication

@@ -1,347 +1,335 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
 import {
-  Bot,
-  Sparkles,
-  X,
-  Plus,
-  Calendar,
-  Globe,
-  Upload,
-  Eye,
-  Save,
-  Rocket,
-  AlertCircle,
+  Bot, Sparkles, X, Plus, ChevronRight,
+  Bold, Italic, Underline, List, ListOrdered, Check, Save,
+  GripVertical, Trash2
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobPostAPI, jobPutAPI, jobQuestionAPI } from '../../../api/jobAPI';
-import {
-  JobStatus,
-  type CreateJobPostQuestionRequest,
-  type CreateJobPostRequest,
-} from '../../../types/models/Job';
-import {
-  clearStoredCreateJobQuestions,
-  normalizeCreateJobQuestions,
-  readStoredCreateJobQuestions,
-} from '../utils/jobPostQuestionDraft';
+import { JobPostVisibility } from '../../../types/models/Job';
+import { usePostJob } from '../hooks/usePostJob';
+import { JobPostGuide } from '../components/JobPostGuide';
 import '../styles/PostJobScreen.css';
 
-const CATEGORIES = [
-  'Web Development',
-  'Design',
-  'Data Science',
-  'Marketing',
-  'Writing',
-  'DevOps',
-  'Mobile',
-  'Video',
-];
-
-const SKILLS_SUGGESTIONS: Record<string, string[]> = {
-  'Web Development': ['React', 'TypeScript', 'Next.js', 'Node.js', 'GraphQL', 'Vue.js', 'Angular'],
-  Design: ['Figma', 'UI/UX Design', 'Prototyping', 'Design Systems', 'After Effects', 'Sketch'],
-  'Data Science': ['Python', 'Machine Learning', 'TensorFlow', 'PyTorch', 'SQL', 'Tableau'],
-  DevOps: ['AWS', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'Linux'],
-  Writing: ['Technical Writing', 'SEO', 'Content Strategy', 'Copywriting'],
-};
-
-const experienceLevelMap = {
-  entry: 0,
-  intermediate: 1,
-  expert: 2,
-} as const;
-
-type SubmitIntent = 'draft' | 'publish';
-
-type PostJobLocationState = {
-  questions?: CreateJobPostQuestionRequest[];
-};
-
 export default function PostJobScreen() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [isGuideActive, setIsGuideActive] = useState(false);
+  const {
+    form,
+    skillInput,
+    setSkillInput,
+    remainingSkills,
+    previewTitle,
+    errorMessage,
+    isDraftInitializing,
+    draftError,
+    setDraftRequestAttempt,
+    isInstantJobMode,
+    setIsInstantJobMode,
+    isJobDetailsGenerated,
+    isGeneratingInstant,
+    draggedIndex,
+    questions,
+    setQuestions,
+    isActionDisabled,
+    insertMarkdown,
+    addSkill,
+    removeSkill,
+    updateQuestion,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleGenerateInstantJob,
+    submitDraftFlow,
+    renderSubmitLabel,
+    CATEGORIES,
+    MAX_QUESTION_LENGTH,
+    setForm,
+  } = usePostJob();
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [submitIntent, setSubmitIntent] = useState<SubmitIntent | null>(null);
-  const [submitError, setSubmitError] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
-  const [skillInput, setSkillInput] = useState('');
-
-  const [form, setForm] = useState({
-    title: '',
-    category: 'Web Development',
-    description: '',
-    skills: [] as string[],
-    budgetMin: '',
-    budgetMax: '',
-    deadline: '',
-    jobType: 'fixed' as 'fixed' | 'hourly',
-    isRemote: true,
-    experienceLevel: 'intermediate' as 'entry' | 'intermediate' | 'expert',
-  });
-
-  const pendingQuestions = useMemo(() => {
-    const routeQuestions = (location.state as PostJobLocationState | null)?.questions;
-
-    if (Array.isArray(routeQuestions) && routeQuestions.length > 0) {
-      return routeQuestions;
-    }
-
-    return readStoredCreateJobQuestions();
-  }, [location.state]);
-
-  const isSubmitting = submitIntent !== null;
+  const [detailsHeight, setDetailsHeight] = useState<number | null>(null);
 
   useEffect(() => {
-    if (pendingQuestions.length === 0) {
-      navigate('/jobs/post/questions', { replace: true });
-    }
-  }, [navigate, pendingQuestions.length]);
+    const detailsEl = document.getElementById('guide-job-details-panel');
+    if (!detailsEl) return;
 
-  const suggestedSkills = SKILLS_SUGGESTIONS[form.category] || [];
-  const remainingSkills = suggestedSkills.filter(skill => !form.skills.includes(skill));
-
-  const generateDescription = async () => {
-    if (!form.title || !form.category) return;
-
-    setIsGenerating(true);
-
-    try {
-      const response = await jobPostAPI.generateAIDescription();
-
-      if (!response.success) {
-        alert(response.message || 'AI job description generation is not available yet.');
+    const updateHeight = () => {
+      if (window.innerWidth >= 1024) {
+        setDetailsHeight(detailsEl.getBoundingClientRect().height);
+      } else {
+        setDetailsHeight(null);
       }
-    } catch (error) {
-      console.error('Failed to generate description:', error);
-      alert('AI job description generation is not available yet.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const addSkill = (skill: string) => {
-    const value = skill.trim();
-
-    if (!value) return;
-
-    if (!form.skills.includes(value) && form.skills.length < 10) {
-      setForm(prev => ({
-        ...prev,
-        skills: [...prev.skills, value],
-      }));
-    }
-
-    setSkillInput('');
-  };
-
-  const removeSkill = (skill: string) => {
-    setForm(prev => ({
-      ...prev,
-      skills: prev.skills.filter(item => item !== skill),
-    }));
-  };
-
-  const buildCreateJobPostRequest = (): CreateJobPostRequest => {
-    return {
-      title: form.title.trim(),
-      description: form.description.trim(),
-
-      // Backend currently expects Guid? CategoryId.
-      // Current UI only has category name, so send null for now.
-      categoryId: null,
-
-      budgetMin: form.budgetMin ? Number(form.budgetMin) : null,
-      budgetMax: form.budgetMax ? Number(form.budgetMax) : null,
-      currency: 'USD',
-
-      estimatedDuration: null,
-      maxHires: 1,
-
-      // Enum LocationType: 0=Remote, 1=OnSite, 2=Hybrid
-      locationType: form.isRemote ? 0 : 1,
-      location: form.isRemote ? 'Remote' : 'Onsite',
-
-      // Enum JobPostVisibility: 0=Public, 1=Private, 2=InviteOnly
-      visibility: 0,
-
-      endDate: form.deadline
-        ? new Date(form.deadline).toISOString()
-        : null,
-
-      // Backend expects Guid[] SkillIds.
-      // Current UI only stores skill names, so send empty array for now.
-      skillIds: [],
     };
-  };
 
-  const setSubmissionError = (message: string) => {
-    setSubmitError(message);
-    toast.error(message);
-  };
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(detailsEl);
+    window.addEventListener('resize', updateHeight);
+    updateHeight();
 
-  const validateForm = () => {
-    if (!form.title || !form.category || !form.description) {
-      setSubmissionError('Please fill in all required fields.');
-      return false;
-    }
-
-    const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
-    const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
-
-    if (budgetMin !== null && Number.isNaN(budgetMin)) {
-      setSubmissionError('Budget min is invalid.');
-      return false;
-    }
-
-    if (budgetMax !== null && Number.isNaN(budgetMax)) {
-      setSubmissionError('Budget max is invalid.');
-      return false;
-    }
-
-    if (budgetMin !== null && budgetMax !== null && budgetMin > budgetMax) {
-      setSubmissionError('Budget min must be less than or equal to budget max.');
-      return false;
-    }
-
-    if (![6, 8, 10].includes(pendingQuestions.length)) {
-      setSubmissionError('Please create 6, 8, or 10 questions before continuing.');
-      return false;
-    }
-
-    const normalizedQuestions = normalizeCreateJobQuestions(pendingQuestions);
-
-    if (normalizedQuestions.some(question => !question.questionText)) {
-      setSubmissionError('All JobPost questions must be filled.');
-      return false;
-    }
-
-    if (normalizedQuestions.some(question => question.questionText.length > 1000)) {
-      setSubmissionError('QuestionText must not exceed 1000 characters.');
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (intent: SubmitIntent) => {
-    if (!validateForm()) return;
-
-    const normalizedQuestions = normalizeCreateJobQuestions(pendingQuestions);
-
-    try {
-      setSubmitIntent(intent);
-      setSubmitError('');
-
-      const request = buildCreateJobPostRequest();
-      const response = await jobPostAPI.createJobPost(request);
-
-      if (!response.success || !response.data) {
-        setSubmissionError(response.message || 'Failed to create JobPost.');
-        return;
-      }
-
-      const jobPostId = response.data;
-      const questionsResponse = await jobQuestionAPI.createBulkJobPostQuestions(jobPostId, {
-        questions: normalizedQuestions,
-      });
-
-      if (!questionsResponse.success) {
-        setSubmissionError(
-          questionsResponse.message
-            || 'JobPost was created, but questions could not be saved. You can manage questions from My Jobs.'
-        );
-        return;
-      }
-
-      if (intent === 'publish') {
-        const publishResponse = await jobPutAPI.updateJobPostStatus(jobPostId, {
-          status: JobStatus.Open,
-        });
-
-        if (!publishResponse.success) {
-          setSubmissionError(
-            publishResponse.message
-              || 'JobPost and questions were created, but publishing failed. The JobPost may still be in Draft status.'
-          );
-          return;
-        }
-      }
-
-      clearStoredCreateJobQuestions();
-      toast.success(intent === 'publish'
-        ? 'JobPost published successfully.'
-        : 'JobPost saved as draft successfully.');
-      navigate('/jobs/my-jobs');
-    } catch (error) {
-      console.error('Failed to create job post:', error);
-      setSubmissionError('Failed to create JobPost.');
-    } finally {
-      setSubmitIntent(null);
-    }
-  };
-
-  if (pendingQuestions.length === 0) {
-    return null;
-  }
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, []);
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <p className="post-job-header-subtitle text-sm mb-1">Step 2 of 2</p>
-          <h1 className="post-job-header text-3xl font-black text-primary">
-            Describe Your Project
-          </h1>
-          <p className="post-job-header-description mt-2">
-            Complete the JobPost details, then save it as Draft or publish it after questions are saved.
-          </p>
+      <div className="max-w-[1440px] mx-auto px-6 py-8 relative">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(159,75,255,0.02),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(0,119,255,0.02),transparent_50%)] opacity-50 pointer-events-none" />
+
+        <div className="flex flex-col gap-6 items-center mb-8">
+          <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
+            
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsInstantJobMode(!isInstantJobMode);
+                }}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md cursor-pointer border-none ${
+                  isInstantJobMode
+                    ? 'bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white hover:opacity-95'
+                    : 'bg-muted hover:bg-muted/80 text-foreground border border-border'
+                }`}
+              >
+                <Sparkles size={14} className={isInstantJobMode ? 'animate-pulse' : ''} />
+                Create instant Job Detail (Premium)
+              </button>
+              
+              <div className="relative group">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isInstantJobMode) {
+                      setIsGuideActive(true);
+                    } else {
+                      toast.info("Vui lòng kích hoạt 'Create instant Job Detail' trước khi xem hướng dẫn.");
+                    }
+                  }}
+                  className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-sm transition-all cursor-pointer ${
+                    isInstantJobMode
+                      ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] shadow-[0_0_15px_rgba(0,119,255,0.4)] animate-pulse scale-105 font-extrabold'
+                      : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                  title="Xem hướng dẫn tính năng"
+                >
+                  ?
+                </button>
+                <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl p-4 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-xs text-muted-foreground leading-relaxed text-left select-text">
+                  <p className="font-bold text-foreground mb-1">Instant Job Detail (Premium)</p>
+                  When enabled, you enter the screening questions first. Click <strong>Start Generate Job</strong> to let AI automatically generate the Job Title, Category, Description, and required Skills based on your questions.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm">1</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">Step 1</span>
+                <span className="text-xs text-foreground font-bold">Project Details</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex items-center gap-3 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">2</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 2</span>
+                <span className="text-xs text-muted-foreground font-bold">Contract Setup</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {submitError && (
-          <div className="glass-card p-4 mb-6 flex items-start gap-3">
-            <AlertCircle size={18} className="text-red flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red">{submitError}</p>
+        {errorMessage && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold">
+            {errorMessage}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
-          <div className="lg:col-span-2 space-y-5">
-            {/* Job Title */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-2">
-                Job Title *
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Senior React Developer for E-commerce Platform"
-                value={form.title}
-                onChange={event => setForm({ ...form, title: event.target.value })}
-                className="input-gb w-full px-4 py-3"
-              />
-              <p className="input-hint text-xs mt-2">
-                Be specific — better titles attract better candidates
-              </p>
+        {isDraftInitializing && (
+          <div className="mb-6 bg-[var(--gb-cyan)]/10 border border-[var(--gb-cyan)]/20 text-[var(--gb-cyan)] rounded-xl px-4 py-3 text-sm font-semibold">
+            Preparing draft...
+          </div>
+        )}
+
+        {draftError && !isDraftInitializing && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <span>{draftError}</span>
+            <button
+              type="button"
+              onClick={() => setDraftRequestAttempt(attempt => attempt + 1)}
+              className="px-4 py-2 rounded-full font-bold text-xs bg-red-500 text-white hover:bg-red-600 transition-all cursor-pointer border-none"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div
+            className="lg:col-span-5 flex flex-col gap-6 bg-card border border-border rounded-2xl p-6 shadow-sm"
+            style={{ maxHeight: detailsHeight ? `${detailsHeight}px` : undefined }}
+          >
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
+              <div className="flex items-center gap-2">
+                <Bot className="text-[var(--gb-purple)]" size={20} />
+                <h2 className="text-lg font-bold text-foreground">JobPost Questions</h2>
+              </div>
             </div>
 
-            {/* Category */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Category *
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(category => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setForm({ ...form, category })}
-                    className={`category-btn px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                      form.category === category ? 'active' : ''
-                    }`}
+            <div id="guide-questions-list" className="space-y-3 lg:flex-grow lg:overflow-y-auto lg:min-h-0 lg:pr-1">
+              {questions.map((question, index) => (
+                <div
+                  key={index}
+                  draggable
+                  onDragStart={e => handleDragStart(e, index)}
+                  onDragOver={e => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={`bg-background border rounded-xl p-4 transition-all duration-200 ${
+                    draggedIndex === index
+                      ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 opacity-50 scale-[0.98]'
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2 select-none">
+                    <div className="flex items-center gap-2">
+                      <div className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted flex items-center justify-center">
+                        <GripVertical size={14} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                        Question {index + 1}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-wider cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={question.isRequired}
+                          onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
+                          className="rounded border-border text-[var(--gb-cyan)] focus:ring-[var(--gb-cyan)]"
+                        />
+                        Required
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = questions.filter((_, idx) => idx !== index);
+                          setQuestions(updated);
+                        }}
+                        className="text-muted-foreground hover:text-red-500 p-1 rounded hover:bg-muted transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
+                        title="Delete Question"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={question.questionText}
+                    maxLength={MAX_QUESTION_LENGTH}
+                    onChange={event => updateQuestion(index, { questionText: event.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
+                    rows={3}
+                    placeholder="Enter a question applicants must answer..."
+                  />
+                  <div className="text-right mt-1 text-[10px] text-muted-foreground">
+                    {question.questionText.length}/{MAX_QUESTION_LENGTH}
+                  </div>
+                </div>
+              ))}
+
+              {questions.length === 0 && (
+                <div className="text-center py-8 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
+                  No questions added. Click "Add Question" to add one.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 mt-2">
+              <button
+                id="guide-add-question"
+                type="button"
+                onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
+              >
+                <Plus size={14} /> Add Question
+              </button>
+
+              {isInstantJobMode && (
+                <button
+                  id="guide-generate-job"
+                  type="button"
+                  onClick={handleGenerateInstantJob}
+                  disabled={questions.filter(q => q.questionText.trim()).length === 0 || isGeneratingInstant}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white text-xs font-extrabold hover:opacity-95 transition-all cursor-pointer shadow-lg disabled:opacity-40 disabled:cursor-not-allowed border-none uppercase tracking-wider"
+                >
+                  {isGeneratingInstant ? (
+                    <>
+                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      <span>Generating Details...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bot size={15} />
+                      <span>Start Generate Job</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div id="guide-job-details-panel" className="lg:col-span-7 flex flex-col gap-6 bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">Job Details</h2>
+
+            {isInstantJobMode && !isJobDetailsGenerated && (
+              <div className="bg-gradient-to-r from-[var(--gb-purple)]/10 to-[var(--gb-cyan)]/10 border border-[var(--gb-purple)]/20 rounded-xl p-4 flex gap-3 items-start">
+                <Sparkles className="text-[var(--gb-purple)] shrink-0 mt-0.5 animate-pulse" size={16} />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold text-foreground">Premium Feature Active</span>
+                  <span className="text-[11px] text-muted-foreground leading-relaxed">
+                    Please fill out the screening questions on the left first, then click <strong>Start Generate Job</strong>. The details below will be auto-generated based on your questions.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Title *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Senior Frontend Engineer"
+                  value={form.title}
+                  onChange={event => setForm({ ...form, title: event.target.value })}
+                  disabled={isInstantJobMode && !isJobDetailsGenerated}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
+                  <select
+                    value={form.category}
+                    onChange={event => setForm({ ...form, category: event.target.value })}
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                  >
+                    {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visibility</label>
+                  <select
+                    value={form.visibility}
+                    onChange={event => setForm({ ...form, visibility: event.target.value })}
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   >
                     {category}
                   </button>
@@ -349,27 +337,22 @@ export default function PostJobScreen() {
               </div>
             </div>
 
-            {/* Skills */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Required Skills
-              </label>
-
-              <div className="flex flex-wrap gap-2 mb-3">
-                {form.skills.map(skill => (
-                  <span key={skill} className="flex items-center gap-1 badge-cyan">
-                    {skill}
-                    <button
-                      type="button"
-                      onClick={() => removeSkill(skill)}
-                      className="hover:opacity-70"
-                    >
-                      <X size={10} />
-                    </button>
-                  </span>
-                ))}
-
-                <div className="relative">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
+                <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
+                  {form.skills.map(skill => (
+                    <span key={skill} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(skill)}
+                        disabled={isInstantJobMode && !isJobDetailsGenerated}
+                        className="hover:text-red-500 transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
                   <input
                     type="text"
                     value={skillInput}
@@ -380,29 +363,26 @@ export default function PostJobScreen() {
                         addSkill(skillInput);
                       }
                     }}
-                    placeholder="+ Add skill"
-                    className="input-gb px-3 py-1 text-sm w-28"
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="flex-grow bg-transparent border-none focus:ring-0 px-2 py-1 text-sm min-w-[150px] outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
-              </div>
-
-              {remainingSkills.length > 0 && (
-                <div>
-                  <p className="input-hint text-xs mb-2">
-                    Suggested for {form.category}:
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {remainingSkills.slice(0, 5).map(skill => (
-                      <button
-                        key={skill}
-                        type="button"
-                        onClick={() => addSkill(skill)}
-                        className="flex items-center gap-1 tag-pill text-xs"
-                      >
-                        <Plus size={10} />
-                        {skill}
-                      </button>
-                    ))}
+                {remainingSkills.length > 0 && (
+                  <div className="mt-1">
+                    <p className="text-[10px] text-muted-foreground mb-2">Suggested for {form.category}:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {remainingSkills.slice(0, 5).map(skill => (
+                        <button
+                          key={skill}
+                          type="button"
+                          onClick={() => addSkill(skill)}
+                          disabled={isInstantJobMode && !isJobDetailsGenerated}
+                          className="flex items-center gap-1 tag-pill text-xs px-2.5 py-1 rounded-full bg-muted hover:bg-muted/80 text-foreground transition-all cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Plus size={10} /> {skill}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -436,43 +416,28 @@ export default function PostJobScreen() {
                 </button>
               </div>
 
-              <textarea
-                value={form.description}
-                onChange={event => setForm({ ...form, description: event.target.value })}
-                placeholder="Describe your project requirements, deliverables, and expectations..."
-                rows={12}
-                className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed"
-              />
-
-              {form.description && (
-                <div className="ai-generated-indicator flex items-center gap-2 mt-2">
-                  <Bot size={12} />
-                  <p className="text-xs">
-                    AI-generated description — review and customize as needed
-                  </p>
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Description *</label>
                 </div>
-              )}
-            </div>
-
-            {/* Budget */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Budget
-              </label>
-
-              <div className="flex gap-3 mb-4">
-                {(['fixed', 'hourly'] as const).map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setForm({ ...form, jobType: type })}
-                    className={`budget-type-btn flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all ${
-                      form.jobType === type ? 'active' : ''
-                    }`}
-                  >
-                    {type === 'fixed' ? '💰 Fixed Price' : '⏱️ Hourly Rate'}
-                  </button>
-                ))}
+                <div className="border border-border rounded-xl overflow-hidden shadow-sm flex flex-col bg-background focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
+                  <div className="bg-muted/30 border-b border-border px-3 py-2 flex items-center gap-1.5">
+                    <button disabled={isInstantJobMode && !isJobDetailsGenerated} className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center disabled:opacity-40 disabled:cursor-not-allowed" type="button" onClick={() => insertMarkdown('**', '**')} title="Bold"><Bold size={14} /></button>
+                    <button disabled={isInstantJobMode && !isJobDetailsGenerated} className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center disabled:opacity-40 disabled:cursor-not-allowed" type="button" onClick={() => insertMarkdown('*', '*')} title="Italic"><Italic size={14} /></button>
+                    <button disabled={isInstantJobMode && !isJobDetailsGenerated} className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center disabled:opacity-40 disabled:cursor-not-allowed" type="button" onClick={() => insertMarkdown('<u>', '</u>')} title="Underline"><Underline size={14} /></button>
+                    <div className="w-[1px] h-4 bg-border mx-1" />
+                    <button disabled={isInstantJobMode && !isJobDetailsGenerated} className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center disabled:opacity-40 disabled:cursor-not-allowed" type="button" onClick={() => insertMarkdown('\n- ', '')} title="Bullet List"><List size={14} /></button>
+                    <button disabled={isInstantJobMode && !isJobDetailsGenerated} className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors cursor-pointer bg-transparent border-none flex items-center disabled:opacity-40 disabled:cursor-not-allowed" type="button" onClick={() => insertMarkdown('\n1. ', '')} title="Numbered List"><ListOrdered size={14} /></button>
+                  </div>
+                  <textarea
+                    value={form.description}
+                    onChange={event => setForm({ ...form, description: event.target.value })}
+                    placeholder="Describe the role, responsibilities, and ideal candidate..."
+                    rows={6}
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-transparent border-none px-4 py-3 text-sm placeholder:text-muted-foreground focus:ring-0 resize-y min-h-[150px] outline-none leading-relaxed text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -482,7 +447,8 @@ export default function PostJobScreen() {
                     placeholder="Min"
                     value={form.budgetMin}
                     onChange={event => setForm({ ...form, budgetMin: event.target.value })}
-                    className="input-gb w-full px-4 py-3"
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -492,25 +458,45 @@ export default function PostJobScreen() {
                     placeholder="Max"
                     value={form.budgetMax}
                     onChange={event => setForm({ ...form, budgetMax: event.target.value })}
-                    className="input-gb w-full px-4 py-3"
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Deadline & Location */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="glass-card p-5">
-                <label className="text-primary text-sm font-semibold block mb-3">
-                  Deadline
-                </label>
-
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estimated Duration</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2-4 weeks"
+                    value={form.estimatedDuration}
+                    onChange={event => setForm({ ...form, estimatedDuration: event.target.value })}
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Max Hires</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    value={form.maxHires}
+                    onChange={event => setForm({ ...form, maxHires: event.target.value })}
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</label>
                   <input
                     type="date"
                     value={form.deadline}
                     onChange={event => setForm({ ...form, deadline: event.target.value })}
-                    className="input-gb w-full px-4 py-3 text-sm"
+                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -544,246 +530,37 @@ export default function PostJobScreen() {
                 </div>
               </div>
             </div>
-
-            {/* Experience Level */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Experience Level
-              </label>
-
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { value: 'entry', label: 'Entry', sub: '$10–$40/hr', emoji: '🌱' },
-                  { value: 'intermediate', label: 'Mid-Level', sub: '$40–$80/hr', emoji: '⚡' },
-                  { value: 'expert', label: 'Expert', sub: '$80–$200/hr', emoji: '🚀' },
-                ].map(level => (
-                  <button
-                    key={level.value}
-                    type="button"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        experienceLevel: level.value as 'entry' | 'intermediate' | 'expert',
-                      })
-                    }
-                    className={`experience-level-btn p-3 rounded-xl text-center transition-all ${
-                      form.experienceLevel === level.value ? 'active' : ''
-                    }`}
-                  >
-                    <span className="experience-level-emoji text-xl mb-1 block">
-                      {level.emoji}
-                    </span>
-                    <p className="text-primary text-sm font-medium">
-                      {level.label}
-                    </p>
-                    <p className="experience-level-sub text-xs">
-                      {level.sub}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Attachments */}
-            <div className="glass-card p-5">
-              <label className="text-primary text-sm font-semibold block mb-3">
-                Attachments <span className="input-hint">(optional)</span>
-              </label>
-
-              <div className="upload-zone">
-                <Upload size={24} className="upload-icon mx-auto mb-2" />
-                <p className="upload-text text-sm font-medium text-primary">
-                  Drop files here or click to upload
-                </p>
-                <p className="upload-hint text-xs mt-1">
-                  PDF, DOC, PNG, ZIP · Max 50MB
-                </p>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => setShowPreview(!showPreview)}
-                disabled={isSubmitting}
-                className="preview-btn flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm transition-all disabled:opacity-40"
-              >
-                <Eye size={16} />
-                Preview
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSubmit('draft')}
-                disabled={
-                  isSubmitting ||
-                  !form.title ||
-                  !form.category ||
-                  !form.description
-                }
-                className="btn-ghost-cyan flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-40"
-              >
-                <Save size={16} />
-                {submitIntent === 'draft' ? 'Saving Draft...' : 'Save as Draft'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSubmit('publish')}
-                disabled={
-                  isSubmitting ||
-                  !form.title ||
-                  !form.category ||
-                  !form.description
-                }
-                className="btn-cyan flex-1 py-3 flex items-center justify-center gap-2 disabled:opacity-40"
-              >
-                <Rocket size={16} />
-                {submitIntent === 'publish' ? 'Publishing...' : 'Publish'}
-              </button>
-            </div>
           </div>
+        </div>
 
-          {/* Right Panel: Live Preview + AI Orb */}
-          <div className="space-y-5">
-            <div className="glass-card p-5">
-              <p className="preview-label text-xs font-semibold mb-3">
-                QUESTIONS READY
-              </p>
-              <p className="text-2xl font-black text-primary mb-1">
-                {pendingQuestions.length}
-              </p>
-              <p className="text-xs text-secondary mb-4">
-                Questions will be created immediately after the JobPost is saved as Draft.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate('/jobs/post/questions')}
-                disabled={isSubmitting}
-                className="btn-ghost-cyan w-full py-2 text-sm disabled:opacity-40"
-              >
-                Edit Questions
-              </button>
-            </div>
-
-            {/* Floating AI Orb */}
-            <div className="ai-orb-card glass-card p-5 text-center">
-              <div
-                className="ai-orb w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center animate-orb cursor-pointer"
-                onClick={generateDescription}
-              >
-                <Bot size={32} />
-              </div>
-
-              <p className="text-primary font-semibold mb-1">
-                AI Job Generator
-              </p>
-
-              <p className="ai-orb-description text-xs mb-4">
-                Fill in title & category, then click the orb to generate a professional job description
-              </p>
-
-              <button
-                type="button"
-                onClick={generateDescription}
-                disabled={isGenerating || !form.title || !form.category}
-                className="btn-cyan w-full py-2 text-sm disabled:opacity-40"
-              >
-                {isGenerating ? 'Generating...' : '✨ Generate Description'}
-              </button>
-            </div>
-
-            {/* Job Preview */}
-            {showPreview && form.title && (
-              <div className="glass-card p-5">
-                <p className="preview-label text-xs font-semibold mb-3">
-                  PREVIEW
-                </p>
-
-                <h3 className="text-primary font-semibold mb-2">
-                  {form.title || 'Job Title'}
-                </h3>
-
-                {form.category && (
-                  <span className="badge-cyan text-xs mb-3 inline-block">
-                    {form.category}
-                  </span>
-                )}
-
-                {form.budgetMin && (
-                  <p className="preview-budget text-sm text-primary mb-2 font-medium">
-                    ${parseInt(form.budgetMin).toLocaleString()}–
-                    ${parseInt(form.budgetMax || '0').toLocaleString()} · {form.jobType}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {form.skills.map(skill => (
-                    <span key={skill} className="tag-pill text-xs">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-
-                {form.description && (
-                  <p className="preview-description text-xs leading-relaxed line-clamp-4">
-                    {form.description.split('\n')[0]}...
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Tips */}
-            <div className="glass-card p-5">
-              <p className="text-primary text-sm font-semibold mb-3">
-                💡 Pro Tips
-              </p>
-
-              <div className="space-y-3">
-                {[
-                  'Specific titles get 2x more proposals',
-                  'Jobs with 5+ skills attract senior talent',
-                  'Clear budgets increase proposal quality',
-                  'AI-generated descriptions get 60% more applicants',
-                ].map((tip, index) => (
-                  <div key={index} className="tips-item flex items-start gap-2">
-                    <div className="tips-bullet w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" />
-                    <p className="tips-text text-xs">
-                      {tip}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Budget Estimator */}
-            <div className="glass-card p-5">
-              <p className="text-primary text-sm font-semibold mb-3">
-                💰 Market Rate
-              </p>
-
-              {form.category ? (
-                <div>
-                  <p className="market-rate-hint text-xs mb-2">
-                    Average for {form.category}:
-                  </p>
-                  <p className="market-rate-value text-xl font-black">
-                    $50–$120/hr
-                  </p>
-                  <p className="market-rate-hint text-xs mt-1">
-                    Based on 2,847 recent projects
-                  </p>
-                </div>
-              ) : (
-                <p className="market-rate-hint text-xs">
-                  Select a category to see market rates
-                </p>
-              )}
-            </div>
+        <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm max-w-[1440px] mx-auto">
+          <div className="hidden md:flex flex-col">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
+            <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={() => submitDraftFlow('draft')}
+              disabled={isActionDisabled}
+              className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
+            >
+              <Save size={16} /> {renderSubmitLabel('draft', 'Save as Draft')}
+            </button>
+            <button
+              type="button"
+              onClick={() => submitDraftFlow('contract')}
+              disabled={isActionDisabled}
+              className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
+            >
+              <Check size={16} />
+              <span>{renderSubmitLabel('contract', 'Next: Create Contract')}</span>
+              <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
+            </button>
           </div>
         </div>
       </div>
+      <JobPostGuide isActive={isGuideActive} onClose={() => setIsGuideActive(false)} />
     </AppLayout>
   );
 }

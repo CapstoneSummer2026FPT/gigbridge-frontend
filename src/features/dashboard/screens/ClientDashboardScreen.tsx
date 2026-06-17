@@ -118,7 +118,13 @@ export default function ClientDashboardScreen() {
                   { label: 'Financial Overview', path: '/financial-overview', badge: 'VND', icon: <DollarSign size={14} /> },
                   { label: 'AI Assistant', path: '/ai-assistant', badge: 'New', icon: <Bot size={14} /> },
                 ].map(action => (
-                  <button key={action.label} onClick={() => navigate(action.path)}
+                  <button key={action.label} onClick={() => {
+                    if (action.path === '/ai-assistant') {
+                      window.dispatchEvent(new CustomEvent('toggle-ai-assistant', { detail: { open: true } }));
+                    } else {
+                      navigate(action.path);
+                    }
+                  }}
                     className="w-full flex items-center justify-between p-3 rounded-xl transition-all client-dash-action-btn">
                     <div className="flex items-center gap-2 text-sm text-primary">
                       <span className="client-dash-action-icon">{action.icon}</span>

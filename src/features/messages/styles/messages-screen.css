@@ -182,3 +182,83 @@
 .messages-custom-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
 }
+
+@media (max-width: 1024px) {
+  .messages-page {
+    height: auto !important;
+    min-height: calc(100vh - 5rem);
+    overflow: visible !important;
+  }
+
+  .messages-page > .flex.flex-1 {
+    flex-direction: column;
+    overflow: visible !important;
+  }
+
+  .messages-page > .flex.flex-1 > section,
+  .messages-page > .flex.flex-1 > aside {
+    width: 100% !important;
+    min-height: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .messages-page > .flex.flex-1 > section:first-child {
+    max-height: 18rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .messages-page > .flex.flex-1 > section:nth-child(2) {
+    min-height: 38rem;
+  }
+
+  .messages-page > .flex.flex-1 > aside {
+    max-height: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .messages-page > .flex.flex-1 > aside.w-0 {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .messages-page {
+    padding-top: 0.5rem;
+  }
+
+  .messages-page > header {
+    align-items: flex-start;
+    padding: 0.75rem 1rem;
+  }
+
+  .messages-page > .flex.flex-1 > section:first-child {
+    max-height: 16rem;
+  }
+
+  .messages-page > .flex.flex-1 > section:nth-child(2) > div:first-child,
+  .messages-page > .flex.flex-1 > section:nth-child(2) > div:nth-child(2),
+  .messages-page > .flex.flex-1 > section:nth-child(2) > div:nth-child(3) {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .messages-page .max-w-\[80\%\] {
+    max-width: 94% !important;
+  }
+
+  .msg-deal-bubble {
+    max-width: 100%;
+    padding: 0.875rem;
+  }
+
+  .msg-conv-settings-menu {
+    left: 0;
+    right: auto;
+    width: min(14rem, calc(100vw - 2rem)) !important;
+  }
+
+  .messages-page textarea {
+    min-height: 3rem;
+  }
+}

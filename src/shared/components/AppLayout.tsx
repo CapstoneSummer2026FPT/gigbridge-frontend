@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TopNav } from './TopNav';
 import { Sidebar } from './Sidebar';
 import { useApp } from '../../app/providers/AppProvider';
+import { AIAssistantWidget } from '../../features/ai-assistant';
 import '../styles/AppLayout.css';
 
 interface AppLayoutProps {
@@ -58,6 +59,8 @@ export function AppLayout({ children, showSidebar = true, fullWidth = false }: A
           {children}
         </main>
       </div>
+
+      {user && <AIAssistantWidget />}
     </div>
   );
 }
