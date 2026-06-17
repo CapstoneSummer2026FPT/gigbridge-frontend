@@ -63,6 +63,53 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   gigcoin_cost: 0,
 });
 
+const toLegacyStatusFromJobPost = (status: number | string | null | undefined): Job['status'] => {
+  const value = Number(status);
+  if (value === JobPostStatus.Draft) return 'draft';
+  if (value === JobPostStatus.Open) return 'open';
+  if (value === JobPostStatus.Closed) return 'closed';
+  if (value === JobPostStatus.Cancelled) return 'cancelled';
+  return 'draft';
+};
+
+const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
+  id: job.jobPostsId,
+  clientId: job.clientProfilesId,
+  title: job.title,
+  description: job.description,
+  category: job.categoryName || 'All',
+  skills: [],
+  budgetMin: job.budgetMin ?? 0,
+  budgetMax: job.budgetMax ?? 0,
+  jobType: 'fixed',
+  deadline: job.endDate ?? undefined,
+  status: toLegacyStatusFromJobPost(job.status),
+  proposalCount: job.proposalCount,
+  viewCount: 0,
+  postedAt: formatPostedAt(job.createdAt),
+  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
+  gigcoin_cost: 0,
+});
+
+const toLegacyJobFromMyJobDetail = (job: GetMyJobPostDetailDto): Job => ({
+  id: job.jobPostsId,
+  clientId: job.clientProfilesId,
+  title: job.title,
+  description: job.description,
+  category: job.categoryName || 'All',
+  skills: job.skills?.map(skill => skill.skillName) || [],
+  budgetMin: job.budgetMin ?? 0,
+  budgetMax: job.budgetMax ?? 0,
+  jobType: 'fixed',
+  deadline: job.endDate ?? undefined,
+  status: toLegacyStatusFromJobPost(job.status),
+  proposalCount: job.proposalCount,
+  viewCount: 0,
+  postedAt: formatPostedAt(job.createdAt),
+  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
+  gigcoin_cost: 0,
+});
+
 const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   id: job.jobPostsId,
   clientId: job.clientProfilesId,

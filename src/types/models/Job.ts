@@ -113,8 +113,14 @@ export interface JobPostDetailDto {
   budgetType?: number | null;
   experienceLevelRequired?: number | null;
   applicationDeadline?: string | null;
+  budgetType?: number | null;
+  experienceLevelRequired?: number | null;
+  applicationDeadline?: string | null;
   endDate?: string | null;
   createdAt: string;
+  eloPoints?: number;
+  status?: JobStatus | number | null;
+  visibility?: number | null;
   eloPoints?: number;
   status?: JobStatus | number | null;
   visibility?: number | null;
@@ -185,6 +191,42 @@ export interface UpdateJobPostStatusRequest {
 
 export interface UpdateJobPostVisibilityRequest {
   visibility: number;
+}
+
+export interface Review {
+  reviewId?: string;
+  id?: string;
+  contractId?: string;
+  jobPostId?: string;
+  jobId?: string;
+  reviewerId: string;
+  reviewerName?: string | null;
+  revieweeId: string;
+  rating: number;
+  comment?: string | null;
+  communicationRating?: number | null;
+  qualityRating?: number | null;
+  timelinessRating?: number | null;
+  isVisible?: boolean;
+  isAnonymous?: boolean;
+  createdAt: string;
+  skills?: string[];
+}
+
+export interface CreateReviewRequest {
+  contractId: string;
+  rating: number;
+  comment?: string | null;
+  communicationRating?: number | null;
+  qualityRating?: number | null;
+  timelinessRating?: number | null;
+  isAnonymous: boolean;
+}
+
+export interface ReviewStats {
+  averageRating: number;
+  totalReviews: number;
+  ratingDistribution: Record<number, number>;
 }
 
 export interface Review {

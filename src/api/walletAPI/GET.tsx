@@ -1,6 +1,8 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 
+const walletUrl = 'wallet';
+
 export interface WalletResponse {
   walletId: string;
   userId: string;
@@ -30,11 +32,19 @@ export interface WalletTransactionResponse {
 }
 
 export const walletGetAPI = {
+  /**
+   * GET /api/wallet
+   * Fetch the current user's token wallet.
+   */
   getMyWallet: async (): Promise<ApiResponse<WalletResponse>> => {
-    return apiService.get<WalletResponse>('wallet');
+    return apiService.get<WalletResponse>(walletUrl);
   },
 
-  getTransactions: async (limit: number = 50): Promise<ApiResponse<WalletTransactionResponse[]>> => {
-    return apiService.get<WalletTransactionResponse[]>('wallet/transactions', { limit });
+  /**
+   * GET /api/wallet/transactions
+   * Fetch recent wallet transaction history for the current user.
+   */
+  getTransactions: async (limit = 50): Promise<ApiResponse<WalletTransactionResponse[]>> => {
+    return apiService.get<WalletTransactionResponse[]>(`${walletUrl}/transactions`, { limit });
   },
 };
