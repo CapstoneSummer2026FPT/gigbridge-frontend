@@ -1,8 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { DB } from '../../../mock_backend';
 import { SEED_CLIENT_PROFILES } from '../../../mock_backend/database/seed';
-import { getStoredReviews, saveStoredReviews, type ReviewViewModel } from '../../reviews/mock/data-for-Reviews';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
+import { reviewGetAPI } from '../../../api/reviewAPI/GET';
+import type { Review } from '../../../types/models/Job';
+
+type ReviewViewModel = {
+  id: string;
+  contractId: string;
+  reviewerId: string;
+  reviewerName: string;
+  revieweeId: string;
+  rating: number;
+  comment: string;
+  isAnonymous: boolean;
+  createdAt: string;
+};
+
+const toReviewViewModel = (review: Review): ReviewViewModel => ({
+  id: review.reviewId ?? review.id ?? `${review.contractId ?? 'review'}-${review.createdAt}`,
+  contractId: review.contractId ?? '',
+  reviewerId: review.reviewerId,
+  reviewerName: review.reviewerName ?? 'Anonymous Reviewer',
+  revieweeId: review.revieweeId,
+  rating: review.rating,
+  comment: review.comment ?? '',
+  isAnonymous: Boolean(review.isAnonymous),
+  createdAt: review.createdAt,
+});
 
 export function useClientProfile(targetId: string, currentUser: any) {
   const [profileData, setProfileData] = useState({
@@ -63,44 +88,31 @@ export function useClientProfile(targetId: string, currentUser: any) {
 
   // Sync reviews list on targetId load
   useEffect(() => {
-    setReviewsList(
-      getStoredReviews()
-        .filter(review => review.revieweeId === targetId)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    );
-    setCurrentPage(1);
+    const fetchReviews = async (): Promise<void> => {
+      const response = await reviewGetAPI.getReviewsByUser(targetId);
+      const reviews = response.success && response.data ? response.data : [];
+      setReviewsList(
+        reviews
+          .map(toReviewViewModel)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      );
+      setCurrentPage(1);
+    };
+
+    fetchReviews();
   }, [targetId]);
 
   const handleSaveClient = () => {
     setIsSaved(!isSaved);
   };
 
-  const handleAddReview = (e: React.FormEvent) => {
+  const handleAddReview = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!reviewComment.trim()) return;
-
-    const newReview: ReviewViewModel = {
-      id: `rev_${Date.now()}`,
-      contractId: 'contract_3',
-      reviewerId: currentUser?.id || 'u_freelancer_1',
-      reviewerName: currentUser?.full_name || 'Anonymous Freelancer',
-      revieweeId: targetId,
-      rating: reviewRating,
-      comment: reviewComment.trim(),
-      isAnonymous: reviewAnonymous,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedAll = [newReview, ...getStoredReviews()];
-    saveStoredReviews(updatedAll);
-    
-    setReviewsList(updatedAll.filter(review => review.revieweeId === targetId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    
+    window.alert('Please submit reviews from a completed contract so the review can be linked to ELO correctly.');
     setReviewComment('');
     setReviewRating(5);
     setReviewAnonymous(false);
     setShowReviewModal(false);
-    setCurrentPage(1);
   };
 
   const averageRating = reviewsList.length
