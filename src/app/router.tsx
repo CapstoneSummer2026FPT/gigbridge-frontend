@@ -156,21 +156,21 @@ export const router = createBrowserRouter([
       { path: 'onboarding/profile-setup', element: <ProtectedRoute requireAuth><ProfileSetupScreen /></ProtectedRoute> },
 
       // Client routes - requires authentication and setup
-      { path: 'client/dashboard', element: <ProtectedRoute requireAuth requireSetup><ClientDashboardScreen /></ProtectedRoute> },
+      { path: 'client/dashboard', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Client]}><ClientDashboardScreen /></ProtectedRoute> },
 
       // Freelancer routes - requires authentication and setup
-      { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
+      { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Freelancer]}><FreelancerDashboardScreen /></ProtectedRoute> },
 
       // Jobs - requires authentication
       { path: 'jobs/post/questions', element: <Navigate to="/jobs/post" replace /> },
-      { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
+      { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Client]}><PostJobScreen /></ProtectedRoute> },
       { path: 'jobs/post/interview-questions', element: <Navigate to="/jobs/post" replace /> },
-      { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
+      { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Client]}><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
-      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
-      { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
-      { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Client]}><MyJobsScreen /></ProtectedRoute> },
+      { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Client]}><ManageJobPostQuestionsScreen /></ProtectedRoute> },
+      { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Freelancer]}><CreateProposalScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
 
       // Profiles - requires authentication
@@ -182,21 +182,22 @@ export const router = createBrowserRouter([
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalListRoute /></ProtectedRoute> },
-      { path: 'proposals/create/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
-      { path: 'proposals/:proposalId/edit', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
-      { path: 'proposals/create/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ScreenProposalAnswerQuestion /></ProtectedRoute> },
+      { path: 'proposals/create/:jobPostId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Freelancer]}><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'proposals/:proposalId/edit', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Freelancer]}><CreateProposalScreen /></ProtectedRoute> },
+      { path: 'proposals/create/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Freelancer]}><ScreenProposalAnswerQuestion /></ProtectedRoute> },
       { path: 'proposals/:proposalId/answers', element: <ProtectedRoute requireAuth requireSetup><ViewProposalAnswersScreen /></ProtectedRoute> },
 
       // Contracts - requires authentication and setup
+      { path: 'contracts', element: <ProtectedRoute requireAuth requireSetup><ContractListRoute /></ProtectedRoute> },
       { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
-      { path: 'contracts/create', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
+      { path: 'contracts/create', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Client]}><CreateEsignContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
-      { path: 'contracts/:contractId/manage', element: <ProtectedRoute requireAuth requireSetup><ManageContractScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/manage', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Client]}><ManageContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup><ManageMilestonesScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones/:milestoneId/approve', element: <ProtectedRoute requireAuth requireSetup><ApproveMilestoneScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones/:milestoneId/submit', element: <ProtectedRoute requireAuth requireSetup><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/signature', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
-      { path: 'freelancer/contracts', element: <ProtectedRoute requireAuth requireSetup><FreelancerContractScreen /></ProtectedRoute> },
+      { path: 'freelancer/contracts', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Freelancer]}><FreelancerContractScreen /></ProtectedRoute> },
 
       // Messages - requires authentication and setup
       { path: 'messages', element: <ProtectedRoute requireAuth requireSetup><MessagesScreen /></ProtectedRoute> },
@@ -207,7 +208,7 @@ export const router = createBrowserRouter([
       { path: ':projectId/freelancer-contract', element: <ProtectedRoute requireAuth requireSetup><FreelancerRegisterContractScreen /></ProtectedRoute> },
 
       { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },
-      { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
+      { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup allowedRoles={[UserRole.Freelancer]}><AIInterviewScreen /></ProtectedRoute> },
 
       // Settings - requires authentication
       { path: 'settings', element: <ProtectedRoute requireAuth><SettingsScreen /></ProtectedRoute> },

@@ -6,6 +6,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   requireSetup?: boolean;
+  allowedRoles?: UserRole[];
 }
 
 /**
@@ -13,13 +14,15 @@ interface ProtectedRouteProps {
  * 
  * - If requireAuth=true and user not authenticated: redirect to /auth/login
  * - If user authenticated but not setup: redirect to /onboarding/profile-setup
- * - If user authenticated and setup: render children
+ * - If user authenticated but role not allowed: redirect to user's correct dashboard
+ * - If user authenticated and setup and role allowed: render children
  * - If user on landing/auth pages but authenticated: redirect to dashboard
  */
 export function ProtectedRoute({ 
   children, 
   requireAuth = false,
-  requireSetup = false 
+  requireSetup = false,
+  allowedRoles
 }: ProtectedRouteProps) {
   let appContext;
   try {
@@ -43,6 +46,20 @@ export function ProtectedRoute({
     // User needs to complete setup
     if (!hasCompletedSetup && requireSetup) {
       return <Navigate to="/onboarding/profile-setup" replace />;
+    }
+
+    // Role-based protection check
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+      if (user.role === UserRole.Admin) {
+        return <Navigate to="/admin" replace />;
+      }
+      if (user.role === UserRole.Client) {
+        return <Navigate to="/client/dashboard" replace />;
+      }
+      if (user.role === UserRole.Freelancer) {
+        return <Navigate to="/freelancer/dashboard" replace />;
+      }
+      return <Navigate to="/" replace />;
     }
 
     // User is setup, render the page

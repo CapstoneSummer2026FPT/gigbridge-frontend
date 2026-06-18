@@ -89,7 +89,7 @@ export default function ClientDashboardScreen() {
                   </linearGradient>
                 </defs>
                 <XAxis key="client-xaxis" dataKey="month" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} interval={0} />
-                <YAxis key="client-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                <YAxis key="client-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip key="client-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v.toLocaleString()}`, 'Spend']} />
                 <Area key="client-area" type="monotone" dataKey="spend" stroke="#0077FF" strokeWidth={2} fill="url(#clientSpendGrad2026)" isAnimationActive={false} />
               </AreaChart>

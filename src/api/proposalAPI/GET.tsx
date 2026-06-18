@@ -1,6 +1,12 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ProposalDetailDto, ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
+import type {
+  ProposalAnswerDto,
+  ProposalDetailDto,
+  ProposalDto,
+  ProposalQueryParams,
+} from '../../types/models/Proposal';
+import { jobGetAPI } from '../jobAPI/GET';
 
 const proposalsUrl = 'Proposals';
 
@@ -26,6 +32,26 @@ export const proposalGetAPI = {
   },
 
   /**
+   * GET /api/Proposals/{proposalId}
+   * Proposal detail for the owning client or freelancer.
+   */
+  getProposalDetail: async (
+    proposalId: string
+  ): Promise<ApiResponse<ProposalDetailDto>> => {
+    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/${proposalId}`);
+  },
+
+  /**
+   * GET /api/Proposals/job/{jobPostId}/my-proposal
+   * Current freelancer's proposal for a job post.
+   */
+  getMyProposalByJobPost: async (
+    jobPostId: string
+  ): Promise<ApiResponse<ProposalDetailDto>> => {
+    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/job/${jobPostId}/my-proposal`);
+  },
+
+  /**
    * GET /api/Proposals/job/{jobPostId}/proposals
    * Client-only proposals for a job post.
    */
@@ -37,19 +63,13 @@ export const proposalGetAPI = {
   },
 
   /**
-   * GET /api/Proposals/{proposalId}
-   * Authenticated proposal detail for client/freelancer owners.
+   * GET /api/Proposals/{proposalId}/answers
+   * Proposal answers visible to the owning client or freelancer.
    */
-  getProposalDetail: async (id: string): Promise<ApiResponse<ProposalDetailDto>> => {
-    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/${id}`);
-  },
-
-  /**
-   * GET /api/Proposals/job/{jobPostId}/my-proposal
-   * Freelancer-only proposal detail for a job post.
-   */
-  getMyProposalByJobPost: async (jobPostId: string): Promise<ApiResponse<ProposalDetailDto>> => {
-    return apiService.get<ProposalDetailDto>(`${proposalsUrl}/job/${jobPostId}/my-proposal`);
+  getProposalAnswers: async (
+    proposalId: string
+  ): Promise<ApiResponse<ProposalAnswerDto[]>> => {
+    return apiService.get<ProposalAnswerDto[]>(`${proposalsUrl}/${proposalId}/answers`);
   },
 
   /**
@@ -62,6 +82,7 @@ export const proposalGetAPI = {
       if (!jobsRes.success || !jobsRes.data) {
         return { success: false, statusCode: jobsRes.statusCode, message: jobsRes.message, data: [] };
       }
+
       const allProposals: ProposalDto[] = [];
       for (const job of jobsRes.data) {
         const proposalsRes = await proposalGetAPI.getProposalsByJobPost(job.jobPostsId, { pageIndex: 1, pageSize: 100 });
@@ -69,23 +90,25 @@ export const proposalGetAPI = {
           allProposals.push(...proposalsRes.data);
         }
       }
+
       return { success: true, statusCode: 200, message: 'Success', data: allProposals };
-    } catch (err: any) {
-      return { success: false, statusCode: 500, message: err.message || 'Failed to get client proposals', data: [] };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to get client proposals';
+      return { success: false, statusCode: 500, message, data: [] };
     }
   },
 
-  // Older mock-only helpers are no longer backed by the current controller.
+  // Backward-compatible helpers for older screens.
   getProposals: async (filters?: { jobId?: string; freelancerId?: string; clientId?: string }) => {
     if (filters?.jobId) {
       return proposalGetAPI.getProposalsByJobPost(filters.jobId);
     }
 
-    return proposalGetAPI.getMyProposals();
+    return proposalGetAPI.getAllProposals();
   },
 
   getProposalById: async (id: string) => {
-    const response = await proposalGetAPI.getAllProposals();
-    return response.data?.find(proposal => proposal.proposalsId === id);
+    const response = await proposalGetAPI.getProposalDetail(id);
+    return response.data;
   },
 };

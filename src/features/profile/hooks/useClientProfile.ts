@@ -30,9 +30,32 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
 });
 
 export function useClientProfile(targetId: string, currentUser: any) {
-  const [profileData, setProfileData] = useState({
-    user: DB.getUserById(targetId) || DB.getUserById('u_client_1')!,
-    profile: SEED_CLIENT_PROFILES.find(p => p.user_id === targetId) || SEED_CLIENT_PROFILES[0],
+  const [profileData, setProfileData] = useState(() => {
+    const defaultUser = (currentUser && currentUser.id === targetId)
+      ? {
+          id: currentUser.id,
+          full_name: currentUser.full_name || 'Client User',
+          avatar: currentUser.avatar || null,
+          email: currentUser.email || '',
+          phone_number: currentUser.phone_number || '',
+        }
+      : (DB.getUserById(targetId) || DB.getUserById('u_client_1')!);
+
+    const defaultProfile = SEED_CLIENT_PROFILES.find(p => p.user_id === targetId) || {
+      user_id: targetId,
+      company_name: 'Company Name',
+      company_website: null,
+      company_size: 0,
+      industry: 'Technology',
+      company_description: '',
+      location: 'San Francisco, CA',
+      avatar: (currentUser && currentUser.id === targetId) ? currentUser.avatar : null,
+    };
+
+    return {
+      user: defaultUser,
+      profile: defaultProfile
+    };
   });
 
   const [loading, setLoading] = useState(true);
@@ -76,15 +99,40 @@ export function useClientProfile(targetId: string, currentUser: any) {
               avatar: apiData.userAvatar,
             }
           });
+        } else {
+          if (currentUser && currentUser.id === targetId) {
+            setProfileData(prev => ({
+              ...prev,
+              user: {
+                id: currentUser.id,
+                full_name: currentUser.full_name || 'Client User',
+                avatar: currentUser.avatar || null,
+                email: currentUser.email || '',
+                phone_number: currentUser.phone_number || '',
+              }
+            }));
+          }
         }
       } catch (err) {
         console.warn('API getClientProfile fallback to mock:', err);
+        if (currentUser && currentUser.id === targetId) {
+          setProfileData(prev => ({
+            ...prev,
+            user: {
+              id: currentUser.id,
+              full_name: currentUser.full_name || 'Client User',
+              avatar: currentUser.avatar || null,
+              email: currentUser.email || '',
+              phone_number: currentUser.phone_number || '',
+            }
+          }));
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchProfile();
-  }, [targetId]);
+  }, [targetId, currentUser]);
 
   // Sync reviews list on targetId load
   useEffect(() => {
