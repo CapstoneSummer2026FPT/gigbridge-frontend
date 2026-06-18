@@ -25,7 +25,8 @@ import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen
 import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
 import EditFreelancerProfileScreen from '../features/profile/screens/EditFreelancerProfileScreen';
 import ManageFreelancerContentScreen from '../features/profile/screens/ManageFreelancerContentScreen';
-import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
+import ClientProposalsScreen from '../features/proposals/screens/ClientProposalsScreen';
+import FreelancerProposalsScreen from '../features/proposals/screens/FreelancerProposalsScreen';
 import CreateProposalScreen from '../features/proposals/screens/CreateProposalScreen';
 import ScreenProposalAnswerQuestion from '../features/proposals/screens/ScreenProposalAnswerQuestion';
 import ViewProposalAnswersScreen from '../features/proposals/screens/ViewProposalAnswersScreen';
@@ -133,6 +134,11 @@ function ContractListRoute() {
   return role === UserRole.Freelancer ? <FreelancerContractScreen /> : <ManageContractScreen />;
 }
 
+function ProposalListRoute() {
+  const { role } = useApp();
+  return role === UserRole.Freelancer ? <FreelancerProposalsScreen /> : <ClientProposalsScreen />;
+}
+
 function NavigateToProposalCreate() {
   const { jobPostId } = useParams<{ jobPostId: string }>();
   return <Navigate to={`/proposals/create/${jobPostId || ''}`} replace />;
@@ -181,7 +187,7 @@ export const router = createBrowserRouter([
       { path: 'profile/manage-content', element: <ProtectedRoute requireAuth><ManageFreelancerContentScreen /></ProtectedRoute> },
 
       // Proposals - requires authentication and setup
-      { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
+      { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalListRoute /></ProtectedRoute> },
       { path: 'proposals/create/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
       { path: 'jobs/:jobPostId/apply', element: <ProtectedRoute requireAuth requireSetup><NavigateToProposalCreate /></ProtectedRoute> },
       { path: 'proposals/:proposalId/edit', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
