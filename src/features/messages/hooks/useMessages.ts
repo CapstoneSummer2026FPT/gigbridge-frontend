@@ -253,7 +253,7 @@ export function useMessages() {
             ? {
                 ...c,
                 lastMessage: mapped.content,
-                lastMessageAt: mapped.createdAt,
+                lastMessageAt: mapped.createdAt || new Date().toISOString(),
                 unreadCount: c.id === activeConvId ? 0 : c.unreadCount + 1,
               }
             : c

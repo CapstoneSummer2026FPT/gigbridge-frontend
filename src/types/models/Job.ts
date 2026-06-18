@@ -62,7 +62,8 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed';
+  jobType?: 'fixed' | 'hourly';
+  experienceLevel?: 'entry' | 'intermediate' | 'expert';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
   proposalCount: number;
@@ -70,6 +71,9 @@ export interface Job {
   aiMatchScore?: number;
   isAiRecommended?: boolean;
   clientEloPoints?: number;
+  eloPoints?: number;
+  statusValue?: JobStatus | number | null;
+  visibility?: number | null;
   postedAt: string;
   isRemote: boolean;
   gigcoin_cost: number;

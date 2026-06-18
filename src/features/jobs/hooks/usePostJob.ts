@@ -182,16 +182,16 @@ export function usePostJob() {
 
     setIsGeneratingInstant(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     const questionsText = validQuestions.map(q => q.questionText).join(' ').toLowerCase();
-    
+
     let title = 'Software Engineer';
     let category = 'Web Development';
     let skills = ['React', 'TypeScript', 'Node.js'];
     let description = '';
     let budgetMin = '1500';
     let budgetMax = '4000';
-    
+
     if (questionsText.includes('design') || questionsText.includes('figma') || questionsText.includes('ui') || questionsText.includes('ux') || questionsText.includes('prototype') || questionsText.includes('color') || questionsText.includes('mockup')) {
       title = 'Senior UI/UX Product Designer';
       category = 'Design';
