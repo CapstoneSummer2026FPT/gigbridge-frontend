@@ -78,8 +78,10 @@ export default function PostJobScreen() {
 
         <div className="flex flex-col gap-6 items-center mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
-
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Create <span className="text-blue-600 black:text-blue-400 italic font-light">New Job</span> Post
+            </h1>
+            
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -339,7 +341,7 @@ export default function PostJobScreen() {
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
                 <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
-                  {form.skills.map(skill => (
+                  {form.skills.map((skill: string) => (
                     <span key={skill} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                       {skill}
                       <button

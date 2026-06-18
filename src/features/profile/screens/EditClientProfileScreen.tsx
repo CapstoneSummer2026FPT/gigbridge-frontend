@@ -217,7 +217,9 @@ export default function EditClientProfileScreen() {
           >
             <ArrowLeft size={20} className="text-primary" />
           </button>
-          <h1 className="edit-client-profile-header-title">Edit Client Profile</h1>
+          <h1 className="edit-client-profile-header-title font-bold text-foreground">
+            Edit <span className="text-blue-600 black:text-blue-400 italic font-light">Client</span> Profile
+          </h1>
         </div>
 
         {/* Success Message */}

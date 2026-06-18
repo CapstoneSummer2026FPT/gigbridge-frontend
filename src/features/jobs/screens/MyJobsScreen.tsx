@@ -276,7 +276,7 @@ export default function MyJobsScreen() {
 
   return (
     <AppLayout>
-      <div className="mj-mesh-bg mj-custom-scrollbar" style={{ padding: '32px 0 64px' }}>
+      <div className="mj-custom-scrollbar" style={{ padding: '32px 0 64px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
 
           {/* ── Page Header ── */}
@@ -288,9 +288,8 @@ export default function MyJobsScreen() {
                   Job Management
                 </span>
               </div>
-              <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: '#0f0f1a', margin: 0 }}
-                className="black:text-white">
-                My Job Posts
+              <h1 className="text-4xl font-bold tracking-tight text-foreground" style={{ margin: 0 }}>
+                My <span className="text-blue-600 black:text-blue-400 italic font-light">Job Posts</span>
               </h1>
               <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4 }}>
                 Manage, track, and analyse all your project listings in one place.

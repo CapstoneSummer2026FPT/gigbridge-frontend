@@ -62,7 +62,7 @@ export default function ClientProfileScreen() {
 
   return (
     <AppLayout>
-      <main className="flex-1 relative bg-mesh min-h-screen w-full font-body-lg text-on-surface antialiased py-12">
+      <main className="flex-1 py-12">
         <div className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop">
           
           {/* Back Button and Breadcrumb */}

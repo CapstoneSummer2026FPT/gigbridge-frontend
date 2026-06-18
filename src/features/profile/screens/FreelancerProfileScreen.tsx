@@ -5,7 +5,6 @@ import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
-import { FREELANCER_TRUST_BADGES } from '../utils/profileUtils';
 import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
 import { ReportUserModal } from '../components/ReportUserModal';
 import '../../reviews/styles/reviews-screen.css';
@@ -74,13 +73,13 @@ export default function FreelancerProfileScreen() {
 
   return (
     <AppLayout>
-      <main className="flex-1 relative bg-mesh min-h-screen w-full font-body-lg text-on-surface antialiased py-12">
+      <main className="flex-1 py-12">
         <div className="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop">
-          
+
           {/* Back Button and Breadcrumb */}
           <div className="flex items-center gap-4 mb-6">
-            <button 
-              onClick={() => navigate(-1)} 
+            <button
+              onClick={() => navigate(-1)}
               className="glass-overlay text-on-surface-variant font-label-md text-label-md p-2.5 rounded-lg flex items-center justify-center hover:bg-surface/80 transition-all cursor-pointer"
               title="Go back"
             >
@@ -93,10 +92,10 @@ export default function FreelancerProfileScreen() {
           <header className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-12">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="w-24 h-24 md:w-32 md:h-32 rounded-full p-1 bg-surface-container-lowest shadow-sm flex-shrink-0">
-                <img 
-                  alt={`Profile picture of ${user.full_name}`} 
-                  className="w-full h-full rounded-full object-cover" 
-                  src={user.avatar || profile?.avatar || "https://lh3.googleusercontent.com/aida/AP1WRLvTjTa1-3r3tFeq57CEp89G35mBVqejed9NKbNbVSYqTz1LbH4MLhcQR0tL3wByuVcdrfsci217i2j8rESmJYuRlbPU16X1AxClX4_FVYC-BOAGG1aVO6s7mAdYJpEmPQZsZ4gdum6p0pPPr0WcCgjbb1btS02zyXnxi6hlaBOEB3g9P4JoRSI0SoO4Y_Srf5uUzatcd3Yosh7FDMwNK4qMOW7QhofAmJvVUQ-0QI2mcMiszXLGGn5T2ew"} 
+                <img
+                  alt={`Profile picture of ${user.full_name}`}
+                  className="w-full h-full rounded-full object-cover"
+                  src={user.avatar || profile?.avatar || "https://lh3.googleusercontent.com/aida/AP1WRLvTjTa1-3r3tFeq57CEp89G35mBVqejed9NKbNbVSYqTz1LbH4MLhcQR0tL3wByuVcdrfsci217i2j8rESmJYuRlbPU16X1AxClX4_FVYC-BOAGG1aVO6s7mAdYJpEmPQZsZ4gdum6p0pPPr0WcCgjbb1btS02zyXnxi6hlaBOEB3g9P4JoRSI0SoO4Y_Srf5uUzatcd3Yosh7FDMwNK4qMOW7QhofAmJvVUQ-0QI2mcMiszXLGGn5T2ew"}
                 />
               </div>
               <div>
@@ -110,7 +109,7 @@ export default function FreelancerProfileScreen() {
                     Pro Verified
                   </div>
                 )}
-                
+
                 <div className="flex flex-wrap items-center gap-6 text-on-surface-variant">
                   <div className="flex items-center gap-1.5">
                     <MapPin size={18} className="text-[var(--gb-cyan)]" />
@@ -150,8 +149,8 @@ export default function FreelancerProfileScreen() {
               {/* Action Buttons */}
               <div className="flex flex-row flex-nowrap gap-3 overflow-x-auto scrollbar-hide justify-start lg:justify-end items-center w-full lg:w-auto py-1">
                 {currentUser?.role === 0 && (
-                  <button 
-                    onClick={() => setShowJobInviteModal(true)} 
+                  <button
+                    onClick={() => setShowJobInviteModal(true)}
                     className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer border border-transparent flex-shrink-0"
                   >
                     <BriefcaseBusiness size={18} />
@@ -160,8 +159,8 @@ export default function FreelancerProfileScreen() {
                 )}
 
                 {currentUser?.role !== 1 && (
-                  <button 
-                    onClick={handleSaveFreelancer} 
+                  <button
+                    onClick={handleSaveFreelancer}
                     className={`glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0 ${isSaved ? 'text-[var(--gb-cyan)] border-[var(--gb-cyan)]/50' : 'text-on-surface-variant'}`}
                   >
                     <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
@@ -182,7 +181,7 @@ export default function FreelancerProfileScreen() {
                 
                 {/* More dropdown */}
                 <div className="relative flex-shrink-0">
-                  <button 
+                  <button
                     onClick={() => setShowMoreMenu(!showMoreMenu)}
                     className="glass-overlay text-on-surface-variant font-label-md text-label-md px-3 py-2.5 rounded-lg flex items-center justify-center hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0"
                   >
@@ -192,7 +191,7 @@ export default function FreelancerProfileScreen() {
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} />
                       <div className="absolute right-0 top-full mt-2 w-32 bg-surface-container-lowest border border-outline-variant rounded-lg shadow-lg opacity-100 visible transition-all z-20 overflow-hidden">
-                        <button 
+                        <button
                           onClick={() => {
                             setShowMoreMenu(false);
                             navigator.clipboard.writeText(window.location.href);
@@ -202,6 +201,16 @@ export default function FreelancerProfileScreen() {
                         >
                           <Share2 size={16} />
                           Share
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowMoreMenu(false);
+                            alert('Report filed successfully.');
+                          }}
+                          className="w-full text-left px-4 py-2 text-body-md text-error hover:bg-error-container/10 flex items-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <Flag size={16} />
+                          Report
                         </button>
                       </div>
                     </>
@@ -213,7 +222,7 @@ export default function FreelancerProfileScreen() {
 
           {/* Bento Grid Content */}
           <div className="grid-bento items-start">
-            
+
             {/* About */}
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-8 flex flex-col justify-center h-full">
               <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">About</h2>
@@ -227,10 +236,10 @@ export default function FreelancerProfileScreen() {
               <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">Skills</h2>
               <div className="flex flex-wrap gap-2">
                 {mockSkills.map((skill, idx) => (
-                  <span 
-                    key={idx} 
+                  <span
+                    key={idx}
                     className={
-                      idx < 2 
+                      idx < 2
                         ? "bg-[var(--gb-cyan)] text-white font-label-md text-label-md px-4 py-2 rounded-full shadow-sm"
                         : "bg-surface-container-high text-on-surface font-label-md text-label-md px-4 py-2 rounded-full border border-[var(--gb-cyan)]/25 hover:border-[var(--gb-cyan)]/50 transition-colors"
                     }
@@ -290,7 +299,7 @@ export default function FreelancerProfileScreen() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Portfolio</h2>
                 {currentUser?.role === 1 && (
-                  <button 
+                  <button
                     onClick={() => navigate('/profile/manage-content?tab=portfolio')}
                     className="text-xs font-semibold text-primary hover:underline cursor-pointer font-label-md"
                   >
@@ -300,13 +309,13 @@ export default function FreelancerProfileScreen() {
               </div>
               <div className="grid grid-cols-2 gap-4 flex-1">
                 {mockPortfolio.map((project, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className="group relative rounded-lg overflow-hidden border border-outline-variant bg-surface-container-lowest cursor-pointer"
                   >
                     <div className="aspect-[4/3] bg-surface-container-low p-2">
-                      <div 
-                        className="w-full h-full bg-cover bg-center rounded transition-transform duration-300 group-hover:scale-105" 
+                      <div
+                        className="w-full h-full bg-cover bg-center rounded transition-transform duration-300 group-hover:scale-105"
                         style={{ backgroundImage: `url(${project.image})` }}
                       />
                     </div>
@@ -328,10 +337,10 @@ export default function FreelancerProfileScreen() {
                   <div className="absolute inset-0 bg-on-surface/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <FileText size={32} className="text-on-surface-variant" />
                   </div>
-                  <img 
-                    src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=400&h=500&fit=crop" 
-                    alt="CV Template Preview" 
-                    className="w-full h-full object-cover object-top opacity-85 group-hover:opacity-100 transition-opacity" 
+                  <img
+                    src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=400&h=500&fit=crop"
+                    alt="CV Template Preview"
+                    className="w-full h-full object-cover object-top opacity-85 group-hover:opacity-100 transition-opacity"
                   />
                 </div>
                 <div className="flex items-center justify-between mt-2">
@@ -342,7 +351,7 @@ export default function FreelancerProfileScreen() {
                     </span>
                   </div>
                   {cvFile && (
-                    <a 
+                    <a
                       href={cvFile.url}
                       download
                       className="bg-primary text-on-primary font-label-md px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm flex-shrink-0 cursor-pointer"
@@ -360,7 +369,7 @@ export default function FreelancerProfileScreen() {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Work Experience</h2>
                 {currentUser?.role === 1 && (
-                  <button 
+                  <button
                     onClick={() => navigate('/profile/manage-content?tab=experience')}
                     className="text-xs font-semibold text-primary hover:underline cursor-pointer font-label-md"
                   >
@@ -388,7 +397,7 @@ export default function FreelancerProfileScreen() {
               <div className="flex justify-between items-center mb-8">
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Client Reviews</h2>
                 {currentUser?.role === 0 && (
-                  <button 
+                  <button
                     onClick={() => setShowReviewModal(true)}
                     className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer"
                   >
@@ -408,22 +417,22 @@ export default function FreelancerProfileScreen() {
                     </div>
                     <div className="flex items-center gap-1 text-yellow-500 mb-2">
                       {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          size={24} 
+                        <Star
+                          key={i}
+                          size={24}
                           className={i < Math.floor(averageRating) ? 'fill-current text-yellow-500' : 'text-outline-variant'}
                         />
                       ))}
                     </div>
                     <p className="font-body-md text-body-md text-on-surface-variant mb-8">Based on {reviewsList.length} reviews</p>
-                    
+
                     <div className="w-full flex flex-col gap-3">
                       {distribution.map(({ star, count, percentage }) => (
                         <div key={star} className="flex items-center gap-3">
                           <span className="font-label-md text-label-md w-4">{star}</span>
                           <div className="flex-1 h-2.5 bg-surface-container-highest rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary rounded-full" 
+                            <div
+                              className="h-full bg-primary rounded-full"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
@@ -453,9 +462,9 @@ export default function FreelancerProfileScreen() {
                           </div>
                           <div className="flex items-center text-yellow-500 bg-surface-container-lowest px-2 py-1 rounded-full border border-outline-variant">
                             {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i} 
-                                size={16} 
+                              <Star
+                                key={i}
+                                size={16}
                                 className={i < review.rating ? 'fill-current text-yellow-500' : 'text-outline-variant'}
                               />
                             ))}
@@ -470,7 +479,7 @@ export default function FreelancerProfileScreen() {
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
                       <div className="flex items-center justify-center gap-2 pt-4">
-                        <button 
+                        <button
                           onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                           disabled={currentPage === 1}
                           className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-50 cursor-pointer"
@@ -483,17 +492,16 @@ export default function FreelancerProfileScreen() {
                             <button
                               key={pageNum}
                               onClick={() => setCurrentPage(pageNum)}
-                              className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold shadow-sm cursor-pointer ${
-                                currentPage === pageNum 
-                                  ? 'bg-primary text-on-primary font-bold' 
+                              className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold shadow-sm cursor-pointer ${currentPage === pageNum
+                                  ? 'bg-primary text-on-primary font-bold'
                                   : 'border border-outline-variant text-on-surface hover:bg-surface-container-low font-medium'
-                              }`}
+                                }`}
                             >
                               {pageNum}
                             </button>
                           );
                         })}
-                        <button 
+                        <button
                           onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                           disabled={currentPage === totalPages}
                           className="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-50 cursor-pointer"
@@ -548,9 +556,9 @@ export default function FreelancerProfileScreen() {
                         onClick={() => setReviewRating(star)}
                         className="text-yellow-500 hover:scale-110 transition-transform cursor-pointer"
                       >
-                        <Star 
-                          size={32} 
-                          className={star <= reviewRating ? 'fill-current text-yellow-500' : 'text-outline-variant'} 
+                        <Star
+                          size={32}
+                          className={star <= reviewRating ? 'fill-current text-yellow-500' : 'text-outline-variant'}
                         />
                       </button>
                     ))}
@@ -560,9 +568,9 @@ export default function FreelancerProfileScreen() {
                 {/* Comment Input */}
                 <div className="invite-section">
                   <h3 className="invite-section-title">Review Comment</h3>
-                  <textarea 
-                    value={reviewComment} 
-                    onChange={event => setReviewComment(event.target.value)} 
+                  <textarea
+                    value={reviewComment}
+                    onChange={event => setReviewComment(event.target.value)}
                     placeholder="Write details of your experience working with this freelancer..."
                     required
                     rows={4}
@@ -572,7 +580,7 @@ export default function FreelancerProfileScreen() {
 
                 {/* Anonymous Checkbox */}
                 <div className="flex items-center gap-2 pb-2">
-                  <input 
+                  <input
                     type="checkbox"
                     id="anonymous-review"
                     checked={reviewAnonymous}
@@ -586,14 +594,14 @@ export default function FreelancerProfileScreen() {
 
                 {/* Actions Footer inside Content Container */}
                 <div className="flex gap-3 pt-6 border-t border-outline-variant mt-auto">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowReviewModal(false)}
                     className="invite-btn cancel-btn"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     type="submit"
                     className="invite-btn submit-btn"
                   >
