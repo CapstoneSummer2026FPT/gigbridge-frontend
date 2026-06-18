@@ -83,19 +83,28 @@ export default function JobDetailScreen() {
       
       try {
         setLoading(true);
-        const data = role === UserRole.Client && preferOwnedJob
-          ? await jobGetAPI.getMyJobById(id)
-          : await jobGetAPI.getJobById(id);
-
+        let data;
+        try {
+          data = await jobGetAPI.getJobById(id);
+        } catch (pubError) {
+          if (role === UserRole.Client) {
+            // Try fetching client-owned job details (supports draft, in_progress, etc.)
+            data = await jobGetAPI.getClientJobById(id);
+          } else {
+            throw pubError;
+          }
+        }
         setJob(data.job);
         setClient(data.client || null);
         setClientProfile(data.clientProfile || null);
-
-        if (role === UserRole.Client && preferOwnedJob) {
-          setSimilarJobs([]);
-        } else {
+        
+        // Fetch similar jobs
+        try {
           const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
           setSimilarJobs(allJobs.filter(j => j.id !== id).slice(0, 3));
+        } catch (similarError) {
+          console.error('Failed to fetch similar jobs:', similarError);
+          setSimilarJobs([]);
         }
       } catch (error) {
         console.error('Failed to fetch job details:', error);
@@ -110,7 +119,7 @@ export default function JobDetailScreen() {
       }
     };
     fetchJobDetails();
-  }, [id, fallbackJob, preferOwnedJob, role]);
+  }, [id, fallbackJob, role]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('gb_saved_jobs');

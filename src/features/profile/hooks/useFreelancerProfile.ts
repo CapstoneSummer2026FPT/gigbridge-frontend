@@ -32,18 +32,39 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
 });
 
 export function useFreelancerProfile(targetId: string, currentUser: any) {
-  const [profileData, setProfileData] = useState({
-    user: DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!,
-    profile: SEED_FREELANCER_PROFILES.find(p => p.user_id === targetId) || SEED_FREELANCER_PROFILES[0],
-    skills: ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'],
-    experience: [
-      { company: 'Tech Startup', title: 'Senior Developer', years: '2021-Present' },
-      { company: 'Design Agency', title: 'Full Stack Developer', years: '2019-2021' },
-    ],
-    portfolio: [
-      { title: 'E-Commerce Platform', tech: 'React, Node.js, MongoDB', image: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop' },
-      { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
-    ]
+  const [profileData, setProfileData] = useState(() => {
+    const defaultUser = (currentUser && currentUser.id === targetId)
+      ? {
+          id: currentUser.id,
+          full_name: currentUser.full_name || 'Freelancer',
+          avatar: currentUser.avatar || null,
+          email: currentUser.email || '',
+          phone_number: currentUser.phone_number || '',
+        }
+      : (DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!);
+
+    const defaultProfile = SEED_FREELANCER_PROFILES.find(p => p.user_id === targetId) || {
+      user_id: targetId,
+      title: (currentUser && currentUser.id === targetId) ? 'Freelancer' : 'Senior Full-Stack React Developer',
+      bio: '',
+      location: 'San Francisco, CA',
+      hourly_rate: 95,
+      avatar: (currentUser && currentUser.id === targetId) ? currentUser.avatar : null,
+    };
+
+    return {
+      user: defaultUser,
+      profile: defaultProfile,
+      skills: ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'],
+      experience: [
+        { company: 'Tech Startup', title: 'Senior Developer', years: '2021-Present' },
+        { company: 'Design Agency', title: 'Full Stack Developer', years: '2019-2021' },
+      ],
+      portfolio: [
+        { title: 'E-Commerce Platform', tech: 'React, Node.js, MongoDB', image: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop' },
+        { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
+      ]
+    };
   });
 
   const [loading, setLoading] = useState(true);
@@ -116,15 +137,40 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
                   { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
                 ]
           });
+        } else {
+          if (currentUser && currentUser.id === targetId) {
+            setProfileData(prev => ({
+              ...prev,
+              user: {
+                id: currentUser.id,
+                full_name: currentUser.full_name || 'Freelancer',
+                avatar: currentUser.avatar || null,
+                email: currentUser.email || '',
+                phone_number: currentUser.phone_number || '',
+              }
+            }));
+          }
         }
       } catch (err) {
         console.warn('API getFreelancerProfile fallback to mock:', err);
+        if (currentUser && currentUser.id === targetId) {
+          setProfileData(prev => ({
+            ...prev,
+            user: {
+              id: currentUser.id,
+              full_name: currentUser.full_name || 'Freelancer',
+              avatar: currentUser.avatar || null,
+              email: currentUser.email || '',
+              phone_number: currentUser.phone_number || '',
+            }
+          }));
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchProfile();
-  }, [targetId]);
+  }, [targetId, currentUser]);
 
   useEffect(() => {
     const fetchReviews = async (): Promise<void> => {

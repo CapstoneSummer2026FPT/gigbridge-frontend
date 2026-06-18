@@ -446,17 +446,15 @@ export function useMessages() {
       }
 
       setConversationsState(prev =>
-        sortConversations(
-          prev.map(conversation =>
-            conversation.id === conversationId
-              ? {
-                  ...conversation,
-                  lastMessage: mapped.content || getMessagePreview(payload),
-                  lastMessageAt: mapped.createdAt || new Date().toISOString(),
-                  unreadCount: conversation.id === activeConvId ? 0 : conversation.unreadCount + 1,
-                }
-              : conversation
-          )
+        prev.map(c =>
+          c.id === mapped.conversationId
+            ? {
+                ...c,
+                lastMessage: mapped.content,
+                lastMessageAt: mapped.createdAt,
+                unreadCount: c.id === activeConvId ? 0 : c.unreadCount + 1,
+              }
+            : c
         )
       );
     };
