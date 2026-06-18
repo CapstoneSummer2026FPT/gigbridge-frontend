@@ -104,65 +104,9 @@ export default function FreelancerProposalsScreen() {
     setBoostSuccess(`Successfully boosted proposal using ${boostAmount} tokens!`);
   };
 
-  const handleGoToNegotiation = (proposal: ProposalViewModel) => {
-    const conversations = DB.getConversations();
-    let existingConv = conversations.find(
-      c =>
-        (c.participantId === proposal.freelancerProfilesId || c.participantName === proposal.freelancerName) &&
-        (c.job.id === proposal.jobPostsId || c.job.title === proposal.jobTitle)
-    );
-
-    let convId = existingConv?.id;
-
-    if (existingConv) {
-      existingConv.roomType = 'negotiation';
-      existingConv.roomId = 'room_negotiation';
-      existingConv.conversationType = 0; // 0 = JobNegotiation
-    } else {
-      convId = `conv_${Date.now()}`;
-      // Find client user if possible, else default
-      const client = DB.getUsers().find(u => u.role === 0) || { id: 'u_client_1', full_name: 'Client' };
-
-      const newConv = {
-        id: convId,
-        roomType: 'negotiation' as const,
-        roomId: 'room_negotiation',
-        participantId: client.id,
-        participantName: client.full_name,
-        participantAvatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${client.full_name}`,
-        participantRole: 'Client',
-        participantCompany: 'TechCorp',
-        participantOnline: true,
-        job: {
-          id: proposal.jobPostsId || 'job_1',
-          title: proposal.jobTitle || 'Untitled Job',
-          budget: proposal.proposedBudget ? `$${proposal.proposedBudget.toLocaleString()}` : '$3,000',
-          category: 'Development',
-        },
-        lastMessage: 'Cuộc trò chuyện đàm phán đã được tạo.',
-        lastMessageAt: new Date().toISOString(),
-        unreadCount: 0,
-        isMuted: false,
-        conversationType: 0, // 0 = JobNegotiation
-      };
-
-      DB.addConversation(newConv);
-
-      const initMessage = {
-        id: `msg_${Date.now()}`,
-        conversationId: convId,
-        senderId: client.id,
-        content: `Hi ${user?.full_name || 'Freelancer'}! Đề xuất của bạn đã được chấp nhận. Hãy thảo luận chi tiết về phạm vi công việc và giá cả ở đây.`,
-        type: 'text' as const,
-        createdAt: new Date().toISOString(),
-        isRead: true,
-      };
-      DB.addMessage(initMessage);
-    }
-
-    navigate('/messages', { state: { activeConvId: convId } });
+  const handleGoToNegotiation = (_proposal: ProposalViewModel) => {
+    navigate('/messages');
   };
-
   return (
     <AppLayout fullWidth>
       <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">

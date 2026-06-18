@@ -28,6 +28,10 @@ type ManageJobPostState = {
 };
 
 type JobLocationState = ManageJobPostState | Job;
+type JobDetailLocationState = {
+  job?: JobLocationState;
+  preferOwnedJob?: boolean;
+} | null;
 
 const toJobFromManageState = (job: ManageJobPostState): Job => ({
   id: job.id,
@@ -55,7 +59,9 @@ export default function JobDetailScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, role } = useApp();
-  const fallbackJob = (location.state as { job?: JobLocationState } | null)?.job;
+  const locationState = location.state as JobDetailLocationState;
+  const fallbackJob = locationState?.job;
+  const preferOwnedJob = locationState?.preferOwnedJob === true;
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [job, setJob] = useState<Job | null>(null);
   const [client, setClient] = useState<User | null>(null);
@@ -77,14 +83,20 @@ export default function JobDetailScreen() {
       
       try {
         setLoading(true);
-        const data = await jobGetAPI.getJobById(id);
+        const data = role === UserRole.Client && preferOwnedJob
+          ? await jobGetAPI.getMyJobById(id)
+          : await jobGetAPI.getJobById(id);
+
         setJob(data.job);
         setClient(data.client || null);
         setClientProfile(data.clientProfile || null);
-        
-        // Fetch similar jobs
-        const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
-        setSimilarJobs(allJobs.filter(j => j.id !== id).slice(0, 3));
+
+        if (role === UserRole.Client && preferOwnedJob) {
+          setSimilarJobs([]);
+        } else {
+          const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
+          setSimilarJobs(allJobs.filter(j => j.id !== id).slice(0, 3));
+        }
       } catch (error) {
         console.error('Failed to fetch job details:', error);
         if (fallbackJob && fallbackJob.id === id) {
@@ -98,7 +110,7 @@ export default function JobDetailScreen() {
       }
     };
     fetchJobDetails();
-  }, [id, fallbackJob]);
+  }, [id, fallbackJob, preferOwnedJob, role]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('gb_saved_jobs');

@@ -9,8 +9,6 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
-import { DB } from '../../../mock_backend';
-import type { Project } from '../../../types/models/Project';
 import { MOCK_PROPOSALS, type ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
 import type { JobProposalGroup, ProposalStatusFilter, ProposalSortBy, ProposalStatusValue } from '../types';
 import '../../workspace/styles/project-workspace-screen.css';
@@ -131,7 +129,8 @@ export default function ClientProposalsScreen() {
   // Actions
   const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     try {
-      await proposalPutAPI.updateProposalStatus(proposalId, String(status));
+      await proposalPutAPI.updateProposalStatus(proposalId, status);
+      const targetProposal = proposals.find(p => p.proposalsId === proposalId);
       setProposals(prev =>
         prev.map(proposal =>
           proposal.proposalsId === proposalId
@@ -141,73 +140,29 @@ export default function ClientProposalsScreen() {
       );
       
       // If accepted (status === 2), auto redirect to negotiation room
-      if (status === 2) {
-        const prop = proposals.find(p => p.proposalsId === proposalId);
-        if (prop) {
-          handleGoToNegotiation({ ...prop, status: 2 });
-        }
+      if (status === 2 && targetProposal) {
+        await handleGoToNegotiation({ ...targetProposal, status: 2 });
       }
     } catch (error) {
       console.error('Failed to update proposal status:', error);
     }
   };
 
-  const handleGoToNegotiation = (proposal: ProposalViewModel) => {
-    const conversations = DB.getConversations();
-    let existingConv = conversations.find(
-      c =>
-        (c.participantId === proposal.freelancerProfilesId || c.participantName === proposal.freelancerName) &&
-        (c.job.id === proposal.jobPostsId || c.job.title === proposal.jobTitle)
-    );
+  const handleGoToNegotiation = async (proposal: ProposalViewModel) => {
+    try {
+      const response = await proposalPutAPI.startNegotiation(proposal.proposalsId);
+      if (response.success && response.data) {
+        navigate('/messages', { state: { activeConvId: response.data } });
+        return;
+      }
 
-    let convId = existingConv?.id;
-
-    if (existingConv) {
-      existingConv.roomType = 'negotiation';
-      existingConv.roomId = 'room_negotiation';
-      existingConv.conversationType = 0; // 0 = JobNegotiation
-    } else {
-      convId = `conv_${Date.now()}`;
-      const newConv = {
-        id: convId,
-        roomType: 'negotiation' as const,
-        roomId: 'room_negotiation',
-        participantId: proposal.freelancerProfilesId || 'u_freelancer_1',
-        participantName: proposal.freelancerName || 'Freelancer',
-        participantAvatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${proposal.freelancerName || 'freelancer'}`,
-        participantRole: 'Freelancer',
-        participantCompany: 'Independent',
-        participantOnline: true,
-        job: {
-          id: proposal.jobPostsId || 'job_1',
-          title: proposal.jobTitle || 'Untitled Job',
-          budget: proposal.proposedBudget ? `$${proposal.proposedBudget.toLocaleString()}` : '$3,000',
-          category: 'Development',
-        },
-        lastMessage: 'Cuộc trò chuyện đàm phán đã được tạo.',
-        lastMessageAt: new Date().toISOString(),
-        unreadCount: 0,
-        isMuted: false,
-        conversationType: 0, // 0 = JobNegotiation
-      };
-
-      DB.addConversation(newConv);
-
-      const initMessage = {
-        id: `msg_${Date.now()}`,
-        conversationId: convId,
-        senderId: user?.id || 'u_client_1',
-        content: `Hi ${proposal.freelancerName || 'Freelancer'}! Đề xuất của bạn đã được chấp nhận. Hãy thảo luận chi tiết về phạm vi công việc và giá cả ở đây.`,
-        type: 'text' as const,
-        createdAt: new Date().toISOString(),
-        isRead: true,
-      };
-      DB.addMessage(initMessage);
+      console.error('Failed to open negotiation conversation:', response.message);
+      navigate('/messages');
+    } catch (error) {
+      console.error('Failed to open negotiation conversation:', error);
+      navigate('/messages');
     }
-
-    navigate('/messages', { state: { activeConvId: convId } });
   };
-
   return (
     <AppLayout fullWidth>
       <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">

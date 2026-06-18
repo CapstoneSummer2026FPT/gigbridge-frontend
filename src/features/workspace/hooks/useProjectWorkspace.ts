@@ -7,6 +7,7 @@ import { projectGetAPI } from '../../../api/projectAPI/GET';
 import { projectPutAPI } from '../../../api/projectAPI/PUT';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 
 export function useProjectWorkspace(initialProjectId: string) {
   const navigate = useNavigate();
@@ -27,7 +28,58 @@ export function useProjectWorkspace(initialProjectId: string) {
   ]);
 
   // Load project details dynamically
-  const project = DB.getProjects().find(p => p.id === activeProjectId) || DB.getProjects()[0];
+  const mockProj = DB.getProjects().find(p => p.id === activeProjectId) || DB.getProjects()[0];
+  const [project, setProject] = useState<any>(mockProj);
+
+  useEffect(() => {
+    const isMock = activeProjectId.startsWith('proj_mock_') || activeProjectId === 'proj_1' || activeProjectId === 'proj_2' || activeProjectId === 'proj_3';
+    
+    if (isMock) {
+      const found = DB.getProjects().find(p => p.id === activeProjectId) || DB.getProjects()[0];
+      setProject(found);
+    } else {
+      const fetchApiProject = async () => {
+        try {
+          const contractRes = await contractGetAPI.getContractById(activeProjectId);
+          const milestonesRes = await contractGetAPI.getMilestonesByContract(activeProjectId);
+          
+          if (contractRes.success && contractRes.data) {
+            const contract = contractRes.data;
+            const milestones = milestonesRes.data || [];
+            
+            const mapMilestoneStatus = (status: number): string => {
+              if (status === 3 || status === 5) return 'paid';
+              if (status === 1 || status === 2 || status === 4) return 'in_progress';
+              return 'pending';
+            };
+            
+            setProject({
+              id: contract.contractsId,
+              title: contract.title,
+              jobId: contract.jobPostsId,
+              clientId: contract.clientProfilesId,
+              freelancerId: contract.freelancerProfilesId,
+              totalBudget: contract.totalBudget,
+              progress: contract.status === 8 ? 100 : contract.status === 7 ? 30 : 0,
+              status: contract.status === 8 ? 'completed' : 'active',
+              conversationId: `conv_${contract.contractsId}`,
+              milestones: milestones.map((m: any) => ({
+                id: m.milestoneId,
+                title: m.title,
+                amount: m.amount,
+                dueDate: m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '',
+                status: mapMilestoneStatus(m.status),
+              }))
+            });
+          }
+        } catch (err) {
+          console.error('Error fetching contract project from API:', err);
+        }
+      };
+      fetchApiProject();
+    }
+  }, [activeProjectId]);
+
 
   // Dynamic conversations/projects list mapped to mockup structure
   const allProjects = DB.getProjects();
@@ -127,13 +179,13 @@ export function useProjectWorkspace(initialProjectId: string) {
         // reasonable API query to fetch project details
         await projectGetAPI.getProjectById(activeProjectId);
         // reasonable API query to fetch messages
-        await messageGetAPI.getConversationMessages(project.conversationId || 'conv_1');
+        await messageGetAPI.getConversationMessages(project?.conversationId || 'conv_1');
       } catch (e) {
         console.warn('API call fallback to mock backend database: ', e);
       }
     };
     void fetchApiData();
-  }, [activeProjectId, project.conversationId]);
+  }, [activeProjectId, project?.conversationId]);
 
   // Actions
   const handleSendMessage = async () => {
@@ -164,7 +216,7 @@ export function useProjectWorkspace(initialProjectId: string) {
       const replyMsg = {
         id: `msg_reply_${Date.now()}`,
         senderId: 'other',
-        content: `Thanks for the message! I'm reviewing this on "${project.title}" and will follow up.`,
+        content: `Thanks for the message! I'm reviewing this on "${project?.title || ''}" and will follow up.`,
         type: 'text',
         createdAt: new Date().toISOString(),
       };

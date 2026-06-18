@@ -496,7 +496,10 @@ export default function MyJobsScreen() {
                   {/* Action Buttons */}
                   <hr className="mj-divider" style={{ margin: '16px 0' }} />
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                    <button onClick={() => navigate(`/jobs/${job.id}`)} className="mj-action-btn mj-btn-cyan">
+                    <button
+                      onClick={() => navigate(`/jobs/${job.id}`, { state: { preferOwnedJob: true } })}
+                      className="mj-action-btn mj-btn-cyan"
+                    >
                       <Eye size={14} /> View Details
                     </button>
 

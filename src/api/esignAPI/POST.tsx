@@ -5,26 +5,75 @@ import type {
   ESignSignatureDto,
   CreateESignDocumentDto,
   CreateSignatureDto,
+  SubmitESignSignatureDto,
   UpdateSignatureStatusDto,
 } from '../../types/models/ESign';
+import { SignatureType } from '../../types/models/ESign';
+import { mapApiResponse, mapESignDocument, mapESignSignature } from './mappers';
 
 const esignUrl = 'ESign';
+
+const escapeSvgText = (value: string): string => {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+};
+
+const toBase64 = (value: string): string => {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  bytes.forEach(byte => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+};
+
+const toTypedSignatureDataUri = (value: string): string => {
+  const safeValue = escapeSvgText(value.trim());
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="540" height="220" viewBox="0 0 540 220"><rect width="540" height="220" fill="white"/><text x="270" y="122" fill="#0247a3" font-family="cursive" font-size="48" text-anchor="middle">${safeValue}</text></svg>`;
+  return `data:image/svg+xml;base64,${toBase64(svg)}`;
+};
+
+const toSubmitSignaturePayload = (data: CreateSignatureDto | SubmitESignSignatureDto): SubmitESignSignatureDto => {
+  const fallbackSignature = 'signatureData' in data && data.signatureData
+    ? data.signatureType === SignatureType.TypedName || data.signatureType === SignatureType.Initials
+      ? toTypedSignatureDataUri(data.signatureData)
+      : data.signatureData
+    : '';
+
+  return {
+    documentId: data.documentId,
+    signatureImageUrl: data.signatureImageUrl ?? fallbackSignature,
+    signatureWidth: data.signatureWidth ?? null,
+    signatureHeight: data.signatureHeight ?? null,
+  };
+};
 
 export const esignPostAPI = {
   /**
    * POST /api/ESign/documents
-   * Create a new e-sign document
+   * Legacy placeholder.
    */
   createDocument: async (
     data: CreateESignDocumentDto
   ): Promise<ApiResponse<ESignDocumentDto>> => {
-    return apiService.post<ESignDocumentDto>(`${esignUrl}/documents`, data);
+    const response = await apiService.post<unknown>(`${esignUrl}/documents`, data);
+    return mapApiResponse(response, mapESignDocument);
   },
 
   /**
-   * POST /api/ESign/documents/{documentId}/send
-   * Send document for signing
+   * POST /api/ESign/documents/from-job/{jobPostId}
    */
+  createDocumentFromJob: async (
+    jobPostId: string
+  ): Promise<ApiResponse<ESignDocumentDto>> => {
+    const response = await apiService.post<unknown>(`${esignUrl}/documents/from-job/${jobPostId}`, {});
+    return mapApiResponse(response, mapESignDocument);
+  },
+
   sendDocumentForSigning: async (
     documentId: string,
     signers: string[]
@@ -37,31 +86,27 @@ export const esignPostAPI = {
 
   /**
    * POST /api/ESign/signatures
-   * Create/submit a signature
    */
   createSignature: async (
-    data: CreateSignatureDto
+    data: CreateSignatureDto | SubmitESignSignatureDto
   ): Promise<ApiResponse<ESignSignatureDto>> => {
-    return apiService.post<ESignSignatureDto>(`${esignUrl}/signatures`, data);
+    const response = await apiService.post<unknown>(
+      `${esignUrl}/signatures`,
+      toSubmitSignaturePayload(data)
+    );
+    return mapApiResponse(response, mapESignSignature);
   },
 
-  /**
-   * POST /api/ESign/signatures/{signatureId}/complete
-   * Mark signature as complete (after capture)
-   */
   completeSignature: async (
     signatureId: string
   ): Promise<ApiResponse<ESignSignatureDto>> => {
-    return apiService.post<ESignSignatureDto>(
+    const response = await apiService.post<unknown>(
       `${esignUrl}/signatures/${signatureId}/complete`,
       {}
     );
+    return mapApiResponse(response, mapESignSignature);
   },
 
-  /**
-   * POST /api/ESign/signatures/{signatureId}/decline
-   * Decline to sign a document
-   */
   declineSignature: async (
     signatureId: string,
     reason?: string
@@ -72,14 +117,10 @@ export const esignPostAPI = {
     );
   },
 
-  /**
-   * POST /api/ESign/documents/{documentId}/audit-trail
-   * Get audit trail for document (logged endpoint)
-   */
   recordAuditTrailEntry: async (
     documentId: string,
     action: string,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ): Promise<ApiResponse<{ success: boolean }>> => {
     return apiService.post<{ success: boolean }>(
       `${esignUrl}/documents/${documentId}/audit-trail`,

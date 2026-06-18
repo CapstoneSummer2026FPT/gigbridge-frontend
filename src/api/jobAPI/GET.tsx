@@ -1,8 +1,10 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import { JobPostStatus } from '../../types/models/Job';
 import type {
   Job,
   JobStatus,
+  GetMyJobPostDetailDto,
   JobPostDetailDto,
   JobPostQueryParams,
   JobPostSummaryDto,
@@ -176,6 +178,14 @@ export const jobGetAPI = {
   },
 
   /**
+   * GET /api/JobPosts/my-jobs/{jobPostId}
+   * Client-only owned job post detail.
+   */
+  getMyJobPostDetail: async (id: string): Promise<ApiResponse<GetMyJobPostDetailDto>> => {
+    return apiService.get<GetMyJobPostDetailDto>(`${jobPostsUrl}/my-jobs/${id}`);
+  },
+
+  /**
    * GET /api/JobPosts/admin/all
    * Admin-only job posts list.
    */
@@ -220,6 +230,20 @@ export const jobGetAPI = {
 
     return {
       job: toLegacyJobFromDetail(response.data),
+      client: null,
+      clientProfile: null,
+    };
+  },
+
+  getMyJobById: async (id: string): Promise<{ job: Job; client: null; clientProfile: null }> => {
+    const response = await jobGetAPI.getMyJobPostDetail(id);
+
+    if (!response.data) {
+      throw new Error(response.message || 'Job post not found');
+    }
+
+    return {
+      job: toLegacyJobFromMyJobDetail(response.data),
       client: null,
       clientProfile: null,
     };

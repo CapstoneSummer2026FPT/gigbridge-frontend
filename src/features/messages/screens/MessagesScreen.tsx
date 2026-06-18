@@ -12,6 +12,7 @@ import '../styles/messages-screen.css';
 export default function MessagesScreen() {
   const {
     loading,
+    error,
     user,
     role,
     isClient,
@@ -39,16 +40,21 @@ export default function MessagesScreen() {
     showNegModal,
     setShowNegModal,
     negStatus,
+    isPartnerTyping,
     chatEndRef,
     convMenuRef,
     toggleRoom,
     handleSelectConv,
+    handleMessageInputChange,
+    stopTyping,
     handleSendMessage,
     handleProposeDeal,
     handleAcceptDeal,
     handleDeclineDeal,
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
+    handleAcceptNegotiation,
+    handleDeclineNegotiation,
     isMe,
     totalUnread,
     formatTime,
@@ -111,6 +117,12 @@ export default function MessagesScreen() {
             </div>
           </div>
         </header>
+
+        {error && (
+          <div className="mx-6 mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-500">
+            {error}
+          </div>
+        )}
 
         {/* 3-Column Layout */}
         <div className="flex flex-1 overflow-hidden">
@@ -467,6 +479,18 @@ export default function MessagesScreen() {
                   </div>
                 );
               })}
+              {isPartnerTyping && (
+                <div className="self-start flex items-center gap-3 max-w-[80%]">
+                  <img
+                    src={activeConv.participantAvatar}
+                    alt=""
+                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                  />
+                  <div className="bg-card text-muted-foreground border border-border rounded-2xl rounded-bl-none px-4 py-2 text-xs font-semibold shadow-sm">
+                    {activeConv.participantName} is typing...
+                  </div>
+                </div>
+              )}
               <div ref={chatEndRef} />
             </div>
 
@@ -517,7 +541,8 @@ export default function MessagesScreen() {
                   placeholder="Type your message here..."
                   rows={1}
                   value={messageInput}
-                  onChange={e => setMessageInput(e.target.value)}
+                  onChange={e => handleMessageInputChange(e.target.value)}
+                  onBlur={stopTyping}
                   onKeyDown={e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -538,7 +563,7 @@ export default function MessagesScreen() {
 
                     {/* Emoji */}
                     <button
-                      onClick={() => setMessageInput(prev => prev + '😊')}
+                      onClick={() => handleMessageInputChange(`${messageInput}😊`)}
                       className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
                       title="Add Emoji"
                     >

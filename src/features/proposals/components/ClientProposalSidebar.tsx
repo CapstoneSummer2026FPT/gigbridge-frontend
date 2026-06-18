@@ -92,7 +92,7 @@ export function ClientProposalSidebar({
                     {jobMenuOpen === group.jobPostsId && (
                       <div className="proposal-job-menu-dropdown">
                         <button onClick={() => {
-                          navigate(`/jobs/${group.jobPostsId}`);
+                          navigate(`/jobs/${group.jobPostsId}`, { state: { preferOwnedJob: true } });
                           onJobMenuToggle(null);
                         }}>
                           View JobPost Preview

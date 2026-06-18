@@ -2,8 +2,8 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 
 export interface MessageResponse {
-  messagesId: string;
-  conversationsId: string;
+  messageId: string;
+  conversationId: string;
   senderUserId?: string | null;
   messageType: number; // 0=Text, 1=Image, 2=File, 3=System, 4=FinalOffer, ...
   content?: string | null;

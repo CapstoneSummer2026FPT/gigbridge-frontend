@@ -6,9 +6,16 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobAPI } from '../../../api/jobAPI';
-import { JobPostStatus, JobPostVisibility } from '../../../types/models/Job';
+import { esignGetAPI, esignPostAPI } from '../../../api/esignAPI';
+import { JobPostVisibility } from '../../../types/models/Job';
+import { SignatureStatus } from '../../../types/models/ESign';
 import { toast } from 'sonner';
 import '../styles/PostJobScreen.css';
+
+interface InterviewQuestionState {
+  questionText?: string;
+  isRequired?: boolean;
+}
 
 export default function CreatePostJobEsignScreen() {
   const navigate = useNavigate();
@@ -16,6 +23,7 @@ export default function CreatePostJobEsignScreen() {
   const { user } = useApp();
 
   const { jobPostId, jobData, contractForm } = location.state || {};
+  const jobPostIdString = typeof jobPostId === 'string' ? jobPostId : '';
 
   useEffect(() => {
     if (!jobPostId || !jobData || !contractForm) {
@@ -27,6 +35,9 @@ export default function CreatePostJobEsignScreen() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [esignDocumentId, setEsignDocumentId] = useState<string | null>(null);
+  const [esignLoadError, setEsignLoadError] = useState<string | null>(null);
+  const [isAlreadySigned, setIsAlreadySigned] = useState(false);
 
   // Signature canvas drawing states and refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,6 +74,48 @@ export default function CreatePostJobEsignScreen() {
       document.body.removeEventListener('touchmove', preventDefault);
     };
   }, [isModalOpen]);
+
+  useEffect(() => {
+    if (!jobPostIdString) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadExistingDocument = async (): Promise<void> => {
+      const response = await esignGetAPI.getDocumentByJobPost(jobPostIdString);
+      if (cancelled) {
+        return;
+      }
+
+      if (response.success && response.data) {
+        setEsignDocumentId(response.data.documentId);
+        setEsignLoadError(null);
+
+        const signedSignature = response.data.signatures.find(
+          signature =>
+            signature.userId === user?.id &&
+            signature.status === SignatureStatus.Signed
+        );
+
+        if (signedSignature?.signatureImageUrl) {
+          setSignatureImage(signedSignature.signatureImageUrl);
+          setIsAlreadySigned(true);
+        }
+        return;
+      }
+
+      if (response.statusCode !== 404) {
+        setEsignLoadError(response.message || 'Could not load existing E-Sign document.');
+      }
+    };
+
+    void loadExistingDocument();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jobPostIdString, user?.id]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -148,6 +201,17 @@ export default function CreatePostJobEsignScreen() {
       return;
     }
 
+    if (isAlreadySigned) {
+      toast.success('E-Sign document already signed.');
+      navigate('/client/dashboard');
+      return;
+    }
+
+    if (!jobPostIdString) {
+      alert('Missing job post ID.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -167,18 +231,22 @@ export default function CreatePostJobEsignScreen() {
         skillIds: jobData?.skillIds || [],
       };
 
-      const updateResponse = await jobAPI.updateJobPost(jobPostId, updateRequest);
+      const updateResponse = await jobAPI.updateJobPost(jobPostIdString, updateRequest);
       if (!updateResponse.success) {
         throw new Error(updateResponse.message || 'Lỗi khi lưu thông tin hợp đồng.');
       }
 
       // 2. Save questions if questions list is provided
-      if (jobData?.interviewQuestions && jobData.interviewQuestions.length > 0) {
-        const questionsResponse = await jobAPI.createBulkJobPostQuestions(jobPostId, {
-          questions: jobData.interviewQuestions.map((q: any, index: number) => ({
-            questionText: q.questionText.trim(),
+      const interviewQuestions = Array.isArray(jobData?.interviewQuestions)
+        ? (jobData.interviewQuestions as InterviewQuestionState[])
+        : [];
+
+      if (interviewQuestions.length > 0) {
+        const questionsResponse = await jobAPI.createBulkJobPostQuestions(jobPostIdString, {
+          questions: interviewQuestions.map((question, index) => ({
+            questionText: (question.questionText || '').trim(),
             orderIndex: index,
-            isRequired: q.isRequired,
+            isRequired: Boolean(question.isRequired),
           })),
         });
         if (!questionsResponse.success) {
@@ -186,19 +254,37 @@ export default function CreatePostJobEsignScreen() {
         }
       }
 
-      // 3. Update JobPost status to open (publish it)
-      const publishResponse = await jobAPI.updateJobPostStatus(jobPostId, { status: JobPostStatus.Open });
-      if (!publishResponse.success) {
-        throw new Error(publishResponse.message || 'Lỗi khi phát hành tin tuyển dụng.');
+      // 3. Create/reuse backend E-Sign document after the job data is saved.
+      const documentResponse = await esignPostAPI.createDocumentFromJob(jobPostIdString);
+      if (!documentResponse.success || !documentResponse.data?.documentId) {
+        throw new Error(documentResponse.message || 'Could not prepare E-Sign document.');
+      }
+
+      setEsignDocumentId(documentResponse.data.documentId);
+
+      // 4. Submit signature. Backend finalizes the document and publishes the job.
+      const signatureResponse = await esignPostAPI.createSignature({
+        documentId: documentResponse.data.documentId,
+        signatureImageUrl: signatureImage,
+        signatureWidth: 540,
+        signatureHeight: 220,
+      });
+
+      if (!signatureResponse.success) {
+        throw new Error(signatureResponse.message || 'Could not submit E-Sign signature.');
       }
 
       toast.success('Hợp đồng đã được ký số và đăng tuyển dụng thành công!');
+      setIsAlreadySigned(true);
       setIsSubmitting(false);
       navigate('/client/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       setIsSubmitting(false);
-      alert(error.message || 'Đã xảy ra lỗi trong quá trình ký số hợp đồng. Vui lòng thử lại.');
+      const message = error instanceof Error
+        ? error.message
+        : 'Đã xảy ra lỗi trong quá trình ký số hợp đồng. Vui lòng thử lại.';
+      alert(message);
     }
   };
 
@@ -264,6 +350,18 @@ export default function CreatePostJobEsignScreen() {
             </div>
           </div>
         </div>
+
+        {esignLoadError ? (
+          <div className="max-w-[850px] mx-auto mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            {esignLoadError}
+          </div>
+        ) : null}
+
+        {esignDocumentId ? (
+          <div className="max-w-[850px] mx-auto mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">
+            E-Sign document: {esignDocumentId.substring(0, 8).toUpperCase()}
+          </div>
+        ) : null}
 
         {/* Paper Contract Layout */}
         <div className="max-w-[850px] mx-auto bg-white text-black p-12 shadow-2xl border border-slate-200 rounded-sm font-serif leading-relaxed relative overflow-hidden my-4 select-text">
@@ -398,10 +496,15 @@ export default function CreatePostJobEsignScreen() {
           <button 
             type="button"
             onClick={handleFinalize}
-            disabled={isSubmitting || !signatureImage}
+            disabled={isSubmitting || !signatureImage || isAlreadySigned}
             className="w-full md:w-auto px-10 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer border-none"
           >
-            {isSubmitting ? (
+            {isAlreadySigned ? (
+              <>
+                <Check size={16} />
+                <span>Da hoan tat ky</span>
+              </>
+            ) : isSubmitting ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Đang xử lý gửi...

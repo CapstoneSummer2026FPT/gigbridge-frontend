@@ -9,6 +9,7 @@ export type {
   ESignTemplateDto,
   CreateESignDocumentDto,
   CreateSignatureDto,
+  SubmitESignSignatureDto,
   UpdateSignatureStatusDto,
   SignatureAuditTrail,
   SignatureWorkflowState,
