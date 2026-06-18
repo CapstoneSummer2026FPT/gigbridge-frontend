@@ -72,7 +72,7 @@ export default function ProjectsListScreen() {
             </p>
             <button
               className="btn-cyan px-6 py-3"
-              onClick={() => navigate(role === 0 ? '/jobs/post/questions' : '/jobs/browse')}
+              onClick={() => navigate(role === 0 ? '/jobs/post' : '/jobs/browse')}
             >
               {role === 0 ? t('jobs.postJob') : t('jobs.browseJobs')}
             </button>

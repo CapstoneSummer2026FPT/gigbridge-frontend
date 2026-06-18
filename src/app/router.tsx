@@ -13,7 +13,6 @@ import ProfileSetupScreen from '../features/onboarding/screens/ProfileSetupScree
 import ClientDashboardScreen from '../features/dashboard/screens/ClientDashboardScreen';
 import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerDashboardScreen';
 import PostJobScreen from '../features/jobs/screens/PostJobScreen';
-import CreateJobPostQuestionsScreen from '../features/jobs/screens/CreateJobPostQuestionsScreen';
 import ManageJobPostQuestionsScreen from '../features/jobs/screens/ManageJobPostQuestionsScreen';
 import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
@@ -23,7 +22,8 @@ import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen
 import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
 import EditFreelancerProfileScreen from '../features/profile/screens/EditFreelancerProfileScreen';
 import ManageFreelancerContentScreen from '../features/profile/screens/ManageFreelancerContentScreen';
-import ProposalsInboxScreen from '../features/proposals/screens/ProposalsInboxScreen';
+import ClientProposalsScreen from '../features/proposals/screens/ClientProposalsScreen';
+import FreelancerProposalsScreen from '../features/proposals/screens/FreelancerProposalsScreen';
 import CreateProposalScreen from '../features/proposals/screens/CreateProposalScreen';
 import ScreenProposalAnswerQuestion from '../features/proposals/screens/ScreenProposalAnswerQuestion';
 import ViewProposalAnswersScreen from '../features/proposals/screens/ViewProposalAnswersScreen';
@@ -124,6 +124,21 @@ function AdminRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function ContractListRoute() {
+  const { role } = useApp();
+  return role === UserRole.Freelancer ? <FreelancerContractScreen /> : <ManageContractScreen />;
+}
+
+function ProposalListRoute() {
+  const { role } = useApp();
+  return role === UserRole.Freelancer ? <FreelancerProposalsScreen /> : <ClientProposalsScreen />;
+}
+
+function NavigateToProposalCreate() {
+  const { jobPostId } = useParams<{ jobPostId: string }>();
+  return <Navigate to={`/proposals/create/${jobPostId || ''}`} replace />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -147,9 +162,9 @@ export const router = createBrowserRouter([
       { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
 
       // Jobs - requires authentication
-      { path: 'jobs/post/questions', element: <ProtectedRoute requireAuth requireSetup><CreateJobPostQuestionsScreen /></ProtectedRoute> },
+      { path: 'jobs/post/questions', element: <Navigate to="/jobs/post" replace /> },
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
-      { path: 'jobs/post/interview-questions', element: <Navigate to="/jobs/post/questions" replace /> },
+      { path: 'jobs/post/interview-questions', element: <Navigate to="/jobs/post" replace /> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
@@ -166,7 +181,7 @@ export const router = createBrowserRouter([
       { path: 'profile/manage-content', element: <ProtectedRoute requireAuth><ManageFreelancerContentScreen /></ProtectedRoute> },
 
       // Proposals - requires authentication and setup
-      { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },
+      { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalListRoute /></ProtectedRoute> },
       { path: 'proposals/create/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
       { path: 'proposals/:proposalId/edit', element: <ProtectedRoute requireAuth requireSetup><CreateProposalScreen /></ProtectedRoute> },
       { path: 'proposals/create/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ScreenProposalAnswerQuestion /></ProtectedRoute> },
