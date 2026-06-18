@@ -46,11 +46,13 @@ export default function NotificationsScreen() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto">
+      <div className="notifications-screen max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-black text-primary mb-1">Inbox</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">
+              Notification <span className="text-blue-600 black:text-blue-400 italic font-light">Inbox</span>
+            </h1>
             <p className="text-secondary">
               {unreadCount > 0 ? (
                 <><span className="text-cyan font-semibold">{unreadCount} unread</span> notifications</>

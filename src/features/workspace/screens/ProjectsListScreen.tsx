@@ -51,7 +51,9 @@ export default function ProjectsListScreen() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Flag className="w-8 h-8 text-cyan" />
-            <h1 className="text-3xl font-black text-primary">{t('projects.myProjects')}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              My <span className="text-blue-600 black:text-blue-400 italic font-light">Projects</span>
+            </h1>
           </div>
           <p className="text-secondary">
             {role === 0 ? 'Manage your client projects' : 'View your active freelance projects'}

@@ -62,7 +62,7 @@ export default function FreelancerDashboardScreen() {
             </div>
             <div className="flex gap-3">
               <button className="btn-purple px-4 py-2 text-sm flex items-center gap-2"
-                onClick={() => navigate('/ai-assistant')}>
+                onClick={() => window.dispatchEvent(new CustomEvent('toggle-ai-assistant', { detail: { open: true } }))}>
                 <Bot size={16} />
                 AI Proposal Generator
               </button>

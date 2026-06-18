@@ -255,9 +255,11 @@ export default function SettingsScreen() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto">
+      <div className="settings-screen max-w-5xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-primary mb-1">Settings</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">
+            Account <span className="text-blue-600 black:text-blue-400 italic font-light">Settings</span>
+          </h1>
           <p className="text-secondary">Manage your account preferences and profile</p>
         </div>
 

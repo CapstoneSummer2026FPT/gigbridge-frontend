@@ -79,3 +79,35 @@
 .notifications-empty-state {
   color: var(--gb-text-secondary);
 }
+
+@media (max-width: 640px) {
+  .notifications-screen > .flex:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .notifications-screen > .flex:first-child h1 {
+    font-size: 1.75rem;
+    line-height: 1.15;
+  }
+
+  .notifications-screen > .flex:first-child button {
+    width: 100%;
+    text-align: left;
+  }
+
+  .notifications-screen > .flex:nth-child(2) {
+    flex-wrap: wrap;
+  }
+
+  .notifications-screen > .flex:nth-child(2) > button {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .notifications-screen .grid > div[class*="space-y"] > div[class*="flex"] {
+    gap: 0.75rem;
+  }
+}

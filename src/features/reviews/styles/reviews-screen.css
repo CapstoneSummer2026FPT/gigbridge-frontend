@@ -153,3 +153,38 @@
   color: #f59e0b;
   font-size: 0.8rem;
 }
+
+@media (max-width: 640px) {
+  .review-create-page {
+    padding: 1rem 0.75rem 1.5rem;
+  }
+
+  .review-create-card,
+  .profile-reviews-card {
+    padding: 1rem;
+    border-radius: 0.7rem;
+  }
+
+  .review-create-card h1 {
+    font-size: 1.5rem;
+    line-height: 1.15;
+  }
+
+  .review-stars {
+    justify-content: space-between;
+    gap: 0.25rem;
+  }
+
+  .review-stars button {
+    padding: 0.25rem;
+  }
+
+  .profile-review-summary {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .profile-rating-bar {
+    grid-template-columns: 1.75rem minmax(0, 1fr) 1.75rem;
+  }
+}

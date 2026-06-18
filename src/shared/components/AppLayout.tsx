@@ -2,15 +2,23 @@ import React, { useState } from 'react';
 import { TopNav } from './TopNav';
 import { Sidebar } from './Sidebar';
 import { useApp } from '../../app/providers/AppProvider';
+import { AIAssistantWidget } from '../../features/ai-assistant';
+import { MeshGradientBackground } from './MeshGradientBackground';
 import '../styles/AppLayout.css';
 
 interface AppLayoutProps {
   children: React.ReactNode;
   showSidebar?: boolean;
   fullWidth?: boolean;
+  excludeMeshGradient?: boolean;
 }
 
-export function AppLayout({ children, showSidebar = true, fullWidth = false }: AppLayoutProps) {
+export function AppLayout({
+  children,
+  showSidebar = true,
+  fullWidth = false,
+  excludeMeshGradient = false,
+}: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Safely get app context - might throw if not within provider
@@ -55,20 +63,40 @@ export function AppLayout({ children, showSidebar = true, fullWidth = false }: A
         <main
           className={`app-layout-main ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''}`}
         >
-          {children}
+          {excludeMeshGradient ? (
+            children
+          ) : (
+            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-6">
+              {children}
+            </MeshGradientBackground>
+          )}
         </main>
       </div>
+
+      {user && <AIAssistantWidget />}
     </div>
   );
 }
 
 // Guest layout (no sidebar)
-export function GuestLayout({ children }: { children: React.ReactNode }) {
+export function GuestLayout({
+  children,
+  excludeMeshGradient = false,
+}: {
+  children: React.ReactNode;
+  excludeMeshGradient?: boolean;
+}) {
   return (
     <div className="guest-layout">
       <TopNav />
       <main className="guest-layout-main">
-        {children}
+        {excludeMeshGradient ? (
+          children
+        ) : (
+          <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-6 m-4">
+            {children}
+          </MeshGradientBackground>
+        )}
       </main>
     </div>
   );
