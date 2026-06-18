@@ -13,6 +13,14 @@ export const jobPostAPI = {
     return apiService.post<string>(jobPostsUrl, data);
   },
 
+  /**
+   * POST /api/JobPosts/draft
+   * Create a draft job post.
+   */
+  createDraftJobPost: async (): Promise<ApiResponse<any>> => {
+    return apiService.post<any>(`${jobPostsUrl}/draft`, {});
+  },
+
   // Backward-compatible alias for older screens/forms.
   createJob: async (data: CreateJobPostRequest): Promise<ApiResponse<string>> => {
     return jobPostAPI.createJobPost(data);

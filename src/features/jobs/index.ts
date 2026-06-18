@@ -5,6 +5,7 @@ export { default as PostJobScreen } from './screens/PostJobScreen';
 export { default as BrowseJobsScreen } from './screens/BrowseJobsScreen';
 export { default as JobDetailScreen } from './screens/JobDetailScreen';
 export { default as CreatePostJobContractScreen } from './screens/CreatePostJobContractScreen';
+export { default as CreatePostJobEsignScreen } from './screens/CreatePostJobEsignScreen';
 
 // Components (when created)
 // export { JobCard } from './components/JobCard';

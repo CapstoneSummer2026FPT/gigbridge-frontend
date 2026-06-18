@@ -15,6 +15,10 @@ export const jobAPI = {
   getMyJobPosts: jobGetAPI.getMyJobPosts,
   getMyAppliedJobPosts: jobGetAPI.getMyAppliedJobPosts,
   createJobPost: jobPostAPI.createJobPost,
+  createDraftJobPost: jobPostAPI.createDraftJobPost,
+  updateJobPost: jobPutAPI.updateJobPost,
+  updateJobPostStatus: jobPutAPI.updateJobPostStatus,
+  createBulkJobPostQuestions: jobQuestionAPI.createBulkJobPostQuestions,
   put: jobPutAPI,
   questions: jobQuestionAPI,
 };

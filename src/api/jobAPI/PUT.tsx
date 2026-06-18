@@ -1,6 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
+  UpdateJobPostRequest,
   UpdateJobPostStatusRequest,
   UpdateJobPostVisibilityRequest,
 } from '../../types/models/Job';
@@ -8,6 +9,16 @@ import type {
 const jobPostsUrl = 'JobPosts';
 
 export const jobPutAPI = {
+  /**
+   * PUT /api/JobPosts/{jobPostId}
+   */
+  updateJobPost: async (
+    jobPostId: string,
+    payload: UpdateJobPostRequest
+  ): Promise<ApiResponse<boolean>> => {
+    return apiService.put<boolean>(`${jobPostsUrl}/${jobPostId}`, payload);
+  },
+
   /**
    * PATCH /api/JobPosts/{jobPostId}/status
    */
