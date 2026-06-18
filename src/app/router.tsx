@@ -14,6 +14,7 @@ import ClientDashboardScreen from '../features/dashboard/screens/ClientDashboard
 import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerDashboardScreen';
 import PostJobScreen from '../features/jobs/screens/PostJobScreen';
 import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
+import CreatePostJobEsignScreen from '../features/jobs/screens/CreatePostJobEsignScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
 import JobDetailScreen from '../features/jobs/screens/JobDetailScreen';
 import MyJobsScreen from '../features/jobs/screens/MyJobsScreen';
@@ -164,7 +165,8 @@ export const router = createBrowserRouter([
       // Jobs - requires authentication
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
-      { path: 'jobs/browse', element: <BrowseJobsScreen /> },
+      { path: 'jobs/post/contract/esign', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobEsignScreen /></ProtectedRoute> },
+      { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><JobDetailScreen /></ProtectedRoute> },
