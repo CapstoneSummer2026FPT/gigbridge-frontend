@@ -1,168 +1,214 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { History, Search, Download, Eye, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, Wallet, RefreshCw, XCircle, UploadCloud } from 'lucide-react';
+import {
+  History,
+  Search,
+  Download,
+  Eye,
+  ArrowUpRight,
+  ArrowDownRight,
+  Coins,
+  Wallet,
+  RefreshCw,
+  XCircle,
+  Loader2,
+} from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { Transaction, TransactionType, TransactionStatus } from '../../../types/models/Financial';
+import { walletGetAPI, WalletTransactionResponse } from '../../../api/walletAPI/GET';
+import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
-
-type TransactionFilter = 'all' | 'deposit' | 'withdrawal' | 'subscription' | 'refund';
-type StatusFilter = 'all' | 'completed' | 'pending' | 'failed';
-
-// Mock transaction data
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    trans_TransactionsId: 'trans_1',
-    wal_WalletsId: 'wal_1',
-    SubscriptionId: 'sub_1',
-    Type: TransactionType.Subscription,
-    Amount: 29.99,
-    Currency: 'USD',
-    Status: TransactionStatus.Completed,
-    Description: 'GigBridge Pro - Monthly Subscription',
-    CreatedAt: '2026-05-16T10:00:00Z',
-    CompletedAt: '2026-05-16T10:00:05Z',
-  },
-  {
-    trans_TransactionsId: 'trans_2',
-    wal_WalletsId: 'wal_1',
-    Type: TransactionType.Deposit,
-    Amount: 500.00,
-    Currency: 'USD',
-    Status: TransactionStatus.Completed,
-    Description: 'Wallet deposit via Credit Card',
-    CreatedAt: '2026-05-15T13:45:00Z',
-    CompletedAt: '2026-05-15T13:45:10Z',
-  },
-  {
-    trans_TransactionsId: 'trans_3',
-    wal_WalletsId: 'wal_1',
-    Type: TransactionType.Withdrawal,
-    Amount: 1200.00,
-    Currency: 'USD',
-    Status: TransactionStatus.Completed,
-    Description: 'Withdrawal to Bank Account - Project Payment',
-    CreatedAt: '2026-05-10T14:20:00Z',
-    CompletedAt: '2026-05-10T14:25:30Z',
-  },
-  {
-    trans_TransactionsId: 'trans_4',
-    wal_WalletsId: 'wal_1',
-    Type: TransactionType.Deposit,
-    Amount: 250.00,
-    Currency: 'USD',
-    Status: TransactionStatus.Pending,
-    Description: 'Wallet deposit via PayPal',
-    CreatedAt: '2026-05-16T15:00:00Z',
-  },
-  {
-    trans_TransactionsId: 'trans_5',
-    wal_WalletsId: 'wal_1',
-    Type: TransactionType.Deposit,
-    Amount: 100.00,
-    Currency: 'USD',
-    Status: TransactionStatus.Completed,
-    Description: 'Wallet deposit via Credit Card',
-    CreatedAt: '2026-05-08T11:30:00Z',
-    CompletedAt: '2026-05-08T11:30:08Z',
-  },
-  {
-    trans_TransactionsId: 'trans_6',
-    wal_WalletsId: 'wal_1',
-    Type: TransactionType.Withdrawal,
-    Amount: 850.00,
-    Currency: 'USD',
-    Status: TransactionStatus.Completed,
-    Description: 'Withdrawal to Bank Account',
-    CreatedAt: '2026-05-05T09:15:00Z',
-    CompletedAt: '2026-05-05T09:20:15Z',
-  },
-  {
-    trans_TransactionsId: 'trans_7',
-    wal_WalletsId: 'wal_1',
-    SubscriptionId: 'sub_2',
-    Type: TransactionType.Refund,
-    Amount: 29.99,
-    Currency: 'USD',
-    Status: TransactionStatus.Completed,
-    Description: 'Refund for cancelled subscription',
-    CreatedAt: '2026-05-03T11:30:00Z',
-    CompletedAt: '2026-05-03T11:35:00Z',
-  },
-  {
-    trans_TransactionsId: 'trans_8',
-    wal_WalletsId: 'wal_1',
-    Type: TransactionType.Deposit,
-    Amount: 50.00,
-    Currency: 'USD',
-    Status: TransactionStatus.Failed,
-    Description: 'Wallet deposit via Credit Card - Payment Failed',
-    CreatedAt: '2026-05-01T16:00:00Z',
-  },
-];
 
 export default function WalletHistoryScreen() {
   const navigate = useNavigate();
+  const [transactions, setTransactions] = useState<WalletTransactionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TransactionFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [viewTransaction, setViewTransaction] = useState<Transaction | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [viewTransaction, setViewTransaction] = useState<WalletTransactionResponse | null>(null);
 
-  const stats = useMemo(() => {
-    const completed = MOCK_TRANSACTIONS.filter(t => t.Status === TransactionStatus.Completed);
-    const totalDeposits = completed.filter(t => t.Type === TransactionType.Deposit).reduce((sum, t) => sum + t.Amount, 0);
-    const totalWithdrawals = completed.filter(t => t.Type === TransactionType.Withdrawal).reduce((sum, t) => sum + t.Amount, 0);
-    const totalSubscriptions = completed.filter(t => t.Type === TransactionType.Subscription).reduce((sum, t) => sum + t.Amount, 0);
-    const pending = MOCK_TRANSACTIONS.filter(t => t.Status === TransactionStatus.Pending).length;
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      setErrorText(null);
+      const res = await walletGetAPI.getTransactions(100);
+      if (res.success && res.data) {
+        setTransactions(res.data);
 
-    return { totalDeposits, totalWithdrawals, totalSubscriptions, pending, totalTransactions: MOCK_TRANSACTIONS.length };
+        // Auto-sync pending TopUp transactions (type = 1, status = 0)
+        const pendingTopUps = res.data.filter(t => t.type === 1 && t.status === 0 && t.gatewayOrderCode);
+        if (pendingTopUps.length > 0) {
+          Promise.all(
+            pendingTopUps.map(async (t) => {
+              try {
+                const orderCode = Number(t.gatewayOrderCode);
+                if (Number.isSafeInteger(orderCode) && orderCode > 0) {
+                  await walletPostAPI.syncPayOsTopUp({ orderCode });
+                }
+              } catch (e) {
+                console.error(`Failed to sync pending top-up order ${t.gatewayOrderCode}:`, e);
+              }
+            })
+          ).then(async () => {
+            // Silently re-fetch transactions to show the updated statuses (e.g. Succeeded or Cancelled)
+            try {
+              const silentRes = await walletGetAPI.getTransactions(100);
+              if (silentRes.success && silentRes.data) {
+                setTransactions(silentRes.data);
+              }
+            } catch (e) {
+              console.error('Failed to silently refresh transactions:', e);
+            }
+          });
+        }
+      } else {
+        setErrorText(res.message || 'Không thể tải lịch sử giao dịch.');
+      }
+    } catch (err) {
+      console.error('Failed to load transaction history:', err);
+      setErrorText(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi kết nối máy chủ.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchTransactions();
   }, []);
 
-  const filteredTransactions = useMemo(() => {
-    return MOCK_TRANSACTIONS.filter(trans => {
-      const matchesSearch = searchQuery === '' ||
-        trans.Description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        trans.trans_TransactionsId.toLowerCase().includes(searchQuery.toLowerCase());
+  const getDescription = (trans: WalletTransactionResponse) => {
+    if (trans.note) return trans.note;
+    switch (trans.type) {
+      case 0:
+        return 'Cấp số dư từ hệ thống (Admin)';
+      case 1:
+        return `Nạp tiền vào ví qua ${trans.gatewayProvider || 'PayOS'}`;
+      case 2:
+        return `Ký quỹ hợp đồng dự án`;
+      case 3:
+        return `Giải ngân hợp đồng dự án`;
+      case 4:
+        return `Hoàn trả ký quỹ hợp đồng`;
+      case 5:
+        return 'Điều chỉnh số dư từ hệ thống';
+      default:
+        return 'Giao dịch ví';
+    }
+  };
 
-      const matchesType = typeFilter === 'all' || trans.Type === typeFilter;
-      const matchesStatus = statusFilter === 'all' || trans.Status === statusFilter;
+  const stats = useMemo(() => {
+    const succeeded = transactions.filter(t => t.status === 1);
+    const totalDeposits = succeeded.filter(t => t.type === 1).reduce((sum, t) => sum + t.tokenAmount, 0);
+    const totalHold = succeeded.filter(t => t.type === 2).reduce((sum, t) => sum + t.tokenAmount, 0);
+    const totalRefund = succeeded.filter(t => t.type === 4).reduce((sum, t) => sum + t.tokenAmount, 0);
+    const pending = transactions.filter(t => t.status === 0).length;
+
+    return {
+      totalDeposits,
+      totalHold,
+      totalRefund,
+      pending,
+      totalTransactions: transactions.length,
+    };
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(trans => {
+      const desc = getDescription(trans);
+      const matchesSearch =
+        searchQuery === '' ||
+        desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        trans.walletTransactionId.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesType = typeFilter === 'all' || trans.type.toString() === typeFilter;
+      const matchesStatus = statusFilter === 'all' || trans.status.toString() === statusFilter;
 
       return matchesSearch && matchesType && matchesStatus;
     });
-  }, [searchQuery, typeFilter, statusFilter]);
+  }, [transactions, searchQuery, typeFilter, statusFilter]);
 
-  const getStatusBadge = (status: TransactionStatus) => {
-    if (status === TransactionStatus.Completed) return <span className="badge-green text-xs">Completed</span>;
-    if (status === TransactionStatus.Pending) return <span className="badge-amber text-xs">Pending</span>;
-    if (status === TransactionStatus.Failed) return <span className="badge-red text-xs">Failed</span>;
-    return <span className="badge-gray text-xs">Cancelled</span>;
+  const fmtNumber = (amount: number): string => {
+    return new Intl.NumberFormat('vi-VN').format(amount);
   };
 
-  const getTypeBadge = (type: TransactionType) => {
-    if (type === TransactionType.Deposit) return <span className="badge-green text-xs">Deposit</span>;
-    if (type === TransactionType.Withdrawal) return <span className="badge-red text-xs">Withdrawal</span>;
-    if (type === TransactionType.Subscription) return <span className="badge-purple text-xs">Subscription</span>;
-    return <span className="badge-cyan text-xs">Refund</span>;
+  const getStatusBadge = (status: number) => {
+    switch (status) {
+      case 0:
+        return <span className="badge-amber text-[11px] px-2 py-0.5 font-semibold">Chờ xử lý</span>;
+      case 1:
+        return <span className="badge-green text-[11px] px-2 py-0.5 font-semibold">Thành công</span>;
+      case 2:
+        return <span className="badge-red text-[11px] px-2 py-0.5 font-semibold">Thất bại</span>;
+      case 3:
+        return <span className="badge-gray text-[11px] px-2 py-0.5 font-semibold">Đã hủy</span>;
+      default:
+        return <span className="badge-gray text-[11px] px-2 py-0.5 font-semibold">Không rõ</span>;
+    }
   };
 
-  const getTypeIcon = (type: TransactionType) => {
-    if (type === TransactionType.Deposit) return <ArrowUpRight size={16} className="text-green" />;
-    if (type === TransactionType.Withdrawal) return <ArrowDownRight size={16} className="text-red" />;
-    if (type === TransactionType.Subscription) return <CreditCard size={16} className="text-purple" />;
-    return <RefreshCw size={16} className="text-cyan" />;
+  const getTypeBadge = (type: number) => {
+    switch (type) {
+      case 0:
+        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Admin</span>;
+      case 1:
+        return <span className="badge-green text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Nạp tiền</span>;
+      case 2:
+        return <span className="badge-amber text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Ký quỹ</span>;
+      case 3:
+        return <span className="badge-purple text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Giải ngân</span>;
+      case 4:
+        return <span className="badge-cyan text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Hoàn trả</span>;
+      case 5:
+        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Điều chỉnh</span>;
+      default:
+        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Khác</span>;
+    }
   };
 
-  const canUploadPaymentProof = (trans: Transaction) => (
-    trans.Status === TransactionStatus.Pending
-    && (trans.Type === TransactionType.Deposit || trans.Type === TransactionType.Subscription)
-  );
+  const getTypeIcon = (type: number) => {
+    switch (type) {
+      case 0:
+      case 5:
+        return <RefreshCw size={16} className="text-muted" />;
+      case 1:
+      case 4:
+        return <ArrowUpRight size={16} className="text-green" />;
+      case 2:
+      case 3:
+        return <ArrowDownRight size={16} className="text-red" />;
+      default:
+        return <Wallet size={16} className="text-cyan" />;
+    }
+  };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const getAmountDisplay = (trans: WalletTransactionResponse) => {
+    const isPositive = trans.type === 0 || trans.type === 1 || trans.type === 4;
+    const prefix = isPositive ? '+' : '-';
+    const colorClass = isPositive ? 'text-green' : 'text-red';
+
+    return (
+      <div className="text-right ml-4 shrink-0">
+        <div className={`text-lg sm:text-xl font-bold flex items-center justify-end gap-1 ${colorClass}`}>
+          <span>{prefix}{fmtNumber(trans.tokenAmount)}</span>
+          <Coins size={16} className="inline opacity-80" />
+        </div>
+        {trans.type === 1 && trans.vndAmount > 0 && (
+          <p className="text-xs text-secondary mt-0.5 font-semibold">
+            {fmtNumber(trans.vndAmount)} đ
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -175,34 +221,36 @@ export default function WalletHistoryScreen() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <History size={20} className="text-cyan" />
-                <span className="badge-cyan text-xs">Transactions</span>
+                <span className="badge-cyan text-xs">Giao Dịch</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                Transaction <span className="text-blue-600 black:text-blue-400 italic font-light">History</span>
-              </h1>
-              <p className="text-sm text-secondary mt-1">View all your wallet transactions</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-primary">Lịch Sử Giao Dịch</h1>
+              <p className="text-sm text-secondary mt-1">Xem toàn bộ lịch sử biến động số dư ví của bạn</p>
             </div>
-            <button className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
-              <Download size={14} />
-              Export
+            <button
+              onClick={() => void fetchTransactions()}
+              className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2"
+              disabled={loading}
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              Làm mới
             </button>
           </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
             {[
-              { label: 'Total Deposits', value: `$${stats.totalDeposits.toFixed(2)}`, icon: <ArrowUpRight size={16} />, color: 'green' },
-              { label: 'Total Withdrawals', value: `$${stats.totalWithdrawals.toFixed(2)}`, icon: <ArrowDownRight size={16} />, color: 'red' },
-              { label: 'Subscriptions', value: `$${stats.totalSubscriptions.toFixed(2)}`, icon: <CreditCard size={16} />, color: 'purple' },
-              { label: 'Pending', value: stats.pending.toString(), icon: <DollarSign size={16} />, color: 'amber' },
-              { label: 'All Transactions', value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
+              { label: 'Tổng nạp tiền', value: `${fmtNumber(stats.totalDeposits)} tokens`, icon: <ArrowUpRight size={16} />, color: 'green' },
+              { label: 'Ký quỹ dự án', value: `${fmtNumber(stats.totalHold)} tokens`, icon: <ArrowDownRight size={16} />, color: 'red' },
+              { label: 'Tổng hoàn trả', value: `${fmtNumber(stats.totalRefund)} tokens`, icon: <RefreshCw size={16} />, color: 'cyan' },
+              { label: 'Đang xử lý', value: stats.pending.toString(), icon: <Loader2 size={16} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber' },
+              { label: 'Tổng số giao dịch', value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
             ].map(stat => (
               <div key={stat.label} className="stat-card">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-secondary truncate">{stat.label}</p>
                   <span className={`icon-${stat.color} flex-shrink-0`}>{stat.icon}</span>
                 </div>
-                <p className="text-xl sm:text-2xl font-bold text-primary">{stat.value}</p>
+                <p className="text-lg sm:text-xl font-bold text-primary truncate">{stat.value}</p>
               </div>
             ))}
           </div>
@@ -216,110 +264,116 @@ export default function WalletHistoryScreen() {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search transactions..."
+                  placeholder="Tìm kiếm giao dịch..."
                   className="input-gb w-full py-2.5 text-sm"
                   style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
                 />
               </div>
               <select
                 value={typeFilter}
-                onChange={e => setTypeFilter(e.target.value as TransactionFilter)}
+                onChange={e => setTypeFilter(e.target.value)}
                 className="input-gb px-4 py-2.5 text-sm cursor-pointer"
               >
-                <option value="all">All Types</option>
-                <option value="deposit">Deposit</option>
-                <option value="withdrawal">Withdrawal</option>
-                <option value="subscription">Subscription</option>
-                <option value="refund">Refund</option>
+                <option value="all">Tất cả phân loại</option>
+                <option value="1">Nạp tiền (TopUp)</option>
+                <option value="2">Ký quỹ (Hold)</option>
+                <option value="3">Giải ngân (Release)</option>
+                <option value="4">Hoàn trả ký quỹ (Refund)</option>
+                <option value="0">Cấp từ Admin</option>
+                <option value="5">Điều chỉnh</option>
               </select>
               <select
                 value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as StatusFilter)}
+                onChange={e => setStatusFilter(e.target.value)}
                 className="input-gb px-4 py-2.5 text-sm cursor-pointer"
               >
-                <option value="all">All Status</option>
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-                <option value="failed">Failed</option>
+                <option value="all">Tất cả trạng thái</option>
+                <option value="1">Thành công</option>
+                <option value="0">Đang xử lý</option>
+                <option value="2">Thất bại</option>
+                <option value="3">Đã hủy</option>
               </select>
             </div>
           </div>
 
           {/* Transactions List */}
-          <div className="space-y-3">
-            {filteredTransactions.map(trans => (
-              <div key={trans.trans_TransactionsId} className="glass-card p-5 hover:border-cyan/30 transition-all">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
-                      {getTypeIcon(trans.Type)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <p className="text-sm font-bold text-primary">{trans.Description}</p>
-                        {getTypeBadge(trans.Type)}
-                        {getStatusBadge(trans.Status)}
+          {loading ? (
+            <div className="glass-card p-12 text-center flex flex-col items-center justify-center">
+              <Loader2 size={40} className="text-cyan animate-spin mb-4" />
+              <p className="text-secondary text-sm">Đang tải lịch sử giao dịch...</p>
+            </div>
+          ) : errorText ? (
+            <div className="glass-card p-8 border border-red-500/25 bg-red-500/5 text-center">
+              <p className="text-red-500 font-semibold mb-2">{errorText}</p>
+              <button onClick={() => void fetchTransactions()} className="btn-cyan px-4 py-2 text-xs">
+                Thử lại
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredTransactions.map(trans => (
+                <div key={trans.walletTransactionId} className="glass-card p-5 hover:border-cyan/30 transition-all">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                        {getTypeIcon(trans.type)}
                       </div>
-                      <p className="text-xs text-muted mb-1">ID: {trans.trans_TransactionsId}</p>
-                      <p className="text-xs text-secondary">{formatDate(trans.CreatedAt)}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <p className="text-sm font-bold text-primary truncate max-w-md">
+                            {getDescription(trans)}
+                          </p>
+                          {getTypeBadge(trans.type)}
+                          {getStatusBadge(trans.status)}
+                        </div>
+                        <p className="text-[11px] text-muted mb-0.5">ID: {trans.walletTransactionId}</p>
+                        <p className="text-xs text-secondary">{formatDate(trans.createdAt)}</p>
+                      </div>
                     </div>
+                    {getAmountDisplay(trans)}
                   </div>
-                  <div className="text-right ml-4">
-                    <p className={`text-xl font-bold ${trans.Type === TransactionType.Deposit || trans.Type === TransactionType.Refund ? 'text-green' : 'text-red'}`}>
-                      {trans.Type === TransactionType.Deposit || trans.Type === TransactionType.Refund ? '+' : '-'}${trans.Amount.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted">{trans.Currency}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                  <div className="flex items-center gap-4 text-xs text-muted">
-                    {trans.CompletedAt && (
-                      <span>Completed: {formatDate(trans.CompletedAt)}</span>
-                    )}
-                    {trans.SubscriptionId && (
-                      <span>Sub ID: {trans.SubscriptionId}</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {canUploadPaymentProof(trans) && (
-                      <button
-                        onClick={() => navigate(`/wallet/payment-proof/${trans.trans_TransactionsId}`)}
-                        className="text-xs text-amber hover:underline flex items-center gap-1"
-                      >
-                        <UploadCloud size={12} />
-                        Upload Payment Proof
-                      </button>
-                    )}
+                  <div className="flex items-center justify-between pt-3 mt-3 border-t border-white/5 text-xs text-muted">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      {trans.completedAt && (
+                        <span>Hoàn thành: {formatDate(trans.completedAt)}</span>
+                      )}
+                      {trans.contractId && (
+                        <span className="truncate max-w-[150px]">Hợp đồng: {trans.contractId}</span>
+                      )}
+                    </div>
                     <button
                       onClick={() => setViewTransaction(trans)}
-                      className="text-xs text-cyan hover:underline flex items-center gap-1"
+                      className="text-xs text-cyan hover:underline flex items-center gap-1 font-semibold"
                     >
                       <Eye size={12} />
-                      View Details
+                      Chi tiết
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {filteredTransactions.length === 0 && (
-              <div className="glass-card p-12 text-center">
-                <History size={48} className="mx-auto mb-4 text-muted" />
-                <p className="text-lg font-semibold text-primary mb-2">No transactions found</p>
-                <p className="text-sm text-secondary">Try adjusting your filters</p>
-              </div>
-            )}
-          </div>
+              {filteredTransactions.length === 0 && (
+                <div className="glass-card p-12 text-center">
+                  <History size={48} className="mx-auto mb-4 text-muted" />
+                  <p className="text-lg font-semibold text-primary mb-2">Không tìm thấy giao dịch nào</p>
+                  <p className="text-sm text-secondary">Thử điều chỉnh bộ lọc tìm kiếm của bạn</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Transaction Detail Modal */}
       {viewTransaction && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setViewTransaction(null)}>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setViewTransaction(null)}
+        >
           <div className="glass-card max-w-2xl w-full p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-primary">Transaction Details</h2>
+              <h2 className="text-2xl font-bold text-primary">Chi Tiết Giao Dịch</h2>
               <button
                 onClick={() => setViewTransaction(null)}
                 className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
@@ -330,53 +384,70 @@ export default function WalletHistoryScreen() {
 
             <div className="space-y-4">
               <div className="glass-card p-5">
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-4 pb-4 border-b border-white/5">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      {getTypeBadge(viewTransaction.Type)}
-                      {getStatusBadge(viewTransaction.Status)}
+                      {getTypeBadge(viewTransaction.type)}
+                      {getStatusBadge(viewTransaction.status)}
                     </div>
-                    <p className="text-sm text-secondary">{viewTransaction.Description}</p>
+                    <p className="text-sm text-secondary font-medium">{getDescription(viewTransaction)}</p>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-3xl font-bold ${viewTransaction.Type === TransactionType.Deposit || viewTransaction.Type === TransactionType.Refund ? 'text-green' : 'text-red'}`}>
-                      {viewTransaction.Type === TransactionType.Deposit || viewTransaction.Type === TransactionType.Refund ? '+' : '-'}${viewTransaction.Amount.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted">{viewTransaction.Currency}</p>
-                  </div>
+                  {getAmountDisplay(viewTransaction)}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                   <div>
-                    <p className="text-muted mb-1">Transaction ID</p>
-                    <p className="text-primary font-mono text-xs">{viewTransaction.trans_TransactionsId}</p>
+                    <p className="text-muted text-xs mb-1">Mã giao dịch (ID)</p>
+                    <p className="text-primary font-mono text-xs break-all">{viewTransaction.walletTransactionId}</p>
                   </div>
                   <div>
-                    <p className="text-muted mb-1">Wallet ID</p>
-                    <p className="text-primary font-mono text-xs">{viewTransaction.wal_WalletsId}</p>
+                    <p className="text-muted text-xs mb-1">Mã ví người dùng</p>
+                    <p className="text-primary font-mono text-xs break-all">{viewTransaction.walletId}</p>
                   </div>
-                  {viewTransaction.SubscriptionId && (
-                    <div className="col-span-2">
-                      <p className="text-muted mb-1">Subscription ID</p>
-                      <p className="text-primary font-mono text-xs">{viewTransaction.SubscriptionId}</p>
+                  {viewTransaction.gatewayOrderCode && (
+                    <div>
+                      <p className="text-muted text-xs mb-1">Mã đơn hàng PayOS</p>
+                      <p className="text-primary font-mono text-xs">{viewTransaction.gatewayOrderCode}</p>
+                    </div>
+                  )}
+                  {viewTransaction.gatewayTransactionCode && (
+                    <div>
+                      <p className="text-muted text-xs mb-1">Mã tham chiếu PayOS</p>
+                      <p className="text-primary font-mono text-xs">{viewTransaction.gatewayTransactionCode}</p>
+                    </div>
+                  )}
+                  {viewTransaction.contractId && (
+                    <div>
+                      <p className="text-muted text-xs mb-1">Mã hợp đồng liên kết</p>
+                      <p className="text-primary font-mono text-xs break-all">{viewTransaction.contractId}</p>
+                    </div>
+                  )}
+                  {viewTransaction.contractEscrowId && (
+                    <div>
+                      <p className="text-muted text-xs mb-1">Mã ký quỹ hợp đồng</p>
+                      <p className="text-primary font-mono text-xs break-all">{viewTransaction.contractEscrowId}</p>
+                    </div>
+                  )}
+                  {viewTransaction.idempotencyKey && (
+                    <div className="col-span-1 sm:col-span-2">
+                      <p className="text-muted text-xs mb-1">Idempotency Key</p>
+                      <p className="text-primary font-mono text-xs break-all">{viewTransaction.idempotencyKey}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-muted mb-1">Type</p>
-                    <p className="text-primary capitalize">{viewTransaction.Type}</p>
+                    <p className="text-muted text-xs mb-1">Thời gian khởi tạo</p>
+                    <p className="text-primary">{formatDate(viewTransaction.createdAt)}</p>
                   </div>
-                  <div>
-                    <p className="text-muted mb-1">Status</p>
-                    <p className="text-primary capitalize">{viewTransaction.Status}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted mb-1">Created At</p>
-                    <p className="text-primary">{formatDate(viewTransaction.CreatedAt)}</p>
-                  </div>
-                  {viewTransaction.CompletedAt && (
+                  {viewTransaction.completedAt && (
                     <div>
-                      <p className="text-muted mb-1">Completed At</p>
-                      <p className="text-primary">{formatDate(viewTransaction.CompletedAt)}</p>
+                      <p className="text-muted text-xs mb-1">Thời gian hoàn thành</p>
+                      <p className="text-primary">{formatDate(viewTransaction.completedAt)}</p>
+                    </div>
+                  )}
+                  {viewTransaction.note && (
+                    <div className="col-span-1 sm:col-span-2">
+                      <p className="text-muted text-xs mb-1">Ghi chú</p>
+                      <p className="text-primary bg-white/5 p-2 rounded-lg text-xs">{viewTransaction.note}</p>
                     </div>
                   )}
                 </div>
@@ -386,13 +457,9 @@ export default function WalletHistoryScreen() {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setViewTransaction(null)}
-                className="btn-ghost-cyan px-6 py-2"
+                className="btn-cyan px-6 py-2.5 font-semibold text-sm"
               >
-                Close
-              </button>
-              <button className="btn-cyan px-6 py-2 flex items-center gap-2">
-                <Download size={16} />
-                Download Receipt
+                Đóng
               </button>
             </div>
           </div>

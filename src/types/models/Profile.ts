@@ -74,6 +74,8 @@ export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
   userFullName?: string;
   userEmail?: string;
   userAvatar?: string;
+  rating?: number;
+  eloPoints?: number;
   skills: FreelancerSkillDto[];
   portfolioItems: PortfolioItemDto[];
   workExperiences: WorkExperienceDto[];
@@ -95,6 +97,23 @@ export interface UpdateFreelancerProfileDto {
   location: string;
 }
 
+export interface ClientProfileDetailDto {
+  clientProfilesId: string;
+  userId: string;
+  companyName?: string | null;
+  companyWebsite?: string | null;
+  companySize?: number | null;
+  industry?: string | null;
+  companyDescription?: string | null;
+  location?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  userFullName?: string | null;
+  userEmail?: string | null;
+  userAvatar?: string | null;
+  eloPoints?: number;
+}
+
 export interface ClientProfileResponseDto {
   clientProfilesId: string;
   userId: string;
@@ -104,6 +123,7 @@ export interface ClientProfileResponseDto {
   industry: string;
   companyDescription?: string;
   location: string;
+  eloPoints?: number;
   createdAt: string;
   updatedAt: string;
 }

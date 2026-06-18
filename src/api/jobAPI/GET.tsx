@@ -5,6 +5,7 @@ import type {
   GetMyJobPostDetailDto,
   GetMyJobPostDto,
   Job,
+  JobStatus,
   JobPostDetailDto,
   JobPostQueryParams,
   JobPostQuestionDto,
@@ -17,6 +18,19 @@ type LegacyJobFilters = JobPostQueryParams & {
   category?: string;
   search?: string;
   aiRecommended?: boolean;
+};
+
+const experienceLevelMap: Record<number, Job['experienceLevel']> = {
+  0: 'entry',
+  1: 'intermediate',
+  2: 'expert',
+};
+
+const statusMap: Record<number, Job['status']> = {
+  0: 'draft',
+  1: 'open',
+  2: 'closed',
+  3: 'cancelled',
 };
 
 const formatPostedAt = (createdAt?: string): string => {
@@ -40,12 +54,16 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   skills: job.skillNames || [],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
-  jobType: 'fixed',
-  status: 'open',
+  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
+  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
+  status: typeof job.status === 'number' ? statusMap[job.status] ?? 'open' : 'open',
+  statusValue: (typeof job.status === 'number' ? job.status : null) as JobStatus | number | null,
+  visibility: job.visibility ?? null,
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
+  eloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
 
@@ -105,13 +123,17 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   skills: job.skills?.map(skill => skill.skillName) || [],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
-  jobType: 'fixed',
-  deadline: job.endDate ?? undefined,
-  status: 'open',
+  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
+  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
+  deadline: job.endDate ?? job.applicationDeadline ?? undefined,
+  status: typeof job.status === 'number' ? statusMap[job.status] ?? 'open' : 'open',
+  statusValue: (typeof job.status === 'number' ? job.status : null) as JobStatus | number | null,
+  visibility: job.visibility ?? null,
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
+  eloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
 

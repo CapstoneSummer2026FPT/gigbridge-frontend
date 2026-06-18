@@ -62,13 +62,17 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed';
+  jobType: 'fixed' | 'hourly';
+  experienceLevel?: 'entry' | 'intermediate' | 'expert';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
+  statusValue?: JobStatus | JobPostStatus | number | null;
+  visibility?: JobPostVisibility | number | null;
   proposalCount: number;
   viewCount: number;
   aiMatchScore?: number;
   isAiRecommended?: boolean;
+  eloPoints?: number;
   postedAt: string;
   isRemote: boolean;
   gigcoin_cost: number;
@@ -88,10 +92,12 @@ export interface JobPostSummaryDto {
   budgetMin?: number | null;
   budgetMax?: number | null;
   locationType?: number | null;
-  createdAt: string;
+  budgetType?: number | null;
+  experienceLevelRequired?: number | null;
   eloPoints?: number;
+  createdAt: string;
   skillNames: string[];
-  status?: JobPostStatus | number | null;
+  status?: JobStatus | JobPostStatus | number | null;
   visibility?: JobPostVisibility | number | null;
 }
 
@@ -108,7 +114,7 @@ export interface GetMyJobPostDto {
   estimatedDuration?: string | null;
   maxHires?: number | null;
   location?: string | null;
-  status: JobPostStatus | number;
+  status: JobPostStatus | JobStatus | number;
   visibility?: JobPostVisibility | number | null;
   endDate?: string | null;
   isAigenerated?: boolean | null;
@@ -140,8 +146,14 @@ export interface JobPostDetailDto {
   maxHires?: number | null;
   locationType?: number | null;
   location?: string | null;
+  budgetType?: number | null;
+  experienceLevelRequired?: number | null;
+  applicationDeadline?: string | null;
   endDate?: string | null;
   createdAt: string;
+  eloPoints?: number;
+  status?: JobStatus | JobPostStatus | number | null;
+  visibility?: JobPostVisibility | number | null;
   skills: JobPostSkillDto[];
   attachments: JobPostAttachmentDto[];
 }
@@ -160,7 +172,7 @@ export interface GetMyJobPostDetailDto {
   maxHires?: number | null;
   location?: string | null;
   visibility?: JobPostVisibility | number | null;
-  status: JobPostStatus | number;
+  status: JobPostStatus | JobStatus | number;
   endDate?: string | null;
   createdAt: string;
   updatedAt?: string | null;
@@ -178,6 +190,7 @@ export interface CreateJobPostRequest {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
+  locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
   endDate?: string | null;
@@ -198,6 +211,7 @@ export interface UpdateJobPostRequest {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
+  locationType?: number | null;
   location?: string | null;
   visibility: JobPostVisibility | number;
   endDate?: string | null;
@@ -246,9 +260,45 @@ export interface UpdateBulkJobPostQuestionsRequest {
 }
 
 export interface UpdateJobPostStatusRequest {
-  status: JobPostStatus | number;
+  status: JobPostStatus | JobStatus | number;
 }
 
 export interface UpdateJobPostVisibilityRequest {
   visibility: JobPostVisibility | number;
+}
+
+export interface Review {
+  reviewId?: string;
+  id?: string;
+  contractId?: string;
+  jobPostId?: string;
+  jobId?: string;
+  reviewerId: string;
+  reviewerName?: string | null;
+  revieweeId: string;
+  rating: number;
+  comment?: string | null;
+  communicationRating?: number | null;
+  qualityRating?: number | null;
+  timelinessRating?: number | null;
+  isVisible?: boolean;
+  isAnonymous?: boolean;
+  createdAt: string;
+  skills?: string[];
+}
+
+export interface CreateReviewRequest {
+  contractId: string;
+  rating: number;
+  comment?: string | null;
+  communicationRating?: number | null;
+  qualityRating?: number | null;
+  timelinessRating?: number | null;
+  isAnonymous: boolean;
+}
+
+export interface ReviewStats {
+  averageRating: number;
+  totalReviews: number;
+  ratingDistribution: Record<number, number>;
 }

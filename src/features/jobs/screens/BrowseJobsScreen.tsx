@@ -1,59 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, DollarSign, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Medal, Zap } from 'lucide-react';
+import { Search, Filter, Bot, Clock, DollarSign, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { UserRole } from '../../../types/models/User';
-import { MOCK_BROWSE_JOBS, type BrowseJob } from '../mock/data-for-BrowseJobsScreen';
+import type { Job } from '../../../types/models/Job';
 import '../styles/browse-jobs-screen.css';
+
+type BrowseJob = Job & {
+  datePosted: string;
+  isFeatured?: boolean;
+};
 
 const PAGE_SIZE = 20;
 const CATEGORIES = ['All', 'Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile'];
 const WORK_TYPES = ['All', 'fixed'];
 const DATE_POSTED = ['Any time', 'Last 24 hours', 'Last 7 days', 'Last 30 days'];
 
-const MOCK_TOP_FREELANCERS = [
-  {
-    rank: 1,
-    name: 'Alex Rivera',
-    role: 'Full-Stack Engineer',
-    elo: 2840,
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    isPro: true,
-  },
-  {
-    rank: 2,
-    name: 'Sofia Chen',
-    role: 'UI/UX Designer',
-    elo: 2750,
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    isPro: true,
-  },
-  {
-    rank: 3,
-    name: 'Marcus Vance',
-    role: 'DevOps Architect',
-    elo: 2690,
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    isPro: false,
-  },
-  {
-    rank: 4,
-    name: 'Priya Patel',
-    role: 'Data Scientist',
-    elo: 2610,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    isPro: true,
-  },
-  {
-    rank: 5,
-    name: 'Liam Nguyen',
-    role: 'React Developer',
-    elo: 2580,
-    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-    isPro: false,
-  },
+const PROPOSAL_TIPS = [
+  'Complete your profile before applying.',
+  'Tailor each proposal to the job description.',
+  'Keep your portfolio links current.',
+  'Respond quickly when clients shortlist you.',
 ];
 
 const sanitizeSearch = (value: string) => value.replace(/[<>"'`;]/g, '').slice(0, 120);
@@ -63,6 +32,22 @@ const getDatePostedDays = (value: string) => {
   if (value === 'Last 7 days') return 7;
   if (value === 'Last 30 days') return 30;
   return null;
+};
+
+const toDatePosted = (postedAt: string) => {
+  if (postedAt === 'today') return new Date().toISOString().slice(0, 10);
+
+  const daysAgoMatch = postedAt.match(/^(\d+)\s+days?\s+ago$/);
+  if (daysAgoMatch) {
+    const date = new Date();
+    date.setDate(date.getDate() - Number(daysAgoMatch[1]));
+    return date.toISOString().slice(0, 10);
+  }
+
+  const parsed = new Date(postedAt);
+  return Number.isNaN(parsed.getTime())
+    ? new Date().toISOString().slice(0, 10)
+    : parsed.toISOString().slice(0, 10);
 };
 
 export default function BrowseJobsScreen() {
@@ -82,6 +67,7 @@ export default function BrowseJobsScreen() {
   const [saved, setSaved] = useState<string[]>([]);
   const [allJobs, setAllJobs] = useState<BrowseJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -93,23 +79,26 @@ export default function BrowseJobsScreen() {
     window.localStorage.setItem('gb_saved_jobs', JSON.stringify(saved));
   }, [saved]);
 
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await jobGetAPI.getJobs();
+      setAllJobs(data.map(job => ({
+        ...job,
+        datePosted: toDatePosted(job.postedAt),
+        isFeatured: Boolean(job.isAiRecommended),
+      })));
+    } catch (error) {
+      console.error('Failed to fetch jobs:', error);
+      setAllJobs([]);
+      setError('Failed to load jobs. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setLoading(true);
-        const data = await jobGetAPI.getJobs();
-        setAllJobs(data.length ? data.map(job => ({
-          ...job,
-          datePosted: new Date().toISOString().slice(0, 10),
-          isFeatured: Boolean(job.isAiRecommended),
-        })) : MOCK_BROWSE_JOBS);
-      } catch (error) {
-        console.error('Failed to fetch jobs:', error);
-        setAllJobs(MOCK_BROWSE_JOBS);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchJobs();
   }, []);
 
@@ -275,7 +264,24 @@ export default function BrowseJobsScreen() {
               </div>
 
               <div className="space-y-4">
-                {pagedJobs.map((job, idx) => (
+                {loading && (
+                  <div className="text-center py-20 glass-card">
+                    <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
+                    <p className="text-primary font-semibold mb-2">Loading jobs...</p>
+                  </div>
+                )}
+
+                {!loading && error && (
+                  <div className="text-center py-20 glass-card">
+                    <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
+                    <p className="text-primary font-semibold mb-4">{error}</p>
+                    <button className="btn-cyan px-4 py-2 text-sm" onClick={fetchJobs}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {!loading && !error && pagedJobs.map((job, idx) => (
                   <div key={job.id}
                     className="glass-card p-5 cursor-pointer group browse-jobs-job-card"
                     style={{ animationDelay: `${idx * 0.05}s` }}
@@ -326,7 +332,7 @@ export default function BrowseJobsScreen() {
                 ))}
               </div>
 
-              {!loading && jobs.length === 0 && (
+              {!loading && !error && jobs.length === 0 && (
                 <div className="text-center py-20">
                   <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
                   <p className="text-primary font-semibold mb-2">MSG73: No jobs match your criteria. Try adjusting filters.</p>
@@ -373,70 +379,33 @@ export default function BrowseJobsScreen() {
               </button>
             </div>
 
-            {/* Freelancer ELO Leaderboard */}
+            {/* Proposal tips */}
             <div className="freelancer-ranking-card">
               <div className="freelancer-ranking-header">
                 <div className="freelancer-ranking-title">
                   <Trophy size={18} className="trophy-icon" />
-                  <span>Top Freelancers</span>
+                  <span>Proposal Tips</span>
                 </div>
                 <span className="freelancer-ranking-subtitle flex items-center gap-1">
                   <TrendingUp size={12} className="text-emerald-500" />
-                  Elo Ratings
+                  Better applications
                 </span>
               </div>
 
               <div className="ranking-list">
-                {MOCK_TOP_FREELANCERS.map((freelancer) => {
-                  const isGold = freelancer.rank === 1;
-                  const isSilver = freelancer.rank === 2;
-                  const isBronze = freelancer.rank === 3;
-                  
-                  return (
-                    <div 
-                      key={freelancer.rank} 
-                      className={`ranking-item ${
-                        isGold ? 'ranking-item-top1' : 
-                        isSilver ? 'ranking-item-top2' : 
-                        isBronze ? 'ranking-item-top3' : ''
-                      }`}
-                    >
-                      <div className="ranking-user-info">
-                        <div className={`ranking-position ${
-                          isGold ? 'ranking-position-gold' : 
-                          isSilver ? 'ranking-position-silver' : 
-                          isBronze ? 'ranking-position-bronze' : ''
-                        }`}>
-                          {freelancer.rank}
-                        </div>
-                        <div className="ranking-avatar-container">
-                          <img 
-                            src={freelancer.avatar} 
-                            alt={freelancer.name} 
-                            className={`ranking-avatar ${
-                              isGold ? 'ranking-avatar-gold' : 
-                              isSilver ? 'ranking-avatar-silver' : 
-                              isBronze ? 'ranking-avatar-bronze' : ''
-                            }`}
-                          />
-                          {freelancer.isPro && (
-                            <div className="ranking-badge-overlay">
-                              <Medal size={10} className="text-[#9f4bff]" fill="currentColor" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="ranking-text-details">
-                          <span className="ranking-name">{freelancer.name}</span>
-                          <span className="ranking-role">{freelancer.role}</span>
-                        </div>
+                {PROPOSAL_TIPS.map((tip, index) => (
+                  <div key={tip} className="ranking-item">
+                    <div className="ranking-user-info">
+                      <div className="ranking-position">
+                        {index + 1}
                       </div>
-                      <div className="ranking-elo">
-                        <span className="ranking-elo-value">{freelancer.elo}</span>
-                        <span className="ranking-elo-label">Elo</span>
+                      <div className="ranking-text-details">
+                        <span className="ranking-name">{tip}</span>
+                        <span className="ranking-role">Application guidance</span>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
           </div>

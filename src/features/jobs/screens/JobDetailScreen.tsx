@@ -90,7 +90,7 @@ export default function JobDetailScreen() {
         setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
 
@@ -112,7 +112,7 @@ export default function JobDetailScreen() {
         setJob(data.job);
         setClient(data.client || null);
         setClientProfile(data.clientProfile || null);
-        
+
         // Fetch similar jobs
         const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
         setSimilarJobs(allJobs.filter(j => j.id !== activeJobPostId).slice(0, 3));
@@ -195,7 +195,7 @@ export default function JobDetailScreen() {
 
   const generateAIProposal = async () => {
     if (!job || !user || !client) return;
-    
+
     setIsGeneratingProposal(true);
     try {
       const freelancerProfile = user; // Would get from profile API
@@ -203,7 +203,7 @@ export default function JobDetailScreen() {
         job.title,
         job.skills
       );
-      
+
       setProposalData({
         coverLetter,
         bidAmount: Math.round((job.budgetMin + job.budgetMax) / 2).toString(),
@@ -218,7 +218,7 @@ export default function JobDetailScreen() {
 
   const handleSubmitProposal = async () => {
     if (!job || !user) return;
-    
+
     setIsSubmitting(true);
     try {
       await proposalPostAPI.createProposal({
@@ -516,7 +516,7 @@ export default function JobDetailScreen() {
                     {proposalMessage}
                   </div>
                 )}
-                
+
                 {/* Gigcoin Cost Display */}
                 <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
                   <div className="flex items-center justify-between mb-2">
@@ -578,7 +578,7 @@ export default function JobDetailScreen() {
                     )}
                   </div>
                 ) : canApplyWithGigcoins ? (
-                  <button 
+                  <button
                     onClick={handleApplyJob}
                     disabled={isApplying}
                     className="btn-cyan w-full py-2.5 text-sm flex items-center justify-center gap-2">
@@ -589,7 +589,7 @@ export default function JobDetailScreen() {
                     )}
                   </button>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => navigate('/buy-gigcoin')}
                     className="btn-purple w-full py-2.5 text-sm flex items-center justify-center gap-2">
                     <Zap size={14} />

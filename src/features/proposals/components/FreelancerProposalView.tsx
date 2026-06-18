@@ -1,20 +1,19 @@
 import { useNavigate } from 'react-router';
-import { BarChart2, Briefcase, Clock, Eye, FileText, Rocket } from 'lucide-react';
-import { ProposalCard } from './ProposalCard';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
-import type { JobProposalGroup, ProposalDetailMode, ProposalStatusFilter } from '../types';
-import { getStatusLabel, getStatusClass } from '../utils/statusHelpers';
+import { BarChart2, Briefcase, CheckCircle, Clock, Edit3, Eye, FileText, XCircle } from 'lucide-react';
+import type { JobProposalGroup, ProposalDetailMode, ProposalStatusFilter, ProposalViewModel } from '../types';
+import { canEditProposal, canViewContract, canWithdrawProposal, getStatusLabel, getStatusClass } from '../utils/statusHelpers';
 
 interface FreelancerProposalViewProps {
   loading: boolean;
   proposals: ProposalViewModel[];
   statusFilter: ProposalStatusFilter;
   jobGroups: JobProposalGroup[];
-  isClient: boolean;
   onStatusFilterChange: (status: ProposalStatusFilter) => void;
   onViewDetail: (proposal: ProposalViewModel, mode: ProposalDetailMode) => void;
-  onBoost: (proposal: ProposalViewModel) => void;
-  onGoToWorkspace: (proposal: ProposalViewModel) => void;
+  onEditDraft: (proposal: ProposalViewModel) => void;
+  onViewAnswers: (proposal: ProposalViewModel) => void;
+  onWithdraw: (proposal: ProposalViewModel) => void;
+  onViewContract: (proposal: ProposalViewModel) => void;
   onCompetitionMatrix: (job: JobProposalGroup) => void;
 }
 
@@ -23,11 +22,12 @@ export function FreelancerProposalView({
   proposals,
   statusFilter,
   jobGroups,
-  isClient,
   onStatusFilterChange,
   onViewDetail,
-  onBoost,
-  onGoToWorkspace,
+  onEditDraft,
+  onViewAnswers,
+  onWithdraw,
+  onViewContract,
   onCompetitionMatrix,
 }: FreelancerProposalViewProps) {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export function FreelancerProposalView({
       <div className="freelancer-proposals-toolbar">
         <div>
           <h2>My Proposals & Applications</h2>
-          <p>Sorted by submitted date, newest first.</p>
+          <p>Sorted by submitted date, newest first. Draft proposals stay editable.</p>
         </div>
         <label>
           <span>Filter by status</span>
@@ -76,6 +76,9 @@ export function FreelancerProposalView({
         <div className="freelancer-proposal-list">
           {sortedProposals.map(proposal => {
             const relatedJob = jobGroups.find(group => group.jobPostsId === proposal.jobPostsId);
+            const editable = canEditProposal(proposal.status);
+            const withdrawable = canWithdrawProposal(proposal.status);
+            const contractVisible = canViewContract(proposal.status);
 
             return (
               <article key={proposal.proposalsId} className="freelancer-proposal-card">
@@ -109,12 +112,6 @@ export function FreelancerProposalView({
                       <span>{proposal.isAIGenerated ? 'AI Generated' : 'Manual proposal'}</span>
                     </div>
                   )}
-                  {(proposal.boostedTokenAmount || 0) > 0 && (
-                    <div>
-                      <Rocket size={14} />
-                      <span>Boosted {proposal.boostedTokenAmount} tokens</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="freelancer-proposal-actions">
@@ -126,10 +123,30 @@ export function FreelancerProposalView({
                     <FileText size={15} />
                     Proposal Details
                   </button>
-                  {getStatusLabel(proposal.status) === 'Pending' && (
-                    <button className="proposal-boost-btn" onClick={() => onBoost(proposal)}>
-                      <Rocket size={15} />
-                      Boost
+
+                  {editable ? (
+                    <button className="proposal-view-btn" onClick={() => onEditDraft(proposal)}>
+                      <Edit3 size={15} />
+                      Edit Question
+                    </button>
+                  ) : (
+                    <button className="proposal-view-btn" onClick={() => onViewAnswers(proposal)}>
+                      <FileText size={15} />
+                      View Question
+                    </button>
+                  )}
+
+                  {withdrawable && (
+                    <button className="proposal-withdraw-btn" onClick={() => onWithdraw(proposal)}>
+                      <XCircle size={15} />
+                      Withdraw
+                    </button>
+                  )}
+
+                  {contractVisible && (
+                    <button className="proposal-accepted-contract-btn" onClick={() => onViewContract(proposal)}>
+                      <CheckCircle size={15} />
+                      View Contract
                     </button>
                   )}
                   {relatedJob && (
