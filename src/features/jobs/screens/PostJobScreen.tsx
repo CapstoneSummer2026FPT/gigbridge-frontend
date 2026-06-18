@@ -78,23 +78,26 @@ export default function PostJobScreen() {
 
         <div className="flex flex-col gap-6 items-center mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
-
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Create <span className="text-blue-600 black:text-blue-400 italic font-light">New Job</span> Post
+            </h1>
+            
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setIsInstantJobMode(!isInstantJobMode);
                 }}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md cursor-pointer border-none ${isInstantJobMode
-                  ? 'bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white hover:opacity-95'
-                  : 'bg-muted hover:bg-muted/80 text-foreground border border-border'
-                  }`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md cursor-pointer border-none ${
+                  isInstantJobMode
+                    ? 'bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white hover:opacity-95'
+                    : 'bg-muted hover:bg-muted/80 text-foreground border border-border'
+                }`}
               >
                 <Sparkles size={14} className={isInstantJobMode ? 'animate-pulse' : ''} />
                 Create instant Job Detail (Premium)
               </button>
-
+              
               <div className="relative group">
                 <button
                   type="button"
@@ -105,10 +108,11 @@ export default function PostJobScreen() {
                       toast.info("Vui lòng kích hoạt 'Create instant Job Detail' trước khi xem hướng dẫn.");
                     }
                   }}
-                  className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-sm transition-all cursor-pointer ${isInstantJobMode
-                    ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] shadow-[0_0_15px_rgba(0,119,255,0.4)] animate-pulse scale-105 font-extrabold'
-                    : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
+                  className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-sm transition-all cursor-pointer ${
+                    isInstantJobMode
+                      ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] shadow-[0_0_15px_rgba(0,119,255,0.4)] animate-pulse scale-105 font-extrabold'
+                      : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
                   title="Xem hướng dẫn tính năng"
                 >
                   ?
@@ -185,10 +189,11 @@ export default function PostJobScreen() {
                   onDragStart={e => handleDragStart(e, index)}
                   onDragOver={e => handleDragOver(e, index)}
                   onDragEnd={handleDragEnd}
-                  className={`bg-background border rounded-xl p-4 transition-all duration-200 ${draggedIndex === index
-                    ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 opacity-50 scale-[0.98]'
-                    : 'border-border hover:border-muted-foreground/30'
-                    }`}
+                  className={`bg-background border rounded-xl p-4 transition-all duration-200 ${
+                    draggedIndex === index
+                      ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 opacity-50 scale-[0.98]'
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-2 select-none">
                     <div className="flex items-center gap-2">
@@ -339,7 +344,7 @@ export default function PostJobScreen() {
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
                 <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
-                  {form.skills.map(skill => (
+                  {form.skills.map((skill: string) => (
                     <span key={skill} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                       {skill}
                       <button

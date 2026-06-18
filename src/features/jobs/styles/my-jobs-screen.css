@@ -1,21 +1,6 @@
 /* My Jobs Screen – Premium Bento-Grid Styles */
 
-/* ─── Mesh Background ─── */
-.mj-mesh-bg {
-  background: radial-gradient(at 0% 0%, hsla(210,100%,98%,1) 0, transparent 50%),
-              radial-gradient(at 100% 0%, hsla(220,100%,94%,1) 0, transparent 50%),
-              radial-gradient(at 100% 100%, hsla(215,80%,92%,1) 0, transparent 50%),
-              radial-gradient(at 0% 100%, hsla(225,90%,96%,1) 0, transparent 50%);
-  background-color: #f9f9ff;
-  min-height: 100vh;
-}
-.black .mj-mesh-bg {
-  background: radial-gradient(at 0% 0%, hsla(270,30%,12%,1) 0, transparent 50%),
-              radial-gradient(at 100% 0%, hsla(240,40%,10%,1) 0, transparent 50%),
-              radial-gradient(at 100% 100%, hsla(280,30%,12%,1) 0, transparent 50%),
-              radial-gradient(at 0% 100%, hsla(230,40%,10%,1) 0, transparent 50%);
-  background-color: #09090b;
-}
+
 
 /* ─── Glass Panel ─── */
 .mj-glass {

@@ -223,8 +223,8 @@ export default function WalletHistoryScreen() {
                 <History size={20} className="text-cyan" />
                 <span className="badge-cyan text-xs">Giao Dịch</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">Lịch Sử Giao Dịch</h1>
-              <p className="text-sm text-secondary mt-1">Xem toàn bộ lịch sử biến động số dư ví của bạn</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-primary">Transaction History</h1>
+              <p className="text-sm text-secondary mt-1">View all your wallet transactions</p>
             </div>
             <button
               onClick={() => void fetchTransactions()}

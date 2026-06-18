@@ -170,7 +170,9 @@ export default function BrowseJobsScreen() {
     <AppLayout>
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-black text-primary mb-2">Browse Jobs</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
+            Browse <span className="text-blue-600 black:text-blue-400 italic font-light">Jobs</span>
+          </h1>
           <p className="browse-jobs-desc">Discover open opportunities with search, advanced filters, and saved jobs.</p>
         </div>
 

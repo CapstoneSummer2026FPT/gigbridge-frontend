@@ -39,7 +39,7 @@ export default function LandingPagePremium() {
   }, [isAuthenticated, isOnboardingComplete, role, navigate]);
 
   return (
-    <GuestLayout>
+    <GuestLayout excludeMeshGradient>
       <main className="relative min-h-screen w-screen overflow-x-hidden bg-background text-foreground transition-colors duration-300">
         <TopNav />
         <Hero />

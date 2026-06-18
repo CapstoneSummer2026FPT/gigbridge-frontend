@@ -1,66 +1,54 @@
 /* Bento grid and mesh background styles */
 .glass-panel {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .black .glass-panel {
-    background: rgba(18, 18, 26, 0.6);
-    border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 26, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .bento-card {
-    background: #ffffff;
-    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.03);
-    border: 1px solid #F3F4F6;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid #F3F4F6;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .black .bento-card {
-    background: #181820;
-    border-color: rgba(255, 255, 255, 0.05);
+  background: #181820;
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .bento-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0px 10px 30px rgba(0, 89, 187, 0.08);
+  transform: translateY(-4px);
+  box-shadow: 0px 10px 30px rgba(0, 89, 187, 0.08);
 }
 
 .black .bento-card:hover {
-    box-shadow: 0px 10px 30px rgba(159, 75, 255, 0.15);
+  box-shadow: 0px 10px 30px rgba(159, 75, 255, 0.15);
 }
 
-.mesh-gradient-bg {
-    background: radial-gradient(at 0% 0%, hsla(210,100%,98%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(220,100%,94%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 100%, hsla(215,80%,92%,1) 0, transparent 50%), 
-                radial-gradient(at 0% 100%, hsla(225,90%,96%,1) 0, transparent 50%);
-    background-color: #f9f9ff;
-}
 
-.black .mesh-gradient-bg {
-    background: radial-gradient(at 0% 0%, hsla(270,30%,12%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(240,40%,10%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 100%, hsla(280,30%,12%,1) 0, transparent 50%), 
-                radial-gradient(at 0% 100%, hsla(230,40%,10%,1) 0, transparent 50%);
-    background-color: #09090b;
-}
 
 .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+  width: 6px;
 }
+
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
+
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #dce2f7;
-    border-radius: 10px;
+  background: #dce2f7;
+  border-radius: 10px;
 }
 
 .black .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Compact layout overrides */
@@ -70,7 +58,7 @@
   flex-direction: row !important;
 }
 
-.compact-layout .bento-card > div:first-child {
+.compact-layout .bento-card>div:first-child {
   width: 64px !important;
   height: 64px !important;
   border-radius: 12px !important;
@@ -95,7 +83,7 @@
   margin-bottom: 0 !important;
 }
 
-.compact-layout .bento-card .grid-cols-3 > div {
+.compact-layout .bento-card .grid-cols-3>div {
   padding: 4px 8px !important;
   border: none !important;
   background: transparent !important;
@@ -124,7 +112,7 @@
     padding: 14px !important;
   }
 
-  .compact-layout .bento-card > div:first-child {
+  .compact-layout .bento-card>div:first-child {
     width: 56px !important;
     height: 56px !important;
   }
@@ -134,7 +122,7 @@
     gap: 8px !important;
   }
 
-  .compact-layout .bento-card .grid-cols-3 > div {
+  .compact-layout .bento-card .grid-cols-3>div {
     flex: 1 1 100px !important;
   }
 }

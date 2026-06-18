@@ -54,7 +54,9 @@ export default function SavedJobsScreen() {
     <AppLayout>
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-black text-primary mb-2">Saved Jobs</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
+            Saved <span className="text-blue-600 black:text-blue-400 italic font-light">Jobs</span>
+          </h1>
           <p className="browse-jobs-desc">Jobs you bookmarked for later review.</p>
         </div>
 
