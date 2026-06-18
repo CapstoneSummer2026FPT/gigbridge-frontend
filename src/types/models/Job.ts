@@ -62,17 +62,14 @@ export interface Job {
   skills: string[];
   budgetMin: number;
   budgetMax: number;
-  jobType: 'fixed' | 'hourly';
-  experienceLevel?: 'entry' | 'intermediate' | 'expert';
+  jobType: 'fixed';
   deadline?: string;
   status: 'draft' | 'open' | 'in_progress' | 'closed' | 'cancelled';
-  statusValue?: JobStatus | JobPostStatus | number | null;
-  visibility?: JobPostVisibility | number | null;
   proposalCount: number;
   viewCount: number;
   aiMatchScore?: number;
   isAiRecommended?: boolean;
-  eloPoints?: number;
+  clientEloPoints?: number;
   postedAt: string;
   isRemote: boolean;
   gigcoin_cost: number;
@@ -97,7 +94,7 @@ export interface JobPostSummaryDto {
   eloPoints?: number;
   createdAt: string;
   skillNames: string[];
-  status?: JobStatus | JobPostStatus | number | null;
+  status?: JobPostStatus | number | null;
   visibility?: JobPostVisibility | number | null;
 }
 
@@ -114,7 +111,7 @@ export interface GetMyJobPostDto {
   estimatedDuration?: string | null;
   maxHires?: number | null;
   location?: string | null;
-  status: JobPostStatus | JobStatus | number;
+  status: JobPostStatus | number;
   visibility?: JobPostVisibility | number | null;
   endDate?: string | null;
   isAigenerated?: boolean | null;
@@ -152,8 +149,8 @@ export interface JobPostDetailDto {
   endDate?: string | null;
   createdAt: string;
   eloPoints?: number;
-  status?: JobStatus | JobPostStatus | number | null;
-  visibility?: JobPostVisibility | number | null;
+  status?: JobStatus | number | null;
+  visibility?: number | null;
   skills: JobPostSkillDto[];
   attachments: JobPostAttachmentDto[];
 }
@@ -172,7 +169,7 @@ export interface GetMyJobPostDetailDto {
   maxHires?: number | null;
   location?: string | null;
   visibility?: JobPostVisibility | number | null;
-  status: JobPostStatus | JobStatus | number;
+  status: JobPostStatus | number;
   endDate?: string | null;
   createdAt: string;
   updatedAt?: string | null;
@@ -190,7 +187,6 @@ export interface CreateJobPostRequest {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  locationType?: number | null;
   location?: string | null;
   visibility?: number | null;
   endDate?: string | null;
@@ -211,7 +207,6 @@ export interface UpdateJobPostRequest {
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  locationType?: number | null;
   location?: string | null;
   visibility: JobPostVisibility | number;
   endDate?: string | null;
@@ -260,7 +255,7 @@ export interface UpdateBulkJobPostQuestionsRequest {
 }
 
 export interface UpdateJobPostStatusRequest {
-  status: JobPostStatus | JobStatus | number;
+  status: JobPostStatus | number;
 }
 
 export interface UpdateJobPostVisibilityRequest {

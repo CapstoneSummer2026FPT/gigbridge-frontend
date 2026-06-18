@@ -1,186 +1,285 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import {
-  Briefcase, Search, Plus, Eye, Users, Calendar,
-  CheckCircle, Ban, XCircle, LayoutGrid, AlignJustify, FileText,
-  HelpCircle, Send, Lock, Globe, UserRoundCheck,
-} from 'lucide-react';
 import { toast } from 'sonner';
-import { AppLayout } from '../../../shared/components/AppLayout';
-import { jobAPI } from '../../../api/jobAPI';
 import {
-  JobPostStatus,
-  JobPostVisibility,
-  type GetMyJobPostDto,
+  Ban,
+  Briefcase,
+  Calendar,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Edit,
+  Eye,
+  HelpCircle,
+  LayoutGrid,
+  AlignJustify,
+  Plus,
+  Search,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import { jobGetAPI, jobPutAPI } from '../../../api/jobAPI';
+import {
+  JobStatus,
+  type JobPostSummaryDto,
 } from '../../../types/models/Job';
 import '../styles/my-jobs-screen.css';
 
-type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
+type JobStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
-const STATUS_FILTERS: { key: StatusFilter; label: string; activeClass: string }[] = [
-  { key: 'all', label: 'All Jobs', activeClass: 'active-cyan' },
-  { key: 'draft', label: 'Draft', activeClass: 'active-gray' },
-  { key: 'open', label: 'Open', activeClass: 'active-green' },
-  { key: 'closed', label: 'Closed', activeClass: 'active-gray' },
-  { key: 'cancelled', label: 'Cancelled', activeClass: 'active-red' },
-  { key: 'unknown', label: 'Unknown', activeClass: 'active-amber' },
-];
+interface MyJob {
+  id: string;
+  title: string;
+  description: string;
+  budget: number;
+  status: JobStatus | null;
+  visibility: number | null;
+  proposalsCount: number;
+  viewsCount: number;
+  createdAt: string;
+  skills: string[];
+}
 
-const statusToFilter = (status?: number | null): StatusFilter => {
-  if (status === JobPostStatus.Draft) return 'draft';
-  if (status === JobPostStatus.Open) return 'open';
-  if (status === JobPostStatus.Closed) return 'closed';
-  if (status === JobPostStatus.Cancelled) return 'cancelled';
+const validStatusValues = new Set<number>([
+  JobStatus.Draft,
+  JobStatus.Open,
+  JobStatus.Closed,
+  JobStatus.Cancelled,
+]);
+
+const getKnownStatus = (status?: JobStatus | number | null): JobStatus | null => {
+  if (typeof status !== 'number' || !validStatusValues.has(status)) {
+    return null;
+  }
+
+  return status as JobStatus;
+};
+
+const getVisibility = (visibility?: number | null): number | null =>
+  typeof visibility === 'number' ? visibility : null;
+
+const getStatusFilterValue = (status: JobStatus | null): JobStatusFilter => {
+  if (status === JobStatus.Draft) return 'draft';
+  if (status === JobStatus.Open) return 'open';
+  if (status === JobStatus.Closed) return 'closed';
+  if (status === JobStatus.Cancelled) return 'cancelled';
   return 'unknown';
 };
 
-const statusLabel = (status?: number | null) => {
-  if (status === JobPostStatus.Draft) return 'Draft';
-  if (status === JobPostStatus.Open) return 'Open';
-  if (status === JobPostStatus.Closed) return 'Closed';
-  if (status === JobPostStatus.Cancelled) return 'Cancelled';
+const getStatusLabel = (status: JobStatus | null) => {
+  if (status === JobStatus.Draft) return 'Draft';
+  if (status === JobStatus.Open) return 'Open';
+  if (status === JobStatus.Closed) return 'Closed';
+  if (status === JobStatus.Cancelled) return 'Cancelled';
   return 'Unknown';
 };
 
-const statusBadgeClass = (status?: number | null) => {
-  if (status === JobPostStatus.Draft) return 'mj-badge-closed';
-  if (status === JobPostStatus.Open) return 'mj-badge-open';
-  if (status === JobPostStatus.Closed) return 'mj-badge-closed';
-  if (status === JobPostStatus.Cancelled) return 'mj-badge-cancelled';
-  return 'mj-badge-progress';
-};
-
-const visibilityLabel = (visibility?: number | null) => {
-  if (visibility === JobPostVisibility.Public) return 'Public';
-  if (visibility === JobPostVisibility.Private) return 'Private';
-  if (visibility === JobPostVisibility.InviteOnly) return 'Invite Only';
+const getVisibilityLabel = (visibility: number | null) => {
+  if (visibility === 0) return 'Public';
+  if (visibility === 1) return 'Private';
+  if (visibility === 2) return 'InviteOnly';
   return 'Unknown';
 };
 
-const visibilityIcon = (visibility?: number | null) => {
-  if (visibility === JobPostVisibility.Public) return <Globe size={13} />;
-  if (visibility === JobPostVisibility.Private) return <Lock size={13} />;
-  if (visibility === JobPostVisibility.InviteOnly) return <UserRoundCheck size={13} />;
-  return <HelpCircle size={13} />;
+const STATUS_BADGE: Record<string, string> = {
+  draft:     'mj-badge-draft',
+  open:      'mj-badge-open',
+  closed:    'mj-badge-closed',
+  cancelled: 'mj-badge-cancelled',
+  unknown:   'mj-badge-unknown',
 };
 
-const formatDate = (date: string) =>
-  new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const mapSummaryToMyJob = (job: JobPostSummaryDto): MyJob => ({
+  id: job.jobPostsId,
+  title: job.title,
+  description: job.descriptionPreview,
+  budget: job.budgetMax || job.budgetMin || 0,
+  status: getKnownStatus(job.status),
+  visibility: getVisibility(job.visibility),
+  proposalsCount: 0,
+  viewsCount: 0,
+  createdAt: job.createdAt || new Date().toISOString(),
+  skills: job.skillNames || [],
+});
 
-const formatBudget = (job: GetMyJobPostDto) => {
-  const min = job.budgetMin ?? null;
-  const max = job.budgetMax ?? null;
-
-  if (min !== null && max !== null) return `$${min.toLocaleString()}-${max.toLocaleString()}`;
-  if (min !== null) return `From $${min.toLocaleString()}`;
-  if (max !== null) return `Up to $${max.toLocaleString()}`;
-  return 'Not set';
-};
+const STATUS_TABS: { key: JobStatusFilter; label: string; activeClass: string }[] = [
+  { key: 'all',       label: 'All Jobs',   activeClass: 'active-cyan'  },
+  { key: 'draft',     label: 'Draft',      activeClass: 'active-amber' },
+  { key: 'open',      label: 'Open',       activeClass: 'active-green' },
+  { key: 'closed',    label: 'Closed',     activeClass: 'active-gray'  },
+  { key: 'cancelled', label: 'Cancelled',  activeClass: 'active-red'   },
+  { key: 'unknown',   label: 'Unknown',    activeClass: 'active-amber' },
+];
 
 export default function MyJobsScreen() {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
+
+  const [jobs, setJobs] = useState<MyJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<JobStatusFilter>('all');
   const [isCompact, setIsCompact] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  const [showCloseModal, setShowCloseModal] = useState<MyJob | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState<MyJob | null>(null);
 
-  const loadJobs = async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchMyJobs = async () => {
+    try {
+      setLoading(true);
+      setError('');
 
-    const response = await jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 });
-    if (!response.success || !response.data) {
-      setError(response.message || 'Unable to load your job posts.');
-      setJobs([]);
-      setIsLoading(false);
-      return;
+      const response = await jobGetAPI.getMyJobPosts();
+
+      if (!response.success) {
+        setError(response.message || 'Failed to load your job posts. Please try again.');
+        return;
+      }
+
+      setJobs((response.data || []).map(mapSummaryToMyJob));
+    } catch (fetchError) {
+      console.error('Failed to fetch my jobs:', fetchError);
+      setError('Failed to load your job posts. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setJobs(response.data);
-    setIsLoading(false);
   };
 
   useEffect(() => {
-    loadJobs();
+    fetchMyJobs();
   }, []);
 
-  const counts = useMemo(() => {
-    const base = {
-      all: jobs.length,
-      draft: 0,
-      open: 0,
-      closed: 0,
-      cancelled: 0,
-      unknown: 0,
+  const stats = useMemo(() => {
+    const draft = jobs.filter(job => job.status === JobStatus.Draft).length;
+    const open = jobs.filter(job => job.status === JobStatus.Open).length;
+    const closed = jobs.filter(job => job.status === JobStatus.Closed).length;
+    const cancelled = jobs.filter(job => job.status === JobStatus.Cancelled).length;
+    const unknown = jobs.filter(job => job.status === null).length;
+    const totalProposals = jobs.reduce((sum, job) => sum + job.proposalsCount, 0);
+    const totalViews = jobs.reduce((sum, job) => sum + job.viewsCount, 0);
+
+    return {
+      draft,
+      open,
+      closed,
+      cancelled,
+      unknown,
+      totalProposals,
+      totalViews,
+      total: jobs.length,
     };
-
-    for (const job of jobs) {
-      base[statusToFilter(job.status)] += 1;
-    }
-
-    return base;
   }, [jobs]);
 
   const filteredJobs = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
     return jobs.filter(job => {
-      const matchesSearch = !query ||
-        job.title.toLowerCase().includes(query) ||
-        job.description.toLowerCase().includes(query) ||
-        (job.categoryName || '').toLowerCase().includes(query) ||
-        (job.location || '').toLowerCase().includes(query);
+      const search = searchQuery.toLowerCase();
 
-      const matchesStatus = statusFilter === 'all' || statusToFilter(job.status) === statusFilter;
+      const matchesSearch =
+        searchQuery === '' ||
+        job.title.toLowerCase().includes(search) ||
+        job.description.toLowerCase().includes(search) ||
+        job.skills.some(skill => skill.toLowerCase().includes(search));
+
+      const matchesStatus =
+        statusFilter === 'all' || getStatusFilterValue(job.status) === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
   }, [jobs, searchQuery, statusFilter]);
 
-  const updateLocalJob = (jobPostId: string, patch: Partial<GetMyJobPostDto>) => {
-    setJobs(prev => prev.map(job => job.jobPostsId === jobPostId ? { ...job, ...patch } : job));
-  };
+  const formatDate = (date: string) => {
+    const parsedDate = new Date(date);
 
-  const patchStatus = async (job: GetMyJobPostDto, status: JobPostStatus, successMessage: string) => {
-    setPendingJobId(job.jobPostsId);
-    const response = await jobAPI.updateJobPostStatus(job.jobPostsId, { status });
-    setPendingJobId(null);
-
-    if (!response.success) {
-      toast.error(response.message || 'Unable to update JobPost status.');
-      return;
+    if (Number.isNaN(parsedDate.getTime())) {
+      return date;
     }
 
-    updateLocalJob(job.jobPostsId, { status });
-    toast.success(successMessage);
+    return parsedDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
-  const patchVisibility = async (job: GetMyJobPostDto, visibility: JobPostVisibility) => {
-    setPendingJobId(job.jobPostsId);
-    const response = await jobAPI.updateJobPostVisibility(job.jobPostsId, { visibility });
-    setPendingJobId(null);
+  const updateJobStatus = async (
+    jobId: string,
+    status: JobStatus,
+    successMessage: string
+  ) => {
+    try {
+      setUpdatingJobId(jobId);
+      setError('');
 
-    if (!response.success) {
-      toast.error(response.message || 'Unable to update JobPost visibility.');
-      return;
+      const response = await jobPutAPI.updateJobPostStatus(jobId, { status });
+
+      if (!response.success) {
+        setError(response.message || 'Failed to update JobPost status.');
+        return;
+      }
+
+      setJobs(prev =>
+        prev.map(job => job.id === jobId ? { ...job, status } : job)
+      );
+      toast.success(successMessage);
+    } catch (updateError) {
+      console.error('Failed to update job status:', updateError);
+      setError('Failed to update JobPost status. Please try again.');
+    } finally {
+      setUpdatingJobId(null);
+      setShowCloseModal(null);
+      setShowCancelModal(null);
     }
-
-    updateLocalJob(job.jobPostsId, { visibility });
-    toast.success('Visibility updated.');
   };
 
-  const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
-  const canClose = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open;
-  const canCancel = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open || job.status === JobPostStatus.Draft;
-  const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined && job.visibility !== null;
+  const updateJobVisibility = async (jobId: string, visibility: number) => {
+    try {
+      setUpdatingJobId(jobId);
+      setError('');
+
+      const response = await jobPutAPI.updateJobPostVisibility(jobId, { visibility });
+
+      if (!response.success) {
+        setError(response.message || 'Failed to update JobPost visibility.');
+        return;
+      }
+
+      setJobs(prev =>
+        prev.map(job => job.id === jobId ? { ...job, visibility } : job)
+      );
+      toast.success('JobPost visibility updated successfully.');
+    } catch (updateError) {
+      console.error('Failed to update job visibility:', updateError);
+      setError('Failed to update JobPost visibility. Please try again.');
+    } finally {
+      setUpdatingJobId(null);
+    }
+  };
+
+  const navigateToQuestions = (job: MyJob) => {
+    navigate(`/client/job-posts/${job.id}/questions`, {
+      state: {
+        status: job.status,
+        title: job.title,
+      },
+    });
+  };
+
+  const STAT_CARDS = [
+    { label: 'Total Jobs',    value: stats.total,          icon: <Briefcase   size={18}/>, bg: 'mj-bg-cyan',   color: 'mj-cyan'   },
+    { label: 'Draft',         value: stats.draft,          icon: <Clock       size={18}/>, bg: 'mj-bg-amber',  color: 'mj-amber'  },
+    { label: 'Open',          value: stats.open,           icon: <CheckCircle size={18}/>, bg: 'mj-bg-green',  color: 'mj-green'  },
+    { label: 'Closed',        value: stats.closed,         icon: <XCircle     size={18}/>, bg: 'mj-bg-gray',   color: 'mj-gray'   },
+    { label: 'Unknown',       value: stats.unknown,        icon: <HelpCircle  size={18}/>, bg: 'mj-bg-amber',  color: 'mj-amber'  },
+    { label: 'Proposals',     value: stats.totalProposals,  icon: <Users      size={18}/>, bg: 'mj-bg-purple', color: 'mj-purple' },
+  ];
 
   return (
     <AppLayout>
       <div className="mj-custom-scrollbar" style={{ padding: '32px 0 64px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+
+          {/* ── Page Header ── */}
           <header style={{ marginBottom: 40 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -193,13 +292,14 @@ export default function MyJobsScreen() {
                 My <span className="text-blue-600 black:text-blue-400 italic font-light">Job Posts</span>
               </h1>
               <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4 }}>
-                Manage your created JobPosts using the current backend data.
+                Manage, track, and analyse all your project listings in one place.
               </p>
             </div>
 
+            {/* Post Job CTA */}
             <div style={{ marginTop: 20 }}>
               <button
-                onClick={() => navigate('/jobs/post')}
+                onClick={() => navigate('/jobs/post/questions')}
                 className="mj-action-btn mj-btn-primary"
                 style={{ padding: '10px 22px', fontSize: 13 }}
               >
@@ -209,43 +309,41 @@ export default function MyJobsScreen() {
             </div>
           </header>
 
+          {/* ── Stat Cards ── */}
           <div className="mj-stat-grid" style={{ marginBottom: 32 }}>
-            {[
-              { label: 'Total Jobs', value: counts.all, icon: <Briefcase size={18} />, bg: 'mj-bg-cyan', color: 'mj-cyan' },
-              { label: 'Open', value: counts.open, icon: <CheckCircle size={18} />, bg: 'mj-bg-green', color: 'mj-green' },
-              { label: 'Draft', value: counts.draft, icon: <FileText size={18} />, bg: 'mj-bg-amber', color: 'mj-amber' },
-              { label: 'Closed', value: counts.closed, icon: <Ban size={18} />, bg: 'mj-bg-gray', color: 'mj-gray' },
-              { label: 'Unknown', value: counts.unknown, icon: <HelpCircle size={18} />, bg: 'mj-bg-purple', color: 'mj-purple' },
-            ].map(stat => (
-              <div key={stat.label} className="mj-stat-card">
+            {STAT_CARDS.map(s => (
+              <div key={s.label} className="mj-stat-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div className={`mj-stat-icon-wrap ${stat.bg}`}>
-                    <span className={stat.color}>{stat.icon}</span>
+                  <div className={`mj-stat-icon-wrap ${s.bg}`}>
+                    <span className={s.color}>{s.icon}</span>
                   </div>
                 </div>
                 <div>
-                  <div className="mj-stat-value">{stat.value}</div>
-                  <div className="mj-stat-label">{stat.label}</div>
+                  <div className="mj-stat-value">{s.value}</div>
+                  <div className="mj-stat-label">{s.label}</div>
                 </div>
               </div>
             ))}
           </div>
 
+          {/* ── Filter Bar ── */}
           <div className="mj-card mj-filter-bar" style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+              {/* Search */}
               <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
                 <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={event => setSearchQuery(event.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search jobs, skills..."
                   className="mj-input"
                 />
               </div>
 
+              {/* Status Tabs */}
               <div className="mj-glass" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 999, flexWrap: 'wrap' }}>
-                {STATUS_FILTERS.map(tab => (
+                {STATUS_TABS.map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => setStatusFilter(tab.key)}
@@ -259,13 +357,18 @@ export default function MyJobsScreen() {
                         padding: '1px 6px',
                         fontSize: 10,
                       }}>
-                        {counts[tab.key]}
+                        {tab.key === 'draft' ? stats.draft
+                          : tab.key === 'open' ? stats.open
+                          : tab.key === 'closed' ? stats.closed
+                          : tab.key === 'cancelled' ? stats.cancelled
+                          : stats.unknown}
                       </span>
                     )}
                   </button>
                 ))}
               </div>
 
+              {/* Layout Toggle */}
               <div className="mj-glass" style={{ display: 'flex', gap: 2, padding: 4, borderRadius: 10 }}>
                 <button
                   onClick={() => setIsCompact(false)}
@@ -282,21 +385,34 @@ export default function MyJobsScreen() {
               </div>
             </div>
 
+            {/* Results count */}
             <div style={{ marginTop: 10, fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
               Showing <strong style={{ color: '#374151' }}>{filteredJobs.length}</strong> of {jobs.length} jobs
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="mj-card mj-empty">
-              <p style={{ fontSize: 14, color: '#6b7280' }}>Loading your job posts...</p>
+          {/* Error */}
+          {error && (
+            <div className="mj-card" style={{ padding: 16, marginBottom: 24, textAlign: 'center' }}>
+              <p style={{ fontSize: 14, color: '#ef4444', marginBottom: 12 }}>{error}</p>
+              <button className="mj-action-btn mj-btn-cyan" onClick={fetchMyJobs}>
+                Retry
+              </button>
             </div>
-          ) : error ? (
+          )}
+
+          {/* ── Jobs List ── */}
+          {loading ? (
             <div className="mj-card mj-empty">
-              <XCircle size={36} className="mj-red" />
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">Unable to load jobs</p>
-              <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>{error}</p>
-              <button onClick={loadJobs} className="mj-action-btn mj-btn-primary">Retry</button>
+              <div className="mj-empty-icon-wrap">
+                <Briefcase size={36} className="mj-cyan" />
+              </div>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">
+                Loading jobs...
+              </p>
+              <p style={{ fontSize: 14, color: '#6b7280' }}>
+                Please wait while we fetch your JobPosts.
+              </p>
             </div>
           ) : filteredJobs.length === 0 ? (
             <div className="mj-card mj-empty">
@@ -309,131 +425,240 @@ export default function MyJobsScreen() {
               <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
                 {searchQuery ? 'Try adjusting your search or filter.' : 'Start by posting your first job.'}
               </p>
-              <button onClick={() => navigate('/jobs/post')} className="mj-action-btn mj-btn-primary">
+              <button onClick={() => navigate('/jobs/post/questions')} className="mj-action-btn mj-btn-primary">
                 <Plus size={16} /> Post a Job
               </button>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {filteredJobs.map(job => {
-                const isPending = pendingJobId === job.jobPostsId;
-                const statusKnown = job.status !== undefined && job.status !== null;
+              {filteredJobs.map(job => (
+                <div key={job.id} className="mj-card mj-job-card" style={isCompact ? { padding: '16px 20px' } : {}}>
 
-                return (
-                  <div key={job.jobPostsId} className="mj-card mj-job-card" style={isCompact ? { padding: '16px 20px' } : {}}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 12 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-                          <h3 className="mj-job-title">{job.title}</h3>
-                          <span className={`mj-badge ${statusBadgeClass(job.status)}`}>{statusLabel(job.status)}</span>
-                          <span className="mj-badge mj-badge-progress" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility)}
-                          </span>
-                        </div>
-                        {!isCompact && (
-                          <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.description}</p>
+                  {/* Top row: title + badge + budget */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+                        <h3 className="mj-job-title">{job.title}</h3>
+                        <span className={`mj-badge ${STATUS_BADGE[getStatusFilterValue(job.status)] || 'mj-badge-unknown'}`}>
+                          {getStatusLabel(job.status)}
+                        </span>
+                        <span className="mj-badge mj-badge-cyan">
+                          {getVisibilityLabel(job.visibility)}
+                        </span>
+                      </div>
+                      {!isCompact && (
+                        <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.description}</p>
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {job.skills.slice(0, 5).map(skill => (
+                          <span key={skill} className="mj-skill-tag">{skill}</span>
+                        ))}
+                        {job.skills.length > 5 && (
+                          <span className="mj-skill-tag" style={{ opacity: 0.6 }}>+{job.skills.length - 5}</span>
                         )}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {job.categoryName && <span className="mj-skill-tag">{job.categoryName}</span>}
-                          {job.location && <span className="mj-skill-tag">{job.location}</span>}
-                          {job.estimatedDuration && <span className="mj-skill-tag">{job.estimatedDuration}</span>}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div className="mj-budget-value">{formatBudget(job)}</div>
-                        <div className="mj-budget-label">Budget</div>
                       </div>
                     </div>
-
-                    {!isCompact && <hr className="mj-divider" style={{ marginBottom: 16 }} />}
-                    <div className="mj-meta-grid" style={isCompact ? { marginTop: 10 } : {}}>
-                      <div>
-                        <div className="mj-meta-label">Proposals</div>
-                        <div className="mj-meta-value mj-purple">
-                          <Users size={13} /> {job.proposalCount}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mj-meta-label">Status</div>
-                        <div className="mj-meta-value">
-                          <CheckCircle size={13} /> {statusLabel(job.status)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mj-meta-label">Posted</div>
-                        <div className="mj-meta-value">
-                          <Calendar size={13} /> {formatDate(job.createdAt)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mj-meta-label">Visibility</div>
-                        <div className="mj-meta-value">
-                          {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <hr className="mj-divider" style={{ margin: '16px 0' }} />
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <button onClick={() => navigate(`/jobs/my-jobs/${job.jobPostsId}`)} className="mj-action-btn mj-btn-cyan">
-                        <Eye size={14} /> View Detail
-                      </button>
-                      <button onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)} className="mj-action-btn mj-btn-cyan">
-                        <HelpCircle size={14} /> Manage Questions
-                      </button>
-                      {canPublish(job) && (
-                        <button
-                          onClick={() => patchStatus(job, JobPostStatus.Open, 'JobPost published.')}
-                          disabled={isPending}
-                          className="mj-action-btn mj-btn-green"
-                        >
-                          <Send size={14} /> Publish
-                        </button>
-                      )}
-                      {canClose(job) && (
-                        <button
-                          onClick={() => patchStatus(job, JobPostStatus.Closed, 'JobPost closed.')}
-                          disabled={isPending}
-                          className="mj-action-btn mj-btn-green"
-                        >
-                          <Ban size={14} /> Close
-                        </button>
-                      )}
-                      {canCancel(job) && (
-                        <button
-                          onClick={() => patchStatus(job, JobPostStatus.Cancelled, 'JobPost cancelled.')}
-                          disabled={isPending}
-                          className="mj-action-btn mj-btn-red"
-                        >
-                          <XCircle size={14} /> Cancel
-                        </button>
-                      )}
-                      {!statusKnown && (
-                        <span className="text-xs text-muted-foreground">Status-specific actions are unavailable until the backend returns status.</span>
-                      )}
-                      {canChangeVisibility(job) ? (
-                        <select
-                          value={job.visibility ?? ''}
-                          onChange={event => patchVisibility(job, Number(event.target.value) as JobPostVisibility)}
-                          disabled={isPending}
-                          className="mj-action-btn"
-                          style={{ border: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.04)', color: '#374151' }}
-                        >
-                          <option value={JobPostVisibility.Public}>Public</option>
-                          <option value={JobPostVisibility.Private}>Private</option>
-                          <option value={JobPostVisibility.InviteOnly}>Invite Only</option>
-                        </select>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Visibility update unavailable until the backend returns visibility.</span>
-                      )}
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div className="mj-budget-value">${job.budget.toLocaleString()}</div>
+                      <div className="mj-budget-label">Fixed Price</div>
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Meta row */}
+                  {!isCompact && <hr className="mj-divider" style={{ marginBottom: 16 }} />}
+                  <div className="mj-meta-grid" style={isCompact ? { marginTop: 10 } : {}}>
+                    <div>
+                      <div className="mj-meta-label">Proposals</div>
+                      <div className="mj-meta-value mj-purple">
+                        <Users size={13} /> {job.proposalsCount}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mj-meta-label">Views</div>
+                      <div className="mj-meta-value mj-cyan">
+                        <Eye size={13} /> {job.viewsCount}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mj-meta-label">Posted</div>
+                      <div className="mj-meta-value">
+                        <Calendar size={13} /> {formatDate(job.createdAt)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mj-meta-label">Status</div>
+                      <div className="mj-meta-value">
+                        {getStatusLabel(job.status)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <hr className="mj-divider" style={{ margin: '16px 0' }} />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    <button onClick={() => navigate(`/jobs/${job.id}`)} className="mj-action-btn mj-btn-cyan">
+                      <Eye size={14} /> View Details
+                    </button>
+
+                    <button onClick={() => navigateToQuestions(job)} className="mj-action-btn mj-btn-cyan">
+                      <HelpCircle size={14} /> Manage Questions
+                    </button>
+
+                    <select
+                      value={job.visibility ?? ''}
+                      onChange={event => updateJobVisibility(job.id, Number(event.target.value))}
+                      disabled={updatingJobId === job.id}
+                      className="mj-input"
+                      style={{ width: 'auto', padding: '6px 12px', fontSize: 12 }}
+                      title="Update visibility"
+                    >
+                      <option value="" disabled>Visibility</option>
+                      <option value="0">Public</option>
+                      <option value="1">Private</option>
+                      <option value="2">InviteOnly</option>
+                    </select>
+
+                    {job.status === JobStatus.Draft && (
+                      <button
+                        onClick={() => updateJobStatus(job.id, JobStatus.Open, 'JobPost published successfully.')}
+                        disabled={updatingJobId === job.id}
+                        className="mj-action-btn mj-btn-green"
+                      >
+                        <CheckCircle size={14} /> Publish
+                      </button>
+                    )}
+
+                    {job.proposalsCount > 0 && (
+                      <button onClick={() => navigate(`/proposals?job=${job.id}`)} className="mj-action-btn mj-btn-cyan">
+                        <Users size={14} /> Proposals ({job.proposalsCount})
+                      </button>
+                    )}
+
+                    {job.status === JobStatus.Open && (
+                      <>
+                        <button onClick={() => navigate(`/jobs/edit/${job.id}`)} className="mj-action-btn mj-btn-cyan">
+                          <Edit size={14} /> Edit
+                        </button>
+                        <button onClick={() => setShowCloseModal(job)} className="mj-action-btn mj-btn-green">
+                          <CheckCircle size={14} /> Mark Closed
+                        </button>
+                        <button onClick={() => setShowCancelModal(job)} className="mj-action-btn mj-btn-red">
+                          <Ban size={14} /> Cancel
+                        </button>
+                      </>
+                    )}
+
+                    {/* Compact: show budget badge on the right */}
+                    {isCompact && (
+                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: '#22C55E', fontWeight: 700, fontSize: 14 }}>
+                        <DollarSign size={14} /> ${job.budget.toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Close Job Modal ── */}
+      {showCloseModal && (
+        <div className="mj-modal-overlay" onClick={() => setShowCloseModal(null)}>
+          <div className="mj-modal-box" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+              <div className="mj-modal-icon-wrap mj-bg-green">
+                <CheckCircle size={24} className="mj-green" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f0f1a', margin: 0 }} className="black:text-white">Close Job Posting</h2>
+                <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>Mark this job as successfully completed</p>
+              </div>
+            </div>
+
+            <div className="mj-modal-info-box" style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 4 }} className="black:text-white">{showCloseModal.title}</p>
+              <p style={{ fontSize: 12, color: '#9ca3af' }}>ID: {showCloseModal.id}</p>
+            </div>
+
+            <div className="mj-modal-warn-green" style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#16a34a', marginBottom: 6 }}>Closing this job will:</p>
+              <ul style={{ fontSize: 12, color: '#15803d', lineHeight: 1.8, paddingLeft: 16, margin: 0 }}>
+                <li>Stop accepting new proposals</li>
+                <li>Mark the job as successfully completed</li>
+                <li>Hide it from job search results</li>
+              </ul>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => setShowCloseModal(null)} className="mj-action-btn" style={{ flex: 1, justifyContent: 'center', padding: '11px', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={() => updateJobStatus(
+                  showCloseModal.id,
+                  JobStatus.Closed,
+                  'JobPost closed successfully.'
+                )}
+                disabled={updatingJobId === showCloseModal.id}
+                className="mj-action-btn mj-btn-primary"
+                style={{ flex: 1, justifyContent: 'center', padding: '11px', fontSize: 14 }}
+              >
+                <CheckCircle size={16} /> Close Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cancel Job Modal ── */}
+      {showCancelModal && (
+        <div className="mj-modal-overlay" onClick={() => setShowCancelModal(null)}>
+          <div className="mj-modal-box" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+              <div className="mj-modal-icon-wrap mj-bg-red">
+                <Ban size={24} className="mj-red" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f0f1a', margin: 0 }} className="black:text-white">Cancel Job Posting</h2>
+                <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>This action cannot be undone</p>
+              </div>
+            </div>
+
+            <div className="mj-modal-info-box" style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 4 }} className="black:text-white">{showCancelModal.title}</p>
+              <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>ID: {showCancelModal.id}</p>
+              <p style={{ fontSize: 12, color: '#6b7280' }}>{showCancelModal.proposalsCount} proposals received</p>
+            </div>
+
+            <div className="mj-modal-warn-red" style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>⚠ Warning</p>
+              <p style={{ fontSize: 12, color: '#b91c1c', lineHeight: 1.7 }}>
+                Cancelling this job will permanently remove it and notify all freelancers who submitted proposals.
+                Consider closing it instead if the work was completed.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => setShowCancelModal(null)} className="mj-action-btn" style={{ flex: 1, justifyContent: 'center', padding: '11px', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, fontSize: 14, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
+                Keep Job
+              </button>
+              <button
+                onClick={() => updateJobStatus(
+                  showCancelModal.id,
+                  JobStatus.Cancelled,
+                  'JobPost cancelled successfully.'
+                )}
+                disabled={updatingJobId === showCancelModal.id}
+                className="mj-action-btn mj-btn-red"
+                style={{ flex: 1, justifyContent: 'center', padding: '11px', fontSize: 14, borderRadius: 12, background: '#EF4444', color: '#fff', border: 'none' }}
+              >
+                <Ban size={16} /> Cancel Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

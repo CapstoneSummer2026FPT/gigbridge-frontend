@@ -10,26 +10,18 @@ export const proposalStatusLabels: Record<ProposalStatus, string> = {
   [ProposalStatus.Withdrawn]: 'Withdrawn',
 };
 
-type ProposalStatusInput = ProposalViewModel['status'] | number | string | null | undefined;
-
-export const canSubmitDraftProposal = (status: ProposalStatusInput) =>
-  Number(status) === ProposalStatus.Draft;
-
-export const canWithdrawProposal = (status: ProposalStatusInput) => {
+export const canWithdrawProposal = (status: ProposalViewModel['status'] | number | null | undefined) => {
   const normalizedStatus = Number(status);
   return normalizedStatus === ProposalStatus.Pending || normalizedStatus === ProposalStatus.Shortlisted;
 };
 
-export const canEditProposal = (status: ProposalStatusInput) =>
+export const canEditProposal = (status: ProposalViewModel['status'] | number | null | undefined) =>
   Number(status) === ProposalStatus.Draft;
 
-export const canViewContract = (status: ProposalStatusInput) =>
+export const canViewContract = (status: ProposalViewModel['status'] | number | null | undefined) =>
   Number(status) === ProposalStatus.Accepted;
 
-export const canViewProposalAnswers = (status: ProposalStatusInput) =>
-  Number.isFinite(Number(status));
-
-export const getStatusLabel = (status: ProposalStatusInput) => {
+export const getStatusLabel = (status: ProposalViewModel['status'] | string | null | undefined) => {
   const normalizedStatus = Number(status);
   if (normalizedStatus in proposalStatusLabels) {
     return proposalStatusLabels[normalizedStatus as ProposalStatus];
@@ -38,7 +30,7 @@ export const getStatusLabel = (status: ProposalStatusInput) => {
   return 'Pending';
 };
 
-export const getStatusClass = (status: ProposalStatusInput) => {
+export const getStatusClass = (status: ProposalViewModel['status'] | string | null | undefined) => {
   const label = getStatusLabel(status).toLowerCase();
   if (label === 'draft') return 'proposal-status proposal-status-draft';
   if (label === 'shortlisted') return 'proposal-status proposal-status-shortlisted';

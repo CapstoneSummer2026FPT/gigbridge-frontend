@@ -1,10 +1,12 @@
 import { useNavigate, useParams } from 'react-router';
+import { useState } from 'react';
 import { Star, MapPin, CheckCircle, Briefcase, Users, TrendingUp, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, Bookmark } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useClientProfile } from '../hooks/useClientProfile';
 import { getCompanySizeLabel, CLIENT_TRUST_BADGES } from '../utils/profileUtils';
+import { ReportUserModal } from '../components/ReportUserModal';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
 
@@ -14,6 +16,8 @@ export default function ClientProfileScreen() {
   const { user: currentUser } = useApp();
 
   const targetId = id || 'u_client_1';
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   const {
     loading,
@@ -148,6 +152,14 @@ export default function ClientProfileScreen() {
                       <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
                       {isSaved ? 'Saved' : 'Save'}
                     </button>
+                    <button 
+                      onClick={() => setShowReportModal(true)}
+                      disabled={reportSubmitted}
+                      className="glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-error-container/10 transition-colors cursor-pointer flex-shrink-0 text-error disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Flag size={18} />
+                      {reportSubmitted ? 'Reported' : 'Report'}
+                    </button>
                   </>
                 )}
                 
@@ -173,16 +185,6 @@ export default function ClientProfileScreen() {
                         >
                           <Share2 size={16} />
                           Share
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setShowMoreMenu(false);
-                            alert('Report filed successfully.');
-                          }}
-                          className="w-full text-left px-4 py-2 text-body-md text-error hover:bg-error-container/10 flex items-center gap-2 transition-colors cursor-pointer"
-                        >
-                          <Flag size={16} />
-                          Report
                         </button>
                       </div>
                     </>
@@ -606,6 +608,15 @@ export default function ClientProfileScreen() {
           </div>
         )}
       </AnimatePresence>
+
+      {showReportModal && (
+        <ReportUserModal
+          userId={targetId}
+          userName={user.full_name}
+          onClose={() => setShowReportModal(false)}
+          onSubmitted={() => setReportSubmitted(true)}
+        />
+      )}
     </AppLayout>
   );
 }
