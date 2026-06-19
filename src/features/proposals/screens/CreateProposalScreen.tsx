@@ -409,7 +409,7 @@ export default function CreateProposalScreen() {
             </div>
             <div className="create-proposal-summary-row">
               <span>Type</span>
-              <strong>{job?.jobType === 'hourly' ? 'Hourly Rate' : 'Fixed Price'}</strong>
+              <strong>Fixed Price</strong>
             </div>
             <div className="create-proposal-summary-row">
               <span>Deadline</span>

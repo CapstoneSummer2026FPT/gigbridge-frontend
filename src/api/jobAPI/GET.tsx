@@ -2,10 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import { JobPostStatus } from '../../types/models/Job';
 import type {
-  GetMyJobPostDetailDto,
-  GetMyJobPostDto,
-  Job,
-  JobStatus,
+
   GetMyJobPostDetailDto,
   JobPostDetailDto,
   JobPostQueryParams,
@@ -19,12 +16,6 @@ type LegacyJobFilters = JobPostQueryParams & {
   category?: string;
   search?: string;
   aiRecommended?: boolean;
-};
-
-const experienceLevelMap: Record<number, Job['experienceLevel']> = {
-  0: 'entry',
-  1: 'intermediate',
-  2: 'expert',
 };
 
 const statusMap: Record<number, Job['status']> = {
@@ -46,6 +37,9 @@ const formatPostedAt = (createdAt?: string): string => {
   return `${diffDays} days ago`;
 };
 
+const getClientEloPoints = (job: { clientEloPoints?: number; eloPoints?: number }): number =>
+  job.clientEloPoints ?? job.eloPoints ?? 100;
+
 const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   id: job.jobPostsId,
   clientId: '',
@@ -55,8 +49,7 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   skills: job.skillNames || [],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
-  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
-  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
+  jobType: 'fixed',
   status: typeof job.status === 'number' ? statusMap[job.status] ?? 'open' : 'open',
   statusValue: (typeof job.status === 'number' ? job.status : null) as JobStatus | number | null,
   visibility: job.visibility ?? null,
@@ -64,7 +57,7 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
-  eloPoints: job.eloPoints ?? 100,
+  clientEloPoints: getClientEloPoints(job),
   gigcoin_cost: 0,
 });
 
@@ -124,8 +117,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   skills: job.skills?.map(skill => skill.skillName) || [],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
-  jobType: job.budgetType === 1 ? 'hourly' : 'fixed',
-  experienceLevel: experienceLevelMap[job.experienceLevelRequired ?? 1] ?? 'intermediate',
+  jobType: 'fixed',
   deadline: job.endDate ?? job.applicationDeadline ?? undefined,
   status: typeof job.status === 'number' ? statusMap[job.status] ?? 'open' : 'open',
   statusValue: (typeof job.status === 'number' ? job.status : null) as JobStatus | number | null,
@@ -134,7 +126,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
   isRemote: job.locationType == null || job.locationType === 0,
-  eloPoints: job.eloPoints ?? 100,
+  clientEloPoints: getClientEloPoints(job),
   gigcoin_cost: 0,
 });
 

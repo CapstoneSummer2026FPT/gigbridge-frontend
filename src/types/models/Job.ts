@@ -89,8 +89,7 @@ export interface JobPostSummaryDto {
   budgetMin?: number | null;
   budgetMax?: number | null;
   locationType?: number | null;
-  budgetType?: number | null;
-  experienceLevelRequired?: number | null;
+  clientEloPoints?: number;
   eloPoints?: number;
   createdAt: string;
   skillNames: string[];
@@ -143,11 +142,10 @@ export interface JobPostDetailDto {
   maxHires?: number | null;
   locationType?: number | null;
   location?: string | null;
-  budgetType?: number | null;
-  experienceLevelRequired?: number | null;
   applicationDeadline?: string | null;
   endDate?: string | null;
   createdAt: string;
+  clientEloPoints?: number;
   eloPoints?: number;
   status?: JobStatus | number | null;
   visibility?: number | null;

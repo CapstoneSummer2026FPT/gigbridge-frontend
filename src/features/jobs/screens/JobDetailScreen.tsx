@@ -13,7 +13,6 @@ import type { User } from '../../../types/models/User';
 import { UserRole } from '../../../types/models/User';
 import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
 import { canEditProposal, canViewContract, canWithdrawProposal, getStatusClass, getStatusLabel } from '../../proposals/utils/statusHelpers';
-import '../styles/job-detail-screen.css';
 
 type ManageJobPostState = {
   id: string;

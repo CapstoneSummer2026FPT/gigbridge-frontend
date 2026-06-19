@@ -12,10 +12,6 @@ import { SignatureStatus } from '../../../types/models/ESign';
 import { toast } from 'sonner';
 import '../styles/PostJobScreen.css';
 
-interface InterviewQuestionState {
-  questionText?: string;
-  isRequired?: boolean;
-}
 
 export default function CreatePostJobEsignScreen() {
   const navigate = useNavigate();
@@ -236,25 +232,7 @@ export default function CreatePostJobEsignScreen() {
         throw new Error(updateResponse.message || 'Lỗi khi lưu thông tin hợp đồng.');
       }
 
-      // 2. Save questions if questions list is provided
-      const interviewQuestions = Array.isArray(jobData?.interviewQuestions)
-        ? (jobData.interviewQuestions as InterviewQuestionState[])
-        : [];
-
-      if (interviewQuestions.length > 0) {
-        const questionsResponse = await jobAPI.createBulkJobPostQuestions(jobPostIdString, {
-          questions: interviewQuestions.map((question, index) => ({
-            questionText: (question.questionText || '').trim(),
-            orderIndex: index,
-            isRequired: Boolean(question.isRequired),
-          })),
-        });
-        if (!questionsResponse.success) {
-          console.warn('Lưu câu hỏi phỏng vấn thất bại, tiếp tục quy trình.');
-        }
-      }
-
-      // 3. Create/reuse backend E-Sign document after the job data is saved.
+      // 2. Create/reuse backend E-Sign document after the job data is saved.
       const documentResponse = await esignPostAPI.createDocumentFromJob(jobPostIdString);
       if (!documentResponse.success || !documentResponse.data?.documentId) {
         throw new Error(documentResponse.message || 'Could not prepare E-Sign document.');
@@ -262,7 +240,7 @@ export default function CreatePostJobEsignScreen() {
 
       setEsignDocumentId(documentResponse.data.documentId);
 
-      // 4. Submit signature. Backend finalizes the document and publishes the job.
+      // 3. Submit signature. Backend finalizes the document and publishes the job.
       const signatureResponse = await esignPostAPI.createSignature({
         documentId: documentResponse.data.documentId,
         signatureImageUrl: signatureImage,
