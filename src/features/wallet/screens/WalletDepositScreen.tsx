@@ -13,8 +13,6 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
-import { walletGetAPI } from '../../../api/walletAPI/GET';
-import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 
 const VND_PER_TOKEN = 1000;

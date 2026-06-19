@@ -14,6 +14,15 @@ export interface ConversationSummaryResponse {
   createdAt: string;
   lastMessageAt?: string | null;
   lastMessage?: any | null;
+  otherParticipantId?: string | null;
+  otherParticipantName?: string | null;
+  otherParticipantAvatar?: string | null;
+  otherParticipantRole?: number | null;
+  otherParticipantCompany?: string | null;
+  otherParticipantRoleTitle?: string | null;
+  lastOfferId?: string | null;
+  lastOfferPrice?: number | null;
+  lastOfferStatus?: number | null;
 }
 
 export interface ConversationMessageResponse {
@@ -35,6 +44,13 @@ export const messageGetAPI = {
    * GET /api/conversations
    */
   getConversations: async (): Promise<ApiResponse<ConversationSummaryResponse[]>> => {
+    return apiService.get<ConversationSummaryResponse[]>('conversations');
+  },
+
+  /**
+   * GET /api/conversations (alias to getConversations)
+   */
+  getMyConversations: async (): Promise<ApiResponse<ConversationSummaryResponse[]>> => {
     return apiService.get<ConversationSummaryResponse[]>('conversations');
   },
 

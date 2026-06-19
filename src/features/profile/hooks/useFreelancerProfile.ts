@@ -6,6 +6,7 @@ import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
 import type { Review } from '../../../types/models/Job';
+import { MOCK_BROWSE_JOBS } from '../../jobs/mock/data-for-BrowseJobsScreen';
 
 type ReviewViewModel = {
   id: string;

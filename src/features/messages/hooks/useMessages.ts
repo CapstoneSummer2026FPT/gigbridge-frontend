@@ -10,6 +10,9 @@ import {
 } from '../mock/data-for-MessagesScreen';
 
 import { UserRole } from '../../../types';
+import * as signalR from '@microsoft/signalr';
+import { messageGetAPI } from '../../../api/messageAPI/GET';
+import { messagePostAPI } from '../../../api/messageAPI/POST';
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -19,6 +22,76 @@ function formatTime(iso: string) {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function mapOfferStatusToDealStatus(status: number | null | undefined): MsgConversation['dealStatus'] {
+  if (status === 0) return 'pending_freelancer';
+  if (status === 1) return 'agreed';
+  if (status === 2) return 'declined';
+  if (status === 3) return 'pending_client';
+  if (status === 4) return 'declined';
+  if (status === 5) return 'declined';
+  return 'idle';
+}
+
+function mapBackendConversation(c: any, currentUserId: string): MsgConversation {
+  const isClient = c.otherParticipantRole === 0;
+  return {
+    id: c.conversationId,
+    roomType: c.conversationType === 4 ? 'invited' : 'negotiation',
+    roomId: c.conversationType === 4 ? 'room_invited' : 'room_negotiation',
+    participantId: c.otherParticipantId || '',
+    participantName: c.otherParticipantName || 'Partner',
+    participantAvatar: c.otherParticipantAvatar || 'https://api.dicebear.com/9.x/avataaars/svg?seed=partner',
+    participantRole: c.otherParticipantRoleTitle || (isClient ? 'Client' : 'Freelancer'),
+    participantCompany: c.otherParticipantCompany || '',
+    participantOnline: true,
+    job: {
+      id: c.jobPostId || '',
+      title: c.title || 'Untitled Job',
+      budget: c.lastOfferPrice ? `$${c.lastOfferPrice}` : 'N/A',
+      category: '',
+    },
+    lastMessage: c.lastMessage?.content || '',
+    lastMessageAt: c.lastMessageAt || c.createdAt || new Date().toISOString(),
+    unreadCount: c.unreadCount || 0,
+    isMuted: false,
+    dealStatus: mapOfferStatusToDealStatus(c.lastOfferStatus),
+    proposedPrice: c.lastOfferPrice ? c.lastOfferPrice.toString() : undefined,
+    conversationType: c.conversationType,
+  };
+}
+
+function mapBackendMessage(m: any): MsgMessage {
+  let msgType = 'text';
+  if (m.messageType === 1) msgType = 'image';
+  else if (m.messageType === 2) msgType = 'file';
+  else if (m.messageType === 3) msgType = 'system';
+  else if (m.messageType === 4) msgType = 'deal';
+
+  let dealStatus: MsgMessage['dealStatus'] = undefined;
+  if (m.messageType === 4) {
+    dealStatus = 'pending_freelancer'; // Default
+  }
+
+  const firstAttachment = m.attachments && m.attachments.length > 0 ? m.attachments[0] : null;
+
+  return {
+    id: m.messageId,
+    content: m.content || '',
+    conversationId: m.conversationId,
+    senderId: m.senderUserId || 'system',
+    type: msgType,
+    createdAt: m.sentAt,
+    isRead: true,
+    fileUrl: firstAttachment?.fileUrl,
+    fileName: firstAttachment?.fileName,
+    dealStatus: dealStatus,
+  };
+}
+
+function sortConversations(convs: MsgConversation[]): MsgConversation[] {
+  return [...convs].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
 }
 
 export function useMessages() {
@@ -79,6 +152,9 @@ export function useMessages() {
   const [showConvMenu, setShowConvMenu] = useState(false);
   const [showNegModal, setShowNegModal] = useState(false);
   const convMenuRef = useRef<HTMLDivElement>(null);
+
+  const [hubConnection, setHubConnection] = useState<signalR.HubConnection | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const negStatus = activeConv?.roomId === 'room_negotiation' ? 'accepted' : 'idle';
 
@@ -206,18 +282,25 @@ export function useMessages() {
         }));
       }
 
+      const targetConvId = mapped.conversationId;
       setConversationsState(prev =>
         sortConversations(
-          prev.map(conversation =>
-            conversation.id === conversationId
-              ? {
-                  ...conversation,
-                  lastMessage: mapped.content || getMessagePreview(payload),
-                  lastMessageAt: mapped.createdAt || new Date().toISOString(),
-                  unreadCount: conversation.id === activeConvId ? 0 : conversation.unreadCount + 1,
-                }
-              : conversation
-          )
+          prev.map(conversation => {
+            if (conversation.id === targetConvId) {
+              let lastMsgText = mapped.content || '';
+              if (mapped.type === 'image') lastMsgText = '📷 Image';
+              else if (mapped.type === 'file') lastMsgText = '📁 File';
+              else if (mapped.type === 'deal') lastMsgText = '💼 Deal Proposal';
+
+              return {
+                ...conversation,
+                lastMessage: lastMsgText,
+                lastMessageAt: mapped.createdAt || new Date().toISOString(),
+                unreadCount: conversation.id === activeConvId ? 0 : conversation.unreadCount + 1,
+              };
+            }
+            return conversation;
+          })
         )
       );
     };
@@ -432,6 +515,7 @@ export function useMessages() {
     user,
     role,
     isClient,
+    loading,
     navigate,
     openRooms,
     setOpenRooms,
@@ -462,8 +546,6 @@ export function useMessages() {
     setShowConvMenu,
     showNegModal,
     setShowNegModal,
-    negRequestMap,
-    setNegRequestMap,
     negStatus,
     chatEndRef,
     convMenuRef,

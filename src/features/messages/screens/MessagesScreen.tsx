@@ -14,6 +14,7 @@ export default function MessagesScreen() {
     user,
     role,
     isClient,
+    loading,
     navigate,
     openRooms,
     conversationsState,
@@ -52,6 +53,16 @@ export default function MessagesScreen() {
     totalUnread,
     formatTime,
   } = useMessages();
+
+  if (loading) {
+    return (
+      <AppLayout fullWidth>
+        <div className="flex items-center justify-center h-[calc(100vh-5rem)]">
+          <p className="text-muted-foreground animate-pulse font-semibold">Loading conversations...</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout fullWidth>
@@ -173,7 +184,9 @@ export default function MessagesScreen() {
 
           {/* ── Column 2: Chat Area (Center Pane) ────────────────────────── */}
           <section className="flex-1 flex flex-col bg-muted/10 overflow-hidden relative">
-            {/* Header info / Context of Job */}
+            {activeConv ? (
+              <>
+                {/* Header info / Context of Job */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-card shadow-sm z-10 animate-in fade-in duration-200">
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -609,12 +622,25 @@ export default function MessagesScreen() {
                 </div>
               </div>
             </div>
+            </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-card">
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground mb-4">
+                  <MessageSquare size={32} />
+                </div>
+                <h3 className="text-base font-bold text-foreground">No active conversation</h3>
+                <p className="text-xs text-muted-foreground max-w-xs mt-1">
+                  Start a negotiation or view invited jobs to begin messaging with clients or freelancers.
+                </p>
+              </div>
+            )}
           </section>
 
           {/* ── Column 3: Contextual Info (Right Pane – Collapsible) ─────── */}
-          <aside
-            className={`flex flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
-          >
+          {activeConv && (
+            <aside
+              className={`flex flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
+            >
             {/* Profile */}
             <div className="p-6 text-center border-b border-border">
               <div className="relative inline-block mb-4">
@@ -735,6 +761,7 @@ export default function MessagesScreen() {
               </button>
             </div>
           </aside>
+          )}
         </div>
       </div>
 
