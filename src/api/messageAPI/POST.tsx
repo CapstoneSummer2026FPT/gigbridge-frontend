@@ -40,6 +40,13 @@ export const messagePostAPI = {
   },
 
   /**
+   * POST /api/conversations/proposal/{proposalId}/negotiation
+   */
+  startNegotiationFromProposal: async (proposalId: string): Promise<ApiResponse<string>> => {
+    return apiService.post<string>(`conversations/proposal/${proposalId}/negotiation`);
+  },
+
+  /**
    * POST /api/negotiation-offers
    */
   createFinalOffer: async (payload: CreateFinalOfferRequest): Promise<ApiResponse<string>> => {

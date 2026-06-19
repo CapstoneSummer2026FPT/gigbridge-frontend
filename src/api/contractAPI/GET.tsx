@@ -5,6 +5,132 @@ import type { ContractDto, ContractQueryParams, Milestone, MilestoneAttachment }
 const contractsUrl = 'Contracts';
 const milestonesUrl = 'Milestones';
 
+interface BackendContractResponse {
+  contractsId?: string;
+  ContractsId?: string;
+  contractId?: string;
+  ContractId?: string;
+  jobPostsId?: string;
+  JobPostsId?: string;
+  jobPostId?: string;
+  JobPostId?: string;
+  clientProfilesId?: string;
+  ClientProfilesId?: string;
+  clientProfileId?: string;
+  ClientProfileId?: string;
+  freelancerProfilesId?: string | null;
+  FreelancerProfilesId?: string | null;
+  freelancerProfileId?: string | null;
+  FreelancerProfileId?: string | null;
+  proposalsId?: string | null;
+  ProposalsId?: string | null;
+  proposalId?: string | null;
+  ProposalId?: string | null;
+  title?: string;
+  Title?: string;
+  description?: string | null;
+  Description?: string | null;
+  totalBudget?: number;
+  TotalBudget?: number;
+  status?: number;
+  Status?: number;
+  startDate?: string | null;
+  StartDate?: string | null;
+  endDate?: string | null;
+  EndDate?: string | null;
+  completedAt?: string | null;
+  CompletedAt?: string | null;
+  esignContractPdfUrl?: string | null;
+  EsignContractPdfUrl?: string | null;
+  createdAt?: string;
+  CreatedAt?: string;
+  updatedAt?: string | null;
+  UpdatedAt?: string | null;
+  clientName?: string;
+  ClientName?: string;
+  freelancerName?: string | null;
+  FreelancerName?: string | null;
+}
+
+interface BackendMilestoneResponse {
+  id?: string;
+  milestoneId?: string;
+  MilestoneId?: string;
+  milestonesId?: string;
+  MilestonesId?: string;
+  contract_id?: string;
+  contractId?: string;
+  ContractId?: string;
+  contractsId?: string;
+  ContractsId?: string;
+  title?: string;
+  Title?: string;
+  amount?: number;
+  Amount?: number;
+  due_date?: string | null;
+  dueDate?: string | null;
+  DueDate?: string | null;
+  status?: number;
+  Status?: number;
+  paid_at?: string | null;
+  lastReleasedAt?: string | null;
+  LastReleasedAt?: string | null;
+  releasedAmount?: number;
+  ReleasedAmount?: number;
+}
+
+const getValue = <T,>(source: Record<string, unknown>, ...keys: string[]): T | undefined => {
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== undefined && value !== null) {
+      return value as T;
+    }
+  }
+  return undefined;
+};
+
+const normalizeContract = (contract: BackendContractResponse): ContractDto => {
+  const source = contract as Record<string, unknown>;
+
+  return {
+    contractsId: String(getValue(source, 'contractsId', 'ContractsId', 'contractId', 'ContractId') ?? ''),
+    jobPostsId: String(getValue(source, 'jobPostsId', 'JobPostsId', 'jobPostId', 'JobPostId') ?? ''),
+    clientProfilesId: String(getValue(source, 'clientProfilesId', 'ClientProfilesId', 'clientProfileId', 'ClientProfileId') ?? ''),
+    freelancerProfilesId: getValue<string | null>(source, 'freelancerProfilesId', 'FreelancerProfilesId', 'freelancerProfileId', 'FreelancerProfileId') ?? null,
+    proposalsId: getValue<string | null>(source, 'proposalsId', 'ProposalsId', 'proposalId', 'ProposalId') ?? null,
+    title: String(getValue(source, 'title', 'Title') ?? 'Untitled Contract'),
+    description: getValue<string | undefined>(source, 'description', 'Description'),
+    totalBudget: Number(getValue(source, 'totalBudget', 'TotalBudget') ?? 0),
+    status: Number(getValue(source, 'status', 'Status') ?? 0),
+    startDate: getValue<string | undefined>(source, 'startDate', 'StartDate'),
+    endDate: getValue<string | undefined>(source, 'endDate', 'EndDate'),
+    completedAt: getValue<string | undefined>(source, 'completedAt', 'CompletedAt'),
+    esignContractPdfUrl: getValue<string | undefined>(source, 'esignContractPdfUrl', 'EsignContractPdfUrl'),
+    createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
+    updatedAt: getValue<string | undefined>(source, 'updatedAt', 'UpdatedAt'),
+    clientName: getValue<string | undefined>(source, 'clientName', 'ClientName'),
+    freelancerName: getValue<string | null>(source, 'freelancerName', 'FreelancerName') ?? null,
+  };
+};
+
+const normalizeMilestone = (milestone: BackendMilestoneResponse): Milestone => {
+  const source = milestone as Record<string, unknown>;
+  const id = String(getValue(source, 'id', 'milestoneId', 'MilestoneId', 'milestonesId', 'MilestonesId') ?? '');
+  const contractId = String(getValue(source, 'contract_id', 'contractId', 'ContractId', 'contractsId', 'ContractsId') ?? '');
+  const status = Number(getValue(source, 'status', 'Status') ?? 0);
+  const paidAt = getValue<string | null>(source, 'paid_at', 'lastReleasedAt', 'LastReleasedAt');
+
+  return {
+    id,
+    contract_id: contractId,
+    title: String(getValue(source, 'title', 'Title') ?? 'Untitled Milestone'),
+    amount: Number(getValue(source, 'amount', 'Amount') ?? 0),
+    due_date: getValue<string | undefined>(source, 'due_date', 'dueDate', 'DueDate') ?? '',
+    status,
+    paid_at: paidAt ?? null,
+  };
+};
+
 export const contractGetAPI = {
   /**
    * GET /api/Contracts/all
@@ -24,42 +150,29 @@ export const contractGetAPI = {
     params: ContractQueryParams = {}
   ): Promise<ApiResponse<ContractDto[]>> => {
     try {
-      const convRes = await apiService.get<any[]>('conversations');
-      if (!convRes.success || !convRes.data) {
-        return { success: false, statusCode: convRes.statusCode, message: convRes.message, data: [] };
+      const response = await apiService.get<BackendContractResponse[]>(`${contractsUrl}/my-contracts`, params);
+      if (!response.success || !response.data) {
+        return {
+          success: response.success,
+          statusCode: response.statusCode,
+          message: response.message,
+          errors: response.errors,
+          data: [],
+        };
       }
-      const uniqueJobPostIds = Array.from(new Set(
-        convRes.data
-          .filter(c => c.contractId || c.ContractId)
-          .map(c => c.jobPostId || c.JobPostId)
-      ));
-      const contracts: ContractDto[] = [];
-      for (const jobPostId of uniqueJobPostIds) {
-        const contractRes = await apiService.get<any>(`${contractsUrl}/job/${jobPostId}`);
-        if (contractRes.success && contractRes.data) {
-          // Normalize to frontend ContractDto structure if needed
-          const contract = contractRes.data;
-          contracts.push({
-            contractsId: contract.contractId || contract.contractsId,
-            jobPostsId: contract.jobPostId || contract.jobPostsId,
-            clientProfilesId: contract.clientProfileId || contract.clientProfilesId,
-            freelancerProfilesId: contract.freelancerProfileId || contract.freelancerProfilesId,
-            proposalsId: contract.proposalId || contract.proposalsId,
-            title: contract.title,
-            description: contract.description,
-            totalBudget: contract.totalBudget,
-            status: contract.status,
-            startDate: contract.startDate,
-            endDate: contract.endDate,
-            esignContractPdfUrl: contract.esignContractPdfUrl,
-            createdAt: contract.createdAt,
-            updatedAt: contract.updatedAt,
-          });
-        }
-      }
-      return { success: true, statusCode: 200, message: 'Success', data: contracts };
-    } catch (err: any) {
-      return { success: false, statusCode: 500, message: err.message || 'Failed to retrieve user contracts', data: [] };
+      return {
+        success: true,
+        statusCode: response.statusCode,
+        message: response.message,
+        data: response.data.map(normalizeContract),
+      };
+    } catch (err: unknown) {
+      return {
+        success: false,
+        statusCode: 500,
+        message: err instanceof Error ? err.message : 'Failed to retrieve user contracts',
+        data: [],
+      };
     }
   },
 
@@ -71,50 +184,27 @@ export const contractGetAPI = {
     id: string
   ): Promise<ApiResponse<ContractDto>> => {
     try {
-      const convRes = await apiService.get<any[]>('conversations');
-      if (convRes.success && convRes.data) {
-        const conversation = convRes.data.find(c => (c.contractId || c.ContractId) === id);
-        const jobPostId = conversation?.jobPostId || conversation?.JobPostId;
-        if (jobPostId) {
-          const contractRes = await apiService.get<any>(`${contractsUrl}/job/${jobPostId}`);
-          if (contractRes.success && contractRes.data) {
-            const contract = contractRes.data;
-            return {
-              success: true,
-              statusCode: 200,
-              message: 'Success',
-              data: {
-                contractsId: contract.contractId || contract.contractsId,
-                jobPostsId: contract.jobPostId || contract.jobPostsId,
-                clientProfilesId: contract.clientProfileId || contract.clientProfilesId,
-                freelancerProfilesId: contract.freelancerProfileId || contract.freelancerProfilesId,
-                proposalsId: contract.proposalId || contract.proposalsId,
-                title: contract.title,
-                description: contract.description,
-                totalBudget: contract.totalBudget,
-                status: contract.status,
-                startDate: contract.startDate,
-                endDate: contract.endDate,
-                esignContractPdfUrl: contract.esignContractPdfUrl,
-                createdAt: contract.createdAt,
-                updatedAt: contract.updatedAt,
-              }
-            };
-          }
-        }
+      const response = await apiService.get<BackendContractResponse>(`${contractsUrl}/${id}`);
+      if (response.success && response.data) {
+        return {
+          success: true,
+          statusCode: response.statusCode,
+          message: response.message,
+          data: normalizeContract(response.data),
+        };
       }
       return {
         success: false,
-        statusCode: 404,
-        message: 'Contract not found',
-        data: undefined as any
+        statusCode: response.statusCode,
+        message: response.message || 'Contract not found',
+        data: undefined,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
         success: false,
         statusCode: 500,
-        message: err.message || 'Failed to get contract details',
-        data: undefined as any
+        message: err instanceof Error ? err.message : 'Failed to get contract details',
+        data: undefined,
       };
     }
   },
@@ -158,7 +248,11 @@ export const contractGetAPI = {
   getMilestoneById: async (
     milestoneId: string
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.get<Milestone>(`${milestonesUrl}/${milestoneId}`);
+    const response = await apiService.get<BackendMilestoneResponse>(`${milestonesUrl}/${milestoneId}`);
+    return {
+      ...response,
+      data: response.data ? normalizeMilestone(response.data) : undefined,
+    };
   },
 
   /**
@@ -168,7 +262,11 @@ export const contractGetAPI = {
   getMilestonesByContract: async (
     contractId: string
   ): Promise<ApiResponse<Milestone[]>> => {
-    return apiService.get<Milestone[]>(`${milestonesUrl}/contract/${contractId}`);
+    const response = await apiService.get<BackendMilestoneResponse[]>(`${milestonesUrl}/contract/${contractId}`);
+    return {
+      ...response,
+      data: response.data ? response.data.map(normalizeMilestone) : [],
+    };
   },
 
   /**

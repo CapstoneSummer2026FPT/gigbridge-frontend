@@ -48,8 +48,8 @@ export interface ContractDto {
   contractsId: string;
   jobPostsId: string;
   clientProfilesId: string;
-  freelancerProfilesId: string;
-  proposalsId?: string;
+  freelancerProfilesId?: string | null;
+  proposalsId?: string | null;
   title: string;
   description?: string;
   totalBudget: number;
@@ -60,6 +60,8 @@ export interface ContractDto {
   esignContractPdfUrl?: string;
   createdAt: string;
   updatedAt?: string;
+  clientName?: string;
+  freelancerName?: string | null;
 }
 
 export interface CreateContractDto {

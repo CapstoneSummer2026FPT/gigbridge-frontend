@@ -31,9 +31,9 @@ import {
   getContractStatusClass,
   formatContractAmount,
   formatContractDate,
+  calculateMilestoneCompletion,
 } from '../../../shared/utils/contractUtils';
 import { MilestoneDetailCard } from '../components/MilestoneDetailCard';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
 import '../styles/freelancer-contract-screen.css';
 
 interface MilestoneDisplay extends Milestone {
@@ -46,12 +46,24 @@ interface ContractWithMilestones extends ContractDto {
   clientName?: string;
 }
 
+const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
+  const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
+  const isCompleted = milestone.status === MilestoneStatus.Paid || milestone.status === MilestoneStatus.Approved;
+
+  return {
+    ...milestone,
+    percentageComplete: calculateMilestoneCompletion(milestone.status),
+    isOverdue: Boolean(dueDate && !isCompleted && dueDate < new Date()),
+  };
+};
+
 export default function FreelancerContractScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
   const [contracts, setContracts] = useState<ContractWithMilestones[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<ContractWithMilestones[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'completed'>('active');
   const [sortBy, setSortBy] = useState<'date' | 'value'>('date');
@@ -64,6 +76,7 @@ export default function FreelancerContractScreen() {
     const loadContracts = async () => {
       try {
         setLoading(true);
+        setError(null);
 
         const params: ContractQueryParams = {
           pageIndex: 0,
@@ -72,13 +85,29 @@ export default function FreelancerContractScreen() {
 
         const response = await contractGetAPI.getMyContracts(params);
 
-        if (response.success && response.data && response.data.length > 0) {
-          setContracts(response.data as ContractWithMilestones[]);
-        } else {
-          setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
+        if (!response.success) {
+          setContracts([]);
+          setError(response.message || 'Failed to load contracts.');
+          return;
         }
-      } catch (err) {
-        setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
+
+        const contractsWithMilestones = await Promise.all(
+          (response.data || []).map(async (contract): Promise<ContractWithMilestones> => {
+            const milestonesResponse = await contractGetAPI.getMilestonesByContract(contract.contractsId);
+
+            return {
+              ...contract,
+              milestones: milestonesResponse.success
+                ? (milestonesResponse.data || []).map(mapMilestoneForDisplay)
+                : [],
+            };
+          })
+        );
+
+        setContracts(contractsWithMilestones);
+      } catch (err: unknown) {
+        setContracts([]);
+        setError(err instanceof Error ? err.message : 'Failed to load contracts.');
       } finally {
         setLoading(false);
       }
@@ -87,7 +116,7 @@ export default function FreelancerContractScreen() {
     if (user?.id) {
       loadContracts();
     } else {
-      setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
+      setContracts([]);
       setLoading(false);
     }
   }, [user?.id]);
@@ -111,6 +140,7 @@ export default function FreelancerContractScreen() {
       result = result.filter(
         c =>
           c.title.toLowerCase().includes(query) ||
+          (c.clientName && c.clientName.toLowerCase().includes(query)) ||
           (c.clientProfilesId && c.clientProfilesId.toLowerCase().includes(query))
       );
     }
@@ -206,6 +236,13 @@ export default function FreelancerContractScreen() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="mx-1 mb-4 p-3 rounded-xl border border-red-500/20 bg-red-500/10 text-red-500 text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Tabs & Controls */}
         <motion.div

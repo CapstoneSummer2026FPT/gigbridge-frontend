@@ -17,6 +17,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
+import { messagePostAPI } from '../../../api/messageAPI/POST';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
 import {
   ProposalStatus,
@@ -74,6 +75,7 @@ export default function ClientProposalsScreen() {
   const [detailError, setDetailError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState<ProposalStatusValue | null>(null);
+  const [openingNegotiationId, setOpeningNegotiationId] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<ProposalStatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('submittedAt');
@@ -207,6 +209,21 @@ export default function ClientProposalsScreen() {
     navigate(`/proposals?job=${jobPostId}`, { replace: true });
   };
 
+  const openNegotiation = async (proposalId: string) => {
+    setOpeningNegotiationId(proposalId);
+    setStatusMessage('');
+
+    const response = await messagePostAPI.startNegotiationFromProposal(proposalId);
+    setOpeningNegotiationId(null);
+
+    if (!response.success || !response.data) {
+      setStatusMessage(response.message || 'Unable to open negotiation conversation.');
+      return;
+    }
+
+    navigate('/messages', { state: { activeConvId: response.data } });
+  };
+
   const updateProposalStatus = async (proposalId: string, status: ProposalStatusValue) => {
     setUpdatingStatus(status);
     setStatusMessage('');
@@ -229,6 +246,13 @@ export default function ClientProposalsScreen() {
       ? { ...prev, status, updatedAt: now }
       : prev
     );
+
+    if (status === ProposalStatus.Accepted) {
+      setStatusMessage('Proposal accepted. Opening negotiation...');
+      await openNegotiation(proposalId);
+      return;
+    }
+
     setStatusMessage('Proposal status updated.');
   };
 
@@ -426,7 +450,16 @@ export default function ClientProposalsScreen() {
                         View Answers
                       </button>
 
-                      {canClientUpdateStatus(proposalDetail.status) ? (
+                      {Number(proposalDetail.status) === ProposalStatus.Accepted ? (
+                        <button
+                          onClick={() => openNegotiation(proposalDetail.proposalId)}
+                          disabled={openingNegotiationId === proposalDetail.proposalId}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
+                        >
+                          <CheckCircle size={16} />
+                          {openingNegotiationId === proposalDetail.proposalId ? 'Opening...' : 'Vào đàm phán'}
+                        </button>
+                      ) : canClientUpdateStatus(proposalDetail.status) ? (
                         <>
                           {Number(proposalDetail.status) === ProposalStatus.Pending && (
                             <button

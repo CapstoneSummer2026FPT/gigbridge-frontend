@@ -38,6 +38,7 @@ function mapBackendConversation(c: any, currentUserId: string): MsgConversation 
   const isClient = c.otherParticipantRole === 0;
   return {
     id: c.conversationId,
+    proposalId: c.proposalId ?? c.ProposalId ?? null,
     roomType: c.conversationType === 4 ? 'invited' : 'negotiation',
     roomId: c.conversationType === 4 ? 'room_invited' : 'room_negotiation',
     participantId: c.otherParticipantId || '',
@@ -171,8 +172,12 @@ export function useMessages() {
         // Auto select active conversation
         if (mapped.length > 0) {
           const stateConvId = location.state?.activeConvId;
-          const found = mapped.find((c: any) => c.id === stateConvId);
-          setActiveConvId(found ? found.id : mapped[0].id);
+          const stateProposalId = location.state?.proposalId;
+          const foundById = mapped.find((c: any) => c.id === stateConvId);
+          const foundByProposal = mapped.find((c: any) => c.proposalId === stateProposalId);
+          setActiveConvId(foundById ? foundById.id : foundByProposal ? foundByProposal.id : mapped[0].id);
+        } else {
+          setActiveConvId('');
         }
       }
     } catch (err) {

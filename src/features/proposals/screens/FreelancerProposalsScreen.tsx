@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Edit3, FileText, Send, ShieldAlert, XCircle } from 'lucide-react';
+import { ArrowLeft, Edit3, FileText, MessageSquare, Send, ShieldAlert, XCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -24,6 +24,7 @@ export default function FreelancerProposalsScreen() {
   const [statusFilter, setStatusFilter] = useState<ProposalStatusFilter>('all');
   const [message, setMessage] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [openingNegotiationId, setOpeningNegotiationId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProposals = async () => {
@@ -97,6 +98,11 @@ export default function FreelancerProposalsScreen() {
       : item
     ));
     setMessage('Proposal withdrawn.');
+  };
+
+  const openAcceptedNegotiation = (proposal: ProposalItem) => {
+    setOpeningNegotiationId(proposal.proposalsId);
+    navigate('/messages', { state: { proposalId: proposal.proposalsId } });
   };
 
   const statusBadgeClass = (status: number | string) => {
@@ -247,6 +253,17 @@ export default function FreelancerProposalsScreen() {
                     >
                       <FileText size={16} />
                       View Answers
+                    </button>
+                  )}
+
+                  {Number(activeProposal.status) === ProposalStatus.Accepted && (
+                    <button
+                      onClick={() => openAcceptedNegotiation(activeProposal)}
+                      disabled={openingNegotiationId === activeProposal.proposalsId}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
+                    >
+                      <MessageSquare size={16} />
+                      {openingNegotiationId === activeProposal.proposalsId ? 'Opening...' : 'Vào đàm phán'}
                     </button>
                   )}
                 </div>

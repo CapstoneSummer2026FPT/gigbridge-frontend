@@ -156,6 +156,7 @@ export interface MsgConversation {
   dealStatus?: 'idle' | 'pending_freelancer' | 'agreed' | 'declined' | 'pending_client';
   proposedPrice?: string;
   conversationType?: number; // 0=JobNegotiation, 1=ContractWorkroom, etc.
+  proposalId?: string | null;
 }
 
 /** @deprecated Use IMessage instead */

@@ -17,9 +17,9 @@ import {
   getContractStatusClass, 
   getMilestoneStatusLabel, 
   formatContractAmount, 
-  formatContractDate 
+  formatContractDate,
+  calculateMilestoneCompletion,
 } from '../../../shared/utils/contractUtils';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
 import '../styles/manage-contract-screen.css';
 
 interface MilestoneDisplay extends Milestone {
@@ -41,6 +41,17 @@ const CONTRACT_STATUSES = [
   { value: ContractStatus.Disputed, label: 'Disputed' },
 ];
 
+const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
+  const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
+  const isCompleted = milestone.status === MilestoneStatus.Paid || milestone.status === MilestoneStatus.Approved;
+
+  return {
+    ...milestone,
+    percentageComplete: calculateMilestoneCompletion(milestone.status),
+    isOverdue: Boolean(dueDate && !isCompleted && dueDate < new Date()),
+  };
+};
+
 export default function ManageContractScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
@@ -56,7 +67,7 @@ export default function ManageContractScreen() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
-  // Load contracts from API with fallback to mock data
+  // Load contracts and milestones from API
   useEffect(() => {
     const loadContracts = async () => {
       setLoading(true);
@@ -68,13 +79,29 @@ export default function ManageContractScreen() {
         };
         const response = await contractGetAPI.getMyContracts(params);
 
-        if (response.success && response.data && response.data.length > 0) {
-          setContracts(response.data as ContractWithMilestones[]);
-        } else {
-          setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
+        if (!response.success) {
+          setContracts([]);
+          setError(response.message || 'Failed to load contracts.');
+          return;
         }
-      } catch (err) {
-        setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
+
+        const contractsWithMilestones = await Promise.all(
+          (response.data || []).map(async (contract): Promise<ContractWithMilestones> => {
+            const milestonesResponse = await contractGetAPI.getMilestonesByContract(contract.contractsId);
+
+            return {
+              ...contract,
+              milestones: milestonesResponse.success
+                ? (milestonesResponse.data || []).map(mapMilestoneForDisplay)
+                : [],
+            };
+          })
+        );
+
+        setContracts(contractsWithMilestones);
+      } catch (err: unknown) {
+        setContracts([]);
+        setError(err instanceof Error ? err.message : 'Failed to load contracts.');
       } finally {
         setLoading(false);
       }
@@ -83,7 +110,7 @@ export default function ManageContractScreen() {
     if (user?.id) {
       loadContracts();
     } else {
-      setContracts(MOCK_CONTRACTS_FOR_SCREENS as ContractWithMilestones[]);
+      setContracts([]);
       setLoading(false);
     }
   }, [user?.id]);
@@ -102,6 +129,7 @@ export default function ManageContractScreen() {
       const query = searchQuery.toLowerCase();
       result = result.filter(c =>
         c.title.toLowerCase().includes(query) ||
+        (c.freelancerName && c.freelancerName.toLowerCase().includes(query)) ||
         (c.freelancerProfilesId && c.freelancerProfilesId.toLowerCase().includes(query))
       );
     }
