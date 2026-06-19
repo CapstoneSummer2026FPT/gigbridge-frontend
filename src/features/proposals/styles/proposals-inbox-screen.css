@@ -32,6 +32,57 @@
   max-width: 65ch;
 }
 
+/* ===== FREELANCER PREMIUM STRIP ===== */
+.proposal-premium-strip {
+  max-width: 1400px;
+  margin: 0 auto 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(159, 75, 255, 0.2);
+  border-radius: 0.6rem;
+  background: rgba(159, 75, 255, 0.05);
+}
+
+.proposal-premium-strip div,
+.proposal-premium-strip label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.proposal-premium-strip span {
+  color: var(--gb-text-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.proposal-premium-strip strong {
+  color: var(--gb-text-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.proposal-premium-strip input {
+  height: 2.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 0.4rem;
+  background: var(--gb-bg-primary);
+  color: var(--gb-text-primary);
+  font-weight: 700;
+  transition: border-color 0.2s ease;
+}
+
+.proposal-premium-strip input:focus {
+  outline: none;
+  border-color: var(--gb-purple);
+  box-shadow: 0 0 0 3px rgba(159, 75, 255, 0.1);
+}
+
 /* ===== FEEDBACK MESSAGES ===== */
 .proposal-feedback {
   max-width: 1400px;
@@ -231,6 +282,7 @@
 }
 
 .proposal-view-btn,
+.proposal-boost-btn,
 .proposal-accepted-contract-btn {
   display: inline-flex;
   align-items: center;
@@ -255,6 +307,18 @@
 .proposal-view-btn:hover {
   border-color: var(--gb-cyan);
   color: var(--gb-cyan);
+  transform: translateY(-1px);
+}
+
+.proposal-boost-btn {
+  border-color: rgba(159, 75, 255, 0.3);
+  color: var(--gb-purple);
+  background: rgba(159, 75, 255, 0.08);
+}
+
+.proposal-boost-btn:hover {
+  border-color: var(--gb-purple);
+  background: rgba(159, 75, 255, 0.15);
   transform: translateY(-1px);
 }
 
@@ -1103,6 +1167,13 @@
   font-weight: 700;
 }
 
+.proposal-boost-meta {
+  align-self: center;
+  color: var(--gb-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 /* ===== JOB SUMMARY ===== */
 .proposal-job-summary {
   display: grid;
@@ -1711,6 +1782,10 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  .proposal-premium-strip {
+    grid-template-columns: 1fr;
+  }
+
   .freelancer-proposals-toolbar {
     padding: 1rem;
   }
@@ -1723,7 +1798,8 @@
     gap: 0.35rem;
   }
 
-  .proposal-view-btn {
+  .proposal-view-btn,
+  .proposal-boost-btn {
     flex: 1;
     font-size: 0.7rem;
     min-width: 80px;

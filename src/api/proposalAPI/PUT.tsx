@@ -1,18 +1,17 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { UpdateProposalRequest } from '../../types/models/Proposal';
+
+const proposalsUrl = 'Proposals';
 
 export const proposalPutAPI = {
   /**
-   * PATCH /api/Proposals/{id}/status
+   * PUT /api/Proposals/{proposalId}
    */
-  updateProposalStatus: async (id: string, status: number): Promise<ApiResponse<boolean>> => {
-    return apiService.patch<boolean>(`Proposals/${id}/status`, { status });
-  },
-
-  /**
-   * POST /api/conversations/proposal/{proposalId}/negotiation
-   */
-  startNegotiation: async (proposalId: string): Promise<ApiResponse<string>> => {
-    return apiService.post<string>(`conversations/proposal/${proposalId}/negotiation`);
+  updateProposal: async (
+    proposalId: string,
+    data: UpdateProposalRequest
+  ): Promise<ApiResponse<boolean>> => {
+    return apiService.put<boolean>(`${proposalsUrl}/${proposalId}`, data);
   },
 };

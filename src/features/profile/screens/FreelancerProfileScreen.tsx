@@ -1,12 +1,10 @@
 import { useNavigate, useParams } from 'react-router';
-import { useState } from 'react';
 import { Star, MapPin, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, BriefcaseBusiness, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, CheckCircle } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
 import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
-import { ReportUserModal } from '../components/ReportUserModal';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
 
@@ -16,8 +14,6 @@ export default function FreelancerProfileScreen() {
   const { user: currentUser } = useApp();
 
   const targetId = id || 'u_freelancer_1';
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   const {
     loading,
@@ -167,17 +163,6 @@ export default function FreelancerProfileScreen() {
                     {isSaved ? 'Saved' : 'Save'}
                   </button>
                 )}
-
-                {currentUser?.id !== targetId && (
-                  <button 
-                    onClick={() => setShowReportModal(true)}
-                    disabled={reportSubmitted}
-                    className="glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-error-container/10 transition-colors cursor-pointer flex-shrink-0 text-error disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Flag size={18} />
-                    {reportSubmitted ? 'Reported' : 'Report'}
-                  </button>
-                )}
                 
                 {/* More dropdown */}
                 <div className="relative flex-shrink-0">
@@ -202,7 +187,7 @@ export default function FreelancerProfileScreen() {
                           <Share2 size={16} />
                           Share
                         </button>
-                        <button
+                        <button 
                           onClick={() => {
                             setShowMoreMenu(false);
                             alert('Report filed successfully.');
@@ -626,15 +611,6 @@ export default function FreelancerProfileScreen() {
           />
         )}
       </AnimatePresence>
-
-      {showReportModal && (
-        <ReportUserModal
-          userId={targetId}
-          userName={user.full_name}
-          onClose={() => setShowReportModal(false)}
-          onSubmitted={() => setReportSubmitted(true)}
-        />
-      )}
     </AppLayout>
   );
 }

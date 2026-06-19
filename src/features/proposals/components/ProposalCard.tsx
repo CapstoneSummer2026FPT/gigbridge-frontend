@@ -1,9 +1,7 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
 import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature, Briefcase } from 'lucide-react';
-import { ProposalStatus } from '../../../types/models/Proposal';
-import type { ProposalViewModel } from '../types';
-import { getStatusClass, getStatusLabel } from '../utils/statusHelpers';
+import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
 
 interface ProposalCardProps {
   proposal: ProposalViewModel;
@@ -24,10 +22,25 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   onBoost,
   onGoToWorkspace,
 }) => {
-  const status = Number(proposal.status);
-  const statusLabel = getStatusLabel(proposal.status);
-  const canClientReview = status === ProposalStatus.Pending || status === ProposalStatus.Shortlisted;
-  const accepted = status === ProposalStatus.Accepted;
+  
+  const statusLabel =
+    proposal.status === 0
+      ? 'Pending'
+      : proposal.status === 1
+        ? 'Shortlisted'
+        : proposal.status === 2
+          ? 'Accepted'
+          : proposal.status === 3
+            ? 'Rejected'
+            : 'Withdrawn';
+
+  const getStatusColor = (status: number | undefined) => {
+    if (status === 0) return 'proposal-status-pending';
+    if (status === 1) return 'proposal-status-shortlisted';
+    if (status === 2) return 'proposal-status-accepted';
+    if (status === 3) return 'proposal-status-rejected';
+    return 'proposal-status-withdrawn';
+  };
 
   return (
     <motion.div
@@ -50,7 +63,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
           </div>
         </div>
         <div className="proposal-card-side">
-          <span className={getStatusClass(proposal.status)}>{statusLabel}</span>
+          <span className={`proposal-status ${getStatusColor(proposal.status)}`}>{statusLabel}</span>
           {proposal.interviewScore && (
             <span className="proposal-score-pill">
               <span style={{ fontSize: '0.65rem' }}>Score</span>
@@ -79,6 +92,11 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <span>AI Generated</span>
           </div>
         )}
+        {(proposal.boostedTokenAmount || 0) > 0 && (
+          <div style={{ background: 'rgba(159, 75, 255, 0.12)', color: '#7c3aed' }}>
+            <span>Boosted {proposal.boostedTokenAmount}x</span>
+          </div>
+        )}
       </div>
 
       {/* Interface Grid: IDs and dates */}
@@ -99,7 +117,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
 
       {/* Actions */}
       {isClient ? (
-        /* CLIENT VIEW: Accept/Reject + Menu/ViewAnswers/CreateContract */
+        /* CLIENT VIEW: Accept/Reject + Menu */
         <div className="proposal-review-actions">
           {proposal.status === 2 ? (
             <motion.button
@@ -146,7 +164,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
 
         </div>
       ) : (
-        /* FREELANCER VIEW */
+        /* FREELANCER VIEW: Boost + Menu */
         <div className="proposal-review-actions">
           <motion.button
             className="proposal-view-btn"
@@ -157,6 +175,17 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             <Eye size={15} />
             Details
           </motion.button>
+          {proposal.status === 0 && onBoost && (
+            <motion.button
+              className="proposal-boost-btn"
+              onClick={() => onBoost(proposal)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Sparkles size={15} />
+              Boost
+            </motion.button>
+          )}
         </div>
       )}
     </motion.div>

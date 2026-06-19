@@ -38,24 +38,6 @@ export interface ProposalQueryParams {
   PageSize?: number;
 }
 
-export interface CreateProposalRequest {
-  jobPostsId: string;
-  coverLetter?: string | null;
-  proposedBudget?: number | null;
-  proposedDuration?: string | null;
-}
-
-export interface UpdateProposalRequest {
-  coverLetter?: string | null;
-  proposedBudget?: number | null;
-  proposedDuration?: string | null;
-  status?: ProposalStatus | number;
-}
-
-export interface UpdateProposalStatusRequest {
-  status: ProposalStatus | number;
-}
-
 export interface ProposalDto {
   proposalsId: string;
   jobPostsId: string;
@@ -85,30 +67,49 @@ export interface ProposalDetailDto {
   isAigenerated?: boolean | null;
 }
 
+export interface CreateProposalRequest {
+  jobPostsId: string;
+  coverLetter: string;
+  proposedBudget: number;
+  proposedDuration?: string | null;
+}
+
+export interface UpdateProposalRequest {
+  coverLetter?: string | null;
+  proposedBudget: number;
+  proposedDuration?: string | null;
+}
+
+export interface UpdateProposalStatusRequest {
+  status: ProposalStatus | number;
+}
+
 export interface ProposalAnswerDto {
-  proposalAnswersId: string | null;
+  proposalAnswersId?: string | null;
   proposalsId: string;
   jobPostQuestionsId: string;
   questionText: string;
   orderIndex: number;
   isRequired: boolean;
-  answerText: string | null;
+  answerText?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
 
 export interface CreateProposalAnswerRequest {
   jobPostQuestionId: string;
-  answerText: string | null;
+  answerText?: string | null;
 }
 
 export interface UpdateProposalAnswerRequest {
-  answerText: string | null;
+  answerText?: string | null;
+}
+
+export interface UpdateBulkProposalAnswerItemRequest {
+  jobPostQuestionId: string;
+  answerText?: string | null;
 }
 
 export interface UpdateBulkProposalAnswersRequest {
-  answers: Array<{
-    jobPostQuestionId: string;
-    answerText: string | null;
-  }>;
+  answers: UpdateBulkProposalAnswerItemRequest[];
 }

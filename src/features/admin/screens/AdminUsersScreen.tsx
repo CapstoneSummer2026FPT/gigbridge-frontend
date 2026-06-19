@@ -1,14 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign, Plus, KeyRound, Phone, Trash2, Flag } from 'lucide-react';
+import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign, Plus, KeyRound, Phone } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
 import { UserRole } from '../../../types';
-import { ReportStatus } from '../../../types/models/Report';
 import '../styles/admin-users-screen.css';
 
-type UserFilter = 'all' | 'client' | 'freelancer' | 'admin' | 'banned' | 'reported';
+type UserFilter = 'all' | 'client' | 'freelancer' | 'admin' | 'banned';
 type UserSort = 'name' | 'joined' | 'status';
 
 const initialCreateForm = {
@@ -20,105 +19,29 @@ const initialCreateForm = {
 };
 
 const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
-  const rawDto = dto as AdminUserDto & {
-    UserId?: string;
-    FullName?: string;
-    Email?: string;
-    Avatar?: string | null;
-    PhoneNumber?: string | null;
-    Role?: number;
-    IsEmailVerified?: boolean;
-    IsActive?: boolean;
-    PreferredLanguage?: string | null;
-    Provider?: string | null;
-    OpenReportCount?: number;
-    IsCurrentlyReported?: boolean;
-    CreatedAt?: string;
-    UpdatedAt?: string | null;
-  };
-  const userId = dto.userId ?? rawDto.UserId ?? '';
-  const fullName = dto.fullName ?? rawDto.FullName ?? 'Unknown User';
-  const email = dto.email ?? rawDto.Email ?? '';
-  const phoneNumber = dto.phoneNumber ?? rawDto.PhoneNumber ?? null;
-  const role = dto.role ?? rawDto.Role ?? UserRole.Client;
-  const isEmailVerified = dto.isEmailVerified ?? rawDto.IsEmailVerified ?? false;
-  const isActive = dto.isActive ?? rawDto.IsActive ?? false;
-  const preferredLanguage = dto.preferredLanguage ?? rawDto.PreferredLanguage ?? 'en';
-  const openReportCount = dto.openReportCount ?? rawDto.OpenReportCount ?? 0;
-  const isCurrentlyReported = dto.isCurrentlyReported ?? rawDto.IsCurrentlyReported ?? openReportCount > 0;
-  const createdAt = dto.createdAt ?? rawDto.CreatedAt ?? new Date().toISOString();
-  const updatedAt = dto.updatedAt ?? rawDto.UpdatedAt ?? createdAt;
-
-  const spaceIndex = fullName.indexOf(' ');
-  const firstName = spaceIndex >= 0 ? fullName.slice(0, spaceIndex) : fullName;
-  const lastName = spaceIndex >= 0 ? fullName.slice(spaceIndex + 1) : '';
+  const spaceIndex = dto.fullName.indexOf(' ');
+  const firstName = spaceIndex >= 0 ? dto.fullName.slice(0, spaceIndex) : dto.fullName;
+  const lastName = spaceIndex >= 0 ? dto.fullName.slice(spaceIndex + 1) : '';
 
   return {
-    id: userId,
-    email,
+    id: dto.userId,
+    email: dto.email,
     first_name: firstName,
     last_name: lastName,
-    full_name: fullName,
-    phone_number: phoneNumber,
-    role: role as UserRole,
-    is_email_verified: isEmailVerified,
-    is_active: isActive,
+    full_name: dto.fullName,
+    phone_number: dto.phoneNumber ?? null,
+    role: dto.role as UserRole,
+    is_email_verified: dto.isEmailVerified,
+    is_active: dto.isActive,
     is_setup: false,
-    preferred_language: preferredLanguage || 'en',
+    preferred_language: dto.preferredLanguage || 'en',
     last_login_at: null,
     login_failed_time: null,
     access_failed_count: 0,
-    elo_points: 0,
     gigcoin_balance: 0,
-    open_report_count: openReportCount,
-    is_currently_reported: isCurrentlyReported,
-    created_at: createdAt,
-    updated_at: updatedAt,
+    created_at: dto.createdAt,
+    updated_at: dto.updatedAt || dto.createdAt,
   };
-};
-
-const mergeOpenUserReports = async (users: User[]): Promise<User[]> => {
-  if (users.length === 0) {
-    return users;
-  }
-
-  const [pendingResponse, reviewingResponse] = await Promise.all([
-    adminAPI.getReports({
-      page: 1,
-      pageSize: 100,
-      status: ReportStatus.Pending,
-      reportedEntityType: 'User',
-    }),
-    adminAPI.getReports({
-      page: 1,
-      pageSize: 100,
-      status: ReportStatus.Reviewing,
-      reportedEntityType: 'User',
-    }),
-  ]);
-
-  const reportCounts = new Map<string, number>();
-  const openReports = [
-    ...(pendingResponse.success && pendingResponse.data ? pendingResponse.data.items : []),
-    ...(reviewingResponse.success && reviewingResponse.data ? reviewingResponse.data.items : []),
-  ];
-
-  for (const report of openReports) {
-    if (report.reportedEntityType.toLowerCase() !== 'user') {
-      continue;
-    }
-    reportCounts.set(report.reportedEntityId, (reportCounts.get(report.reportedEntityId) ?? 0) + 1);
-  }
-
-  return users.map(user => {
-    const fallbackCount = reportCounts.get(user.id) ?? 0;
-    const openReportCount = Math.max(user.open_report_count ?? 0, fallbackCount);
-    return {
-      ...user,
-      open_report_count: openReportCount,
-      is_currently_reported: openReportCount > 0,
-    };
-  });
 };
 
 export default function AdminUsersScreen() {
@@ -133,7 +56,7 @@ export default function AdminUsersScreen() {
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role' | 'delete', user: User, newRole?: 0 | 1 | 2} | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2} | null>(null);
   const [editForm, setEditForm] = useState({firstName: '', lastName: '', email: ''});
 
   // Real API state
@@ -147,12 +70,7 @@ export default function AdminUsersScreen() {
   const loadUsers = async () => {
     setLoading(true);
     const response = await adminAPI.getAllUsers();
-    if (response.success && response.data) {
-      const mappedUsers = response.data.items.map(mapAdminUserDtoToUser);
-      setUsers(await mergeOpenUserReports(mappedUsers));
-    } else {
-      setUsers([]);
-    }
+    setUsers(response.success && response.data ? response.data.items.map(mapAdminUserDtoToUser) : []);
     setLoading(false);
   };
 
@@ -170,9 +88,7 @@ export default function AdminUsersScreen() {
         filterType === 'client' ? user.role === 0 :
         filterType === 'freelancer' ? user.role === 1 :
         filterType === 'admin' ? user.role === 2 :
-        filterType === 'reported' ? Boolean(user.is_currently_reported) :
-        filterType === 'banned' ? !user.is_active :
-        true;
+        filterType === 'banned' ? !user.is_active : true;
 
       return matchesSearch && matchesFilter;
     });
@@ -195,9 +111,8 @@ export default function AdminUsersScreen() {
     const admins = allUsers.filter(u => u.role === 2).length;
     const banned = allUsers.filter(u => !u.is_active).length;
     const verified = allUsers.filter(u => u.is_email_verified).length;
-    const reported = allUsers.filter(u => u.is_currently_reported).length;
 
-    return { total, clients, freelancers, admins, banned, verified, reported };
+    return { total, clients, freelancers, admins, banned, verified };
   }, [allUsers]);
 
   const handleBanUser = async (userId: string) => {
@@ -208,19 +123,6 @@ export default function AdminUsersScreen() {
         await loadUsers();
       } else {
         alert(response.message || 'Failed to update user status');
-      }
-      setShowActionMenu(null);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    const user = allUsers.find(u => u.id === userId);
-    if (user) {
-      const response = await adminAPI.deleteUser(user.email);
-      if (response.success) {
-        await loadUsers();
-      } else {
-        alert(response.message || 'Failed to delete user');
       }
       setShowActionMenu(null);
     }
@@ -281,8 +183,6 @@ export default function AdminUsersScreen() {
     return <span className="badge-green text-xs">Active</span>;
   };
 
-  const getReportCount = (user: User) => user.open_report_count ?? 0;
-
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto">
@@ -297,13 +197,6 @@ export default function AdminUsersScreen() {
             <p className="text-sm text-secondary mt-1">View and manage all platform users</p>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/admin/reports')}
-              className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2"
-            >
-              <Flag size={16} />
-              Report Manager
-            </button>
             <button
               onClick={() => {
                 setCreateError(null);
@@ -330,7 +223,6 @@ export default function AdminUsersScreen() {
             { label: 'Admins', value: stats.admins.toString(), icon: <Shield size={16} />, color: 'amber' },
             { label: 'Verified', value: stats.verified.toLocaleString(), icon: <CheckCircle size={16} />, color: 'green' },
             { label: 'Banned', value: stats.banned.toString(), icon: <Ban size={16} />, color: 'red' },
-            { label: 'Reported', value: stats.reported.toString(), icon: <Flag size={16} />, color: 'red' },
           ].map(stat => (
             <div key={stat.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
@@ -381,7 +273,6 @@ export default function AdminUsersScreen() {
                     { type: 'freelancer', label: 'Freelancers', icon: <UserCheck size={16} />, color: 'green' },
                     { type: 'admin', label: 'Admins', icon: <Shield size={16} />, color: 'amber' },
                     { type: 'banned', label: 'Banned', icon: <Ban size={16} />, color: 'red' },
-                    { type: 'reported', label: 'Reported', icon: <Flag size={16} />, color: 'red' },
                   ].map(filter => (
                     <button
                       key={filter.type}
@@ -462,17 +353,7 @@ export default function AdminUsersScreen() {
                             {user.first_name.charAt(0)}{user.last_name.charAt(0)}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className={`text-sm font-semibold ${user.is_currently_reported ? 'text-red' : 'text-primary'}`}>
-                                {user.full_name}
-                              </p>
-                              {user.is_currently_reported && (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-red/30 bg-red/10 px-2 py-0.5 text-xs font-bold text-red">
-                                  <Flag size={12} />
-                                  {getReportCount(user)}
-                                </span>
-                              )}
-                            </div>
+                            <p className="text-sm font-semibold text-primary">{user.full_name}</p>
                             <p className="text-xs text-secondary">{user.id}</p>
                           </div>
                         </div>
@@ -515,27 +396,6 @@ export default function AdminUsersScreen() {
                           >
                             <Edit size={16} className="text-purple" />
                           </button>
-
-                          <button
-                            onClick={() => {
-                              setConfirmAction({type: 'delete', user});
-                              setShowActionMenu(null);
-                            }}
-                            className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
-                            title="Delete User"
-                          >
-                            <Trash2 size={16} className="text-red" />
-                          </button>
-
-                          {user.is_currently_reported && (
-                            <button
-                              onClick={() => navigate(`/admin/reports?reportedEntityType=User&search=${encodeURIComponent(user.email || user.id)}`)}
-                              className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
-                              title="View Reports"
-                            >
-                              <Flag size={16} className="text-red" />
-                            </button>
-                          )}
 
                           <div className="relative">
                             <button
@@ -606,17 +466,6 @@ export default function AdminUsersScreen() {
                                       Ban User
                                     </>
                                   )}
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    setConfirmAction({type: 'delete', user});
-                                    setShowActionMenu(null);
-                                  }}
-                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 text-red"
-                                >
-                                  <Trash2 size={14} />
-                                  Delete User
                                 </button>
                               </div>
                             )}
@@ -1108,7 +957,6 @@ export default function AdminUsersScreen() {
                   {confirmAction.type === 'ban' && `Are you sure you want to ban this user? They will lose access to the platform.`}
                   {confirmAction.type === 'unban' && `Are you sure you want to unban this user? They will regain access to the platform.`}
                   {confirmAction.type === 'role' && `Are you sure you want to change this user's role to ${confirmAction.newRole === 0 ? 'Client' : confirmAction.newRole === 1 ? 'Freelancer' : 'Admin'}?`}
-                  {confirmAction.type === 'delete' && `Are you sure you want to permanently delete this user? This action cannot be undone.`}
                 </p>
               </div>
 
@@ -1125,15 +973,12 @@ export default function AdminUsersScreen() {
                       handleChangeRole(confirmAction.user.id, confirmAction.newRole);
                     } else if (confirmAction.type === 'ban' || confirmAction.type === 'unban') {
                       await handleBanUser(confirmAction.user.id);
-                    } else if (confirmAction.type === 'delete') {
-                      await handleDeleteUser(confirmAction.user.id);
                     }
                     setConfirmAction(null);
                     setSelectedUser(null);
-                    setPreviewUser(null);
                   }}
                   className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${
-                    confirmAction.type === 'ban' || confirmAction.type === 'delete'
+                    confirmAction.type === 'ban'
                       ? 'bg-red/20 text-red border border-red hover:bg-red/30'
                       : confirmAction.type === 'unban'
                       ? 'bg-green/20 text-green border border-green hover:bg-green/30'
@@ -1143,7 +988,6 @@ export default function AdminUsersScreen() {
                   {confirmAction.type === 'ban' && 'Ban User'}
                   {confirmAction.type === 'unban' && 'Unban User'}
                   {confirmAction.type === 'role' && 'Change Role'}
-                  {confirmAction.type === 'delete' && 'Delete User'}
                 </button>
               </div>
             </div>

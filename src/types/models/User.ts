@@ -25,8 +25,6 @@ export interface User {
   access_failed_count: number;
   elo_points: number;
   gigcoin_balance: number;
-  open_report_count?: number;
-  is_currently_reported?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -45,8 +43,6 @@ export interface AdminUserDto {
   isActive: boolean;
   preferredLanguage: string | null;
   provider: string | null;
-  openReportCount: number;
-  isCurrentlyReported: boolean;
   createdAt: string;
   updatedAt: string | null;
 }

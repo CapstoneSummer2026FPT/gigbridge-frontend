@@ -125,32 +125,6 @@
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
 }
 
-.job-detail-proposal-actions-stack {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.job-detail-proposal-state,
-.job-detail-proposal-error {
-  padding: 0.75rem;
-  border-radius: 0.65rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
-.job-detail-proposal-state {
-  color: var(--gb-text-secondary);
-  background: var(--gb-glass-bg);
-  border: 1px solid var(--gb-border);
-}
-
-.job-detail-proposal-error {
-  color: #991b1b;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
 .job-detail-quick-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

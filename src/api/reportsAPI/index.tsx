@@ -1,2 +1,0 @@
-export { reportsAPI } from './POST';
-
