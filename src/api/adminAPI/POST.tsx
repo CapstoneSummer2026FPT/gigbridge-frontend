@@ -29,6 +29,7 @@ export const adminPostAPI = {
       password: payload.password,
       role: payload.role,
       phoneNumber: payload.phoneNumber,
+      isEmailVerified: payload.isEmailVerified ?? false,
     });
   },
 

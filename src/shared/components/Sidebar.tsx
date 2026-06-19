@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
-  Bot, BarChart2, User, Settings, Shield, Users, Flag,
+  Bot, BarChart2, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
   ChevronDown, Wallet
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
+import { reportAPI } from '../../api/reportAPI';
 import '../styles/Sidebar.css';
 
 interface NavItem {
@@ -15,7 +17,8 @@ interface NavItem {
   icon: React.ReactNode;
   path?: string;
   badge?: string;
-  badgeType?: 'cyan' | 'purple' | 'green' | 'red';
+  badgeType?: 'cyan' | 'purple' | 'green' | 'red' | 'amber';
+  badgeLabel?: string;
   children?: NavItem[];
 }
 
@@ -158,7 +161,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
   ];
 }
 
-function getAdminNavSections(): NavSection[] {
+function getAdminNavSections(openReportCount: number | null): NavSection[] {
   return [
     {
       title: 'Overview',
@@ -182,7 +185,14 @@ function getAdminNavSections(): NavSection[] {
         { label: 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
         { label: 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },
         { label: 'User Feedback', icon: <MessageSquare size={18} />, path: '/admin/feedback' },
-        { label: 'Reports', icon: <Flag size={18} />, path: '/admin/reports', badge: '5', badgeType: 'red' },
+        {
+          label: 'Reports',
+          icon: <Flag size={18} />,
+          path: '/admin/reports',
+          badge: openReportCount === null ? undefined : openReportCount.toString(),
+          badgeType: 'red',
+          badgeLabel: 'Open reports',
+        },
       ],
     },
     {
@@ -281,9 +291,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const { t } = useTranslation();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [openReportCount, setOpenReportCount] = useState<number | null>(null);
+  const [pendingReportCount, setPendingReportCount] = useState<number | null>(null);
+  const [reviewingReportCount, setReviewingReportCount] = useState<number | null>(null);
+  const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
 
   const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
-  const adminSections = role === 2 ? getAdminNavSections() : [];
+  const adminSections = role === 2 ? getAdminNavSections(openReportCount) : [];
+
+  useEffect(() => {
+    if (role !== 2) return;
+    let active = true;
+    void reportAPI.getAdminSummary().then((response) => {
+      if (active && response.success && response.data) {
+        setOpenReportCount(response.data.open);
+        setPendingReportCount(response.data.pending);
+        setReviewingReportCount(response.data.reviewing);
+      }
+    });
+    return () => { active = false; };
+  }, [role, location.pathname]);
 
   const handleToggleMenu = (label: string) => {
     setExpandedMenus(prev =>
@@ -351,16 +378,33 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       handleNavigate(item.path);
                     }
                   }}
+                  onMouseEnter={(event) => {
+                    if (item.path !== '/admin/reports') return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const popoverWidth = 176;
+                    const left = rect.right + 10 + popoverWidth <= window.innerWidth
+                      ? rect.right + 10
+                      : Math.max(8, rect.left - popoverWidth - 10);
+                    setReportHoverPosition({ left, top: Math.max(8, rect.top) });
+                  }}
+                  onMouseLeave={() => {
+                    if (item.path === '/admin/reports') setReportHoverPosition(null);
+                  }}
                   className={`sidebar-item w-full relative ${active ? 'active' : ''}`}
                 >
                   {active && <span className="sidebar-active-indicator" />}
                   <span className="ml-1">{item.icon}</span>
                   <span className="flex-1 text-left">{item.label}</span>
-                  {item.badge && (
-                    <span className={`badge-${item.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}>
-                      {item.badge}
-                    </span>
-                  )}
+                  <span className="flex items-center gap-1">
+                    {item.badge && (
+                      <span
+                        className={`badge-${item.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}
+                        title={item.badgeLabel}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -408,6 +452,36 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <button className="sidebar-close-button" onClick={onClose}>
           <X size={18} />
         </button>
+      )}
+
+      {reportHoverPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed w-44 rounded-xl p-3 pointer-events-none"
+          style={{
+            left: reportHoverPosition.left,
+            top: reportHoverPosition.top,
+            zIndex: 9999,
+            background: 'var(--card)',
+            border: '1px solid var(--gb-border)',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.22)',
+          }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-primary">Open reports</span>
+            <span className="badge-red text-[10px] px-1.5 py-0">{openReportCount ?? 0}</span>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-secondary">Pending</span>
+              <span className="badge-red text-[10px] px-1.5 py-0">{pendingReportCount ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-secondary">Reviewing</span>
+              <span className="badge-amber text-[10px] px-1.5 py-0">{reviewingReportCount ?? 0}</span>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </aside>
   );
