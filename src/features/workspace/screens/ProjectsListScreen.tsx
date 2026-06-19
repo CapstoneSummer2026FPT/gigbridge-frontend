@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -6,67 +5,26 @@ import { DB } from '../../../mock_backend';
 import { Flag, Calendar, DollarSign, Clock, User } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { MOCK_PROJECTS_FOR_PROJECTS_LIST } from '../mock/data-for-ProjectsListScreen';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
 
 export default function ProjectsListScreen() {
   const navigate = useNavigate();
   const { user, role } = useApp();
   const { t } = useTranslation();
 
-  const [apiProjects, setApiProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
   if (!user) {
     navigate('/auth/login');
     return null;
   }
 
-  useEffect(() => {
-    let active = true;
-    const fetchContracts = async () => {
-      try {
-        const res = await contractGetAPI.getMyContracts();
-        if (active && res.success && res.data) {
-          setApiProjects(res.data);
-        }
-      } catch (err) {
-        console.error('Error fetching contracts:', err);
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    fetchContracts();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const mockProject = MOCK_PROJECTS_FOR_PROJECTS_LIST[0];
-  const projects = [
-    ...(mockProject ? [mockProject] : []),
-    ...apiProjects.map(contract => {
-      const statusMap: Record<number, string> = {
-        7: 'active',
-        8: 'completed',
-      };
-      
-      return {
-        id: contract.contractsId,
-        title: contract.title,
-        description: contract.description,
-        totalBudget: contract.totalBudget,
-        status: statusMap[contract.status] || 'pending',
-        startDate: contract.startDate || contract.createdAt,
-        progress: contract.status === 8 ? 100 : contract.status === 7 ? 30 : 0,
-        freelancerName: contract.freelancerName,
-        clientName: contract.clientName,
-        clientId: contract.clientProfilesId,
-        freelancerId: contract.freelancerProfilesId,
-        isApiProject: true,
-      };
-    })
-  ];
-
+  const dbProjects = role === 0
+    ? DB.getProjectsByClient(user.id)
+    : DB.getProjectsByFreelancer(user.id);
+  const projects = dbProjects.length > 0
+    ? dbProjects
+    : MOCK_PROJECTS_FOR_PROJECTS_LIST.filter(project => role === 0
+      ? project.clientId === user.id || project.clientId === 'demo_client_001'
+      : project.freelancerId === user.id || project.freelancerId === 'demo_freelancer_001'
+    );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,11 +61,7 @@ export default function ProjectsListScreen() {
         </div>
 
         {/* Projects Grid */}
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
-          </div>
-        ) : projects.length === 0 ? (
+        {projects.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <Flag className="w-16 h-16 text-secondary mx-auto mb-4 opacity-30" />
             <h2 className="text-xl font-bold text-primary mb-2">{t('projects.noProjectsYet')}</h2>
@@ -129,10 +83,6 @@ export default function ProjectsListScreen() {
               const otherUser = role === 0
                 ? DB.getUserById(project.freelancerId)
                 : DB.getUserById(project.clientId);
-              
-              const otherUserName = role === 0
-                ? (project.freelancerName || (otherUser ? otherUser.full_name : 'Demo Freelancer'))
-                : (project.clientName || (otherUser ? otherUser.full_name : 'Demo Client'));
 
               return (
                 <div
@@ -154,12 +104,14 @@ export default function ProjectsListScreen() {
                   </h3>
 
                   {/* Other User */}
-                  <div className="flex items-center gap-2 mb-4 text-sm text-secondary">
-                    <User className="w-4 h-4" />
-                    <span className="line-clamp-1">
-                      {role === 0 ? t('projects.freelancer') : t('projects.client')}: {otherUserName}
-                    </span>
-                  </div>
+                  {otherUser && (
+                    <div className="flex items-center gap-2 mb-4 text-sm text-secondary">
+                      <User className="w-4 h-4" />
+                      <span className="line-clamp-1">
+                        {role === 0 ? t('projects.freelancer') : t('projects.client')}: {otherUser.full_name}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Project Info */}
                   <div className="space-y-2 mb-4">

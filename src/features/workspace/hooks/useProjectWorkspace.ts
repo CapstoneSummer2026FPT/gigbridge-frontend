@@ -7,7 +7,6 @@ import { projectGetAPI } from '../../../api/projectAPI/GET';
 import { projectPutAPI } from '../../../api/projectAPI/PUT';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
 
 export function useProjectWorkspace(initialProjectId: string) {
   const navigate = useNavigate();
@@ -28,58 +27,7 @@ export function useProjectWorkspace(initialProjectId: string) {
   ]);
 
   // Load project details dynamically
-  const mockProj = DB.getProjects().find(p => p.id === activeProjectId) || DB.getProjects()[0];
-  const [project, setProject] = useState<any>(mockProj);
-
-  useEffect(() => {
-    const isMock = activeProjectId.startsWith('proj_mock_') || activeProjectId === 'proj_1' || activeProjectId === 'proj_2' || activeProjectId === 'proj_3';
-    
-    if (isMock) {
-      const found = DB.getProjects().find(p => p.id === activeProjectId) || DB.getProjects()[0];
-      setProject(found);
-    } else {
-      const fetchApiProject = async () => {
-        try {
-          const contractRes = await contractGetAPI.getContractById(activeProjectId);
-          const milestonesRes = await contractGetAPI.getMilestonesByContract(activeProjectId);
-          
-          if (contractRes.success && contractRes.data) {
-            const contract = contractRes.data;
-            const milestones = milestonesRes.data || [];
-            
-            const mapMilestoneStatus = (status: number): string => {
-              if (status === 3 || status === 5) return 'paid';
-              if (status === 1 || status === 2 || status === 4) return 'in_progress';
-              return 'pending';
-            };
-            
-            setProject({
-              id: contract.contractsId,
-              title: contract.title,
-              jobId: contract.jobPostsId,
-              clientId: contract.clientProfilesId,
-              freelancerId: contract.freelancerProfilesId,
-              totalBudget: contract.totalBudget,
-              progress: contract.status === 8 ? 100 : contract.status === 7 ? 30 : 0,
-              status: contract.status === 8 ? 'completed' : 'active',
-              conversationId: `conv_${contract.contractsId}`,
-              milestones: milestones.map((m: any) => ({
-                id: m.milestoneId,
-                title: m.title,
-                amount: m.amount,
-                dueDate: m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '',
-                status: mapMilestoneStatus(m.status),
-              }))
-            });
-          }
-        } catch (err) {
-          console.error('Error fetching contract project from API:', err);
-        }
-      };
-      fetchApiProject();
-    }
-  }, [activeProjectId]);
-
+  const project = DB.getProjects().find(p => p.id === activeProjectId) || DB.getProjects()[0];
 
   // Dynamic conversations/projects list mapped to mockup structure
   const allProjects = DB.getProjects();
@@ -89,8 +37,8 @@ export function useProjectWorkspace(initialProjectId: string) {
         id: 'proj_1',
         title: 'E-commerce Platform Build',
         partnerName: isClient ? 'Alex Johnson' : 'Jordan Mitchell',
-        partnerAvatar: isClient 
-          ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt226TXncFjd6zQyyFNqkOAKj-pTYClfBHUGbG7EsCTL5gzWQbF5K-mojkZ1u9U91izwjnV--bOtLgKPwMjODHfOuVpg5nOAxiXsve-4RdrP3GeYe6L9llw_G0e7TExXaCWHruulVFEUP-acilXdvARPO-JVC17ShH6ztqc9CUYzp9r2Duy95bm3YrKoT0XmazmW2mgGKr4H_BYRs6iYRH0ATn2UaEHxrBE1AFiTPLNgtYDGnskVHrXWmKPI5nDsP3KsJHRYgTs29I' 
+        partnerAvatar: isClient
+          ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt226TXncFjd6zQyyFNqkOAKj-pTYClfBHUGbG7EsCTL5gzWQbF5K-mojkZ1u9U91izwjnV--bOtLgKPwMjODHfOuVpg5nOAxiXsve-4RdrP3GeYe6L9llw_G0e7TExXaCWHruulVFEUP-acilXdvARPO-JVC17ShH6ztqc9CUYzp9r2Duy95bm3YrKoT0XmazmW2mgGKr4H_BYRs6iYRH0ATn2UaEHxrBE1AFiTPLNgtYDGnskVHrXWmKPI5nDsP3KsJHRYgTs29I'
           : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBeoKX1UynnkJ0b15ZqIqe0FGcJAeG-r0lmmDdDbCq_9lfPGs986ViSmQIz5X5Je-lT6mt1f75tc_3qUuEj_9zyqagKr9dnTiny_lzGv1OzrAGTpTIxTodcVIqD7Bxkd6FTFccqY2Ca6bKdb2VKNwcgZqYmTzZcj09OMTiNdybLbnS-wb_WxJhyeAJ_NARjM5HidZjgCFbCUZup_7-G2arZi-NMogLhwxyla0vxK5a0xl2w4XcMLfEc4KRaPz-CMm2twhh6r8nOs3Tb',
         latestMessage: "Sounds great, I've sent the contract...",
         time: '10:24 AM',
@@ -99,7 +47,7 @@ export function useProjectWorkspace(initialProjectId: string) {
         titleLong: 'E-Commerce Platform Redesign',
       };
     }
-    
+
     const partnerId = isClient ? p.freelancerId : p.clientId;
     const partnerUser = DB.getUserById(partnerId);
     const pName = partnerUser?.name || (isClient ? 'Freelancer' : 'Client');
@@ -179,13 +127,13 @@ export function useProjectWorkspace(initialProjectId: string) {
         // reasonable API query to fetch project details
         await projectGetAPI.getProjectById(activeProjectId);
         // reasonable API query to fetch messages
-        await messageGetAPI.getConversationMessages(project?.conversationId || 'conv_1');
+        await messageGetAPI.getConversationMessages(project.conversationId || 'conv_1');
       } catch (e) {
         console.warn('API call fallback to mock backend database: ', e);
       }
     };
     void fetchApiData();
-  }, [activeProjectId, project?.conversationId]);
+  }, [activeProjectId, project.conversationId]);
 
   // Actions
   const handleSendMessage = async () => {
@@ -216,7 +164,7 @@ export function useProjectWorkspace(initialProjectId: string) {
       const replyMsg = {
         id: `msg_reply_${Date.now()}`,
         senderId: 'other',
-        content: `Thanks for the message! I'm reviewing this on "${project?.title || ''}" and will follow up.`,
+        content: `Thanks for the message! I'm reviewing this on "${project.title}" and will follow up.`,
         type: 'text',
         createdAt: new Date().toISOString(),
       };
@@ -233,9 +181,9 @@ export function useProjectWorkspace(initialProjectId: string) {
     setAiChat(prev => [...prev, { role: 'user', content: userMsg }]);
     setAiMessage('');
     setTimeout(() => {
-      setAiChat(prev => [...prev, { 
-        role: 'ai', 
-        content: `I've analyzed the query "${userMsg}" for the project "${project.title}". You are currently at ${project.progress}% progress. 1 milestone is completed and paid, and 1 is currently in-progress.` 
+      setAiChat(prev => [...prev, {
+        role: 'ai',
+        content: `I've analyzed the query "${userMsg}" for the project "${project.title}". You are currently at ${project.progress}% progress. 1 milestone is completed and paid, and 1 is currently in-progress.`
       }]);
     }, 1000);
   };
@@ -265,7 +213,7 @@ export function useProjectWorkspace(initialProjectId: string) {
     const amountStr = prompt("Enter milestone amount ($):", "500");
     if (!amountStr) return;
     const amount = parseFloat(amountStr) || 500;
-    
+
     const newMilestone = {
       id: `m_${Date.now()}`,
       title,
@@ -276,14 +224,14 @@ export function useProjectWorkspace(initialProjectId: string) {
     };
     project.milestones.push(newMilestone);
     setActiveProjectId(prev => prev); // force re-render
-    
+
     try {
       // reasonable API call to add milestone
       await projectPutAPI.updateMilestone(activeProjectId, newMilestone.id, { status: 'pending' });
     } catch (e) {
       console.warn(e);
     }
-    
+
     alert('New milestone proposed!');
   };
 

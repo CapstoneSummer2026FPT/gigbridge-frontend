@@ -7,6 +7,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPutAPI } from '../../../api/proposalAPI/PUT';
+import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import type { Job } from '../../../types/models/Job';
 import type { User } from '../../../types/models/User';
@@ -215,7 +216,7 @@ export default function JobDetailScreen() {
       setWithdrawing(true);
       setProposalStatusError('');
 
-      const response = await proposalPutAPI.updateProposalStatus(myProposal.proposalId, ProposalStatus.Withdrawn);
+      const response = await proposalPatchAPI.updateProposalStatus(myProposal.proposalId, { status: ProposalStatus.Withdrawn });
 
       if (!response.success) {
         setProposalStatusError(response.message || 'Failed to withdraw proposal.');
