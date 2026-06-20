@@ -25,7 +25,19 @@ export interface ConversationSummaryResponse {
   lastOfferStatus?: number | null;
 }
 
-export interface ConversationMessageResponse {
+export interface MessageAttachmentResponse {
+  messageAttachmentId: string;
+  fileName: string;
+  fileUrl: string;
+  storageProvider: string;
+  storageObjectKey?: string | null;
+  mimeType: string;
+  fileExtension?: string | null;
+  fileSizeBytes: number;
+  createdAt: string;
+}
+
+export interface MessageResponse {
   messageId: string;
   conversationId: string;
   senderUserId?: string | null;
@@ -33,11 +45,21 @@ export interface ConversationMessageResponse {
   content?: string | null;
   replyToMessageId?: string | null;
   metadata?: string | null;
+  clientMessageId?: string | null;
   sentAt: string;
   editedAt?: string | null;
   isDeleted: boolean;
-  attachments: any[];
+  attachments: MessageAttachmentResponse[];
 }
+
+export interface ConversationUpdatedEvent {
+  conversationId: string;
+  lastMessage?: MessageResponse | null;
+  lastMessageAt?: string | null;
+  unreadCount: number;
+}
+
+export interface ConversationMessageResponse extends MessageResponse {}
 
 export const messageGetAPI = {
   /**

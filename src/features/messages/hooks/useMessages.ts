@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
 import {
-  MOCK_MSG_CONVERSATIONS,
-  MOCK_MSG_MESSAGES,
   type MsgConversation,
   type MsgMessage,
 } from '../mock/data-for-MessagesScreen';
@@ -13,6 +10,7 @@ import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { getChatHubUrl } from '../../../service/apiService';
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -34,13 +32,14 @@ function mapOfferStatusToDealStatus(status: number | null | undefined): MsgConve
   return 'idle';
 }
 
-function mapBackendConversation(c: any, currentUserId: string): MsgConversation {
+function mapBackendConversation(c: any): MsgConversation {
   const isClient = c.otherParticipantRole === 0;
+  const isInvited = c.conversationType === 4;
   return {
     id: c.conversationId,
     proposalId: c.proposalId ?? c.ProposalId ?? null,
-    roomType: c.conversationType === 4 ? 'invited' : 'negotiation',
-    roomId: c.conversationType === 4 ? 'room_invited' : 'room_negotiation',
+    roomType: isInvited ? 'invited' : 'negotiation',
+    roomId: isInvited ? 'room_invited' : 'room_negotiation',
     participantId: c.otherParticipantId || '',
     participantName: c.otherParticipantName || 'Partner',
     participantAvatar: c.otherParticipantAvatar || 'https://api.dicebear.com/9.x/avataaars/svg?seed=partner',
@@ -60,6 +59,7 @@ function mapBackendConversation(c: any, currentUserId: string): MsgConversation 
     dealStatus: mapOfferStatusToDealStatus(c.lastOfferStatus),
     proposedPrice: c.lastOfferPrice ? c.lastOfferPrice.toString() : undefined,
     conversationType: c.conversationType,
+    lastOfferId: c.lastOfferId,
   };
 }
 
@@ -79,6 +79,7 @@ function mapBackendMessage(m: any): MsgMessage {
 
   return {
     id: m.messageId,
+    clientMessageId: m.clientMessageId,
     content: m.content || '',
     conversationId: m.conversationId,
     senderId: m.senderUserId || 'system',
@@ -95,6 +96,16 @@ function sortConversations(convs: MsgConversation[]): MsgConversation[] {
   return [...convs].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
 }
 
+function formatSendError(res: { statusCode?: number; message?: string; errors?: unknown }) {
+  const parts = [
+    `status=${res.statusCode ?? 'unknown'}`,
+    res.message || 'Message was not saved.',
+    res.errors ? `errors=${JSON.stringify(res.errors)}` : null,
+  ].filter(Boolean);
+
+  return parts.join(' | ');
+}
+
 export function useMessages() {
   const { user, role } = useApp();
   const navigate = useNavigate();
@@ -108,36 +119,23 @@ export function useMessages() {
   });
 
   // ── Conversations state (mutable for room transfers) ─────────────────────
-  const [conversationsState, setConversationsState] = useState<MsgConversation[]>(() =>
-    MOCK_MSG_CONVERSATIONS.filter(c => c.conversationType !== 1)
-  );
+  const [conversationsState, setConversationsState] = useState<MsgConversation[]>([]);
 
   // ── Active conversation ──────────────────────────────────────────────────
   const [activeConvId, setActiveConvId] = useState<string>(() => {
     if (location.state && location.state.activeConvId) {
       return location.state.activeConvId;
     }
-    const visible = MOCK_MSG_CONVERSATIONS.filter(c => c.conversationType !== 1);
-    return visible[0]?.id || '';
+    return '';
   });
-  const activeConv = conversationsState.find(c => c.id === activeConvId) || conversationsState[0];
+  const activeConv = conversationsState.find(c => c.id === activeConvId);
 
   // ── Messages map ─────────────────────────────────────────────────────────
-  const [messagesMap, setMessagesMap] = useState<Record<string, MsgMessage[]>>(() => {
-    const map: Record<string, MsgMessage[]> = {};
-    MOCK_MSG_CONVERSATIONS.forEach(c => {
-      map[c.id] = MOCK_MSG_MESSAGES.filter(m => m.conversationId === c.id);
-    });
-    return map;
-  });
+  const [messagesMap, setMessagesMap] = useState<Record<string, MsgMessage[]>>({});
   const activeMessages = messagesMap[activeConvId] ?? [];
 
   // ── Deal state per conversation ──────────────────────────────────────────
-  const [dealStatusMap, setDealStatusMap] = useState<Record<string, MsgConversation['dealStatus']>>(() => {
-    const m: Record<string, MsgConversation['dealStatus']> = {};
-    MOCK_MSG_CONVERSATIONS.forEach(c => { m[c.id] = c.dealStatus ?? 'idle'; });
-    return m;
-  });
+  const [dealStatusMap, setDealStatusMap] = useState<Record<string, MsgConversation['dealStatus']>>({});
   const dealStatus = dealStatusMap[activeConvId] ?? 'idle';
 
   // ── UI state ─────────────────────────────────────────────────────────────
@@ -155,9 +153,16 @@ export function useMessages() {
   const convMenuRef = useRef<HTMLDivElement>(null);
 
   const [hubConnection, setHubConnection] = useState<signalR.HubConnection | null>(null);
+  const [signalRStatus, setSignalRStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed'>('idle');
   const [loading, setLoading] = useState(true);
 
   const negStatus = activeConv?.roomId === 'room_negotiation' ? 'accepted' : 'idle';
+
+  // Refs for tracking active ID in callbacks without re-triggering connection builder
+  const activeConvIdRef = useRef(activeConvId);
+  useEffect(() => {
+    activeConvIdRef.current = activeConvId;
+  }, [activeConvId]);
 
   // Fetch conversations on mount
   const loadConversations = useCallback(async () => {
@@ -166,19 +171,22 @@ export function useMessages() {
       if (res.success && res.data) {
         const mapped = res.data
           .filter((c: any) => c.conversationType !== 1)
-          .map((c: any) => mapBackendConversation(c, user?.id || ''));
+          .map((c: any) => mapBackendConversation(c));
         setConversationsState(mapped);
 
-        // Auto select active conversation
-        if (mapped.length > 0) {
+        // Auto select once, but keep the current room stable on later refreshes.
+        setActiveConvId(currentActiveConvId => {
+          if (mapped.length === 0) return '';
+          if (currentActiveConvId && mapped.some((c: any) => c.id === currentActiveConvId)) {
+            return currentActiveConvId;
+          }
+
           const stateConvId = location.state?.activeConvId;
           const stateProposalId = location.state?.proposalId;
           const foundById = mapped.find((c: any) => c.id === stateConvId);
           const foundByProposal = mapped.find((c: any) => c.proposalId === stateProposalId);
-          setActiveConvId(foundById ? foundById.id : foundByProposal ? foundByProposal.id : mapped[0].id);
-        } else {
-          setActiveConvId('');
-        }
+          return foundById ? foundById.id : foundByProposal ? foundByProposal.id : mapped[0].id;
+        });
       }
     } catch (err) {
       console.error('Failed to load conversations:', err);
@@ -204,13 +212,16 @@ export function useMessages() {
           setMessagesMap(prev => ({ ...prev, [activeConvId]: mapped }));
 
           // Mark as read
-          const currentConv = conversationsState.find(c => c.id === activeConvId);
-          if (currentConv && currentConv.unreadCount > 0 && mapped.length > 0) {
+          if (mapped.length > 0) {
             const lastMsg = mapped[mapped.length - 1];
-            await messagePostAPI.markAsRead(activeConvId, lastMsg.id);
-            setConversationsState(prev =>
-              prev.map(c => (c.id === activeConvId ? { ...c, unreadCount: 0 } : c))
-            );
+            setConversationsState(prev => {
+              const currentConv = prev.find(c => c.id === activeConvId);
+              if (currentConv && currentConv.unreadCount > 0) {
+                messagePostAPI.markAsRead(activeConvId, lastMsg.id).catch(() => {});
+                return prev.map(c => (c.id === activeConvId ? { ...c, unreadCount: 0 } : c));
+              }
+              return prev;
+            });
           }
         }
       } catch (err) {
@@ -222,37 +233,78 @@ export function useMessages() {
     return () => {
       active = false;
     };
-  }, [activeConvId, conversationsState]);
+  }, [activeConvId]);
 
   // Connect to SignalR
   useEffect(() => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'https://localhost:7094/api';
-    const hubUrl = apiBase.endsWith('/api')
-      ? apiBase.slice(0, -4) + '/hubs/chat'
-      : apiBase.replace('/api', '') + '/hubs/chat';
-
+    const hubUrl = getChatHubUrl();
     const token = localStorage.getItem('access_token');
-    if (!token) return;
+
+    if (!token) {
+      setSignalRStatus('disconnected');
+      console.warn('[ChatHub] skipped connection: no access token found');
+      return;
+    }
+
+    let disposed = false;
+    setSignalRStatus('connecting');
+    console.info('[ChatHub] connecting:', hubUrl);
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => token,
+        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
       })
       .withAutomaticReconnect()
       .build();
 
+    connection.onreconnecting(err => {
+      if (disposed) return;
+      setSignalRStatus('reconnecting');
+      console.warn('[ChatHub] reconnecting:', err);
+    });
+
+    connection.onreconnected(() => {
+      if (disposed) return;
+      setSignalRStatus('connected');
+      console.info('[ChatHub] reconnected');
+      if (activeConvIdRef.current) {
+        connection.invoke('JoinConversation', activeConvIdRef.current)
+          .then(() => {
+            console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
+          })
+          .catch(err => {
+            console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
+          });
+      }
+    });
+
+    connection.onclose(err => {
+      if (disposed) return;
+      setSignalRStatus('disconnected');
+      setHubConnection(null);
+      console.warn('[ChatHub] disconnected:', err);
+    });
+
     connection
       .start()
       .then(() => {
-        console.log('✓ SignalR connected to ChatHub');
+        if (disposed) {
+          connection.stop().catch(() => {});
+          return;
+        }
+        setSignalRStatus('connected');
+        console.info('[ChatHub] connected');
         setHubConnection(connection);
       })
       .catch(err => {
-        console.error('✗ SignalR connection failed:', err);
+        if (disposed) return;
+        setSignalRStatus('failed');
+        console.error('[ChatHub] connection failed:', err);
       });
 
     return () => {
-      connection.stop();
+      disposed = true;
+      connection.stop().catch(() => {});
     };
   }, []);
 
@@ -279,15 +331,44 @@ export function useMessages() {
     if (!hubConnection) return;
 
     const handleReceiveMessage = (m: any) => {
-      const mapped = mapBackendMessage(m);
-      if (mapped.conversationId === activeConvId) {
-        setMessagesMap(prev => ({
+      const mapped = { ...mapBackendMessage(m), sendStatus: 'sent' as const };
+      const targetConvId = mapped.conversationId;
+
+      setMessagesMap(prev => {
+        const list = prev[targetConvId] ?? [];
+        if (!prev[targetConvId] && targetConvId !== activeConvIdRef.current) {
+          return prev;
+        }
+
+        const exists = list.some(
+          msg =>
+            msg.id === mapped.id ||
+            msg.clientMessageId === m.clientMessageId ||
+            (m.clientMessageId && msg.id === m.clientMessageId)
+        );
+        if (exists) {
+          return {
+            ...prev,
+            [targetConvId]: list.map(msg =>
+              msg.id === m.clientMessageId ||
+              msg.id === mapped.id ||
+              msg.clientMessageId === m.clientMessageId
+                ? mapped
+                : msg
+            ),
+          };
+        }
+        return {
           ...prev,
-          [activeConvId]: [...(prev[activeConvId] ?? []), mapped],
-        }));
+          [targetConvId]: [...list, mapped],
+        };
+      });
+
+      // If active conversation receives a message and it's from the other participant, mark it read immediately!
+      if (targetConvId === activeConvIdRef.current && mapped.senderId !== user?.id) {
+        messagePostAPI.markAsRead(activeConvIdRef.current, mapped.id).catch(() => {});
       }
 
-      const targetConvId = mapped.conversationId;
       setConversationsState(prev =>
         sortConversations(
           prev.map(conversation => {
@@ -301,13 +382,72 @@ export function useMessages() {
                 ...conversation,
                 lastMessage: lastMsgText,
                 lastMessageAt: mapped.createdAt || new Date().toISOString(),
-                unreadCount: conversation.id === activeConvId ? 0 : conversation.unreadCount + 1,
+                unreadCount: conversation.id === activeConvIdRef.current ? 0 : conversation.unreadCount + 1,
               };
             }
             return conversation;
           })
         )
       );
+    };
+
+    const handleConversationUpdated = (event: any) => {
+      const { conversationId, lastMessage, lastMessageAt, unreadCount } = event;
+
+      setConversationsState(prev => {
+        const exists = prev.some(c => c.id === conversationId);
+        if (!exists) {
+          loadConversations();
+          return prev;
+        }
+
+        return sortConversations(
+          prev.map(c => {
+            if (c.id === conversationId) {
+              let lastMsgText = '';
+              if (lastMessage) {
+                if (lastMessage.messageType === 1) lastMsgText = '📷 Image';
+                else if (lastMessage.messageType === 2) lastMsgText = '📁 File';
+                else if (lastMessage.messageType === 4) lastMsgText = '💼 Deal Proposal';
+                else lastMsgText = lastMessage.content || '';
+              }
+
+              return {
+                ...c,
+                lastMessage: lastMsgText || c.lastMessage,
+                lastMessageAt: lastMessageAt || c.lastMessageAt,
+                unreadCount: conversationId === activeConvIdRef.current ? 0 : unreadCount,
+              };
+            }
+            return c;
+          })
+        );
+      });
+    };
+
+    const handleConversationRead = (event: any) => {
+      const { conversationId, userId, messageId } = event;
+      if (userId !== user?.id) {
+        setMessagesMap(prev => {
+          const list = prev[conversationId];
+          if (!list) return prev;
+          return {
+            ...prev,
+            [conversationId]: list.map(m => {
+              if (m.id === messageId || new Date(m.createdAt).getTime() <= new Date().getTime()) {
+                return { ...m, isRead: true };
+              }
+              return m;
+            }),
+          };
+        });
+      }
+
+      if (userId === user?.id) {
+        setConversationsState(prev =>
+          prev.map(c => (c.id === conversationId ? { ...c, unreadCount: 0 } : c))
+        );
+      }
     };
 
     const handleOfferUpdate = () => {
@@ -325,15 +465,19 @@ export function useMessages() {
     };
 
     hubConnection.on('ReceiveMessage', handleReceiveMessage);
+    hubConnection.on('ConversationUpdated', handleConversationUpdated);
+    hubConnection.on('ConversationRead', handleConversationRead);
     hubConnection.on('FinalOfferCreated', handleOfferUpdate);
     hubConnection.on('FinalOfferResponded', handleOfferUpdate);
 
     return () => {
       hubConnection.off('ReceiveMessage', handleReceiveMessage);
+      hubConnection.off('ConversationUpdated', handleConversationUpdated);
+      hubConnection.off('ConversationRead', handleConversationRead);
       hubConnection.off('FinalOfferCreated', handleOfferUpdate);
       hubConnection.off('FinalOfferResponded', handleOfferUpdate);
     };
-  }, [hubConnection, activeConvId, loadConversations]);
+  }, [hubConnection, activeConvId, loadConversations, user]);
 
   // Close conv menu on outside click
   useEffect(() => {
@@ -365,106 +509,156 @@ export function useMessages() {
     }));
   };
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) return;
-    const msg: MsgMessage = {
-      id: `msg_${Date.now()}`,
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !activeConvId) return;
+    const content = messageInput.trim();
+
+    const clientMessageId = typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+
+    const pendingMsg: MsgMessage = {
+      id: clientMessageId,
+      clientMessageId,
       conversationId: activeConvId,
       senderId: user?.id ?? 'current_user',
-      content: messageInput,
+      content,
       type: 'text',
       createdAt: new Date().toISOString(),
-      isRead: false,
+      isRead: true,
+      sendStatus: 'pending',
     };
+
+    // Optimistically update UI messages
     setMessagesMap(prev => ({
       ...prev,
-      [activeConvId]: [...(prev[activeConvId] ?? []), msg],
+      [activeConvId]: [...(prev[activeConvId] ?? []), pendingMsg],
     }));
     setMessageInput('');
 
-    setTimeout(() => {
-      const reply: MsgMessage = {
-        id: `reply_${Date.now()}`,
+    // Optimistically update conversation preview in sidebar
+    setConversationsState(prev =>
+      sortConversations(
+        prev.map(c =>
+          c.id === activeConvId
+            ? {
+                ...c,
+                lastMessage: content,
+                lastMessageAt: pendingMsg.createdAt || new Date().toISOString(),
+              }
+            : c
+        )
+      )
+    );
+
+    try {
+      const res = await messagePostAPI.sendMessage({
         conversationId: activeConvId,
-        senderId: activeConv?.participantId ?? 'partner',
-        content: `Got it! Let me review and get back to you regarding "${activeConv?.job.title}".`,
-        type: 'text',
-        createdAt: new Date().toISOString(),
-        isRead: true,
-      };
+        clientMessageId,
+        content,
+      });
+
+      if (!res.success || !res.data) {
+        console.error('[Messages] send failed response:', {
+          conversationId: activeConvId,
+          clientMessageId,
+          response: res,
+        });
+        throw new Error(formatSendError(res));
+      }
+
+      const backendMsg = { ...mapBackendMessage(res.data), sendStatus: 'sent' as const };
+      setMessagesMap(prev => {
+        const list = prev[activeConvId] ?? [];
+        const idx = list.findIndex(
+          m =>
+            m.id === clientMessageId ||
+            m.id === backendMsg.id ||
+            m.clientMessageId === clientMessageId
+        );
+        if (idx !== -1) {
+          const newList = [...list];
+          newList[idx] = backendMsg;
+          return { ...prev, [activeConvId]: newList };
+        }
+        return { ...prev, [activeConvId]: [...list, backendMsg] };
+      });
+      setConversationsState(prev =>
+        sortConversations(
+          prev.map(c =>
+            c.id === activeConvId
+              ? {
+                  ...c,
+                  lastMessage: backendMsg.content,
+                  lastMessageAt: backendMsg.createdAt || pendingMsg.createdAt || new Date().toISOString(),
+                }
+              : c
+          )
+        )
+      );
+    } catch (err) {
+      const sendError = err instanceof Error ? err.message : 'Message was not saved.';
+      console.error('[Messages] failed to send message:', {
+        conversationId: activeConvId,
+        clientMessageId,
+        error: err,
+      });
       setMessagesMap(prev => ({
         ...prev,
-        [activeConvId]: [...(prev[activeConvId] ?? []), reply],
+        [activeConvId]: (prev[activeConvId] ?? []).map(m =>
+          m.id === clientMessageId || m.clientMessageId === clientMessageId
+            ? { ...m, sendStatus: 'failed', sendError }
+            : m
+        ),
       }));
-    }, 2000);
+      setMessageInput(current => (current.trim() ? current : content));
+      loadConversations();
+    }
   };
 
-  const handleProposeDeal = () => {
+  const handleProposeDeal = async () => {
     if (!dealPriceInput.trim()) return;
-    const price = dealPriceInput;
-    const dealMsg: MsgMessage = {
-      id: `deal_${Date.now()}`,
-      conversationId: activeConvId,
-      senderId: user?.id ?? 'current_user',
-      content: price,
-      type: 'deal',
-      createdAt: new Date().toISOString(),
-      isRead: false,
-      dealStatus: 'pending_freelancer',
-    };
-    setMessagesMap(prev => ({
-      ...prev,
-      [activeConvId]: [...(prev[activeConvId] ?? []), dealMsg],
-    }));
-    setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'pending_freelancer' }));
-    setDealPriceInput('');
-    setShowDealPrice(false);
+    const price = parseFloat(dealPriceInput);
+    if (isNaN(price)) return;
+
+    try {
+      await messagePostAPI.createFinalOffer({
+        conversationId: activeConvId,
+        finalPrice: price,
+        scopeSummary: 'Proposed price',
+      });
+      setDealPriceInput('');
+      setShowDealPrice(false);
+    } catch (err) {
+      console.error('Failed to propose deal:', err);
+    }
   };
 
-  const handleAcceptDeal = (msgId: string, amount: string) => {
-    setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'agreed' }));
-    setMessagesMap(prev => ({
-      ...prev,
-      [activeConvId]: (prev[activeConvId] ?? []).map(m =>
-        m.id === msgId ? { ...m, dealStatus: 'agreed' } : m
-      ),
-    }));
-    const confirmMsg: MsgMessage = {
-      id: `confirm_${Date.now()}`,
-      conversationId: activeConvId,
-      senderId: user?.id ?? 'current_user',
-      content: `Đã đồng ý mức giá $${amount} USD. Tiến hành ký hợp đồng!`,
-      type: 'text',
-      createdAt: new Date().toISOString(),
-      isRead: false,
-    };
-    setMessagesMap(prev => ({
-      ...prev,
-      [activeConvId]: [...(prev[activeConvId] ?? []), confirmMsg],
-    }));
+  const handleAcceptDeal = async (msgId: string, amount: string) => {
+    if (!activeConv?.lastOfferId) return;
+    try {
+      await messagePostAPI.respondFinalOffer({
+        negotiationOfferId: activeConv.lastOfferId,
+        response: 0, // Accept
+      });
+    } catch (err) {
+      console.error('Failed to accept deal:', err);
+    }
   };
 
-  const handleDeclineDeal = (msgId: string) => {
-    setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'declined' }));
-    setMessagesMap(prev => ({
-      ...prev,
-      [activeConvId]: (prev[activeConvId] ?? []).map(m =>
-        m.id === msgId ? { ...m, dealStatus: 'declined' } : m
-      ),
-    }));
-    const declineMsg: MsgMessage = {
-      id: `decline_${Date.now()}`,
-      conversationId: activeConvId,
-      senderId: user?.id ?? 'current_user',
-      content: 'Đã từ chối mức giá đề xuất này.',
-      type: 'text',
-      createdAt: new Date().toISOString(),
-      isRead: false,
-    };
-    setMessagesMap(prev => ({
-      ...prev,
-      [activeConvId]: [...(prev[activeConvId] ?? []), declineMsg],
-    }));
+  const handleDeclineDeal = async (msgId: string) => {
+    if (!activeConv?.lastOfferId) return;
+    try {
+      await messagePostAPI.respondFinalOffer({
+        negotiationOfferId: activeConv.lastOfferId,
+        response: 2, // Decline
+      });
+    } catch (err) {
+      console.error('Failed to decline deal:', err);
+    }
   };
 
   // ── "Vào vòng đàm phán" – Client confirm move directly without waiting ────
@@ -473,42 +667,15 @@ export function useMessages() {
     setShowNegModal(true);
   }, []);
 
-  const handleConfirmMoveToNegotiation = () => {
+  const handleConfirmMoveToNegotiation = async () => {
     setShowNegModal(false);
+    if (!activeConv?.proposalId) return;
 
-    // Update conversation in DB
-    DB.updateConversation(activeConvId, {
-      roomId: 'room_negotiation',
-      roomType: 'negotiation',
-      conversationType: 0,
-    });
-
-    // Update local state
-    setConversationsState(prev =>
-      prev.map(c =>
-        c.id === activeConvId
-          ? { ...c, roomId: 'room_negotiation', roomType: 'negotiation', conversationType: 0 }
-          : c
-      )
-    );
-
-    // System message confirming transfer
-    const sysMsg: MsgMessage = {
-      id: `neg_sys_${Date.now()}`,
-      conversationId: activeConvId,
-      senderId: 'system',
-      content: 'Cuộc trò chuyện đã được chuyển sang vòng đàm phán. Chúc các bạn thỏa thuận thành công! 🤝',
-      type: 'system',
-      createdAt: new Date().toISOString(),
-      isRead: true,
-    };
-    setMessagesMap(prev => ({
-      ...prev,
-      [activeConvId]: [...(prev[activeConvId] ?? []), sysMsg],
-    }));
-
-    // Ensure negotiation room is open
-    setOpenRooms(prev => ({ ...prev, room_negotiation: true }));
+    try {
+      await messagePostAPI.startNegotiationFromProposal(activeConv.proposalId);
+    } catch (err) {
+      console.error('Failed to move to negotiation:', err);
+    }
   };
 
   const isMe = (senderId: string) =>
@@ -521,6 +688,7 @@ export function useMessages() {
     role,
     isClient,
     loading,
+    signalRStatus,
     navigate,
     openRooms,
     setOpenRooms,
