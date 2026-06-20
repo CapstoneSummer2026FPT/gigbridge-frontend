@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
-import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, DollarSign, Plus, KeyRound, Phone } from 'lucide-react';
+import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { adminAPI, adminPostAPI } from '../../../api/adminAPI';
+import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
 import { UserRole } from '../../../types';
 import '../styles/admin-users-screen.css';
@@ -16,6 +17,7 @@ const initialCreateForm = {
   password: '',
   phoneNumber: '',
   role: UserRole.Client,
+  isEmailVerified: false,
 };
 
 const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
@@ -38,7 +40,10 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
     last_login_at: null,
     login_failed_time: null,
     access_failed_count: 0,
+    elo_points: 0,
     gigcoin_balance: 0,
+    open_report_count: dto.openReportCount,
+    is_currently_reported: dto.isCurrentlyReported,
     created_at: dto.createdAt,
     updated_at: dto.updatedAt || dto.createdAt,
   };
@@ -56,15 +61,12 @@ export default function AdminUsersScreen() {
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2} | null>(null);
-  const [editForm, setEditForm] = useState({firstName: '', lastName: '', email: ''});
-  const [creditTokenUser, setCreditTokenUser] = useState<User | null>(null);
-  const [creditAmount, setCreditAmount] = useState<number>(100);
-  const [creditNote, setCreditNote] = useState<string>('');
-  const [creditingInProgress, setCreditingInProgress] = useState<boolean>(false);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2 } | null>(null);
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '' });
 
   // Real API state
   const [users, setUsers] = useState<User[]>([]);
+  const [reportedUserTotal, setReportedUserTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,7 +76,17 @@ export default function AdminUsersScreen() {
   const loadUsers = async () => {
     setLoading(true);
     const response = await adminAPI.getAllUsers();
-    setUsers(response.success && response.data ? response.data.items.map(mapAdminUserDtoToUser) : []);
+    if (response.success && response.data) {
+      setUsers(response.data.items.map(mapAdminUserDtoToUser));
+      setReportedUserTotal(
+        response.data.reportedUserCount
+        ?? response.data.items.filter(user => user.isCurrentlyReported).length
+        ?? 0,
+      );
+    } else {
+      setUsers([]);
+      setReportedUserTotal(0);
+    }
     setLoading(false);
   };
 
@@ -89,10 +101,10 @@ export default function AdminUsersScreen() {
 
       const matchesFilter =
         filterType === 'all' ? true :
-        filterType === 'client' ? user.role === 0 :
-        filterType === 'freelancer' ? user.role === 1 :
-        filterType === 'admin' ? user.role === 2 :
-        filterType === 'banned' ? !user.is_active : true;
+          filterType === 'client' ? user.role === 0 :
+            filterType === 'freelancer' ? user.role === 1 :
+              filterType === 'admin' ? user.role === 2 :
+                filterType === 'banned' ? !user.is_active : true;
 
       return matchesSearch && matchesFilter;
     });
@@ -115,9 +127,10 @@ export default function AdminUsersScreen() {
     const admins = allUsers.filter(u => u.role === 2).length;
     const banned = allUsers.filter(u => !u.is_active).length;
     const verified = allUsers.filter(u => u.is_email_verified).length;
+    const reported = reportedUserTotal;
 
-    return { total, clients, freelancers, admins, banned, verified };
-  }, [allUsers]);
+    return { total, clients, freelancers, admins, banned, verified, reported };
+  }, [allUsers, reportedUserTotal]);
 
   const handleBanUser = async (userId: string) => {
     const user = allUsers.find(u => u.id === userId);
@@ -132,38 +145,9 @@ export default function AdminUsersScreen() {
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: 0 | 1 | 2) => {
+  const handleChangeRole = async (_userId: string, _newRole: 0 | 1 | 2) => {
     alert('Role changes are not yet supported through the API.');
     setShowActionMenu(null);
-  };
-
-  const handleCreditWallet = async () => {
-    if (!creditTokenUser) return;
-    if (creditAmount <= 0) {
-      alert('Amount must be greater than 0.');
-      return;
-    }
-    setCreditingInProgress(true);
-    try {
-      const res = await adminPostAPI.creditWallet(creditTokenUser.id, {
-        tokenAmount: creditAmount,
-        note: creditNote || undefined,
-      });
-      if (res.success) {
-        alert(`Successfully credited ${creditAmount} tokens to ${creditTokenUser.full_name}'s wallet.`);
-        setCreditTokenUser(null);
-        setCreditAmount(100);
-        setCreditNote('');
-        await loadUsers();
-      } else {
-        alert(res.message || 'Failed to credit wallet.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('An error occurred while crediting wallet.');
-    } finally {
-      setCreditingInProgress(false);
-    }
   };
 
   const handleCreateUser = async () => {
@@ -191,6 +175,7 @@ export default function AdminUsersScreen() {
       password,
       role: createForm.role,
       phoneNumber: phoneNumber || undefined,
+      isEmailVerified: createForm.isEmailVerified,
     });
 
     if (response.success) {
@@ -235,9 +220,10 @@ export default function AdminUsersScreen() {
                 setCreateError(null);
                 setShowCreateUser(true);
               }}
-              className="btn-cyan px-4 py-2 text-sm flex items-center gap-2"
+              className="btn-cyan px-4 py-2 text-sm items-center gap-2 whitespace-nowrap"
+              style={{ display: 'inline-flex' }}
             >
-              <Plus size={16} />
+              <Plus size={16} className="flex-shrink-0" />
               Create User
             </button>
             <button className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
@@ -248,7 +234,7 @@ export default function AdminUsersScreen() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
           {[
             { label: 'Total Users', value: stats.total.toLocaleString(), icon: <Users size={16} />, color: 'cyan' },
             { label: 'Clients', value: stats.clients.toLocaleString(), icon: <Briefcase size={16} />, color: 'purple' },
@@ -256,6 +242,7 @@ export default function AdminUsersScreen() {
             { label: 'Admins', value: stats.admins.toString(), icon: <Shield size={16} />, color: 'amber' },
             { label: 'Verified', value: stats.verified.toLocaleString(), icon: <CheckCircle size={16} />, color: 'green' },
             { label: 'Banned', value: stats.banned.toString(), icon: <Ban size={16} />, color: 'red' },
+            { label: 'Reported Users', value: (stats.reported ?? 0).toLocaleString(), icon: <Flag size={16} />, color: 'red' },
           ].map(stat => (
             <div key={stat.label} className="stat-card">
               <div className="flex items-center justify-between mb-2">
@@ -310,11 +297,10 @@ export default function AdminUsersScreen() {
                     <button
                       key={filter.type}
                       onClick={() => setFilterType(filter.type as UserFilter)}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
-                        filterType === filter.type
-                          ? `bg-${filter.color}/20 text-${filter.color} border border-${filter.color} shadow-lg shadow-${filter.color}/20`
-                          : 'glass-button text-secondary hover:text-primary hover:border-white/20'
-                      }`}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${filterType === filter.type
+                        ? `bg-${filter.color}/20 text-${filter.color} border border-${filter.color} shadow-lg shadow-${filter.color}/20`
+                        : 'glass-button text-secondary hover:text-primary hover:border-white/20'
+                        }`}
                     >
                       <span className={filterType === filter.type ? `text-${filter.color}` : 'text-muted'}>
                         {filter.icon}
@@ -386,7 +372,16 @@ export default function AdminUsersScreen() {
                             {user.first_name.charAt(0)}{user.last_name.charAt(0)}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-primary">{user.full_name}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className={`text-sm font-semibold ${user.is_currently_reported ? 'text-red' : 'text-primary'}`}>
+                                {user.full_name}
+                              </p>
+                              {user.is_currently_reported && (
+                                <span className="badge-red text-xs inline-flex items-center gap-1" title="Open user reports">
+                                  <Flag size={12} /> {user.open_report_count || 0}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-secondary">{user.id}</p>
                           </div>
                         </div>
@@ -430,6 +425,16 @@ export default function AdminUsersScreen() {
                             <Edit size={16} className="text-purple" />
                           </button>
 
+                          {user.is_currently_reported && (
+                            <button
+                              onClick={() => navigate(`/admin/reports?reportedEntityType=User&reportedEntityId=${encodeURIComponent(user.id)}`)}
+                              className="p-2 rounded-lg glass-button hover:bg-red/10 transition-colors"
+                              title={`View ${user.open_report_count || 0} open report${user.open_report_count === 1 ? '' : 's'}`}
+                            >
+                              <Flag size={16} className="text-red" />
+                            </button>
+                          )}
+
                           <div className="relative">
                             <button
                               onClick={() => setShowActionMenu(showActionMenu === user.id ? null : user.id)}
@@ -443,7 +448,7 @@ export default function AdminUsersScreen() {
                               <div className="absolute right-0 top-full mt-2 w-48 dropdown-menu p-2 z-50">
                                 <button
                                   onClick={() => {
-                                    setConfirmAction({type: 'role', user, newRole: 0});
+                                    setConfirmAction({ type: 'role', user, newRole: 0 });
                                     setShowActionMenu(null);
                                   }}
                                   disabled={user.role === 0}
@@ -455,7 +460,7 @@ export default function AdminUsersScreen() {
 
                                 <button
                                   onClick={() => {
-                                    setConfirmAction({type: 'role', user, newRole: 1});
+                                    setConfirmAction({ type: 'role', user, newRole: 1 });
                                     setShowActionMenu(null);
                                   }}
                                   disabled={user.role === 1}
@@ -467,7 +472,7 @@ export default function AdminUsersScreen() {
 
                                 <button
                                   onClick={() => {
-                                    setConfirmAction({type: 'role', user, newRole: 2});
+                                    setConfirmAction({ type: 'role', user, newRole: 2 });
                                     setShowActionMenu(null);
                                   }}
                                   disabled={user.role === 2}
@@ -477,27 +482,15 @@ export default function AdminUsersScreen() {
                                   Set as Admin
                                 </button>
 
-                                 <button
-                                   onClick={() => {
-                                     setCreditTokenUser(user);
-                                     setShowActionMenu(null);
-                                   }}
-                                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
-                                 >
-                                   <DollarSign size={14} />
-                                   Credit Tokens
-                                 </button>
-
-                                 <div className="h-px my-1 dropdown-divider" />
+                                <div className="h-px my-1 dropdown-divider" />
 
                                 <button
                                   onClick={() => {
-                                    setConfirmAction({type: user.is_active ? 'ban' : 'unban', user});
+                                    setConfirmAction({ type: user.is_active ? 'ban' : 'unban', user });
                                     setShowActionMenu(null);
                                   }}
-                                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 ${
-                                    !user.is_active ? 'text-green' : 'text-red'
-                                  }`}
+                                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 ${!user.is_active ? 'text-green' : 'text-red'
+                                    }`}
                                 >
                                   {!user.is_active ? (
                                     <>
@@ -533,8 +526,8 @@ export default function AdminUsersScreen() {
         </div>
 
         {/* Create User Modal */}
-        {showCreateUser && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCreateUser(false)}>
+        {showCreateUser && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setShowCreateUser(false)}>
             <div className="glass-card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -618,11 +611,10 @@ export default function AdminUsersScreen() {
                         key={option.role}
                         type="button"
                         onClick={() => setCreateForm({ ...createForm, role: option.role })}
-                        className={`p-4 rounded-xl text-left transition-all border ${
-                          createForm.role === option.role
-                            ? 'bg-cyan/20 text-cyan border-cyan'
-                            : 'glass-button text-secondary border-white/10 hover:text-primary'
-                        }`}
+                        className={`p-4 rounded-xl text-left transition-all border ${createForm.role === option.role
+                          ? 'bg-cyan/20 text-cyan border-cyan'
+                          : 'glass-button text-secondary border-white/10 hover:text-primary'
+                          }`}
                       >
                         <div className="flex items-center justify-between mb-2">
                           {option.icon}
@@ -653,7 +645,21 @@ export default function AdminUsersScreen() {
                         placeholder="Minimum 6 characters"
                       />
                     </div>
-                    <p className="text-xs text-muted mt-2">The backend creates the account as active and unverified by default.</p>
+                    <label className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 p-3 cursor-pointer hover:bg-white/5 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={createForm.isEmailVerified}
+                        onChange={e => setCreateForm({ ...createForm, isEmailVerified: e.target.checked })}
+                        className="w-4 h-4 accent-[var(--gb-cyan)]"
+                      />
+                      <span>
+                        <span className="text-sm font-semibold text-primary block">Mark email as verified</span>
+                        <span className="text-xs text-muted">The admin confirms this email address without the normal verification link.</span>
+                      </span>
+                    </label>
+                    <p className="text-xs text-muted mt-2">
+                      The account will be created as active and {createForm.isEmailVerified ? 'email verified' : 'email unverified'}.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -672,7 +678,8 @@ export default function AdminUsersScreen() {
                 <button
                   onClick={handleCreateUser}
                   disabled={creatingUser}
-                  className="btn-cyan px-6 py-2 flex items-center gap-2 disabled:opacity-50"
+                  className="btn-cyan px-6 py-2 items-center gap-2 whitespace-nowrap disabled:opacity-50"
+                  style={{ display: 'inline-flex' }}
                 >
                   {creatingUser ? (
                     <div className="w-4 h-4 border-2 border-[#0A0F1C] border-t-transparent rounded-full animate-spin" />
@@ -683,7 +690,8 @@ export default function AdminUsersScreen() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body,
         )}
 
         {/* Preview Profile Modal */}
@@ -822,7 +830,7 @@ export default function AdminUsersScreen() {
                       <input
                         type="text"
                         defaultValue={selectedUser.first_name}
-                        onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
+                        onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
                         className="input-gb w-full px-4 py-2.5 text-sm"
                         placeholder="Enter first name"
                       />
@@ -832,7 +840,7 @@ export default function AdminUsersScreen() {
                       <input
                         type="text"
                         defaultValue={selectedUser.last_name}
-                        onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
+                        onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
                         className="input-gb w-full px-4 py-2.5 text-sm"
                         placeholder="Enter last name"
                       />
@@ -842,7 +850,7 @@ export default function AdminUsersScreen() {
                       <input
                         type="email"
                         defaultValue={selectedUser.email}
-                        onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                         className="input-gb w-full px-4 py-2.5 text-sm"
                         placeholder="Enter email address"
                       />
@@ -863,14 +871,13 @@ export default function AdminUsersScreen() {
                         <button
                           key={r.role}
                           onClick={() => {
-                            setConfirmAction({type: 'role', user: selectedUser, newRole: r.role as 0 | 1 | 2});
+                            setConfirmAction({ type: 'role', user: selectedUser, newRole: r.role as 0 | 1 | 2 });
                           }}
                           disabled={selectedUser.role === r.role}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                            selectedUser.role === r.role
-                              ? 'bg-cyan/20 text-cyan border border-cyan'
-                              : 'glass-button text-secondary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
-                          }`}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${selectedUser.role === r.role
+                            ? 'bg-cyan/20 text-cyan border border-cyan'
+                            : 'glass-button text-secondary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
+                            }`}
                         >
                           {r.icon}
                           {r.label}
@@ -897,13 +904,12 @@ export default function AdminUsersScreen() {
 
                       <button
                         onClick={() => {
-                          setConfirmAction({type: selectedUser.is_active ? 'ban' : 'unban', user: selectedUser});
+                          setConfirmAction({ type: selectedUser.is_active ? 'ban' : 'unban', user: selectedUser });
                         }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                          !selectedUser.is_active
-                            ? 'bg-green/20 text-green border border-green hover:bg-green/30'
-                            : 'bg-red/20 text-red border border-red hover:bg-red/30'
-                        }`}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${!selectedUser.is_active
+                          ? 'bg-green/20 text-green border border-green hover:bg-green/30'
+                          : 'bg-red/20 text-red border border-red hover:bg-red/30'
+                          }`}
                       >
                         {!selectedUser.is_active ? (
                           <>
@@ -960,7 +966,7 @@ export default function AdminUsersScreen() {
                       alert(response.message || 'Failed to update user');
                     }
                     setSelectedUser(null);
-                    setEditForm({firstName: '', lastName: '', email: ''});
+                    setEditForm({ firstName: '', lastName: '', email: '' });
                   }}
                   className="btn-cyan px-6 py-2 flex items-center gap-2"
                 >
@@ -1021,87 +1027,16 @@ export default function AdminUsersScreen() {
                     setConfirmAction(null);
                     setSelectedUser(null);
                   }}
-                  className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${
-                    confirmAction.type === 'ban'
-                      ? 'bg-red/20 text-red border border-red hover:bg-red/30'
-                      : confirmAction.type === 'unban'
+                  className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${confirmAction.type === 'ban'
+                    ? 'bg-red/20 text-red border border-red hover:bg-red/30'
+                    : confirmAction.type === 'unban'
                       ? 'bg-green/20 text-green border border-green hover:bg-green/30'
                       : 'btn-cyan'
-                  }`}
+                    }`}
                 >
                   {confirmAction.type === 'ban' && 'Ban User'}
                   {confirmAction.type === 'unban' && 'Unban User'}
                   {confirmAction.type === 'role' && 'Change Role'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Credit Tokens Modal */}
-        {creditTokenUser && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setCreditTokenUser(null)}>
-            <div className="glass-card max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-primary">Credit Wallet Tokens</h3>
-                <button
-                  onClick={() => setCreditTokenUser(null)}
-                  className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
-                >
-                  <XCircle size={18} className="text-red" />
-                </button>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3 p-4 glass-card">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white">
-                    {creditTokenUser.first_name?.charAt(0) || ''}{creditTokenUser.last_name?.charAt(0) || ''}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-primary">{creditTokenUser.full_name}</p>
-                    <p className="text-xs text-secondary">{creditTokenUser.email}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs text-secondary mb-2 block font-semibold">Token Amount</label>
-                  <input
-                    type="number"
-                    value={creditAmount}
-                    onChange={e => setCreditAmount(Number(e.target.value))}
-                    className="input-gb w-full px-4 py-2 text-sm text-foreground bg-secondary/15 border border-border/30 rounded-xl"
-                    placeholder="Enter token amount"
-                    min="1"
-                  />
-                  <span className="text-[10px] text-muted-foreground mt-1 block">
-                    = {new Intl.NumberFormat('vi-VN').format(creditAmount * 1000)} VND
-                  </span>
-                </div>
-
-                <div>
-                  <label className="text-xs text-secondary mb-2 block font-semibold">Note / Reason</label>
-                  <input
-                    type="text"
-                    value={creditNote}
-                    onChange={e => setCreditNote(e.target.value)}
-                    className="input-gb w-full px-4 py-2 text-sm text-foreground bg-secondary/15 border border-border/30 rounded-xl"
-                    placeholder="e.g. Compensation, Promo credits"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setCreditTokenUser(null)}
-                  className="flex-1 btn-ghost-cyan px-4 py-2"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreditWallet}
-                  disabled={creditingInProgress || creditAmount <= 0}
-                  className="flex-1 btn-cyan px-4 py-2 font-semibold disabled:opacity-50"
-                >
-                  {creditingInProgress ? 'Crediting...' : 'Confirm Credit'}
                 </button>
               </div>
             </div>
