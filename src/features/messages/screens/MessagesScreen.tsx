@@ -3,6 +3,7 @@ import {
   FileText, Image as ImageIcon, Table, ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
+  Wifi, WifiOff, Loader2, AlertCircle, Clock3,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useMessages } from '../hooks/useMessages';
@@ -15,6 +16,7 @@ export default function MessagesScreen() {
     role,
     isClient,
     loading,
+    signalRStatus,
     navigate,
     openRooms,
     conversationsState,
@@ -78,6 +80,25 @@ export default function MessagesScreen() {
               </p>
             </div>
           </div>
+          <span
+            title={`Chat realtime: ${signalRStatus}`}
+            aria-label={`Chat realtime: ${signalRStatus}`}
+            className={`w-8 h-8 rounded-full border flex items-center justify-center ${
+              signalRStatus === 'connected'
+                ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/10'
+                : signalRStatus === 'connecting' || signalRStatus === 'reconnecting'
+                ? 'text-amber-600 border-amber-500/20 bg-amber-500/10'
+                : 'text-red-600 border-red-500/20 bg-red-500/10'
+            }`}
+          >
+            {signalRStatus === 'connected' ? (
+              <Wifi size={15} />
+            ) : signalRStatus === 'connecting' || signalRStatus === 'reconnecting' ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <WifiOff size={15} />
+            )}
+          </span>
         </header>
 
         {/* 3-Column Layout */}
@@ -417,10 +438,13 @@ export default function MessagesScreen() {
                         /* ── Text message ───────────────────────────────────── */
                         <div
                           className={`p-4 rounded-2xl shadow-sm border ${
-                            mine
+                            msg.sendStatus === 'failed'
+                              ? 'bg-red-500/10 text-red-600 border-red-500/30 rounded-br-none'
+                              : mine
                               ? 'bg-[var(--gb-cyan)] text-white border-transparent rounded-br-none'
                               : 'bg-card text-foreground border-border rounded-bl-none'
-                          }`}
+                          } ${msg.sendStatus === 'pending' ? 'opacity-80' : ''}`}
+                          title={msg.sendStatus === 'failed' ? msg.sendError : undefined}
                         >
                           <p className="text-sm">{msg.content}</p>
                         </div>
@@ -431,7 +455,23 @@ export default function MessagesScreen() {
                         <span className="text-[10px] text-muted-foreground">
                           {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </span>
-                        {mine && <span className="text-[12px] text-[var(--gb-cyan)] font-bold">✓✓</span>}
+                        {mine && msg.sendStatus === 'pending' && (
+                          <span title="Sending" className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Clock3 size={11} />
+                          </span>
+                        )}
+                        {mine && msg.sendStatus === 'failed' && (
+                          <span
+                            title={msg.sendError || 'Message was not saved.'}
+                            className="text-[10px] text-red-600 font-semibold flex items-center gap-1"
+                          >
+                            <AlertCircle size={11} />
+                            <span>Failed</span>
+                          </span>
+                        )}
+                        {mine && (!msg.sendStatus || msg.sendStatus === 'sent') && (
+                          <span className="text-[12px] text-[var(--gb-cyan)] font-bold">✓✓</span>
+                        )}
                       </div>
                     </div>
                   </div>

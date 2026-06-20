@@ -1,5 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { MessageResponse } from './GET';
 
 export interface SendMessageRequest {
   conversationId: string;
@@ -28,8 +29,11 @@ export const messagePostAPI = {
   /**
    * POST /api/messages
    */
-  sendMessage: async (payload: SendMessageRequest): Promise<ApiResponse<any>> => {
-    return apiService.post<any>('messages', payload);
+  sendMessage: async (payload: SendMessageRequest): Promise<ApiResponse<MessageResponse>> => {
+    return apiService.post<MessageResponse>('messages', {
+      ...payload,
+      attachments: payload.attachments ?? [],
+    });
   },
 
   /**

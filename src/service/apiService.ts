@@ -1,7 +1,11 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse } from '../types/common';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5222/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5222/api';
+
+export const getApiRootUrl = () => API_BASE_URL.replace(/\/api\/?$/i, '').replace(/\/$/, '');
+
+export const getChatHubUrl = () => `${getApiRootUrl()}/hubs/chat`;
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

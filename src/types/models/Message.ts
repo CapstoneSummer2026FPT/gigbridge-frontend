@@ -157,6 +157,7 @@ export interface MsgConversation {
   proposedPrice?: string;
   conversationType?: number; // 0=JobNegotiation, 1=ContractWorkroom, etc.
   proposalId?: string | null;
+  lastOfferId?: string | null;
 }
 
 /** @deprecated Use IMessage instead */
@@ -165,9 +166,12 @@ export interface Message {
   content: string;
   conversationId?: string;
   senderId?: string;
+  clientMessageId?: string | null;
   type?: string; // 'text' | 'file' | 'deal' | 'negotiation_request' | 'system'
   createdAt?: string;
   isRead?: boolean;
+  sendStatus?: 'pending' | 'sent' | 'failed';
+  sendError?: string;
   fileUrl?: string;
   fileName?: string;
   dealStatus?: 'pending_freelancer' | 'agreed' | 'declined' | 'pending_client' | 'idle';
