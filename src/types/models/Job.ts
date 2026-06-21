@@ -238,6 +238,30 @@ export interface UpdateJobPostRequest {
   customSkillNames: string[];
 }
 
+export interface SaveDraftJobPostQuestionRequest {
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface SaveDraftJobPostRequest {
+  title?: string | null;
+  description?: string | null;
+  majorCategoryId?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string | null;
+  estimatedDuration?: string | null;
+  maxHires?: number | null;
+  location?: string | null;
+  visibility?: JobPostVisibility | number | null;
+  endDate?: string | null;
+  isAigenerated?: boolean | null;
+  skillIds?: string[] | null;
+  customSkillNames?: string[] | null;
+  questions?: SaveDraftJobPostQuestionRequest[] | null;
+}
+
 export interface GenerateJobDescriptionRequest {
   vettingQuestions: string[];
 }

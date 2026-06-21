@@ -258,6 +258,14 @@ export const jobGetAPI = {
   },
 
   /**
+   * GET /api/JobPosts/my-drafts
+   * Client-only current user's draft job posts.
+   */
+  getMyDraftJobPosts: async (): Promise<ApiResponse<GetMyJobPostDto[]>> => {
+    return apiService.get<GetMyJobPostDto[]>(`${jobPostsUrl}/my-drafts`);
+  },
+
+  /**
    * GET /api/JobPosts/my-applications
    * Freelancer-only job posts the current user applied to.
    */

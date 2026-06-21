@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useBlocker, useNavigate, useParams } from 'react-router';
 import { ArrowLeft, AlertCircle, Check, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
-import { JobPostVisibility, type UpdateJobPostRequest } from '../../../types/models/Job';
+import {
+  JobPostStatus,
+  JobPostVisibility,
+  type SaveDraftJobPostRequest,
+  type UpdateJobPostRequest,
+} from '../../../types/models/Job';
 import '../styles/edit-job-post-screen.css';
 
 interface FormErrors {
@@ -17,10 +22,12 @@ interface FormErrors {
 }
 
 const normalizeSkillName = (value: string) => value.trim().toLowerCase();
+const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
 
 export default function EditJobPostScreen() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const navigationAllowedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -51,6 +58,39 @@ export default function EditJobPostScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isDraftJob, setIsDraftJob] = useState(false);
+  const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
+  const [leaveAction, setLeaveAction] = useState<'save' | 'discard' | null>(null);
+
+  const shouldBlockNavigation = isDraftJob
+    && !navigationAllowedRef.current
+    && !isSubmitting
+    && !isLoading;
+
+  const blocker = useBlocker(
+    useCallback(
+      ({ currentLocation, nextLocation }) =>
+        shouldBlockNavigation && currentLocation.pathname !== nextLocation.pathname,
+      [shouldBlockNavigation]
+    )
+  );
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setIsLeavePromptOpen(true);
+    }
+  }, [blocker.state]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!shouldBlockNavigation) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [shouldBlockNavigation]);
 
   useEffect(() => {
     let isMounted = true;
@@ -87,6 +127,7 @@ export default function EditJobPostScreen() {
         }
 
         const job = response.data;
+        setIsDraftJob(Number(job.status) === JobPostStatus.Draft);
         setFormData({
           title: job.title || '',
           description: job.description || '',
@@ -297,6 +338,75 @@ export default function EditJobPostScreen() {
     customSkillNames: formData.customSkillNames,
   });
 
+  const buildDraftPayload = (): SaveDraftJobPostRequest => ({
+    title: formData.title.trim() || null,
+    description: formData.description.trim() || null,
+    majorCategoryId: formData.majorCategoryId || null,
+    budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
+    budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
+    currency: formData.currency.trim() || 'USD',
+    estimatedDuration: formData.estimatedDuration.trim() || null,
+    maxHires: formData.maxHires ? Number(formData.maxHires) : null,
+    location: formData.location.trim() || null,
+    visibility: Number(formData.visibility),
+    endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
+    skillIds: formData.skillIds,
+    customSkillNames: formData.customSkillNames,
+    questions: null,
+  });
+
+  const allowNextNavigation = () => {
+    navigationAllowedRef.current = true;
+  };
+
+  const continueBlockedNavigation = () => {
+    setIsLeavePromptOpen(false);
+    allowNextNavigation();
+    blocker.proceed?.();
+  };
+
+  const cancelBlockedNavigation = () => {
+    setIsLeavePromptOpen(false);
+    setLeaveAction(null);
+    blocker.reset?.();
+  };
+
+  const handleLeaveSaveDraft = async () => {
+    if (!id) return;
+    setLeaveAction('save');
+    const response = await jobAPI.saveDraftJobPost(id, buildDraftPayload());
+    setLeaveAction(null);
+
+    if (!response.success) {
+      toast.error(response.message || 'Draft JobPost could not be saved.');
+      return;
+    }
+
+    toast.success('Draft saved.');
+    continueBlockedNavigation();
+  };
+
+  const handleLeaveDiscardDraft = async () => {
+    if (!id) return;
+    setLeaveAction('discard');
+    const response = await jobAPI.deleteEmptyDraftJobPost(id);
+    setLeaveAction(null);
+
+    if (response.success) {
+      toast.success('Empty draft discarded.');
+      continueBlockedNavigation();
+      return;
+    }
+
+    if (response.statusCode === 400) {
+      toast.info(EMPTY_DRAFT_KEPT_MESSAGE);
+      continueBlockedNavigation();
+      return;
+    }
+
+    toast.error(response.message || 'Draft could not be discarded.');
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!id || !validateForm()) return;
@@ -313,6 +423,7 @@ export default function EditJobPostScreen() {
     setSuccessMessage(true);
     toast.success('Job post updated.');
     setTimeout(() => {
+      allowNextNavigation();
       navigate('/jobs/my-jobs');
     }, 800);
   };
@@ -548,6 +659,28 @@ export default function EditJobPostScreen() {
           </div>
         </form>
       </div>
+      {isLeavePromptOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-lg font-extrabold text-foreground">Do you want to save this JobPost draft?</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Save keeps your current draft. Discard only removes it if the backend confirms it is still empty.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <button type="button" onClick={handleLeaveSaveDraft} disabled={leaveAction !== null} className="btn-save">
+                {leaveAction === 'save' ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button type="button" onClick={handleLeaveDiscardDraft} disabled={leaveAction !== null} className="btn-save" style={{ background: '#ef4444' }}>
+                {leaveAction === 'discard' ? 'Discarding...' : 'Discard Draft'}
+              </button>
+              <button type="button" onClick={cancelBlockedNavigation} disabled={leaveAction !== null} className="btn-cancel">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
