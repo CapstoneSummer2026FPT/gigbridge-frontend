@@ -1,7 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { UpdateContractDto, ContractDto, Milestone } from '../../types/models/Contract';
-import { MilestoneStatus } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 const milestonesUrl = 'Milestones';

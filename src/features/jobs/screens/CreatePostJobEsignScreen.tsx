@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { 
-  Check, ChevronLeft, Send, Sparkles
+  Check, ChevronLeft, Send
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobAPI } from '../../../api/jobAPI';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { JobPostStatus, JobPostVisibility } from '../../../types/models/Job';
 import { toast } from 'sonner';
+import { SuccessMilestoneSetupModal } from '../components/SuccessMilestoneSetupModal';
 import '../styles/PostJobScreen.css';
 
 export default function CreatePostJobEsignScreen() {
@@ -27,6 +29,8 @@ export default function CreatePostJobEsignScreen() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [createdContractId, setCreatedContractId] = useState<string | null>(null);
 
   // Signature canvas drawing states and refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -194,8 +198,22 @@ export default function CreatePostJobEsignScreen() {
       }
 
       toast.success('Hợp đồng đã được ký số và đăng tuyển dụng thành công!');
-      setIsSubmitting(false);
-      navigate('/client/dashboard');
+      setIsSuccessModalOpen(true);
+      
+      try {
+        const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId);
+        if (contractResponse.success && contractResponse.data) {
+          setCreatedContractId(contractResponse.data.contractsId);
+        } else {
+          console.warn('Không tìm thấy hợp đồng đi kèm cho Job Post này. Sử dụng mock contract ID.');
+          setCreatedContractId('contract_mock_1');
+        }
+      } catch (err) {
+        console.error('Lỗi khi lấy thông tin hợp đồng:', err);
+        setCreatedContractId('contract_mock_1');
+      } finally {
+        setIsSubmitting(false);
+      }
     } catch (error: any) {
       console.error(error);
       setIsSubmitting(false);
@@ -493,6 +511,31 @@ export default function CreatePostJobEsignScreen() {
             </div>
           </div>
         )}
+
+        {/* Success milestone setup modal */}
+        <SuccessMilestoneSetupModal
+          isOpen={isSuccessModalOpen}
+          onClose={() => navigate('/client/dashboard')}
+          onSetup={() => {
+            const contractIdToUse = createdContractId || 'contract_mock_1';
+            navigate(`/contracts/${contractIdToUse}/milestones`, {
+              state: {
+                contractForm: {
+                  contractsId: contractIdToUse,
+                  jobPostsId: jobPostId || '',
+                  clientProfilesId: user?.id || '',
+                  title: contractForm?.title || jobData?.title || 'Untitled Contract',
+                  description: contractForm?.description || jobData?.description || '',
+                  totalBudget: parseFloat(contractForm?.budget) || parseFloat(jobData?.budgetMin) || 0,
+                  status: 0, // Draft
+                  startDate: contractForm?.startDate || new Date().toISOString(),
+                  endDate: contractForm?.endDate || jobData?.deadline || '',
+                  createdAt: new Date().toISOString(),
+                }
+              }
+            });
+          }}
+        />
       </div>
     </AppLayout>
   );
