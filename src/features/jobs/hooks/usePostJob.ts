@@ -432,6 +432,10 @@ export function usePostJob() {
   };
 
   const addOfficialSkill = (skill: SkillOptionDto) => {
+    if (form.skillIds.length + form.customSkillNames.length >= 10) {
+      toast.error('You can select up to 10 skills in total.');
+      return;
+    }
     setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
     setForm(prev => {
       if (prev.skillIds.includes(skill.skillId)) {
@@ -450,6 +454,11 @@ export function usePostJob() {
 
     if (!form.categoryId) {
       toast.error('Please select a category before adding skills.');
+      return;
+    }
+
+    if (form.skillIds.length + form.customSkillNames.length >= 10) {
+      toast.error('You can select up to 10 skills in total.');
       return;
     }
 
@@ -529,24 +538,49 @@ export function usePostJob() {
         return;
       }
 
-      const generatedSkillIds = response.data.skills.map(skill => skill.skillsId);
+      const generatedData = response.data;
+
+      // 1. Fetch categories and skills in parallel based on AI recommendations
+      const [categoriesResponse, skillsResponse] = await Promise.all([
+        generatedData.majorId ? jobAPI.getCategoriesByMajor(generatedData.majorId) : null,
+        generatedData.categoryId ? jobAPI.getSkillsByCategory(generatedData.categoryId) : null
+      ]);
+
+      if (categoriesResponse?.success && categoriesResponse.data) {
+        setCategories(categoriesResponse.data);
+      }
+      
+      if (skillsResponse?.success && skillsResponse.data) {
+        setAvailableSkills(skillsResponse.data);
+        setSkillNameById(prev => {
+          const next = { ...prev };
+          skillsResponse.data?.forEach(skill => {
+            next[skill.skillId] = skill.name;
+          });
+          return next;
+        });
+      }
+
+      // 2. Add AI system skills name map entries so they display as selected chips/badges
+      const generatedSkillIds = generatedData.skills.map(skill => skill.skillsId);
       setSkillNameById(prev => {
         const next = { ...prev };
-        response.data?.skills.forEach(skill => {
+        generatedData.skills.forEach(skill => {
           next[skill.skillsId] = skill.name;
         });
         return next;
       });
 
+      // 3. Update the form state with all AI recommendations
       setForm(prev => ({
         ...prev,
-        title: response.data?.title || prev.title,
-        majorId: response.data?.majorId || '',
-        majorCategoryId: response.data?.majorCategoryId || '',
-        categoryId: response.data?.categoryId || '',
+        title: generatedData.title || prev.title,
+        majorId: generatedData.majorId || '',
+        majorCategoryId: generatedData.majorCategoryId || '',
+        categoryId: generatedData.categoryId || '',
         skillIds: generatedSkillIds,
-        customSkillNames: response.data?.customSkills || [],
-        description: response.data?.description || prev.description,
+        customSkillNames: generatedData.customSkills || [],
+        description: generatedData.description || prev.description,
         currency: prev.currency || 'USD',
         estimatedDuration: prev.estimatedDuration || '2-4 weeks',
         maxHires: prev.maxHires || '1',
@@ -558,6 +592,8 @@ export function usePostJob() {
 
       setIsJobDetailsGenerated(true);
       toast.success('Job details generated successfully based on your questions.');
+    } catch (error) {
+      toast.error('An error occurred during AI generation.');
     } finally {
       setIsGeneratingInstant(false);
     }

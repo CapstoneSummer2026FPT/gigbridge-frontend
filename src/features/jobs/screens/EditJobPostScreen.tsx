@@ -254,6 +254,10 @@ export default function EditJobPostScreen() {
   };
 
   const addOfficialSkill = (skill: SkillOptionDto) => {
+    if (formData.skillIds.length + formData.customSkillNames.length >= 10) {
+      toast.error('You can select up to 10 skills in total.');
+      return;
+    }
     setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
     setFormData(prev => {
       if (prev.skillIds.includes(skill.skillId)) return prev;
@@ -267,6 +271,11 @@ export default function EditJobPostScreen() {
 
     if (!formData.categoryId) {
       toast.error('Please select a category before adding skills.');
+      return;
+    }
+
+    if (formData.skillIds.length + formData.customSkillNames.length >= 10) {
+      toast.error('You can select up to 10 skills in total.');
       return;
     }
 
