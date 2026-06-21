@@ -155,7 +155,7 @@ export default function CreatePostJobEsignScreen() {
       const updateRequest = {
         title: contractForm.title.trim(),
         description: contractForm.description.trim(),
-        categoryId: jobData?.categoryId || null,
+        majorCategoryId: jobData?.majorCategoryId || null,
         budgetMin: parseFloat(contractForm.budget) || 0,
         budgetMax: parseFloat(contractForm.budget) || 0,
         currency: jobData?.currency || 'USD',
@@ -165,6 +165,7 @@ export default function CreatePostJobEsignScreen() {
         visibility: jobData?.visibility !== undefined ? parseInt(jobData.visibility) : JobPostVisibility.Public,
         endDate: contractForm.endDate ? new Date(`${contractForm.endDate}T23:59:59`).toISOString() : null,
         skillIds: jobData?.skillIds || [],
+        customSkillNames: jobData?.customSkillNames || [],
       };
 
       const updateResponse = await jobAPI.updateJobPost(jobPostId, updateRequest);
@@ -229,7 +230,7 @@ export default function CreatePostJobEsignScreen() {
           {/* Stepper */}
           <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
             {/* Step 1: Completed */}
-            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/jobs/post', { state: { jobData } })}>
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/jobs/post', { state: { jobData, jobPostId } })}>
               <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-green-500 text-white hover:bg-green-600 transition-colors">
                 <Check size={20} />
               </div>

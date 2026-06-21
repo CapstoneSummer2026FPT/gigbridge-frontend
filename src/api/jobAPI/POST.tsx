@@ -5,6 +5,8 @@ import type {
   CreateDraftJobPostResponse,
   CreateJobPostQuestionRequest,
   CreateJobPostRequest,
+  GenerateJobDescriptionRequest,
+  GenerateJobDescriptionResponse,
   JobPostQuestionDto,
 } from '../../types/models/Job';
 
@@ -54,12 +56,14 @@ export const jobPostAPI = {
     return jobPostAPI.createJobPost(data);
   },
 
-  generateAIDescription: async (): Promise<ApiResponse<never>> => {
-    return {
-      success: false,
-      statusCode: 501,
-      message: 'AI job description generation is not exposed by JobPostsController.',
-    };
+  generateAIDescription: async (
+    vettingQuestions: string[] | GenerateJobDescriptionRequest
+  ): Promise<ApiResponse<GenerateJobDescriptionResponse>> => {
+    const data = Array.isArray(vettingQuestions)
+      ? { vettingQuestions }
+      : vettingQuestions;
+
+    return apiService.post<GenerateJobDescriptionResponse>(`${jobPostsUrl}/ai/generate`, data);
   },
 
   applyJob: async (): Promise<ApiResponse<never>> => {

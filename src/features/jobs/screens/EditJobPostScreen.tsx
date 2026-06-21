@@ -1,65 +1,225 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft, AlertCircle, Check } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useBlocker, useNavigate, useParams } from 'react-router';
+import { ArrowLeft, AlertCircle, Check, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { jobAPI } from '../../../api/jobAPI';
+import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
+import {
+  JobPostStatus,
+  JobPostVisibility,
+  type SaveDraftJobPostRequest,
+  type UpdateJobPostRequest,
+} from '../../../types/models/Job';
 import '../styles/edit-job-post-screen.css';
 
 interface FormErrors {
   title?: string;
   description?: string;
+  taxonomy?: string;
   budget?: string;
   duration?: string;
 }
 
+const normalizeSkillName = (value: string) => value.trim().toLowerCase();
+const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
+
 export default function EditJobPostScreen() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const navigationAllowedRef = useRef(false);
 
   const [formData, setFormData] = useState({
-    title: 'Build E-Commerce Platform',
-    description: 'Need a scalable e-commerce platform with React frontend and Node.js backend. Must include user authentication, product catalog, shopping cart, payment integration.',
-    budget: 5000,
-    duration: '2-4 weeks',
-    category: 'Web Development',
-    skills: ['React', 'Node.js', 'PostgreSQL'],
+    title: '',
+    description: '',
+    majorId: '',
+    majorCategoryId: '',
+    categoryId: '',
+    budgetMin: '',
+    budgetMax: '',
+    currency: 'USD',
+    estimatedDuration: '',
+    maxHires: '',
+    location: '',
+    visibility: String(JobPostVisibility.Public),
+    endDate: '',
+    skillIds: [] as string[],
+    customSkillNames: [] as string[],
   });
 
+  const [majors, setMajors] = useState<MajorDto[]>([]);
+  const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<SkillOptionDto[]>([]);
+  const [skillNameById, setSkillNameById] = useState<Record<string, string>>({});
+  const [skillInput, setSkillInput] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isDraftJob, setIsDraftJob] = useState(false);
+  const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
+  const [leaveAction, setLeaveAction] = useState<'save' | 'discard' | null>(null);
 
-  const validateForm = () => {
-    const newErrors: FormErrors = {};
+  const shouldBlockNavigation = isDraftJob
+    && !navigationAllowedRef.current
+    && !isSubmitting
+    && !isLoading;
 
-    if (!formData.title.trim()) {
-      newErrors.title = 'MSG17: Title is required';
-    } else if (formData.title.length < 10) {
-      newErrors.title = 'MSG17: Title must be at least 10 characters';
-    } else if (formData.title.length > 100) {
-      newErrors.title = 'MSG17: Title must not exceed 100 characters';
+  const blocker = useBlocker(
+    useCallback(
+      ({ currentLocation, nextLocation }) =>
+        shouldBlockNavigation && currentLocation.pathname !== nextLocation.pathname,
+      [shouldBlockNavigation]
+    )
+  );
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setIsLeavePromptOpen(true);
+    }
+  }, [blocker.state]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!shouldBlockNavigation) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [shouldBlockNavigation]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    jobAPI.getMajors().then(response => {
+      if (!isMounted) return;
+      if (response.success && response.data) {
+        setMajors(response.data);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!id) {
+      setLoadError('Job post id is missing.');
+      setIsLoading(false);
+      return;
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = 'MSG21: Description is required';
-    } else if (formData.description.length < 50) {
-      newErrors.description = 'MSG21: Description must be at least 50 characters';
-    } else if (formData.description.length > 5000) {
-      newErrors.description = 'MSG21: Description must not exceed 5000 characters';
+    let isMounted = true;
+    setIsLoading(true);
+    setLoadError(null);
+
+    jobAPI.getMyJobPostById(id)
+      .then(response => {
+        if (!isMounted) return;
+        if (!response.success || !response.data) {
+          setLoadError(response.message || 'Unable to load job post.');
+          return;
+        }
+
+        const job = response.data;
+        setIsDraftJob(Number(job.status) === JobPostStatus.Draft);
+        setFormData({
+          title: job.title || '',
+          description: job.description || '',
+          majorId: job.majorId || '',
+          majorCategoryId: job.majorCategoryId || '',
+          categoryId: job.categoryId || '',
+          budgetMin: job.budgetMin !== undefined && job.budgetMin !== null ? String(job.budgetMin) : '',
+          budgetMax: job.budgetMax !== undefined && job.budgetMax !== null ? String(job.budgetMax) : '',
+          currency: job.currency || 'USD',
+          estimatedDuration: job.estimatedDuration || '',
+          maxHires: job.maxHires !== undefined && job.maxHires !== null ? String(job.maxHires) : '',
+          location: job.location || '',
+          visibility: String(job.visibility ?? JobPostVisibility.Public),
+          endDate: job.endDate?.split('T')?.[0] || '',
+          skillIds: job.skills?.map(skill => skill.skillsId) || [],
+          customSkillNames: job.customSkillNames || [],
+        });
+        setSkillNameById(
+          Object.fromEntries((job.skills || []).map(skill => [skill.skillsId, skill.skillName]))
+        );
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!formData.majorId) {
+      setCategories([]);
+      return;
     }
 
-    if (!formData.budget || formData.budget <= 0) {
-      newErrors.budget = 'MSG28: Budget must be greater than 0';
-    } else if (formData.budget > 1000000) {
-      newErrors.budget = 'MSG28: Budget must not exceed 1,000,000';
+    let isMounted = true;
+    setIsTaxonomyLoading(true);
+
+    jobAPI.getCategoriesByMajor(formData.majorId)
+      .then(response => {
+        if (!isMounted) return;
+        setCategories(response.success && response.data ? response.data : []);
+      })
+      .finally(() => {
+        if (isMounted) setIsTaxonomyLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.majorId]);
+
+  useEffect(() => {
+    if (!formData.categoryId) {
+      setAvailableSkills([]);
+      return;
     }
 
-    if (!formData.duration.trim()) {
-      newErrors.duration = 'MSG29: Duration is required';
-    }
+    let isMounted = true;
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    jobAPI.getSkillsByCategory(formData.categoryId)
+      .then(response => {
+        if (!isMounted) return;
+        const skills = response.success && response.data ? response.data : [];
+        setAvailableSkills(skills);
+        setSkillNameById(prev => {
+          const next = { ...prev };
+          skills.forEach(skill => {
+            next[skill.skillId] = skill.name;
+          });
+          return next;
+        });
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.categoryId]);
+
+  const selectedOfficialSkills = useMemo(
+    () => formData.skillIds.map(skillId => ({
+      skillId,
+      name: skillNameById[skillId] || availableSkills.find(skill => skill.skillId === skillId)?.name || 'Unknown skill',
+    })),
+    [availableSkills, formData.skillIds, skillNameById]
+  );
+
+  const remainingSkills = useMemo(
+    () => availableSkills.filter(skill => !formData.skillIds.includes(skill.skillId)),
+    [availableSkills, formData.skillIds]
+  );
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -68,28 +228,232 @@ export default function EditJobPostScreen() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleMajorChange = (majorId: string) => {
+    setSkillInput('');
+    setAvailableSkills([]);
+    setFormData(prev => ({
+      ...prev,
+      majorId,
+      majorCategoryId: '',
+      categoryId: '',
+      skillIds: [],
+      customSkillNames: [],
+    }));
+  };
 
-    if (!validateForm()) {
+  const handleCategoryChange = (majorCategoryId: string) => {
+    const selectedCategory = categories.find(category => category.majorCategoryId === majorCategoryId);
+    setSkillInput('');
+    setFormData(prev => ({
+      ...prev,
+      majorCategoryId,
+      categoryId: selectedCategory?.categoryId || '',
+      skillIds: [],
+      customSkillNames: [],
+    }));
+  };
+
+  const addOfficialSkill = (skill: SkillOptionDto) => {
+    setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
+    setFormData(prev => {
+      if (prev.skillIds.includes(skill.skillId)) return prev;
+      return { ...prev, skillIds: [...prev.skillIds, skill.skillId] };
+    });
+  };
+
+  const addTypedSkill = () => {
+    const trimmedSkillName = skillInput.trim();
+    if (!trimmedSkillName) return;
+
+    if (!formData.categoryId) {
+      toast.error('Please select a category before adding skills.');
       return;
     }
 
-    setIsSubmitting(true);
+    const officialSkill = availableSkills.find(
+      skill => normalizeSkillName(skill.name) === normalizeSkillName(trimmedSkillName)
+    );
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSuccessMessage(true);
-      setTimeout(() => {
-        navigate('/jobs/my-jobs');
-      }, 1500);
-    }, 1000);
+    if (officialSkill) {
+      addOfficialSkill(officialSkill);
+      setSkillInput('');
+      return;
+    }
+
+    setFormData(prev => {
+      const exists = prev.customSkillNames.some(
+        skillName => normalizeSkillName(skillName) === normalizeSkillName(trimmedSkillName)
+      );
+
+      if (exists) return prev;
+      return { ...prev, customSkillNames: [...prev.customSkillNames, trimmedSkillName] };
+    });
+    setSkillInput('');
   };
+
+  const validateForm = () => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required.';
+    } else if (formData.title.length > 200) {
+      newErrors.title = 'Title must not exceed 200 characters.';
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required.';
+    }
+
+    if (!formData.majorId || !formData.majorCategoryId || !formData.categoryId) {
+      newErrors.taxonomy = 'Major and category are required.';
+    }
+
+    const budgetMin = formData.budgetMin ? Number(formData.budgetMin) : null;
+    const budgetMax = formData.budgetMax ? Number(formData.budgetMax) : null;
+    if (budgetMin !== null && (Number.isNaN(budgetMin) || budgetMin < 0)) {
+      newErrors.budget = 'Budget min must be greater than or equal to 0.';
+    } else if (budgetMax !== null && (Number.isNaN(budgetMax) || budgetMax < 0)) {
+      newErrors.budget = 'Budget max must be greater than or equal to 0.';
+    } else if (budgetMin !== null && budgetMax !== null && budgetMax < budgetMin) {
+      newErrors.budget = 'Budget max must be greater than or equal to budget min.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const buildPayload = (): UpdateJobPostRequest => ({
+    title: formData.title.trim(),
+    description: formData.description.trim(),
+    majorCategoryId: formData.majorCategoryId || null,
+    budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
+    budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
+    currency: formData.currency.trim() || 'USD',
+    estimatedDuration: formData.estimatedDuration.trim() || null,
+    maxHires: formData.maxHires ? Number(formData.maxHires) : null,
+    location: formData.location.trim() || null,
+    visibility: Number(formData.visibility),
+    endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
+    skillIds: formData.skillIds,
+    customSkillNames: formData.customSkillNames,
+  });
+
+  const buildDraftPayload = (): SaveDraftJobPostRequest => ({
+    title: formData.title.trim() || null,
+    description: formData.description.trim() || null,
+    majorCategoryId: formData.majorCategoryId || null,
+    budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
+    budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
+    currency: formData.currency.trim() || 'USD',
+    estimatedDuration: formData.estimatedDuration.trim() || null,
+    maxHires: formData.maxHires ? Number(formData.maxHires) : null,
+    location: formData.location.trim() || null,
+    visibility: Number(formData.visibility),
+    endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
+    skillIds: formData.skillIds,
+    customSkillNames: formData.customSkillNames,
+    questions: null,
+  });
+
+  const allowNextNavigation = () => {
+    navigationAllowedRef.current = true;
+  };
+
+  const continueBlockedNavigation = () => {
+    setIsLeavePromptOpen(false);
+    allowNextNavigation();
+    blocker.proceed?.();
+  };
+
+  const cancelBlockedNavigation = () => {
+    setIsLeavePromptOpen(false);
+    setLeaveAction(null);
+    blocker.reset?.();
+  };
+
+  const handleLeaveSaveDraft = async () => {
+    if (!id) return;
+    setLeaveAction('save');
+    const response = await jobAPI.saveDraftJobPost(id, buildDraftPayload());
+    setLeaveAction(null);
+
+    if (!response.success) {
+      toast.error(response.message || 'Draft JobPost could not be saved.');
+      return;
+    }
+
+    toast.success('Draft saved.');
+    continueBlockedNavigation();
+  };
+
+  const handleLeaveDiscardDraft = async () => {
+    if (!id) return;
+    setLeaveAction('discard');
+    const response = await jobAPI.deleteEmptyDraftJobPost(id);
+    setLeaveAction(null);
+
+    if (response.success) {
+      toast.success('Empty draft discarded.');
+      continueBlockedNavigation();
+      return;
+    }
+
+    if (response.statusCode === 400) {
+      toast.info(EMPTY_DRAFT_KEPT_MESSAGE);
+      continueBlockedNavigation();
+      return;
+    }
+
+    toast.error(response.message || 'Draft could not be discarded.');
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!id || !validateForm()) return;
+
+    setIsSubmitting(true);
+    const response = await jobAPI.updateJobPost(id, buildPayload());
+    setIsSubmitting(false);
+
+    if (!response.success) {
+      toast.error(response.message || 'Job post could not be updated.');
+      return;
+    }
+
+    setSuccessMessage(true);
+    toast.success('Job post updated.');
+    setTimeout(() => {
+      allowNextNavigation();
+      navigate('/jobs/my-jobs');
+    }, 800);
+  };
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="edit-job-wrapper">
+          <div className="edit-job-form glass-card">Loading job post...</div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <AppLayout>
+        <div className="edit-job-wrapper">
+          <div className="edit-job-form glass-card">
+            <div className="form-error"><AlertCircle size={14} />{loadError}</div>
+            <button onClick={() => navigate('/jobs/my-jobs')} className="btn-cancel">Back to Jobs</button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
       <div className="edit-job-wrapper">
-        {/* Header */}
         <div className="edit-job-header">
           <button onClick={() => navigate(-1)} className="edit-job-back-btn">
             <ArrowLeft size={18} />
@@ -98,9 +462,7 @@ export default function EditJobPostScreen() {
           <h1 className="edit-job-title">Edit Job Post</h1>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="edit-job-form glass-card">
-          {/* Title */}
           <div className="form-group">
             <label className="form-label">Job Title *</label>
             <input
@@ -111,12 +473,9 @@ export default function EditJobPostScreen() {
               className={`form-input ${errors.title ? 'error' : ''}`}
             />
             {errors.title && <div className="form-error"><AlertCircle size={14} />{errors.title}</div>}
-            <div className="form-hint">
-              {formData.title.length}/100 characters
-            </div>
+            <div className="form-hint">{formData.title.length}/200 characters</div>
           </div>
 
-          {/* Description */}
           <div className="form-group">
             <label className="form-label">Job Description *</label>
             <textarea
@@ -126,125 +485,166 @@ export default function EditJobPostScreen() {
               rows={8}
               className={`form-textarea ${errors.description ? 'error' : ''}`}
             />
-            {errors.description && (
-              <div className="form-error"><AlertCircle size={14} />{errors.description}</div>
-            )}
-            <div className="form-hint">
-              {formData.description.length}/5000 characters
-            </div>
+            {errors.description && <div className="form-error"><AlertCircle size={14} />{errors.description}</div>}
           </div>
 
-          {/* Budget Row */}
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Budget Amount *</label>
-              <div className="budget-input-wrapper">
-                <span className="budget-currency">$</span>
-                <input
-                  type="number"
-                  value={formData.budget}
-                  onChange={(e) =>
-                    handleInputChange('budget', parseFloat(e.target.value))
-                  }
-                  placeholder="0"
-                  className={`form-input budget-input ${errors.budget ? 'error' : ''}`}
-                />
-              </div>
-              {errors.budget && <div className="form-error"><AlertCircle size={14} />{errors.budget}</div>}
-            </div>
-          </div>
-
-          {/* Duration */}
-          <div className="form-group">
-            <label className="form-label">Project Duration *</label>
-            <select
-              value={formData.duration}
-              onChange={(e) => handleInputChange('duration', e.target.value)}
-              className={`form-select ${errors.duration ? 'error' : ''}`}
-            >
-              <option value="">Select duration</option>
-              <option value="Less than 1 week">Less than 1 week</option>
-              <option value="1-2 weeks">1-2 weeks</option>
-              <option value="2-4 weeks">2-4 weeks</option>
-              <option value="1-3 months">1-3 months</option>
-              <option value="3-6 months">3-6 months</option>
-              <option value="6+ months">6+ months</option>
-              <option value="Ongoing">Ongoing</option>
-            </select>
-            {errors.duration && <div className="form-error"><AlertCircle size={14} />{errors.duration}</div>}
-          </div>
-
-          {/* Category */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Category</label>
+              <label className="form-label">Major *</label>
               <select
-                value={formData.category}
-                onChange={(e) => handleInputChange('category', e.target.value)}
-                className="form-select"
+                value={formData.majorId}
+                onChange={(e) => handleMajorChange(e.target.value)}
+                className={`form-select ${errors.taxonomy ? 'error' : ''}`}
               >
-                <option value="Web Development">Web Development</option>
-                <option value="Mobile App">Mobile App</option>
-                <option value="UI/UX Design">UI/UX Design</option>
-                <option value="Graphic Design">Graphic Design</option>
+                <option value="">Select major</option>
+                {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Category *</label>
+              <select
+                value={formData.majorCategoryId}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                disabled={!formData.majorId || isTaxonomyLoading}
+                className={`form-select ${errors.taxonomy ? 'error' : ''}`}
+              >
+                <option value="">{!formData.majorId ? 'Select a major first' : 'Select category'}</option>
+                {categories.map(category => (
+                  <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
+                ))}
               </select>
             </div>
           </div>
+          {errors.taxonomy && <div className="form-error"><AlertCircle size={14} />{errors.taxonomy}</div>}
 
-          {/* Skills */}
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Budget Min</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.budgetMin}
+                onChange={(e) => handleInputChange('budgetMin', e.target.value)}
+                className={`form-input ${errors.budget ? 'error' : ''}`}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Budget Max</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.budgetMax}
+                onChange={(e) => handleInputChange('budgetMax', e.target.value)}
+                className={`form-input ${errors.budget ? 'error' : ''}`}
+              />
+            </div>
+          </div>
+          {errors.budget && <div className="form-error"><AlertCircle size={14} />{errors.budget}</div>}
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Project Duration</label>
+              <input
+                value={formData.estimatedDuration}
+                onChange={(e) => handleInputChange('estimatedDuration', e.target.value)}
+                placeholder="e.g. 2-4 weeks"
+                className="form-input"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">End Date</label>
+              <input
+                type="date"
+                value={formData.endDate}
+                onChange={(e) => handleInputChange('endDate', e.target.value)}
+                className="form-input"
+              />
+            </div>
+          </div>
+
           <div className="form-group">
             <label className="form-label">Required Skills</label>
             <div className="skills-display">
-              {formData.skills.map((skill, index) => (
-                <div key={index} className="skill-tag">
-                  {skill}
+              {selectedOfficialSkills.map(skill => (
+                <div key={skill.skillId} className="skill-tag">
+                  {skill.name}
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        skills: prev.skills.filter((_, i) => i !== index),
-                      }));
-                    }}
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      skillIds: prev.skillIds.filter(skillId => skillId !== skill.skillId),
+                    }))}
                     className="skill-remove"
                   >
-                    ×
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {formData.customSkillNames.map(skillName => (
+                <div key={skillName} className="skill-tag">
+                  {skillName} (custom)
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      customSkillNames: prev.customSkillNames.filter(item => normalizeSkillName(item) !== normalizeSkillName(skillName)),
+                    }))}
+                    className="skill-remove"
+                  >
+                    <X size={12} />
                   </button>
                 </div>
               ))}
             </div>
+
+            <div className="form-row" style={{ marginTop: 12 }}>
+              <input
+                value={skillInput}
+                onChange={event => setSkillInput(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addTypedSkill();
+                  }
+                }}
+                disabled={!formData.categoryId}
+                placeholder={formData.categoryId ? 'Type a skill and click Add' : 'Select a category first'}
+                className="form-input"
+              />
+              <button type="button" onClick={addTypedSkill} disabled={!formData.categoryId || !skillInput.trim()} className="btn-save">
+                <Plus size={16} /> Add
+              </button>
+            </div>
+
+            {remainingSkills.length > 0 && (
+              <div className="skills-display" style={{ marginTop: 12 }}>
+                {remainingSkills.slice(0, 8).map(skill => (
+                  <button key={skill.skillId} type="button" onClick={() => addOfficialSkill(skill)} className="skill-tag">
+                    <Plus size={12} /> {skill.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Info Box */}
           <div className="edit-job-info-box">
             <div className="info-box-content">
               <AlertCircle size={20} className="info-icon" />
               <div>
                 <p className="info-title">Before you save:</p>
                 <ul className="info-list">
-                  <li>Verify all fields are accurate and complete</li>
-                  <li>Check the description for clarity and professionalism</li>
-                  <li>Ensure budget matches your project scope</li>
-                  <li>Editing won't affect already submitted proposals</li>
+                  <li>Major/category selection controls the official skill list.</li>
+                  <li>Typed skills matching official skills are saved as official skill IDs.</li>
+                  <li>Custom skills are saved only when no official match exists in the selected category.</li>
                 </ul>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
           <div className="form-actions">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="btn-cancel"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || successMessage}
-              className="btn-save"
-            >
+            <button type="button" onClick={() => navigate(-1)} className="btn-cancel">Cancel</button>
+            <button type="submit" disabled={isSubmitting || successMessage} className="btn-save">
               {successMessage ? (
                 <>
                   <Check size={18} />
@@ -259,6 +659,28 @@ export default function EditJobPostScreen() {
           </div>
         </form>
       </div>
+      {isLeavePromptOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-lg font-extrabold text-foreground">Do you want to save this JobPost draft?</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Save keeps your current draft. Discard only removes it if the backend confirms it is still empty.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <button type="button" onClick={handleLeaveSaveDraft} disabled={leaveAction !== null} className="btn-save">
+                {leaveAction === 'save' ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button type="button" onClick={handleLeaveDiscardDraft} disabled={leaveAction !== null} className="btn-save" style={{ background: '#ef4444' }}>
+                {leaveAction === 'discard' ? 'Discarding...' : 'Discard Draft'}
+              </button>
+              <button type="button" onClick={cancelBlockedNavigation} disabled={leaveAction !== null} className="btn-cancel">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

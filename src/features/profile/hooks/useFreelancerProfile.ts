@@ -5,8 +5,7 @@ import type { InviteFreelancerData } from '../components/InviteFreelancerToJobMo
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
-import type { Review } from '../../../types/models/Job';
-import { MOCK_BROWSE_JOBS } from '../../jobs/mock/data-for-BrowseJobsScreen';
+import { JobPostStatus, type Review } from '../../../types/models/Job';
 
 type ReviewViewModel = {
   id: string;
@@ -62,6 +61,7 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
+  const [openClientJobs, setOpenClientJobs] = useState<Array<{ id: string; title: string; status: string }>>([]);
 
   // Create Review popup states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -141,11 +141,23 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     fetchReviews();
   }, [targetId]);
 
-  const openClientJobs = MOCK_BROWSE_JOBS.filter(job => job.status === 'open').map(job => ({
-    id: job.id,
-    title: job.title,
-    status: job.status,
-  }));
+  useEffect(() => {
+    const fetchOpenClientJobs = async (): Promise<void> => {
+      const response = await jobGetAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 });
+      const jobs = response.success && response.data ? response.data : [];
+      setOpenClientJobs(
+        jobs
+          .filter(job => job.status === JobPostStatus.Open)
+          .map(job => ({
+            id: job.jobPostsId,
+            title: job.title,
+            status: 'open',
+          }))
+      );
+    };
+
+    fetchOpenClientJobs();
+  }, []);
   
   const isAlreadyInvitedToJob = (jobId: string): boolean => {
     const inviteKey = `${targetId}_${jobId}`;
