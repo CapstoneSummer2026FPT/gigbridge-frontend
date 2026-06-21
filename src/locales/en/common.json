@@ -191,6 +191,19 @@
     "askQuestion": "Ask a question...",
     "suggestions": "Quick Suggestions"
   },
+  "schedule": {
+    "create": "Create schedule",
+    "edit": "Edit schedule",
+    "cancel": "Cancel schedule",
+    "title": "Schedule title",
+    "details": "Optional details",
+    "reason": "Cancellation reason (required)",
+    "vietnamTime": "Times are fixed to Vietnam Time (ICT).",
+    "save": "Save",
+    "saving": "Saving...",
+    "remainingEdits": "shared edits remaining",
+    "superseded": "Superseded · latest"
+  },
   "footer": {
     "allRightsReserved": "All rights reserved",
     "termsOfService": "Terms of Service",

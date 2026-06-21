@@ -1,5 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { ScheduleEvent } from '../scheduleAPI';
 
 export interface ConversationSummaryResponse {
   conversationId: string;
@@ -50,6 +51,7 @@ export interface MessageResponse {
   editedAt?: string | null;
   isDeleted: boolean;
   attachments: MessageAttachmentResponse[];
+  schedule?: ScheduleEvent | null;
 }
 
 export interface ConversationUpdatedEvent {
@@ -90,4 +92,7 @@ export const messageGetAPI = {
     }
     return apiService.get<ConversationMessageResponse[]>(`messages/conversation/${conversationId}`, params);
   },
+
+  getMessagesAround: async (conversationId: string, messageId: string, radius: number = 20): Promise<ApiResponse<ConversationMessageResponse[]>> =>
+    apiService.get<ConversationMessageResponse[]>(`messages/conversation/${conversationId}/around/${messageId}`, { radius }),
 };

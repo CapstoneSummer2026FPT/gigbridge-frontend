@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, MessageSquare, Bot, DollarSign, CheckCircle, Briefcase, Star, Trash2, AlertTriangle, FileText } from 'lucide-react';
+import { Bell, MessageSquare, Bot, DollarSign, CheckCircle, Briefcase, Star, Trash2, AlertTriangle, FileText, CalendarDays } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useUserNotifications } from '../hooks/useUserNotifications';
@@ -18,6 +18,7 @@ const NOTIF_ICONS: Record<string, ReactNode> = {
   dispute: <AlertTriangle size={16} className="text-red" />,
   ai_suggestion: <Bot size={16} className="text-purple" />,
   system: <Bell size={16} className="text-secondary" />,
+  schedule: <CalendarDays size={16} className="text-cyan" />,
 };
 
 const CONVERSATIONS = [
@@ -123,6 +124,7 @@ export default function NotificationsScreen() {
                         </div>
                       </div>
                       <p className="text-sm mt-1 leading-relaxed text-secondary">{notif.body}</p>
+                      {notif.schedule && <div className="mt-2 rounded-lg bg-cyan/5 border border-cyan/10 p-2 text-xs"><strong>{notif.schedule.title}</strong><span className="block text-secondary">{new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(notif.schedule.scheduledAtUtc))} Vietnam Time (ICT) · {notif.schedule.actorName}</span></div>}
                     </div>
                     <button className="opacity-0 group-hover:opacity-100 p-1 transition-all text-secondary">
                       <Trash2 size={14} />
