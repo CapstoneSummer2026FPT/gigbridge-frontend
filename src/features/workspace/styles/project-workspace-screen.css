@@ -224,12 +224,12 @@
   }
 
   /* "View job post detail" below title hidden to save space */
-  .project-workspace-page > header button[class*="text-\\[10px\\]"] {
+  .project-workspace-page > header button.text-xs {
     display: none;
   }
 
   /* Message bubbles take more width on tiny screens */
-  .project-workspace-page .max-w-\\[85\\%\\] {
+  .project-workspace-page .chat-bubble {
     max-width: 96% !important;
   }
 }
