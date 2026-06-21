@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Eye, EyeOff, Lock, AlertCircle, CheckCircle, Clock, DollarSign,
+  Lock, AlertCircle, CheckCircle, Clock, DollarSign,
   User, FileText, Calendar, Download, ArrowLeft, Shield,
-  Mail, MapPin, Briefcase, Heart, ShieldAlert, ListChecks,
-  Copy, Check, FileCheck, Layers, ChevronDown, Star
+  Mail, ShieldAlert, ListChecks,
+  Copy, Check, FileCheck, ChevronDown, Star
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
@@ -13,9 +13,8 @@ import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
-import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
-import { UserRole } from '../../../types/models/User';
+import type { ContractDto, Milestone, ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
+import type { UserRole } from '../../../types/models/User';
 import {
   getContractStatusLabel,
   getContractStatusClass,
@@ -62,16 +61,17 @@ interface ContractDetailsData extends ContractDto {
   freelancerProfile?: FreelancerProfile;
   milestones?: Milestone[];
   auditTrail?: AuditTrailEntry[];
+  // Extended contract terms fields (not in ContractDto base)
+  scopeOfWork?: string;
+  paymentTerms?: string;
+  intellectualPropertyTerms?: string;
+  confidentialityTerms?: string;
+  cancellationTerms?: string;
+  disputeTerms?: string;
 }
 
-type UserRole = 'client' | 'freelancer' | 'admin' | 'none';
+type ContractUserRole = 'client' | 'freelancer' | 'admin' | 'none';
 
-const CONTRACT_STATUSES = [
-  { value: ContractStatus.Active, label: 'Active', color: '#10b981' },
-  { value: ContractStatus.Completed, label: 'Completed', color: '#3b82f6' },
-  { value: ContractStatus.Cancelled, label: 'Cancelled', color: '#ef4444' },
-  { value: ContractStatus.Disputed, label: 'Disputed', color: '#f59e0b' },
-];
 
 export default function ViewContractDetailsScreen() {
   const navigate = useNavigate();
@@ -84,7 +84,7 @@ export default function ViewContractDetailsScreen() {
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>('none');
+  const [userRole, setUserRole] = useState<ContractUserRole>('none');
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -329,7 +329,7 @@ export default function ViewContractDetailsScreen() {
         })),
       };
 
-      const updateRes = await contractPutAPI.updateDetails(contractId, payload);
+      const updateRes = await contractPutAPI.updateDetails(contractId!, payload);
       if (!updateRes.success) {
         alert(updateRes.message || 'Failed to save details');
         return;
@@ -342,7 +342,7 @@ export default function ViewContractDetailsScreen() {
           return;
         }
 
-        const submitRes = await contractPostAPI.submitDetails(contractId);
+        const submitRes = await contractPostAPI.submitDetails(contractId!);
         if (submitRes.success) {
           alert('Contract details submitted to freelancer!');
           window.location.reload();
@@ -364,7 +364,7 @@ export default function ViewContractDetailsScreen() {
   const handleConfirmDetails = async () => {
     setActionLoading(true);
     try {
-      const res = await contractPostAPI.confirmDetails(contractId);
+      const res = await contractPostAPI.confirmDetails(contractId!);
       if (res.success) {
         alert('Contract terms confirmed successfully!');
         window.location.reload();
@@ -385,7 +385,7 @@ export default function ViewContractDetailsScreen() {
 
     setActionLoading(true);
     try {
-      const res = await contractPostAPI.requestChange(contractId, reason.trim());
+      const res = await contractPostAPI.requestChange(contractId!, reason.trim());
       if (res.success) {
         alert('Change request sent to client.');
         window.location.reload();
@@ -403,7 +403,7 @@ export default function ViewContractDetailsScreen() {
   const handleFundEscrow = async () => {
     setActionLoading(true);
     try {
-      const res = await contractPostAPI.fundEscrow(contractId);
+      const res = await contractPostAPI.fundEscrow(contractId!);
       if (res.success) {
         alert('Escrow funded successfully! Contract is now ready for signing.');
         window.location.reload();
@@ -597,7 +597,6 @@ export default function ViewContractDetailsScreen() {
     );
   }
 
-  const contractStatus = CONTRACT_STATUSES.find(s => s.value === contract.status);
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
   const milestonesPaid = milestones.filter(m => m.status === MilestoneStatus.Paid).length;
@@ -1230,7 +1229,7 @@ export default function ViewContractDetailsScreen() {
                       </div>
 
                       <div className="flex flex-col gap-4">
-                        {milestones.map((milestone, index) => {
+                        {milestones.map((milestone, _index) => {
                           const isExpanded = expandedMilestone === milestone.id;
                           const statusClass = getMilestoneStatusClass(milestone.status);
 

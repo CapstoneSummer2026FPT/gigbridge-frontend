@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import {
   ArrowLeft, Ban, Send, Plus,
   Paperclip, Smile, CheckCircle, Circle, Download,
-  FileText, Image as ImageIcon, Table, Info, X, CreditCard, MessageSquare
+  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
@@ -222,7 +222,7 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               ) : (
                 project.milestones.map((milestone, idx) => {
-                  const isCompleted = milestone.status === 'paid' || milestone.status === 'approved' || milestone.status === 'completed';
+                  const isCompleted = milestone.status === 'paid' || milestone.status === 'approved';
                   const isInProgress = milestone.status === 'in_progress';
 
                   return (
@@ -304,7 +304,7 @@ export default function ProjectWorkspaceScreen() {
                                   try {
                                     milestone.status = 'paid';
                                     milestone.completedAt = new Date().toISOString();
-                                    const completedMilestones = project.milestones.filter(m => m.status === 'paid' || m.status === 'completed' || m.status === 'approved').length;
+                                    const completedMilestones = project.milestones.filter(m => m.status === 'paid' || m.status === 'approved').length;
                                     project.progress = Math.round((completedMilestones / project.milestones.length) * 100);
                                     project.paidAmount = (project.paidAmount || 0) + milestone.amount;
                                     setActiveProjectId(activeProjectId);
