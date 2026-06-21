@@ -131,8 +131,11 @@ export default function MyJobsScreen() {
       const matchesSearch = !query ||
         job.title.toLowerCase().includes(query) ||
         job.description.toLowerCase().includes(query) ||
+        (job.majorName || '').toLowerCase().includes(query) ||
         (job.categoryName || '').toLowerCase().includes(query) ||
-        (job.location || '').toLowerCase().includes(query);
+        (job.location || '').toLowerCase().includes(query) ||
+        (job.skills || []).some(skill => skill.name.toLowerCase().includes(query)) ||
+        (job.customSkillNames || []).some(skill => skill.toLowerCase().includes(query));
 
       const matchesStatus = statusFilter === 'all' || statusToFilter(job.status) === statusFilter;
 
@@ -334,7 +337,14 @@ export default function MyJobsScreen() {
                           <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.description}</p>
                         )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {job.majorName && <span className="mj-skill-tag">{job.majorName}</span>}
                           {job.categoryName && <span className="mj-skill-tag">{job.categoryName}</span>}
+                          {(job.skills || []).slice(0, 5).map(skill => (
+                            <span key={skill.skillId} className="mj-skill-tag">{skill.name}</span>
+                          ))}
+                          {(job.customSkillNames || []).slice(0, 5).map(skill => (
+                            <span key={skill} className="mj-skill-tag">{skill} (custom)</span>
+                          ))}
                           {job.location && <span className="mj-skill-tag">{job.location}</span>}
                           {job.estimatedDuration && <span className="mj-skill-tag">{job.estimatedDuration}</span>}
                         </div>

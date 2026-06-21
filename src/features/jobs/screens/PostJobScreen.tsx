@@ -1,23 +1,33 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Bot, Sparkles, X, Plus, ChevronRight,
   Bold, Italic, Underline, List, ListOrdered, Check, Save,
-  GripVertical, Trash2
+  GripVertical, Trash2, FileText, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { jobAPI } from '../../../api/jobAPI';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { JobPostVisibility } from '../../../types/models/Job';
+import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
 import { usePostJob } from '../hooks/usePostJob';
 import { JobPostGuide } from '../components/JobPostGuide';
 import '../styles/PostJobScreen.css';
 
 export default function PostJobScreen() {
+  const navigate = useNavigate();
   const [isGuideActive, setIsGuideActive] = useState(false);
+  const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
+  const [drafts, setDrafts] = useState<GetMyJobPostDto[]>([]);
+  const [isDraftsLoading, setIsDraftsLoading] = useState(false);
+  const [draftsError, setDraftsError] = useState<string | null>(null);
   const {
     form,
+    majors,
+    categories,
     skillInput,
     setSkillInput,
     remainingSkills,
+    selectedOfficialSkills,
     previewTitle,
     errorMessage,
     isDraftInitializing,
@@ -31,22 +41,70 @@ export default function PostJobScreen() {
     questions,
     setQuestions,
     isActionDisabled,
+    taxonomyError,
+    isMajorsLoading,
+    isCategoriesLoading,
+    isSkillsLoading,
+    isLeavePromptOpen,
+    leaveAction,
+    resetToNewDraft,
     insertMarkdown,
+    handleMajorChange,
+    handleCategoryChange,
+    addOfficialSkill,
     addSkill,
-    removeSkill,
+    removeOfficialSkill,
+    removeCustomSkill,
     updateQuestion,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
     handleGenerateInstantJob,
+    handleLeaveSaveDraft,
+    handleLeaveDiscardDraft,
+    cancelBlockedNavigation,
     submitDraftFlow,
     renderSubmitLabel,
-    CATEGORIES,
     MAX_QUESTION_LENGTH,
     setForm,
   } = usePostJob();
 
   const [detailsHeight, setDetailsHeight] = useState<number | null>(null);
+
+  const loadDrafts = async () => {
+    setIsDraftModalOpen(true);
+    setIsDraftsLoading(true);
+    setDraftsError(null);
+
+    const response = await jobAPI.getMyDraftJobPosts();
+    setIsDraftsLoading(false);
+
+    if (!response.success || !response.data) {
+      setDrafts([]);
+      setDraftsError(response.message || 'Unable to load draft JobPosts.');
+      return;
+    }
+
+    setDrafts(response.data);
+  };
+
+  const formatDraftDate = (value?: string | null) => {
+    if (!value) return 'Not updated yet';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+  };
+
+  const handleContinueDraft = (draft: GetMyJobPostDto) => {
+    setIsDraftModalOpen(false);
+    navigate('/jobs/post', { state: { jobPostId: draft.jobPostsId } });
+  };
+
+  const handleCreateNewFromDraftModal = () => {
+    setIsDraftModalOpen(false);
+    resetToNewDraft();
+    navigate('/jobs/post', { replace: true, state: null });
+  };
 
   useEffect(() => {
     const detailsEl = document.getElementById('guide-job-details-panel');
@@ -81,6 +139,15 @@ export default function PostJobScreen() {
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
             
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={loadDrafts}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-sm cursor-pointer border border-border bg-background hover:bg-muted text-foreground"
+              >
+                <FileText size={14} />
+                Continue Draft
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -148,9 +215,15 @@ export default function PostJobScreen() {
           </div>
         )}
 
+        {taxonomyError && (
+          <div className="mb-6 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-xl px-4 py-3 text-sm font-semibold">
+            {taxonomyError}
+          </div>
+        )}
+
         {isDraftInitializing && (
           <div className="mb-6 bg-[var(--gb-cyan)]/10 border border-[var(--gb-cyan)]/20 text-[var(--gb-cyan)] rounded-xl px-4 py-3 text-sm font-semibold">
-            Preparing draft...
+            Loading draft...
           </div>
         )}
 
@@ -311,16 +384,34 @@ export default function PostJobScreen() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Major *</label>
                   <select
-                    value={form.category}
-                    onChange={event => setForm({ ...form, category: event.target.value })}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    value={form.majorId}
+                    onChange={event => handleMajorChange(event.target.value)}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || isMajorsLoading}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   >
-                    {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                    <option value="">{isMajorsLoading ? 'Loading majors...' : 'Select a major'}</option>
+                    {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category *</label>
+                  <select
+                    value={form.majorCategoryId}
+                    onChange={event => handleCategoryChange(event.target.value)}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || !form.majorId || isCategoriesLoading}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {!form.majorId ? 'Select a major first' : isCategoriesLoading ? 'Loading categories...' : 'Select a category'}
+                    </option>
+                    {categories.map(category => (
+                      <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -340,14 +431,28 @@ export default function PostJobScreen() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
                 <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
-                  {form.skills.map((skill: string) => (
-                    <span key={skill} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                      {skill}
+                  {selectedOfficialSkills.map(skill => (
+                    <span key={skill.skillId} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      {skill.name}
                       <button
                         type="button"
-                        onClick={() => removeSkill(skill)}
+                        onClick={() => removeOfficialSkill(skill.skillId)}
+                        disabled={isInstantJobMode && !isJobDetailsGenerated}
+                        className="hover:text-red-500 transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                  {form.customSkillNames.map((skill: string) => (
+                    <span key={skill} className="bg-[var(--gb-purple)]/10 text-[var(--gb-purple)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      {skill}
+                      <span className="opacity-70">(custom)</span>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomSkill(skill)}
                         disabled={isInstantJobMode && !isJobDetailsGenerated}
                         className="hover:text-red-500 transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -357,7 +462,7 @@ export default function PostJobScreen() {
                   ))}
                   <input
                     type="text"
-                    placeholder="Add a skill..."
+                    placeholder={form.categoryId ? 'Add a skill...' : 'Select a category first'}
                     value={skillInput}
                     onChange={event => setSkillInput(event.target.value)}
                     onKeyDown={event => {
@@ -366,23 +471,34 @@ export default function PostJobScreen() {
                         if (skillInput.trim()) addSkill(skillInput.trim());
                       }
                     }}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || !form.categoryId}
                     className="flex-grow bg-transparent border-none focus:ring-0 px-2 py-1 text-sm min-w-[150px] outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                   />
+                  <button
+                    type="button"
+                    onClick={() => addSkill(skillInput)}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || !form.categoryId || !skillInput.trim()}
+                    className="px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Add
+                  </button>
                 </div>
+                {isSkillsLoading && (
+                  <p className="text-[10px] text-muted-foreground mt-1">Loading skills for the selected category...</p>
+                )}
                 {remainingSkills.length > 0 && (
                   <div className="mt-1">
-                    <p className="text-[10px] text-muted-foreground mb-2">Suggested for {form.category}:</p>
+                    <p className="text-[10px] text-muted-foreground mb-2">Available official skills:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {remainingSkills.slice(0, 5).map(skill => (
                         <button
-                          key={skill}
+                          key={skill.skillId}
                           type="button"
-                          onClick={() => addSkill(skill)}
+                          onClick={() => addOfficialSkill(skill)}
                           disabled={isInstantJobMode && !isJobDetailsGenerated}
                           className="flex items-center gap-1 tag-pill text-xs px-2.5 py-1 rounded-full bg-muted hover:bg-muted/80 text-foreground transition-all cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          <Plus size={10} /> {skill}
+                          <Plus size={10} /> {skill.name}
                         </button>
                       ))}
                     </div>
@@ -508,6 +624,138 @@ export default function PostJobScreen() {
         </div>
       </div>
       <JobPostGuide isActive={isGuideActive} onClose={() => setIsGuideActive(false)} />
+
+      {isDraftModalOpen && (
+        <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setIsDraftModalOpen(false)}>
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden" onClick={event => event.stopPropagation()}>
+            <div className="px-6 py-5 border-b border-border flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-extrabold text-foreground">Continue Draft</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You currently have {drafts.length} unfinished JobPost draft{drafts.length === 1 ? '' : 's'}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDraftModalOpen(false)}
+                className="w-8 h-8 rounded-full border border-border bg-background hover:bg-muted text-muted-foreground flex items-center justify-center cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[52vh]">
+              {isDraftsLoading && (
+                <div className="text-sm text-muted-foreground py-8 text-center">Checking draft JobPosts...</div>
+              )}
+
+              {draftsError && !isDraftsLoading && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold">
+                  {draftsError}
+                </div>
+              )}
+
+              {!isDraftsLoading && !draftsError && drafts.length === 0 && (
+                <div className="border border-dashed border-border rounded-xl p-8 text-center">
+                  <FileText className="mx-auto text-muted-foreground mb-3" size={28} />
+                  <p className="text-sm font-bold text-foreground">No unfinished drafts found.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Start a new JobPost when you are ready.</p>
+                </div>
+              )}
+
+              {!isDraftsLoading && drafts.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  {drafts.map(draft => (
+                    <div key={draft.jobPostsId} className="border border-border rounded-xl p-4 bg-background flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-extrabold text-foreground truncate">
+                          {draft.title?.trim() && draft.title.trim() !== 'Untitled Job Post' ? draft.title : 'Untitled Draft'}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock size={12} />
+                            Updated {formatDraftDate(draft.updatedAt || draft.createdAt)}
+                          </span>
+                          {draft.categoryName && <span>{draft.categoryName}</span>}
+                          {(draft.skills?.length || 0) + (draft.customSkillNames?.length || 0) > 0 && (
+                            <span>{(draft.skills?.length || 0) + (draft.customSkillNames?.length || 0)} skill(s)</span>
+                          )}
+                        </div>
+                        {draft.description?.trim() && (
+                          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{draft.description}</p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleContinueDraft(draft)}
+                        className="px-5 py-2.5 rounded-full font-bold text-xs bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 border-none cursor-pointer flex-shrink-0"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-5 border-t border-border flex flex-col sm:flex-row justify-end gap-3 bg-muted/20">
+              <button
+                type="button"
+                onClick={() => setIsDraftModalOpen(false)}
+                className="px-5 py-2.5 rounded-full font-bold text-xs border border-border bg-background hover:bg-muted text-foreground cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateNewFromDraftModal}
+                className="px-5 py-2.5 rounded-full font-bold text-xs bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 border-none cursor-pointer"
+              >
+                Create New JobPost
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLeavePromptOpen && (
+        <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-lg font-extrabold text-foreground">Do you want to save this JobPost draft?</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Save keeps your current draft. Discard only removes it if the backend confirms it is still empty.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <button
+                type="button"
+                onClick={handleLeaveSaveDraft}
+                disabled={leaveAction !== null}
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-xs bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50"
+              >
+                {leaveAction === 'save' ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button
+                type="button"
+                onClick={handleLeaveDiscardDraft}
+                disabled={leaveAction !== null}
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-xs bg-red-500 text-white border-none cursor-pointer disabled:opacity-50"
+              >
+                {leaveAction === 'discard' ? 'Discarding...' : 'Discard Draft'}
+              </button>
+              <button
+                type="button"
+                onClick={cancelBlockedNavigation}
+                disabled={leaveAction !== null}
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-xs border border-border bg-background hover:bg-muted text-foreground cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

@@ -59,6 +59,9 @@ export interface Job {
   title: string;
   description: string;
   category: string;
+  majorName?: string | null;
+  categoryName?: string | null;
+  customSkillNames?: string[];
   skills: string[];
   budgetMin: number;
   budgetMax: number;
@@ -86,14 +89,25 @@ export interface JobPostSummaryDto {
   jobPostsId: string;
   title: string;
   descriptionPreview: string;
+  majorCategoryId?: string | null;
+  majorId?: string | null;
+  majorName?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
   budgetMin?: number | null;
   budgetMax?: number | null;
-  budgetType?: number | null;
   eloPoints?: number;
   createdAt: string;
-  skillNames: string[];
   status?: JobPostStatus | number | null;
   visibility?: JobPostVisibility | number | null;
+  skills: JobPostSkillDto[];
+  customSkillNames: string[];
+  skillNames: string[];
+}
+
+export interface GetMyJobPostSkillDto {
+  skillId: string;
+  name: string;
 }
 
 export interface GetMyJobPostDto {
@@ -101,8 +115,13 @@ export interface GetMyJobPostDto {
   clientProfilesId: string;
   title: string;
   description: string;
+  majorCategoryId?: string | null;
+  majorId?: string | null;
+  majorName?: string | null;
   categoryId?: string | null;
   categoryName?: string | null;
+  skills: GetMyJobPostSkillDto[];
+  customSkillNames: string[];
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
@@ -134,22 +153,24 @@ export interface JobPostDetailDto {
   clientProfilesId: string;
   title: string;
   description: string;
+  majorCategoryId?: string | null;
+  majorId?: string | null;
+  majorName?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
   maxHires?: number | null;
-  locationType?: number | null;
   location?: string | null;
-  budgetType?: number | null;
-  experienceLevelRequired?: number | null;
-  applicationDeadline?: string | null;
   endDate?: string | null;
   createdAt: string;
   eloPoints?: number;
   status?: JobStatus | number | null;
   visibility?: number | null;
   skills: JobPostSkillDto[];
+  customSkillNames: string[];
   attachments: JobPostAttachmentDto[];
 }
 
@@ -158,6 +179,9 @@ export interface GetMyJobPostDetailDto {
   clientProfilesId: string;
   title: string;
   description: string;
+  majorCategoryId?: string | null;
+  majorId?: string | null;
+  majorName?: string | null;
   categoryId?: string | null;
   categoryName?: string | null;
   budgetMin?: number | null;
@@ -172,6 +196,7 @@ export interface GetMyJobPostDetailDto {
   createdAt: string;
   updatedAt?: string | null;
   skills: JobPostSkillDto[];
+  customSkillNames: string[];
   attachments: JobPostAttachmentDto[];
   proposalCount: number;
 }
@@ -179,7 +204,7 @@ export interface GetMyJobPostDetailDto {
 export interface CreateJobPostRequest {
   title: string;
   description: string;
-  categoryId?: string | null;
+  majorCategoryId?: string | null;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
@@ -189,6 +214,7 @@ export interface CreateJobPostRequest {
   visibility?: number | null;
   endDate?: string | null;
   skillIds: string[];
+  customSkillNames: string[];
 }
 
 export interface CreateDraftJobPostResponse {
@@ -199,7 +225,7 @@ export interface CreateDraftJobPostResponse {
 export interface UpdateJobPostRequest {
   title: string;
   description: string;
-  categoryId?: string | null;
+  majorCategoryId?: string | null;
   budgetMin?: number | null;
   budgetMax?: number | null;
   currency?: string | null;
@@ -209,6 +235,52 @@ export interface UpdateJobPostRequest {
   visibility: JobPostVisibility | number;
   endDate?: string | null;
   skillIds: string[];
+  customSkillNames: string[];
+}
+
+export interface SaveDraftJobPostQuestionRequest {
+  questionText: string;
+  orderIndex: number;
+  isRequired: boolean;
+}
+
+export interface SaveDraftJobPostRequest {
+  title?: string | null;
+  description?: string | null;
+  majorCategoryId?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string | null;
+  estimatedDuration?: string | null;
+  maxHires?: number | null;
+  location?: string | null;
+  visibility?: JobPostVisibility | number | null;
+  endDate?: string | null;
+  isAigenerated?: boolean | null;
+  skillIds?: string[] | null;
+  customSkillNames?: string[] | null;
+  questions?: SaveDraftJobPostQuestionRequest[] | null;
+}
+
+export interface GenerateJobDescriptionRequest {
+  vettingQuestions: string[];
+}
+
+export interface GeneratedJobSkillDto {
+  skillsId: string;
+  name: string;
+}
+
+export interface GenerateJobDescriptionResponse {
+  title: string;
+  majorId?: string | null;
+  majorName?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  majorCategoryId?: string | null;
+  skills: GeneratedJobSkillDto[];
+  customSkills: string[];
+  description: string;
 }
 
 export interface JobPostQuestionDto {

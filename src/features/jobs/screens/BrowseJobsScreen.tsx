@@ -5,13 +5,17 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { UserRole } from '../../../types/models/User';
-import { MOCK_BROWSE_JOBS, type BrowseJob } from '../mock/data-for-BrowseJobsScreen';
+import type { Job } from '../../../types/models/Job';
 import '../styles/browse-jobs-screen.css';
 
 const PAGE_SIZE = 20;
-const CATEGORIES = ['All', 'Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile'];
 const WORK_TYPES = ['All', 'fixed'];
 const DATE_POSTED = ['Any time', 'Last 24 hours', 'Last 7 days', 'Last 30 days'];
+
+type BrowseJob = Job & {
+  datePosted: string;
+  isFeatured: boolean;
+};
 
 const MOCK_TOP_FREELANCERS = [
   {
@@ -81,6 +85,8 @@ export default function BrowseJobsScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [saved, setSaved] = useState<string[]>([]);
   const [allJobs, setAllJobs] = useState<BrowseJob[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(['All']);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
 
@@ -97,20 +103,37 @@ export default function BrowseJobsScreen() {
     const fetchJobs = async () => {
       try {
         setLoading(true);
+        setLoadError(null);
         const data = await jobGetAPI.getJobs();
-        setAllJobs(data.length ? data.map(job => ({
+        setAllJobs(data.map(job => ({
           ...job,
           datePosted: new Date().toISOString().slice(0, 10),
           isFeatured: Boolean(job.isAiRecommended),
-        })) : MOCK_BROWSE_JOBS);
+        })));
       } catch (error) {
         console.error('Failed to fetch jobs:', error);
-        setAllJobs(MOCK_BROWSE_JOBS);
+        setLoadError('Unable to load jobs from the backend.');
+        setAllJobs([]);
       } finally {
         setLoading(false);
       }
     };
     fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    jobGetAPI.getMajorCategories().then(response => {
+      if (!isMounted || !response.success || !response.data) return;
+      const categories = Array.from(new Set(
+        response.data.map(item => item.categoryName).filter(Boolean)
+      )).sort((a, b) => a.localeCompare(b));
+      setCategoryOptions(['All', ...categories]);
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const budgetInvalid = Boolean(budgetMin && budgetMax && Number(budgetMin) > Number(budgetMax));
@@ -219,7 +242,7 @@ export default function BrowseJobsScreen() {
                     <label>
                       Category
                       <select value={category} onChange={event => setCategory(event.target.value)}>
-                        {CATEGORIES.map(item => <option key={item}>{item}</option>)}
+                        {categoryOptions.map(item => <option key={item}>{item}</option>)}
                       </select>
                     </label>
                     <label>
@@ -253,7 +276,7 @@ export default function BrowseJobsScreen() {
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {CATEGORIES.map(cat => (
+              {categoryOptions.map(cat => (
                 <button key={cat} onClick={() => setCategory(cat)}
                   className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${category === cat ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
                   {cat}
@@ -329,7 +352,9 @@ export default function BrowseJobsScreen() {
               {!loading && jobs.length === 0 && (
                 <div className="text-center py-20">
                   <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
-                  <p className="text-primary font-semibold mb-2">MSG73: No jobs match your criteria. Try adjusting filters.</p>
+                  <p className="text-primary font-semibold mb-2">
+                    {loadError || 'MSG73: No jobs match your criteria. Try adjusting filters.'}
+                  </p>
                 </div>
               )}
 

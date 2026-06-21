@@ -1,5 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type {
+  CategoryOptionDto,
+  MajorCategoryDto,
+  MajorDto,
+  SkillOptionDto,
+} from '../../types/models/Category';
 import { JobPostStatus } from '../../types/models/Job';
 import type {
   GetMyJobPostDetailDto,
@@ -12,6 +18,26 @@ import type {
 } from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
+
+const mergeSkillNames = (...groups: Array<Array<string | null | undefined> | undefined>): string[] => {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const group of groups) {
+    for (const rawSkillName of group || []) {
+      const skillName = rawSkillName?.trim();
+      if (!skillName) continue;
+
+      const key = skillName.toLowerCase();
+      if (seen.has(key)) continue;
+
+      seen.add(key);
+      result.push(skillName);
+    }
+  }
+
+  return result;
+};
 
 type LegacyJobFilters = JobPostQueryParams & {
   category?: string;
@@ -36,8 +62,11 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   clientId: '',
   title: job.title,
   description: job.descriptionPreview,
-  category: 'All',
-  skills: job.skillNames || [],
+  category: job.categoryName || 'All',
+  majorName: job.majorName,
+  categoryName: job.categoryName,
+  customSkillNames: job.customSkillNames || [],
+  skills: mergeSkillNames(job.skillNames, job.customSkillNames),
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
@@ -45,7 +74,7 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
-  isRemote: job.locationType == null || job.locationType === 0,
+  isRemote: true,
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
@@ -65,7 +94,10 @@ const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
   title: job.title,
   description: job.description,
   category: job.categoryName || 'All',
-  skills: [],
+  majorName: job.majorName,
+  categoryName: job.categoryName,
+  customSkillNames: job.customSkillNames || [],
+  skills: mergeSkillNames(job.skills?.map(skill => skill.name), job.customSkillNames),
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
@@ -84,7 +116,10 @@ const toLegacyJobFromMyJobDetail = (job: GetMyJobPostDetailDto): Job => ({
   title: job.title,
   description: job.description,
   category: job.categoryName || 'All',
-  skills: job.skills?.map(skill => skill.skillName) || [],
+  majorName: job.majorName,
+  categoryName: job.categoryName,
+  customSkillNames: job.customSkillNames || [],
+  skills: mergeSkillNames(job.skills?.map(skill => skill.skillName), job.customSkillNames),
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
@@ -102,8 +137,11 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   clientId: job.clientProfilesId,
   title: job.title,
   description: job.description,
-  category: 'All',
-  skills: job.skills?.map(skill => skill.skillName) || [],
+  category: job.categoryName || 'All',
+  majorName: job.majorName,
+  categoryName: job.categoryName,
+  customSkillNames: job.customSkillNames || [],
+  skills: mergeSkillNames(job.skills?.map(skill => skill.skillName), job.customSkillNames),
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
@@ -112,7 +150,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
-  isRemote: job.locationType == null || job.locationType === 0,
+  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
 });
@@ -141,6 +179,34 @@ const filterLegacyJobs = (jobs: Job[], filters: LegacyJobFilters = {}): Job[] =>
 };
 
 export const jobGetAPI = {
+  /**
+   * GET /api/Majors
+   */
+  getMajors: async (): Promise<ApiResponse<MajorDto[]>> => {
+    return apiService.get<MajorDto[]>('Majors');
+  },
+
+  /**
+   * GET /api/MajorCategories
+   */
+  getMajorCategories: async (): Promise<ApiResponse<MajorCategoryDto[]>> => {
+    return apiService.get<MajorCategoryDto[]>('MajorCategories');
+  },
+
+  /**
+   * GET /api/Categories/by-major/{majorId}
+   */
+  getCategoriesByMajor: async (majorId: string): Promise<ApiResponse<CategoryOptionDto[]>> => {
+    return apiService.get<CategoryOptionDto[]>(`Categories/by-major/${majorId}`);
+  },
+
+  /**
+   * GET /api/Skills/by-category/{categoryId}
+   */
+  getSkillsByCategory: async (categoryId: string): Promise<ApiResponse<SkillOptionDto[]>> => {
+    return apiService.get<SkillOptionDto[]>(`Skills/by-category/${categoryId}`);
+  },
+
   /**
    * GET /api/JobPosts/public
    * Public job posts list.
@@ -189,6 +255,14 @@ export const jobGetAPI = {
     params: JobPostQueryParams = {}
   ): Promise<ApiResponse<GetMyJobPostDto[]>> => {
     return apiService.get<GetMyJobPostDto[]>(`${jobPostsUrl}/my-jobs`, params);
+  },
+
+  /**
+   * GET /api/JobPosts/my-drafts
+   * Client-only current user's draft job posts.
+   */
+  getMyDraftJobPosts: async (): Promise<ApiResponse<GetMyJobPostDto[]>> => {
+    return apiService.get<GetMyJobPostDto[]>(`${jobPostsUrl}/my-drafts`);
   },
 
   /**
