@@ -160,88 +160,76 @@
   background: var(--muted-foreground);
 }
 
-@media (max-width: 1024px) {
+/* ── Mobile: the flex-1 wrapper must be able to go full-height ── */
+@media (max-width: 1023px) {
+  /* Workspace page: allow scroll on mobile instead of fixed overflow hidden */
   .project-workspace-page {
-    height: auto !important;
-    min-height: calc(100vh - 5rem);
-    overflow: visible !important;
+    height: calc(100vh - 5rem);
+    overflow: hidden;
   }
 
+  /* The 3-column row: just fill height, children will be shown/hidden via JS */
   .project-workspace-page > .flex.flex-1 {
-    flex-direction: column;
-    overflow: visible !important;
+    overflow: hidden;
+    min-height: 0;
   }
 
+  /* Each section/aside takes full width when shown on mobile */
   .project-workspace-page > .flex.flex-1 > section,
   .project-workspace-page > .flex.flex-1 > aside {
     width: 100% !important;
-    min-height: 0;
-    border-left: 0;
-    border-right: 0;
-  }
-
-  .project-workspace-page > .flex.flex-1 > section:first-child {
-    max-height: 18rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .project-workspace-page > .flex.flex-1 > section:nth-child(2) {
-    min-height: 38rem;
-    margin: 0.75rem 0 !important;
-  }
-
-  .project-workspace-page > .flex.flex-1 > aside {
-    max-height: none;
-    border-top: 1px solid var(--border);
-  }
-
-  .project-workspace-page > .flex.flex-1 > aside.w-0 {
-    display: none;
+    border-left: none !important;
+    border-right: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    flex-shrink: 0;
   }
 }
 
-@media (max-width: 640px) {
-  .project-workspace-page {
-    padding-top: 0.5rem;
-  }
-
+/* ── Tablet / small desktop header shrink ── */
+@media (max-width: 768px) {
   .project-workspace-page > header {
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-  }
-
-  .project-workspace-page > header,
-  .project-workspace-page > header > div {
+    padding: 0.6rem 1rem;
     flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .project-workspace-page > header h1 {
-    max-width: calc(100vw - 2rem);
+    font-size: 0.8rem;
+    max-width: calc(100vw - 8rem);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .project-workspace-page > .flex.flex-1 > section:first-child {
-    max-height: 16rem;
+  .project-workspace-page > header button[class*="rounded-full"] {
+    font-size: 0.6rem;
+    padding: 0.35rem 0.75rem;
+  }
+}
+
+/* ── Small mobile ── */
+@media (max-width: 480px) {
+  .project-workspace-page > header {
+    padding: 0.5rem 0.75rem;
   }
 
-  .project-workspace-page > .flex.flex-1 > section:nth-child(2) {
-    border-radius: 1rem !important;
-    min-height: 34rem;
+  .project-workspace-page > header > div:first-child {
+    gap: 0.5rem;
   }
 
-  .project-workspace-page > .flex.flex-1 > section:nth-child(2) > div {
-    padding-left: 1rem;
-    padding-right: 1rem;
+  /* Back button text hidden, show only icon */
+  .project-workspace-page > header span.font-semibold {
+    display: none;
   }
 
-  .project-workspace-page .max-w-\[80\%\] {
-    max-width: 94% !important;
+  /* "View job post detail" below title hidden to save space */
+  .project-workspace-page > header button[class*="text-\\[10px\\]"] {
+    display: none;
   }
 
-  .project-workspace-page .w-80 {
-    width: min(20rem, calc(100vw - 2rem)) !important;
+  /* Message bubbles take more width on tiny screens */
+  .project-workspace-page .max-w-\\[85\\%\\] {
+    max-width: 96% !important;
   }
 }

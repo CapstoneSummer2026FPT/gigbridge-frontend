@@ -11,6 +11,7 @@ interface AppLayoutProps {
   showSidebar?: boolean;
   fullWidth?: boolean;
   excludeMeshGradient?: boolean;
+  hideAIWidget?: boolean;
 }
 
 export function AppLayout({
@@ -18,6 +19,7 @@ export function AppLayout({
   showSidebar = true,
   fullWidth = false,
   excludeMeshGradient = false,
+  hideAIWidget = false,
 }: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
@@ -73,7 +75,7 @@ export function AppLayout({
         </main>
       </div>
 
-      {user && <AIAssistantWidget />}
+      {user && !hideAIWidget && <AIAssistantWidget />}
     </div>
   );
 }
