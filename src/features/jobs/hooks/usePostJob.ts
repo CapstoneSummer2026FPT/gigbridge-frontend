@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
+import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
 import { JobPostStatus, JobPostVisibility, type UpdateJobPostRequest } from '../../../types/models/Job';
 
-const CATEGORIES = ['Web Development', 'Design', 'Data Science', 'Marketing', 'Writing', 'DevOps', 'Mobile', 'Video'];
 const MAX_QUESTION_LENGTH = 1000;
 
 export interface QuestionInput {
@@ -13,6 +13,24 @@ export interface QuestionInput {
 }
 
 type SubmitMode = 'draft' | 'publish' | 'contract';
+
+type PostJobFormState = {
+  title: string;
+  majorId: string;
+  majorCategoryId: string;
+  categoryId: string;
+  description: string;
+  skillIds: string[];
+  customSkillNames: string[];
+  budgetMin: string;
+  budgetMax: string;
+  currency: string;
+  estimatedDuration: string;
+  maxHires: string;
+  location: string;
+  visibility: string;
+  deadline: string;
+};
 
 let draftJobPostRequest: Promise<string> | null = null;
 
@@ -37,6 +55,8 @@ const createDraftJobPostOnce = async (): Promise<string> => {
   return draftJobPostRequest;
 };
 
+const normalizeSkillName = (value: string) => value.trim().toLowerCase();
+
 export function usePostJob() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,16 +76,30 @@ export function usePostJob() {
   const [isGeneratingInstant, setIsGeneratingInstant] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  const [form, setForm] = useState({
+  const [majors, setMajors] = useState<MajorDto[]>([]);
+  const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<SkillOptionDto[]>([]);
+  const [isMajorsLoading, setIsMajorsLoading] = useState(false);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
+  const [isSkillsLoading, setIsSkillsLoading] = useState(false);
+  const [taxonomyError, setTaxonomyError] = useState<string | null>(null);
+  const [skillNameById, setSkillNameById] = useState<Record<string, string>>(
+    initialJobData?.skillNameById || initialJobData?.skillNamesById || {}
+  );
+
+  const [form, setForm] = useState<PostJobFormState>({
     title: initialJobData?.title || '',
-    category: initialJobData?.category || 'Web Development',
+    majorId: initialJobData?.majorId || '',
+    majorCategoryId: initialJobData?.majorCategoryId || '',
+    categoryId: initialJobData?.categoryId || '',
     description: initialJobData?.description || '',
-    skills: (initialJobData?.skills || []) as string[],
-    budgetMin: initialJobData?.budgetMin !== undefined ? String(initialJobData.budgetMin) : '',
-    budgetMax: initialJobData?.budgetMax !== undefined ? String(initialJobData.budgetMax) : '',
+    skillIds: (initialJobData?.skillIds || []) as string[],
+    customSkillNames: (initialJobData?.customSkillNames || initialJobData?.customSkills || []) as string[],
+    budgetMin: initialJobData?.budgetMin !== undefined && initialJobData?.budgetMin !== null ? String(initialJobData.budgetMin) : '',
+    budgetMax: initialJobData?.budgetMax !== undefined && initialJobData?.budgetMax !== null ? String(initialJobData.budgetMax) : '',
     currency: initialJobData?.currency || 'USD',
     estimatedDuration: initialJobData?.estimatedDuration || '',
-    maxHires: initialJobData?.maxHires !== undefined ? String(initialJobData.maxHires) : '',
+    maxHires: initialJobData?.maxHires !== undefined && initialJobData?.maxHires !== null ? String(initialJobData.maxHires) : '',
     location: initialJobData?.location || '',
     visibility: String(initialJobData?.visibility ?? JobPostVisibility.Public),
     deadline: initialJobData?.deadline || initialJobData?.endDate?.split?.('T')?.[0] || '',
@@ -79,17 +113,110 @@ export function usePostJob() {
     return initialQuestions.length > 0 ? initialQuestions : [{ questionText: '', isRequired: true }];
   });
 
-  const remainingSkills = useMemo(() => {
-    const SUGGESTIONS: Record<string, string[]> = {
-      'Web Development': ['React', 'TypeScript', 'Next.js', 'Node.js', 'GraphQL', 'Vue.js', 'Angular'],
-      Design: ['Figma', 'UI/UX Design', 'Prototyping', 'Design Systems', 'After Effects', 'Sketch'],
-      'Data Science': ['Python', 'Machine Learning', 'TensorFlow', 'PyTorch', 'SQL', 'Tableau'],
-      DevOps: ['AWS', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'Linux'],
-      Writing: ['Technical Writing', 'SEO', 'Content Strategy', 'Copywriting'],
+  useEffect(() => {
+    let isMounted = true;
+    setIsMajorsLoading(true);
+    setTaxonomyError(null);
+
+    jobAPI.getMajors()
+      .then(response => {
+        if (!isMounted) return;
+        if (!response.success || !response.data) {
+          setMajors([]);
+          setTaxonomyError(response.message || 'Unable to load majors.');
+          return;
+        }
+
+        setMajors(response.data);
+      })
+      .finally(() => {
+        if (isMounted) setIsMajorsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
     };
-    const suggestedSkills = SUGGESTIONS[form.category] || [];
-    return suggestedSkills.filter(skill => !form.skills.includes(skill));
-  }, [form.category, form.skills]);
+  }, []);
+
+  useEffect(() => {
+    if (!form.majorId) {
+      setCategories([]);
+      return;
+    }
+
+    let isMounted = true;
+    setIsCategoriesLoading(true);
+    setTaxonomyError(null);
+
+    jobAPI.getCategoriesByMajor(form.majorId)
+      .then(response => {
+        if (!isMounted) return;
+        if (!response.success || !response.data) {
+          setCategories([]);
+          setTaxonomyError(response.message || 'Unable to load categories for the selected major.');
+          return;
+        }
+
+        setCategories(response.data);
+      })
+      .finally(() => {
+        if (isMounted) setIsCategoriesLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [form.majorId]);
+
+  useEffect(() => {
+    if (!form.categoryId) {
+      setAvailableSkills([]);
+      return;
+    }
+
+    let isMounted = true;
+    setIsSkillsLoading(true);
+    setTaxonomyError(null);
+
+    jobAPI.getSkillsByCategory(form.categoryId)
+      .then(response => {
+        if (!isMounted) return;
+        if (!response.success || !response.data) {
+          setAvailableSkills([]);
+          setTaxonomyError(response.message || 'Unable to load skills for the selected category.');
+          return;
+        }
+
+        setAvailableSkills(response.data);
+        setSkillNameById(prev => {
+          const next = { ...prev };
+          response.data?.forEach(skill => {
+            next[skill.skillId] = skill.name;
+          });
+          return next;
+        });
+      })
+      .finally(() => {
+        if (isMounted) setIsSkillsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [form.categoryId]);
+
+  const selectedOfficialSkills = useMemo(
+    () => form.skillIds.map(skillId => ({
+      skillId,
+      name: skillNameById[skillId] || availableSkills.find(skill => skill.skillId === skillId)?.name || 'Unknown skill',
+    })),
+    [availableSkills, form.skillIds, skillNameById]
+  );
+
+  const remainingSkills = useMemo(
+    () => availableSkills.filter(skill => !form.skillIds.includes(skill.skillId)),
+    [availableSkills, form.skillIds]
+  );
 
   const isSubmitting = submitMode !== null;
   const isActionDisabled = isSubmitting || isDraftInitializing || !jobPostId || (isInstantJobMode && !isJobDetailsGenerated);
@@ -137,15 +264,87 @@ export function usePostJob() {
     setForm(prev => ({ ...prev, description: prev.description + before + after }));
   };
 
-  const addSkill = (skill: string) => {
-    if (!form.skills.includes(skill) && form.skills.length < 10) {
-      setForm(prev => ({ ...prev, skills: [...prev.skills, skill] }));
+  const handleMajorChange = (majorId: string) => {
+    setSkillInput('');
+    setAvailableSkills([]);
+    setForm(prev => ({
+      ...prev,
+      majorId,
+      majorCategoryId: '',
+      categoryId: '',
+      skillIds: [],
+      customSkillNames: [],
+    }));
+  };
+
+  const handleCategoryChange = (majorCategoryId: string) => {
+    const selectedCategory = categories.find(category => category.majorCategoryId === majorCategoryId);
+    setSkillInput('');
+    setForm(prev => ({
+      ...prev,
+      majorCategoryId,
+      categoryId: selectedCategory?.categoryId || '',
+      skillIds: [],
+      customSkillNames: [],
+    }));
+  };
+
+  const addOfficialSkill = (skill: SkillOptionDto) => {
+    setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
+    setForm(prev => {
+      if (prev.skillIds.includes(skill.skillId)) {
+        return prev;
+      }
+
+      return { ...prev, skillIds: [...prev.skillIds, skill.skillId] };
+    });
+  };
+
+  const addSkill = (skillName: string) => {
+    const trimmedSkillName = skillName.trim();
+    if (!trimmedSkillName) {
+      return;
     }
+
+    if (!form.categoryId) {
+      toast.error('Please select a category before adding skills.');
+      return;
+    }
+
+    const officialSkill = availableSkills.find(
+      skill => normalizeSkillName(skill.name) === normalizeSkillName(trimmedSkillName)
+    );
+
+    if (officialSkill) {
+      addOfficialSkill(officialSkill);
+      setSkillInput('');
+      return;
+    }
+
+    setForm(prev => {
+      const alreadyExists = prev.customSkillNames.some(
+        customSkillName => normalizeSkillName(customSkillName) === normalizeSkillName(trimmedSkillName)
+      );
+
+      if (alreadyExists) {
+        return prev;
+      }
+
+      return { ...prev, customSkillNames: [...prev.customSkillNames, trimmedSkillName] };
+    });
     setSkillInput('');
   };
 
-  const removeSkill = (skill: string) => {
-    setForm(prev => ({ ...prev, skills: prev.skills.filter(item => item !== skill) }));
+  const removeOfficialSkill = (skillId: string) => {
+    setForm(prev => ({ ...prev, skillIds: prev.skillIds.filter(item => item !== skillId) }));
+  };
+
+  const removeCustomSkill = (skillName: string) => {
+    const normalized = normalizeSkillName(skillName);
+    setForm(prev => ({
+      ...prev,
+      customSkillNames: prev.customSkillNames.filter(item => normalizeSkillName(item) !== normalized),
+    }));
   };
 
   const updateQuestion = (index: number, patch: Partial<QuestionInput>) => {
@@ -181,91 +380,51 @@ export function usePostJob() {
     }
 
     setIsGeneratingInstant(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const questionsText = validQuestions.map(q => q.questionText).join(' ').toLowerCase();
-    
-    let title = 'Software Engineer';
-    let category = 'Web Development';
-    let skills = ['React', 'TypeScript', 'Node.js'];
-    let description = '';
-    let budgetMin = '1500';
-    let budgetMax = '4000';
-    
-    if (questionsText.includes('design') || questionsText.includes('figma') || questionsText.includes('ui') || questionsText.includes('ux') || questionsText.includes('prototype') || questionsText.includes('color') || questionsText.includes('mockup')) {
-      title = 'Senior UI/UX Product Designer';
-      category = 'Design';
-      skills = ['Figma', 'UI/UX Design', 'Prototyping', 'Design Systems', 'Sketch'];
-      description = `### Job Description\nWe are looking for a Senior UI/UX Product Designer to help craft intuitive, user-friendly interfaces and high-quality experiences for our flagship web and mobile products. You will work closely with product managers and engineers to turn ideas into wireframes, mockups, and interactive prototypes.\n\n### Responsibilities\n- Create user flows, wireframes, prototypes, and high-fidelity mockups.\n- Develop and maintain our design system.\n- Collaborate with engineering to ensure implementation matches design vision.\n- Conduct user research and integrate feedback into product iterations.\n\n### Requirements\n- 3+ years of experience as a UI/UX designer.\n- Excellent proficiency with Figma.\n- Strong portfolio demonstrating complex web/mobile application designs.`;
-      budgetMin = '2500';
-      budgetMax = '5500';
-    } else if (questionsText.includes('react') || questionsText.includes('vue') || questionsText.includes('frontend') || questionsText.includes('css') || questionsText.includes('next.js') || questionsText.includes('javascript') || questionsText.includes('typescript') || questionsText.includes('html')) {
-      title = 'Senior Frontend Engineer (React/TypeScript)';
-      category = 'Web Development';
-      skills = ['React', 'TypeScript', 'Next.js', 'Vue.js', 'TailwindCSS'];
-      description = `### Job Description\nWe are seeking a skilled Frontend Engineer with a passion for building beautiful, responsive, and highly-performant web user interfaces. You will lead the development of our dashboard and web application components.\n\n### Responsibilities\n- Architect and develop high-quality, reusable components using React and TypeScript.\n- Implement responsive styles and layout designs.\n- Optimize web application performance and loading speeds.\n- Integrate REST/GraphQL API endpoints.\n\n### Requirements\n- Strong proficiency in React, TypeScript, and modern state management.\n- Experience with CSS frameworks (Tailwind, Vanilla CSS).\n- Knowledge of Next.js and server-side rendering is a plus.`;
-      budgetMin = '3000';
-      budgetMax = '6000';
-    } else if (questionsText.includes('backend') || questionsText.includes('node') || questionsText.includes('python') || questionsText.includes('database') || questionsText.includes('sql') || questionsText.includes('api') || questionsText.includes('aws') || questionsText.includes('docker') || questionsText.includes('devops')) {
-      title = 'Backend Developer (Node.js/AWS)';
-      category = 'Web Development';
-      skills = ['Node.js', 'TypeScript', 'SQL', 'AWS', 'Docker', 'Kubernetes'];
-      description = `### Job Description\nWe are looking for a Backend Engineer to build robust, scalable services and manage database schemas for our platform. You will be responsible for defining APIs and managing server deployment pipelines.\n\n### Responsibilities\n- Design and build RESTful and GraphQL APIs using Node.js/Express.\n- Optimize database queries and schema designs.\n- Manage CI/CD pipelines and cloud infrastructure on AWS.\n- Ensure data security, integrity, and authorization standards.\n\n### Requirements\n- 3+ years of experience in backend development.\n- Strong experience with Node.js and relational databases (PostgreSQL/MySQL).\n- Proficiency with AWS cloud services.`;
-      budgetMin = '3500';
-      budgetMax = '7000';
-    } else if (questionsText.includes('data') || questionsText.includes('machine learning') || questionsText.includes('ml') || questionsText.includes('tensor') || questionsText.includes('pytorch') || questionsText.includes('analytics') || questionsText.includes('model')) {
-      title = 'Data Scientist & ML Engineer';
-      category = 'Data Science';
-      skills = ['Python', 'Machine Learning', 'TensorFlow', 'PyTorch', 'SQL', 'Tableau'];
-      description = `### Job Description\nWe are seeking a Data Scientist and Machine Learning Engineer to analyze data streams, build predictive models, and implement AI search algorithms.\n\n### Responsibilities\n- Build, train, and validate ML models for recommendation engines.\n- Write data preprocessing and ETL pipelines.\n- Visualize findings and communicate insights to the product team.\n- Optimize model latency for production services.\n\n### Requirements\n- Proficiency in Python, Pandas, NumPy, and SQL.\n- Strong foundation in ML frameworks (PyTorch or TensorFlow).\n- Experience with data visualization tools.`;
-      budgetMin = '4000';
-      budgetMax = '8000';
-    } else if (questionsText.includes('kubernetes') || questionsText.includes('ci/cd') || questionsText.includes('linux') || questionsText.includes('terraform') || questionsText.includes('pipeline')) {
-      title = 'DevOps & Infrastructure Engineer';
-      category = 'DevOps';
-      skills = ['AWS', 'Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'Linux'];
-      description = `### Job Description\nWe are seeking an Infrastructure Engineer to scale our cloud platforms and build reliable delivery pipelines.\n\n### Responsibilities\n- Maintain infrastructure-as-code deployments.\n- Build and monitor CI/CD build scripts.\n- Ensure zero-downtime rolling updates.\n\n### Requirements\n- AWS or GCP certifications.\n- Strong bash scripting and infrastructure management experience.`;
-      budgetMin = '4000';
-      budgetMax = '7500';
-    } else if (questionsText.includes('write') || questionsText.includes('content') || questionsText.includes('seo') || questionsText.includes('copy') || questionsText.includes('article') || questionsText.includes('blog')) {
-      title = 'Technical & Content Writer';
-      category = 'Writing';
-      skills = ['Technical Writing', 'SEO', 'Content Strategy', 'Copywriting'];
-      description = `### Job Description\nWe are looking for a freelance technical content writer to draft technical documentation, blog posts, and copy for our developer portal.\n\n### Responsibilities\n- Research and write engaging technical tutorials.\n- Optimize articles for SEO rankings.\n- Proofread and edit user-facing manuals.\n\n### Requirements\n- Strong written English.\n- Basic understanding of programming concepts (to explain them to developers).\n- SEO keyword research tools experience.`;
-      budgetMin = '800';
-      budgetMax = '2000';
-    } else {
-      title = 'Full Stack Web Developer';
-      category = 'Web Development';
-      skills = ['React', 'TypeScript', 'Node.js', 'SQL'];
-      description = `### Job Description\nWe are looking for a versatile Full Stack Developer to help build and maintain web applications. You will work on both front-end layouts and back-end integration tasks.\n\n### Responsibilities\n- Build web components and backend APIs.\n- Write unit and integration tests.\n- Participate in product planning.\n\n### Requirements\n- Experience in both client and server development.\n- Strong knowledge of Javascript/TypeScript.`;
-      budgetMin = '2000';
-      budgetMax = '5000';
+    try {
+      const response = await jobAPI.generateAIDescription(validQuestions.map(q => q.questionText.trim()));
+      if (!response.success || !response.data) {
+        toast.error(response.message || 'Job details could not be generated.');
+        return;
+      }
+
+      const generatedSkillIds = response.data.skills.map(skill => skill.skillsId);
+      setSkillNameById(prev => {
+        const next = { ...prev };
+        response.data?.skills.forEach(skill => {
+          next[skill.skillsId] = skill.name;
+        });
+        return next;
+      });
+
+      setForm(prev => ({
+        ...prev,
+        title: response.data?.title || prev.title,
+        majorId: response.data?.majorId || '',
+        majorCategoryId: response.data?.majorCategoryId || '',
+        categoryId: response.data?.categoryId || '',
+        skillIds: generatedSkillIds,
+        customSkillNames: response.data?.customSkills || [],
+        description: response.data?.description || prev.description,
+        currency: prev.currency || 'USD',
+        estimatedDuration: prev.estimatedDuration || '2-4 weeks',
+        maxHires: prev.maxHires || '1',
+        location: prev.location || 'Remote',
+        visibility: String(JobPostVisibility.Public),
+        deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      }));
+
+      setIsJobDetailsGenerated(true);
+      toast.success('Job details generated successfully based on your questions.');
+    } finally {
+      setIsGeneratingInstant(false);
     }
-
-    setForm({
-      title,
-      category,
-      skills,
-      description,
-      budgetMin,
-      budgetMax,
-      currency: 'USD',
-      estimatedDuration: '2-4 weeks',
-      maxHires: '1',
-      location: 'Remote',
-      visibility: String(JobPostVisibility.Public),
-      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    });
-
-    setIsGeneratingInstant(false);
-    setIsJobDetailsGenerated(true);
-    toast.success('Job details generated successfully based on your questions!');
   };
 
   const validateForm = () => {
     if (!form.title.trim()) return 'Job title is required.';
     if (form.title.trim().length > 200) return 'Job title must not exceed 200 characters.';
+    if (!form.majorId) return 'Major is required.';
+    if (!form.majorCategoryId || !form.categoryId) return 'Category is required.';
     if (!form.description.trim()) return 'Job description is required.';
 
     const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
@@ -298,7 +457,7 @@ export function usePostJob() {
   const buildUpdateRequest = (): UpdateJobPostRequest => ({
     title: form.title.trim(),
     description: form.description.trim(),
-    categoryId: null,
+    majorCategoryId: form.majorCategoryId || null,
     budgetMin: form.budgetMin ? Number(form.budgetMin) : null,
     budgetMax: form.budgetMax ? Number(form.budgetMax) : null,
     currency: form.currency.trim() || 'USD',
@@ -307,7 +466,8 @@ export function usePostJob() {
     location: form.location.trim() || null,
     visibility: Number(form.visibility),
     endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
-    skillIds: [],
+    skillIds: form.skillIds,
+    customSkillNames: form.customSkillNames,
   });
 
   const saveQuestions = async (currentJobPostId: string) => {
@@ -374,9 +534,10 @@ export function usePostJob() {
           jobPostId,
           jobData: {
             ...updateRequest,
-            category: form.category,
-            skills: form.skills,
+            majorId: form.majorId,
+            categoryId: form.categoryId,
             deadline: form.deadline,
+            skillNameById,
             interviewQuestions: questionsWithOrder,
           },
         },
@@ -393,6 +554,10 @@ export function usePostJob() {
   return {
     form,
     setForm,
+    majors,
+    categories,
+    availableSkills,
+    selectedOfficialSkills,
     skillInput,
     setSkillInput,
     remainingSkills,
@@ -411,9 +576,17 @@ export function usePostJob() {
     setQuestions,
     isActionDisabled,
     questionsWithOrder,
+    taxonomyError,
+    isMajorsLoading,
+    isCategoriesLoading,
+    isSkillsLoading,
     insertMarkdown,
+    handleMajorChange,
+    handleCategoryChange,
+    addOfficialSkill,
     addSkill,
-    removeSkill,
+    removeOfficialSkill,
+    removeCustomSkill,
     updateQuestion,
     handleDragStart,
     handleDragOver,
@@ -421,7 +594,6 @@ export function usePostJob() {
     handleGenerateInstantJob,
     submitDraftFlow,
     renderSubmitLabel,
-    CATEGORIES,
     MAX_QUESTION_LENGTH,
   };
 }

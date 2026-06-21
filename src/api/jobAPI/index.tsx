@@ -11,6 +11,10 @@ import { jobPatchAPI } from './PATCH';
 import { jobDeleteAPI } from './DELETE';
 
 export const jobAPI = {
+  getMajors: jobGetAPI.getMajors,
+  getMajorCategories: jobGetAPI.getMajorCategories,
+  getCategoriesByMajor: jobGetAPI.getCategoriesByMajor,
+  getSkillsByCategory: jobGetAPI.getSkillsByCategory,
   getPublicJobPosts: jobGetAPI.getPublicJobPosts,
   getPublicJobById: jobGetAPI.getPublicJobById,
   getJobPostDetail: jobGetAPI.getJobPostDetail,
@@ -23,6 +27,7 @@ export const jobAPI = {
   createDraftJobPost: jobPostAPI.createDraftJobPost,
   createJobPostQuestion: jobPostAPI.createJobPostQuestion,
   createBulkJobPostQuestions: jobPostAPI.createBulkJobPostQuestions,
+  generateAIDescription: jobPostAPI.generateAIDescription,
   updateJobPost: jobPutAPI.updateJobPost,
   updateJobPostQuestion: jobPatchAPI.updateJobPostQuestion,
   updateJobPostQuestionRequired: jobPatchAPI.updateJobPostQuestionRequired,

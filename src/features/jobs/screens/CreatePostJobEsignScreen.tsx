@@ -155,7 +155,7 @@ export default function CreatePostJobEsignScreen() {
       const updateRequest = {
         title: contractForm.title.trim(),
         description: contractForm.description.trim(),
-        categoryId: jobData?.categoryId || null,
+        majorCategoryId: jobData?.majorCategoryId || null,
         budgetMin: parseFloat(contractForm.budget) || 0,
         budgetMax: parseFloat(contractForm.budget) || 0,
         currency: jobData?.currency || 'USD',
@@ -165,6 +165,7 @@ export default function CreatePostJobEsignScreen() {
         visibility: jobData?.visibility !== undefined ? parseInt(jobData.visibility) : JobPostVisibility.Public,
         endDate: contractForm.endDate ? new Date(`${contractForm.endDate}T23:59:59`).toISOString() : null,
         skillIds: jobData?.skillIds || [],
+        customSkillNames: jobData?.customSkillNames || [],
       };
 
       const updateResponse = await jobAPI.updateJobPost(jobPostId, updateRequest);

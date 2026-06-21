@@ -15,9 +15,12 @@ export default function PostJobScreen() {
   const [isGuideActive, setIsGuideActive] = useState(false);
   const {
     form,
+    majors,
+    categories,
     skillInput,
     setSkillInput,
     remainingSkills,
+    selectedOfficialSkills,
     previewTitle,
     errorMessage,
     isDraftInitializing,
@@ -31,9 +34,17 @@ export default function PostJobScreen() {
     questions,
     setQuestions,
     isActionDisabled,
+    taxonomyError,
+    isMajorsLoading,
+    isCategoriesLoading,
+    isSkillsLoading,
     insertMarkdown,
+    handleMajorChange,
+    handleCategoryChange,
+    addOfficialSkill,
     addSkill,
-    removeSkill,
+    removeOfficialSkill,
+    removeCustomSkill,
     updateQuestion,
     handleDragStart,
     handleDragOver,
@@ -41,7 +52,6 @@ export default function PostJobScreen() {
     handleGenerateInstantJob,
     submitDraftFlow,
     renderSubmitLabel,
-    CATEGORIES,
     MAX_QUESTION_LENGTH,
     setForm,
   } = usePostJob();
@@ -145,6 +155,12 @@ export default function PostJobScreen() {
         {errorMessage && (
           <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl px-4 py-3 text-sm font-semibold">
             {errorMessage}
+          </div>
+        )}
+
+        {taxonomyError && (
+          <div className="mb-6 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-xl px-4 py-3 text-sm font-semibold">
+            {taxonomyError}
           </div>
         )}
 
@@ -311,16 +327,34 @@ export default function PostJobScreen() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Major *</label>
                   <select
-                    value={form.category}
-                    onChange={event => setForm({ ...form, category: event.target.value })}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    value={form.majorId}
+                    onChange={event => handleMajorChange(event.target.value)}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || isMajorsLoading}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   >
-                    {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                    <option value="">{isMajorsLoading ? 'Loading majors...' : 'Select a major'}</option>
+                    {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category *</label>
+                  <select
+                    value={form.majorCategoryId}
+                    onChange={event => handleCategoryChange(event.target.value)}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || !form.majorId || isCategoriesLoading}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {!form.majorId ? 'Select a major first' : isCategoriesLoading ? 'Loading categories...' : 'Select a category'}
+                    </option>
+                    {categories.map(category => (
+                      <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -340,14 +374,28 @@ export default function PostJobScreen() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
                 <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
-                  {form.skills.map((skill: string) => (
-                    <span key={skill} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                      {skill}
+                  {selectedOfficialSkills.map(skill => (
+                    <span key={skill.skillId} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      {skill.name}
                       <button
                         type="button"
-                        onClick={() => removeSkill(skill)}
+                        onClick={() => removeOfficialSkill(skill.skillId)}
+                        disabled={isInstantJobMode && !isJobDetailsGenerated}
+                        className="hover:text-red-500 transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                  {form.customSkillNames.map((skill: string) => (
+                    <span key={skill} className="bg-[var(--gb-purple)]/10 text-[var(--gb-purple)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      {skill}
+                      <span className="opacity-70">(custom)</span>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomSkill(skill)}
                         disabled={isInstantJobMode && !isJobDetailsGenerated}
                         className="hover:text-red-500 transition-colors cursor-pointer bg-transparent border-none p-0 flex items-center disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -357,7 +405,7 @@ export default function PostJobScreen() {
                   ))}
                   <input
                     type="text"
-                    placeholder="Add a skill..."
+                    placeholder={form.categoryId ? 'Add a skill...' : 'Select a category first'}
                     value={skillInput}
                     onChange={event => setSkillInput(event.target.value)}
                     onKeyDown={event => {
@@ -366,23 +414,34 @@ export default function PostJobScreen() {
                         if (skillInput.trim()) addSkill(skillInput.trim());
                       }
                     }}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || !form.categoryId}
                     className="flex-grow bg-transparent border-none focus:ring-0 px-2 py-1 text-sm min-w-[150px] outline-none text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                   />
+                  <button
+                    type="button"
+                    onClick={() => addSkill(skillInput)}
+                    disabled={(isInstantJobMode && !isJobDetailsGenerated) || !form.categoryId || !skillInput.trim()}
+                    className="px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Add
+                  </button>
                 </div>
+                {isSkillsLoading && (
+                  <p className="text-[10px] text-muted-foreground mt-1">Loading skills for the selected category...</p>
+                )}
                 {remainingSkills.length > 0 && (
                   <div className="mt-1">
-                    <p className="text-[10px] text-muted-foreground mb-2">Suggested for {form.category}:</p>
+                    <p className="text-[10px] text-muted-foreground mb-2">Available official skills:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {remainingSkills.slice(0, 5).map(skill => (
                         <button
-                          key={skill}
+                          key={skill.skillId}
                           type="button"
-                          onClick={() => addSkill(skill)}
+                          onClick={() => addOfficialSkill(skill)}
                           disabled={isInstantJobMode && !isJobDetailsGenerated}
                           className="flex items-center gap-1 tag-pill text-xs px-2.5 py-1 rounded-full bg-muted hover:bg-muted/80 text-foreground transition-all cursor-pointer border-none disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          <Plus size={10} /> {skill}
+                          <Plus size={10} /> {skill.name}
                         </button>
                       ))}
                     </div>

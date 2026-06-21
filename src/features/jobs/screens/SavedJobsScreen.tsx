@@ -2,19 +2,40 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Bookmark, Briefcase, Clock, DollarSign, Globe } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { MOCK_BROWSE_JOBS } from '../mock/data-for-BrowseJobsScreen';
+import { jobAPI } from '../../../api/jobAPI';
+import type { JobPostSummaryDto } from '../../../types/models/Job';
 import '../styles/browse-jobs-screen.css';
 
 export default function SavedJobsScreen() {
   const navigate = useNavigate();
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [jobs, setJobs] = useState<JobPostSummaryDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const stored = window.localStorage.getItem('gb_saved_jobs');
     setSavedIds(stored ? JSON.parse(stored) : []);
   }, []);
 
-  const savedJobs = useMemo(() => MOCK_BROWSE_JOBS.filter(job => savedIds.includes(job.id)), [savedIds]);
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    jobAPI.getPublicJobPosts({ pageIndex: 1, pageSize: 100 })
+      .then(response => {
+        if (!isMounted) return;
+        setJobs(response.success && response.data ? response.data : []);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const savedJobs = useMemo(() => jobs.filter(job => savedIds.includes(job.jobPostsId)), [jobs, savedIds]);
 
   const toggleSave = (jobId: string) => {
     setSavedIds(prev => {
@@ -34,7 +55,11 @@ export default function SavedJobsScreen() {
           <p className="browse-jobs-desc">Jobs you bookmarked for later review.</p>
         </div>
 
-        {savedJobs.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-20 glass-card">
+            <p className="text-primary font-semibold mb-2">Loading saved jobs...</p>
+          </div>
+        ) : savedJobs.length === 0 ? (
           <div className="text-center py-20 glass-card">
             <Bookmark size={44} className="mx-auto mb-4 browse-jobs-job-meta" />
             <p className="text-primary font-semibold mb-2">No saved jobs yet</p>
@@ -43,27 +68,30 @@ export default function SavedJobsScreen() {
         ) : (
           <div className="space-y-4">
             {savedJobs.map(job => (
-              <div key={job.id} className="glass-card p-5 browse-jobs-job-card">
+              <div key={job.jobPostsId} className="glass-card p-5 browse-jobs-job-card">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       <h2 className="text-primary font-semibold">{job.title}</h2>
-                      <span className={`job-detail-status job-detail-status-${job.status === 'cancelled' ? 'closed' : job.status}`}>
-                        {job.status}
-                      </span>
+                      {job.categoryName && <span className="badge-cyan text-xs">{job.categoryName}</span>}
+                      {job.majorName && <span className="badge-purple text-xs">{job.majorName}</span>}
                     </div>
-                    <p className="text-sm browse-jobs-job-meta mb-3">{job.description}</p>
+                    <p className="text-sm browse-jobs-job-meta mb-3">{job.descriptionPreview}</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {(job.skillNames || []).map(skill => <span key={skill} className="tag-pill">{skill}</span>)}
+                      {(job.customSkillNames || []).map(skill => <span key={skill} className="tag-pill">{skill} (custom)</span>)}
+                    </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs browse-jobs-job-meta">
-                      <span className="flex items-center gap-1"><DollarSign size={12} />${job.budgetMin} - ${job.budgetMax}</span>
+                      <span className="flex items-center gap-1"><DollarSign size={12} />${job.budgetMin ?? 0} - ${job.budgetMax ?? 0}</span>
                       <span className="flex items-center gap-1"><Globe size={12} />Remote</span>
-                      <span className="flex items-center gap-1"><Clock size={12} />{job.postedAt}</span>
+                      <span className="flex items-center gap-1"><Clock size={12} />{new Date(job.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <button className="btn-ghost-cyan px-3 py-2 text-xs" onClick={() => navigate(`/jobs/${job.id}`, { state: { job } })}>
+                    <button className="btn-ghost-cyan px-3 py-2 text-xs" onClick={() => navigate(`/jobs/${job.jobPostsId}`)}>
                       <Briefcase size={14} /> View
                     </button>
-                    <button className="btn-ghost-cyan px-3 py-2 text-xs" onClick={() => toggleSave(job.id)}>
+                    <button className="btn-ghost-cyan px-3 py-2 text-xs" onClick={() => toggleSave(job.jobPostsId)}>
                       <Bookmark size={14} fill="currentColor" /> Unsave
                     </button>
                   </div>

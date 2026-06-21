@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, DollarSign, Users, FileText, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
-import type { Job, JobPostSummaryDto } from '../../../types/models/Job';
+import { JobPostStatus, type Job, type JobPostSummaryDto } from '../../../types/models/Job';
 import '../styles/admin-users-screen.css';
 
 type JobFilter = 'all' | 'draft' | 'open' | 'in_progress' | 'closed';
@@ -14,16 +14,23 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
   clientId: '',
   title: job.title,
   description: job.descriptionPreview,
-  category: 'Uncategorized',
-  skills: job.skillNames || [],
+  category: job.categoryName || 'Uncategorized',
+  majorName: job.majorName,
+  categoryName: job.categoryName,
+  customSkillNames: job.customSkillNames || [],
+  skills: [...(job.skillNames || []), ...(job.customSkillNames || [])],
   budgetMin: job.budgetMin ?? 0,
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
-  status: 'open',
+  status:
+    job.status === JobPostStatus.Draft ? 'draft' :
+    job.status === JobPostStatus.Closed ? 'closed' :
+    job.status === JobPostStatus.Cancelled ? 'cancelled' :
+    'open',
   proposalCount: 0,
   viewCount: 0,
   postedAt: job.createdAt,
-  isRemote: job.locationType == null || job.locationType === 0,
+  isRemote: true,
   gigcoin_cost: 0,
 });
 
