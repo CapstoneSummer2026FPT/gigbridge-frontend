@@ -179,6 +179,7 @@ export interface Message {
   negotiationStatus?: 'pending' | 'accepted' | 'declined';
   proposedPrice?: string;
   negotiationOfferId?: string | null;
+  schedule?: import('../../api/scheduleAPI').ScheduleEvent;
 }
 
 export interface Review {

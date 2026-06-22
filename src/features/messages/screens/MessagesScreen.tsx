@@ -4,13 +4,66 @@ import {
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
+  CalendarPlus, CalendarDays, Pencil, ChevronUp,
 } from 'lucide-react';
+import { useState } from 'react';
+import type { ScheduleEvent } from '../../../api/scheduleAPI';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useMessages } from '../hooks/useMessages';
 import { MOCK_ROOMS } from '../mock/data-for-MessagesScreen';
 import '../styles/messages-screen.css';
 
+function countdown(start: string, now: number) {
+  const delta = new Date(start).getTime() - now;
+  if (delta <= 0) return 'Started / Past';
+  const seconds = Math.floor(delta / 1000);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return days ? `${days}d ${hours}h ${minutes}m remaining` : hours ? `${hours}h ${minutes}m remaining` : `${minutes}m ${seconds % 60}s remaining`;
+}
+
+function vietnamDate(value: string) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) + ' Vietnam Time (ICT)';
+}
+
+function ScheduleCard({ schedule, latest, now, viewerId, onEdit, onCancel, onLatest }: {
+  schedule: ScheduleEvent; latest: boolean; now: number; viewerId?: string; onEdit: () => void; onCancel: () => void; onLatest: () => void;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const cancelled = schedule.status === 1 || schedule.eventType === 2;
+  const startLocalHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', hourCycle: 'h23' }).format(new Date(schedule.scheduledAtUtc)));
+  const beforeCutoff = now < new Date(schedule.cutoffUtc).getTime();
+  const editGrace = viewerId === schedule.createdByUserId && now < new Date(schedule.graceExpiresAtUtc).getTime();
+  const canCancel = latest && !cancelled && now < new Date(schedule.scheduledAtUtc).getTime() && beforeCutoff;
+  const canEdit = latest && !cancelled && now < new Date(schedule.scheduledAtUtc).getTime() &&
+    schedule.remainingEdits > 0 && (beforeCutoff || editGrace);
+  return (
+    <div className={`w-[min(420px,75vw)] rounded-2xl border p-4 shadow-sm ${cancelled ? 'border-red-500/30 bg-red-500/5' : 'border-[var(--gb-cyan)]/30 bg-card'}`}>
+      <div className="flex justify-between gap-3">
+        <div className="flex gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] flex items-center justify-center shrink-0"><CalendarDays size={19} /></div>
+          <div className="min-w-0"><p className="font-bold text-sm truncate">{schedule.title}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">{['Created','Edited','Cancelled'][schedule.eventType]} by {schedule.actorName}</p></div>
+        </div>
+        {!latest && <button onClick={onLatest} className="text-[10px] text-[var(--gb-cyan)] border-none bg-transparent cursor-pointer">{t('schedule.superseded')}</button>}
+      </div>
+      <div className="mt-3 rounded-xl bg-muted/60 p-3">
+        <p className="text-xs font-semibold">{vietnamDate(schedule.scheduledAtUtc)}</p>
+        {latest && !cancelled && <p className="text-xs text-[var(--gb-cyan)] font-bold mt-1">{countdown(schedule.scheduledAtUtc, now)}</p>}
+        <p className="text-[10px] text-muted-foreground mt-1">Cancellation cutoff: {vietnamDate(schedule.cutoffUtc)}</p>
+        {startLocalHour < 2 && <p className="text-[10px] text-amber-600 mt-2 font-semibold">Short cancellation window: this event begins close to Vietnam midnight.</p>}
+      </div>
+      {schedule.details && <><button onClick={() => setExpanded(x => !x)} className="mt-2 flex items-center gap-1 text-xs text-muted-foreground border-none bg-transparent cursor-pointer">{expanded ? <ChevronUp size={13}/> : <ChevronDown size={13}/>} Details</button>{expanded && <p className="text-xs whitespace-pre-wrap mt-2">{schedule.details}</p>}</>}
+      {cancelled && schedule.cancellationReason && <p className="mt-3 text-xs text-red-600"><strong>Reason:</strong> {schedule.cancellationReason}</p>}
+      {latest && !cancelled && <div className="mt-3 flex items-center justify-between"><span className="text-[10px] text-muted-foreground">{schedule.remainingEdits} {t('schedule.remainingEdits')}</span><div className="flex gap-2">{canEdit && <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> {t('schedule.edit')}</button>}{canCancel && <button onClick={onCancel} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer">{t('schedule.cancel')}</button>}</div></div>}
+    </div>
+  );
+}
+
 export default function MessagesScreen() {
+  const { t } = useTranslation();
   const {
     user,
     role,
@@ -42,6 +95,7 @@ export default function MessagesScreen() {
     setShowNegModal,
     negStatus,
     chatEndRef,
+    chatHistoryRef,
     convMenuRef,
     toggleRoom,
     handleSelectConv,
@@ -55,6 +109,12 @@ export default function MessagesScreen() {
     isMe,
     totalUnread,
     formatTime,
+    showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
+    scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,
+    scheduleError, scheduleSaving, openCreateSchedule, openEditSchedule, openCancelSchedule, submitSchedule,
+    scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed,
+    nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
+    hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
 
   const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
@@ -297,7 +357,8 @@ export default function MessagesScreen() {
             )}
 
             {/* Message History */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 messages-custom-scroll">
+            <div ref={chatHistoryRef} className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 messages-custom-scroll">
+              {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
               <div className="flex justify-center">
                 <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
                   {activeConv.roomType === 'invited' ? '📋 Invited Job Chat' : '🤝 Negotiation Chat'}
@@ -307,6 +368,7 @@ export default function MessagesScreen() {
               {activeMessages.map((msg, idx) => {
                 const mine = isMe(msg.senderId);
                 const isSystem = msg.type === 'system' || msg.senderId === 'system';
+                const latestScheduleMessage = msg.schedule ? activeMessages.filter(m => m.schedule?.scheduleId === msg.schedule?.scheduleId).sort((a,b) => (b.schedule?.eventSequence || 0) - (a.schedule?.eventSequence || 0))[0] : undefined;
 
                 // ── System message (centered) ─────────────────────────────
                 if (isSystem) {
@@ -328,7 +390,9 @@ export default function MessagesScreen() {
                 return (
                   <div
                     key={msg.id ?? idx}
+                    id={`message-${msg.id}`}
                     className={`flex items-end gap-3 max-w-[80%] ${mine ? 'self-end flex-row-reverse' : 'self-start'}`}
+                    style={highlightedMessageId === msg.id ? { outline: '3px solid color-mix(in srgb, var(--gb-cyan) 45%, transparent)', borderRadius: 18, transition: 'outline 1s ease' } : undefined}
                   >
                     {!mine && (
                       <img
@@ -340,7 +404,11 @@ export default function MessagesScreen() {
                     <div className="flex flex-col gap-1">
 
                       {/* ── File message ───────────────────────────────────── */}
-                      {msg.type === 'file' ? (
+                      {msg.type === 'schedule' && msg.schedule ? (
+                        <ScheduleCard schedule={msg.schedule} latest={latestScheduleMessage?.id === msg.id} now={nowMs} viewerId={user?.id}
+                          onEdit={() => openEditSchedule(msg.schedule!)} onCancel={() => openCancelSchedule(msg.schedule!)}
+                          onLatest={() => document.getElementById(`message-${latestScheduleMessage?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
+                      ) : msg.type === 'file' ? (
                         <div className="bg-card p-4 rounded-2xl shadow-sm border border-border max-w-sm">
                           <p className="text-sm mb-3">{msg.content}</p>
                           <div className="rounded-xl overflow-hidden border border-border">
@@ -568,6 +636,12 @@ export default function MessagesScreen() {
                       title="Attach File"
                     >
                       <Paperclip size={16} />
+                    </button>
+
+                    <button onClick={openCreateSchedule} disabled={hasOngoingSchedule || checkingOngoingSchedule}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-all border-none bg-transparent ${hasOngoingSchedule || checkingOngoingSchedule ? 'text-gray-400 bg-gray-200/40 cursor-not-allowed opacity-60' : 'text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted cursor-pointer'}`}
+                      title={hasOngoingSchedule ? 'An ongoing schedule already exists' : checkingOngoingSchedule ? 'Checking ongoing schedule…' : 'Create schedule'}>
+                      <CalendarPlus size={16} />
                     </button>
 
                     {/* Emoji */}
@@ -858,6 +932,26 @@ export default function MessagesScreen() {
                 Đồng ý
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl max-w-md w-full space-y-4">
+            <div className="flex justify-between"><div><h3 className="font-bold">{t(`schedule.${scheduleMode}`)}</h3><p className="text-xs text-muted-foreground">{t('schedule.vietnamTime')}</p></div><button onClick={() => setShowScheduleModal(false)} className="border-none bg-transparent cursor-pointer"><X size={17}/></button></div>
+            {scheduleMode === 'cancel' ? (
+              <textarea maxLength={1000} value={scheduleReason} onChange={e => setScheduleReason(e.target.value)} placeholder={t('schedule.reason')} className="w-full min-h-28 bg-background border border-border rounded-xl p-3 text-sm" />
+            ) : <>
+              <input maxLength={200} value={scheduleTitle} onChange={e => setScheduleTitle(e.target.value)} placeholder={t('schedule.title')} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />
+              <input type="datetime-local" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />
+              {scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && <label className="text-xs text-amber-600 bg-amber-500/10 rounded-lg p-2 flex gap-2"><input type="checkbox" checked={midnightConfirmed} onChange={e => setMidnightConfirmed(e.target.checked)}/>I understand this event starts near Vietnam midnight and may have a very short cancellation window.</label>}
+              <textarea maxLength={4000} value={scheduleDetails} onChange={e => setScheduleDetails(e.target.value)} placeholder={t('schedule.details')} className="w-full min-h-24 bg-background border border-border rounded-xl p-3 text-sm" />
+              {scheduleMode === 'edit' && editingSchedule?.remainingEdits === 1 && <p className="text-xs text-amber-600">Saving will use the final shared edit.</p>}
+            </>}
+            {scheduleError && <p className="text-xs text-red-600 bg-red-500/10 rounded-lg p-2">{scheduleError}</p>}
+            {scheduleConflict && <button disabled={scheduleMode === 'edit' && scheduleConflict.remainingEdits === 0} onClick={confirmScheduleRetry} className="w-full py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 text-xs cursor-pointer disabled:opacity-50">Confirm retry against version {scheduleConflict.version}{scheduleConflict.remainingEdits === 1 ? ' using the final edit' : ''}</button>}
+            <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : t('schedule.save')}</button></div>
           </div>
         </div>
       )}
