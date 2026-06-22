@@ -49,12 +49,22 @@ export default function MessagesScreen() {
     handleProposeDeal,
     handleAcceptDeal,
     handleDeclineDeal,
+    handleOpenAcceptedContract,
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,
     totalUnread,
     formatTime,
   } = useMessages();
+
+  const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
+    if (!isLatestOffer) return 'Đề xuất cũ';
+    if (status === 'pending_freelancer') return 'Đang chờ freelancer';
+    if (status === 'agreed') return 'Đã đồng ý ✓';
+    if (status === 'declined') return 'Đã từ chối';
+    if (status === 'pending_client') return 'Đang chờ cập nhật';
+    return 'Đang đồng bộ';
+  };
 
   if (loading) {
     return (
@@ -266,7 +276,7 @@ export default function MessagesScreen() {
                 </div>
                  {!isClient && (
                   <button
-                    onClick={() => navigate('/proj_1/freelancer-contract', { state: { conversationId: activeConvId } })}
+                    onClick={handleOpenAcceptedContract}
                     className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
                   >
                     <span>Ký hợp đồng</span>
@@ -308,6 +318,12 @@ export default function MessagesScreen() {
                     </div>
                   );
                 }
+
+                const isLatestDealOffer =
+                  msg.type === 'deal' &&
+                  !!activeConv.lastOfferId &&
+                  msg.negotiationOfferId === activeConv.lastOfferId;
+                const dealBubbleStatus = isLatestDealOffer ? dealStatus : 'idle';
 
                 return (
                   <div
@@ -392,7 +408,7 @@ export default function MessagesScreen() {
                             <div>
                               <h3 className="text-sm text-foreground font-bold">Thỏa thuận giá (Deal)</h3>
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                {dealStatus === 'pending_freelancer' ? 'Đang chờ freelancer' : dealStatus === 'agreed' ? 'Đã đồng ý ✓' : 'Đã từ chối'}
+                                {getDealStatusLabel(dealBubbleStatus, isLatestDealOffer)}
                               </p>
                             </div>
                           </div>
@@ -402,17 +418,21 @@ export default function MessagesScreen() {
                             <div className="text-2xl font-black text-[var(--gb-cyan)] mt-1">${msg.content} USD</div>
                           </div>
 
-                          {dealStatus === 'pending_freelancer' ? (
+                          {!isLatestDealOffer ? (
+                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
+                              Đề xuất này không còn là đề xuất hiện tại.
+                            </div>
+                          ) : dealBubbleStatus === 'pending_freelancer' ? (
                             !mine ? (
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => handleAcceptDeal(msg.id, msg.content)}
+                                  onClick={() => handleAcceptDeal(msg.negotiationOfferId)}
                                   className="flex-1 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                                 >
                                   Đồng ý
                                 </button>
                                 <button
-                                  onClick={() => handleDeclineDeal(msg.id)}
+                                  onClick={() => handleDeclineDeal(msg.negotiationOfferId)}
                                   className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                                 >
                                   Từ chối
@@ -423,13 +443,17 @@ export default function MessagesScreen() {
                                 Đang đợi phản hồi từ đối tác...
                               </div>
                             )
-                          ) : dealStatus === 'agreed' ? (
+                          ) : dealBubbleStatus === 'agreed' ? (
                             <div className="text-xs text-emerald-600 bg-emerald-500/10 p-2.5 rounded-lg text-center font-bold">
                               Mức giá đã được thống nhất
                             </div>
-                          ) : (
+                          ) : dealBubbleStatus === 'declined' ? (
                             <div className="text-xs text-red-500 bg-red-500/10 p-2.5 rounded-lg text-center font-bold">
                               Đề xuất đã bị từ chối
+                            </div>
+                          ) : (
+                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
+                              Đang đồng bộ trạng thái đề xuất...
                             </div>
                           )}
                         </div>
@@ -514,7 +538,7 @@ export default function MessagesScreen() {
                           id="btn-propose-deal"
                           className="flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none"
                         >
-                          Send Proposal
+                          Send
                         </button>
                       </div>
                     </div>

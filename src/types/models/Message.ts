@@ -157,6 +157,7 @@ export interface MsgConversation {
   proposedPrice?: string;
   conversationType?: number; // 0=JobNegotiation, 1=ContractWorkroom, etc.
   proposalId?: string | null;
+  contractId?: string | null;
   lastOfferId?: string | null;
 }
 
@@ -177,6 +178,7 @@ export interface Message {
   dealStatus?: 'pending_freelancer' | 'agreed' | 'declined' | 'pending_client' | 'idle';
   negotiationStatus?: 'pending' | 'accepted' | 'declined';
   proposedPrice?: string;
+  negotiationOfferId?: string | null;
 }
 
 export interface Review {

@@ -216,7 +216,11 @@ export const contractGetAPI = {
   getContractByProposal: async (
     proposalId: string
   ): Promise<ApiResponse<ContractDto>> => {
-    return apiService.get<ContractDto>(`${contractsUrl}/by-proposal/${proposalId}`);
+    const response = await apiService.get<BackendContractResponse>(`${contractsUrl}/by-proposal/${proposalId}`);
+    return {
+      ...response,
+      data: response.data ? normalizeContract(response.data) : undefined,
+    };
   },
 
   /**
