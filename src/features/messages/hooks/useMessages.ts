@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import {
@@ -11,7 +11,13 @@ import * as signalR from '@microsoft/signalr';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { getChatHubUrl } from '../../../service/apiService';
-import { scheduleAPI, type ScheduleEvent } from '../../../api/scheduleAPI';
+import { scheduleAPI, type ScheduleEvent, type ScheduleMeetingResponse, type ScheduleResponse } from '../../../api/scheduleAPI';
+import { googleMeetAPI, type GoogleMeetConnectionStatus } from '../../../api/googleMeetAPI';
+
+interface ScheduleMeetingChangedEvent {
+  scheduleId: string;
+  meeting: ScheduleMeetingResponse;
+}
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -103,6 +109,26 @@ function sortConversations(convs: MsgConversation[]): MsgConversation[] {
   return [...convs].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
 }
 
+function dedupeMessages(messages: MsgMessage[]): MsgMessage[] {
+  const unique = new Map<string, MsgMessage>();
+  const withoutId: MsgMessage[] = [];
+
+  for (const message of messages) {
+    const key = message.id || message.clientMessageId;
+    if (!key) {
+      withoutId.push(message);
+      continue;
+    }
+
+    const existing = unique.get(key);
+    unique.set(key, existing
+      ? { ...existing, ...message, schedule: message.schedule ?? existing.schedule }
+      : message);
+  }
+
+  return [...unique.values(), ...withoutId];
+}
+
 function formatSendError(res: { statusCode?: number; message?: string; errors?: unknown }) {
   const parts = [
     `status=${res.statusCode ?? 'unknown'}`,
@@ -139,7 +165,10 @@ export function useMessages() {
 
   // ── Messages map ─────────────────────────────────────────────────────────
   const [messagesMap, setMessagesMap] = useState<Record<string, MsgMessage[]>>({});
-  const activeMessages = messagesMap[activeConvId] ?? [];
+  const activeMessages = useMemo(
+    () => dedupeMessages(messagesMap[activeConvId] ?? []),
+    [messagesMap, activeConvId]
+  );
 
   // ── Deal state per conversation ──────────────────────────────────────────
   const [dealStatusMap, setDealStatusMap] = useState<Record<string, MsgConversation['dealStatus']>>({});
@@ -159,7 +188,7 @@ export function useMessages() {
   const [showConvMenu, setShowConvMenu] = useState(false);
   const [showNegModal, setShowNegModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [scheduleMode, setScheduleMode] = useState<'create' | 'edit' | 'cancel'>('create');
+  const [scheduleMode, setScheduleMode] = useState<'create' | 'edit' | 'cancel' | 'counter-create' | 'counter-edit'>('create');
   const [editingSchedule, setEditingSchedule] = useState<ScheduleEvent | null>(null);
   const [scheduleTitle, setScheduleTitle] = useState('');
   const [scheduleDetails, setScheduleDetails] = useState('');
@@ -167,8 +196,13 @@ export function useMessages() {
   const [scheduleReason, setScheduleReason] = useState('');
   const [scheduleError, setScheduleError] = useState('');
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleActionId, setScheduleActionId] = useState<string | null>(null);
   const [scheduleConflict, setScheduleConflict] = useState<{ version: number; remainingEdits: number } | null>(null);
   const [midnightConfirmed, setMidnightConfirmed] = useState(false);
+  const [scheduleAddGoogleMeet, setScheduleAddGoogleMeet] = useState(true);
+  const [googleMeetStatus, setGoogleMeetStatus] = useState<GoogleMeetConnectionStatus | null>(null);
+  const [googleMeetStatusLoading, setGoogleMeetStatusLoading] = useState(false);
+  const [googleMeetConnecting, setGoogleMeetConnecting] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [anchorNotice, setAnchorNotice] = useState('');
   const [nowMs, setNowMs] = useState(Date.now());
@@ -182,6 +216,62 @@ export function useMessages() {
   const [loading, setLoading] = useState(true);
 
   const negStatus = activeConv?.roomId === 'room_negotiation' ? 'accepted' : 'idle';
+
+  const refreshGoogleMeetStatus = useCallback(async () => {
+    setGoogleMeetStatusLoading(true);
+    const response = await googleMeetAPI.getStatus();
+    setGoogleMeetStatus(response.success && response.data ? response.data : null);
+    setGoogleMeetStatusLoading(false);
+    return response.success ? response.data : undefined;
+  }, []);
+
+  useEffect(() => {
+    if (showScheduleModal && scheduleMode === 'create') refreshGoogleMeetStatus();
+  }, [showScheduleModal, scheduleMode, refreshGoogleMeetStatus]);
+
+  useEffect(() => {
+    const handleOAuthResult = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'google-meet-oauth') return;
+      setGoogleMeetConnecting(false);
+      if (event.data.result === 'success') {
+        refreshGoogleMeetStatus();
+        setScheduleError('');
+      } else {
+        const oauthErrors: Record<string, string> = {
+          cancelled: 'Google authorization was cancelled.',
+          invalid_state: 'The Google connection request expired. Please try again.',
+          invalid_request: 'Google did not return an authorization code. Please try again.',
+          token_exchange_failed: 'Google rejected the authorization response. Please reconnect.',
+          missing_refresh_token: 'Google did not issue offline access. Remove Gigbridge from your Google account permissions, then reconnect.',
+          invalid_id_token: 'Google account verification failed. Please reconnect.',
+          missing_meet_scope: 'Google Meet permission was not granted. Please reconnect and approve all requested permissions.',
+          internal_error: 'Gigbridge could not save the Google connection. Check the backend log.',
+        };
+        setScheduleError(oauthErrors[event.data.result] || 'Google Meet connection was not completed. Please try again.');
+      }
+    };
+    window.addEventListener('message', handleOAuthResult);
+    return () => window.removeEventListener('message', handleOAuthResult);
+  }, [refreshGoogleMeetStatus]);
+
+  const connectGoogleMeet = async () => {
+    const popup = window.open('', 'google-meet-oauth', 'width=520,height=700');
+    if (!popup) {
+      setScheduleError('Allow pop-ups to connect your Google account.');
+      return;
+    }
+
+    setGoogleMeetConnecting(true);
+    setScheduleError('');
+    const response = await googleMeetAPI.getAuthorizationUrl();
+    if (!response.success || !response.data?.authorizationUrl) {
+      popup.close();
+      setGoogleMeetConnecting(false);
+      setScheduleError(response.message || 'Unable to start Google Meet connection.');
+      return;
+    }
+    popup.location.href = response.data.authorizationUrl;
+  };
 
   // Refs for tracking active ID in callbacks without re-triggering connection builder
   const activeConvIdRef = useRef(activeConvId);
@@ -233,7 +323,7 @@ export function useMessages() {
       try {
         const res = await messageGetAPI.getConversationMessages(activeConvId);
         if (res.success && res.data && active) {
-          const mapped = res.data.map(mapBackendMessage);
+          const mapped = dedupeMessages(res.data.map(mapBackendMessage));
           setMessagesMap(prev => ({ ...prev, [activeConvId]: mapped }));
 
           // Mark as read
@@ -327,6 +417,7 @@ export function useMessages() {
     console.info('[ChatHub] connecting:', hubUrl);
 
     const connection = new signalR.HubConnectionBuilder()
+      .configureLogging(signalR.LogLevel.Warning)
       .withUrl(hubUrl, {
         accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
       })
@@ -414,7 +505,7 @@ export function useMessages() {
       }
 
       setMessagesMap(prev => {
-        const list = prev[targetConvId] ?? [];
+        const list = dedupeMessages(prev[targetConvId] ?? []);
         if (!prev[targetConvId] && targetConvId !== activeConvIdRef.current) {
           return prev;
         }
@@ -439,7 +530,7 @@ export function useMessages() {
         }
         return {
           ...prev,
-          [targetConvId]: [...list, mapped],
+          [targetConvId]: dedupeMessages([...list, mapped]),
         };
       });
 
@@ -536,11 +627,58 @@ export function useMessages() {
           if (res.success && res.data) {
             setMessagesMap(prev => ({
               ...prev,
-              [activeConvId]: res.data!.map(mapBackendMessage),
+              [activeConvId]: dedupeMessages(res.data!.map(mapBackendMessage)),
             }));
           }
         });
       }
+    };
+
+    const handleMeetingChanged = (event: ScheduleMeetingChangedEvent) => {
+      const { scheduleId, meeting } = event;
+      if (!scheduleId || !meeting) return;
+      setMessagesMap(prev => {
+        const updated: Record<string, MsgMessage[]> = {};
+        for (const [convId, msgs] of Object.entries(prev)) {
+          updated[convId] = msgs.map(m => {
+            const schedule = m.schedule;
+            if (schedule?.scheduleId === scheduleId) {
+              return {
+                ...m,
+                schedule: {
+                  ...schedule,
+                  meeting: {
+                    ...meeting,
+                    provider: meeting.provider ?? schedule.meeting?.provider ?? 0,
+                    status: meeting.status,
+                    organizerUserId: meeting.organizerUserId ?? schedule.meeting?.organizerUserId ?? '',
+                    joinUri: meeting.joinUri,
+                    failureCode: meeting.failureCode,
+                    canRetry: meeting.canRetry ?? false,
+                  },
+                },
+              };
+            }
+            return m;
+          });
+        }
+        return updated;
+      });
+    };
+
+    const handleScheduleChanged = (schedule: ScheduleEvent) => {
+      if (!schedule?.scheduleId) return;
+      setMessagesMap(prev => {
+        const updated: Record<string, MsgMessage[]> = {};
+        for (const [conversationId, messages] of Object.entries(prev)) {
+          updated[conversationId] = dedupeMessages(messages.map(message =>
+            message.id === schedule.scheduleMessageId
+              ? { ...message, schedule }
+              : message
+          ));
+        }
+        return updated;
+      });
     };
 
     hubConnection.on('ReceiveMessage', handleReceiveMessage);
@@ -548,6 +686,8 @@ export function useMessages() {
     hubConnection.on('ConversationRead', handleConversationRead);
     hubConnection.on('FinalOfferCreated', handleOfferUpdate);
     hubConnection.on('FinalOfferResponded', handleOfferUpdate);
+    hubConnection.on('ScheduleMeetingChanged', handleMeetingChanged);
+    hubConnection.on('ScheduleChanged', handleScheduleChanged);
 
     return () => {
       hubConnection.off('ReceiveMessage', handleReceiveMessage);
@@ -555,6 +695,8 @@ export function useMessages() {
       hubConnection.off('ConversationRead', handleConversationRead);
       hubConnection.off('FinalOfferCreated', handleOfferUpdate);
       hubConnection.off('FinalOfferResponded', handleOfferUpdate);
+      hubConnection.off('ScheduleMeetingChanged', handleMeetingChanged);
+      hubConnection.off('ScheduleChanged', handleScheduleChanged);
     };
   }, [hubConnection, activeConvId, loadConversations, user]);
 
@@ -760,10 +902,10 @@ export function useMessages() {
     }
   };
 
-  const openCreateSchedule = () => {
-    if (hasOngoingSchedule || checkingOngoingSchedule) return;
+  const openCreateSchedule = (addGoogleMeet = false) => {
+    if (!isClient || hasOngoingSchedule || checkingOngoingSchedule) return;
     setScheduleMode('create'); setEditingSchedule(null); setScheduleTitle(''); setScheduleDetails('');
-    setScheduleTime(''); setScheduleReason(''); setScheduleError(''); setScheduleConflict(null); setMidnightConfirmed(false); setShowScheduleModal(true);
+    setScheduleTime(''); setScheduleReason(''); setScheduleError(''); setScheduleConflict(null); setMidnightConfirmed(false); setScheduleAddGoogleMeet(addGoogleMeet); setShowScheduleModal(true);
   };
 
   const openEditSchedule = (schedule: ScheduleEvent) => {
@@ -776,14 +918,79 @@ export function useMessages() {
     setScheduleMode('cancel'); setEditingSchedule(schedule); setScheduleReason(''); setScheduleError(''); setScheduleConflict(null); setShowScheduleModal(true);
   };
 
+  const openCounterProposal = (schedule: ScheduleEvent, edit = false) => {
+    const vietnam = edit
+      ? new Date(new Date(schedule.scheduledAtUtc).getTime() + 7 * 3600_000).toISOString().slice(0, 16)
+      : '';
+    setScheduleMode(edit ? 'counter-edit' : 'counter-create'); setEditingSchedule(schedule);
+    setScheduleTime(vietnam); setScheduleError(''); setScheduleConflict(null);
+    setMidnightConfirmed(edit && Number(vietnam.slice(11, 13)) >= 2); setShowScheduleModal(true);
+  };
+
+  const applyLatestSchedule = (scheduleId: string, latest: ScheduleResponse) => {
+    if (!activeConvId) return;
+    setMessagesMap(prev => ({
+      ...prev,
+      [activeConvId]: (prev[activeConvId] || []).map(message =>
+        message.schedule?.scheduleId === scheduleId
+          ? { ...message, schedule: { ...message.schedule, ...latest } }
+          : message),
+    }));
+  };
+
+  const respondToSchedule = async (schedule: ScheduleEvent, action: 'accept' | 'reject') => {
+    if (scheduleActionId) return;
+    setScheduleActionId(schedule.scheduleId); setAnchorNotice('');
+    try {
+      const response = action === 'accept'
+        ? await scheduleAPI.accept(schedule.scheduleId, schedule.version)
+        : await scheduleAPI.reject(schedule.scheduleId, schedule.version);
+      if (!response.success || !response.data) {
+        if (response.statusCode === 409) {
+          const latest = await scheduleAPI.get(schedule.scheduleId);
+          if (latest.success && latest.data) applyLatestSchedule(schedule.scheduleId, latest.data);
+        }
+        setAnchorNotice(response.message || `Unable to ${action} schedule.`);
+        return;
+      }
+      if (action === 'reject' && schedule.agreementStatus === 1) {
+        const rejectedEvent = response.data.message?.schedule;
+        if (rejectedEvent) openCounterProposal(rejectedEvent, false);
+      } else if (action === 'reject') {
+        setHasOngoingSchedule(false);
+      }
+    } finally {
+      setScheduleActionId(null);
+    }
+  };
+
+  const retryGoogleMeet = async (schedule: ScheduleEvent) => {
+    const response = await scheduleAPI.retryMeeting(schedule.scheduleId);
+    if (!response.success) {
+      setAnchorNotice(response.message || 'Unable to retry Google Meet creation.');
+      return;
+    }
+
+    setAnchorNotice('Retrying Google Meet creation...');
+  };
+
   const submitSchedule = async () => {
     if (!activeConvId) return;
+    if (scheduleMode === 'create' && scheduleAddGoogleMeet) {
+      const status = googleMeetStatus?.isConnected ? googleMeetStatus : await refreshGoogleMeetStatus();
+      if (!status?.isConnected) {
+        setScheduleError('Connect your Google account before adding a Google Meet room.');
+        return;
+      }
+    }
     setScheduleSaving(true); setScheduleError('');
     const scheduledAt = scheduleTime ? `${scheduleTime}:00+07:00` : '';
     let res;
-    if (scheduleMode === 'create') res = await scheduleAPI.create({ conversationId: activeConvId, title: scheduleTitle, details: scheduleDetails || undefined, scheduledAt, timeZoneId: 'Asia/Ho_Chi_Minh' });
+    if (scheduleMode === 'create') res = await scheduleAPI.create({ conversationId: activeConvId, title: scheduleTitle, details: scheduleDetails || undefined, scheduledAt, timeZoneId: 'Asia/Ho_Chi_Minh', addGoogleMeet: scheduleAddGoogleMeet });
     else if (scheduleMode === 'edit' && editingSchedule) res = await scheduleAPI.update(editingSchedule.scheduleId, { title: scheduleTitle, details: scheduleDetails || undefined, scheduledAt, expectedVersion: editingSchedule.version });
-    else if (editingSchedule) res = await scheduleAPI.cancel(editingSchedule.scheduleId, { reason: scheduleReason, expectedVersion: editingSchedule.version });
+    else if (scheduleMode === 'cancel' && editingSchedule) res = await scheduleAPI.cancel(editingSchedule.scheduleId, { reason: scheduleReason, expectedVersion: editingSchedule.version });
+    else if (scheduleMode === 'counter-create' && editingSchedule) res = await scheduleAPI.createCounterProposal(editingSchedule.scheduleId, { scheduledAt, expectedVersion: editingSchedule.version, timeZoneId: 'Asia/Ho_Chi_Minh' });
+    else if (scheduleMode === 'counter-edit' && editingSchedule) res = await scheduleAPI.updateCounterProposal(editingSchedule.scheduleId, { scheduledAt, expectedVersion: editingSchedule.version, timeZoneId: 'Asia/Ho_Chi_Minh' });
     if (!res || !res.success) {
       if (res?.statusCode === 409 && editingSchedule) {
         const latest = await scheduleAPI.get(editingSchedule.scheduleId);
@@ -864,8 +1071,10 @@ export function useMessages() {
     formatTime,
     showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
     scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,
-    scheduleError, scheduleSaving, openCreateSchedule, openEditSchedule, openCancelSchedule, submitSchedule,
-    scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed,
+    scheduleError, scheduleSaving, scheduleActionId, openCreateSchedule, openEditSchedule, openCancelSchedule,
+    openCounterProposal, respondToSchedule, retryGoogleMeet, submitSchedule,
+    scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed, scheduleAddGoogleMeet, setScheduleAddGoogleMeet,
+    googleMeetStatus, googleMeetStatusLoading, googleMeetConnecting, connectGoogleMeet,
     nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   };
