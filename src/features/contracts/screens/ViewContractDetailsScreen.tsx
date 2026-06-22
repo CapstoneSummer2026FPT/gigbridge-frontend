@@ -13,8 +13,8 @@ import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
-import type { ContractDto, Milestone, ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
-import type { UserRole } from '../../../types/models/User';
+import { ContractStatus, MilestoneStatus, type ContractDto, type Milestone } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 import {
   getContractStatusLabel,
   getContractStatusClass,

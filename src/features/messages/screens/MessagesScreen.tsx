@@ -125,6 +125,7 @@ export default function MessagesScreen() {
     if (status === 'pending_client') return 'Đang chờ cập nhật';
     return 'Đang đồng bộ';
   };
+  const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed';
 
   if (loading) {
     return (
@@ -577,7 +578,7 @@ export default function MessagesScreen() {
               <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
 
                 {/* Deal Price Popup */}
-                {showDealPrice && activeConv.roomType === 'negotiation' && isClient && (
+                {showDealPrice && canProposeDeal && (
                   <div className="p-4 border-b border-border bg-muted/50 rounded-t-2xl animate-in fade-in slide-in-from-bottom-2">
                     <div className="flex flex-col gap-3">
                       <div className="flex justify-between items-center">
@@ -730,7 +731,7 @@ export default function MessagesScreen() {
                     )}
 
                     {/* Deal Price button – only in Negotiation rooms for clients */}
-                    {activeConv.roomType === 'negotiation' && isClient && (
+                    {canProposeDeal && (
                       <>
                         <div className="w-px h-5 bg-border mx-1" />
                         <button
