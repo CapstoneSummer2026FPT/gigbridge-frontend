@@ -1,8 +1,9 @@
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
   ArrowLeft, Ban, Send, Plus,
-  Paperclip, Smile, Sparkles, CheckCircle, Circle, Download,
-  FileText, Image as ImageIcon, Table, Info, X, CreditCard
+  Paperclip, Smile, CheckCircle, Circle, Download,
+  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
@@ -11,6 +12,10 @@ import '../styles/project-workspace-screen.css';
 
 export default function ProjectWorkspaceScreen() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
+  const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
+  const [showProfilePopover, setShowProfilePopover] = useState(false);
+  const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     user,
@@ -19,17 +24,12 @@ export default function ProjectWorkspaceScreen() {
     setActiveProjectId,
     showInfo,
     setShowInfo,
-    showAIAssistant,
-    setShowAIAssistant,
     messageInput,
     setMessageInput,
-    aiMessage,
-    setAiMessage,
     isFavorited,
     setIsFavorited,
     isBlocked,
     setIsBlocked,
-    aiChat,
     project,
     mockProjects,
     currentProjData,
@@ -40,17 +40,16 @@ export default function ProjectWorkspaceScreen() {
     isPartnerOnline,
     projectMessages,
     handleSendMessage,
-    handleSendAiMessage,
     handleSimulateAttachment,
     handleCreateMockMilestone,
     chatEndRef,
   } = useProjectWorkspace('proj_1');
 
   return (
-    <AppLayout fullWidth>
+    <AppLayout fullWidth hideAIWidget>
       <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
         {/* Top Header */}
-        <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm">
+        <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm flex-shrink-0">
           <div className="flex items-center gap-6">
             <button
               onClick={() => navigate('/projects')}
@@ -79,10 +78,44 @@ export default function ProjectWorkspaceScreen() {
           </div>
         </header>
 
+        {/* Mobile Navigation Tabs (visible only on mobile/tablet) */}
+        <div className="flex lg:hidden border-b border-border bg-card flex-shrink-0">
+          <button
+            onClick={() => setMobileTab('list')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+              mobileTab === 'list'
+                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            Conversations
+          </button>
+          <button
+            onClick={() => setMobileTab('milestones')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+              mobileTab === 'milestones'
+                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            Milestones
+          </button>
+          <button
+            onClick={() => setMobileTab('chat')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+              mobileTab === 'chat'
+                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            Chat & Files
+          </button>
+        </div>
+
         {/* 3-Column Messaging Workspace */}
         <div className="flex flex-1 overflow-hidden">
           {/* Column 1: Conversations List (Left Pane) */}
-          <section className="w-80 border-r border-border flex flex-col bg-card">
+          <section className={`w-80 border-r border-border flex flex-col bg-card flex-shrink-0 lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}>
             <div className="p-4 border-b border-border flex justify-between items-center">
               <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">Recent Workspace</span>
             </div>
@@ -124,306 +157,436 @@ export default function ProjectWorkspaceScreen() {
             </div>
           </section>
 
-          {/* Column 2: Chat Area (Center Pane) */}
-          <section className="flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm">
-            {/* Chat Header */}
+          {/* Column 2: Milestone Management (Center Pane) */}
+          <section className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm lg:flex ${mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'}`}>
+            {/* Header */}
             <div className="glass-header px-6 py-4 border-b border-border flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <img alt={partnerName} className="w-10 h-10 rounded-full object-cover" src={partnerAvatar} />
-                  {isPartnerOnline && (
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full"></span>
-                  )}
+                <div className="w-10 h-10 rounded-lg bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)]">
+                  <CreditCard size={20} />
                 </div>
                 <div>
-                  <h2 className="font-headline-sm text-sm font-semibold">{partnerName}</h2>
-                  <p className="text-[10px] text-green-500 font-semibold uppercase tracking-widest">
-                    {isPartnerOnline ? 'Online' : 'Offline'} • {partnerTitle}
+                  <h2 className="font-headline-sm text-sm font-semibold">Milestone Management</h2>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                    Track deliverables and payments for {currentProjData.title}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {isClient && (
+                  <button
+                    onClick={handleCreateMockMilestone}
+                    className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
+                    title="Create Milestone"
+                  >
+                    <Plus size={16} />
+                    <span>Propose Milestone</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setShowInfo(!showInfo)}
                   className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-all cursor-pointer ${showInfo ? 'bg-[var(--gb-cyan)]/10 border-[var(--gb-cyan)]/30 text-[var(--gb-cyan)]' : 'text-muted-foreground'}`}
-                  title="Toggle Project Info"
+                  title="Toggle Chat & Info Panel"
                 >
                   <Info size={18} />
                 </button>
               </div>
             </div>
 
-            {/* Banners removed */}
-
-            {/* Message History */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
-              <div className="flex justify-center">
-                <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                  Project Workspace Chat
-                </span>
+            {/* Dashboard stats */}
+            <div className="p-6 bg-card/50 border-b border-border grid grid-cols-3 gap-4">
+              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Total Milestones</span>
+                <span className="text-xl font-bold mt-1">{project.milestones.length}</span>
               </div>
-
-              {/* Chat bubbles */}
-              {projectMessages.map((msg, index) => {
-                const isMe = msg.senderId === user?.id || (msg.senderId === 'client' && isClient) || (msg.senderId === 'freelancer' && !isClient);
-                return (
-                  <div key={msg.id || index} className={`flex items-end gap-3 max-w-[80%] ${isMe ? 'self-end flex-row-reverse' : ''}`}>
-                    {!isMe && (
-                      <img alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" src={partnerAvatar} />
-                    )}
-                    <div className="flex flex-col gap-1">
-                      {msg.type === 'file' ? (
-                        <div className="bg-card p-4 rounded-2xl shadow-sm border border-border max-w-sm">
-                          <p className="text-sm text-foreground mb-3">{msg.content}</p>
-                          <div className="rounded-xl overflow-hidden border border-border">
-                            {msg.fileUrl ? (
-                              <img alt="Attachment" className="w-full h-48 object-cover" src={msg.fileUrl} />
-                            ) : (
-                              <div className="w-full h-32 bg-muted flex items-center justify-center">
-                                <FileText size={32} className="text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="bg-muted p-2 flex justify-between items-center text-[10px] text-muted-foreground">
-                              <span className="truncate">{msg.fileName}</span>
-                              <Download size={14} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(`Simulating download of ${msg.fileName}`)} />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className={`p-4 rounded-2xl shadow-sm border ${isMe ? 'bg-[var(--gb-cyan)] text-white border-transparent rounded-br-none' : 'bg-card text-foreground border-border rounded-bl-none'}`}>
-                          <p className="text-sm">{msg.content}</p>
-                        </div>
-                      )}
-                      <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        <span className="text-[10px] text-muted-foreground">
-                          {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
-                        {isMe && (
-                          <span className="text-[12px] text-[var(--gb-cyan)] font-bold">✓✓</span>
-                        )}
-                      </div>
-                    </div>
+              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Project Progress</span>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
+                    <div className="bg-[var(--gb-cyan)] h-full rounded-full" style={{ width: `${project.progress}%` }}></div>
                   </div>
-                );
-              })}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Input Area */}
-            <div className="p-6 bg-card border-t border-border">
-              <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
-
-                {/* AI Assistant Popup */}
-                {showAIAssistant && (
-                  <div className="absolute bottom-full right-0 mb-4 w-80 bg-card rounded-2xl shadow-xl border border-border overflow-hidden z-[70] animate-in fade-in slide-in-from-bottom-4">
-                    <div className="bg-[var(--gb-cyan)]/5 px-4 py-3 border-b border-border flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <Sparkles size={16} className="text-[var(--gb-cyan)] animate-pulse" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-foreground">AI Work Assistant</span>
-                      </div>
-                      <button onClick={() => setShowAIAssistant(false)} className="text-muted-foreground hover:text-red-500 transition-colors cursor-pointer">
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <div className="p-4 h-48 overflow-y-auto custom-scrollbar flex flex-col gap-3">
-                      {aiChat.map((c, i) => (
-                        <div key={i} className={`p-3 rounded-xl text-xs leading-relaxed ${c.role === 'ai' ? 'bg-[var(--gb-cyan)]/10 text-foreground rounded-bl-none' : 'bg-muted text-muted-foreground rounded-br-none self-end max-w-[85%]'}`}>
-                          {c.content}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-3 border-t border-border bg-card">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Ask AI..."
-                          value={aiMessage}
-                          onChange={e => setAiMessage(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleSendAiMessage(); }}
-                          className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)]"
-                        />
-                        <button onClick={handleSendAiMessage} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--gb-cyan)] cursor-pointer">
-                          <Send size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <textarea
-                  className="w-full bg-transparent border-none focus:outline-none p-4 resize-none min-h-[56px] text-sm focus:ring-0"
-                  placeholder="Type your message here..."
-                  rows={1}
-                  value={messageInput}
-                  onChange={e => setMessageInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                />
-
-                <div className="flex justify-between items-center px-4 pb-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleSimulateAttachment}
-                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                      title="Attach File"
-                    >
-                      <Paperclip size={18} />
-                    </button>
-                    <button
-                      onClick={() => setMessageInput(prev => prev + '😊')}
-                      className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                      title="Add Emoji"
-                    >
-                      <Smile size={18} />
-                    </button>
-                  </div>
-                  <button
-                    onClick={handleSendMessage}
-                    className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-10 px-6 rounded-full flex items-center gap-2 font-semibold transition-all active:scale-95 shadow-lg shadow-blue-500/20 cursor-pointer"
-                  >
-                    <span>Send</span>
-                    <Send size={14} />
-                  </button>
+                  <span className="text-xs font-bold">{project.progress}%</span>
                 </div>
               </div>
-            </div>
-          </section>
-
-          {/* Column 3: Contextual Info (Right Pane - Collapsible) */}
-          <aside
-            className={`flex flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto custom-scrollbar ${showInfo ? 'w-80 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
-          >
-            {/* Profile Section */}
-            <div className="p-6 text-center border-b border-border">
-              <img alt={partnerName} className="w-20 h-20 rounded-full mx-auto mb-4 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
-              <h3 className="font-headline-md text-base font-bold">{partnerName}</h3>
-              <p className="text-xs text-muted-foreground mb-4">{partnerTitle} at {partnerCompany}</p>
-              <div className="flex justify-center gap-2">
-                <button
-                  onClick={() => navigate(`/profile/${isClient ? 'freelancer' : 'client'}/${isClient ? project.freelancerId : project.clientId}`)}
-                  className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
-                >
-                  VIEW PROFILE
-                </button>
-                <button
-                  onClick={() => setIsFavorited(!isFavorited)}
-                  className={`text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider transition-all cursor-pointer ${isFavorited ? 'bg-[var(--gb-cyan)] text-white font-bold' : 'bg-secondary text-foreground hover:bg-muted'}`}
-                >
-                  {isFavorited ? 'FAVORITED' : 'FAVORITE'}
-                </button>
+              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Paid Amount</span>
+                <span className="text-xl font-bold mt-1 text-green-500">${project.paidAmount || 0}</span>
               </div>
             </div>
 
-            {/* Projects/Milestones */}
-            <div className="p-6 border-b border-border">
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">Milestone Management</h4>
-                {isClient && (
-                  <button
-                    onClick={handleCreateMockMilestone}
-                    className="w-8 h-8 flex items-center justify-center bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] rounded-lg hover:bg-[var(--gb-cyan)] hover:text-white transition-all cursor-pointer"
-                    title="Create Milestone"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {project.milestones.map((milestone) => {
+            {/* Milestones timeline/list */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {project.milestones.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                  <p className="text-sm">No milestones defined yet.</p>
+                </div>
+              ) : (
+                project.milestones.map((milestone, idx) => {
                   const isCompleted = milestone.status === 'paid' || milestone.status === 'approved';
                   const isInProgress = milestone.status === 'in_progress';
 
                   return (
                     <div
-                      key={milestone.id}
-                      className={`border border-border rounded-xl p-3 shadow-sm ${isCompleted ? 'bg-card' : isInProgress ? 'bg-card border-[var(--gb-cyan)]/35' : 'bg-muted/30 opacity-80'}`}
+                      key={milestone.id || idx}
+                      className={`border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${
+                        isCompleted
+                          ? 'bg-card border-green-500/20'
+                          : isInProgress
+                          ? 'bg-card border-[var(--gb-cyan)]/50 ring-1 ring-[var(--gb-cyan)]/25'
+                          : 'bg-muted/10 opacity-90 border-border'
+                      }`}
                     >
-                      <div className="flex items-start gap-3">
-                        {isCompleted ? (
-                          <CheckCircle size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
-                        ) : isInProgress ? (
-                          <div className="w-4 h-4 rounded-full border-2 border-[var(--gb-cyan)] flex items-center justify-center mt-0.5 flex-shrink-0">
-                            <div className="w-2 h-2 bg-[var(--gb-cyan)] rounded-full animate-pulse"></div>
-                          </div>
-                        ) : (
-                          <Circle size={16} className="text-muted-foreground flex-shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate text-foreground">{milestone.title}</p>
-                          <p className={`text-[10px] ${isInProgress ? 'text-[var(--gb-cyan)] font-semibold' : 'text-muted-foreground'}`}>
-                            {isCompleted ? `Completed • $${milestone.amount}` : isInProgress ? `In Progress • Due ${milestone.dueDate}` : `Upcoming • $${milestone.amount}`}
-                          </p>
-                          {isInProgress && (
-                            <div className="mt-2">
-                              <div className="w-full bg-muted h-1.5 rounded-full mb-3 overflow-hidden">
-                                <div className="bg-[var(--gb-cyan)] h-full rounded-full w-[65%]"></div>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1">
+                            {isCompleted ? (
+                              <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
+                            ) : isInProgress ? (
+                              <div className="w-5 h-5 rounded-full border-2 border-[var(--gb-cyan)] flex items-center justify-center flex-shrink-0">
+                                <div className="w-2.5 h-2.5 bg-[var(--gb-cyan)] rounded-full animate-pulse"></div>
                               </div>
-                              {isClient && (
-                                <button className="w-full bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer">
-                                  Approve Completion
-                                </button>
-                              )}
-                              {!isClient && (
-                                <button className="w-full bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer">
-                                  Submit Deliverable
-                                </button>
+                            ) : (
+                              <Circle size={20} className="text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground">{milestone.title}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">{milestone.description || 'No description provided.'}</p>
+                            
+                            <div className="flex flex-wrap items-center gap-4 mt-3 text-[11px] text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <span className="font-semibold text-foreground">Amount:</span> ${milestone.amount}
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <span className="font-semibold text-foreground">Due Date:</span> {milestone.dueDate}
+                              </span>
+                              {milestone.completedAt && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <span className="font-semibold text-foreground">Completed:</span> {new Date(milestone.completedAt).toLocaleDateString()}
+                                  </span>
+                                </>
                               )}
                             </div>
-                          )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                            isCompleted
+                              ? 'bg-green-500/10 text-green-500'
+                              : isInProgress
+                              ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] animate-pulse'
+                              : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {milestone.status}
+                          </span>
                         </div>
                       </div>
+
+                      {isInProgress && (
+                        <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
+                          <div className="flex-1 max-w-xs">
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className="text-muted-foreground">Progress</span>
+                              <span className="font-bold text-[var(--gb-cyan)]">65%</span>
+                            </div>
+                            <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-[var(--gb-cyan)] h-full rounded-full w-[65%]"></div>
+                            </div>
+                          </div>
+                          <div>
+                            {isClient ? (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    milestone.status = 'paid';
+                                    milestone.completedAt = new Date().toISOString();
+                                    const completedMilestones = project.milestones.filter(m => m.status === 'paid' || m.status === 'approved').length;
+                                    project.progress = Math.round((completedMilestones / project.milestones.length) * 100);
+                                    project.paidAmount = (project.paidAmount || 0) + milestone.amount;
+                                    setActiveProjectId(activeProjectId);
+                                    alert('Milestone approved & paid successfully!');
+                                  } catch (e) {
+                                    console.error(e);
+                                  }
+                                }}
+                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                              >
+                                Approve & Pay
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => alert('Deliverable submitted for client review!')}
+                                className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                              >
+                                Submit Deliverable
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
-                })}
-              </div>
+                })
+              )}
             </div>
+          </section>
 
-            {/* Shared Files */}
-            <div className="p-6 border-b border-border">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shared Files</h4>
-                <button className="text-xs text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">See all</button>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { name: 'Contract_Alex_J.pdf', size: '2.4 MB', date: 'Oct 14', icon: <FileText className="text-red-500" /> },
-                  { name: 'UI_Moodboard_v1.zip', size: '18.5 MB', date: 'Oct 13', icon: <ImageIcon className="text-[var(--gb-cyan)]" /> },
-                  { name: 'Project_Timeline.xlsx', size: '120 KB', date: 'Oct 11', icon: <Table className="text-green-500" /> }
-                ].map(file => (
-                  <div
-                    key={file.name}
-                    onClick={() => alert(`Simulating download of ${file.name}`)}
-                    className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
-                  >
-                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                      {file.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold truncate text-foreground">{file.name}</p>
-                      <p className="text-[9px] text-muted-foreground">{file.size} • {file.date}</p>
-                    </div>
-                    <Download size={14} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-auto p-6 bg-muted/30 border-t border-border">
+          {/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files) */}
+          <aside
+            className={`border-l border-border flex flex-col bg-card overflow-hidden transition-all duration-300 flex-shrink-0
+              lg:${ showInfo ? 'w-[450px] xl:w-[480px] opacity-100' : 'w-0 opacity-0 pointer-events-none' }
+              ${mobileTab === 'chat' ? 'flex flex-1' : 'hidden lg:flex'}
+              ${!showInfo ? 'lg:w-0 lg:opacity-0 lg:pointer-events-none' : ''}
+            `}
+          >
+            {/* 2 Tabs at the top */}
+            <div className="flex border-b border-border bg-card">
               <button
-                onClick={() => {
-                  setIsBlocked(!isBlocked);
-                  alert(isBlocked ? 'Contact unblocked.' : 'Contact blocked.');
-                }}
-                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border font-bold text-xs uppercase tracking-widest transition-all cursor-pointer ${isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'}`}
+                onClick={() => setActiveTab('chat')}
+                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'chat'
+                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
               >
-                <Ban size={14} />
-                {isBlocked ? 'Unblock Contact' : 'Block Contact'}
+                <MessageSquare size={14} />
+                <span>Nhắn tin</span>
               </button>
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'files'
+                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <FileText size={14} />
+                <span>Shared Files</span>
+              </button>
+            </div>
+
+            {/* Tab content area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {activeTab === 'chat' && (
+                <div className="flex-1 flex flex-col overflow-hidden relative">
+                  {/* Chat Header */}
+                  <div className="glass-header px-4 py-3 border-b border-border flex justify-between items-center flex-shrink-0">
+                    {/* Partner info with JS-state hover popover */}
+                    <div
+                      className="flex items-center gap-3 relative cursor-pointer py-1"
+                      onMouseEnter={() => {
+                        if (profilePopoverTimeout.current) clearTimeout(profilePopoverTimeout.current);
+                        setShowProfilePopover(true);
+                      }}
+                      onMouseLeave={() => {
+                        profilePopoverTimeout.current = setTimeout(() => setShowProfilePopover(false), 150);
+                      }}
+                    >
+                      <div className="relative">
+                        <img alt={partnerName} className="w-8 h-8 rounded-full object-cover" src={partnerAvatar} />
+                        {isPartnerOnline && (
+                          <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 border border-card rounded-full"></span>
+                        )}
+                      </div>
+                      <div>
+                        <h2 className="text-xs font-semibold">{partnerName}</h2>
+                        <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
+                          {isPartnerOnline ? 'Online' : 'Offline'} • {partnerTitle}
+                        </p>
+                      </div>
+
+                      {/* Hover Popover — stays open while hovered */}
+                      {showProfilePopover && (
+                        <div
+                          className="absolute left-0 top-full w-64 bg-card border border-border rounded-xl shadow-2xl p-4 z-[80]"
+                          onMouseEnter={() => {
+                            if (profilePopoverTimeout.current) clearTimeout(profilePopoverTimeout.current);
+                          }}
+                          onMouseLeave={() => {
+                            profilePopoverTimeout.current = setTimeout(() => setShowProfilePopover(false), 150);
+                          }}
+                        >
+                          <div className="text-center">
+                            <img alt={partnerName} className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
+                            <h3 className="font-bold text-xs text-foreground">{partnerName}</h3>
+                            <p className="text-[9px] text-muted-foreground mb-3">{partnerTitle} at {partnerCompany}</p>
+                            <div className="flex justify-center gap-2 mb-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/profile/${isClient ? 'freelancer' : 'client'}/${isClient ? project.freelancerId : project.clientId}`);
+                                }}
+                                className="text-[8px] font-bold px-3 py-1 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                VIEW PROFILE
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsFavorited(!isFavorited);
+                                }}
+                                className={`text-[8px] font-bold px-3 py-1 rounded-full uppercase tracking-wider transition-all cursor-pointer ${
+                                  isFavorited ? 'bg-[var(--gb-cyan)] text-white' : 'bg-secondary text-foreground hover:bg-muted'
+                                }`}
+                              >
+                                {isFavorited ? 'FAVORITED' : 'FAVORITE'}
+                              </button>
+                            </div>
+                            <div className="border-t border-border pt-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsBlocked(!isBlocked);
+                                  alert(isBlocked ? 'Contact unblocked.' : 'Contact blocked.');
+                                }}
+                                className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border font-bold text-[9px] uppercase tracking-widest transition-all cursor-pointer ${
+                                  isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
+                                }`}
+                              >
+                                <Ban size={10} />
+                                {isBlocked ? 'Unblock Contact' : 'Block Contact'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Messages list */}
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
+                    <div className="flex justify-center mb-1">
+                      <span className="bg-muted px-2.5 py-0.5 rounded-full text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
+                        Project Workspace Chat
+                      </span>
+                    </div>
+
+                    {projectMessages.map((msg, index) => {
+                      const isMe = msg.senderId === user?.id || (msg.senderId === 'client' && isClient) || (msg.senderId === 'freelancer' && !isClient);
+                      return (
+                        <div key={msg.id || index} className={`flex items-end gap-2 max-w-[85%] ${isMe ? 'self-end flex-row-reverse' : ''}`}>
+                          {!isMe && (
+                            <img alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" src={partnerAvatar} />
+                          )}
+                          <div className="flex flex-col gap-1">
+                            {msg.type === 'file' ? (
+                              <div className="bg-card p-3 rounded-xl shadow-sm border border-border max-w-[280px]">
+                                <p className="text-xs text-foreground mb-2">{msg.content}</p>
+                                <div className="rounded-lg overflow-hidden border border-border">
+                                  {msg.fileUrl ? (
+                                    <img alt="Attachment" className="w-full h-32 object-cover" src={msg.fileUrl} />
+                                  ) : (
+                                    <div className="w-full h-24 bg-muted flex items-center justify-center">
+                                      <FileText size={24} className="text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="bg-muted p-1.5 flex justify-between items-center text-[9px] text-muted-foreground">
+                                    <span className="truncate max-w-[150px]">{msg.fileName}</span>
+                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(`Simulating download of ${msg.fileName}`)} />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className={`p-3 rounded-xl shadow-sm border text-xs leading-relaxed ${isMe ? 'bg-[var(--gb-cyan)] text-white border-transparent rounded-br-none' : 'bg-card text-foreground border-border rounded-bl-none'}`}>
+                                <p>{msg.content}</p>
+                              </div>
+                            )}
+                            <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                              <span className="text-[9px] text-muted-foreground">
+                                {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                              {isMe && (
+                                <span className="text-[10px] text-[var(--gb-cyan)] font-bold">✓✓</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Input area */}
+                  <div className="p-3 bg-card border-t border-border flex-shrink-0">
+                    <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
+                      <textarea
+                        className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
+                        placeholder="Type your message here..."
+                        rows={1}
+                        value={messageInput}
+                        onChange={e => setMessageInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                      />
+
+                      <div className="flex justify-between items-center px-3 pb-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={handleSimulateAttachment}
+                            className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
+                            title="Attach File"
+                          >
+                            <Paperclip size={14} />
+                          </button>
+                          <button
+                            onClick={() => setMessageInput(prev => prev + '😊')}
+                            className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
+                            title="Add Emoji"
+                          >
+                            <Smile size={14} />
+                          </button>
+                        </div>
+                        <button
+                          onClick={handleSendMessage}
+                          className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-8 px-4 rounded-full flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 shadow-md shadow-blue-500/20 cursor-pointer"
+                        >
+                          <span>Send</span>
+                          <Send size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'files' && (
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shared Files</h4>
+                    <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">See all</button>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { name: 'Contract_Alex_J.pdf', size: '2.4 MB', date: 'Oct 14', icon: <FileText className="text-red-500" /> },
+                      { name: 'UI_Moodboard_v1.zip', size: '18.5 MB', date: 'Oct 13', icon: <ImageIcon className="text-[var(--gb-cyan)]" /> },
+                      { name: 'Project_Timeline.xlsx', size: '120 KB', date: 'Oct 11', icon: <Table className="text-green-500" /> }
+                    ].map(file => (
+                      <div
+                        key={file.name}
+                        onClick={() => alert(`Simulating download of ${file.name}`)}
+                        className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
+                      >
+                        <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                          {file.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold truncate text-foreground">{file.name}</p>
+                          <p className="text-[9px] text-muted-foreground">{file.size} • {file.date}</p>
+                        </div>
+                        <Download size={14} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </aside>
         </div>

@@ -687,9 +687,9 @@ input[type="number"].input-gb::-webkit-inner-spin-button {
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 500;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--gb-off-white);
+  background: var(--surface-muted);
+  border: 1px solid var(--gb-border);
+  color: var(--text-secondary);
   cursor: default;
   transition: all 0.2s ease;
 }
@@ -697,7 +697,7 @@ input[type="number"].input-gb::-webkit-inner-spin-button {
 .tag-pill:hover {
   background: rgba(0, 119, 255, 0.1);
   border-color: rgba(0, 119, 255, 0.3);
-  color: #0077FF;
+  color: var(--gb-cyan);
 }
 
 /* ─── Progress Bar ─── */

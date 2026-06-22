@@ -220,6 +220,39 @@ export const contractGetAPI = {
   },
 
   /**
+   * GET /api/Contracts/job/{jobPostId}
+   * Get contract by job post ID
+   */
+  getContractByJobPost: async (
+    jobPostId: string
+  ): Promise<ApiResponse<ContractDto>> => {
+    try {
+      const response = await apiService.get<BackendContractResponse>(`${contractsUrl}/job/${jobPostId}`);
+      if (response.success && response.data) {
+        return {
+          success: true,
+          statusCode: response.statusCode,
+          message: response.message,
+          data: normalizeContract(response.data),
+        };
+      }
+      return {
+        success: false,
+        statusCode: response.statusCode,
+        message: response.message || 'Contract not found',
+        data: undefined,
+      };
+    } catch (err: unknown) {
+      return {
+        success: false,
+        statusCode: 500,
+        message: err instanceof Error ? err.message : 'Failed to get contract details',
+        data: undefined,
+      };
+    }
+  },
+
+  /**
    * GET /api/Contracts/client/{clientId}
    * Get client contracts
    */

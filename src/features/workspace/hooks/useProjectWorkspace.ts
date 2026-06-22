@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB, SEED_PROJECTS, SEED_MESSAGES } from '../../../mock_backend';
+import { DB, SEED_MESSAGES } from '../../../mock_backend';
 import type { Message } from '../../../types';
 import { projectGetAPI } from '../../../api/projectAPI/GET';
 import { projectPutAPI } from '../../../api/projectAPI/PUT';
@@ -9,9 +8,8 @@ import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 
 export function useProjectWorkspace(initialProjectId: string) {
-  const navigate = useNavigate();
   const { user, role } = useApp();
-  const isClient = role === 0 || role === 'client';
+  const isClient = role === 0;
 
   const [activeProjectId, setActiveProjectId] = useState(initialProjectId || 'proj_1');
   const [showInfo, setShowInfo] = useState(true);
@@ -50,7 +48,7 @@ export function useProjectWorkspace(initialProjectId: string) {
     
     const partnerId = isClient ? p.freelancerId : p.clientId;
     const partnerUser = DB.getUserById(partnerId);
-    const pName = partnerUser?.name || (isClient ? 'Freelancer' : 'Client');
+    const pName = partnerUser?.full_name || (isClient ? 'Freelancer' : 'Client');
     return {
       id: p.id,
       title: p.title,
@@ -154,7 +152,11 @@ export function useProjectWorkspace(initialProjectId: string) {
 
     try {
       // reasonable API call to send message
-      await messagePostAPI.sendMessage(newMsg);
+      await messagePostAPI.sendMessage({
+        conversationId: project.conversationId || 'conv_1',
+        clientMessageId: newMsg.id,
+        content: newMsg.content,
+      });
     } catch (e) {
       console.warn('Fallback: sent message to local state.', e);
     }
@@ -220,7 +222,8 @@ export function useProjectWorkspace(initialProjectId: string) {
       description: 'Custom milestone created from chat workspace.',
       amount,
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      status: 'pending'
+      status: 'pending' as const,
+      completedAt: undefined,
     };
     project.milestones.push(newMilestone);
     setActiveProjectId(prev => prev); // force re-render
