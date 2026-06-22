@@ -398,6 +398,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                           {!n.isRead && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />}
                         </div>
                         <p className="text-xs mt-0.5 line-clamp-2 text-secondary">{n.body}</p>
+                        {n.schedule && <p className="text-[10px] mt-1 text-cyan">{new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(n.schedule.scheduledAtUtc))} ICT · {n.schedule.actorName}</p>}
                       </div>
                     ))
                   ) : (

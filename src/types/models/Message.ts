@@ -177,6 +177,7 @@ export interface Message {
   dealStatus?: 'pending_freelancer' | 'agreed' | 'declined' | 'pending_client' | 'idle';
   negotiationStatus?: 'pending' | 'accepted' | 'declined';
   proposedPrice?: string;
+  schedule?: import('../../api/scheduleAPI').ScheduleEvent;
 }
 
 export interface Review {

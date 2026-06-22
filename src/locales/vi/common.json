@@ -191,6 +191,19 @@
     "askQuestion": "Đặt câu hỏi...",
     "suggestions": "Gợi Ý Nhanh"
   },
+  "schedule": {
+    "create": "Tạo lịch hẹn",
+    "edit": "Chỉnh sửa lịch hẹn",
+    "cancel": "Hủy lịch hẹn",
+    "title": "Tiêu đề lịch hẹn",
+    "details": "Chi tiết không bắt buộc",
+    "reason": "Lý do hủy (bắt buộc)",
+    "vietnamTime": "Thời gian được cố định theo giờ Việt Nam (ICT).",
+    "save": "Lưu",
+    "saving": "Đang lưu...",
+    "remainingEdits": "lượt chỉnh sửa còn lại",
+    "superseded": "Đã thay thế · xem mới nhất"
+  },
   "footer": {
     "allRightsReserved": "Bản quyền được bảo lưu",
     "termsOfService": "Điều Khoản Dịch Vụ",

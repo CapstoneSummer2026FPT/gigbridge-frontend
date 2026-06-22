@@ -6,6 +6,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localho
 export const getApiRootUrl = () => API_BASE_URL.replace(/\/api\/?$/i, '').replace(/\/$/, '');
 
 export const getChatHubUrl = () => `${getApiRootUrl()}/hubs/chat`;
+export const getNotificationHubUrl = () => `${getApiRootUrl()}/hubs/notification`;
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
