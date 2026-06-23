@@ -10,6 +10,7 @@ import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { JobPostStatus, JobPostVisibility } from '../../../types/models/Job';
 import { toast } from 'sonner';
 import { SuccessMilestoneSetupModal } from '../components/SuccessMilestoneSetupModal';
+import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
 import '../styles/PostJobScreen.css';
 
 export default function CreatePostJobEsignScreen() {
@@ -30,6 +31,7 @@ export default function CreatePostJobEsignScreen() {
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [isInviteFreelancersModalOpen, setIsInviteFreelancersModalOpen] = useState(false);
   const [createdContractId, setCreatedContractId] = useState<string | null>(null);
 
   // Signature canvas drawing states and refs
@@ -516,6 +518,10 @@ export default function CreatePostJobEsignScreen() {
         <SuccessMilestoneSetupModal
           isOpen={isSuccessModalOpen}
           onClose={() => navigate('/client/dashboard')}
+          onInvite={() => {
+            setIsSuccessModalOpen(false);
+            setIsInviteFreelancersModalOpen(true);
+          }}
           onSetup={() => {
             const contractIdToUse = createdContractId || 'contract_mock_1';
             navigate(`/contracts/${contractIdToUse}/milestones`, {
@@ -536,6 +542,13 @@ export default function CreatePostJobEsignScreen() {
             });
           }}
         />
+        {isInviteFreelancersModalOpen && (
+          <InviteFreelancersAfterPostModal
+            jobPostId={jobPostId || ''}
+            jobTitle={jobData?.title || contractForm?.title}
+            onClose={() => setIsInviteFreelancersModalOpen(false)}
+          />
+        )}
       </div>
     </AppLayout>
   );

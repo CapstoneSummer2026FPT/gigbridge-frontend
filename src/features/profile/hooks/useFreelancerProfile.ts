@@ -1,11 +1,9 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { DB } from '../../../mock_backend';
 import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
-import type { InviteFreelancerData } from '../components/InviteFreelancerToJobModal';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
-import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
-import { JobPostStatus, type Review } from '../../../types/models/Job';
+import type { Review } from '../../../types/models/Job';
 
 type ReviewViewModel = {
   id: string;
@@ -32,7 +30,7 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
 });
 
 export function useFreelancerProfile(targetId: string, currentUser: any) {
-  const [profileData, setProfileData] = useState({
+  const [profileData, setProfileData] = useState<any>({
     user: DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!,
     profile: SEED_FREELANCER_PROFILES.find(p => p.user_id === targetId) || SEED_FREELANCER_PROFILES[0],
     skills: ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'],
@@ -57,11 +55,9 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
 
   const [isSaved, setIsSaved] = useState(false);
   const [showJobInviteModal, setShowJobInviteModal] = useState(false);
-  const [sentJobInvites, setSentJobInvites] = useState<string[]>([]);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
-  const [openClientJobs, setOpenClientJobs] = useState<Array<{ id: string; title: string; status: string }>>([]);
 
   // Create Review popup states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -85,6 +81,7 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
               phone_number: '',
             },
             profile: {
+              freelancerProfilesId: apiData.freelancerProfilesId,
               user_id: apiData.userId,
               title: apiData.title || 'Freelancer',
               bio: apiData.bio || '',
@@ -141,45 +138,12 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     fetchReviews();
   }, [targetId]);
 
-  useEffect(() => {
-    const fetchOpenClientJobs = async (): Promise<void> => {
-      const response = await jobGetAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 });
-      const jobs = response.success && response.data ? response.data : [];
-      setOpenClientJobs(
-        jobs
-          .filter(job => job.status === JobPostStatus.Open)
-          .map(job => ({
-            id: job.jobPostsId,
-            title: job.title,
-            status: 'open',
-          }))
-      );
-    };
-
-    fetchOpenClientJobs();
-  }, []);
-  
-  const isAlreadyInvitedToJob = (jobId: string): boolean => {
-    const inviteKey = `${targetId}_${jobId}`;
-    return sentJobInvites.includes(inviteKey);
-  };
-
   const averageRating = reviewsList.length
     ? reviewsList.reduce((sum, review) => sum + review.rating, 0) / reviewsList.length
     : 0;
 
   const handleSaveFreelancer = () => {
     setIsSaved(!isSaved);
-  };
-
-  const handleSendJobInvite = async (data: InviteFreelancerData) => {
-    const inviteKey = `${data.freelancerId}_${data.jobId}`;
-    
-    if (sentJobInvites.includes(inviteKey)) {
-      throw new Error('This freelancer was already invited to this job.');
-    }
-
-    setSentJobInvites(prev => [...prev, inviteKey]);
   };
 
   const handleAddReview = (e: FormEvent<HTMLFormElement>) => {
@@ -211,9 +175,9 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     isIdentityVerified,
     trustScore,
     cvFile,
+    freelancerProfileId: (profileData.profile as any).freelancerProfilesId || targetId,
     isSaved,
     showJobInviteModal,
-    sentJobInvites,
     showMoreMenu,
     currentPage,
     reviewsList,
@@ -221,7 +185,6 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     reviewRating,
     reviewComment,
     reviewAnonymous,
-    openClientJobs,
     averageRating,
     distribution,
     totalPages,
@@ -235,9 +198,7 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     setReviewComment,
     setReviewAnonymous,
     setShowReviewModal,
-    isAlreadyInvitedToJob,
     handleSaveFreelancer,
-    handleSendJobInvite,
     handleAddReview,
   };
 }
