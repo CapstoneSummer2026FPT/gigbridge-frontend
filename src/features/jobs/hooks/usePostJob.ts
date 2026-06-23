@@ -709,7 +709,7 @@ export function usePostJob() {
 
       if (mode === 'esign') {
         allowNextNavigation();
-        navigate(`/jobs/post/contract/esign`, {
+        navigate(`/jobs/post/contract`, {
           state: {
             jobPostId: currentJobPostId,
             jobData: {

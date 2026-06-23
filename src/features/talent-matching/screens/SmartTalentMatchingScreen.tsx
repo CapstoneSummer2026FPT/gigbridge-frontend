@@ -531,7 +531,7 @@ export default function SmartTalentMatchingScreen() {
             {!isPremiumClient && activeTab === 'matches' && (
               <div className="bg-red-50 black:bg-red-950/20 text-red-700 black:text-red-300 border border-red-200 black:border-red-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
                 <AlertTriangle size={18} className="shrink-0" />
-                <span>MSG45: Talent matching ranking requires a Premium subscription active.</span>
+                <span>Talent matching ranking requires a Premium subscription active.</span>
               </div>
             )}
 
@@ -547,7 +547,7 @@ export default function SmartTalentMatchingScreen() {
               <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
                 <AlertTriangle size={36} className="text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-foreground mb-2">
-                  MSG60: No matching freelancers found.
+                  No matching freelancers found.
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                   Try adjusting your filter settings, selecting another job context, or adding more keywords to your search.

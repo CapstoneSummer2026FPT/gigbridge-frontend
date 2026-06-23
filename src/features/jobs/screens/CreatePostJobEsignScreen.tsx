@@ -18,6 +18,8 @@ export default function CreatePostJobEsignScreen() {
   const { user } = useApp();
 
   const jobPostId: string | undefined = location.state?.jobPostId;
+  const jobData = location.state?.jobData;
+  const contractForm = location.state?.contractForm;
 
   // Document state
   const [document, setDocument] = useState<ESignDocumentDto | null>(null);
@@ -65,6 +67,12 @@ export default function CreatePostJobEsignScreen() {
 
         if (getResponse.success && getResponse.data) {
           if (isMounted) setDocument(getResponse.data);
+          if (getResponse.data.status === ESignDocumentStatus.FullySigned) {
+            const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId);
+            if (isMounted && contractResponse.success && contractResponse.data) {
+              setCreatedContractId(contractResponse.data.contractsId);
+            }
+          }
         } else {
           // No document exists yet — create one from the job post template
           const createResponse = await esignPostAPI.createDocumentFromJob(jobPostId);
@@ -242,9 +250,15 @@ export default function CreatePostJobEsignScreen() {
 
   // --- Navigation ---
 
-  const handleBack = () => {
+  const handleBackToProject = () => {
     navigate('/jobs/post', {
-      state: { jobPostId, jobData: location.state?.jobData },
+      state: { jobPostId, jobData },
+    });
+  };
+
+  const handleBack = () => {
+    navigate('/jobs/post/contract', {
+      state: { jobPostId, jobData, contractForm },
     });
   };
 
@@ -298,13 +312,13 @@ export default function CreatePostJobEsignScreen() {
         <div className="flex flex-col gap-6 items-center mb-8">
           <div className="flex justify-center w-full">
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground text-center uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>
-              E-Sign JobPost Contract
+              E-Sign Contract
             </h1>
           </div>
 
           {/* Stepper: Step 1 done → Step 2 active */}
-          <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
-            <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBack}>
+          <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBackToProject}>
               <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-green-500 text-white hover:bg-green-600 transition-colors">
                 <Check size={20} />
               </div>
@@ -314,23 +328,33 @@ export default function CreatePostJobEsignScreen() {
               </div>
             </div>
             <div className="flex-grow mx-6 h-[2px] bg-green-500 rounded-full opacity-60" />
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-[var(--gb-cyan)] text-white">
-                2
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBack}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-green-500 text-white hover:bg-green-600 transition-colors">
+                <Check size={20} />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">Step 2</span>
+                <span className="text-[10px] text-green-500 uppercase tracking-wider font-bold">Step 2</span>
+                <span className="text-xs font-bold text-green-500 group-hover:underline">Contract Setup</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-green-500 rounded-full opacity-60" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-[var(--gb-cyan)] text-white">
+                3
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">Step 3</span>
                 <span className="text-xs font-bold text-foreground">E-Sign Contract</span>
               </div>
             </div>
             <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
             <div className="flex items-center gap-3 opacity-50">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">
-                3
+                4
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 3</span>
-                <span className="text-xs text-muted-foreground font-bold">Milestone Setup</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
+                <span className="text-xs text-muted-foreground font-bold">Setup Milestone</span>
               </div>
             </div>
           </div>
@@ -404,7 +428,7 @@ export default function CreatePostJobEsignScreen() {
             className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-muted-foreground hover:bg-muted transition-all cursor-pointer flex items-center gap-1.5"
           >
             <ChevronLeft size={16} />
-            Back to Details
+                Back to Contract Setup
           </button>
 
           {hasAlreadySigned ? (

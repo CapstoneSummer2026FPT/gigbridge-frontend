@@ -190,7 +190,7 @@ export default function PostJobScreen() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
+          <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm">1</div>
               <div className="flex flex-col">
@@ -204,6 +204,22 @@ export default function PostJobScreen() {
               <div className="flex flex-col">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 2</span>
                 <span className="text-xs text-muted-foreground font-bold">Contract Setup</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex items-center gap-3 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">3</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 3</span>
+                <span className="text-xs text-muted-foreground font-bold">E-Sign Contract</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex items-center gap-3 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">4</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
+                <span className="text-xs text-muted-foreground font-bold">Setup Milestone</span>
               </div>
             </div>
           </div>
@@ -617,7 +633,7 @@ export default function PostJobScreen() {
               className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
             >
               <Check size={16} />
-              <span>{renderSubmitLabel('esign', 'Next: E-sign JobPost')}</span>
+              <span>{renderSubmitLabel('esign', 'Next: Contract Setup')}</span>
               <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

@@ -108,7 +108,7 @@ export default function ManageMilestonesScreen() {
     }
 
     if (data.amount <= 0) {
-      return 'MSG41: Milestone amount must be greater than 0';
+      return 'Milestone amount must be greater than 0';
     }
 
     const budgetUsedByOtherMilestones = milestones
@@ -116,7 +116,7 @@ export default function ManageMilestonesScreen() {
       .reduce((sum, m) => sum + (m.amount || 0), 0);
     const maxAllowed = (contract?.totalBudget || 0) - budgetUsedByOtherMilestones;
     if (data.amount > maxAllowed) {
-      return `MSG41: Milestone amount exceeds remaining budget of ${formatContractAmount(maxAllowed)} (BR-53)`;
+      return `Milestone amount exceeds remaining budget of ${formatContractAmount(maxAllowed)}`;
     }
 
     if (!data.due_date) {
@@ -126,7 +126,7 @@ export default function ManageMilestonesScreen() {
     const dueDate = new Date(data.due_date);
     const today = new Date();
     if (dueDate <= today) {
-      return 'MSG38: Deadline must be a future date';
+      return 'Milestone deadline must be a future date';
     }
 
     return null;

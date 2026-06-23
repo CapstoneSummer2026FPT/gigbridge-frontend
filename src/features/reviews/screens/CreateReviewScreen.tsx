@@ -26,12 +26,12 @@ export default function CreateReviewScreen() {
     }
 
     if (rating < 1 || rating > 5) {
-      setError('MSG42: Please select a rating (1-5 stars)');
+      setError('Please select a rating (1-5 stars)');
       return;
     }
 
     if (comment.length > 1000) {
-      setError('MSG43: Review must be under 1000 characters');
+      setError('Review must be under 1000 characters');
       return;
     }
 

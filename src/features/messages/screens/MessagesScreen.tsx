@@ -1,4 +1,4 @@
-﻿import {
+import {
   Send, Paperclip, Smile, Info, X, Ban, Download,
   FileText, Image as ImageIcon, Table, ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
@@ -118,12 +118,12 @@ export default function MessagesScreen() {
   } = useMessages();
 
   const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
-    if (!isLatestOffer) return 'Äá» xuáº¥t cÅ©';
-    if (status === 'pending_freelancer') return 'Äang chá» freelancer';
-    if (status === 'agreed') return 'ÄÃ£ Ä‘á»“ng Ã½ âœ“';
-    if (status === 'declined') return 'ÄÃ£ tá»« chá»‘i';
-    if (status === 'pending_client') return 'Äang chá» cáº­p nháº­t';
-    return 'Äang Ä‘á»“ng bá»™';
+    if (!isLatestOffer) return 'Đề xuất cũ';
+    if (status === 'pending_freelancer') return 'Đang chờ freelancer';
+    if (status === 'agreed') return 'Đã đồng ý ✓';
+    if (status === 'declined') return 'Đã từ chối';
+    if (status === 'pending_client') return 'Đang chờ cập nhật';
+    return 'Đang đồng bộ';
   };
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed';
 
@@ -175,7 +175,7 @@ export default function MessagesScreen() {
         {/* 3-Column Layout */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* â”€â”€ Column 1: Rooms & Conversations List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
           <section className="w-80 border-r border-border flex flex-col bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
@@ -269,12 +269,12 @@ export default function MessagesScreen() {
                 className="w-full flex items-center justify-center gap-2 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer border-none"
               >
                 <span>Go to Workspace</span>
-                <span>â†’</span>
+                <span>→</span>
               </button>
             </div>
           </section>
 
-          {/* â”€â”€ Column 2: Chat Area (Center Pane) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ── Column 2: Chat Area (Center Pane) ────────────────────────── */}
           <section className="flex-1 flex flex-col bg-muted/10 overflow-hidden relative">
             {activeConv ? (
               <>
@@ -345,22 +345,22 @@ export default function MessagesScreen() {
               </div>
             )}
 
-            {/* Negotiation accepted banner â†’ conversation already moved */}
+            {/* Negotiation accepted banner → conversation already moved */}
             {negStatus === 'accepted' && (
               <div className="bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 px-6 py-2.5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <ArrowRightLeft size={14} className="text-[var(--gb-cyan)] flex-shrink-0" />
                 <p className="text-xs font-semibold text-[var(--gb-cyan)]">
-                  Cuá»™c trÃ² chuyá»‡n Ä‘Ã£ Ä‘Æ°á»£c chuyá»ƒn sang <strong>vÃ²ng Ä‘Ã m phÃ¡n</strong>
+                  Cuộc trò chuyện đã được chuyển sang <strong>vòng đàm phán</strong>
                 </p>
               </div>
             )}
 
             {/* Message History */}
             <div ref={chatHistoryRef} className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 messages-custom-scroll">
-              {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} Ã—</button>}
+              {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
               <div className="flex justify-center">
                 <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                  {activeConv.roomType === 'invited' ? 'ðŸ“‹ Invited Job Chat' : 'ðŸ¤ Negotiation Chat'}
+                  {activeConv.roomType === 'invited' ? '📋 Invited Job Chat' : '🤝 Negotiation Chat'}
                 </span>
               </div>
 
@@ -369,7 +369,7 @@ export default function MessagesScreen() {
                 const isSystem = msg.type === 'system' || msg.senderId === 'system';
                 const latestScheduleMessage = msg.schedule ? activeMessages.filter(m => m.schedule?.scheduleId === msg.schedule?.scheduleId).sort((a,b) => (b.schedule?.eventSequence || 0) - (a.schedule?.eventSequence || 0))[0] : undefined;
 
-                // â”€â”€ System message (centered) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ── System message (centered) ─────────────────────────────
                 if (isSystem) {
                   return (
                     <div key={msg.id ?? idx} className="flex justify-center">
@@ -402,7 +402,7 @@ export default function MessagesScreen() {
                     )}
                     <div className="flex flex-col gap-1">
 
-                      {/* â”€â”€ File message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                      {/* ── File message ───────────────────────────────────── */}
                       {msg.type === 'schedule' && msg.schedule ? (
                         <ScheduleCard schedule={msg.schedule} latest={latestScheduleMessage?.id === msg.id} now={nowMs} viewerId={user?.id}
                           onEdit={() => openEditSchedule(msg.schedule!)} onCancel={() => openCancelSchedule(msg.schedule!)}
@@ -426,25 +426,25 @@ export default function MessagesScreen() {
                         </div>
 
                       ) : msg.type === 'negotiation_request' ? (
-                        /* â”€â”€ Negotiation Request bubble â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+                        /* ── Negotiation Request bubble ────────────────────── */
                         <div className="msg-deal-bubble my-1 border-teal-500/30">
                           <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-500">
                               <ArrowRightLeft size={20} />
                             </div>
                             <div>
-                              <h3 className="text-sm text-foreground font-bold">YÃªu cáº§u vÃ o vÃ²ng Ä‘Ã m phÃ¡n</h3>
+                              <h3 className="text-sm text-foreground font-bold">Yêu cầu vào vòng đàm phán</h3>
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
                                 {msg.negotiationStatus === 'pending'
-                                  ? 'Äang chá» pháº£n há»“i'
+                                  ? 'Đang chờ phản hồi'
                                   : msg.negotiationStatus === 'accepted'
-                                  ? 'ÄÃ£ cháº¥p nháº­n âœ“'
-                                  : 'ÄÃ£ tá»« chá»‘i'}
+                                  ? 'Đã chấp nhận ✓'
+                                  : 'Đã từ chối'}
                               </p>
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                            Client muá»‘n chuyá»ƒn cuá»™c trÃ² chuyá»‡n nÃ y sang <strong className="text-foreground">vÃ²ng Ä‘Ã m phÃ¡n</strong> Ä‘á»ƒ tháº£o luáº­n chi tiáº¿t vá» giÃ¡ cáº£ vÃ  pháº¡m vi cÃ´ng viá»‡c.
+                            Client muốn chuyển cuộc trò chuyện này sang <strong className="text-foreground">vòng đàm phán</strong> để thảo luận chi tiết về giá cả và phạm vi công việc.
                           </p>
 
                           {msg.negotiationStatus === 'pending' && !mine && (
@@ -453,27 +453,27 @@ export default function MessagesScreen() {
                                 onClick={() => handleAcceptNegotiation(msg.id)}
                                 className="flex-1 bg-teal-500 hover:bg-teal-600 text-white py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                               >
-                                Äá»“ng Ã½
+                                Đồng ý
                               </button>
                               <button
                                 onClick={() => handleDeclineNegotiation(msg.id)}
                                 className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                               >
-                                Tá»« chá»‘i
+                                Từ chối
                               </button>
                             </div>
                           )}
                         </div>
 
                       ) : msg.type === 'deal' ? (
-                        /* â”€â”€ Deal Proposal Bubble â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+                        /* ── Deal Proposal Bubble ─────────────────────────── */
                         <div className="msg-deal-bubble my-1">
                           <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)]">
                               <CreditCard size={20} />
                             </div>
                             <div>
-                              <h3 className="text-sm text-foreground font-bold">Thá»a thuáº­n giÃ¡ (Deal)</h3>
+                              <h3 className="text-sm text-foreground font-bold">Thỏa thuận giá (Deal)</h3>
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
                                 {getDealStatusLabel(dealBubbleStatus, isLatestDealOffer)}
                               </p>
@@ -481,13 +481,13 @@ export default function MessagesScreen() {
                           </div>
 
                           <div className="bg-muted/50 rounded-xl p-3.5 mb-4 border border-border/50">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Äá» xuáº¥t má»©c giÃ¡</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Đề xuất mức giá</span>
                             <div className="text-2xl font-black text-[var(--gb-cyan)] mt-1">${msg.content} USD</div>
                           </div>
 
                           {!isLatestDealOffer ? (
                             <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                              Äá» xuáº¥t nÃ y khÃ´ng cÃ²n lÃ  Ä‘á» xuáº¥t hiá»‡n táº¡i.
+                              Đề xuất này không còn là đề xuất hiện tại.
                             </div>
                           ) : dealBubbleStatus === 'pending_freelancer' ? (
                             !mine ? (
@@ -496,37 +496,37 @@ export default function MessagesScreen() {
                                   onClick={() => handleAcceptDeal(msg.negotiationOfferId)}
                                   className="flex-1 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                                 >
-                                  Äá»“ng Ã½
+                                  Đồng ý
                                 </button>
                                 <button
                                   onClick={() => handleDeclineDeal(msg.negotiationOfferId)}
                                   className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                                 >
-                                  Tá»« chá»‘i
+                                  Từ chối
                                 </button>
                               </div>
                             ) : (
                               <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                                Äang Ä‘á»£i pháº£n há»“i tá»« Ä‘á»‘i tÃ¡c...
+                                Đang đợi phản hồi từ đối tác...
                               </div>
                             )
                           ) : dealBubbleStatus === 'agreed' ? (
                             <div className="text-xs text-emerald-600 bg-emerald-500/10 p-2.5 rounded-lg text-center font-bold">
-                              Má»©c giÃ¡ Ä‘Ã£ Ä‘Æ°á»£c thá»‘ng nháº¥t
+                              Mức giá đã được thống nhất
                             </div>
                           ) : dealBubbleStatus === 'declined' ? (
                             <div className="text-xs text-red-500 bg-red-500/10 p-2.5 rounded-lg text-center font-bold">
-                              Äá» xuáº¥t Ä‘Ã£ bá»‹ tá»« chá»‘i
+                              Đề xuất đã bị từ chối
                             </div>
                           ) : (
                             <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                              Äang Ä‘á»“ng bá»™ tráº¡ng thÃ¡i Ä‘á» xuáº¥t...
+                              Đang đồng bộ trạng thái đề xuất...
                             </div>
                           )}
                         </div>
 
                       ) : (
-                        /* â”€â”€ Text message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+                        /* ── Text message ───────────────────────────────────── */
                         <div
                           className={`p-4 rounded-2xl shadow-sm border ${
                             msg.sendStatus === 'failed'
@@ -561,7 +561,7 @@ export default function MessagesScreen() {
                           </span>
                         )}
                         {mine && (!msg.sendStatus || msg.sendStatus === 'sent') && (
-                          <span className="text-[12px] text-[var(--gb-cyan)] font-bold">âœ“âœ“</span>
+                          <span className="text-[12px] text-[var(--gb-cyan)] font-bold">✓✓</span>
                         )}
                       </div>
                     </div>
@@ -639,20 +639,20 @@ export default function MessagesScreen() {
 
                     <button onClick={openCreateSchedule} disabled={hasOngoingSchedule || checkingOngoingSchedule}
                       className={`w-8 h-8 flex items-center justify-center rounded-full transition-all border-none bg-transparent ${hasOngoingSchedule || checkingOngoingSchedule ? 'text-gray-400 bg-gray-200/40 cursor-not-allowed opacity-60' : 'text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted cursor-pointer'}`}
-                      title={hasOngoingSchedule ? 'An ongoing schedule already exists' : checkingOngoingSchedule ? 'Checking ongoing scheduleâ€¦' : 'Create schedule'}>
+                      title={hasOngoingSchedule ? 'An ongoing schedule already exists' : checkingOngoingSchedule ? 'Checking ongoing schedule…' : 'Create schedule'}>
                       <CalendarPlus size={16} />
                     </button>
 
                     {/* Emoji */}
                     <button
-                      onClick={() => setMessageInput(prev => prev + 'ðŸ˜Š')}
+                      onClick={() => setMessageInput(prev => prev + '😊')}
                       className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
                       title="Add Emoji"
                     >
                       <Smile size={16} />
                     </button>
 
-                    {/* â”€â”€ Conversation Settings (tÃ¹y chá»‰nh) â€“ Client only â”€â”€ */}
+                    {/* ── Conversation Settings (tùy chỉnh) – Client only ── */}
                     {isClient && (
                       <div className="relative" ref={convMenuRef}>
                         <button
@@ -675,7 +675,7 @@ export default function MessagesScreen() {
                               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Conversation Actions</p>
                             </div>
 
-                            {/* "VÃ o vÃ²ng Ä‘Ã m phÃ¡n" â€“ only when in Invited room and not yet requested */}
+                            {/* "Vào vòng đàm phán" – only when in Invited room and not yet requested */}
                             {activeConv.roomType === 'invited' && negStatus === 'idle' && (
                               <button
                                 onClick={handleSendNegotiationRequest}
@@ -684,7 +684,7 @@ export default function MessagesScreen() {
                                 <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-500 flex-shrink-0">
                                   <ArrowRightLeft size={14} />
                                 </div>
-                                <span>VÃ o vÃ²ng Ä‘Ã m phÃ¡n</span>
+                                <span>Vào vòng đàm phán</span>
                               </button>
                             )}
 
@@ -694,7 +694,7 @@ export default function MessagesScreen() {
                                 <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                                   <ArrowRightLeft size={14} />
                                 </div>
-                                <span className="text-xs">Äang chá» pháº£n há»“i...</span>
+                                <span className="text-xs">Đang chờ phản hồi...</span>
                               </div>
                             )}
 
@@ -704,7 +704,7 @@ export default function MessagesScreen() {
                                 <div className="w-7 h-7 rounded-lg bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)] flex-shrink-0">
                                   <ArrowRightLeft size={14} />
                                 </div>
-                                <span className="text-xs">Äang trong vÃ²ng Ä‘Ã m phÃ¡n</span>
+                                <span className="text-xs">Đang trong vòng đàm phán</span>
                               </div>
                             )}
 
@@ -720,7 +720,7 @@ export default function MessagesScreen() {
                                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isBlocked ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                                   <Ban size={14} />
                                 </div>
-                                <span>{isBlocked ? 'Bá» cháº·n liÃªn láº¡c' : 'Cháº·n liÃªn láº¡c'}</span>
+                                <span>{isBlocked ? 'Bỏ chặn liên lạc' : 'Chặn liên lạc'}</span>
                               </button>
                             </div>
                           </div>
@@ -728,7 +728,7 @@ export default function MessagesScreen() {
                       </div>
                     )}
 
-                    {/* Deal Price button â€“ only in Negotiation rooms for clients */}
+                    {/* Deal Price button – only in Negotiation rooms for clients */}
                     {canProposeDeal && (
                       <>
                         <div className="w-px h-5 bg-border mx-1" />
@@ -773,7 +773,7 @@ export default function MessagesScreen() {
             )}
           </section>
 
-          {/* â”€â”€ Column 3: Contextual Info (Right Pane â€“ Collapsible) â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ── Column 3: Contextual Info (Right Pane – Collapsible) ─────── */}
           {activeConv && (
             <aside
               className={`flex flex-col bg-card border-l border-border transition-all duration-300 overflow-y-auto messages-custom-scroll ${showInfo ? 'w-72 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
@@ -871,7 +871,7 @@ export default function MessagesScreen() {
                     <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">{f.icon}</div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-semibold truncate">{f.name}</p>
-                      <p className="text-[9px] text-muted-foreground">{f.size} â€¢ {f.date}</p>
+                      <p className="text-[9px] text-muted-foreground">{f.size} • {f.date}</p>
                     </div>
                     <Download size={13} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
                   </div>
@@ -910,25 +910,25 @@ export default function MessagesScreen() {
                 <ArrowRightLeft size={20} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground">YÃªu cáº§u vÃ o vÃ²ng Ä‘Ã m phÃ¡n</h3>
-                <p className="text-xs text-muted-foreground">Chuyá»ƒn sang phÃ²ng Negotiation</p>
+                <h3 className="text-base font-bold text-foreground">Yêu cầu vào vòng đàm phán</h3>
+                <p className="text-xs text-muted-foreground">Chuyển sang phòng Negotiation</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Báº¡n cÃ³ muá»‘n chuyá»ƒn cuá»™c trÃ² chuyá»‡n nÃ y sang <strong>vÃ²ng Ä‘Ã m phÃ¡n</strong> Ä‘á»ƒ tháº£o luáº­n chi tiáº¿t vá» giÃ¡ cáº£ vÃ  pháº¡m vi cÃ´ng viá»‡c khÃ´ng?
+              Bạn có muốn chuyển cuộc trò chuyện này sang <strong>vòng đàm phán</strong> để thảo luận chi tiết về giá cả và phạm vi công việc không?
             </p>
             <div className="flex gap-3 mt-2">
               <button
                 onClick={() => setShowNegModal(false)}
                 className="flex-1 py-2.5 rounded-xl font-bold text-xs border border-border bg-background text-muted-foreground hover:bg-muted transition-all cursor-pointer border-none uppercase tracking-wider"
               >
-                Há»§y
+                Hủy
               </button>
               <button
                 onClick={handleConfirmMoveToNegotiation}
                 className="flex-1 py-2.5 rounded-xl font-bold text-xs bg-teal-500 hover:bg-teal-600 text-white shadow-md transition-all cursor-pointer border-none uppercase tracking-wider"
               >
-                Äá»“ng Ã½
+                Đồng ý
               </button>
             </div>
           </div>

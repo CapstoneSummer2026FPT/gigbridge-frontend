@@ -87,7 +87,7 @@ export default function EsignDocumentSigningScreen() {
         }
         setDocument(docResponse.data);
         if (![ESignDocumentStatus.Sent, ESignDocumentStatus.Draft].includes(docResponse.data.status)) {
-          setError('MSG55: You have already signed this document');
+          setError('You have already signed this document');
         }
 
         // Load existing signatures for this document
@@ -99,7 +99,7 @@ export default function EsignDocumentSigningScreen() {
           if (userSignature) {
             setSignature(userSignature);
             if (userSignature.status === SignatureStatus.Signed) {
-              setError('MSG55: You have already signed this document');
+              setError('You have already signed this document');
             }
           }
         }
@@ -475,7 +475,7 @@ export default function EsignDocumentSigningScreen() {
                   <button
                     onClick={() => setSigningStep('capture')}
                     className="btn-primary"
-                    disabled={Boolean(signature) || error?.includes('MSG55')}
+                    disabled={Boolean(signature) || error?.includes('You have already signed this document')}
                   >
                     Proceed to Sign
                     <ChevronRight size={18} />
