@@ -202,7 +202,20 @@
     "save": "Lưu",
     "saving": "Đang lưu...",
     "remainingEdits": "lượt chỉnh sửa còn lại",
-    "superseded": "Đã thay thế · xem mới nhất"
+    "superseded": "Đã thay thế · xem mới nhất",
+    "addGoogleMeet": "Thêm Google Meet",
+    "connectedAs": "Đã kết nối với {{email}}",
+    "connectGoogle": "Kết nối Google",
+    "reconnectGoogle": "Kết nối lại Google",
+    "meetingPending": "Đang tạo phòng họp...",
+    "meetingReady": "Phòng họp đã sẵn sàng",
+    "meetingFailed": "Tạo phòng họp thất bại",
+    "meetingJoin": "Tham gia Meet",
+    "meetingCopyLink": "Sao chép liên kết",
+    "meetingLinkCopied": "Đã sao chép!",
+    "meetingCopyFailed": "Sao chép thất bại",
+    "meetingRetry": "Thử lại",
+    "meetingDisconnected": "Tài khoản Google đã ngắt kết nối"
   },
   "footer": {
     "allRightsReserved": "Bản quyền được bảo lưu",

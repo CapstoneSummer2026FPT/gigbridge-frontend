@@ -66,6 +66,7 @@ import WalletMockCheckoutScreen from '../features/wallet/screens/WalletMockCheck
 import BuyGigcoinScreen from '../features/wallet/screens/BuyGigcoinScreen';
 import UploadPaymentProofScreen from '../features/wallet/screens/UploadPaymentProofScreen';
 import EarlyPayoutScreen from '../features/wallet/screens/EarlyPayoutScreen';
+import GoogleMeetOAuthCallbackScreen from '../features/integrations/screens/GoogleMeetOAuthCallbackScreen';
 import {
   ApproveMilestoneScreen,
   CreateEsignContractScreen,
@@ -255,6 +256,7 @@ export const router = createBrowserRouter([
       { path: 'faq', element: <FAQScreen /> },
       { path: 'press-kit', element: <PressKitScreen /> },
       { path: 'guide', element: <GuideScreen /> },
+      { path: 'integrations/google-meet/callback', element: <GoogleMeetOAuthCallbackScreen /> },
 
       // 404
       { path: '*', element: <NotFound /> },
