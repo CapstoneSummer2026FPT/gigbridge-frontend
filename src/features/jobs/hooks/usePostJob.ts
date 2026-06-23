@@ -20,7 +20,7 @@ export interface QuestionInput {
   isRequired: boolean;
 }
 
-type SubmitMode = 'draft' | 'publish' | 'contract';
+type SubmitMode = 'draft' | 'publish' | 'esign';
 type LeaveAction = 'save' | 'discard' | null;
 
 type PostJobFormState = {
@@ -707,9 +707,9 @@ export function usePostJob() {
         }
       }
 
-      if (mode === 'contract') {
+      if (mode === 'esign') {
         allowNextNavigation();
-        navigate('/jobs/post/contract', {
+        navigate(`/jobs/post/contract/esign`, {
           state: {
             jobPostId: currentJobPostId,
             jobData: {

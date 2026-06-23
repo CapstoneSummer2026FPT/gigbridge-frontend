@@ -7,7 +7,6 @@ export { default as FreelancerContractScreen } from './screens/FreelancerContrac
 export { default as ViewContractDetailsScreen } from './screens/ViewContractDetailsScreen';
 export { default as EsignDocumentSigningScreen } from './screens/EsignDocumentSigningScreen';
 export { default as SubmitMilestoneDeliverableScreen } from './screens/SubmitMilestoneDeliverableScreen';
-export { default as FreelancerRegisterContractScreen } from './screens/FreelancerRegisterContractScreen';
 export { CreateContractButton } from './components/CreateContractButton';
 export { MilestoneTracker } from './components/MilestoneTracker';
 export { MilestoneDetailCard } from './components/MilestoneDetailCard';

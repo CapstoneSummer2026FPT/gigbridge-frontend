@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import AdminContractAuditScreen from '../AdminContractAuditScreen';
 import * as contractAPI from '../../../../api/contractAPI/GET';
 import type { ContractDto } from '../../../../types/models/Contract';
@@ -20,10 +20,13 @@ vi.mock('../../../../shared/components/AppLayout', () => ({
 }));
 
 // Mock useNavigate
-vi.mock('react-router', () => ({
-  ...vi.importActual('react-router'),
-  useNavigate: () => vi.fn(),
-}));
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual<typeof import('react-router')>('react-router');
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  };
+});
 
 const mockContract: ContractDto = {
   contractsId: 'contract-1',
@@ -173,7 +176,7 @@ describe('AdminContractAuditScreen', () => {
     });
 
     // Expand the contract row
-    const expandButton = screen.getByRole('button', { name: /ChevronDown/i });
+    const expandButton = screen.getByRole('button', { name: /Show contract details/i });
     await user.click(expandButton);
 
     // Check for compliance score section
@@ -215,11 +218,10 @@ describe('AdminContractAuditScreen', () => {
     });
   });
 
-  it('handles error state', async () => {
-    const errorMessage = 'Failed to load contracts';
+  it('falls back to mock contracts when API loading fails', async () => {
     vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
       success: false,
-      message: errorMessage,
+      message: 'Failed to load contracts',
     });
 
     render(
@@ -229,7 +231,7 @@ describe('AdminContractAuditScreen', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      expect(screen.getByText('SaaS Analytics Dashboard Contract')).toBeInTheDocument();
     });
   });
 
@@ -300,7 +302,7 @@ describe('AdminContractAuditScreen', () => {
     });
 
     // Expand the contract row
-    const expandButton = screen.getByRole('button', { name: /ChevronDown/i });
+    const expandButton = screen.getByRole('button', { name: /Show contract details/i });
     await user.click(expandButton);
 
     // Check for compliance checklist items

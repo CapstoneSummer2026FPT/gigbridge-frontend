@@ -16,14 +16,26 @@ export const esignGetAPI = {
   },
 
   /**
-   * GET /api/ESign/documents/contract/{contractId}
-   * Get all documents for a contract
+   * GET /api/ESign/documents/by-job/{jobPostId}
+   * Get document for a job post
    */
-  getDocumentsByContract: async (
+  getDocumentByJob: async (
+    jobPostId: string
+  ): Promise<ApiResponse<ESignDocumentDto>> => {
+    return apiService.get<ESignDocumentDto>(
+      `${esignUrl}/documents/by-job/${jobPostId}`
+    );
+  },
+
+  /**
+   * GET /api/ESign/documents/by-contract/{contractId}
+   * Get document for a contract
+   */
+  getDocumentByContract: async (
     contractId: string
-  ): Promise<ApiResponse<ESignDocumentDto[]>> => {
-    return apiService.get<ESignDocumentDto[]>(
-      `${esignUrl}/documents/contract/${contractId}`
+  ): Promise<ApiResponse<ESignDocumentDto>> => {
+    return apiService.get<ESignDocumentDto>(
+      `${esignUrl}/documents/by-contract/${contractId}`
     );
   },
 

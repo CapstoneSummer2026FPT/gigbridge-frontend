@@ -108,4 +108,11 @@ export const contractPostAPI = {
   ): Promise<ApiResponse<any>> => {
     return apiService.post<any>(`contracts/${contractId}/sign`, payload);
   },
+
+  /**
+   * POST /api/contracts/{contractId}/job-post-setup/complete
+   */
+  completeJobPostSetup: async (contractId: string): Promise<ApiResponse<any>> => {
+    return apiService.post<any>(`contracts/${contractId}/job-post-setup/complete`);
+  },
 };

@@ -13,6 +13,8 @@ import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { getChatHubUrl } from '../../../service/apiService';
 import { scheduleAPI, type ScheduleEvent } from '../../../api/scheduleAPI';
+import type { ContractDto } from '../../../types/models/Contract';
+import { ContractStatus } from '../../../types/models/Contract';
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -142,6 +144,45 @@ function formatSendError(res: { statusCode?: number; message?: string; errors?: 
   ].filter(Boolean);
 
   return parts.join(' | ');
+}
+
+function getEventValue(event: unknown, ...keys: string[]): string | null {
+  if (!event || typeof event !== 'object') return null;
+  const source = event as Record<string, unknown>;
+
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { path?: string; waitMessage?: string } {
+  const contractPath = `/contracts/${contract.contractsId}`;
+
+  switch (contract.status) {
+    case ContractStatus.PendingContractDetails:
+      return isClient
+        ? { path: `${contractPath}/milestones?mode=contract-edit` }
+        : { waitMessage: 'The client is updating milestone terms. You can review them once submitted.' };
+    case ContractStatus.PendingContractConfirmation:
+      return isClient
+        ? { waitMessage: 'Waiting for the freelancer to review the milestone terms.' }
+        : { path: contractPath };
+    case ContractStatus.PendingSignature:
+      return { path: `${contractPath}/sign` };
+    case ContractStatus.PendingEscrow:
+      return isClient
+        ? { path: contractPath }
+        : { waitMessage: 'Both parties signed. Waiting for the client to fund escrow.' };
+    case ContractStatus.Active:
+      return { path: `/workspace/${contract.contractsId}` };
+    default:
+      return { path: contractPath };
+  }
 }
 
 export function useMessages() {
@@ -574,11 +615,60 @@ export function useMessages() {
       }
     };
 
+    const refreshActiveMessages = () => {
+      const conversationId = activeConvIdRef.current;
+      if (!conversationId) return;
+
+      messageGetAPI.getConversationMessages(conversationId).then(res => {
+        if (res.success && res.data) {
+          setMessagesMap(prev => ({
+            ...prev,
+            [conversationId]: res.data!.map(mapBackendMessage),
+          }));
+        }
+      });
+    };
+
+    const handleContractWorkflowUpdate = (event: unknown) => {
+      const eventConversationId = getEventValue(event, 'conversationId', 'ConversationId');
+      const eventContractId = getEventValue(event, 'contractId', 'ContractId', 'contractsId', 'ContractsId');
+
+      if (eventConversationId || eventContractId) {
+        setConversationsState(prev =>
+          prev.map(conversation => {
+            const sameConversation = eventConversationId && conversation.id === eventConversationId;
+            const sameContract = eventContractId && conversation.contractId === eventContractId;
+            if (!sameConversation && !sameContract) return conversation;
+
+            return {
+              ...conversation,
+              contractId: eventContractId ?? conversation.contractId,
+              dealStatus: 'agreed',
+            };
+          })
+        );
+      }
+
+      loadConversations();
+
+      const activeConversationId = activeConvIdRef.current;
+      const activeMatchesConversation = eventConversationId && eventConversationId === activeConversationId;
+      const activeMatchesContract = eventContractId && eventContractId === activeConv?.contractId;
+      if (!eventConversationId && !eventContractId || activeMatchesConversation || activeMatchesContract) {
+        refreshActiveMessages();
+      }
+    };
+
     hubConnection.on('ReceiveMessage', handleReceiveMessage);
     hubConnection.on('ConversationUpdated', handleConversationUpdated);
     hubConnection.on('ConversationRead', handleConversationRead);
     hubConnection.on('FinalOfferCreated', handleOfferUpdate);
     hubConnection.on('FinalOfferResponded', handleOfferUpdate);
+    hubConnection.on('ContractDraftUpdated', handleContractWorkflowUpdate);
+    hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
+    hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
+    hubConnection.on('ContractFullySigned', handleContractWorkflowUpdate);
+    hubConnection.on('WorkspaceOpened', handleContractWorkflowUpdate);
 
     return () => {
       hubConnection.off('ReceiveMessage', handleReceiveMessage);
@@ -586,8 +676,13 @@ export function useMessages() {
       hubConnection.off('ConversationRead', handleConversationRead);
       hubConnection.off('FinalOfferCreated', handleOfferUpdate);
       hubConnection.off('FinalOfferResponded', handleOfferUpdate);
+      hubConnection.off('ContractDraftUpdated', handleContractWorkflowUpdate);
+      hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
+      hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
+      hubConnection.off('ContractFullySigned', handleContractWorkflowUpdate);
+      hubConnection.off('WorkspaceOpened', handleContractWorkflowUpdate);
     };
-  }, [hubConnection, activeConvId, loadConversations, user]);
+  }, [hubConnection, activeConvId, activeConv?.contractId, loadConversations, user]);
 
   // Close conv menu on outside click
   useEffect(() => {
@@ -818,7 +913,27 @@ export function useMessages() {
   };
 
   const handleOpenAcceptedContract = async () => {
+    const openContract = (contract: ContractDto) => {
+      const route = getContractWorkflowRoute(contract, isClient);
+      if (route.path) {
+        navigate(route.path);
+        return;
+      }
+
+      setAnchorNotice(route.waitMessage || 'Waiting for the other party to continue the contract flow.');
+    };
+
     if (activeConv?.contractId) {
+      try {
+        const res = await contractGetAPI.getContractById(activeConv.contractId);
+        if (res.success && res.data) {
+          openContract(res.data);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to load active contract:', err);
+      }
+
       navigate(`/contracts/${activeConv.contractId}`);
       return;
     }
@@ -831,7 +946,7 @@ export function useMessages() {
     try {
       const res = await contractGetAPI.getContractByProposal(activeConv.proposalId);
       if (res.success && res.data?.contractsId) {
-        navigate(`/contracts/${res.data.contractsId}`);
+        openContract(res.data);
         return;
       }
 

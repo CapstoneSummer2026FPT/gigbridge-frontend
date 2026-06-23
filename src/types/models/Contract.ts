@@ -18,12 +18,12 @@ export enum ContractStatus {
 
 export enum MilestoneStatus {
   Pending = 0,
-  Approved = 1,
-  Paid = 2,
-  NotStarted = 3,
-  InProgress = 4,
-  SubmittedForReview = 5,
-  RevisionRequired = 6,
+  InProgress = 1,
+  Submitted = 2,
+  Approved = 3,
+  PaymentProofUploaded = 4,
+  PaymentConfirmed = 5,
+  Disputed = 6,
 }
 
 export interface Contract {
@@ -62,6 +62,11 @@ export interface ContractDto {
   updatedAt?: string;
   clientName?: string;
   freelancerName?: string | null;
+  jobTitle?: string;
+  jobDescription?: string;
+  clientEmail?: string;
+  freelancerEmail?: string;
+  conversationId?: string | null;
 }
 
 export interface CreateContractDto {

@@ -4,11 +4,11 @@
 
 export enum ESignDocumentStatus {
   Draft = 0,
-  Sent = 1,
-  Signed = 2,
-  Completed = 3,
-  Rejected = 4,
-  Expired = 5,
+  PendingSignatures = 1,
+  PartiallySigned = 2,
+  FullySigned = 3,
+  Expired = 4,
+  Voided = 5,
 }
 
 export enum SignatureStatus {
@@ -25,6 +25,12 @@ export enum SignatureType {
   Image = 3,
 }
 
+export enum ESignerRole {
+  Client = 0,
+  Freelancer = 1,
+  Witness = 2,
+}
+
 export interface ESignDocument {
   id: string;
   contract_id: string;
@@ -39,87 +45,57 @@ export interface ESignDocument {
   updated_at?: string;
 }
 
-export interface ESignDocumentDto {
-  id: string;
-  contractId: string;
-  title: string;
-  description?: string;
-  documentUrl: string;
-  status: ESignDocumentStatus;
-  createdBy: string;
+export interface ESignSignatureDto {
+  signatureId: string;
+  documentId: string;
+  userId: string;
+  signerRole: number;
+  signatureImageUrl?: string | null;
+  signatureWidth?: number | null;
+  signatureHeight?: number | null;
+  status: number;
+  signedAt?: string | null;
+  declinedAt?: string | null;
+  declineReason?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
   createdAt: string;
-  expiresAt?: string;
-  completedAt?: string;
-  updatedAt?: string;
 }
 
 export interface ESignSignature {
-  id: string;
-  document_id: string;
-  signer_id: string;
-  signer_email: string;
-  signature_type: SignatureType;
-  signature_data: string; // Base64 encoded signature image or typed name
-  signature_image_url?: string;
-  status: SignatureStatus;
-  signed_at?: string;
-  declined_at?: string;
-  declined_reason?: string;
-  ip_address?: string;
-  user_agent?: string;
-  device_info?: string;
-  location_data?: string;
-  timestamp: string;
-  updated_at?: string;
-}
-
-export interface ESignSignatureDto {
   id: string;
   documentId: string;
   signerId: string;
   signerEmail: string;
   signatureType: SignatureType;
-  signatureData: string;
-  signatureImageUrl?: string;
+  signatureData?: string;
+  signatureImageUrl?: string | null;
   status: SignatureStatus;
-  signedAt?: string;
-  declinedAt?: string;
-  declinedReason?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  deviceInfo?: string;
-  locationData?: string;
-  timestamp: string;
-  updatedAt?: string;
-}
-
-export interface ESignTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  template_content: string;
-  created_by: string;
-  created_at: string;
-  updated_at?: string;
-}
-
-export interface ESignTemplateDto {
-  id: string;
-  name: string;
-  description?: string;
-  templateContent: string;
-  createdBy: string;
+  signedAt?: string | null;
+  declinedAt?: string | null;
+  declinedReason?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  deviceInfo?: string | null;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt?: string | null;
 }
 
-export interface CreateESignDocumentDto {
-  contractId: string;
-  title: string;
-  description?: string;
-  documentUrl: string;
-  expiresAt?: string;
-  signers?: string[]; // Email addresses or user IDs
+export interface ESignDocumentDto {
+  documentId: string;
+  jobPostId: string;
+  contractId: string | null;
+  templateId: string;
+  documentCode: string;
+  renderedHtmlContent: string;
+  status: ESignDocumentStatus;
+  documentHash?: string | null;
+  expiresAt?: string | null;
+  finalizedAt?: string | null;
+  exportedPdfUrl?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  signatures: ESignSignatureDto[];
 }
 
 export interface CreateSignatureDto {
@@ -141,20 +117,57 @@ export interface UpdateSignatureStatusDto {
 
 export interface SignatureAuditTrail {
   id: string;
-  signatureId: string;
-  action: 'Created' | 'Signed' | 'Declined' | 'Expired' | 'Updated';
+  signatureId?: string;
+  documentId?: string;
+  action: string;
   timestamp: string;
   ipAddress?: string;
   userAgent?: string;
   deviceInfo?: string;
   locationData?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
+}
+
+export interface SubmitESignSignatureDto {
+  documentId: string;
+  signatureImageUrl: string;
+  signatureWidth?: number;
+  signatureHeight?: number;
+}
+
+export interface ESignTemplateDto {
+  id: string;
+  name: string;
+  description?: string;
+  templateContent: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ESignTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  template_content: string;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CreateESignDocumentDto {
+  contractId: string;
+  title: string;
+  description?: string;
+  documentUrl: string;
+  expiresAt?: string;
+  signers?: string[];
 }
 
 export interface SignatureWorkflowState {
   documentId: string;
   currentStep: 'review' | 'capture' | 'confirm' | 'complete';
-  signatureType: SignatureType;
+  signatureType: number;
   signatureData?: string;
   signatureImageUrl?: string;
   signingInProgress: boolean;

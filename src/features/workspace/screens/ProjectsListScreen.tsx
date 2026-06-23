@@ -1,53 +1,95 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
 import { Flag, Calendar, DollarSign, Clock, User } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { MOCK_PROJECTS_FOR_PROJECTS_LIST } from '../mock/data-for-ProjectsListScreen';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import type { ContractDto } from '../../../types/models/Contract';
+import { ContractStatus } from '../../../types/models/Contract';
+
+const getStatusLabel = (status: ContractStatus): string => {
+  switch (status) {
+    case ContractStatus.Active:
+      return 'active';
+    case ContractStatus.Completed:
+      return 'completed';
+    case ContractStatus.PendingEscrow:
+    case ContractStatus.PendingSignature:
+      return 'pending';
+    default:
+      return 'in progress';
+  }
+};
 
 export default function ProjectsListScreen() {
   const navigate = useNavigate();
   const { user, role } = useApp();
   const { t } = useTranslation();
+  const [projects, setProjects] = useState<ContractDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+
+    let current = true;
+    const loadProjects = async (): Promise<void> => {
+      try {
+        setLoading(true);
+        setError('');
+        const response = await contractGetAPI.getMyContracts({ status: ContractStatus.Active });
+        if (!current) return;
+
+        if (response.success && response.data) {
+          setProjects(response.data);
+        } else {
+          setError(response.message || 'Failed to load active workspaces.');
+          setProjects([]);
+        }
+      } catch (err) {
+        console.error('Failed to load workspaces:', err);
+        if (current) {
+          setError('Failed to load active workspaces.');
+          setProjects([]);
+        }
+      } finally {
+        if (current) setLoading(false);
+      }
+    };
+
+    void loadProjects();
+    return () => {
+      current = false;
+    };
+  }, [navigate, user]);
 
   if (!user) {
-    navigate('/auth/login');
     return null;
   }
 
-  const dbProjects = role === 0
-    ? DB.getProjectsByClient(user.id)
-    : DB.getProjectsByFreelancer(user.id);
-  const projects = dbProjects.length > 0
-    ? dbProjects
-    : MOCK_PROJECTS_FOR_PROJECTS_LIST.filter(project => role === 0
-      ? project.clientId === user.id || project.clientId === 'demo_client_001'
-      : project.freelancerId === user.id || project.freelancerId === 'demo_freelancer_001'
-    );
-
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: ContractStatus) => {
     switch (status) {
-      case 'active': return 'text-green-400';
-      case 'completed': return 'text-blue-400';
-      case 'pending': return 'text-yellow-400';
-      default: return 'text-secondary';
+      case ContractStatus.Active: return 'text-green-400';
+      case ContractStatus.Completed: return 'text-blue-400';
+      default: return 'text-yellow-400';
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: ContractStatus) => {
     switch (status) {
-      case 'active': return 'badge-green';
-      case 'completed': return 'badge-cyan';
-      case 'pending': return 'badge-amber';
-      default: return 'badge-purple';
+      case ContractStatus.Active: return 'badge-green';
+      case ContractStatus.Completed: return 'badge-cyan';
+      default: return 'badge-amber';
     }
   };
 
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Flag className="w-8 h-8 text-cyan" />
@@ -60,8 +102,21 @@ export default function ProjectsListScreen() {
           </p>
         </div>
 
-        {/* Projects Grid */}
-        {projects.length === 0 ? (
+        {loading ? (
+          <div className="glass-card p-12 text-center">
+            <Clock className="w-12 h-12 text-secondary mx-auto mb-4 opacity-40" />
+            <p className="text-secondary">Loading active workspaces...</p>
+          </div>
+        ) : error ? (
+          <div className="glass-card p-12 text-center">
+            <Flag className="w-16 h-16 text-secondary mx-auto mb-4 opacity-30" />
+            <h2 className="text-xl font-bold text-primary mb-2">Unable to load projects</h2>
+            <p className="text-secondary mb-6">{error}</p>
+            <button className="btn-cyan px-6 py-3" onClick={() => window.location.reload()}>
+              Retry
+            </button>
+          </div>
+        ) : projects.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <Flag className="w-16 h-16 text-secondary mx-auto mb-4 opacity-30" />
             <h2 className="text-xl font-bold text-primary mb-2">{t('projects.noProjectsYet')}</h2>
@@ -80,68 +135,46 @@ export default function ProjectsListScreen() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map(project => {
-              const otherUser = role === 0
-                ? DB.getUserById(project.freelancerId)
-                : DB.getUserById(project.clientId);
+              const otherUserName = role === 0
+                ? project.freelancerName || project.freelancerEmail || 'Freelancer'
+                : project.clientName || project.clientEmail || 'Client';
+              const statusLabel = getStatusLabel(project.status);
 
               return (
                 <div
-                  key={project.id}
+                  key={project.contractsId}
                   className="glass-card p-6 cursor-pointer hover:scale-[1.02] transition-transform"
-                  onClick={() => navigate(`/workspace/${project.id}`)}
+                  onClick={() => navigate(`/workspace/${project.contractsId}`)}
                 >
-                  {/* Status Badge */}
                   <div className="flex items-center justify-between mb-4">
                     <span className={`${getStatusBadge(project.status)} text-xs px-3 py-1`}>
-                      {t(`projects.${project.status}`)}
+                      {statusLabel}
                     </span>
                     <Flag className={`w-5 h-5 ${getStatusColor(project.status)}`} />
                   </div>
 
-                  {/* Project Title */}
                   <h3 className="text-lg font-bold text-primary mb-2 line-clamp-2">
-                    {project.title}
+                    {project.jobTitle || project.title}
                   </h3>
 
-                  {/* Other User */}
-                  {otherUser && (
-                    <div className="flex items-center gap-2 mb-4 text-sm text-secondary">
-                      <User className="w-4 h-4" />
-                      <span className="line-clamp-1">
-                        {role === 0 ? t('projects.freelancer') : t('projects.client')}: {otherUser.full_name}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 mb-4 text-sm text-secondary">
+                    <User className="w-4 h-4" />
+                    <span className="line-clamp-1">
+                      {role === 0 ? t('projects.freelancer') : t('projects.client')}: {otherUserName}
+                    </span>
+                  </div>
 
-                  {/* Project Info */}
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-secondary">
                       <DollarSign className="w-4 h-4 text-green-400" />
-                      <span className="text-primary font-semibold">${project.totalBudget}</span>
+                      <span className="text-primary font-semibold">${project.totalBudget.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-secondary">
                       <Calendar className="w-4 h-4 text-cyan" />
-                      <span>{t('projects.started')}: {new Date(project.startDate).toLocaleDateString()}</span>
+                      <span>{t('projects.started')}: {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'Not set'}</span>
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  {project.progress !== undefined && (
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-secondary">{t('projects.progress')}</span>
-                        <span className="text-primary font-semibold">{project.progress}%</span>
-                      </div>
-                      <div className="h-2 bg-surface rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-cyan to-purple transition-all duration-300"
-                          style={{ width: `${project.progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* View Button */}
                   <button className="btn-ghost-cyan w-full py-2 text-sm mt-2">
                     {t('projects.openWorkspace')}
                   </button>

@@ -198,18 +198,15 @@ export const getPlaceholderSignature = (): string => {
 };
 
 
-/**
- * Get human-readable label for milestone status
- */
 export const getMilestoneStatusLabel = (status: MilestoneStatus | number): string => {
   const statusMap: Record<number, string> = {
     0: 'Pending',
-    1: 'Approved',
-    2: 'Paid',
-    3: 'Not Started',
-    4: 'In Progress',
-    5: 'Submitted for Review',
-    6: 'Revision Required',
+    1: 'In Progress',
+    2: 'Submitted',
+    3: 'Approved',
+    4: 'Payment Proof Uploaded',
+    5: 'Payment Confirmed',
+    6: 'Disputed',
   };
   return statusMap[status] || 'Unknown';
 };
@@ -220,12 +217,12 @@ export const getMilestoneStatusLabel = (status: MilestoneStatus | number): strin
 export const getMilestoneStatusClass = (status: MilestoneStatus | number): string => {
   const statusMap: Record<number, string> = {
     0: 'milestone-status-pending',
-    1: 'milestone-status-approved',
-    2: 'milestone-status-paid',
-    3: 'milestone-status-not-started',
-    4: 'milestone-status-in-progress',
-    5: 'milestone-status-submitted',
-    6: 'milestone-status-revision',
+    1: 'milestone-status-in-progress',
+    2: 'milestone-status-submitted',
+    3: 'milestone-status-approved',
+    4: 'milestone-status-proof-uploaded',
+    5: 'milestone-status-confirmed',
+    6: 'milestone-status-disputed',
   };
   return `milestone-status ${statusMap[status] || 'milestone-status-unknown'}`;
 };
@@ -244,28 +241,24 @@ export const isMilestoneOverdue = (dueDate: string | Date): boolean => {
 export const calculateMilestoneCompletion = (status: MilestoneStatus | number): number => {
   const completionMap: Record<number, number> = {
     0: 0,    // Pending
-    1: 50,   // Approved
-    2: 100,  // Paid
-    3: 0,    // Not Started
-    4: 45,   // In Progress
-    5: 80,   // Submitted for Review
-    6: 55,   // Revision Required
+    1: 25,   // In Progress
+    2: 50,   // Submitted
+    3: 75,   // Approved
+    4: 90,   // PaymentProofUploaded
+    5: 100,  // PaymentConfirmed
+    6: 80,   // Disputed
   };
   return completionMap[status] || 0;
 };
 
 export const canEditMilestone = (status: MilestoneStatus | number): boolean => {
-  return status === MilestoneStatus.NotStarted || status === MilestoneStatus.Pending;
+  return status === MilestoneStatus.Pending;
 };
 
 export const canSubmitMilestoneDeliverable = (status: MilestoneStatus | number): boolean => {
-  return (
-    status === MilestoneStatus.Pending ||
-    status === MilestoneStatus.InProgress ||
-    status === MilestoneStatus.RevisionRequired
-  );
+  return status === MilestoneStatus.InProgress;
 };
 
 export const canApproveMilestone = (status: MilestoneStatus | number): boolean => {
-  return status === MilestoneStatus.SubmittedForReview || status === MilestoneStatus.Pending;
+  return status === MilestoneStatus.Submitted;
 };

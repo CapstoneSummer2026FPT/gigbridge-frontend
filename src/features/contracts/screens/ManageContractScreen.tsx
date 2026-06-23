@@ -43,7 +43,7 @@ const CONTRACT_STATUSES = [
 
 const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
   const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
-  const isCompleted = milestone.status === MilestoneStatus.Paid || milestone.status === MilestoneStatus.Approved;
+  const isCompleted = milestone.status === MilestoneStatus.PaymentConfirmed || milestone.status === MilestoneStatus.Approved;
 
   return {
     ...milestone,
@@ -169,8 +169,8 @@ export default function ManageContractScreen() {
       return { total: 0, completed: 0, pending: 0, total_budget: 0, progress: 0 };
     }
 
-    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.Paid || m.status === MilestoneStatus.Approved).length;
-    const pending = contract.milestones.filter(m => m.status !== MilestoneStatus.Paid && m.status !== MilestoneStatus.Approved).length;
+    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.PaymentConfirmed || m.status === MilestoneStatus.Approved).length;
+    const pending = contract.milestones.filter(m => m.status !== MilestoneStatus.PaymentConfirmed && m.status !== MilestoneStatus.Approved).length;
     const total = contract.milestones.length;
     const total_budget = contract.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
     const progress = Math.round((completed / total) * 100);
@@ -192,7 +192,7 @@ export default function ManageContractScreen() {
     contracts.forEach(c => {
       if (c.milestones) {
         totalMilestones += c.milestones.length;
-        completedMilestones += c.milestones.filter(m => m.status === MilestoneStatus.Paid || m.status === MilestoneStatus.Approved).length;
+        completedMilestones += c.milestones.filter(m => m.status === MilestoneStatus.PaymentConfirmed || m.status === MilestoneStatus.Approved).length;
       }
     });
     const milestoneRate = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
@@ -683,7 +683,7 @@ export default function ManageContractScreen() {
                                       <div className="flex items-center gap-3 shrink-0">
                                         <span className="font-bold text-foreground">{formatContractAmount(milestone.amount)}</span>
                                         <div className="flex items-center gap-1.5 px-2 py-0.5 bg-card border border-border/40 rounded-lg font-bold text-[10px]">
-                                          {milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.Paid ? (
+                                          {milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.PaymentConfirmed ? (
                                             <>
                                               <CheckCircle2 size={12} className="text-emerald-500" />
                                               <span className="text-emerald-500">{getMilestoneStatusLabel(milestone.status)}</span>

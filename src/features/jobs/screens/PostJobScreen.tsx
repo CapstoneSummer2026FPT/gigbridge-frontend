@@ -612,12 +612,12 @@ export default function PostJobScreen() {
             </button>
             <button
               type="button"
-              onClick={() => submitDraftFlow('contract')}
+              onClick={() => submitDraftFlow('esign')}
               disabled={isActionDisabled}
               className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
             >
               <Check size={16} />
-              <span>{renderSubmitLabel('contract', 'Next: Create Contract')}</span>
+              <span>{renderSubmitLabel('esign', 'Next: E-sign JobPost')}</span>
               <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

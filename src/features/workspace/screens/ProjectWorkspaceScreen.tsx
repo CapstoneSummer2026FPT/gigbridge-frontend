@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Ban, Send, Plus,
   Paperclip, Smile, CheckCircle, Circle, Download,
@@ -12,6 +12,7 @@ import '../styles/project-workspace-screen.css';
 
 export default function ProjectWorkspaceScreen() {
   const navigate = useNavigate();
+  const { contractId } = useParams<{ contractId: string }>();
   const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
   const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
   const [showProfilePopover, setShowProfilePopover] = useState(false);
@@ -31,7 +32,7 @@ export default function ProjectWorkspaceScreen() {
     isBlocked,
     setIsBlocked,
     project,
-    mockProjects,
+    workspaceProjects,
     currentProjData,
     partnerName,
     partnerAvatar,
@@ -43,7 +44,7 @@ export default function ProjectWorkspaceScreen() {
     handleSimulateAttachment,
     handleCreateMockMilestone,
     chatEndRef,
-  } = useProjectWorkspace('proj_1');
+  } = useProjectWorkspace(contractId || '');
 
   return (
     <AppLayout fullWidth hideAIWidget>
@@ -70,7 +71,7 @@ export default function ProjectWorkspaceScreen() {
           </div>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(`/contracts/contract_1`)}
+              onClick={() => navigate(`/contracts/${project.contractId || contractId || ''}`)}
               className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all uppercase tracking-widest cursor-pointer"
             >
               View Contract
@@ -120,7 +121,7 @@ export default function ProjectWorkspaceScreen() {
               <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">Recent Workspace</span>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {mockProjects.map(proj => {
+              {workspaceProjects.map(proj => {
                 const isActive = proj.id === activeProjectId;
                 return (
                   <div

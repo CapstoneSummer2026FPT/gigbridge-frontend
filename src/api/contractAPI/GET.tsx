@@ -50,6 +50,16 @@ interface BackendContractResponse {
   ClientName?: string;
   freelancerName?: string | null;
   FreelancerName?: string | null;
+  jobTitle?: string;
+  JobTitle?: string;
+  jobDescription?: string | null;
+  JobDescription?: string | null;
+  clientEmail?: string;
+  ClientEmail?: string;
+  freelancerEmail?: string | null;
+  FreelancerEmail?: string | null;
+  conversationId?: string | null;
+  ConversationId?: string | null;
 }
 
 interface BackendMilestoneResponse {
@@ -110,6 +120,11 @@ const normalizeContract = (contract: BackendContractResponse): ContractDto => {
     updatedAt: getValue<string | undefined>(source, 'updatedAt', 'UpdatedAt'),
     clientName: getValue<string | undefined>(source, 'clientName', 'ClientName'),
     freelancerName: getValue<string | null>(source, 'freelancerName', 'FreelancerName') ?? null,
+    jobTitle: getValue<string | undefined>(source, 'jobTitle', 'JobTitle'),
+    jobDescription: getValue<string | undefined>(source, 'jobDescription', 'JobDescription'),
+    clientEmail: getValue<string | undefined>(source, 'clientEmail', 'ClientEmail'),
+    freelancerEmail: getValue<string | undefined>(source, 'freelancerEmail', 'FreelancerEmail'),
+    conversationId: getValue<string | null>(source, 'conversationId', 'ConversationId') ?? null,
   };
 };
 

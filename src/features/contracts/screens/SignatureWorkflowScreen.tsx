@@ -1,191 +1,285 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AlertCircle, CheckCircle, Clock, FileText, Loader, PenTool, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
+import { esignGetAPI } from '../../../api/esignAPI/GET';
 import type { ContractDto } from '../../../types/models/Contract';
+import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
+import { SignatureStatus } from '../../../types/models/ESign';
+import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
 
-interface SignaturePad {
-  x: number;
-  y: number;
-  pressure: number[];
-  timestamp: number;
+type SignatureStep = 'review' | 'capture' | 'complete';
+
+interface SignContractResponse {
+  status?: ContractStatus;
+  Status?: ContractStatus;
+  contractId?: string;
+  ContractId?: string;
+  documentId?: string;
+  DocumentId?: string;
+  message?: string;
+  Message?: string;
 }
+
+const formatMoney = (value?: number): string =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value ?? 0);
+
+const formatDate = (value?: string | null): string => {
+  if (!value) return 'Not set';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Not set' : date.toLocaleDateString();
+};
+
+const getStatusFromResponse = (data: unknown): ContractStatus | undefined => {
+  const response = data as SignContractResponse | undefined;
+  const status = response?.status ?? response?.Status;
+  return typeof status === 'number' ? status : undefined;
+};
+
+const getDocumentIdFromResponse = (data: unknown): string | undefined => {
+  const response = data as SignContractResponse | undefined;
+  return response?.documentId ?? response?.DocumentId;
+};
+
+const getCanvasPoint = (canvas: HTMLCanvasElement, event: React.MouseEvent<HTMLCanvasElement>) => {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+    y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+  };
+};
 
 export default function SignatureWorkflowScreen() {
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
-  const { user } = useApp();
+  const { user, role } = useApp();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [contract, setContract] = useState<ContractDto | null>(null);
+  const [document, setDocument] = useState<ESignDocumentDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // Signature state
-  const [signatureStep, setSignatureStep] = useState<'review' | 'capture' | 'confirm'>('review');
-  const [signatureData, setSignatureData] = useState<SignaturePad | null>(null);
+  const [documentWarning, setDocumentWarning] = useState('');
+  const [signatureStep, setSignatureStep] = useState<SignatureStep>('review');
   const [isDrawing, setIsDrawing] = useState(false);
-  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null);
+  const [signatureDrawn, setSignatureDrawn] = useState(false);
   const [signingInProgress, setSigningInProgress] = useState(false);
 
-  // Load contract data
-  useEffect(() => {
-    const loadContract = async () => {
-      if (!contractId) return;
-      try {
-        setLoading(true);
-        setError('');
-        const res = await contractGetAPI.getContractById(contractId);
-        if (res.success && res.data) {
-          setContract(res.data);
-          const alreadySigned = localStorage.getItem(`contract-signature-${contractId}-${user?.id}`);
-          if (res.data.status !== ContractStatus.PendingSignature) {
-            setError('This contract is not in signature pending state.');
-          }
-        } else {
-          if (import.meta.env.VITE_USE_MOCK === 'true') {
-            const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-            if (mockContract) {
-              setContract(mockContract);
-              if (mockContract.status !== ContractStatus.PendingSignature) {
-                setError('MSG55: You have already signed this document');
-              }
-            } else {
-              setError('Contract not found in mock data');
-            }
-          } else {
-            setError(res.message || 'Failed to load contract details');
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load contract:', err);
-        if (import.meta.env.VITE_USE_MOCK === 'true') {
-          const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-          if (mockContract) {
-            setContract(mockContract);
-          } else {
-            setError('Failed to load contract details');
-          }
-        } else {
-          setError('Failed to load contract details');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+  const currentUserSignature = useMemo(
+    () =>
+      document?.signatures.find(
+        signature => signature.userId === user?.id && signature.status === SignatureStatus.Signed
+      ),
+    [document?.signatures, user?.id]
+  );
 
-    loadContract();
-  }, [contractId, user?.id]);
+  const hasSigned = Boolean(currentUserSignature) || contract?.status === ContractStatus.PendingEscrow || contract?.status === ContractStatus.Active;
+  const isClient = role === UserRole.Client;
 
-  // Initialize canvas for signature capture
-  useEffect(() => {
-    if (signatureStep === 'capture' && canvasRef) {
-      const ctx = canvasRef.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvasRef.width, canvasRef.height);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+  const loadDocument = useCallback(async (targetContractId: string): Promise<void> => {
+    try {
+      const docResponse = await esignGetAPI.getDocumentByContract(targetContractId);
+      if (docResponse.success && docResponse.data) {
+        setDocument(docResponse.data);
+        setDocumentWarning('');
+        return;
       }
+      setDocument(null);
+      setDocumentWarning(docResponse.message || 'The signed document will be generated when the first party signs.');
+    } catch (err) {
+      console.warn('Contract document is not available yet:', err);
+      setDocument(null);
+      setDocumentWarning('The signed document will be generated when the first party signs.');
     }
-  }, [signatureStep, canvasRef]);
+  }, []);
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef) return;
+  const loadContract = useCallback(async (): Promise<void> => {
+    if (!contractId) {
+      setError('Missing contract ID.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      setDocumentWarning('');
+
+      const contractResponse = await contractGetAPI.getContractById(contractId);
+      if (!contractResponse.success || !contractResponse.data) {
+        setError(contractResponse.message || 'Failed to load contract details.');
+        return;
+      }
+
+      setContract(contractResponse.data);
+      await loadDocument(contractId);
+
+      if (
+        ![
+          ContractStatus.PendingSignature,
+          ContractStatus.PendingEscrow,
+          ContractStatus.Active,
+        ].includes(contractResponse.data.status)
+      ) {
+        setError('This contract is not ready for E-signature.');
+      }
+    } catch (err) {
+      console.error('Failed to load contract signing flow:', err);
+      setError('Failed to load contract details.');
+    } finally {
+      setLoading(false);
+    }
+  }, [contractId, loadDocument]);
+
+  useEffect(() => {
+    void loadContract();
+  }, [loadContract]);
+
+  const resetCanvas = useCallback((): void => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    context.fillStyle = 'white';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = '#111827';
+    context.lineWidth = 3;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    setSignatureDrawn(false);
+  }, []);
+
+  useEffect(() => {
+    if (signatureStep === 'capture') {
+      resetCanvas();
+    }
+  }, [resetCanvas, signatureStep]);
+
+  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>): void => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    const point = getCanvasPoint(canvas, event);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
     setIsDrawing(true);
-
-    const ctx = canvasRef.getContext('2d');
-    const rect = canvasRef.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    if (ctx) {
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-    }
-
-    setSignatureData({
-      x,
-      y,
-      pressure: [],
-      timestamp: Date.now(),
-    });
+    setSignatureDrawn(true);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !canvasRef) return;
+  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>): void => {
+    const canvas = canvasRef.current;
+    if (!isDrawing || !canvas) return;
 
-    const ctx = canvasRef.getContext('2d');
-    const rect = canvasRef.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const context = canvas.getContext('2d');
+    if (!context) return;
 
-    if (ctx) {
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
+    const point = getCanvasPoint(canvas, event);
+    context.lineTo(point.x, point.y);
+    context.stroke();
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (): void => {
     setIsDrawing(false);
+    canvasRef.current?.getContext('2d')?.closePath();
   };
 
-  const handleClearSignature = () => {
-    if (canvasRef) {
-      const ctx = canvasRef.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvasRef.width, canvasRef.height);
-      }
+  const handleClearSignature = (): void => {
+    resetCanvas();
+  };
+
+  const refreshAfterSigning = async (nextStatus?: ContractStatus): Promise<ContractStatus | undefined> => {
+    if (!contractId) return nextStatus;
+
+    const refreshedContract = await contractGetAPI.getContractById(contractId);
+    if (refreshedContract.success && refreshedContract.data) {
+      setContract(refreshedContract.data);
+      await loadDocument(contractId);
+      return refreshedContract.data.status;
     }
-    setSignatureData(null);
+
+    return nextStatus;
   };
 
-  const handleSubmitSignature = async () => {
-    if (!canvasRef || !contract) {
-      setError('Please sign before submitting');
+  const handleSubmitSignature = async (): Promise<void> => {
+    const canvas = canvasRef.current;
+    if (!canvas || !contract) {
+      setError('Please sign before submitting.');
+      return;
+    }
+
+    if (!signatureDrawn) {
+      setError('Please draw your signature before submitting.');
       return;
     }
 
     try {
       setSigningInProgress(true);
       setError('');
+      setSuccess('');
 
-      // Get signature as data URL
-      const signatureImage = canvasRef.toDataURL('image/png');
-
-      const res = await contractPostAPI.sign(contract.contractsId, {
-        signatureImageUrl: signatureImage,
-        signatureWidth: 300,
-        signatureHeight: 100,
+      const signatureImageUrl = canvas.toDataURL('image/png');
+      const response = await contractPostAPI.sign(contract.contractsId, {
+        signatureImageUrl,
+        signatureWidth: canvas.width,
+        signatureHeight: canvas.height,
       });
 
-      if (res.success) {
-        localStorage.setItem(`contract-signature-${contract.contractsId}-${user?.id}`, new Date().toISOString());
-        setSuccess('Signature captured and contract signed successfully!');
-        setSignatureStep('confirm');
-
-        // Navigate back to contract details after a delay
-        setTimeout(() => {
-          navigate(`/contracts/${contract.contractsId}`);
-        }, 2000);
-      } else {
-        setError(res.message || 'Failed to submit signature. Please try again.');
+      if (!response.success) {
+        setError(response.message || 'Failed to submit signature. Please try again.');
+        return;
       }
+
+      const documentId = getDocumentIdFromResponse(response.data);
+      if (documentId) {
+        await loadDocument(contract.contractsId);
+      }
+
+      const finalStatus = await refreshAfterSigning(getStatusFromResponse(response.data));
+      setSignatureStep('complete');
+
+      if (finalStatus === ContractStatus.PendingEscrow) {
+        setSuccess(isClient ? 'Contract fully signed. You can now fund escrow.' : 'Contract fully signed. Waiting for the client to fund escrow.');
+        if (isClient) {
+          window.setTimeout(() => navigate(`/contracts/${contract.contractsId}`), 1200);
+        }
+        return;
+      }
+
+      if (finalStatus === ContractStatus.Active) {
+        setSuccess('Contract is active. Opening workspace...');
+        window.setTimeout(() => navigate(`/workspace/${contract.contractsId}`), 1200);
+        return;
+      }
+
+      setSuccess('Your signature has been recorded. Waiting for the other party to sign.');
     } catch (err) {
       console.error('Failed to submit signature:', err);
       setError('Failed to submit signature. Please try again.');
     } finally {
       setSigningInProgress(false);
     }
+  };
+
+  const handleCompleteNavigation = (): void => {
+    if (!contract) return;
+
+    if (contract.status === ContractStatus.Active) {
+      navigate(`/workspace/${contract.contractsId}`);
+      return;
+    }
+
+    navigate(`/contracts/${contract.contractsId}`);
   };
 
   if (loading) {
@@ -208,7 +302,7 @@ export default function SignatureWorkflowScreen() {
           <div className="signature-error">
             <AlertCircle size={32} />
             <h2>{error || 'Contract not found'}</h2>
-            <button onClick={() => navigate(-1)}>Go back</button>
+            <button onClick={() => navigate('/contracts')}>Back to contracts</button>
           </div>
         </div>
       </AppLayout>
@@ -219,11 +313,11 @@ export default function SignatureWorkflowScreen() {
     <AppLayout>
       <div className="signature-workflow-page">
         <div className="signature-header">
-          <button className="back-btn" onClick={() => navigate(-1)}>
-            ← Back
+          <button className="back-btn" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
+            Back to contract
           </button>
-          <h1>E-Signature Workflow</h1>
-          <p>Sign this contract to complete the agreement</p>
+          <h1>E-Sign Contract</h1>
+          <p>Review the agreed job details, then add your electronic signature.</p>
         </div>
 
         {error && (
@@ -246,79 +340,103 @@ export default function SignatureWorkflowScreen() {
           </div>
         )}
 
-        {/* Signature steps */}
+        {documentWarning && (
+          <div className="signature-alert alert-warning">
+            <Clock size={18} />
+            {documentWarning}
+          </div>
+        )}
+
         <div className="signature-steps">
           <div className={`step ${signatureStep === 'review' ? 'active' : 'completed'}`}>
             <span className="step-number">1</span>
             <span className="step-label">Review</span>
           </div>
           <div className="step-divider" />
-          <div className={`step ${signatureStep === 'capture' ? 'active' : signatureStep === 'confirm' ? 'completed' : ''}`}>
+          <div className={`step ${signatureStep === 'capture' ? 'active' : signatureStep === 'complete' ? 'completed' : ''}`}>
             <span className="step-number">2</span>
             <span className="step-label">Sign</span>
           </div>
           <div className="step-divider" />
-          <div className={`step ${signatureStep === 'confirm' ? 'active' : ''}`}>
+          <div className={`step ${signatureStep === 'complete' ? 'active' : ''}`}>
             <span className="step-number">3</span>
-            <span className="step-label">Confirm</span>
+            <span className="step-label">Done</span>
           </div>
         </div>
 
-        {/* Step: Review */}
         {signatureStep === 'review' && (
           <div className="signature-step-content">
             <div className="signature-section">
-              <h2>Review Contract</h2>
+              <h2>Contract Details</h2>
 
               <div className="contract-details">
                 <div className="detail-row">
-                  <span>Title</span>
-                  <strong>{contract.title}</strong>
+                  <span>Job</span>
+                  <strong>{contract.jobTitle || contract.title}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Amount</span>
-                  <strong>${(contract.totalBudget || 0).toLocaleString()}</strong>
+                  <span>Final budget</span>
+                  <strong>{formatMoney(contract.totalBudget)}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Start Date</span>
-                  <strong>{contract.startDate ? new Date(contract.startDate).toLocaleDateString() : 'N/A'}</strong>
+                  <span>Start date</span>
+                  <strong>{formatDate(contract.startDate)}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Status</span>
-                  <strong>Pending Signature</strong>
+                  <span>End date</span>
+                  <strong>{formatDate(contract.endDate)}</strong>
+                </div>
+                <div className="detail-row">
+                  <span>Client</span>
+                  <strong>{contract.clientName || contract.clientEmail || 'Client'}</strong>
+                </div>
+                <div className="detail-row">
+                  <span>Freelancer</span>
+                  <strong>{contract.freelancerName || contract.freelancerEmail || 'Freelancer'}</strong>
                 </div>
               </div>
 
               <div className="contract-description">
-                <h3>Description</h3>
-                <p>{contract.description || 'No description provided'}</p>
+                <h3>Scope of work</h3>
+                <p>{contract.jobDescription || contract.description || 'No scope of work provided.'}</p>
               </div>
+
+              {document?.renderedHtmlContent && (
+                <div className="contract-description">
+                  <h3>Generated contract document</h3>
+                  <iframe
+                    title="Generated E-sign contract document"
+                    className="signature-document-frame"
+                    sandbox=""
+                    srcDoc={document.renderedHtmlContent}
+                  />
+                </div>
+              )}
 
               <div className="signature-info-box">
                 <Clock size={20} />
                 <div>
-                  <h3>Audit Trail</h3>
-                  <p>Your signature will be recorded with timestamp, IP address, and user identification for legal compliance and dispute resolution.</p>
+                  <h3>Electronic signature audit</h3>
+                  <p>Your signature is recorded with timestamp and account identity. The milestone content becomes visible after the freelancer signs and reviews the finalized terms.</p>
                 </div>
               </div>
             </div>
 
             <div className="signature-actions">
-              <button className="btn-secondary" onClick={() => navigate(-1)}>
-                Decline
+              <button className="btn-secondary" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
+                Back
               </button>
               <button
                 className="btn-primary"
-                onClick={() => setSignatureStep('capture')}
-                disabled={error.includes('MSG55')}
+                onClick={() => setSignatureStep(hasSigned ? 'complete' : 'capture')}
+                disabled={Boolean(error) && !hasSigned}
               >
-                Proceed to Sign <PenTool size={16} />
+                {hasSigned ? 'View status' : 'Proceed to sign'} <PenTool size={16} />
               </button>
             </div>
           </div>
         )}
 
-        {/* Step: Capture signature */}
         {signatureStep === 'capture' && (
           <div className="signature-step-content">
             <div className="signature-section">
@@ -326,7 +444,7 @@ export default function SignatureWorkflowScreen() {
 
               <div className="signature-pad-wrapper">
                 <canvas
-                  ref={el => setCanvasRef(el)}
+                  ref={canvasRef}
                   width={600}
                   height={200}
                   className="signature-pad"
@@ -336,15 +454,12 @@ export default function SignatureWorkflowScreen() {
                   onMouseLeave={handleMouseUp}
                 />
                 <div className="signature-instructions">
-                  Draw your signature above, then click "Sign Document"
+                  Draw your signature above, then submit it to the contract.
                 </div>
               </div>
 
               <div className="signature-buttons">
-                <button
-                  className="btn-outline"
-                  onClick={handleClearSignature}
-                >
+                <button className="btn-outline" onClick={handleClearSignature}>
                   Clear Signature
                 </button>
               </div>
@@ -352,20 +467,20 @@ export default function SignatureWorkflowScreen() {
               <div className="signature-info-box">
                 <FileText size={20} />
                 <div>
-                  <h3>Legal Agreement</h3>
-                  <p>By signing this contract, you agree to its terms and conditions. This electronic signature is legally binding and equivalent to your handwritten signature.</p>
+                  <h3>Legal agreement</h3>
+                  <p>By signing this contract, you agree to the final job budget, dates, and terms shown on this page.</p>
                 </div>
               </div>
             </div>
 
             <div className="signature-actions">
               <button className="btn-secondary" onClick={() => setSignatureStep('review')}>
-                ← Back to Review
+                Back to review
               </button>
               <button
                 className="btn-primary"
                 onClick={handleSubmitSignature}
-                disabled={!signatureData || signingInProgress}
+                disabled={!signatureDrawn || signingInProgress}
               >
                 {signingInProgress ? (
                   <>
@@ -375,7 +490,7 @@ export default function SignatureWorkflowScreen() {
                 ) : (
                   <>
                     <PenTool size={16} />
-                    Sign Document
+                    Sign contract
                   </>
                 )}
               </button>
@@ -383,39 +498,48 @@ export default function SignatureWorkflowScreen() {
           </div>
         )}
 
-        {/* Step: Confirm */}
-        {signatureStep === 'confirm' && (
+        {signatureStep === 'complete' && (
           <div className="signature-step-content">
             <div className="signature-section">
               <div className="signature-success">
                 <CheckCircle size={48} className="success-icon" />
-                <h2>Contract Signed Successfully</h2>
-                <p>Your electronic signature has been recorded and the contract is now active.</p>
+                <h2>{hasSigned ? 'Signature Recorded' : 'Contract Status'}</h2>
+                <p>
+                  {contract.status === ContractStatus.PendingEscrow
+                    ? isClient
+                      ? 'Both parties have signed. Fund escrow to open the workspace.'
+                      : 'Both parties have signed. Waiting for the client to fund escrow.'
+                    : contract.status === ContractStatus.Active
+                      ? 'The contract is active and the workspace is ready.'
+                      : 'Your signature is saved. Waiting for the other party to sign.'}
+                </p>
 
                 <div className="signed-info">
                   <div className="info-item">
-                    <span>Signed At</span>
-                    <strong>{new Date().toLocaleString()}</strong>
+                    <span>Contract</span>
+                    <strong>{contract.jobTitle || contract.title}</strong>
                   </div>
                   <div className="info-item">
-                    <span>Contract Status</span>
-                    <strong>Active</strong>
+                    <span>Status</span>
+                    <strong>{ContractStatus[contract.status] ?? 'PendingSignature'}</strong>
                   </div>
                   <div className="info-item">
-                    <span>Next Steps</span>
-                    <strong>Milestone Setup</strong>
+                    <span>Next step</span>
+                    <strong>
+                      {contract.status === ContractStatus.PendingEscrow && isClient
+                        ? 'Fund escrow'
+                        : contract.status === ContractStatus.Active
+                          ? 'Open workspace'
+                          : 'Wait for counterpart'}
+                    </strong>
                   </div>
                 </div>
-
-                <p className="signature-note">
-                  A confirmation email has been sent to both parties with the signed contract.
-                </p>
               </div>
             </div>
 
             <div className="signature-actions">
-              <button className="btn-primary btn-large" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
-                View Contract Details <FileText size={16} />
+              <button className="btn-primary btn-large" onClick={handleCompleteNavigation}>
+                {contract.status === ContractStatus.Active ? 'Open workspace' : 'View contract details'} <FileText size={16} />
               </button>
             </div>
           </div>

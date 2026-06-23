@@ -23,7 +23,7 @@ import {
   getMilestoneStatusLabel,
   getMilestoneStatusClass
 } from '../../../shared/utils/contractUtils';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
+// Mock data removed - using real API only
 import '../styles/view-contract-details-screen.css';
 
 interface AuditTrailEntry {
@@ -113,18 +113,18 @@ export default function ViewContractDetailsScreen() {
       return;
     }
 
-    const isMock = contract.contractsId.startsWith('contract_mock_') || contract.contractsId.includes('mock');
+
 
     // Check if user is client
     const isClient = user.role === UserRole.Client;
-    if (contract.clientProfilesId === userProfileId || (!((user as any).profileId) && isClient) || (isMock && isClient)) {
+    if (contract.clientProfilesId === userProfileId || (!((user as any).profileId) && isClient)) {
       setUserRole('client');
       return;
     }
 
     // Check if user is freelancer
     const isFreelancer = user.role === UserRole.Freelancer;
-    if (contract.freelancerProfilesId === userProfileId || (!((user as any).profileId) && isFreelancer) || (isMock && isFreelancer)) {
+    if (contract.freelancerProfilesId === userProfileId || (!((user as any).profileId) && isFreelancer)) {
       setUserRole('freelancer');
       return;
     }
@@ -132,7 +132,7 @@ export default function ViewContractDetailsScreen() {
     setUserRole('none');
   }, [user, contract]);
 
-  // Load contract details from API with mock fallback
+  // Load contract details from API
   useEffect(() => {
     const loadContractDetails = async () => {
       if (!contractId) {
@@ -144,7 +144,6 @@ export default function ViewContractDetailsScreen() {
         setLoading(true);
         setError(null);
 
-        // Try fetching from backend API first
         const apiResponse = await contractGetAPI.getContractById(contractId);
         
         if (apiResponse.success && apiResponse.data) {
@@ -181,35 +180,12 @@ export default function ViewContractDetailsScreen() {
             }
           }
         } else {
-          // Fallback only if dev mock flag is set
-          if (import.meta.env.VITE_USE_MOCK === 'true') {
-            const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-            if (!mockContract) {
-              setError('Contract details not found');
-              return;
-            }
-            setContract(mockContract);
-            setMilestones(mockContract.milestones || []);
-            generateAuditTrail(mockContract);
-          } else {
-            setError(apiResponse.message || 'Failed to retrieve contract details');
-          }
+          setError(apiResponse.message || 'Failed to retrieve contract details');
         }
       } catch (err) {
-        if (import.meta.env.VITE_USE_MOCK === 'true') {
-          const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-          if (mockContract) {
-            setContract(mockContract);
-            setMilestones(mockContract.milestones || []);
-            generateAuditTrail(mockContract);
-          } else {
-            setError('Mock contract details not found');
-          }
-        } else {
-          const errorMsg = err instanceof Error ? err.message : 'An error occurred';
-          setError(errorMsg);
-          console.error('Failed to load contract details:', err);
-        }
+        const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+        setError(errorMsg);
+        console.error('Failed to load contract details:', err);
       } finally {
         setLoading(false);
       }
@@ -599,7 +575,7 @@ export default function ViewContractDetailsScreen() {
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
-  const milestonesPaid = milestones.filter(m => m.status === MilestoneStatus.Paid).length;
+  const milestonesPaid = milestones.filter(m => m.status === MilestoneStatus.PaymentConfirmed).length;
 
   let currentStep = 1;
   if (contract.status === ContractStatus.PendingContractConfirmation) {
@@ -1248,7 +1224,7 @@ export default function ViewContractDetailsScreen() {
                               >
                                 <div className="flex items-center gap-3.5 min-width-0 flex-1">
                                   <div className="w-9 h-9 rounded-full bg-secondary/60 flex items-center justify-center shrink-0 border border-border/40 text-primary">
-                                    {milestone.status === MilestoneStatus.Paid ? (
+                                    {milestone.status === MilestoneStatus.PaymentConfirmed ? (
                                       <CheckCircle size={18} className="text-emerald-500" />
                                     ) : milestone.status === MilestoneStatus.Approved ? (
                                       <Clock size={18} className="text-primary" />
@@ -1268,7 +1244,7 @@ export default function ViewContractDetailsScreen() {
                                 <div className="flex items-center gap-4 shrink-0">
                                   <span className="text-sm font-bold text-foreground">{formatContractAmount(milestone.amount)}</span>
                                   <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${statusClass.replace('milestone-status ', '')} 
-                                    ${milestone.status === MilestoneStatus.Paid ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
+                                    ${milestone.status === MilestoneStatus.PaymentConfirmed ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
                                       milestone.status === MilestoneStatus.Approved ? 'bg-primary/10 text-primary border border-primary/20' :
                                       'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
                                     {getMilestoneStatusLabel(milestone.status)}
