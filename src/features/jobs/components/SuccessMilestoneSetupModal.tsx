@@ -4,9 +4,10 @@ interface SuccessMilestoneSetupModalProps {
   isOpen: boolean;
   onClose: () => void; // Setup sau / Close
   onSetup: () => void; // Setup milestone
+  onInvite?: () => void;
 }
 
-export function SuccessMilestoneSetupModal({ isOpen, onClose, onSetup }: SuccessMilestoneSetupModalProps) {
+export function SuccessMilestoneSetupModal({ isOpen, onClose, onSetup, onInvite }: SuccessMilestoneSetupModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -41,6 +42,16 @@ export function SuccessMilestoneSetupModal({ isOpen, onClose, onSetup }: Success
           >
             Setup sau
           </button>
+
+          {onInvite && (
+            <button
+              type="button"
+              onClick={onInvite}
+              className="flex-1 px-5 py-3 rounded-full font-semibold text-xs border border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/15 transition-all cursor-pointer"
+            >
+              Invite freelancers
+            </button>
+          )}
           
           <button
             type="button"

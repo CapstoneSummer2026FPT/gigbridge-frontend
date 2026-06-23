@@ -13,6 +13,7 @@ export * from './models/Category';
 
 // Jobs
 export * from './models/Job';
+export * from './jobInvitation';
 
 // Proposals
 export * from './models/Proposal';

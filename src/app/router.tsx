@@ -21,6 +21,7 @@ import MyJobsScreen from '../features/jobs/screens/MyJobsScreen';
 import ManageJobPostQuestionsScreen from '../features/jobs/screens/ManageJobPostQuestionsScreen';
 import EditJobPostScreen from '../features/jobs/screens/EditJobPostScreen';
 import SavedJobsScreen from '../features/jobs/screens/SavedJobsScreen';
+import JobInvitationsScreen from '../features/jobs/screens/JobInvitationsScreen';
 import FreelancerProfileScreen from '../features/profile/screens/FreelancerProfileScreen';
 import ClientProfileScreen from '../features/profile/screens/ClientProfileScreen';
 import EditClientProfileScreen from '../features/profile/screens/EditClientProfileScreen';
@@ -168,6 +169,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/post/contract/esign', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobEsignScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
+      { path: 'jobs/invitations', element: <ProtectedRoute requireAuth requireSetup><JobInvitationsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs', element: <ProtectedRoute requireAuth requireSetup><MyJobsScreen /></ProtectedRoute> },
       { path: 'jobs/my-jobs/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><JobDetailScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },

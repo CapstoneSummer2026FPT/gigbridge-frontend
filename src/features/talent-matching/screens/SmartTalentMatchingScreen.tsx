@@ -22,6 +22,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { savedFreelancerAPI } from '../../../api/savedFreelancerAPI';
+import { InviteFreelancerToJobModal } from '../../profile/components/InviteFreelancerToJobModal';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
 import type { SavedFreelancerDto } from '../../../types/savedFreelancer';
 import {
@@ -130,6 +131,7 @@ export default function SmartTalentMatchingScreen() {
   const [premiumEnabled, setPremiumEnabled] = useState(true);
   const [query, setQuery] = useState('');
   const [invitedIds, setInvitedIds] = useState<string[]>([]);
+  const [inviteTalentTarget, setInviteTalentTarget] = useState<ApiTalentMatch | null>(null);
   const [talents, setTalents] = useState<ApiTalentMatch[]>([]);
   const [savedFreelancerIds, setSavedFreelancerIds] = useState<Set<string>>(new Set());
   const [savingFreelancerIds, setSavingFreelancerIds] = useState<Set<string>>(new Set());
@@ -292,8 +294,18 @@ export default function SmartTalentMatchingScreen() {
     });
   }, [basePool, activeTab, savedFreelancerIds, query, jobTypes, hourlyRate, selectedSkills, minSuccessRate]);
 
-  const inviteTalent = (talentId: string) => {
-    setInvitedIds(prev => prev.includes(talentId) ? prev : [...prev, talentId]);
+  const inviteTalent = (talent: ApiTalentMatch) => {
+    if (!isClient) {
+      toast.error('Please log in as a client to invite freelancers.');
+      return;
+    }
+
+    if (!talent.freelancerProfileId) {
+      toast.error('This freelancer profile cannot be invited yet.');
+      return;
+    }
+
+    setInviteTalentTarget(talent);
   };
 
   const toggleFavorite = async (talent: ApiTalentMatch) => {
@@ -780,7 +792,7 @@ export default function SmartTalentMatchingScreen() {
                           <Heart size={18} className={isFavorite ? 'fill-current' : ''} />
                         </button>
                         <button
-                          onClick={() => inviteTalent(talent.id)}
+                          onClick={() => inviteTalent(talent)}
                           className={`px-5 py-2 rounded-full text-xs font-bold transition-all hover:scale-[1.02] ${invited
                               ? 'bg-green-100 black:bg-green-950/30 text-green-700 black:text-green-300 border border-green-200 black:border-green-800'
                               : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md'
@@ -958,6 +970,18 @@ export default function SmartTalentMatchingScreen() {
           </aside>
 
         </div>
+
+        {inviteTalentTarget && (
+          <InviteFreelancerToJobModal
+            freelancerName={inviteTalentTarget.fullName}
+            freelancerId={inviteTalentTarget.freelancerProfileId}
+            onClose={() => setInviteTalentTarget(null)}
+            onInvited={() => {
+              setInvitedIds(prev => prev.includes(inviteTalentTarget.id) ? prev : [...prev, inviteTalentTarget.id]);
+              toast.success('Invitation sent.');
+            }}
+          />
+        )}
       </>
     </AppLayout>
   );

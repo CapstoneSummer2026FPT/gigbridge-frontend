@@ -113,6 +113,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
       children: [
         { label: t('nav.browseJobs'), icon: <Search size={18} />, path: '/jobs/browse' },
         { label: 'Saved Jobs', icon: <Bookmark size={18} />, path: '/jobs/saved' },
+        { label: 'Job Invitations', icon: <Bell size={18} />, path: '/jobs/invitations' },
       ],
     },
     {
