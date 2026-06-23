@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 import {
   AlertTriangle,
   Award,
@@ -19,9 +20,12 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
+import { profileGetAPI } from '../../../api/profileAPI/GET';
+import { savedFreelancerAPI } from '../../../api/savedFreelancerAPI';
+import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
+import type { SavedFreelancerDto } from '../../../types/savedFreelancer';
 import {
   MOCK_MATCHING_JOBS,
-  MOCK_TALENT_POOL,
   rankTalentForJob,
   type RankedTalentMatch,
 } from '../mock/data-for-SmartTalentMatchingScreen';
@@ -57,6 +61,63 @@ const getTalentAvatar = (id: string, defaultUrl: string) => {
 
 const FILTER_SKILL_TAGS = ['UX Design', 'React', 'Node.js', 'Figma', 'Three.js', 'TypeScript', 'Flutter'];
 
+type ApiTalentMatch = RankedTalentMatch & {
+  freelancerProfileId: string;
+  userId: string;
+  rating: number;
+  eloPoints: number;
+  profileCompletionScore?: number;
+};
+
+const getFreelancerProfileId = (freelancer: FreelancerProfileDetailDto): string =>
+  freelancer.freelancerProfilesId ?? freelancer.freelancerProfileId ?? '';
+
+const getSavedFreelancerProfileId = (freelancer: SavedFreelancerDto): string =>
+  freelancer.freelancerProfileId ?? freelancer.freelancerProfilesId ?? '';
+
+const formatAvailability = (availability?: number | null): string => {
+  if (availability === 0) return 'Available full-time';
+  if (availability === 1) return 'Available part-time';
+  if (availability === 2) return 'Not currently available';
+  return 'Availability not specified';
+};
+
+const mapFreelancerProfileToTalent = (freelancer: FreelancerProfileDetailDto): ApiTalentMatch => {
+  const skills = freelancer.skills?.map(skill => skill.skillName).filter(Boolean) || [];
+  const firstSkill = skills[0] || 'General';
+  const rating = freelancer.rating ?? 0;
+  const completedMilestones = freelancer.workExperiences?.length || 0;
+
+  return {
+    id: getFreelancerProfileId(freelancer),
+    freelancerProfileId: getFreelancerProfileId(freelancer),
+    userId: freelancer.userId,
+    fullName: freelancer.userFullName || 'Freelancer',
+    title: freelancer.title || 'Freelancer',
+    location: freelancer.location || 'Remote',
+    avatarUrl: freelancer.userAvatar || `https://i.pravatar.cc/120?u=${freelancer.userId}`,
+    projectBudget: 5000,
+    category: firstSkill,
+    industryExperience: freelancer.workExperiences?.map(exp => exp.companyName).filter(Boolean) || [],
+    skills,
+    completedMilestones,
+    anonymousRating: rating || 4.5,
+    responseTime: 'Responds soon',
+    availability: formatAvailability(freelancer.availability),
+    recentWork: freelancer.bio || 'No profile bio has been added yet.',
+    matchScore: Math.min(99, Math.max(50, Math.round((freelancer.eloPoints ?? 100) / 10))),
+    skillScore: Math.min(48, skills.length * 8),
+    budgetScore: 10,
+    categoryScore: 15,
+    advancedScore: Math.min(12, Math.round(rating * 2)),
+    matchedSkills: [],
+    matchReasons: ['Backend freelancer profile'],
+    rating,
+    eloPoints: freelancer.eloPoints ?? 100,
+    profileCompletionScore: freelancer.profileCompletionScore,
+  };
+};
+
 export default function SmartTalentMatchingScreen() {
   const navigate = useNavigate();
   const { role } = useApp();
@@ -69,7 +130,11 @@ export default function SmartTalentMatchingScreen() {
   const [premiumEnabled, setPremiumEnabled] = useState(true);
   const [query, setQuery] = useState('');
   const [invitedIds, setInvitedIds] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [talents, setTalents] = useState<ApiTalentMatch[]>([]);
+  const [savedFreelancerIds, setSavedFreelancerIds] = useState<Set<string>>(new Set());
+  const [savingFreelancerIds, setSavingFreelancerIds] = useState<Set<string>>(new Set());
+  const [loadingTalents, setLoadingTalents] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'matches' | 'saved'>(initialTab);
   const [isCompact, setIsCompact] = useState(true);
   const [perPage, setPerPage] = useState(20);
@@ -97,22 +162,65 @@ export default function SmartTalentMatchingScreen() {
 
   const selectedJob = MOCK_MATCHING_JOBS.find(job => job.id === selectedJobId);
   const isClient = role === 0 || role === null;
+  const canSaveFreelancers = role === 0;
   const isPremiumClient = isClient && premiumEnabled;
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTalents = async () => {
+      try {
+        setLoadingTalents(true);
+        setLoadError(null);
+
+        const freelancersResponse = await profileGetAPI.getAllFreelancers();
+        const savedFreelancers = canSaveFreelancers
+          ? await savedFreelancerAPI.getMySavedFreelancers()
+          : [];
+
+        if (!isMounted) return;
+
+        if (!freelancersResponse.success) {
+          throw new Error(freelancersResponse.message || 'Unable to load freelancer profiles.');
+        }
+
+        setTalents((freelancersResponse.data || [])
+          .map(mapFreelancerProfileToTalent)
+          .filter(talent => talent.freelancerProfileId));
+        setSavedFreelancerIds(new Set(savedFreelancers.map(getSavedFreelancerProfileId).filter(Boolean)));
+      } catch (error) {
+        if (!isMounted) return;
+        const message = error instanceof Error ? error.message : 'Unable to load freelancer profiles.';
+        console.error('Failed to load talent matching data:', error);
+        setLoadError(message);
+        setTalents([]);
+        setSavedFreelancerIds(new Set());
+      } finally {
+        if (isMounted) setLoadingTalents(false);
+      }
+    };
+
+    fetchTalents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [canSaveFreelancers]);
+
   // Base list of candidates ranked for the job context
-  const rankedMatches = useMemo<RankedTalentMatch[]>(() => {
+  const rankedMatches = useMemo<ApiTalentMatch[]>(() => {
     if (!selectedJob) return [];
-    return rankTalentForJob(selectedJob, MOCK_TALENT_POOL);
-  }, [selectedJob]);
+    return rankTalentForJob(selectedJob, talents) as ApiTalentMatch[];
+  }, [selectedJob, talents]);
 
   // Combine full pool and matching pool, adding dummy scores if needed
-  const basePool = useMemo<RankedTalentMatch[]>(() => {
+  const basePool = useMemo<ApiTalentMatch[]>(() => {
     if (activeTab === 'matches') {
       return isPremiumClient ? rankedMatches : [];
     }
 
     // Map full pool to match layout structures
-    return MOCK_TALENT_POOL.map(talent => {
+    return talents.map(talent => {
       const matchInRanked = rankedMatches.find(r => r.id === talent.id);
       if (matchInRanked) return matchInRanked;
       return {
@@ -126,15 +234,15 @@ export default function SmartTalentMatchingScreen() {
         matchReasons: ['Generic fit context'],
       };
     });
-  }, [activeTab, rankedMatches, isPremiumClient]);
+  }, [activeTab, rankedMatches, isPremiumClient, talents]);
 
   // Apply visual filtering controls
-  const filteredTalents = useMemo<RankedTalentMatch[]>(() => {
+  const filteredTalents = useMemo<ApiTalentMatch[]>(() => {
     return basePool.filter(talent => {
       const meta = getTalentMetadata(talent.id);
 
       // Tab filter
-      if (activeTab === 'saved' && !favorites.includes(talent.id)) {
+      if (activeTab === 'saved' && !savedFreelancerIds.has(talent.freelancerProfileId)) {
         return false;
       }
 
@@ -182,16 +290,50 @@ export default function SmartTalentMatchingScreen() {
 
       return true;
     });
-  }, [basePool, activeTab, favorites, query, jobTypes, hourlyRate, selectedSkills, minSuccessRate]);
+  }, [basePool, activeTab, savedFreelancerIds, query, jobTypes, hourlyRate, selectedSkills, minSuccessRate]);
 
   const inviteTalent = (talentId: string) => {
     setInvitedIds(prev => prev.includes(talentId) ? prev : [...prev, talentId]);
   };
 
-  const toggleFavorite = (talentId: string) => {
-    setFavorites(prev =>
-      prev.includes(talentId) ? prev.filter(id => id !== talentId) : [...prev, talentId]
-    );
+  const toggleFavorite = async (talent: ApiTalentMatch) => {
+    const freelancerProfileId = talent.freelancerProfileId;
+    if (!freelancerProfileId) {
+      toast.error('This freelancer profile cannot be saved yet.');
+      return;
+    }
+
+    if (!canSaveFreelancers) {
+      toast.error('Please log in as a client to save freelancers.');
+      return;
+    }
+
+    setSavingFreelancerIds(prev => new Set(prev).add(freelancerProfileId));
+
+    try {
+      if (savedFreelancerIds.has(freelancerProfileId)) {
+        await savedFreelancerAPI.unsaveFreelancer(freelancerProfileId);
+        setSavedFreelancerIds(prev => {
+          const next = new Set(prev);
+          next.delete(freelancerProfileId);
+          return next;
+        });
+        toast.success('Freelancer removed from saved talent.');
+      } else {
+        await savedFreelancerAPI.saveFreelancer(freelancerProfileId);
+        setSavedFreelancerIds(prev => new Set(prev).add(freelancerProfileId));
+        toast.success('Freelancer saved.');
+      }
+    } catch (error) {
+      console.error('Failed to update saved freelancer:', error);
+      toast.error(error instanceof Error ? error.message : 'Saved freelancer status could not be updated.');
+    } finally {
+      setSavingFreelancerIds(prev => {
+        const next = new Set(prev);
+        next.delete(freelancerProfileId);
+        return next;
+      });
+    }
   };
 
   const toggleSkillFilter = (skill: string) => {
@@ -279,7 +421,7 @@ export default function SmartTalentMatchingScreen() {
                     : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
                   }`}
               >
-                Saved Talent ({favorites.length})
+                Saved Talent ({savedFreelancerIds.size})
               </button>
             </div>
           </div>
@@ -542,8 +684,22 @@ export default function SmartTalentMatchingScreen() {
               </div>
             )}
 
+            {loadingTalents && (
+              <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
+                <p className="text-primary font-semibold mb-2">Loading freelancer profiles...</p>
+                <p className="text-sm text-muted-foreground">Finding available talent from your backend data.</p>
+              </div>
+            )}
+
+            {!loadingTalents && loadError && (
+              <div className="bg-red-50 black:bg-red-950/20 text-red-700 black:text-red-300 border border-red-200 black:border-red-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
+                <AlertTriangle size={18} className="shrink-0" />
+                <span>{loadError}</span>
+              </div>
+            )}
+
             {/* Empty state */}
-            {filteredTalents.length === 0 && (
+            {!loadingTalents && !loadError && filteredTalents.length === 0 && (
               <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
                 <AlertTriangle size={36} className="text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-foreground mb-2">
@@ -562,9 +718,10 @@ export default function SmartTalentMatchingScreen() {
             )}
 
             {/* Talent cards rendering */}
-            {filteredTalents.slice(0, perPage).map((talent, index) => {
+            {!loadingTalents && !loadError && filteredTalents.slice(0, perPage).map((talent, index) => {
               const invited = invitedIds.includes(talent.id);
-              const isFavorite = favorites.includes(talent.id);
+              const isFavorite = savedFreelancerIds.has(talent.freelancerProfileId);
+              const isSaving = savingFreelancerIds.has(talent.freelancerProfileId);
               const meta = getTalentMetadata(talent.id);
               const avatar = getTalentAvatar(talent.id, talent.avatarUrl);
               const score = talent.matchScore || 85;
@@ -613,11 +770,12 @@ export default function SmartTalentMatchingScreen() {
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button
-                          onClick={() => toggleFavorite(talent.id)}
+                          onClick={() => toggleFavorite(talent)}
+                          disabled={isSaving}
                           className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${isFavorite
                               ? 'bg-red-50 black:bg-red-950/20 border-red-200 black:border-red-800 text-red-500'
                               : 'border-gray-200 black:border-gray-800 text-gray-500 black:text-gray-400 hover:bg-gray-100 black:hover:bg-gray-800'
-                            }`}
+                            } ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}`}
                         >
                           <Heart size={18} className={isFavorite ? 'fill-current' : ''} />
                         </button>
@@ -678,7 +836,7 @@ export default function SmartTalentMatchingScreen() {
             })}
 
             {/* Load more button */}
-            {filteredTalents.length > perPage && (
+            {!loadingTalents && !loadError && filteredTalents.length > perPage && (
               <button
                 onClick={() => setPerPage(prev => prev + 10)}
                 className="w-full py-4 border-2 border-dashed border-gray-300 black:border-gray-800 rounded-3xl text-gray-600 black:text-gray-400 font-bold hover:bg-gray-100 black:hover:bg-gray-900/40 hover:border-blue-500/40 transition-all flex items-center justify-center gap-2 group"

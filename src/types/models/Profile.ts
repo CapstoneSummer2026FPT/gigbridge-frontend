@@ -59,7 +59,8 @@ export interface WorkExperienceDto {
 }
 
 export interface FreelancerProfileDto {
-  freelancerProfileId: string;
+  freelancerProfileId?: string;
+  freelancerProfilesId?: string;
   userId: string;
   title?: string;
   bio?: string;

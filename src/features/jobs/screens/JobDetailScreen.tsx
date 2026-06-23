@@ -24,6 +24,7 @@ export default function JobDetailScreen() {
     loading,
     proposalLoading,
     isApplying,
+    isSavingSavedJob,
     proposalMessage,
     applicationCost,
     canApplyWithGigcoins,
@@ -104,9 +105,15 @@ export default function JobDetailScreen() {
               </div>
               {!isClientMode && (
                 <div className="flex gap-1.5 shrink-0">
-                  <button className="w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted" onClick={toggleSavedJob}>
+                  {role === UserRole.Freelancer && (
+                  <button
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted ${isSavingSavedJob ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    onClick={toggleSavedJob}
+                    disabled={isSavingSavedJob}
+                  >
                     <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
                   </button>
+                  )}
                   <button className="w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted">
                     <Share2 size={14} />
                   </button>

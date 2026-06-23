@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
+import { toast } from 'sonner';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
+import { savedJobAPI } from '../../../api/savedJobAPI';
 import { userGetAPI } from '../../../api/userAPI/GET';
 import type { Job } from '../../../types/models/Job';
 import type { User } from '../../../types/models/User';
@@ -79,12 +81,13 @@ export function useJobDetail() {
   const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
   const [myProposal, setMyProposal] = useState<ProposalDetailDto | null>(null);
   const [gigcoinBalance, setGigcoinBalance] = useState<number | null>(null);
-  const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
 
   // ── Loading / UI state ────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [proposalLoading, setProposalLoading] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
+  const [isSavingSavedJob, setIsSavingSavedJob] = useState(false);
   const [proposalMessage, setProposalMessage] = useState('');
 
   // ── Fetch job + similar jobs ──────────────────────────────────
@@ -159,30 +162,64 @@ export function useJobDetail() {
     }
   }, [role, user]);
 
-  // ── Load saved jobs from localStorage ────────────────────────
+  // ── Load saved job state ────────────────────────
   useEffect(() => {
-    const stored = window.localStorage.getItem('gb_saved_jobs');
-    setSavedJobs(stored ? JSON.parse(stored) : []);
-  }, []);
+    let isMounted = true;
+
+    const fetchSavedState = async () => {
+      if (!activeJobPostId || isClientMode || role !== UserRole.Freelancer || !user) {
+        setIsSaved(false);
+        return;
+      }
+
+      try {
+        const saved = await savedJobAPI.checkSavedJob(activeJobPostId);
+        if (isMounted) setIsSaved(saved);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Failed to load saved job state:', error);
+        setIsSaved(false);
+        toast.error(error instanceof Error ? error.message : 'Saved job state could not be loaded.');
+      }
+    };
+
+    fetchSavedState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeJobPostId, isClientMode, role, user]);
 
   useEffect(() => { fetchJob(); }, [fetchJob]);
   useEffect(() => { fetchMyProposal(); }, [fetchMyProposal]);
   useEffect(() => { fetchGigcoinBalance(); }, [fetchGigcoinBalance]);
 
   // ── Actions ───────────────────────────────────────────────────
-  const toggleSavedJob = () => {
+  const toggleSavedJob = async () => {
     if (!job) return;
     if (!user || role !== UserRole.Freelancer) {
-      alert('Please log in as a freelancer to save jobs.');
+      toast.error('Please log in as a freelancer to save jobs.');
       return;
     }
-    setSavedJobs(prev => {
-      const next = prev.includes(job.id)
-        ? prev.filter(s => s !== job.id)
-        : [...prev, job.id];
-      window.localStorage.setItem('gb_saved_jobs', JSON.stringify(next));
-      return next;
-    });
+
+    setIsSavingSavedJob(true);
+
+    try {
+      if (isSaved) {
+        await savedJobAPI.unsaveJob(job.id);
+        setIsSaved(false);
+        toast.success('Job removed from saved jobs.');
+      } else {
+        await savedJobAPI.saveJob(job.id);
+        setIsSaved(true);
+        toast.success('Job saved.');
+      }
+    } catch (error) {
+      console.error('Failed to update saved job:', error);
+      toast.error(error instanceof Error ? error.message : 'Saved job status could not be updated.');
+    } finally {
+      setIsSavingSavedJob(false);
+    }
   };
 
   const handleApplyJob = async () => {
@@ -226,8 +263,6 @@ export function useJobDetail() {
   const applicationCost = job?.gigcoin_cost ?? 0;
   const canApplyWithGigcoins =
     applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost);
-  const isSaved = job ? savedJobs.includes(job.id) : false;
-
   const formatStatus = (status: Job['status']) =>
     status.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
@@ -246,13 +281,13 @@ export function useJobDetail() {
     similarJobs,
     myProposal,
     gigcoinBalance,
-    savedJobs,
     isSaved,
 
     // Loading
     loading,
     proposalLoading,
     isApplying,
+    isSavingSavedJob,
     proposalMessage,
 
     // Derived
