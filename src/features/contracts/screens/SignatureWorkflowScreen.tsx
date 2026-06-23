@@ -262,6 +262,12 @@ export default function SignatureWorkflowScreen() {
         return;
       }
 
+      if (!isClient && finalStatus === ContractStatus.PendingSignature) {
+        setSuccess('Your signature has been recorded. Review the milestones next.');
+        window.setTimeout(() => navigate(`/contracts/${contract.contractsId}?mode=milestone-review`), 900);
+        return;
+      }
+
       setSuccess('Your signature has been recorded. Waiting for the other party to sign.');
     } catch (err) {
       console.error('Failed to submit signature:', err);

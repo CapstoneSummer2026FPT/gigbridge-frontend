@@ -376,12 +376,55 @@ export default function ViewContractDetailsScreen() {
     }
   };
 
+  const handleAcceptMilestones = async () => {
+    if (!contractId) return;
+
+    setActionLoading(true);
+    try {
+      const res = await contractPostAPI.acceptMilestones(contractId);
+      if (res.success) {
+        alert('Milestones accepted. Waiting for the client to fund escrow.');
+        window.location.reload();
+      } else {
+        alert(res.message || 'Failed to accept milestones.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred while accepting milestones.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRequestMilestoneChange = async () => {
+    if (!contractId) return;
+
+    const reason = prompt('Please enter the milestone changes you want to request:');
+    if (!reason || !reason.trim()) return;
+
+    setActionLoading(true);
+    try {
+      const res = await contractPostAPI.requestMilestoneChange(contractId, reason.trim());
+      if (res.success) {
+        alert('Milestone change request sent to client.');
+        navigate('/messages');
+      } else {
+        alert(res.message || 'Failed to request milestone changes.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred while requesting milestone changes.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleFundEscrow = async () => {
     setActionLoading(true);
     try {
       const res = await contractPostAPI.fundEscrow(contractId!);
       if (res.success) {
-        alert('Escrow funded successfully! Contract is now ready for signing.');
+        alert('Escrow funded successfully! Workspace is now open.');
         window.location.reload();
       } else {
         alert(res.message || 'Failed to fund escrow.');
@@ -1005,7 +1048,7 @@ export default function ViewContractDetailsScreen() {
                     <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
                       <Clock size={20} className="shrink-0 animate-pulse" />
                       <div className="text-sm font-semibold">
-                        Waiting for the client to fund the secure contract escrow deposit (80% of budget).
+                        Waiting for the client to fund the secure contract escrow deposit (100% of budget).
                       </div>
                     </div>
                   )}
@@ -1022,7 +1065,7 @@ export default function ViewContractDetailsScreen() {
                     </div>
                     <h2 className="text-2xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">E-Sign Contract Document</h2>
                     <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                      Escrow funding is secured. Both client and freelancer must digitally sign the contract to activate the workroom.
+                      Both client and freelancer must digitally sign the contract. Freelancer reviews the milestones after signing, then the client funds escrow.
                     </p>
 
                     <button
@@ -1033,6 +1076,35 @@ export default function ViewContractDetailsScreen() {
                       Proceed to E-sign Contract
                     </button>
                   </div>
+                  {userRole === 'freelancer' && (
+                    <div className="glass-card p-8 md:p-10 space-y-5">
+                      <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
+                        <ListChecks size={20} className="text-primary" />
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Milestone Review</h2>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Review the client-created milestones below. Accept them only after both parties have signed; otherwise request changes and return to negotiation chat.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                          disabled={actionLoading}
+                          onClick={handleAcceptMilestones}
+                          className="btn-primary-custom px-6 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <CheckCircle size={17} />
+                          Accept Milestones
+                        </button>
+                        <button
+                          disabled={actionLoading}
+                          onClick={handleRequestMilestoneChange}
+                          className="px-6 py-3 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-sm font-bold text-foreground transition-all cursor-pointer inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <AlertCircle size={17} />
+                          Request Changes
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {contract.esignContractPdfUrl && (
                     <section className="glass-card p-8 md:p-10 relative overflow-hidden">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4 mb-5">

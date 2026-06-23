@@ -93,6 +93,20 @@ export const contractPostAPI = {
   },
 
   /**
+   * POST /api/contracts/{contractId}/milestones/accept
+   */
+  acceptMilestones: async (contractId: string): Promise<ApiResponse<any>> => {
+    return apiService.post<any>(`contracts/${contractId}/milestones/accept`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/milestones/request-change
+   */
+  requestMilestoneChange: async (contractId: string, reason: string): Promise<ApiResponse<any>> => {
+    return apiService.post<any>(`contracts/${contractId}/milestones/request-change`, { reason });
+  },
+
+  /**
    * POST /api/contracts/{contractId}/escrow/fund
    */
   fundEscrow: async (contractId: string): Promise<ApiResponse<any>> => {

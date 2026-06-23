@@ -668,6 +668,7 @@ export function useMessages() {
     hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
     hubConnection.on('ContractFullySigned', handleContractWorkflowUpdate);
+    hubConnection.on('ContractMilestonesAccepted', handleContractWorkflowUpdate);
     hubConnection.on('WorkspaceOpened', handleContractWorkflowUpdate);
 
     return () => {
@@ -680,6 +681,7 @@ export function useMessages() {
       hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
       hubConnection.off('ContractFullySigned', handleContractWorkflowUpdate);
+      hubConnection.off('ContractMilestonesAccepted', handleContractWorkflowUpdate);
       hubConnection.off('WorkspaceOpened', handleContractWorkflowUpdate);
     };
   }, [hubConnection, activeConvId, activeConv?.contractId, loadConversations, user]);
@@ -880,13 +882,38 @@ export function useMessages() {
         throw new Error(res.message || 'Failed to accept deal.');
       }
 
+      const responseMessage = res.data?.message ?? res.message ?? null;
+      const acceptedContractId = res.data?.contractId ?? activeConv?.contractId ?? null;
       setConversationsState(prev =>
-        prev.map(c => (c.id === activeConvId ? { ...c, dealStatus: 'agreed' } : c))
+        prev.map(c =>
+          c.id === activeConvId
+            ? { ...c, contractId: acceptedContractId ?? c.contractId, dealStatus: 'agreed' }
+            : c
+        )
       );
       setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'agreed' }));
       loadConversations();
+
+      if (!isClient) {
+        if (acceptedContractId) {
+          navigate(`/contracts/${acceptedContractId}/sign`);
+          return;
+        }
+
+        if (activeConv?.proposalId) {
+          const contractRes = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+          if (contractRes.success && contractRes.data?.contractsId) {
+            navigate(`/contracts/${contractRes.data.contractsId}/sign`);
+            return;
+          }
+        }
+
+        setAnchorNotice(responseMessage || 'Final budget accepted. Contract is being prepared for signing.');
+      }
     } catch (err) {
       console.error('Failed to accept deal:', err);
+      const message = err instanceof Error ? err.message : 'Failed to accept deal.';
+      setAnchorNotice(message);
     }
   };
 
