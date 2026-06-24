@@ -35,7 +35,6 @@ type PostJobFormState = {
   budgetMax: string;
   currency: string;
   estimatedDuration: string;
-  maxHires: string;
   location: string;
   visibility: string;
   deadline: string;
@@ -104,7 +103,6 @@ const formFromJobDetail = (job: GetMyJobPostDetailDto): PostJobFormState => ({
   budgetMax: job.budgetMax !== undefined && job.budgetMax !== null ? String(job.budgetMax) : '',
   currency: job.currency || 'USD',
   estimatedDuration: job.estimatedDuration || '',
-  maxHires: job.maxHires !== undefined && job.maxHires !== null ? String(job.maxHires) : '',
   location: job.location || '',
   visibility: String(job.visibility ?? JobPostVisibility.Public),
   deadline: job.endDate?.split?.('T')?.[0] || '',
@@ -123,7 +121,6 @@ const initialFormFromState = (initialJobData: any): PostJobFormState => ({
   budgetMax: initialJobData?.budgetMax !== undefined && initialJobData?.budgetMax !== null ? String(initialJobData.budgetMax) : '',
   currency: initialJobData?.currency || 'USD',
   estimatedDuration: initialJobData?.estimatedDuration || '',
-  maxHires: initialJobData?.maxHires !== undefined && initialJobData?.maxHires !== null ? String(initialJobData.maxHires) : '',
   location: initialJobData?.location || '',
   visibility: String(initialJobData?.visibility ?? JobPostVisibility.Public),
   deadline: initialJobData?.deadline || initialJobData?.endDate?.split?.('T')?.[0] || '',
@@ -181,7 +178,6 @@ export function usePostJob() {
       Boolean(form.budgetMax) ||
       Boolean(form.currency.trim() && form.currency.trim().toUpperCase() !== 'USD') ||
       Boolean(form.estimatedDuration.trim()) ||
-      Boolean(form.maxHires) ||
       Boolean(form.location.trim()) ||
       Boolean(form.deadline) ||
       (!Number.isNaN(visibility) && visibility !== JobPostVisibility.Public) ||
@@ -583,7 +579,6 @@ export function usePostJob() {
         description: generatedData.description || prev.description,
         currency: prev.currency || 'USD',
         estimatedDuration: prev.estimatedDuration || '2-4 weeks',
-        maxHires: prev.maxHires || '1',
         location: prev.location || 'Remote',
         visibility: String(JobPostVisibility.Public),
         deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -613,8 +608,6 @@ export function usePostJob() {
     if (budgetMax !== null && (Number.isNaN(budgetMax) || budgetMax < 0)) return 'Budget max must be greater than or equal to 0.';
     if (budgetMin !== null && budgetMax !== null && budgetMax < budgetMin) return 'Budget max must be greater than or equal to budget min.';
 
-    const maxHires = form.maxHires ? Number(form.maxHires) : null;
-    if (maxHires !== null && (!Number.isInteger(maxHires) || maxHires <= 0)) return 'Max hires must be a positive whole number.';
 
     if (form.deadline) {
       const endDate = new Date(`${form.deadline}T23:59:59`);
@@ -636,7 +629,6 @@ export function usePostJob() {
   const buildDraftRequest = (): SaveDraftJobPostRequest => {
     const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
     const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
-    const maxHires = form.maxHires ? Number(form.maxHires) : null;
 
     return {
       title: form.title.trim() || null,
@@ -646,7 +638,6 @@ export function usePostJob() {
       budgetMax: Number.isNaN(budgetMax) ? null : budgetMax,
       currency: form.currency.trim() || 'USD',
       estimatedDuration: form.estimatedDuration.trim() || null,
-      maxHires: Number.isNaN(maxHires) ? null : maxHires,
       location: form.location.trim() || null,
       visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,
       endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,

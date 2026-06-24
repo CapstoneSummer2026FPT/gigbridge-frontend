@@ -48,6 +48,12 @@ export default function ManageMilestonesScreen() {
   });
   const [expandedMilestoneId, setExpandedMilestoneId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const canEditMilestones = contract
+    ? contract.status === ContractStatus.PendingFreelancerSelection ||
+      contract.status === ContractStatus.InNegotiation ||
+      contract.status === ContractStatus.PendingContractDetails
+    : false;
+  const shouldEnforceBudgetTotal = mode === 'contract-edit';
 
   // Load contract and milestones
   const loadData = async () => {
@@ -111,12 +117,14 @@ export default function ManageMilestonesScreen() {
       return 'Milestone amount must be greater than 0';
     }
 
-    const budgetUsedByOtherMilestones = milestones
-      .filter(m => m.id !== editingId)
-      .reduce((sum, m) => sum + (m.amount || 0), 0);
-    const maxAllowed = (contract?.totalBudget || 0) - budgetUsedByOtherMilestones;
-    if (data.amount > maxAllowed) {
-      return `Milestone amount exceeds remaining budget of ${formatContractAmount(maxAllowed)}`;
+    if (shouldEnforceBudgetTotal) {
+      const budgetUsedByOtherMilestones = milestones
+        .filter(m => m.id !== editingId)
+        .reduce((sum, m) => sum + (m.amount || 0), 0);
+      const maxAllowed = (contract?.totalBudget || 0) - budgetUsedByOtherMilestones;
+      if (data.amount > maxAllowed) {
+        return `Milestone amount exceeds remaining budget of ${formatContractAmount(maxAllowed)}`;
+      }
     }
 
     if (!data.due_date) {
@@ -133,6 +141,11 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleCreateClick = () => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     setEditingId(null);
     setFormData({
       title: '',
@@ -144,6 +157,11 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleEditClick = (milestone: Milestone) => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     setEditingId(milestone.id);
     setFormData({
       title: milestone.title,
@@ -167,6 +185,12 @@ export default function ManageMilestonesScreen() {
 
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canEditMilestones) {
+      setError('Milestones are locked for this contract stage.');
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
 
     const validationError = validateForm(formData);
     if (validationError) {
@@ -206,6 +230,11 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleDeleteMilestone = (milestoneId: string) => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     if (!window.confirm('Are you sure you want to delete this milestone locally?')) {
       return;
     }
@@ -217,6 +246,11 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleSaveDraft = async () => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError(null);
@@ -251,12 +285,6 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleCompleteSetup = async () => {
-    const remaining = calculateRemainingBudget();
-    if (remaining !== 0) {
-      setError('Allocated milestones sum must exactly match the total contract budget.');
-      toast.error('Allocated milestones sum must exactly match the total contract budget.');
-      return;
-    }
     if (milestones.length === 0) {
       setError('At least one milestone is required.');
       toast.error('At least one milestone is required.');
@@ -600,7 +628,7 @@ export default function ManageMilestonesScreen() {
                   <button
                     onClick={handleCreateClick}
                     className="btn-primary-custom px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
-                    disabled={showCreateForm}
+                    disabled={showCreateForm || !canEditMilestones}
                   >
                     <Plus size={13} />
                     New Milestone
@@ -777,7 +805,7 @@ export default function ManageMilestonesScreen() {
                                       type="button"
                                       onClick={() => handleEditClick(milestone)}
                                       className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-lg font-bold flex items-center gap-1 cursor-pointer"
-                                      disabled={!canEditMilestone(milestone.status)}
+                                      disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
                                     >
                                       <Edit size={11} />
                                       Edit
@@ -786,7 +814,7 @@ export default function ManageMilestonesScreen() {
                                       type="button"
                                       onClick={() => handleDeleteMilestone(milestone.id)}
                                       className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 rounded-lg font-bold flex items-center gap-1 cursor-pointer"
-                                      disabled={!canEditMilestone(milestone.status)}
+                                      disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
                                     >
                                       <Trash2 size={11} />
                                       Delete
@@ -868,7 +896,7 @@ export default function ManageMilestonesScreen() {
               <div className="glass-card p-5 flex flex-col gap-2 text-left">
                 <button
                   onClick={handleSaveDraft}
-                  disabled={isSubmitting || milestones.length === 0}
+                  disabled={isSubmitting || milestones.length === 0 || !canEditMilestones}
                   className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <Save size={13} />
@@ -878,11 +906,11 @@ export default function ManageMilestonesScreen() {
                 {mode === 'jobpost-setup' && (
                   <button
                     onClick={handleCompleteSetup}
-                    disabled={isSubmitting || milestones.length === 0 || remainingBudget !== 0}
+                    disabled={isSubmitting || milestones.length === 0 || !canEditMilestones}
                     className="w-full py-2.5 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white border-none rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <CheckCircle2 size={13} />
-                    Complete Setup & Publish
+                    Complete Draft Setup & Publish
                   </button>
                 )}
 

@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router';
 import {
   Briefcase, Search, Plus, Eye, Users, Calendar,
   CheckCircle, Ban, XCircle, LayoutGrid, AlignJustify, FileText,
-  HelpCircle, Send, Lock, Globe, UserRoundCheck,
+  HelpCircle, Send, Lock, Globe, UserRoundCheck, Sparkles, AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
+import { ContractStatus } from '../../../types/models/Contract';
 import {
   JobPostStatus,
   JobPostVisibility,
@@ -77,6 +80,11 @@ const formatBudget = (job: GetMyJobPostDto) => {
   return 'Not set';
 };
 
+const canEditDraftMilestones = (status?: number | null): boolean =>
+  status === ContractStatus.PendingFreelancerSelection ||
+  status === ContractStatus.InNegotiation ||
+  status === ContractStatus.PendingContractDetails;
+
 export default function MyJobsScreen() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
@@ -86,6 +94,32 @@ export default function MyJobsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  const [inviteJobId, setInviteJobId] = useState<string | null>(null);
+  const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
+
+  const handleSetupMilestone = async (jobPostId: string): Promise<void> => {
+    setPendingJobId(jobPostId);
+    try {
+      const response = await contractGetAPI.getContractByJobPost(jobPostId);
+      if (response.success && response.data) {
+        if (!canEditDraftMilestones(response.data.status)) {
+          toast.info('Milestones are locked for this contract stage.');
+          navigate(`/contracts/${response.data.contractsId}`);
+          return;
+        }
+
+        navigate(`/contracts/${response.data.contractsId}/milestones?mode=jobpost-setup`);
+      } else {
+        toast.info('Directing to E-sign signature first...');
+        navigate('/jobs/post/esign', { state: { jobPostId } });
+      }
+    } catch (err: unknown) {
+      toast.error('Unable to fetch contract details.');
+      navigate('/jobs/post/esign', { state: { jobPostId } });
+    } finally {
+      setPendingJobId(null);
+    }
+  };
 
   const loadJobs = async () => {
     setIsLoading(true);
@@ -336,6 +370,14 @@ export default function MyJobsScreen() {
                         {!isCompact && (
                           <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.description}</p>
                         )}
+                        {job.status === JobPostStatus.Draft && (
+                          <div className="mj-draft-warning" style={{ marginBottom: 12 }}>
+                            <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                            <span>
+                              <strong>Chưa hoàn tất thiết lập:</strong> Vui lòng thiết lập milestone để đăng tuyển.
+                            </span>
+                          </div>
+                        )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {job.majorName && <span className="mj-skill-tag">{job.majorName}</span>}
                           {job.categoryName && <span className="mj-skill-tag">{job.categoryName}</span>}
@@ -391,6 +433,36 @@ export default function MyJobsScreen() {
                       <button onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)} className="mj-action-btn mj-btn-cyan">
                         <HelpCircle size={14} /> Manage Questions
                       </button>
+                      {(job.status === JobPostStatus.Draft || job.status === JobPostStatus.Open) && (
+                        <>
+                          <button
+                            onClick={() => handleSetupMilestone(job.jobPostsId)}
+                            disabled={isPending}
+                            className="mj-action-btn mj-btn-primary"
+                            style={{
+                              background: 'linear-gradient(135deg, var(--gb-purple,#9F4BFF) 0%, var(--gb-cyan,#1782FC) 100%)',
+                              borderColor: 'transparent',
+                              color: '#fff',
+                            }}
+                          >
+                            <Sparkles size={14} /> {job.status === JobPostStatus.Draft ? 'Setup Milestone' : 'Manage Milestones'}
+                          </button>
+                        </>
+                      )}
+                      {job.status === JobPostStatus.Open && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setInviteJobId(job.jobPostsId);
+                              setInviteJobTitle(job.title);
+                            }}
+                            disabled={isPending}
+                            className="mj-action-btn mj-btn-cyan"
+                          >
+                            <Users size={14} /> Invite Freelancers
+                          </button>
+                        </>
+                      )}
                       {canPublish(job) && (
                         <button
                           onClick={() => patchStatus(job, JobPostStatus.Open, 'JobPost published.')}
@@ -444,6 +516,16 @@ export default function MyJobsScreen() {
           )}
         </div>
       </div>
+      {inviteJobId && (
+        <InviteFreelancersAfterPostModal
+          jobPostId={inviteJobId}
+          jobTitle={inviteJobTitle}
+          onClose={() => {
+            setInviteJobId(null);
+            setInviteJobTitle(undefined);
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

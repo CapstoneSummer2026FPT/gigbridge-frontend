@@ -129,7 +129,7 @@ export interface IConversation {
 
 // ─── Legacy / Review ──────────────────────────────────────────────────────────
 
-export type RoomType = 'invited' | 'negotiation';
+export type RoomType = 'invited' | 'negotiation' | 'workspace';
 
 export interface JobInfo {
   id: string;

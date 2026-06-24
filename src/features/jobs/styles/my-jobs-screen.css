@@ -438,3 +438,23 @@
 .mj-custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .mj-custom-scrollbar::-webkit-scrollbar-thumb { background: #dce2f7; border-radius: 10px; }
 .black .mj-custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); }
+
+/* ─── Draft Setup Warning ─── */
+.mj-draft-warning {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #D97706;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.black .mj-draft-warning {
+  background: rgba(245, 158, 11, 0.04);
+  border-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+

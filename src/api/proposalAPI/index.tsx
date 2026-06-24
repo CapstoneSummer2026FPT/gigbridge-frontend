@@ -17,6 +17,7 @@ export const proposalAPI = {
   getProposalAnswers: proposalGetAPI.getProposalAnswers,
   createProposal: proposalPostAPI.createProposal,
   createProposalAnswer: proposalPostAPI.createProposalAnswer,
+  acceptForNegotiation: proposalPostAPI.acceptForNegotiation,
   updateProposal: proposalPutAPI.updateProposal,
   updateProposalStatus: proposalPatchAPI.updateProposalStatus,
   updateProposalAnswer: proposalPatchAPI.updateProposalAnswer,

@@ -210,7 +210,7 @@ export default function MessagesScreen() {
                 const convos = conversationsState.filter(c => c.roomId === room.id);
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isOpen = !!openRooms[room.id];
-                const RoomIcon = room.type === 'invited' ? Briefcase : Layers;
+                const RoomIcon = room.type === 'invited' ? Briefcase : room.type === 'workspace' ? CheckCircle : Layers;
 
                 return (
                   <div key={room.id}>
@@ -285,13 +285,18 @@ export default function MessagesScreen() {
             </div>
 
             {/* Bottom prominent Go to Workspace button */}
-            <div className="p-4 bg-muted/20 border-t border-border mt-auto">
+            <div
+              className="p-4 bg-muted/20 border-t border-border mt-auto"
+              style={{ display: activeConv?.roomType === 'workspace' && activeConv.contractId ? undefined : 'none' }}
+            >
               <button
-                onClick={() => navigate('/projects')}
+                onClick={() => {
+                  if (activeConv?.contractId) navigate(`/workspace/${activeConv.contractId}`);
+                }}
                 className="w-full flex items-center justify-center gap-2 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer border-none"
               >
                 <span>Go to Workspace</span>
-                <span>→</span>
+                <span>-&gt;</span>
               </button>
             </div>
           </section>
@@ -356,7 +361,7 @@ export default function MessagesScreen() {
             </div>
 
             {/* Agreed Deal Banner (freelancer: navigate to contract) */}
-            {dealStatus === 'agreed' && (
+            {dealStatus === 'agreed' && activeConv.roomType !== 'workspace' && (
               <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
                   <CheckCircle size={18} />
@@ -378,7 +383,7 @@ export default function MessagesScreen() {
             )}
 
             {/* Negotiation accepted banner → conversation already moved */}
-            {negStatus === 'accepted' && (
+            {negStatus === 'accepted' && activeConv.roomType !== 'workspace' && (
               <div className="bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 px-6 py-2.5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <ArrowRightLeft size={14} className="text-[var(--gb-cyan)] flex-shrink-0" />
                 <p className="text-xs font-semibold text-[var(--gb-cyan)]">
@@ -392,7 +397,11 @@ export default function MessagesScreen() {
               {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
               <div className="flex justify-center">
                 <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                  {activeConv.roomType === 'invited' ? '📋 Invited Job Chat' : '🤝 Negotiation Chat'}
+                  {activeConv.roomType === 'invited'
+                    ? 'Invited Job Chat'
+                    : activeConv.roomType === 'workspace'
+                      ? 'Workspace Chat'
+                      : 'Negotiation Chat'}
                 </span>
               </div>
 

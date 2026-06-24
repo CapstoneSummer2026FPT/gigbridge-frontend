@@ -573,7 +573,7 @@ export default function PostJobScreen() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estimated Duration</label>
                   <input
@@ -581,18 +581,6 @@ export default function PostJobScreen() {
                     placeholder="e.g. 2-4 weeks"
                     value={form.estimatedDuration}
                     onChange={event => setForm({ ...form, estimatedDuration: event.target.value })}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Max Hires</label>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="1"
-                    value={form.maxHires}
-                    onChange={event => setForm({ ...form, maxHires: event.target.value })}
                     disabled={isInstantJobMode && !isJobDetailsGenerated}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   />

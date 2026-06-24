@@ -47,6 +47,7 @@ export default function EsignDocumentSigningScreen() {
   const [typedSignatureName, setTypedSignatureName] = useState('');
   const [initialsInput, setInitialsInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -202,12 +203,14 @@ export default function EsignDocumentSigningScreen() {
 
   // Submit signature
   const handleSubmitSignature = async () => {
+    if (submittingRef.current) return;
     try {
       if (!contractId || !documentId || !user?.id) {
         setError('Missing required information');
         return;
       }
 
+      submittingRef.current = true;
       setSubmitting(true);
       setError(null);
 
@@ -219,6 +222,7 @@ export default function EsignDocumentSigningScreen() {
         if (!signatureData || signatureData === 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==') {
           setError('Please draw your signature');
           setSubmitting(false);
+          submittingRef.current = false;
           return;
         }
         signatureType = SignatureType.Draw;
@@ -226,6 +230,7 @@ export default function EsignDocumentSigningScreen() {
         if (!typedSignatureName.trim()) {
           setError('Please enter your name');
           setSubmitting(false);
+          submittingRef.current = false;
           return;
         }
         signatureData = typedSignatureName;
@@ -234,6 +239,7 @@ export default function EsignDocumentSigningScreen() {
         if (!initialsInput.trim()) {
           setError('Please enter your initials');
           setSubmitting(false);
+          submittingRef.current = false;
           return;
         }
         signatureData = initialsInput;
@@ -260,6 +266,13 @@ export default function EsignDocumentSigningScreen() {
       });
 
       if (!signatureResponse.success || !signatureResponse.data) {
+        if (signatureResponse.statusCode === 409) {
+          setSuccessMessage('Your signature has already been recorded');
+          setTimeout(() => {
+            setSigningStep('complete');
+          }, 1500);
+          return;
+        }
         throw new Error(signatureResponse.message || 'Failed to save signature');
       }
 
@@ -282,6 +295,7 @@ export default function EsignDocumentSigningScreen() {
       setError(errorMsg);
       console.error('Error submitting signature:', err);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

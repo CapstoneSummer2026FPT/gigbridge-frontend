@@ -18,6 +18,12 @@ export const MOCK_ROOMS: { id: string; type: RoomType; label: string; descriptio
     label: 'Negotiation',
     description: 'Active price & scope negotiations',
   },
+  {
+    id: 'room_workspace',
+    type: 'workspace',
+    label: 'Workspace',
+    description: 'Active project workrooms',
+  },
 ];
 
 // ─── Conversations ────────────────────────────────────────────────────────────

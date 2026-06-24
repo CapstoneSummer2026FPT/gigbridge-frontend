@@ -133,7 +133,9 @@ const mapContractListItem = (contract: ContractDto, isClient: boolean): Workspac
     title: contract.jobTitle || contract.title,
     partnerName,
     partnerAvatar: getAvatarUrl(partnerName),
-    latestMessage: contract.status === ContractStatus.Active ? 'Workspace is open.' : 'Contract workflow in progress.',
+    latestMessage: contract.status === ContractStatus.Active
+      ? 'Workspace is open.'
+      : 'Workspace open. Waiting for escrow funding.',
     time: formatTime(contract.updatedAt || contract.createdAt),
     unread: false,
     online: true,
@@ -194,13 +196,18 @@ export function useProjectWorkspace(initialContractId: string) {
         const [contractResponse, milestonesResponse, contractsResponse] = await Promise.all([
           contractGetAPI.getContractById(activeProjectId),
           contractGetAPI.getMilestonesByContract(activeProjectId),
-          contractGetAPI.getMyContracts({ status: ContractStatus.Active }),
+          contractGetAPI.getMyContracts(),
         ]);
 
         if (!current) return;
 
         if (contractsResponse.success && contractsResponse.data) {
-          setWorkspaceContracts(contractsResponse.data);
+          setWorkspaceContracts(
+            contractsResponse.data.filter(contract =>
+              contract.status === ContractStatus.PendingEscrow ||
+              contract.status === ContractStatus.Active
+            )
+          );
         }
 
         if (!contractResponse.success || !contractResponse.data) {
@@ -364,6 +371,7 @@ export function useProjectWorkspace(initialContractId: string) {
     setIsBlocked,
     aiChat,
     project,
+    activeContract,
     workspaceProjects,
     currentProjData,
     partnerName,

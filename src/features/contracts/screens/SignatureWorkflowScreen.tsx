@@ -70,6 +70,7 @@ export default function SignatureWorkflowScreen() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDrawn, setSignatureDrawn] = useState(false);
   const [signingInProgress, setSigningInProgress] = useState(false);
+  const submittingRef = useRef(false);
 
   const currentUserSignature = useMemo(
     () =>
@@ -212,6 +213,7 @@ export default function SignatureWorkflowScreen() {
   };
 
   const handleSubmitSignature = async (): Promise<void> => {
+    if (submittingRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas || !contract) {
       setError('Please sign before submitting.');
@@ -224,6 +226,7 @@ export default function SignatureWorkflowScreen() {
     }
 
     try {
+      submittingRef.current = true;
       setSigningInProgress(true);
       setError('');
       setSuccess('');
@@ -236,6 +239,12 @@ export default function SignatureWorkflowScreen() {
       });
 
       if (!response.success) {
+        if (response.statusCode === 409) {
+          // Already signed, proceed as success!
+          await refreshAfterSigning();
+          setSignatureStep('complete');
+          return;
+        }
         setError(response.message || 'Failed to submit signature. Please try again.');
         return;
       }
@@ -273,6 +282,7 @@ export default function SignatureWorkflowScreen() {
       console.error('Failed to submit signature:', err);
       setError('Failed to submit signature. Please try again.');
     } finally {
+      submittingRef.current = false;
       setSigningInProgress(false);
     }
   };

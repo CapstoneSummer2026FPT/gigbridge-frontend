@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
+import { ContractStatus } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
 
 
@@ -32,6 +33,7 @@ export default function ProjectWorkspaceScreen() {
     isBlocked,
     setIsBlocked,
     project,
+    activeContract,
     workspaceProjects,
     currentProjData,
     partnerName,
@@ -78,6 +80,13 @@ export default function ProjectWorkspaceScreen() {
             </button>
           </div>
         </header>
+
+        {activeContract?.status === ContractStatus.PendingEscrow && (
+          <div className="px-8 py-2 border-b border-amber-500/20 bg-amber-500/10 text-xs font-semibold text-amber-700 flex items-center gap-2">
+            <CreditCard size={14} />
+            <span>Workspace is open. Waiting for client escrow funding before work starts.</span>
+          </div>
+        )}
 
         {/* Mobile Navigation Tabs (visible only on mobile/tablet) */}
         <div className="flex lg:hidden border-b border-border bg-card flex-shrink-0">

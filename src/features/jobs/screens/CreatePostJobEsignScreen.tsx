@@ -31,6 +31,7 @@ export default function CreatePostJobEsignScreen() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isInviteFreelancersModalOpen, setIsInviteFreelancersModalOpen] = useState(false);
   const [createdContractId, setCreatedContractId] = useState<string | null>(null);
@@ -206,14 +207,14 @@ export default function CreatePostJobEsignScreen() {
     }
   };
 
-  // --- Submit signature to backend ---
-
   const handleFinalize = async () => {
+    if (submittingRef.current) return;
     if (!signatureImage || !document) {
       toast.error('Please sign the document before submitting.');
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -226,6 +227,19 @@ export default function CreatePostJobEsignScreen() {
       });
 
       if (!submitResponse.success) {
+        if (submitResponse.statusCode === 409) {
+          // Already signed, proceed as success!
+          toast.success('E-sign signature recorded.');
+          const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId!);
+          if (contractResponse.success && contractResponse.data) {
+            setCreatedContractId(contractResponse.data.contractsId);
+          } else {
+            console.warn('Draft contract not found for job post after E-sign. User can navigate manually.');
+            setCreatedContractId(null);
+          }
+          setIsSuccessModalOpen(true);
+          return;
+        }
         throw new Error(submitResponse.message || 'Failed to submit E-sign signature.');
       }
 
@@ -246,11 +260,10 @@ export default function CreatePostJobEsignScreen() {
       const message = error instanceof Error ? error.message : 'An error occurred during E-sign submission.';
       toast.error(message);
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
-  };
-
-  // --- Navigation ---
+  };  // --- Navigation ---
 
   const handleBackToProject = () => {
     navigate('/jobs/post', {
@@ -544,21 +557,14 @@ export default function CreatePostJobEsignScreen() {
         {/* Success Modal → Navigate to milestone setup */}
         <SuccessMilestoneSetupModal
           isOpen={isSuccessModalOpen}
-          onClose={() => navigate('/client/dashboard')}
-                    onInvite={() => {
+          onClose={() => navigate('/jobs/my-jobs')}
+          onInvite={() => {
             setIsSuccessModalOpen(false);
             setIsInviteFreelancersModalOpen(true);
           }}
           onSetup={handleNavigateToMilestones}
         />
         {isInviteFreelancersModalOpen && (
-          <InviteFreelancersAfterPostModal
-            jobPostId={jobPostId || ''}
-            jobTitle={jobData?.title || contractForm?.title}
-            onClose={() => setIsInviteFreelancersModalOpen(false)}
-          />
-        )}
-                {isInviteFreelancersModalOpen && (
           <InviteFreelancersAfterPostModal
             jobPostId={jobPostId || ''}
             jobTitle={jobData?.title || contractForm?.title}

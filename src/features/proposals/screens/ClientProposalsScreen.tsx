@@ -17,6 +17,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
+import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
 import {
@@ -256,6 +257,33 @@ export default function ClientProposalsScreen() {
     setStatusMessage('Proposal status updated.');
   };
 
+  const acceptProposalForNegotiation = async (proposalId: string) => {
+    setUpdatingStatus(ProposalStatus.Accepted);
+    setStatusMessage('');
+
+    const response = await proposalPostAPI.acceptForNegotiation(proposalId);
+    setUpdatingStatus(null);
+
+    if (!response.success || !response.data) {
+      setStatusMessage(response.message || 'Unable to accept proposal for negotiation.');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    setProposals(prev => prev.map(proposal =>
+      proposal.proposalsId === proposalId
+        ? { ...proposal, status: ProposalStatus.Shortlisted, reviewedAt: now }
+        : proposal
+    ));
+    setProposalDetail(prev => prev && prev.proposalId === proposalId
+      ? { ...prev, status: ProposalStatus.Shortlisted, updatedAt: now }
+      : prev
+    );
+
+    setStatusMessage('Freelancer notified. Opening negotiation...');
+    navigate('/messages', { state: { activeConvId: response.data } });
+  };
+
   return (
     <AppLayout fullWidth>
       <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
@@ -472,7 +500,7 @@ export default function ClientProposalsScreen() {
                             </button>
                           )}
                           <button
-                            onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Accepted)}
+                            onClick={() => acceptProposalForNegotiation(proposalDetail.proposalId)}
                             disabled={updatingStatus !== null}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
                           >

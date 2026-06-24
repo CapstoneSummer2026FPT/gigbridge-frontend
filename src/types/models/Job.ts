@@ -126,7 +126,6 @@ export interface GetMyJobPostDto {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  maxHires?: number | null;
   location?: string | null;
   status: JobPostStatus | number;
   visibility?: JobPostVisibility | number | null;
@@ -162,7 +161,6 @@ export interface JobPostDetailDto {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  maxHires?: number | null;
   location?: string | null;
   endDate?: string | null;
   createdAt: string;
@@ -188,7 +186,6 @@ export interface GetMyJobPostDetailDto {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  maxHires?: number | null;
   location?: string | null;
   visibility?: JobPostVisibility | number | null;
   status: JobPostStatus | number;
@@ -209,7 +206,6 @@ export interface CreateJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  maxHires?: number | null;
   location?: string | null;
   visibility?: number | null;
   endDate?: string | null;
@@ -230,7 +226,6 @@ export interface UpdateJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  maxHires?: number | null;
   location?: string | null;
   visibility: JobPostVisibility | number;
   endDate?: string | null;
@@ -252,7 +247,6 @@ export interface SaveDraftJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  maxHires?: number | null;
   location?: string | null;
   visibility?: JobPostVisibility | number | null;
   endDate?: string | null;

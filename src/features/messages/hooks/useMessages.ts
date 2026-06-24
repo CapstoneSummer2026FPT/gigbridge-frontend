@@ -51,13 +51,15 @@ function mapBackendConversation(c: any): MsgConversation {
   const lastOfferStatus = c.lastOfferStatus ?? c.LastOfferStatus ?? null;
   const isClient = (c.otherParticipantRole ?? c.OtherParticipantRole) === 0;
   const isInvited = conversationType === 4;
+  const isWorkspace = conversationType === 1;
+  const roomType = isInvited ? 'invited' : isWorkspace ? 'workspace' : 'negotiation';
 
   return {
     id: c.conversationId ?? c.ConversationId,
     proposalId,
     contractId,
-    roomType: isInvited ? 'invited' : 'negotiation',
-    roomId: isInvited ? 'room_invited' : 'room_negotiation',
+    roomType,
+    roomId: isInvited ? 'room_invited' : isWorkspace ? 'room_workspace' : 'room_negotiation',
     participantId: c.otherParticipantId || '',
     participantName: c.otherParticipantName || 'Partner',
     participantAvatar: c.otherParticipantAvatar || 'https://api.dicebear.com/9.x/avataaars/svg?seed=partner',
@@ -199,11 +201,9 @@ function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { p
         ? { waitMessage: 'Waiting for the freelancer to review the milestone terms.' }
         : { path: contractPath };
     case ContractStatus.PendingSignature:
-      return { path: `${contractPath}/sign` };
+      return { path: contractPath };
     case ContractStatus.PendingEscrow:
-      return isClient
-        ? { path: contractPath }
-        : { waitMessage: 'Both parties signed. Waiting for the client to fund escrow.' };
+      return { path: `/workspace/${contract.contractsId}` };
     case ContractStatus.Active:
       return { path: `/workspace/${contract.contractsId}` };
     default:
@@ -221,6 +221,7 @@ export function useMessages() {
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({
     room_invited: true,
     room_negotiation: true,
+    room_workspace: true,
   });
 
   // ── Conversations state (mutable for room transfers) ─────────────────────
@@ -1038,14 +1039,14 @@ export function useMessages() {
 
       if (!isClient) {
         if (acceptedContractId) {
-          navigate(`/contracts/${acceptedContractId}/sign`);
+          navigate(`/contracts/${acceptedContractId}`);
           return;
         }
 
         if (activeConv?.proposalId) {
           const contractRes = await contractGetAPI.getContractByProposal(activeConv.proposalId);
           if (contractRes.success && contractRes.data?.contractsId) {
-            navigate(`/contracts/${contractRes.data.contractsId}/sign`);
+            navigate(`/contracts/${contractRes.data.contractsId}`);
             return;
           }
         }

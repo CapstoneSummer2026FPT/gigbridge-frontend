@@ -383,8 +383,8 @@ export default function ViewContractDetailsScreen() {
     try {
       const res = await contractPostAPI.acceptMilestones(contractId);
       if (res.success) {
-        alert('Milestones accepted. Waiting for the client to fund escrow.');
-        window.location.reload();
+        alert('Milestones accepted. Workspace is now open while waiting for client escrow funding.');
+        navigate(`/workspace/${contractId}`);
       } else {
         alert(res.message || 'Failed to accept milestones.');
       }
