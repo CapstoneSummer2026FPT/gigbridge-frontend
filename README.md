@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="public/img/logo.png" width="80" alt="GigBridge Logo" />
   <h1>GigBridge</h1>
   <p><strong>The Next-Gen Freelance Marketplace Infrastructure.</strong></p>
 
