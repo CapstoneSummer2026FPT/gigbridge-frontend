@@ -203,7 +203,9 @@ function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { p
     case ContractStatus.PendingSignature:
       return { path: contractPath };
     case ContractStatus.PendingEscrow:
-      return { path: `/workspace/${contract.contractsId}` };
+      return isClient
+        ? { path: contractPath }
+        : { path: `/workspace/${contract.contractsId}` };
     case ContractStatus.Active:
       return { path: `/workspace/${contract.contractsId}` };
     default:

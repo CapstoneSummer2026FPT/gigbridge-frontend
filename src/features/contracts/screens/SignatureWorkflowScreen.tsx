@@ -272,8 +272,8 @@ export default function SignatureWorkflowScreen() {
       }
 
       if (!isClient && finalStatus === ContractStatus.PendingSignature) {
-        setSuccess('Your signature has been recorded. Review the milestones next.');
-        window.setTimeout(() => navigate(`/contracts/${contract.contractsId}?mode=milestone-review`), 900);
+        setSuccess('Your signature has been recorded. Waiting for the other party to sign.');
+        window.setTimeout(() => navigate(`/contracts/${contract.contractsId}`), 1200);
         return;
       }
 
