@@ -4,7 +4,7 @@ import {
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
-  CalendarPlus, CalendarDays, Pencil, ChevronUp,
+  CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
@@ -16,7 +16,7 @@ import '../styles/messages-screen.css';
 
 function countdown(start: string, now: number) {
   const delta = new Date(start).getTime() - now;
-  if (delta <= 0) return 'Started / Past';
+  if (delta <= 0) return 'Meeting time reached';
   const seconds = Math.floor(delta / 1000);
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
@@ -28,36 +28,57 @@ function vietnamDate(value: string) {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) + ' Vietnam Time (ICT)';
 }
 
-function ScheduleCard({ schedule, latest, now, viewerId, onEdit, onCancel, onLatest }: {
-  schedule: ScheduleEvent; latest: boolean; now: number; viewerId?: string; onEdit: () => void; onCancel: () => void; onLatest: () => void;
+function ScheduleCard({ schedule, latest, now, onEdit, onCancel, onRetry, onLatest, onAccept, onReject, onCounterProposal, actionBusy }: {
+  schedule: ScheduleEvent; latest: boolean; now: number; onEdit: () => void; onCancel: () => void;
+  onRetry: () => Promise<void>; onLatest: () => void; onAccept: () => Promise<void>; onReject: () => Promise<void>;
+  onCounterProposal: (edit: boolean) => void; actionBusy: boolean;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
-  const cancelled = schedule.status === 1 || schedule.eventType === 2;
+  const [retryingMeet, setRetryingMeet] = useState(false);
+  const cancelled = schedule.status === 1 || schedule.status === 3 || schedule.eventType === 2;
   const startLocalHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', hourCycle: 'h23' }).format(new Date(schedule.scheduledAtUtc)));
-  const beforeCutoff = now < new Date(schedule.cutoffUtc).getTime();
-  const editGrace = viewerId === schedule.createdByUserId && now < new Date(schedule.graceExpiresAtUtc).getTime();
-  const canCancel = latest && !cancelled && now < new Date(schedule.scheduledAtUtc).getTime() && beforeCutoff;
-  const canEdit = latest && !cancelled && now < new Date(schedule.scheduledAtUtc).getTime() &&
-    schedule.remainingEdits > 0 && (beforeCutoff || editGrace);
+  const started = now >= new Date(schedule.scheduledAtUtc).getTime();
+  const canCancel = latest && !started && schedule.canCancel;
+  const canEdit = latest && !started && schedule.canEdit;
+  const canRespond = latest && !started;
+  const canEditCounter = latest && !started && schedule.canEditCounterProposal &&
+    !!schedule.counterProposalEditExpiresAtUtc && now < new Date(schedule.counterProposalEditExpiresAtUtc).getTime();
+  const confirmed = schedule.agreementStatus === 0;
+  const meetingReady = schedule.meeting?.status === 2 && !!schedule.meeting.joinUri;
+  const eventLabel = ['Created','Edited','Cancelled','Accepted','Rejected','Counter proposed'][schedule.eventType] || 'Schedule updated';
+  const agreementLabel = ['Confirmed','Awaiting freelancer response','Freelancer rejected — choose a new time','Awaiting client response','Client rejected'][schedule.agreementStatus] || 'Schedule updated';
   return (
     <div className={`w-[min(420px,75vw)] rounded-2xl border p-4 shadow-sm ${cancelled ? 'border-red-500/30 bg-red-500/5' : 'border-[var(--gb-cyan)]/30 bg-card'}`}>
       <div className="flex justify-between gap-3">
         <div className="flex gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] flex items-center justify-center shrink-0"><CalendarDays size={19} /></div>
-          <div className="min-w-0"><p className="font-bold text-sm truncate">{schedule.title}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">{['Created','Edited','Cancelled'][schedule.eventType]} by {schedule.actorName}</p></div>
+          <div className="min-w-0"><p className="font-bold text-sm truncate">{schedule.title}</p><p className="text-[10px] uppercase tracking-wider text-muted-foreground">{eventLabel} by {schedule.actorName}</p></div>
         </div>
         {!latest && <button onClick={onLatest} className="text-[10px] text-[var(--gb-cyan)] border-none bg-transparent cursor-pointer">{t('schedule.superseded')}</button>}
       </div>
       <div className="mt-3 rounded-xl bg-muted/60 p-3">
         <p className="text-xs font-semibold">{vietnamDate(schedule.scheduledAtUtc)}</p>
-        {latest && !cancelled && <p className="text-xs text-[var(--gb-cyan)] font-bold mt-1">{countdown(schedule.scheduledAtUtc, now)}</p>}
+        {latest && !cancelled && confirmed && (!started || !meetingReady) && <p className="text-xs text-[var(--gb-cyan)] font-bold mt-1">{countdown(schedule.scheduledAtUtc, now)}</p>}
+        {latest && !cancelled && confirmed && started && meetingReady && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white no-underline transition-colors hover:bg-emerald-700"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
         <p className="text-[10px] text-muted-foreground mt-1">Cancellation cutoff: {vietnamDate(schedule.cutoffUtc)}</p>
         {startLocalHour < 2 && <p className="text-[10px] text-amber-600 mt-2 font-semibold">Short cancellation window: this event begins close to Vietnam midnight.</p>}
       </div>
+      {latest && <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${confirmed ? 'bg-emerald-500/10 text-emerald-700' : cancelled ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-700'}`}>{agreementLabel}</div>}
+      {latest && schedule.agreementStatus === 3 && schedule.counterProposalEditExpiresAtUtc && <p className="mt-2 text-[10px] text-muted-foreground">Freelancer may edit this time until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.</p>}
+      {latest && !cancelled && confirmed && schedule.meeting?.status === 1 && <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700"><Loader2 size={14} className="animate-spin" />{t('schedule.meetingPending')}</div>}
+      {latest && !cancelled && confirmed && meetingReady && !started && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 no-underline transition-colors hover:bg-emerald-500/20"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
+      {latest && !cancelled && schedule.meeting?.status === 3 && <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600"><span className="flex items-center gap-2"><AlertCircle size={14} />{t('schedule.meetingFailed')}</span>{schedule.meeting.canRetry && <button type="button" disabled={retryingMeet} onClick={async () => { setRetryingMeet(true); try { await onRetry(); } finally { setRetryingMeet(false); } }} className="rounded-lg border-none bg-red-600 px-3 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-50">{retryingMeet ? t('schedule.meetingPending') : t('schedule.meetingRetry')}</button>}</div>}
       {schedule.details && <><button onClick={() => setExpanded(x => !x)} className="mt-2 flex items-center gap-1 text-xs text-muted-foreground border-none bg-transparent cursor-pointer">{expanded ? <ChevronUp size={13}/> : <ChevronDown size={13}/>} Details</button>{expanded && <p className="text-xs whitespace-pre-wrap mt-2">{schedule.details}</p>}</>}
       {cancelled && schedule.cancellationReason && <p className="mt-3 text-xs text-red-600"><strong>Reason:</strong> {schedule.cancellationReason}</p>}
-      {latest && !cancelled && <div className="mt-3 flex items-center justify-between"><span className="text-[10px] text-muted-foreground">{schedule.remainingEdits} {t('schedule.remainingEdits')}</span><div className="flex gap-2">{canEdit && <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> {t('schedule.edit')}</button>}{canCancel && <button onClick={onCancel} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer">{t('schedule.cancel')}</button>}</div></div>}
+      {latest && !cancelled && <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        {canEdit && <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> {t('schedule.edit')}</button>}
+        {canEditCounter && <button onClick={() => onCounterProposal(true)} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> Edit proposed time</button>}
+        {schedule.canProposeTime && <button onClick={() => onCounterProposal(false)} className="px-3 py-1.5 rounded-lg text-xs bg-[var(--gb-cyan)] text-white border-none cursor-pointer">Choose new time</button>}
+        {canRespond && schedule.canAccept && <button disabled={actionBusy} onClick={onAccept} className="px-3 py-1.5 rounded-lg text-xs bg-emerald-600 text-white border-none cursor-pointer disabled:opacity-50">Accept</button>}
+        {canRespond && schedule.canReject && <button disabled={actionBusy} onClick={onReject} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer disabled:opacity-50">Reject</button>}
+        {canCancel && <button onClick={onCancel} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer">{t('schedule.cancel')}</button>}
+      </div>}
     </div>
   );
 }
@@ -65,8 +86,6 @@ function ScheduleCard({ schedule, latest, now, viewerId, onEdit, onCancel, onLat
 export default function MessagesScreen() {
   const { t } = useTranslation();
   const {
-    user,
-    role,
     isClient,
     loading,
     signalRStatus,
@@ -111,8 +130,11 @@ export default function MessagesScreen() {
     formatTime,
     showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
     scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,
-    scheduleError, scheduleSaving, openCreateSchedule, openEditSchedule, openCancelSchedule, submitSchedule,
+    scheduleError, scheduleSaving, scheduleActionId, openCreateSchedule, openEditSchedule, openCancelSchedule,
+    openCounterProposal, respondToSchedule, retryGoogleMeet, submitSchedule,
     scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed,
+    scheduleAddGoogleMeet, setScheduleAddGoogleMeet,
+    googleMeetStatus, googleMeetStatusLoading, googleMeetConnecting, connectGoogleMeet,
     nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
@@ -310,17 +332,27 @@ export default function MessagesScreen() {
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowInfo(!showInfo)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-                  showInfo
-                    ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-                title="Toggle Project Info"
-              >
-                <Info size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.open('https://meet.google.com/new', '_blank', 'noopener,noreferrer')}
+                  className="w-9 h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer"
+                  title="Create a Google Meet room"
+                  aria-label="Create a Google Meet room"
+                >
+                  <Video size={18} />
+                </button>
+                <button
+                  onClick={() => setShowInfo(!showInfo)}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                    showInfo
+                      ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                  title="Toggle Project Info"
+                >
+                  <Info size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Agreed Deal Banner (freelancer: navigate to contract) */}
@@ -369,6 +401,10 @@ export default function MessagesScreen() {
                 const isSystem = msg.type === 'system' || msg.senderId === 'system';
                 const latestScheduleMessage = msg.schedule ? activeMessages.filter(m => m.schedule?.scheduleId === msg.schedule?.scheduleId).sort((a,b) => (b.schedule?.eventSequence || 0) - (a.schedule?.eventSequence || 0))[0] : undefined;
 
+                // Older deployments persisted one message per schedule state.
+                // Render only the latest one so every schedule has one live card.
+                if (msg.schedule && latestScheduleMessage?.id !== msg.id) return null;
+
                 // ── System message (centered) ─────────────────────────────
                 if (isSystem) {
                   return (
@@ -404,8 +440,13 @@ export default function MessagesScreen() {
 
                       {/* ── File message ───────────────────────────────────── */}
                       {msg.type === 'schedule' && msg.schedule ? (
-                        <ScheduleCard schedule={msg.schedule} latest={latestScheduleMessage?.id === msg.id} now={nowMs} viewerId={user?.id}
+                        <ScheduleCard schedule={msg.schedule} latest={latestScheduleMessage?.id === msg.id} now={nowMs}
                           onEdit={() => openEditSchedule(msg.schedule!)} onCancel={() => openCancelSchedule(msg.schedule!)}
+                          onRetry={() => retryGoogleMeet(msg.schedule!)}
+                          onAccept={() => respondToSchedule(msg.schedule!, 'accept')}
+                          onReject={() => respondToSchedule(msg.schedule!, 'reject')}
+                          onCounterProposal={(edit) => openCounterProposal(msg.schedule!, edit)}
+                          actionBusy={scheduleActionId === msg.schedule.scheduleId}
                           onLatest={() => document.getElementById(`message-${latestScheduleMessage?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
                       ) : msg.type === 'file' ? (
                         <div className="bg-card p-4 rounded-2xl shadow-sm border border-border max-w-sm">
@@ -637,11 +678,11 @@ export default function MessagesScreen() {
                       <Paperclip size={16} />
                     </button>
 
-                    <button onClick={openCreateSchedule} disabled={hasOngoingSchedule || checkingOngoingSchedule}
+                    {isClient && <button onClick={() => openCreateSchedule(false)} disabled={hasOngoingSchedule || checkingOngoingSchedule}
                       className={`w-8 h-8 flex items-center justify-center rounded-full transition-all border-none bg-transparent ${hasOngoingSchedule || checkingOngoingSchedule ? 'text-gray-400 bg-gray-200/40 cursor-not-allowed opacity-60' : 'text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted cursor-pointer'}`}
                       title={hasOngoingSchedule ? 'An ongoing schedule already exists' : checkingOngoingSchedule ? 'Checking ongoing schedule…' : 'Create schedule'}>
                       <CalendarPlus size={16} />
-                    </button>
+                    </button>}
 
                     {/* Emoji */}
                     <button
@@ -938,19 +979,23 @@ export default function MessagesScreen() {
       {showScheduleModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl max-w-md w-full space-y-4">
-            <div className="flex justify-between"><div><h3 className="font-bold">{t(`schedule.${scheduleMode}`)}</h3><p className="text-xs text-muted-foreground">{t('schedule.vietnamTime')}</p></div><button onClick={() => setShowScheduleModal(false)} className="border-none bg-transparent cursor-pointer"><X size={17}/></button></div>
+            <div className="flex justify-between"><div><h3 className="font-bold">{scheduleMode.startsWith('counter') ? 'Choose your desired time and date' : t(`schedule.${scheduleMode}`)}</h3><p className="text-xs text-muted-foreground">{t('schedule.vietnamTime')}</p></div><button onClick={() => setShowScheduleModal(false)} className="border-none bg-transparent cursor-pointer"><X size={17}/></button></div>
             {scheduleMode === 'cancel' ? (
               <textarea maxLength={1000} value={scheduleReason} onChange={e => setScheduleReason(e.target.value)} placeholder={t('schedule.reason')} className="w-full min-h-28 bg-background border border-border rounded-xl p-3 text-sm" />
             ) : <>
-              <input maxLength={200} value={scheduleTitle} onChange={e => setScheduleTitle(e.target.value)} placeholder={t('schedule.title')} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />
-              <input type="datetime-local" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />
+              {!scheduleMode.startsWith('counter') && <input maxLength={200} value={scheduleTitle} onChange={e => setScheduleTitle(e.target.value)} placeholder={t('schedule.title')} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />}
+              <div className="rounded-xl border border-border bg-background p-3 space-y-3">
+                <label className="block text-xs font-semibold text-muted-foreground">Meeting date and time</label>
+                <input type="datetime-local" value={scheduleTime} onChange={e => { setScheduleTime(e.target.value); setMidnightConfirmed(Number(e.target.value.slice(11, 13)) >= 2); }} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />
+              </div>
               {scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && <label className="text-xs text-amber-600 bg-amber-500/10 rounded-lg p-2 flex gap-2"><input type="checkbox" checked={midnightConfirmed} onChange={e => setMidnightConfirmed(e.target.checked)}/>I understand this event starts near Vietnam midnight and may have a very short cancellation window.</label>}
-              <textarea maxLength={4000} value={scheduleDetails} onChange={e => setScheduleDetails(e.target.value)} placeholder={t('schedule.details')} className="w-full min-h-24 bg-background border border-border rounded-xl p-3 text-sm" />
+              {!scheduleMode.startsWith('counter') && <textarea maxLength={4000} value={scheduleDetails} onChange={e => setScheduleDetails(e.target.value)} placeholder={t('schedule.details')} className="w-full min-h-24 bg-background border border-border rounded-xl p-3 text-sm" />}
+              {scheduleMode === 'create' && <div className="rounded-xl border border-border bg-background p-3 space-y-2"><label className="flex items-center gap-3 text-sm cursor-pointer"><input type="checkbox" checked={scheduleAddGoogleMeet} onChange={e => setScheduleAddGoogleMeet(e.target.checked)} /><Video size={17} className="text-emerald-600" />{t('schedule.addGoogleMeet')}</label>{scheduleAddGoogleMeet && <div className="pl-7">{googleMeetStatusLoading ? <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 size={13} className="animate-spin" />Checking Google connection...</p> : googleMeetStatus?.isConnected ? <p className="text-xs font-semibold text-emerald-700">{t('schedule.connectedAs', { email: googleMeetStatus.googleEmail || 'Google' })}</p> : <button type="button" onClick={connectGoogleMeet} disabled={googleMeetConnecting} className="rounded-lg border-none bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-50">{googleMeetConnecting ? 'Connecting...' : googleMeetStatus?.needsReconnect ? t('schedule.reconnectGoogle') : t('schedule.connectGoogle')}</button>}</div>}</div>}
               {scheduleMode === 'edit' && editingSchedule?.remainingEdits === 1 && <p className="text-xs text-amber-600">Saving will use the final shared edit.</p>}
             </>}
             {scheduleError && <p className="text-xs text-red-600 bg-red-500/10 rounded-lg p-2">{scheduleError}</p>}
             {scheduleConflict && <button disabled={scheduleMode === 'edit' && scheduleConflict.remainingEdits === 0} onClick={confirmScheduleRetry} className="w-full py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 text-xs cursor-pointer disabled:opacity-50">Confirm retry against version {scheduleConflict.version}{scheduleConflict.remainingEdits === 1 ? ' using the final edit' : ''}</button>}
-            <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : t('schedule.save')}</button></div>
+            <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || googleMeetConnecting || (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : scheduleMode.startsWith('counter') ? !scheduleTime : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : scheduleMode.startsWith('counter') ? 'Send time' : t('schedule.save')}</button></div>
           </div>
         </div>
       )}

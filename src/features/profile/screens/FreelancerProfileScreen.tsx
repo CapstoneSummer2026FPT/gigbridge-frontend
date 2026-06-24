@@ -26,6 +26,7 @@ export default function FreelancerProfileScreen() {
     isIdentityVerified,
     trustScore,
     cvFile,
+    freelancerProfileId,
     isSaved,
     showJobInviteModal,
     showMoreMenu,
@@ -35,7 +36,6 @@ export default function FreelancerProfileScreen() {
     reviewRating,
     reviewComment,
     reviewAnonymous,
-    openClientJobs,
     averageRating,
     distribution,
     totalPages,
@@ -49,9 +49,7 @@ export default function FreelancerProfileScreen() {
     setReviewComment,
     setReviewAnonymous,
     setShowReviewModal,
-    isAlreadyInvitedToJob,
     handleSaveFreelancer,
-    handleSendJobInvite,
     handleAddReview,
   } = useFreelancerProfile(targetId, currentUser);
 
@@ -608,11 +606,8 @@ export default function FreelancerProfileScreen() {
         {showJobInviteModal && (
           <InviteFreelancerToJobModal
             freelancerName={user.full_name}
-            freelancerId={targetId}
-            availableJobs={openClientJobs}
+            freelancerId={freelancerProfileId}
             onClose={() => setShowJobInviteModal(false)}
-            onSubmit={handleSendJobInvite}
-            isAlreadyInvited={isAlreadyInvitedToJob}
           />
         )}
       </AnimatePresence>

@@ -5,6 +5,9 @@ import { MOCK_TOP_NAV_NOTIFICATIONS } from '../mock/data-for-TopNav';
 import type { User } from '../../../types/models/User';
 import * as signalR from '@microsoft/signalr';
 import { getNotificationHubUrl } from '../../../service/apiService';
+import { toast } from 'sonner';
+
+const surfacedMeetingAlerts = new Set<string>();
 
 export type UiNotificationType =
   | 'job'
@@ -114,7 +117,7 @@ const getActionUrl = (notification: any, type: UiNotificationType): string | und
     case 'review':
       return referenceId ? `/reviews/create?contractId=${referenceId}` : '/reviews/create';
     case 'schedule':
-      return metadata?.schemaVersion === 1 && metadata.conversationId && metadata.scheduleMessageId
+      return metadata?.schemaVersion >= 1 && metadata.conversationId && metadata.scheduleMessageId
         ? `/messages?conversationId=${metadata.conversationId}&messageId=${metadata.scheduleMessageId}`
         : '/messages';
     default:
@@ -131,7 +134,7 @@ const normalizeNotification = (notification: any): UiNotification => {
   let schedule: UiNotification['schedule'];
   try {
     const parsed = typeof metadataRaw === 'string' ? JSON.parse(metadataRaw) : metadataRaw;
-    if (type === 'schedule' && parsed?.schemaVersion === 1 && parsed.scheduleId && parsed.conversationId) schedule = parsed;
+    if (type === 'schedule' && parsed?.schemaVersion >= 1 && parsed.scheduleId && parsed.conversationId) schedule = parsed;
   } catch { schedule = undefined; }
 
   return {
@@ -203,13 +206,27 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
 
   useEffect(() => {
     if (!user || !localStorage.getItem('access_token')) return;
-    const connection = new signalR.HubConnectionBuilder().withUrl(getNotificationHubUrl(), {
+    const connection = new signalR.HubConnectionBuilder()
+      .configureLogging(signalR.LogLevel.Warning)
+      .withUrl(getNotificationHubUrl(), {
       accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
     }).withAutomaticReconnect().build();
     connection.on('ReceiveNotification', raw => {
       const incoming = normalizeNotification(raw);
       setNotifications(previous => [incoming, ...previous.filter(item => item.id !== incoming.id)]
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      if (incoming.type === 'schedule' && incoming.title.toLowerCase().includes('meeting time reached') &&
+          !surfacedMeetingAlerts.has(incoming.id)) {
+        surfacedMeetingAlerts.add(incoming.id);
+        toast.success(incoming.title, {
+          description: incoming.body || 'Your scheduled meeting is starting now.',
+          duration: 12000,
+          action: {
+            label: 'View schedule',
+            onClick: () => { window.location.href = incoming.actionUrl || '/messages'; },
+          },
+        });
+      }
     });
     void connection.start().catch(() => undefined);
     return () => { void connection.stop(); };

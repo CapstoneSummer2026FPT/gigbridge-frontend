@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Bot, Clock, DollarSign, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Medal, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { savedJobAPI } from '../../../api/savedJobAPI';
 import { UserRole } from '../../../types/models/User';
 import type { Job } from '../../../types/models/Job';
+import type { SavedJobDto } from '../../../types/savedJob';
 import '../styles/browse-jobs-screen.css';
 
 const PAGE_SIZE = 20;
@@ -69,6 +72,8 @@ const getDatePostedDays = (value: string) => {
   return null;
 };
 
+const getSavedJobPostId = (job: SavedJobDto): string => job.jobPostId ?? job.jobPostsId ?? '';
+
 export default function BrowseJobsScreen() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -83,21 +88,43 @@ export default function BrowseJobsScreen() {
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
   const [aiOnly, setAiOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [saved, setSaved] = useState<string[]>([]);
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [savingJobIds, setSavingJobIds] = useState<Set<string>>(new Set());
   const [allJobs, setAllJobs] = useState<BrowseJob[]>([]);
   const [categoryOptions, setCategoryOptions] = useState<string[]>(['All']);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const isFreelancer = role === UserRole.Freelancer;
 
   useEffect(() => {
-    const stored = window.localStorage.getItem('gb_saved_jobs');
-    setSaved(stored ? JSON.parse(stored) : []);
-  }, []);
+    let isMounted = true;
 
-  useEffect(() => {
-    window.localStorage.setItem('gb_saved_jobs', JSON.stringify(saved));
-  }, [saved]);
+    const fetchSavedJobs = async () => {
+      if (!user || !isFreelancer) {
+        setSavedJobIds(new Set());
+        return;
+      }
+
+      try {
+        const savedJobs = await savedJobAPI.getMySavedJobs();
+        if (isMounted) {
+          setSavedJobIds(new Set(savedJobs.map(getSavedJobPostId).filter(Boolean)));
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Failed to load saved jobs:', error);
+        setSavedJobIds(new Set());
+        toast.error(error instanceof Error ? error.message : 'Saved job state could not be loaded.');
+      }
+    };
+
+    fetchSavedJobs();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isFreelancer, user]);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -192,12 +219,43 @@ export default function BrowseJobsScreen() {
     setPage(1);
   }, [search, category, skills, budgetMin, budgetMax, workType, datePosted, sortBy, aiOnly]);
 
-  const toggleSave = (id: string) => {
-    if (!user || role !== UserRole.Freelancer) {
-      alert('Please log in as a freelancer to save jobs.');
+  const toggleSave = async (id: string) => {
+    if (!id) {
+      toast.error('This job cannot be saved yet.');
       return;
     }
-    setSaved(prev => prev.includes(id) ? prev.filter(savedId => savedId !== id) : [...prev, id]);
+
+    if (!user || !isFreelancer) {
+      toast.error('Please log in as a freelancer to save jobs.');
+      return;
+    }
+
+    setSavingJobIds(prev => new Set(prev).add(id));
+
+    try {
+      if (savedJobIds.has(id)) {
+        await savedJobAPI.unsaveJob(id);
+        setSavedJobIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        toast.success('Job removed from saved jobs.');
+      } else {
+        await savedJobAPI.saveJob(id);
+        setSavedJobIds(prev => new Set(prev).add(id));
+        toast.success('Job saved.');
+      }
+    } catch (error) {
+      console.error('Failed to update saved job:', error);
+      toast.error(error instanceof Error ? error.message : 'Saved job status could not be updated.');
+    } finally {
+      setSavingJobIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   };
 
   return (
@@ -328,6 +386,13 @@ export default function BrowseJobsScreen() {
                       </div>
 
                       <div className="flex md:flex-col items-center md:items-end gap-3 flex-shrink-0">
+                        {(() => {
+                          const isSaved = savedJobIds.has(job.id);
+                          const isSaving = savingJobIds.has(job.id);
+                          const canSaveJob = Boolean(user && isFreelancer);
+
+                          return (
+                            <>
                         {job.aiMatchScore && user && (
                           <div className={`match-score ${job.aiMatchScore >= 90 ? 'high' : job.aiMatchScore >= 70 ? 'medium' : 'low'} flex-shrink-0`}>
                             <Bot size={10} />
@@ -336,9 +401,14 @@ export default function BrowseJobsScreen() {
                         )}
                         <button
                           onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
-                          className={`p-2 rounded-lg transition-all ${saved.includes(job.id) ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'}`}>
-                          <Bookmark size={16} fill={saved.includes(job.id) ? 'currentColor' : 'none'} />
+                          disabled={!canSaveJob || isSaving}
+                          title={canSaveJob ? undefined : 'Only freelancers can save jobs'}
+                          className={`p-2 rounded-lg transition-all ${isSaved ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                          <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
                         </button>
+                            </>
+                          );
+                        })()}
                         <button onClick={event => { event.stopPropagation(); navigate(`/jobs/${job.id}`, { state: { job } }); }}
                           className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
                           View Job

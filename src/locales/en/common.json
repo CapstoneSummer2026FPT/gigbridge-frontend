@@ -202,7 +202,20 @@
     "save": "Save",
     "saving": "Saving...",
     "remainingEdits": "shared edits remaining",
-    "superseded": "Superseded · latest"
+    "superseded": "Superseded · latest",
+    "addGoogleMeet": "Add Google Meet",
+    "connectedAs": "Connected as {{email}}",
+    "connectGoogle": "Connect Google",
+    "reconnectGoogle": "Reconnect Google",
+    "meetingPending": "Creating meeting room...",
+    "meetingReady": "Meeting ready",
+    "meetingFailed": "Meet creation failed",
+    "meetingJoin": "Join Meet",
+    "meetingCopyLink": "Copy link",
+    "meetingLinkCopied": "Link copied!",
+    "meetingCopyFailed": "Failed to copy link",
+    "meetingRetry": "Retry",
+    "meetingDisconnected": "Google account disconnected"
   },
   "footer": {
     "allRightsReserved": "All rights reserved",
