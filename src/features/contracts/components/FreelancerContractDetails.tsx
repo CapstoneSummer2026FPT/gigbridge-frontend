@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Lock, AlertCircle, CheckCircle, Clock, DollarSign,
   User, FileText, Calendar, Download, ArrowLeft, Shield,
-  Mail, ShieldAlert, ListChecks, Copy, Check, FileCheck, ChevronDown, Star
+  Mail, ListChecks, Copy, Check, FileCheck, ChevronDown,
+  Star, ShieldAlert, Edit3, XCircle
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
@@ -48,28 +48,41 @@ export function FreelancerContractDetails({
   const { user } = useApp();
 
   // States
+  const reviewContentRef = useRef<HTMLDivElement | null>(null);
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showChangeRequestModal, setShowChangeRequestModal] = useState(false);
+  const [changeRequestReason, setChangeRequestReason] = useState('');
+  const [showMilestoneChangeModal, setShowMilestoneChangeModal] = useState(false);
+  const [milestoneChangeReason, setMilestoneChangeReason] = useState('');
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
   const milestonesPaid = milestones.filter(m => m.status === MilestoneStatus.PaymentConfirmed).length;
+  const milestoneTotalMatchesBudget = Math.abs(milestonesTotal - Number(contract.totalBudget || 0)) < 0.01;
+  const clientProfile = contract.clientProfile;
+  const freelancerProfile = contract.freelancerProfile;
+  const clientName = clientProfile?.fullName || contract.clientName || 'Client';
+  const clientEmail = clientProfile?.email || contract.clientEmail || '';
+  const clientCompany = clientProfile?.companyName || '';
+  const clientAvatar = clientProfile?.profileImageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(clientName)}`;
+  const freelancerName = freelancerProfile?.fullName || contract.freelancerName || 'Freelancer';
+  const freelancerEmail = freelancerProfile?.email || contract.freelancerEmail || '';
+  const freelancerHeadline = freelancerProfile?.headline || '';
+  const freelancerAvatar = freelancerProfile?.profileImageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(freelancerName)}`;
 
-  // New Stepper ordering mapping
+  // Stepper: PendingContractConfirmation -> PendingSignature -> PendingEscrow -> Active
   let currentStep = 1;
-  if (contract.status === ContractStatus.PendingContractConfirmation) {
+  if (contract.status === ContractStatus.PendingSignature) {
     currentStep = 2;
-  } else if (contract.status === ContractStatus.PendingSignature) {
-    currentStep = 3;
   } else if (contract.status === ContractStatus.PendingEscrow) {
-    currentStep = 4;
+    currentStep = 3;
   } else if (contract.status >= ContractStatus.Active) {
-    currentStep = 5;
+    currentStep = 4;
   }
 
-  // Handlers
   const handleCopyContractId = () => {
     if (contract?.contractsId) {
       navigator.clipboard.writeText(contract.contractsId);
@@ -84,83 +97,80 @@ export function FreelancerContractDetails({
     }
   };
 
+  const handleScrollToReview = () => {
+    reviewContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Confirm contract details (step 1)
   const handleConfirmDetails = async () => {
     setActionLoading(true);
     try {
       const res = await contractPostAPI.confirmDetails(contract.contractsId);
       if (res.success) {
-        alert('Contract terms confirmed successfully!');
+        alert('Contract details confirmed! Proceeding to e-signature.');
         onRefresh();
       } else {
-        alert(res.message || 'Failed to confirm contract terms');
+        alert(res.message || 'Failed to confirm contract details.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred during confirmation.');
+      alert('An error occurred while confirming details.');
     } finally {
       setActionLoading(false);
     }
   };
 
+  // Request change for contract terms
   const handleRequestChange = async () => {
-    const reason = prompt('Please enter the reason/requested changes:');
-    if (!reason || !reason.trim()) return;
-
+    if (!changeRequestReason.trim()) {
+      alert('Please provide a reason for the change request.');
+      return;
+    }
     setActionLoading(true);
     try {
-      const res = await contractPostAPI.requestChange(contract.contractsId, reason.trim());
+      const res = await contractPostAPI.requestChange(contract.contractsId, changeRequestReason.trim());
       if (res.success) {
-        alert('Change request sent to client.');
+        alert('Change request submitted to client.');
+        setShowChangeRequestModal(false);
+        setChangeRequestReason('');
         onRefresh();
       } else {
-        alert(res.message || 'Failed to send change request');
+        alert(res.message || 'Failed to submit change request.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred while sending change request.');
+      alert('An error occurred while submitting the change request.');
     } finally {
       setActionLoading(false);
     }
   };
 
- const handleAcceptMilestones = async () => {
-    setActionLoading(true);
-    try {
-      const res = await contractPostAPI.acceptMilestones(contract.contractsId);
-      if (res.success) {
-        alert('Milestones accepted. Workspace is now open while waiting for client escrow funding.');
-        navigate(`/workspace/${contract.contractsId}`);
-      } else {
-        alert(res.message || 'Failed to accept milestones.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('An error occurred while accepting milestones.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  // Request milestone change
   const handleRequestMilestoneChange = async () => {
-    const reason = prompt('Please enter the milestone changes you want to request:');
-    if (!reason || !reason.trim()) return;
+    if (!milestoneChangeReason.trim()) {
+      alert('Please provide a reason for the milestone change request.');
+      return;
+    }
     setActionLoading(true);
     try {
-      const res = await contractPostAPI.requestMilestoneChange(contract.contractsId, reason.trim());
+      const res = await contractPostAPI.requestMilestoneChange(contract.contractsId, milestoneChangeReason.trim());
       if (res.success) {
-        alert('Milestone change request sent to client.');
-        navigate('/messages');
+        alert('Milestone change request submitted to client.');
+        setShowMilestoneChangeModal(false);
+        setMilestoneChangeReason('');
+        onRefresh();
       } else {
-        alert(res.message || 'Failed to request milestone changes.');
+        alert(res.message || 'Failed to submit milestone change request.');
       }
     } catch (err) {
       console.error(err);
-      alert('An error occurred while requesting milestone changes.');
+      alert('An error occurred while submitting the milestone change request.');
     } finally {
       setActionLoading(false);
     }
   };
 
-
+  // Helper for rendering terms read-only
   const renderViewOnlyTerms = () => (
     <div className="glass-card p-8 md:p-10 space-y-6">
       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
@@ -221,7 +231,7 @@ export function FreelancerContractDetails({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-5 mb-6">
         <div className="flex items-center gap-2.5">
           <ListChecks size={20} className="text-primary" />
-          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-black font-zentry">Milestones ({milestones.length})</h2>
+          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Milestones ({milestones.length})</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <span className="px-3 py-1 bg-primary/10 border border-primary/20 text-primary rounded-full text-xs font-bold">
@@ -295,13 +305,13 @@ export function FreelancerContractDetails({
 
           {/* Stepper Panel */}
           <div className="glass-card p-4 relative overflow-hidden text-left mb-4 shrink-0">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20" />
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20" />
             <div className="flex items-center gap-4 overflow-x-auto pb-1 no-scrollbar whitespace-nowrap">
               {[
-                { number: 1, label: 'Terms Setup', desc: 'Define milestones & terms' },
-                { number: 2, label: 'Review & Confirm', desc: 'Freelancer review' },
-                { number: 3, label: 'E-Signature', desc: 'Digitally sign' },
-                { number: 4, label: 'Escrow Funding', desc: 'Secure project escrow' },
+                { number: 1, label: 'Review & Confirm', desc: 'Review contract terms' },
+                { number: 2, label: 'E-Signature', desc: 'Digitally sign' },
+                { number: 3, label: 'Escrow Pending', desc: 'Client funds escrow' },
+                { number: 4, label: 'Active', desc: 'Work in progress' },
               ].map((step, idx) => {
                 const isCompleted = currentStep > step.number;
                 const isActive = currentStep === step.number;
@@ -311,7 +321,7 @@ export function FreelancerContractDetails({
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-all duration-300 border shrink-0
                         ${isCompleted ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.15)]' : 
-                          isActive ? 'bg-blue-500 text-white border-blue-500 ring-2 ring-blue-500/15 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 
+                          isActive ? 'bg-teal-500 text-white border-teal-500 ring-2 ring-teal-500/15 shadow-[0_0_15px_rgba(20,184,166,0.3)]' : 
                           'bg-secondary/20 text-muted-foreground border-border/40'}`}
                       >
                         {isCompleted ? <Check size={14} /> : step.number}
@@ -348,75 +358,181 @@ export function FreelancerContractDetails({
             >
               <div className="flex-1 lg:overflow-y-auto pr-0 lg:pr-2 custom-scrollbar space-y-6">
                 
-                {/* 1. Setup terms step (waiting for client) */}
+                {/* STEP 1A: PendingContractDetails - Waiting for client update after change request */}
                 {contract.status === ContractStatus.PendingContractDetails && (
-                  <>
-                    <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-6 rounded-3xl flex items-center gap-3">
-                      <Clock size={20} className="shrink-0 animate-spin" style={{ animationDuration: '3s' }} />
-                      <div className="text-sm font-semibold">
-                        Waiting for the client to complete setting up terms and milestone schedules. You will be notified to review and confirm them.
-                      </div>
-                    </div>
-                    {renderViewOnlyTerms()}
-                  </>
-                )}
-
-                {/* 2. Review and Confirm step */}
-                {contract.status === ContractStatus.PendingContractConfirmation && (
                   <>
                     <div className="glass-card p-8 md:p-10 space-y-6">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
-                        <ShieldAlert size={20} className="text-primary animate-pulse" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Confirm Contract Terms & Milestones</h2>
+                        <Clock size={20} className="text-amber-500" />
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Milestone Change Request Sent</h2>
                       </div>
 
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Please review the scope of work, clauses, and milestones scheduled by the client below. If you agree, confirm to proceed to the e-signature step. If changes are needed, click "Request Changes" to specify reasons.
-                      </p>
+                      <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-5 rounded-2xl text-sm font-semibold leading-relaxed flex items-start gap-3">
+                        <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                        <div>
+                          Waiting for the client to update the milestone schedule. You can review the current milestones below while the contract is returned to the client for editing.
+                        </div>
+                      </div>
 
-                      <div className="flex gap-4 border-t border-border/50 pt-5">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Job</span>
+                          <span className="text-sm font-bold text-foreground mt-1 block">{contract.jobTitle || contract.title}</span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Final Budget</span>
+                          <span className="text-lg font-black text-primary mt-1 block">{formatContractAmount(contract.totalBudget)}</span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Current Milestone Total</span>
+                          <span className="text-lg font-black text-foreground mt-1 block">{formatContractAmount(milestonesTotal)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row gap-3">
+                        <button
+                          onClick={() => navigate('/contracts')}
+                          className="px-5 py-3 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <ArrowLeft size={14} />
+                          Back to Contracts
+                        </button>
+                      </div>
+                    </div>
+
+                    {renderViewOnlyMilestones()}
+                  </>
+                )}
+
+                {/* STEP 1B: PendingContractConfirmation - Review & Confirm */}
+                {contract.status === ContractStatus.PendingContractConfirmation && (
+                  <>
+                    {/* Review Banner */}
+                    <div className="glass-card p-8 md:p-10 space-y-6">
+                      <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
+                        <Shield size={20} className="text-primary" />
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Review Contract Terms</h2>
+                      </div>
+
+                      <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-4 rounded-2xl text-xs font-medium leading-relaxed flex items-start gap-3">
+                        <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                        <div>
+                          The client has submitted the contract terms and milestone schedule for your review. Please read everything carefully before confirming or requesting changes.
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2">
                         <button
                           disabled={actionLoading}
                           onClick={handleConfirmDetails}
-                          className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold transition-all cursor-pointer flex-1 flex items-center justify-center gap-2 shadow-md border-none"
+                          className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold cursor-pointer transition-all shadow-md flex items-center justify-center gap-2 border-none"
                         >
-                          <CheckCircle size={18} />
-                          Confirm & Proceed
+                          <CheckCircle size={17} />
+                          Confirm & Accept Terms
                         </button>
                         <button
                           disabled={actionLoading}
-                          onClick={handleRequestChange}
-                          className="px-6 py-3 bg-destructive/10 hover:bg-destructive/20 border border-destructive/25 text-destructive rounded-xl text-sm font-bold transition-all cursor-pointer flex-1 flex items-center justify-center gap-2"
+                          onClick={() => setShowChangeRequestModal(true)}
+                          className="flex-1 py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/25 rounded-xl text-sm font-bold cursor-pointer transition-all flex items-center justify-center gap-2"
                         >
-                          <AlertCircle size={18} />
+                          <Edit3 size={17} />
                           Request Changes
                         </button>
                       </div>
                     </div>
+
                     {renderViewOnlyTerms()}
                     {renderViewOnlyMilestones()}
                   </>
                 )}
 
-                {/* 3. E-Signature Step */}
+                {/* STEP 2: PendingSignature - E-Sign */}
                 {contract.status === ContractStatus.PendingSignature && (
                   <>
-                    <div className="glass-card p-8 md:p-10 space-y-6 text-center">
-                      <div className="w-16 h-16 bg-primary/10 text-primary border border-primary/20 rounded-full flex items-center justify-center mx-auto">
-                        <FileCheck size={28} />
+                    <div className="glass-card p-8 md:p-10 space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                        <div className="space-y-3">
+                          <div className="w-16 h-16 bg-teal-500/10 text-teal-500 border border-teal-500/20 rounded-full flex items-center justify-center">
+                            <FileCheck size={28} />
+                          </div>
+                          <div>
+                            <h2 className="text-2xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Review Final Contract Before Signing</h2>
+                            <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed mt-2">
+                              Please review final price, dates, job scope, and milestones before signing. Your signature confirms the terms shown below.
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-teal-500/10 border border-teal-500/20 text-teal-500 rounded-full text-xs font-bold uppercase tracking-wider shrink-0">
+                          Ready for E-signature
+                        </span>
                       </div>
-                      <h2 className="text-2xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">E-Sign Contract Document</h2>
-                      <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                        Both client and freelancer must digitally sign the contract. Click the button below to review and sign the legal document.
-                      </p>
 
-                      <button
-                        onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                        className="btn-primary-custom px-8 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center gap-2"
-                      >
-                        <FileCheck size={18} />
-                        Proceed to E-sign Contract
-                      </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Job</span>
+                          <span className="text-sm font-bold text-foreground mt-1 block">{contract.jobTitle || contract.title}</span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Final Budget</span>
+                          <span className="text-lg font-black text-primary mt-1 block">{formatContractAmount(contract.totalBudget)}</span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Milestone Total</span>
+                          <span className="text-lg font-black text-foreground mt-1 block">{formatContractAmount(milestonesTotal)}</span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Start Date</span>
+                          <span className="text-sm font-bold text-foreground mt-1 block">{formatContractDate(contract.startDate)}</span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">End Date</span>
+                          <span className="text-sm font-bold text-foreground mt-1 block">{formatContractDate(contract.endDate)}</span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Parties</span>
+                          <span className="text-sm font-bold text-foreground mt-1 block">{contract.clientName || 'Client'} / {contract.freelancerName || 'Freelancer'}</span>
+                        </div>
+                      </div>
+
+                      {!milestoneTotalMatchesBudget && (
+                        <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-4 rounded-2xl text-xs font-semibold leading-relaxed flex items-start gap-3">
+                          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                          <span>Milestone total differs from final budget. Review the updated milestones below before signing.</span>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col md:flex-row gap-3">
+                        <button
+                          onClick={() => navigate('/contracts')}
+                          className="px-5 py-3 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <ArrowLeft size={14} />
+                          Back to Contracts
+                        </button>
+                        <button
+                          onClick={handleScrollToReview}
+                          className="px-5 py-3 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <ListChecks size={14} />
+                          Review Milestones
+                        </button>
+                        <button
+                          disabled={actionLoading}
+                          onClick={() => setShowMilestoneChangeModal(true)}
+                          className="px-5 py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                        >
+                          <Edit3 size={14} />
+                          Request Milestone Changes
+                        </button>
+                        <button
+                          onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
+                          className="btn-primary-custom px-8 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+                        >
+                          <FileCheck size={18} />
+                          Proceed to E-sign Contract
+                        </button>
+                      </div>
                     </div>
 
                     {contract.esignContractPdfUrl && (
@@ -451,46 +567,67 @@ export function FreelancerContractDetails({
                       </section>
                     )}
 
-                    {renderViewOnlyTerms()}
-                    {renderViewOnlyMilestones()}
+                    <div ref={reviewContentRef} className="scroll-mt-6 space-y-6">
+                      <div className="glass-card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-sm font-black uppercase tracking-wider text-foreground">Need milestone changes?</h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Ask the client to update milestone titles, dates, or amounts before you sign.
+                          </p>
+                        </div>
+                        <button
+                          disabled={actionLoading}
+                          onClick={() => setShowMilestoneChangeModal(true)}
+                          className="px-5 py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                        >
+                          <Edit3 size={14} />
+                          Request Milestone Changes
+                        </button>
+                      </div>
+                      {renderViewOnlyMilestones()}
+                    </div>
                   </>
                 )}
 
-                {/* 4. Escrow Funding Step */}
+                {/* STEP 3: PendingEscrow - Waiting for client */}
                 {contract.status === ContractStatus.PendingEscrow && (
                   <>
-                  <div className="glass-card p-8 md:p-10 space-y-5">
+                    <div className="glass-card p-8 md:p-10 space-y-6">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
-                        <ListChecks size={20} className="text-primary" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Milestone Review</h2>
+                        <Lock size={20} className="text-primary" />
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Waiting for Escrow Funding</h2>
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Review the client-created milestones below. Accept them to confirm your agreement and allow the client to fund the escrow to begin work.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          disabled={actionLoading}
-                          onClick={handleAcceptMilestones}
-                          className="btn-primary-custom px-6 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          <CheckCircle size={17} />
-                          Accept Milestones
-                        </button>
-                        <button
-                          disabled={actionLoading}
-                          onClick={handleRequestMilestoneChange}
-                          className="px-6 py-3 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-sm font-bold text-foreground transition-all cursor-pointer inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          <AlertCircle size={17} />
-                          Request Changes
-                        </button>
+
+                      <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
+                        <Clock size={22} className="shrink-0 animate-pulse" />
+                        <div className="text-sm font-semibold">
+                          The contract is fully signed. The client is now funding the escrow to activate your workspace and start work.
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
-                      <Clock size={20} className="shrink-0 animate-pulse" />
-                      <div className="text-sm font-semibold">
-                        Waiting for the client to fund the secure contract escrow deposit (80% of budget).
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Contract Budget</span>
+                          <span className="text-2xl font-bold text-foreground mt-1.5 block">
+                            {formatContractAmount(contract.totalBudget)}
+                          </span>
+                          <span className="text-xs text-muted-foreground block mt-1">
+                            = {new Intl.NumberFormat('vi-VN').format(contract.totalBudget * 1000)} VND
+                          </span>
+                        </div>
+                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Escrow Required (80%)</span>
+                          <span className="text-2xl font-bold text-primary mt-1.5 block">
+                            {formatContractAmount(contract.totalBudget * 0.8)}
+                          </span>
+                          <span className="text-xs text-muted-foreground block mt-1">
+                            Client must fund this amount
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-4 text-xs text-emerald-600 font-semibold leading-relaxed">
+                        Once the client funds the escrow, your workspace will be automatically activated and you can begin work on the milestones.
                       </div>
                     </div>
 
@@ -499,7 +636,7 @@ export function FreelancerContractDetails({
                   </>
                 )}
 
-                {/* 5. Active Contract / Complete View */}
+                {/* STEP 4+: Active/Completed Contract */}
                 {contract.status >= ContractStatus.Active && (
                   <>
                     <section className="glass-card p-8 md:p-10 relative overflow-hidden">
@@ -542,16 +679,12 @@ export function FreelancerContractDetails({
 
                         <div className="flex flex-col gap-1 bg-secondary/15 border border-border/20 rounded-2xl p-4">
                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Payment Type</span>
-                          <span className="text-sm font-bold text-foreground mt-1">
-                            Fixed Price
-                          </span>
+                          <span className="text-sm font-bold text-foreground mt-1">Fixed Price</span>
                         </div>
 
                         <div className="flex flex-col gap-1 bg-secondary/15 border border-border/20 rounded-2xl p-4">
                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Job Post ID</span>
-                          <span className="text-sm font-bold text-muted-foreground mt-1 truncate">
-                            {contract.jobPostsId}
-                          </span>
+                          <span className="text-sm font-bold text-muted-foreground mt-1 truncate">{contract.jobPostsId}</span>
                         </div>
 
                         {contract.createdAt && (
@@ -633,7 +766,6 @@ export function FreelancerContractDetails({
                         <div className="flex flex-col gap-4">
                           {milestones.map((milestone) => {
                             const isExpanded = expandedMilestone === milestone.id;
-                            const statusClass = getMilestoneStatusClass(milestone.status);
 
                             return (
                               <div
@@ -668,7 +800,7 @@ export function FreelancerContractDetails({
 
                                   <div className="flex items-center gap-4 shrink-0">
                                     <span className="text-sm font-bold text-foreground">{formatContractAmount(milestone.amount)}</span>
-                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${statusClass.replace('milestone-status ', '')} 
+                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider
                                       ${milestone.status === MilestoneStatus.PaymentConfirmed ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
                                         milestone.status === MilestoneStatus.Approved ? 'bg-primary/10 text-primary border border-primary/20' :
                                         'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
@@ -690,25 +822,40 @@ export function FreelancerContractDetails({
                                       transition={{ duration: 0.3, ease: "easeInOut" }}
                                       className="overflow-hidden bg-secondary/15 border-t border-border/50"
                                     >
-                                      <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Amount</span>
-                                          <span className="font-bold text-foreground text-sm">{formatContractAmount(milestone.amount)}</span>
+                                      <div className="p-5 space-y-4 text-xs">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                          <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Amount</span>
+                                            <span className="font-bold text-foreground text-sm">{formatContractAmount(milestone.amount)}</span>
+                                          </div>
+                                          <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Due Date</span>
+                                            <span className="font-bold text-foreground text-sm">{formatContractDate(milestone.due_date)}</span>
+                                          </div>
+                                          <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Status</span>
+                                            <span className="font-bold text-foreground text-sm">{getMilestoneStatusLabel(milestone.status)}</span>
+                                          </div>
+                                          <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Paid Date</span>
+                                            <span className="font-bold text-foreground text-sm">
+                                              {milestone.paid_at ? new Date(milestone.paid_at).toLocaleString() : 'N/A'}
+                                            </span>
+                                          </div>
                                         </div>
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Due Date</span>
-                                          <span className="font-bold text-foreground text-sm">{formatContractDate(milestone.due_date)}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Status</span>
-                                          <span className="font-bold text-foreground text-sm">{getMilestoneStatusLabel(milestone.status)}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Paid Date</span>
-                                          <span className="font-bold text-foreground text-sm">
-                                            {milestone.paid_at ? new Date(milestone.paid_at).toLocaleString() : 'N/A'}
-                                          </span>
-                                        </div>
+
+                                        {/* Submit deliverables CTA for active milestones */}
+                                        {milestone.status === MilestoneStatus.InProgress && (
+                                          <div className="pt-2">
+                                            <button
+                                              onClick={() => navigate(`/milestones/${milestone.id}/submit`)}
+                                              className="btn-primary-custom px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
+                                            >
+                                              <FileCheck size={13} />
+                                              Submit Deliverables
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     </motion.div>
                                   )}
@@ -794,12 +941,12 @@ export function FreelancerContractDetails({
                 </h3>
 
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-blue-500/20 transition-all">
+                  <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-teal-500/20 transition-all">
                     <div>
                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Total Budget</span>
                       <span className="text-base font-black text-foreground mt-0.5 block">{formatContractAmount(contract.totalBudget)}</span>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0">
                       <DollarSign size={15} />
                     </div>
                   </div>
@@ -826,17 +973,19 @@ export function FreelancerContractDetails({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-emerald-500/20 transition-all">
-                    <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Milestones Status</span>
-                      <span className="text-sm font-black text-foreground mt-0.5 block">
-                        {milestonesPaid} Paid / {milestonesApproved} Approved
-                      </span>
+                  {contract.status >= ContractStatus.Active && (
+                    <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-emerald-500/20 transition-all">
+                      <div>
+                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Milestones Status</span>
+                        <span className="text-sm font-black text-foreground mt-0.5 block">
+                          {milestonesPaid} Paid / {milestonesApproved} Approved
+                        </span>
+                      </div>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                        <CheckCircle size={15} />
+                      </div>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-                      <CheckCircle size={15} />
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
               
@@ -844,15 +993,42 @@ export function FreelancerContractDetails({
               <div className="glass-card p-6">
                 <h2 className="text-base font-bold text-foreground uppercase tracking-tight mb-5 font-zentry">Quick Actions</h2>
                 <div className="flex flex-col gap-3">
+                  {contract.status === ContractStatus.PendingContractDetails && (
+                    <motion.button
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => navigate('/contracts')}
+                      className="w-full py-3 bg-secondary/50 hover:bg-secondary border border-border/60 rounded-xl font-bold text-sm text-foreground cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      <ArrowLeft size={17} />
+                      Back to Contracts
+                    </motion.button>
+                  )}
+
+                  {/* Submit deliverables for active contracts */}
                   {contract.status === ContractStatus.Active && (
                     <motion.button 
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)} 
-                      className="btn-primary-custom w-full py-3 rounded-xl font-bold text-sm cursor-pointer flex items-center justify-center gap-2"
+                      onClick={() => navigate(`/contracts/${contract.contractsId}/milestones`)} 
+                      className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-sm cursor-pointer shadow flex items-center justify-center gap-2 border-none"
                     >
-                      <FileCheck size={18} />
-                      Sign Contract Document
+                      <ListChecks size={18} />
+                      View Milestones
+                    </motion.button>
+                  )}
+
+                  {/* Review terms action in PendingContractConfirmation */}
+                  {(contract.status === ContractStatus.PendingContractConfirmation ||
+                    contract.status === ContractStatus.PendingSignature) && (
+                    <motion.button
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setShowMilestoneChangeModal(true)}
+                      className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      <Edit3 size={17} />
+                      Request Milestone Change
                     </motion.button>
                   )}
 
@@ -898,65 +1074,185 @@ export function FreelancerContractDetails({
               <div className="glass-card p-6">
                 <h2 className="text-base font-bold text-foreground uppercase tracking-tight mb-5 font-zentry">Contract Parties</h2>
                 <div className="flex flex-col gap-6">
-                  {contract.clientProfile && (
-                    <div>
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">Client</span>
-                      <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
-                        <img
-                          src={contract.clientProfile.profileImageUrl || '/img/avatar-fallback.png'}
-                          alt={contract.clientProfile.fullName}
-                          className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + (contract.clientProfile?.fullName || 'Client');
-                          }}
-                        />
-                        <div className="flex-1 min-width-0 space-y-1">
-                          <h4 className="text-sm font-bold text-foreground truncate">{contract.clientProfile.fullName}</h4>
-                          {contract.clientProfile.companyName && (
-                            <p className="text-[11px] text-muted-foreground font-semibold truncate">{contract.clientProfile.companyName}</p>
-                          )}
-                          {contract.clientProfile.email && (
-                            <a 
-                              href={`mailto:${contract.clientProfile.email}`} 
-                              className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
-                            >
-                              <Mail size={11} />
-                              {contract.clientProfile.email}
-                            </a>
-                          )}
-                        </div>
+                  <div>
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">Client</span>
+                    <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
+                      <img
+                        src={clientAvatar}
+                        alt={clientName}
+                        className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(clientName)}`;
+                        }}
+                      />
+                      <div className="flex-1 min-width-0 space-y-1">
+                        <h4 className="text-sm font-bold text-foreground truncate">{clientName}</h4>
+                        {clientCompany && (
+                          <p className="text-[11px] text-muted-foreground font-semibold truncate">{clientCompany}</p>
+                        )}
+                        {clientEmail ? (
+                          <a
+                            href={`mailto:${clientEmail}`}
+                            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
+                          >
+                            <Mail size={11} />
+                            {clientEmail}
+                          </a>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground font-semibold">Email not available</p>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
 
-                  {contract.freelancerProfile && (
-                    <div>
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">Freelancer (You)</span>
-                      <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
-                        <img
-                          src={contract.freelancerProfile.profileImageUrl || '/img/avatar-fallback.png'}
-                          alt={contract.freelancerProfile.fullName}
-                          className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + (contract.freelancerProfile?.fullName || 'Freelancer');
-                          }}
-                        />
-                        <div className="flex-1 min-width-0 space-y-1">
-                          <h4 className="text-sm font-bold text-foreground truncate">{contract.freelancerProfile.fullName}</h4>
-                          {contract.freelancerProfile.headline && (
-                            <p className="text-[11px] text-muted-foreground leading-snug font-medium line-clamp-2">{contract.freelancerProfile.headline}</p>
-                          )}
-                        </div>
+                  <div>
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">Freelancer (You)</span>
+                    <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
+                      <img
+                        src={freelancerAvatar}
+                        alt={freelancerName}
+                        className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(freelancerName)}`;
+                        }}
+                      />
+                      <div className="flex-1 min-width-0 space-y-1">
+                        <h4 className="text-sm font-bold text-foreground truncate">{freelancerName}</h4>
+                        {freelancerHeadline && (
+                          <p className="text-[11px] text-muted-foreground leading-snug font-medium line-clamp-2">{freelancerHeadline}</p>
+                        )}
+                        {freelancerEmail ? (
+                          <a
+                            href={`mailto:${freelancerEmail}`}
+                            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
+                          >
+                            <Mail size={11} />
+                            {freelancerEmail}
+                          </a>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground font-semibold">Email not available</p>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
-
             </motion.div>
           </div>
         </div>
       </div>
+
+      {/* Change Request Modal (Terms) */}
+      <AnimatePresence>
+        {showChangeRequestModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-card border border-border/50 rounded-3xl p-8 w-full max-w-lg shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-foreground uppercase tracking-tight font-zentry">Request Contract Changes</h3>
+                <button
+                  onClick={() => { setShowChangeRequestModal(false); setChangeRequestReason(''); }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-secondary/50 hover:bg-secondary text-muted-foreground cursor-pointer border-none"
+                >
+                  <XCircle size={16} />
+                </button>
+              </div>
+
+              <p className="text-sm text-muted-foreground mb-4">
+                Describe what changes you'd like the client to make to the contract terms. The contract will return to the client for editing.
+              </p>
+
+              <textarea
+                value={changeRequestReason}
+                onChange={(e) => setChangeRequestReason(e.target.value)}
+                className="w-full h-32 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
+                placeholder="e.g., Please clarify the scope in milestone 2, update payment terms to net-30..."
+              />
+
+              <div className="flex justify-end gap-3 mt-5">
+                <button
+                  onClick={() => { setShowChangeRequestModal(false); setChangeRequestReason(''); }}
+                  className="px-5 py-2.5 bg-secondary/50 hover:bg-secondary border border-border/60 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={actionLoading || !changeRequestReason.trim()}
+                  onClick={handleRequestChange}
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Submit Change Request
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Milestone Change Request Modal */}
+      <AnimatePresence>
+        {showMilestoneChangeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-card border border-border/50 rounded-3xl p-8 w-full max-w-lg shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-foreground uppercase tracking-tight font-zentry">Request Milestone Changes</h3>
+                <button
+                  onClick={() => { setShowMilestoneChangeModal(false); setMilestoneChangeReason(''); }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center bg-secondary/50 hover:bg-secondary text-muted-foreground cursor-pointer border-none"
+                >
+                  <XCircle size={16} />
+                </button>
+              </div>
+
+              <p className="text-sm text-muted-foreground mb-4">
+                Describe what changes you'd like to the milestone schedule. The client will need to update and resubmit.
+              </p>
+
+              <textarea
+                value={milestoneChangeReason}
+                onChange={(e) => setMilestoneChangeReason(e.target.value)}
+                className="w-full h-32 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
+                placeholder="e.g., Milestone 1 needs more time, milestone 3 budget is too low..."
+              />
+
+              <div className="flex justify-end gap-3 mt-5">
+                <button
+                  onClick={() => { setShowMilestoneChangeModal(false); setMilestoneChangeReason(''); }}
+                  className="px-5 py-2.5 bg-secondary/50 hover:bg-secondary border border-border/60 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={actionLoading || !milestoneChangeReason.trim()}
+                  onClick={handleRequestMilestoneChange}
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Submit Milestone Change
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppLayout>
   );
 }

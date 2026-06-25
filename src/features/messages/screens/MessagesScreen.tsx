@@ -643,6 +643,9 @@ export default function MessagesScreen() {
                         onChange={e => setDealPriceInput(e.target.value)}
                         className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
                       />
+                      <p className="text-[11px] leading-5 text-muted-foreground">
+                        Final budget can be negotiated here. Before the freelancer accepts, update milestones so their total matches this price.
+                      </p>
                       <div className="flex justify-between gap-2">
                         <button
                           onClick={() => setShowDealPrice(false)}
@@ -653,6 +656,7 @@ export default function MessagesScreen() {
                         <button
                           onClick={handleProposeDeal}
                           id="btn-propose-deal"
+                          disabled={!dealPriceInput.trim()}
                           className="flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none"
                         >
                           Send

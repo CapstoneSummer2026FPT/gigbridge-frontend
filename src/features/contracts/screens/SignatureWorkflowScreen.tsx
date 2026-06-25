@@ -6,7 +6,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
-import type { ContractDto } from '../../../types/models/Contract';
+import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { ContractStatus } from '../../../types/models/Contract';
 import { SignatureStatus } from '../../../types/models/ESign';
@@ -61,6 +61,7 @@ export default function SignatureWorkflowScreen() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [contract, setContract] = useState<ContractDto | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [document, setDocument] = useState<ESignDocumentDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -82,6 +83,11 @@ export default function SignatureWorkflowScreen() {
 
   const hasSigned = Boolean(currentUserSignature) || contract?.status === ContractStatus.PendingEscrow || contract?.status === ContractStatus.Active;
   const isClient = role === UserRole.Client;
+  const milestonesTotal = useMemo(
+    () => milestones.reduce((sum, milestone) => sum + Number(milestone.amount || 0), 0),
+    [milestones]
+  );
+  const milestoneTotalDiffers = contract ? Math.abs(milestonesTotal - Number(contract.totalBudget || 0)) >= 0.01 : false;
 
   const loadDocument = useCallback(async (targetContractId: string): Promise<void> => {
     try {
@@ -119,6 +125,8 @@ export default function SignatureWorkflowScreen() {
       }
 
       setContract(contractResponse.data);
+      const milestonesResponse = await contractGetAPI.getMilestonesByContract(contractId);
+      setMilestones(milestonesResponse.success && milestonesResponse.data ? milestonesResponse.data : []);
       await loadDocument(contractId);
 
       if (
@@ -385,6 +393,14 @@ export default function SignatureWorkflowScreen() {
             <div className="signature-section">
               <h2>Contract Details</h2>
 
+              <div className="signature-info-box">
+                <Clock size={20} />
+                <div>
+                  <h3>Review before signing</h3>
+                  <p>Please review final price, dates, job scope, and milestones before signing. Your signature confirms the finalized contract terms.</p>
+                </div>
+              </div>
+
               <div className="contract-details">
                 <div className="detail-row">
                   <span>Job</span>
@@ -393,6 +409,10 @@ export default function SignatureWorkflowScreen() {
                 <div className="detail-row">
                   <span>Final budget</span>
                   <strong>{formatMoney(contract.totalBudget)}</strong>
+                </div>
+                <div className="detail-row">
+                  <span>Milestone total</span>
+                  <strong>{formatMoney(milestonesTotal)}</strong>
                 </div>
                 <div className="detail-row">
                   <span>Start date</span>
@@ -417,6 +437,34 @@ export default function SignatureWorkflowScreen() {
                 <p>{contract.jobDescription || contract.description || 'No scope of work provided.'}</p>
               </div>
 
+              <div className="contract-description">
+                <div className="signature-milestone-header">
+                  <h3>Milestones</h3>
+                  <strong>{formatMoney(milestonesTotal)}</strong>
+                </div>
+                {milestoneTotalDiffers && (
+                  <div className="signature-inline-warning">
+                    Milestone total differs from final budget. Review the schedule carefully before signing.
+                  </div>
+                )}
+                {milestones.length > 0 ? (
+                  <div className="signature-milestone-list">
+                    {milestones.map((milestone, index) => (
+                      <div key={milestone.id || index} className="signature-milestone-item">
+                        <div>
+                          <span className="signature-milestone-number">#{index + 1}</span>
+                          <strong>{milestone.title}</strong>
+                          <p>Due: {formatDate(milestone.due_date)}</p>
+                        </div>
+                        <strong>{formatMoney(milestone.amount)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No milestones are attached to this contract yet.</p>
+                )}
+              </div>
+
               {document?.renderedHtmlContent && (
                 <div className="contract-description">
                   <h3>Generated contract document</h3>
@@ -432,8 +480,7 @@ export default function SignatureWorkflowScreen() {
               <div className="signature-info-box">
                 <Clock size={20} />
                 <div>
-                  <h3>Electronic signature audit</h3>
-                  <p>Your signature is recorded with timestamp and account identity. The milestone content becomes visible after the freelancer signs and reviews the finalized terms.</p>
+                  <p>Your signature is recorded with timestamp and account identity. You can go back to the contract page or return to this review before submitting the signature.</p>
                 </div>
               </div>
             </div>

@@ -318,7 +318,7 @@ export default function ManageMilestonesScreen() {
       }
 
       toast.success('Milestones setup complete! Job post published successfully.');
-      navigate('/client/dashboard');
+      navigate('/jobs/my-jobs');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete setup');
       toast.error(err instanceof Error ? err.message : 'Failed to complete setup');
@@ -367,7 +367,7 @@ export default function ManageMilestonesScreen() {
       }
 
       toast.success('Milestones submitted successfully for freelancer review.');
-      navigate('/messages');
+      navigate('/jobs/my-jobs');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit details');
       toast.error(err instanceof Error ? err.message : 'Failed to submit details');

@@ -1011,6 +1011,8 @@ export function useMessages() {
       setShowDealPrice(false);
       loadConversations();
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to propose deal.';
+      setAnchorNotice(message);
       console.error('Failed to propose deal:', err);
     }
   };

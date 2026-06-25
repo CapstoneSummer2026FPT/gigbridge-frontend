@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Lock, AlertCircle, CheckCircle, Clock, DollarSign,
-  User, FileText, Calendar, Download, ArrowLeft, Shield,
-  Mail, ShieldAlert, ListChecks, Copy, Check, FileCheck, ChevronDown, Star
+  Lock, CheckCircle, Clock, DollarSign,
+  User, FileText, Calendar, Download, ArrowLeft,
+  Mail, ShieldAlert, ListChecks, Copy, Check, ChevronDown, Star
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
@@ -107,16 +107,18 @@ export function ClientContractDetails({
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
   const milestonesPaid = milestones.filter(m => m.status === MilestoneStatus.PaymentConfirmed).length;
 
-  // New Stepper ordering mapping
+  // Stepper: Terms Setup -> Review & Confirm -> Escrow Funding
+  // (Client already e-signed during job post session — no separate signature step)
   let currentStep = 1;
   if (contract.status === ContractStatus.PendingContractConfirmation) {
     currentStep = 2;
-  } else if (contract.status === ContractStatus.PendingSignature) {
+  } else if (
+    contract.status === ContractStatus.PendingSignature ||
+    contract.status === ContractStatus.PendingEscrow
+  ) {
     currentStep = 3;
-  } else if (contract.status === ContractStatus.PendingEscrow) {
-    currentStep = 4;
   } else if (contract.status >= ContractStatus.Active) {
-    currentStep = 5;
+    currentStep = 4;
   }
 
   // Handlers
@@ -191,7 +193,7 @@ export function ClientContractDetails({
         const submitRes = await contractPostAPI.submitDetails(contract.contractsId);
         if (submitRes.success) {
           alert('Contract details submitted to freelancer!');
-          onRefresh();
+          navigate('/jobs/my-jobs');
         } else {
           alert(submitRes.message || 'Failed to submit details');
         }
@@ -364,8 +366,7 @@ export function ClientContractDetails({
               {[
                 { number: 1, label: 'Terms Setup', desc: 'Define milestones & terms' },
                 { number: 2, label: 'Review & Confirm', desc: 'Freelancer review' },
-                { number: 3, label: 'E-Signature', desc: 'Digitally sign' },
-                { number: 4, label: 'Escrow Funding', desc: 'Secure project escrow' },
+                { number: 3, label: 'Escrow Funding', desc: 'Secure project escrow' },
               ].map((step, idx) => {
                 const isCompleted = currentStep > step.number;
                 const isActive = currentStep === step.number;
@@ -389,7 +390,7 @@ export function ClientContractDetails({
                         </span>
                       </div>
                     </div>
-                    {idx < 3 && (
+                    {idx < 2 && (
                       <div className={`w-8 md:w-12 h-[2px] transition-all duration-300 shrink-0
                         ${isCompleted ? 'bg-gradient-to-r from-emerald-500/40 to-emerald-500/10' : 'bg-border/30'}`}
                       />
@@ -603,59 +604,15 @@ export function ClientContractDetails({
                   </>
                 )}
 
-                {/* 3. E-Signature Step */}
+                {/* PendingSignature: Freelancer is still signing — show waiting state for client */}
                 {contract.status === ContractStatus.PendingSignature && (
                   <>
-                    <div className="glass-card p-8 md:p-10 space-y-6 text-center">
-                      <div className="w-16 h-16 bg-primary/10 text-primary border border-primary/20 rounded-full flex items-center justify-center mx-auto">
-                        <FileCheck size={28} />
+                    <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
+                      <Clock size={20} className="shrink-0 animate-pulse" />
+                      <div className="text-sm font-semibold">
+                        Waiting for the freelancer to digitally sign the contract. Once both signatures are collected, escrow funding will begin.
                       </div>
-                      <h2 className="text-2xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">E-Sign Contract Document</h2>
-                      <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                        Both client and freelancer must digitally sign the contract. Review & sign the document to progress the contract setup.
-                      </p>
-
-                      <button
-                        onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                        className="btn-primary-custom px-8 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center gap-2"
-                      >
-                        <FileCheck size={18} />
-                        Proceed to E-sign Contract
-                      </button>
                     </div>
-
-                    {contract.esignContractPdfUrl && (
-                      <section className="glass-card p-8 md:p-10 relative overflow-hidden">
-                        <div className="flex items-center gap-2.5 border-b border-border/50 pb-4 mb-5">
-                          <FileCheck size={20} className="text-primary" />
-                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">E-Signature Contract Document</h2>
-                        </div>
-
-                        <div className="flex flex-col md:flex-row items-center gap-4 bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                            <FileText size={24} />
-                          </div>
-                          <div className="flex-1 min-w-0 text-left">
-                            <h4 className="text-sm font-bold text-foreground truncate">
-                              {contract.title.replace(/\s+/g, '_')}_ESign_Document.pdf
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
-                              E-signature status: <span className="text-amber-500 font-bold">Awaiting Signatures</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-                            <button
-                              onClick={handleDownloadPDF}
-                              className="px-4 py-2 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center gap-1.5"
-                            >
-                              <Download size={13} />
-                              Download Draft PDF
-                            </button>
-                          </div>
-                        </div>
-                      </section>
-                    )}
-
                     {renderViewOnlyTerms()}
                     {renderViewOnlyMilestones()}
                   </>
@@ -1141,7 +1098,6 @@ export function ClientContractDetails({
 
               {/* Parties Info Panel */}
               <div className="glass-card p-6">
-                <h2 className="text-base font-bold text-foreground uppercase tracking-tight mb-5 font-zentry">Contract Parties</h2>
                 <div className="flex flex-col gap-6">
                   {contract.clientProfile && (
                     <div>
