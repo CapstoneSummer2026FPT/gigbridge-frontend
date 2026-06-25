@@ -11,7 +11,6 @@ import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone, MilestoneAttachment } from '../../../types/models/Contract';
 import { MilestoneStatus } from '../../../types/models/Contract';
 import { canApproveMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
 import '../styles/approve-milestone-screen.css';
 
 interface MilestoneWithAttachments extends Milestone {
@@ -59,20 +58,16 @@ export default function ApproveMilestoneScreen() {
         setError(null);
 
         const contractResponse = await contractGetAPI.getContractById(contractId);
-        const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-        const loadedContract = contractResponse.success && contractResponse.data ? contractResponse.data : mockContract;
-        if (!loadedContract) {
-          throw new Error('Failed to load contract');
+        if (!contractResponse.success || !contractResponse.data) {
+          throw new Error(contractResponse.message || 'Failed to load contract');
         }
-        setContract(loadedContract);
+        setContract(contractResponse.data);
 
         const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
-        const mockMilestone = mockContract?.milestones.find(item => item.id === milestoneId);
-        const loadedMilestone = milestoneResponse.success && milestoneResponse.data ? milestoneResponse.data : mockMilestone;
-        if (!loadedMilestone) {
-          throw new Error('Failed to load milestone');
+        if (!milestoneResponse.success || !milestoneResponse.data) {
+          throw new Error(milestoneResponse.message || 'Failed to load milestone');
         }
-        setMilestone(loadedMilestone);
+        setMilestone(milestoneResponse.data);
 
         // Fetch milestone attachments
         const attachmentsResponse = await contractGetAPI.getMilestoneAttachments(milestoneId);
@@ -80,23 +75,7 @@ export default function ApproveMilestoneScreen() {
           setAttachments(attachmentsResponse.data);
         }
       } catch (err) {
-        const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-        const mockMilestone = mockContract?.milestones.find(item => item.id === milestoneId);
-        if (mockContract && mockMilestone) {
-          setContract(mockContract);
-          setMilestone(mockMilestone);
-          setAttachments([
-            {
-              id: 'mock_attach_1',
-              milestone_id: mockMilestone.id,
-              file_name: 'deliverable-review-package.pdf',
-              file_url: '/mock/deliverables/review-package.pdf',
-            },
-          ]);
-          setError(null);
-        } else {
-          setError(err instanceof Error ? err.message : 'An error occurred');
-        }
+        setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
@@ -114,22 +93,19 @@ export default function ApproveMilestoneScreen() {
 
       const response = await contractPutAPI.updateMilestoneStatus(
         milestone.id,
-        MilestoneStatus.Paid
+        MilestoneStatus.Approved
       );
 
       if (response.success) {
-        setMilestone({ ...response.data!, status: MilestoneStatus.Paid, paid_at: new Date().toISOString() });
+        setMilestone(response.data ? { ...response.data, status: MilestoneStatus.Approved } : { ...milestone, status: MilestoneStatus.Approved });
         setApprovalAction('pending');
         setApprovalNotes('');
-        setSuccessMessage('Milestone approved successfully. Escrow funds were released.');
+        setSuccessMessage('Milestone approved successfully.');
         setTimeout(() => {
           navigate(`/contracts/${contractId}`);
         }, 2000);
       } else {
-        setMilestone(prev => prev ? { ...prev, status: MilestoneStatus.Paid, paid_at: new Date().toISOString() } : prev);
-        setApprovalAction('pending');
-        setApprovalNotes('');
-        setSuccessMessage('Milestone approved in mock data. Escrow funds were released.');
+        setError(response.message || 'Failed to approve milestone.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -145,10 +121,15 @@ export default function ApproveMilestoneScreen() {
       setIsSubmitting(true);
       setError(null);
 
-      setMilestone(prev => prev ? { ...prev, status: MilestoneStatus.RevisionRequired } : prev);
-      setApprovalAction('pending');
-      setApprovalNotes('');
-      setSuccessMessage('Revision requested. The freelancer can resubmit deliverables.');
+      const response = await contractPutAPI.updateMilestoneStatus(milestone.id, MilestoneStatus.InProgress);
+      if (response.success) {
+        setMilestone(response.data ? { ...response.data, status: MilestoneStatus.InProgress } : { ...milestone, status: MilestoneStatus.InProgress });
+        setApprovalAction('pending');
+        setApprovalNotes('');
+        setSuccessMessage('Revision requested. The freelancer can resubmit deliverables.');
+      } else {
+        setError(response.message || 'Failed to request revisions.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -187,7 +168,7 @@ export default function ApproveMilestoneScreen() {
 
   const canApprove = canApproveMilestone(milestone.status);
   const isApproved = milestone.status === MilestoneStatus.Approved;
-  const isPaid = milestone.status === MilestoneStatus.Paid;
+  const isPaid = milestone.status === MilestoneStatus.PaymentConfirmed;
 
   return (
     <AppLayout>
@@ -255,7 +236,7 @@ export default function ApproveMilestoneScreen() {
                         Approved
                       </>
                     )}
-                    {milestone.status === MilestoneStatus.Paid && (
+                    {milestone.status === MilestoneStatus.PaymentConfirmed && (
                       <>
                         <CheckCircle2 size={14} />
                         {getMilestoneStatusLabel(milestone.status)}

@@ -57,6 +57,12 @@
   border: 1px solid #86efac;
 }
 
+.signature-alert.alert-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
 .signature-alert button {
   margin-left: auto;
   background: none;
@@ -241,6 +247,61 @@
   margin: 0.5rem 0 0;
   color: #111827;
   line-height: 1.6;
+}
+
+.signature-milestone-header,
+.signature-milestone-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.signature-milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.signature-milestone-item {
+  padding: 1rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+}
+
+.signature-milestone-item p {
+  margin: 0.35rem 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.signature-milestone-number {
+  display: inline-flex;
+  margin-right: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.signature-inline-warning {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+  border-radius: 0.375rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.signature-document-frame {
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background: white;
 }
 
 /* Info boxes */

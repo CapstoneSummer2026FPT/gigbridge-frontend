@@ -76,7 +76,7 @@ export default function AdminAdsPackagesScreen() {
     setSuccess(null);
 
     if (!adForm.imageName.trim() || !isSupportedAdImage(adForm.imageName)) {
-      setError('MSG48: Only JPG, PNG, GIF, or PDF formats are allowed');
+      setError(' Only JPG, PNG, GIF, or PDF formats are allowed');
       return;
     }
 

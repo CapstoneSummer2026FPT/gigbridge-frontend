@@ -155,7 +155,7 @@ export default function AdminFAQManagementScreen() {
     const sortOrder = articleForm.sortOrder.trim() ? Number(articleForm.sortOrder) : null;
 
     if (!question || !answer || !faqCategoryId) {
-      setError('MSG35: This field is required');
+      setError('This field is required');
       return;
     }
 
@@ -264,7 +264,7 @@ export default function AdminFAQManagementScreen() {
     clearMessages();
 
     if (!trimmedName || !trimmedSlug) {
-      setError('MSG35: This field is required');
+      setError('This field is required');
       return;
     }
 

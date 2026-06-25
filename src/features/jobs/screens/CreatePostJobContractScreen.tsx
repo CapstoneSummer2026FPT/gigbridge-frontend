@@ -24,7 +24,11 @@ export default function CreatePostJobContractScreen() {
   const [contractForm, setContractForm] = useState({
     title: jobData?.title ? `${jobData.title} Contract` : '',
     description: jobData?.description || '',
-    budget: jobData?.budgetMin !== undefined ? String(jobData.budgetMin) : '',
+    budget: jobData?.budgetMax !== undefined && jobData?.budgetMax !== null
+      ? String(jobData.budgetMax)
+      : jobData?.budgetMin !== undefined && jobData?.budgetMin !== null
+        ? String(jobData.budgetMin)
+        : '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: jobData?.deadline || '',
   });
@@ -63,7 +67,7 @@ export default function CreatePostJobContractScreen() {
           </div>
 
           {/* Stepper */}
-          <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
+          <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
             {/* Step 1: Completed */}
             <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBack}>
               <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-green-500 text-white hover:bg-green-600 transition-colors">
@@ -94,6 +98,15 @@ export default function CreatePostJobContractScreen() {
               <div className="flex flex-col">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 3</span>
                 <span className="text-xs font-bold text-muted-foreground">E-Sign Contract</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            {/* Step 4: Coming */}
+            <div className="flex items-center gap-3 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">4</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
+                <span className="text-xs font-bold text-muted-foreground">Setup Milestone</span>
               </div>
             </div>
           </div>
@@ -180,7 +193,7 @@ export default function CreatePostJobContractScreen() {
             className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-muted-foreground hover:bg-muted transition-all cursor-pointer flex items-center gap-1.5"
           >
             <ChevronLeft size={16} />
-            Back to Details
+            Back to Project Details
           </button>
           <button 
             type="button"

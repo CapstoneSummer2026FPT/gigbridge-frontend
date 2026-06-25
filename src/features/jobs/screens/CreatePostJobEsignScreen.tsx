@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { 
-  Check, ChevronLeft, Send
-} from 'lucide-react';
+import { Check, ChevronLeft, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { jobAPI } from '../../../api/jobAPI';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { JobPostStatus, JobPostVisibility } from '../../../types/models/Job';
+import { esignGetAPI } from '../../../api/esignAPI/GET';
+import { esignPostAPI } from '../../../api/esignAPI/POST';
+import type { ESignDocumentDto } from '../../../types/models/ESign';
+import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import { toast } from 'sonner';
 import { SuccessMilestoneSetupModal } from '../components/SuccessMilestoneSetupModal';
 import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
@@ -18,57 +18,131 @@ export default function CreatePostJobEsignScreen() {
   const location = useLocation();
   const { user } = useApp();
 
-  const { jobPostId, jobData, contractForm } = location.state || {};
+  const jobPostId: string | undefined = location.state?.jobPostId;
+  const jobData = location.state?.jobData;
+  const contractForm = location.state?.contractForm;
 
-  useEffect(() => {
-    if (!jobPostId || !jobData || !contractForm) {
-      alert('Contract state is missing. Redirecting to Job Creation step.');
-      navigate('/jobs/post');
-    }
-  }, [jobPostId, jobData, contractForm, navigate]);
+  // Document state
+  const [document, setDocument] = useState<ESignDocumentDto | null>(null);
+  const [isLoadingDocument, setIsLoadingDocument] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Signature state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isInviteFreelancersModalOpen, setIsInviteFreelancersModalOpen] = useState(false);
   const [createdContractId, setCreatedContractId] = useState<string | null>(null);
 
-  // Signature canvas drawing states and refs
+  // Canvas drawing
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  // Initialize canvas in modal when opened
+  // Check if user already signed this document
+  const currentUserSignature = document?.signatures?.find(
+    (sig) => sig.userId === user?.id
+  );
+  const hasAlreadySigned = currentUserSignature?.status === SignatureStatus.Signed;
+
+  // Redirect if no jobPostId
+  useEffect(() => {
+    if (!jobPostId) {
+      toast.error('Missing job post information. Redirecting to job creation.');
+      navigate('/jobs/post');
+    }
+  }, [jobPostId, navigate]);
+
+  // Load or create the E-sign document
+  useEffect(() => {
+    if (!jobPostId) return;
+
+    let isMounted = true;
+
+    const loadDocument = async () => {
+      setIsLoadingDocument(true);
+      setLoadError(null);
+
+      try {
+        // Try fetching the existing document first
+        const getResponse = await esignGetAPI.getDocumentByJob(jobPostId);
+
+        if (getResponse.success && getResponse.data) {
+          if (isMounted) setDocument(getResponse.data);
+          if (getResponse.data.status === ESignDocumentStatus.FullySigned) {
+            const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId);
+            if (isMounted && contractResponse.success && contractResponse.data) {
+              setCreatedContractId(contractResponse.data.contractsId);
+            }
+          }
+        } else {
+          // No document exists yet — create one from the job post template
+          const createResponse = await esignPostAPI.createDocumentFromJob(jobPostId);
+          if (!createResponse.success || !createResponse.data) {
+            throw new Error(createResponse.message || 'Failed to generate E-sign document.');
+          }
+          if (isMounted) setDocument(createResponse.data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setLoadError(err instanceof Error ? err.message : 'Failed to load E-sign document.');
+        }
+      } finally {
+        if (isMounted) setIsLoadingDocument(false);
+      }
+    };
+
+    loadDocument();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [jobPostId]);
+
+  // Initialize canvas when modal opens
   useEffect(() => {
     if (isModalOpen && canvasRef.current) {
       const canvas = canvasRef.current;
       canvas.width = 540;
       canvas.height = 220;
-      
+
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.lineWidth = 3;
-        ctx.strokeStyle = '#0247a3'; // Blue ink style
+        ctx.strokeStyle = '#0247a3';
       }
     }
   }, [isModalOpen]);
 
-  // Touch scroll prevention when signing
+  // Prevent touch scroll when signing
   useEffect(() => {
     const preventDefault = (e: TouchEvent) => {
       if (e.target === canvasRef.current) {
         e.preventDefault();
       }
     };
-    document.body.addEventListener('touchstart', preventDefault, { passive: false });
-    document.body.addEventListener('touchmove', preventDefault, { passive: false });
+    window.document.body.addEventListener('touchstart', preventDefault, { passive: false });
+    window.document.body.addEventListener('touchmove', preventDefault, { passive: false });
     return () => {
-      document.body.removeEventListener('touchstart', preventDefault);
-      document.body.removeEventListener('touchmove', preventDefault);
+      window.document.body.removeEventListener('touchstart', preventDefault);
+      window.document.body.removeEventListener('touchmove', preventDefault);
     };
   }, [isModalOpen]);
+
+  // --- Canvas drawing handlers ---
+
+  const getEventCoords = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+    rect: DOMRect
+  ) => {
+    if ('touches' in e) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -77,17 +151,10 @@ export default function CreatePostJobEsignScreen() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
+    const { x, y } = getEventCoords(e, rect);
 
     ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    ctx.moveTo(x, y);
     setIsDrawing(true);
   };
 
@@ -99,16 +166,9 @@ export default function CreatePostJobEsignScreen() {
     if (!ctx) return;
 
     const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
+    const { x, y } = getEventCoords(e, rect);
 
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.lineTo(x, y);
     ctx.stroke();
   };
 
@@ -124,119 +184,143 @@ export default function CreatePostJobEsignScreen() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  const isCanvasBlank = (canvas: HTMLCanvasElement): boolean => {
+    const blank = window.document.createElement('canvas');
+    blank.width = canvas.width;
+    blank.height = canvas.height;
+    return canvas.toDataURL() === blank.toDataURL();
+  };
+
   const handleCompleteSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Check if canvas is empty
-    const blank = document.createElement('canvas');
-    blank.width = canvas.width;
-    blank.height = canvas.height;
-    if (canvas.toDataURL() === blank.toDataURL()) {
-      alert('Vui lòng ký vào khung trước khi chọn Hoàn tất.');
+    if (isCanvasBlank(canvas)) {
+      toast.error('Please draw your signature before confirming.');
       return;
     }
 
-    const confirmSign = window.confirm("Quý khách xác nhận sử dụng chữ ký này?");
+    const confirmSign = window.confirm('Do you confirm using this signature?');
     if (confirmSign) {
       setSignatureImage(canvas.toDataURL());
       setIsModalOpen(false);
     }
   };
 
-  const handleBack = () => {
-    navigate('/jobs/post/contract', { state: { jobData, jobPostId } });
-  };
-
   const handleFinalize = async () => {
-    if (!signatureImage) {
-      alert('Vui lòng ký số hợp đồng trước khi hoàn tất gửi.');
+    if (submittingRef.current) return;
+    if (!signatureImage || !document) {
+      toast.error('Please sign the document before submitting.');
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
 
     try {
-      // 1. Update the JobPost in backend with modified contract form details
-      const updateRequest = {
-        title: contractForm.title.trim(),
-        description: contractForm.description.trim(),
-        majorCategoryId: jobData?.majorCategoryId || null,
-        budgetMin: parseFloat(contractForm.budget) || 0,
-        budgetMax: parseFloat(contractForm.budget) || 0,
-        currency: jobData?.currency || 'USD',
-        estimatedDuration: jobData?.estimatedDuration || null,
-        maxHires: jobData?.maxHires ? parseInt(jobData.maxHires) : null,
-        location: jobData?.location || null,
-        visibility: jobData?.visibility !== undefined ? parseInt(jobData.visibility) : JobPostVisibility.Public,
-        endDate: contractForm.endDate ? new Date(`${contractForm.endDate}T23:59:59`).toISOString() : null,
-        skillIds: jobData?.skillIds || [],
-        customSkillNames: jobData?.customSkillNames || [],
-      };
+      // Submit the signature via SubmitESignSignatureDto
+      const submitResponse = await esignPostAPI.submitSignature({
+        documentId: document.documentId,
+        signatureImageUrl: signatureImage,
+        signatureWidth: canvasRef.current?.width ?? 540,
+        signatureHeight: canvasRef.current?.height ?? 220,
+      });
 
-      const updateResponse = await jobAPI.updateJobPost(jobPostId, updateRequest);
-      if (!updateResponse.success) {
-        throw new Error(updateResponse.message || 'Lỗi khi lưu thông tin hợp đồng.');
-      }
-
-      // 2. Save questions if questions list is provided
-      if (jobData?.interviewQuestions && jobData.interviewQuestions.length > 0) {
-        const questionsResponse = await jobAPI.createBulkJobPostQuestions(jobPostId, {
-          questions: jobData.interviewQuestions.map((q: any, index: number) => ({
-            questionText: q.questionText.trim(),
-            orderIndex: index,
-            isRequired: q.isRequired,
-          })),
-        });
-        if (!questionsResponse.success) {
-          console.warn('Lưu câu hỏi phỏng vấn thất bại, tiếp tục quy trình.');
+      if (!submitResponse.success) {
+        if (submitResponse.statusCode === 409) {
+          // Already signed, proceed as success!
+          toast.success('E-sign signature recorded.');
+          const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId!);
+          if (contractResponse.success && contractResponse.data) {
+            setCreatedContractId(contractResponse.data.contractsId);
+          } else {
+            console.warn('Draft contract not found for job post after E-sign. User can navigate manually.');
+            setCreatedContractId(null);
+          }
+          setIsSuccessModalOpen(true);
+          return;
         }
+        throw new Error(submitResponse.message || 'Failed to submit E-sign signature.');
       }
 
-      // 3. Update JobPost status to open (publish it)
-      const publishResponse = await jobAPI.updateJobPostStatus(jobPostId, { status: JobPostStatus.Open });
-      if (!publishResponse.success) {
-        throw new Error(publishResponse.message || 'Lỗi khi phát hành tin tuyển dụng.');
+      toast.success('E-sign signature submitted successfully!');
+
+      // Fetch the draft contract created by the backend on E-sign completion
+      const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId!);
+      if (contractResponse.success && contractResponse.data) {
+        setCreatedContractId(contractResponse.data.contractsId);
+      } else {
+        // If contract isn't found immediately, still show success
+        console.warn('Draft contract not found for job post after E-sign. User can navigate manually.');
+        setCreatedContractId(null);
       }
 
-      toast.success('Hợp đồng đã được ký số và đăng tuyển dụng thành công!');
       setIsSuccessModalOpen(true);
-      
-      try {
-        const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId);
-        if (contractResponse.success && contractResponse.data) {
-          setCreatedContractId(contractResponse.data.contractsId);
-        } else {
-          console.warn('Không tìm thấy hợp đồng đi kèm cho Job Post này. Sử dụng mock contract ID.');
-          setCreatedContractId('contract_mock_1');
-        }
-      } catch (err) {
-        console.error('Lỗi khi lấy thông tin hợp đồng:', err);
-        setCreatedContractId('contract_mock_1');
-      } finally {
-        setIsSubmitting(false);
-      }
-    } catch (error: any) {
-      console.error(error);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred during E-sign submission.';
+      toast.error(message);
+    } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
-      alert(error.message || 'Đã xảy ra lỗi trong quá trình ký số hợp đồng. Vui lòng thử lại.');
+    }
+  };  // --- Navigation ---
+
+  const handleBackToProject = () => {
+    navigate('/jobs/post', {
+      state: { jobPostId, jobData },
+    });
+  };
+
+  const handleBack = () => {
+    navigate('/jobs/post/contract', {
+      state: { jobPostId, jobData, contractForm },
+    });
+  };
+
+  const handleNavigateToMilestones = () => {
+    if (createdContractId) {
+      navigate(`/contracts/${createdContractId}/milestones?mode=jobpost-setup`);
+    } else {
+      toast.error('Contract not ready yet. Please try again from My Jobs.');
+      navigate('/jobs/my-jobs');
     }
   };
 
-  // Format dynamic dates
-  const today = new Date();
-  const day = String(today.getDate()).padStart(2, '0');
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const year = today.getFullYear();
+  // --- Render ---
 
-  const clientName = user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Đức Trí Nguyễn';
-  const clientEmail = user?.email || 'ductri.18102020@gmail.com';
-  const clientPhone = user?.phone_number || '0911608947';
+  if (isLoadingDocument) {
+    return (
+      <AppLayout>
+        <div className="max-w-[1440px] mx-auto px-6 py-16 flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--gb-cyan)]" />
+          <p className="text-sm text-muted-foreground font-semibold">Loading E-sign document...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (loadError || !document) {
+    return (
+      <AppLayout>
+        <div className="max-w-[1440px] mx-auto px-6 py-16 flex flex-col items-center justify-center gap-4">
+          <AlertTriangle className="w-10 h-10 text-red-500" />
+          <p className="text-sm text-red-500 font-semibold">{loadError || 'Document could not be loaded.'}</p>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all cursor-pointer"
+          >
+            Go Back
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
       <div className="max-w-[1440px] mx-auto px-6 py-8 relative">
-        {/* Background Mesh Gradient (Subtle) */}
+        {/* Background Mesh Gradient */}
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(159,75,255,0.02),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(0,119,255,0.02),transparent_50%)] opacity-50 pointer-events-none" />
 
         {/* Header & Stepper */}
@@ -247,10 +331,9 @@ export default function CreatePostJobEsignScreen() {
             </h1>
           </div>
 
-          {/* Stepper */}
-          <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
-            {/* Step 1: Completed */}
-            <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/jobs/post', { state: { jobData, jobPostId } })}>
+          {/* Stepper: Step 1 done → Step 2 active */}
+          <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
+            <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBackToProject}>
               <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-green-500 text-white hover:bg-green-600 transition-colors">
                 <Check size={20} />
               </div>
@@ -259,9 +342,7 @@ export default function CreatePostJobEsignScreen() {
                 <span className="text-xs font-bold text-green-500 group-hover:underline">Project Details</span>
               </div>
             </div>
-            {/* Connector */}
             <div className="flex-grow mx-6 h-[2px] bg-green-500 rounded-full opacity-60" />
-            {/* Step 2: Completed */}
             <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBack}>
               <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-green-500 text-white hover:bg-green-600 transition-colors">
                 <Check size={20} />
@@ -271,9 +352,7 @@ export default function CreatePostJobEsignScreen() {
                 <span className="text-xs font-bold text-green-500 group-hover:underline">Contract Setup</span>
               </div>
             </div>
-            {/* Connector */}
             <div className="flex-grow mx-6 h-[2px] bg-green-500 rounded-full opacity-60" />
-            {/* Step 3: Active */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-md font-bold text-sm bg-[var(--gb-cyan)] text-white">
                 3
@@ -283,111 +362,59 @@ export default function CreatePostJobEsignScreen() {
                 <span className="text-xs font-bold text-foreground">E-Sign Contract</span>
               </div>
             </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex items-center gap-3 opacity-50">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">
+                4
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
+                <span className="text-xs text-muted-foreground font-bold">Setup Milestone</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Paper Contract Layout */}
+        {/* Already signed notice */}
+        {hasAlreadySigned && (
+          <div className="max-w-[850px] mx-auto mb-4 bg-green-500/10 border border-green-500/20 text-green-600 rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
+            <Check size={16} />
+            You have already signed this document. You can proceed to milestone setup.
+          </div>
+        )}
+
+        {/* Document status badge */}
+        {document.status === ESignDocumentStatus.FullySigned && (
+          <div className="max-w-[850px] mx-auto mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
+            <Check size={16} />
+            This document has been fully signed by all parties.
+          </div>
+        )}
+
+        {/* Rendered HTML Document */}
         <div className="max-w-[850px] mx-auto bg-white text-black p-12 shadow-2xl border border-slate-200 rounded-sm font-serif leading-relaxed relative overflow-hidden my-4 select-text">
-          {/* Header Lines */}
-          <div className="text-center mb-6">
-            <h2 className="text-sm font-bold tracking-wide uppercase">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h2>
-            <h3 className="text-xs font-bold tracking-wide uppercase mt-1">Độc lập - Tự do - Hạnh phúc</h3>
-            <div className="w-48 h-[1px] bg-black mx-auto mt-2 mb-4" />
-            <div className="text-right text-[10px] italic">
-              Số: {jobPostId ? jobPostId.substring(0, 8).toUpperCase() : '1539927'}/GB-HĐ
-            </div>
-          </div>
+          {/* Render the backend's HTML template */}
+          <div
+            dangerouslySetInnerHTML={{ __html: document.renderedHtmlContent }}
+          />
 
-          {/* Document Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-lg font-bold tracking-wider uppercase">PHIẾU ĐỀ NGHỊ CUNG CẤP DỊCH VỤ</h1>
-            <p className="text-xs italic mt-1 text-slate-700">Hôm nay, ngày {day} tháng {month} năm {year}</p>
-          </div>
-
-          {/* Client Details Section */}
-          <div className="space-y-3 mb-8 text-xs border-b border-dashed border-slate-300 pb-6">
-            <div className="flex">
-              <span className="w-32 font-semibold">Kính gửi:</span>
-              <span className="flex-grow font-semibold">Công ty TNHH GigBridge Việt Nam</span>
-            </div>
-            <div className="flex">
-              <span className="w-32 font-semibold">Tên chủ thể:</span>
-              <span className="flex-grow">{clientName}</span>
-            </div>
-            <div className="flex">
-              <span className="w-32 font-semibold">CMND/CCCD:</span>
-              <span className="flex-grow">{user?.id ? user.id.substring(0, 12).replace(/[^0-9]/g, '0') : '048204000258'}</span>
-            </div>
-            <div className="flex">
-              <span className="w-32 font-semibold">Địa chỉ:</span>
-              <span className="flex-grow">{jobData?.location || '273/6 Đống Đa, Phường Hải Châu, Đà Nẵng, Việt Nam'}</span>
-            </div>
-            <div className="flex">
-              <span className="w-32 font-semibold">Email:</span>
-              <span className="flex-grow">{clientEmail}</span>
-            </div>
-            <div className="flex">
-              <span className="w-32 font-semibold">Điện thoại:</span>
-              <span className="flex-grow">{clientPhone}</span>
-            </div>
-            <div className="flex font-semibold text-slate-800">
-              <span className="w-32">MÃ KHÁCH HÀNG:</span>
-              <span className="flex-grow">GB-{(jobPostId || '895065').substring(0, 6).toUpperCase()}</span>
-            </div>
-          </div>
-
-          {/* Service Information Table */}
-          <div className="mb-8">
-            <h3 className="text-xs font-bold uppercase mb-3 text-slate-800 tracking-wider">THÔNG TIN DỊCH VỤ</h3>
-            <table className="w-full border-collapse border border-black text-xs text-left">
-              <thead>
-                <tr className="bg-slate-50 font-bold">
-                  <th className="border border-black px-3 py-2 text-center w-12">STT</th>
-                  <th className="border border-black px-4 py-2">Dịch vụ tuyển dụng</th>
-                  <th className="border border-black px-4 py-2 text-center w-40">Hình thức thanh toán</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-black px-3 py-3 text-center">1</td>
-                  <td className="border border-black px-4 py-3">
-                    <p className="font-bold">{contractForm?.title}</p>
-                    <p className="text-[10px] text-slate-600 mt-1 italic line-clamp-2 leading-relaxed">
-                      {contractForm?.description}
-                    </p>
-                  </td>
-                  <td className="border border-black px-4 py-3 text-center font-bold">
-                    Trọn gói (${parseFloat(contractForm?.budget).toLocaleString()} USD)
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Legal Conditions */}
-          <div className="text-[10px] text-slate-700 text-justify space-y-2 leading-relaxed mb-12">
-            <p>
-              Chủ thể đăng ký tuân thủ và chịu trách nhiệm theo các quy định của Nhà nước và quốc tế về sử dụng dịch vụ Internet, quyền sở hữu công nghiệp, bản quyền hệ điều hành, phần mềm cài đặt trên máy chủ (nếu có), bảo mật quốc gia, an ninh, văn hoá. Tuân thủ Thỏa thuận sử dụng tại: <span className="underline cursor-pointer">https://www.gigbridge.com.vn/thoa-thuan-su-dung.html</span>.
-            </p>
-            <p>
-              Chủ thể hoàn tất hồ sơ đăng ký trong vòng 7 ngày. Chủ động cập nhật thông tin lên website hoặc khi có sự thay đổi tên, địa chỉ email, điện thoại, địa chỉ nhận hóa đơn thanh toán, số tài khoản.
-            </p>
-            <p>
-              Chủ thể có trách nhiệm bảo mật quyền đăng nhập vào hệ thống và thông tin tài khoản dịch vụ đăng ký. Chủ động đăng nhập vào website để kiểm tra thông tin dịch vụ, ngày hết hạn, chi phí dịch vụ và các thông tin khác.
-            </p>
-          </div>
-
-          {/* Signatures Area */}
-          <div className="flex justify-end text-center text-xs mt-8 pb-4">
+          {/* Signature Area */}
+          <div className="flex justify-end text-center text-xs mt-8 pb-4 border-t border-dashed border-slate-300 pt-6">
             <div className="w-72 flex flex-col items-center">
               <span className="font-bold">Xác nhận của chủ thể đăng ký dịch vụ</span>
               <span className="text-[10px] italic text-slate-500 mt-0.5">(Cá nhân ký tên / Đại diện doanh nghiệp đóng dấu)</span>
-              
+
               <div className="h-32 flex items-center justify-center mt-4 mb-2 w-full relative">
                 {signatureImage ? (
-                  <img 
-                    src={signatureImage} 
-                    alt="Signature" 
+                  <img
+                    src={signatureImage}
+                    alt="Signature"
+                    className="max-h-full max-w-full object-contain mix-blend-multiply border border-dashed border-slate-200 rounded p-1"
+                  />
+                ) : hasAlreadySigned && currentUserSignature?.signatureImageUrl ? (
+                  <img
+                    src={currentUserSignature.signatureImageUrl}
+                    alt="Existing Signature"
                     className="max-h-full max-w-full object-contain mix-blend-multiply border border-dashed border-slate-200 rounded p-1"
                   />
                 ) : (
@@ -396,47 +423,60 @@ export default function CreatePostJobEsignScreen() {
                     onClick={() => setIsModalOpen(true)}
                     className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded font-bold text-xs shadow-md transition-all border-none cursor-pointer flex items-center gap-1.5"
                   >
-                    Click để ký tên
+                    Click to sign
                   </button>
                 )}
               </div>
 
-              <span className="font-bold underline text-slate-800 tracking-wide mt-2">{clientName}</span>
+              <span className="font-bold underline text-slate-800 tracking-wide mt-2">
+                {user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'N/A'}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
         <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex justify-between items-center shadow-sm max-w-5xl mx-auto">
-          <button 
+          <button
             type="button"
             onClick={handleBack}
             className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-muted-foreground hover:bg-muted transition-all cursor-pointer flex items-center gap-1.5"
           >
             <ChevronLeft size={16} />
-            Quay lại
+                Back to Contract Setup
           </button>
-          <button 
-            type="button"
-            onClick={handleFinalize}
-            disabled={isSubmitting || !signatureImage}
-            className="w-full md:w-auto px-10 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer border-none"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Đang xử lý gửi...
-              </>
-            ) : (
-              <>
-                <Send size={16} />
-                <span>Hoàn tất & Gửi tin</span>
-              </>
-            )}
-          </button>
+
+          {hasAlreadySigned ? (
+            <button
+              type="button"
+              onClick={handleNavigateToMilestones}
+              className="px-10 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer border-none group"
+            >
+              <span>Continue to Milestone Setup</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleFinalize}
+              disabled={isSubmitting || !signatureImage}
+              className="w-full md:w-auto px-10 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer border-none"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send size={16} />
+                  <span>Sign & Continue</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
-        {/* P.A Vietnam Style Signature Modal */}
+        {/* Signature Drawing Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-lg border-2 border-[#ff3b86] w-full max-w-[600px] overflow-hidden shadow-2xl relative animate-[fadeIn_0.2s_ease-out]">
@@ -444,10 +484,10 @@ export default function CreatePostJobEsignScreen() {
               <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex items-center justify-between">
                 <div className="flex flex-col text-[#c0005a] leading-none">
                   <span className="font-extrabold text-base tracking-widest uppercase">GIGBRIDGE LTD</span>
-                  <span className="text-[10px] font-semibold text-slate-500 mt-1">Hotline: 1900 9477</span>
+                  <span className="text-[10px] font-semibold text-slate-500 mt-1">Digital E-Sign</span>
                 </div>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="w-6 h-6 rounded-full flex items-center justify-center bg-slate-200 hover:bg-slate-300 text-slate-600 transition-colors border-none cursor-pointer font-bold text-xs"
                 >
@@ -460,10 +500,10 @@ export default function CreatePostJobEsignScreen() {
                 {/* Guidelines */}
                 <div className="border border-slate-300 rounded p-4 bg-slate-50/50 text-xs leading-relaxed space-y-2">
                   <p>
-                    <span className="font-bold">Hướng dẫn:</span> Quý khách tạo chữ ký mẫu bằng cách nhấp chuột trái hoặc chạm vào khung bên dưới và giữ để ký tên, click nút "Hoàn tất".
+                    <span className="font-bold">Instructions:</span> Draw your signature by clicking/tapping and holding in the area below. Click "Confirm" when done.
                   </p>
                   <p>
-                    <span className="font-bold">Lưu ý:</span> Bằng việc chọn "Hoàn tất" đồng nghĩa với việc Quý khách đã đọc hiểu rõ và đồng ý các điều khoản trong hợp đồng.
+                    <span className="font-bold">Note:</span> By clicking "Confirm", you acknowledge that you have read and agree to the terms in this contract.
                   </p>
                 </div>
 
@@ -474,7 +514,7 @@ export default function CreatePostJobEsignScreen() {
                     onClick={clearCanvas}
                     className="absolute top-2 right-2 px-3 py-1 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 rounded text-xs font-bold border border-slate-300 transition-colors z-20 cursor-pointer"
                   >
-                    Xóa
+                    Clear
                   </button>
                   <canvas
                     ref={canvasRef}
@@ -488,7 +528,7 @@ export default function CreatePostJobEsignScreen() {
                     className="absolute inset-0 w-full h-full z-10 cursor-crosshair"
                   />
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 z-0">
-                    <span className="text-sm tracking-wider uppercase font-semibold text-slate-400">Vùng ký tên / Draw here</span>
+                    <span className="text-sm tracking-wider uppercase font-semibold text-slate-400">Draw your signature here</span>
                   </div>
                 </div>
 
@@ -499,14 +539,14 @@ export default function CreatePostJobEsignScreen() {
                     onClick={() => setIsModalOpen(false)}
                     className="px-5 py-2 border border-slate-300 text-slate-600 rounded hover:bg-slate-100 font-semibold text-xs cursor-pointer bg-white"
                   >
-                    Hủy
+                    Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleCompleteSignature}
                     className="px-6 py-2 bg-[#ff3b86] text-white rounded hover:bg-[#e02b70] font-bold text-xs cursor-pointer border-none shadow-sm"
                   >
-                    Hoàn tất
+                    Confirm
                   </button>
                 </div>
               </div>
@@ -514,33 +554,15 @@ export default function CreatePostJobEsignScreen() {
           </div>
         )}
 
-        {/* Success milestone setup modal */}
+        {/* Success Modal → Navigate to milestone setup */}
         <SuccessMilestoneSetupModal
           isOpen={isSuccessModalOpen}
-          onClose={() => navigate('/client/dashboard')}
+          onClose={() => navigate('/jobs/my-jobs')}
           onInvite={() => {
             setIsSuccessModalOpen(false);
             setIsInviteFreelancersModalOpen(true);
           }}
-          onSetup={() => {
-            const contractIdToUse = createdContractId || 'contract_mock_1';
-            navigate(`/contracts/${contractIdToUse}/milestones`, {
-              state: {
-                contractForm: {
-                  contractsId: contractIdToUse,
-                  jobPostsId: jobPostId || '',
-                  clientProfilesId: user?.id || '',
-                  title: contractForm?.title || jobData?.title || 'Untitled Contract',
-                  description: contractForm?.description || jobData?.description || '',
-                  totalBudget: parseFloat(contractForm?.budget) || parseFloat(jobData?.budgetMin) || 0,
-                  status: 0, // Draft
-                  startDate: contractForm?.startDate || new Date().toISOString(),
-                  endDate: contractForm?.endDate || jobData?.deadline || '',
-                  createdAt: new Date().toISOString(),
-                }
-              }
-            });
-          }}
+          onSetup={handleNavigateToMilestones}
         />
         {isInviteFreelancersModalOpen && (
           <InviteFreelancersAfterPostModal

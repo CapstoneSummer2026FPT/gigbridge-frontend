@@ -45,7 +45,7 @@ export default function CreateDisputeScreen() {
     const fileSizeMb = Number(manualFileSize || 0);
 
     if (fileSizeMb > 10) {
-      setError('MSG49: File must be under 10MB');
+      setError('File must be under 10MB');
       return;
     }
 
@@ -69,12 +69,12 @@ export default function CreateDisputeScreen() {
     }
 
     if (!description.trim() || description.length > 2000) {
-      setError('MSG67: Please describe your dispute reason (1-2000 characters)');
+      setError('Please describe your dispute reason (1-2000 characters)');
       return;
     }
 
     if (evidenceFiles.some(file => file.fileSizeMb > 10)) {
-      setError('MSG49: File must be under 10MB');
+      setError('File must be under 10MB');
       return;
     }
 

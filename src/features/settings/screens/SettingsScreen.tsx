@@ -232,7 +232,7 @@ export default function SettingsScreen() {
       && billingConfig.billingAddress.trim().length <= 255;
 
     if (!validBank || !validAddress) {
-      setBillingError('MSG77: Please enter valid bank information');
+      setBillingError('Please enter valid bank information');
       setBillingSaved(false);
       return;
     }

@@ -67,55 +67,55 @@ export default function EditClientProfileScreen() {
 
     // First Name validation (BR-24)
     if (formData.firstName.length > 255) {
-      newErrors.firstName = 'MSG01: 255 characters only, please!';
+      newErrors.firstName = '255 characters only, please!';
     }
     if (formData.firstName.trim().length === 0) {
-      newErrors.firstName = 'MSG02: First name can not be all space';
+      newErrors.firstName = 'First name can not be all space';
     }
 
     // Last Name validation (BR-25)
     if (formData.lastName.length > 255) {
-      newErrors.lastName = 'MSG01: 255 characters only, please!';
+      newErrors.lastName = '255 characters only, please!';
     }
     if (formData.lastName.trim().length === 0) {
-      newErrors.lastName = 'MSG02: Last name can not be all space';
+      newErrors.lastName = 'Last name can not be all space';
     }
 
     // Address validation (BR-26)
     if (formData.address.length > 255) {
-      newErrors.address = 'MSG01: 255 characters only, please!';
+      newErrors.address = '255 characters only, please!';
     }
     if (formData.address.trim().length === 0 && formData.address.length > 0) {
-      newErrors.address = 'MSG02: Address can not be all space';
+      newErrors.address = 'Address can not be all space';
     }
 
     // Phone validation (BR-27)
     const phoneDigits = formData.phone.replace(/\D/g, '');
     if (formData.phone && !/^\d+$|^[\d\s\-\+\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = 'MSG17: That doesn\'t look like a phone number';
+      newErrors.phone = 'That doesn\'t look like a phone number';
     }
     if (formData.phone && (phoneDigits.length < 8 || phoneDigits.length > 20)) {
-      newErrors.phone = 'MSG18: Must be at least 8 and no more than 20 numbers';
+      newErrors.phone = 'Must be at least 8 and no more than 20 numbers';
     }
 
     // Bio validation (BR-28)
     if (formData.bio.length > 255) {
-      newErrors.bio = 'MSG21: Too much! How famous are you? We only support 255 characters.';
+      newErrors.bio = 'Too much! How famous are you? We only support 255 characters.';
     }
     if (formData.bio.trim().length === 0 && formData.bio.length > 0) {
-      newErrors.bio = 'MSG02: Biography can not be all space';
+      newErrors.bio = 'Biography can not be all space';
     }
 
     // Date of Birth validation (BR-23)
     if (formData.dateOfBirth) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(formData.dateOfBirth)) {
-        newErrors.dateOfBirth = 'MSG28: Please enter a valid date';
+        newErrors.dateOfBirth = 'Please enter a valid date';
       } else {
         const date = new Date(formData.dateOfBirth);
         const today = new Date();
         if (date > today) {
-          newErrors.dateOfBirth = 'MSG29: You can not be born in the future!!';
+          newErrors.dateOfBirth = 'You can not be born in the future!!';
         }
       }
     }
@@ -133,7 +133,7 @@ export default function EditClientProfileScreen() {
     if (!allowedFormats.includes(file.type)) {
       setErrors(prev => ({
         ...prev,
-        [imageType]: 'MSG48: Only JPG, PNG, GIF, or PDF formats are allowed'
+        [imageType]: 'Only JPG, PNG, GIF, or PDF formats are allowed'
       }));
       return;
     }
@@ -174,7 +174,7 @@ export default function EditClientProfileScreen() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setSuccessMessage('MSG50: Operation completed successfully!');
+      setSuccessMessage('Operation completed successfully!');
       setTimeout(() => {
         setSuccessMessage('');
         navigate(`/profile/client/${user?.id}`);

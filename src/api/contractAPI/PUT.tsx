@@ -49,19 +49,12 @@ export const contractPutAPI = {
   ): Promise<ApiResponse<Milestone>> => {
     return apiService.put<Milestone>(`${milestonesUrl}/${milestoneId}`, data);
   },
-
   /**
    * PUT /api/contracts/{contractId}/details
    */
   updateDetails: async (
     contractId: string,
     data: {
-      scopeOfWork: string;
-      paymentTerms: string;
-      intellectualPropertyTerms: string;
-      confidentialityTerms: string;
-      cancellationTerms: string;
-      disputeTerms: string;
       milestones: Array<{
         milestoneId?: string | null;
         title: string;

@@ -1,6 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { MessageResponse } from './GET';
+import type { ContractStatus } from '../../types/models/Contract';
 
 export interface SendMessageRequest {
   conversationId: string;
@@ -23,6 +24,12 @@ export interface RespondFinalOfferRequest {
   negotiationOfferId: string;
   response: number; // Accept=0, RequestChange=1, Decline=2
   reason?: string;
+}
+
+export interface RespondFinalOfferResponse {
+  contractId?: string | null;
+  contractStatus?: ContractStatus | number | null;
+  message?: string | null;
 }
 
 export const messagePostAPI = {
@@ -60,7 +67,7 @@ export const messagePostAPI = {
   /**
    * POST /api/negotiation-offers/respond
    */
-  respondFinalOffer: async (payload: RespondFinalOfferRequest): Promise<ApiResponse<boolean>> => {
-    return apiService.post<boolean>('negotiation-offers/respond', payload);
+  respondFinalOffer: async (payload: RespondFinalOfferRequest): Promise<ApiResponse<RespondFinalOfferResponse>> => {
+    return apiService.post<RespondFinalOfferResponse>('negotiation-offers/respond', payload);
   },
 };

@@ -22,7 +22,7 @@ export function MilestoneDetailCard({
   onSubmitDeliverable,
   isSubmittingFor = false,
 }: MilestoneDetailCardProps) {
-  const isCompleted = milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.Paid;
+  const isCompleted = milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.PaymentConfirmed;
   const canSubmit = canSubmitMilestoneDeliverable(milestone.status);
   const isOverdue = !isCompleted && new Date(milestone.due_date) < new Date();
 
@@ -48,7 +48,7 @@ export function MilestoneDetailCard({
               <CheckCircle2 size={16} />
               Approved
             </span>
-          ) : milestone.status === MilestoneStatus.SubmittedForReview ? (
+          ) : milestone.status === MilestoneStatus.Submitted ? (
             <span className="status-badge status-submitted">
               <Clock size={16} />
               Submitted

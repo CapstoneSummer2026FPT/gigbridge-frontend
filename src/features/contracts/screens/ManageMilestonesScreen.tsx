@@ -3,15 +3,16 @@ import { useParams, useNavigate, useLocation } from 'react-router';
 import {
   Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock, DollarSign,
   Calendar, ChevronDown, Save, X, Eye, ArrowLeft, Layers, ShieldAlert,
-  TrendingUp
+  TrendingUp, Send
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import { MilestoneStatus } from '../../../types/models/Contract';
+import { MilestoneStatus, ContractStatus } from '../../../types/models/Contract';
 import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
+import { toast } from 'sonner';
 import '../styles/manage-milestones-screen.css';
 
 interface MilestoneFormData {
@@ -27,6 +28,7 @@ export default function ManageMilestonesScreen() {
   const location = useLocation();
 
   const stateContract = location.state?.contractForm;
+  const mode = new URLSearchParams(location.search).get('mode');
 
   // State
   const [contract, setContract] = useState<ContractDto | null>(null);
@@ -46,58 +48,55 @@ export default function ManageMilestonesScreen() {
   });
   const [expandedMilestoneId, setExpandedMilestoneId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const canEditMilestones = contract
+    ? contract.status === ContractStatus.PendingFreelancerSelection ||
+      contract.status === ContractStatus.InNegotiation ||
+      contract.status === ContractStatus.PendingContractDetails
+    : false;
+  const shouldEnforceBudgetTotal = mode === 'contract-edit';
 
   // Load contract and milestones
-  useEffect(() => {
-    const loadData = async () => {
-      if (!contractId) {
-        setError('No contract ID provided');
+  const loadData = async () => {
+    if (!contractId) {
+      setError('No contract ID provided');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // If contract details are passed via state, prioritize them
+      if (stateContract && stateContract.contractsId === contractId) {
+        setContract(stateContract);
+        setMilestones([]); // Newly created contract has no milestones initially
+        setLoading(false);
         return;
       }
 
-      try {
-        setLoading(true);
-        setError(null);
+      const contractResponse = await contractGetAPI.getContractById(contractId);
 
-        // If contract details are passed via state, prioritize them
-        if (stateContract && stateContract.contractsId === contractId) {
-          setContract(stateContract);
-          setMilestones([]); // Newly created contract has no milestones initially
-          setLoading(false);
-          return;
-        }
-
-        const contractResponse = await contractGetAPI.getContractById(contractId);
-        const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-        const loadedContract = contractResponse.success && contractResponse.data ? contractResponse.data : mockContract;
-
-        if (!loadedContract) {
-          throw new Error('Failed to load contract');
-        }
-
-        setContract(loadedContract);
-
-        // Fetch milestones
-        const milestonesResponse = await contractGetAPI.getMilestonesByContract(contractId);
-        if (milestonesResponse.success && milestonesResponse.data) {
-          setMilestones(milestonesResponse.data);
-        } else if (mockContract?.milestones) {
-          setMilestones(mockContract.milestones);
-        }
-      } catch (err) {
-        const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-        if (mockContract) {
-          setContract(mockContract);
-          setMilestones(mockContract.milestones);
-          setError(null);
-        } else {
-          setError(err instanceof Error ? err.message : 'An error occurred');
-        }
-      } finally {
-        setLoading(false);
+      if (!contractResponse.success || !contractResponse.data) {
+        throw new Error(contractResponse.message || 'Failed to load contract');
       }
-    };
 
+      setContract(contractResponse.data);
+
+      // Fetch milestones
+      const milestonesResponse = await contractGetAPI.getMilestonesByContract(contractId);
+      if (milestonesResponse.success && milestonesResponse.data) {
+        setMilestones(milestonesResponse.data);
+      } else {
+        setMilestones([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, [contractId, stateContract]);
 
@@ -115,15 +114,17 @@ export default function ManageMilestonesScreen() {
     }
 
     if (data.amount <= 0) {
-      return 'MSG41: Milestone amount must be greater than 0 and within the remaining budget';
+      return 'Milestone amount must be greater than 0';
     }
 
-    const budgetUsedByOtherMilestones = milestones
-      .filter(m => m.id !== editingId)
-      .reduce((sum, m) => sum + (m.amount || 0), 0);
-    const maxAllowed = (contract?.totalBudget || 0) - budgetUsedByOtherMilestones;
-    if (data.amount > maxAllowed) {
-      return `MSG41: Milestone amount exceeds remaining budget of ${formatContractAmount(maxAllowed)} (BR-53)`;
+    if (shouldEnforceBudgetTotal) {
+      const budgetUsedByOtherMilestones = milestones
+        .filter(m => m.id !== editingId)
+        .reduce((sum, m) => sum + (m.amount || 0), 0);
+      const maxAllowed = (contract?.totalBudget || 0) - budgetUsedByOtherMilestones;
+      if (data.amount > maxAllowed) {
+        return `Milestone amount exceeds remaining budget of ${formatContractAmount(maxAllowed)}`;
+      }
     }
 
     if (!data.due_date) {
@@ -133,13 +134,18 @@ export default function ManageMilestonesScreen() {
     const dueDate = new Date(data.due_date);
     const today = new Date();
     if (dueDate <= today) {
-      return 'MSG38: Deadline must be a future date';
+      return 'Milestone deadline must be a future date';
     }
 
     return null;
   };
 
   const handleCreateClick = () => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     setEditingId(null);
     setFormData({
       title: '',
@@ -151,6 +157,11 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleEditClick = (milestone: Milestone) => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     setEditingId(milestone.id);
     setFormData({
       title: milestone.title,
@@ -172,8 +183,14 @@ export default function ManageMilestonesScreen() {
     });
   };
 
-  const handleSubmitForm = async (e: React.FormEvent) => {
+  const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canEditMilestones) {
+      setError('Milestones are locked for this contract stage.');
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
 
     const validationError = validateForm(formData);
     if (validationError) {
@@ -181,81 +198,181 @@ export default function ManageMilestonesScreen() {
       return;
     }
 
+    setError(null);
+    if (editingId) {
+      // Update local state
+      setMilestones(prev =>
+        prev.map(m =>
+          m.id === editingId
+            ? { ...m, title: formData.title.trim(), amount: formData.amount, due_date: formData.due_date }
+            : m
+        )
+      );
+      setSuccessMessage('Milestone updated locally. Click Save to persist.');
+    } else {
+      // Add local state
+      const nextMilestone: Milestone = {
+        id: `milestone_mock_${Date.now()}`,
+        contract_id: contractId!,
+        title: formData.title.trim(),
+        amount: formData.amount,
+        due_date: formData.due_date,
+        status: MilestoneStatus.Pending,
+        paid_at: null,
+      };
+
+      setMilestones(prev => [...prev, nextMilestone]);
+      setSuccessMessage('Milestone added locally. Click Save to persist.');
+    }
+
+    handleCancelForm();
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleDeleteMilestone = (milestoneId: string) => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this milestone locally?')) {
+      return;
+    }
+
+    setError(null);
+    setMilestones(prev => prev.filter(m => m.id !== milestoneId));
+    setSuccessMessage('Milestone deleted locally. Click Save to persist.');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleSaveDraft = async () => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError(null);
-      let operationSucceeded = false;
 
-      if (editingId) {
-        // Update existing milestone
-        const response = await contractPutAPI.updateMilestone(editingId, {
-          id: editingId,
-          contract_id: contractId!,
-          title: formData.title,
-          amount: formData.amount,
-          due_date: formData.due_date,
-          status: milestones.find(m => m.id === editingId)?.status || MilestoneStatus.Pending,
-          paid_at: milestones.find(m => m.id === editingId)?.paid_at || null,
-        });
+      const payload = {
+        milestones: milestones.map(m => ({
+          milestoneId: m.id.startsWith('milestone_mock_') ? null : m.id,
+          title: m.title,
+          amount: m.amount,
+          dueDate: m.due_date,
+          sortOrder: null,
+        })),
+      };
 
-        if (response.success) {
-          setMilestones(prev =>
-            prev.map(m =>
-              m.id === editingId ? response.data! : m
-            )
-          );
-          setSuccessMessage('Milestone updated successfully');
-          operationSucceeded = true;
-        } else {
-          setMilestones(prev =>
-            prev.map(m =>
-              m.id === editingId
-                ? { ...m, title: formData.title.trim(), amount: formData.amount, due_date: formData.due_date }
-                : m
-            )
-          );
-          setSuccessMessage('Milestone updated in mock data');
-          operationSucceeded = true;
-        }
-      } else {
-        const nextMilestone: Milestone = {
-          id: `milestone_mock_${Date.now()}`,
-          contract_id: contractId!,
-          title: formData.title.trim(),
-          amount: formData.amount,
-          due_date: formData.due_date,
-          status: MilestoneStatus.NotStarted,
-          paid_at: null,
-        };
-
-        setMilestones(prev => [...prev, nextMilestone]);
-        setSuccessMessage('Milestone created successfully');
-        operationSucceeded = true;
+      const response = await contractPutAPI.updateDetails(contractId!, payload);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to save milestones draft.');
       }
 
-      if (operationSucceeded) {
-        handleCancelForm();
-        setTimeout(() => setSuccessMessage(null), 3000);
-      }
+      toast.success('Milestones draft saved successfully.');
+      setSuccessMessage('Milestones saved successfully.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+
+      // Reload to get real Guids for newly created milestones
+      await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Failed to save draft');
+      toast.error(err instanceof Error ? err.message : 'Failed to save draft');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteMilestone = async (milestoneId: string) => {
-    if (!window.confirm('Are you sure you want to delete this milestone?')) {
+  const handleCompleteSetup = async () => {
+    if (milestones.length === 0) {
+      setError('At least one milestone is required.');
+      toast.error('At least one milestone is required.');
       return;
     }
 
     try {
+      setIsSubmitting(true);
       setError(null);
-      setMilestones(prev => prev.filter(m => m.id !== milestoneId));
-      setSuccessMessage('Milestone deleted successfully');
-      setTimeout(() => setSuccessMessage(null), 3000);
+
+      // 1. Bulk save milestones
+      const payload = {
+        milestones: milestones.map(m => ({
+          milestoneId: m.id.startsWith('milestone_mock_') ? null : m.id,
+          title: m.title,
+          amount: m.amount,
+          dueDate: m.due_date,
+          sortOrder: null,
+        })),
+      };
+
+      const saveResponse = await contractPutAPI.updateDetails(contractId!, payload);
+      if (!saveResponse.success) {
+        throw new Error(saveResponse.message || 'Failed to save milestones.');
+      }
+
+      // 2. Call complete setup
+      const completeResponse = await contractPostAPI.completeJobPostSetup(contractId!);
+      if (!completeResponse.success) {
+        throw new Error(completeResponse.message || 'Failed to complete job setup and publish.');
+      }
+
+      toast.success('Milestones setup complete! Job post published successfully.');
+      navigate('/jobs/my-jobs');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete milestone');
+      setError(err instanceof Error ? err.message : 'Failed to complete setup');
+      toast.error(err instanceof Error ? err.message : 'Failed to complete setup');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitDetails = async () => {
+    const remaining = calculateRemainingBudget();
+    if (remaining !== 0) {
+      setError('Allocated milestones sum must exactly match the total contract budget.');
+      toast.error('Allocated milestones sum must exactly match the total contract budget.');
+      return;
+    }
+    if (milestones.length === 0) {
+      setError('At least one milestone is required.');
+      toast.error('At least one milestone is required.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // 1. Bulk save milestones
+      const payload = {
+        milestones: milestones.map(m => ({
+          milestoneId: m.id.startsWith('milestone_mock_') ? null : m.id,
+          title: m.title,
+          amount: m.amount,
+          dueDate: m.due_date,
+          sortOrder: null,
+        })),
+      };
+
+      const saveResponse = await contractPutAPI.updateDetails(contractId!, payload);
+      if (!saveResponse.success) {
+        throw new Error(saveResponse.message || 'Failed to save milestones.');
+      }
+
+      // 2. Submit contract details for review
+      const submitResponse = await contractPostAPI.submitDetails(contractId!);
+      if (!submitResponse.success) {
+        throw new Error(submitResponse.message || 'Failed to submit contract details.');
+      }
+
+      toast.success('Milestones submitted successfully for freelancer review.');
+      navigate('/jobs/my-jobs');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit details');
+      toast.error(err instanceof Error ? err.message : 'Failed to submit details');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -264,31 +381,19 @@ export default function ManageMilestonesScreen() {
       setError(null);
       const response = await contractPutAPI.updateMilestoneStatus(milestoneId, newStatus);
 
-      if (response.success) {
+      if (response.success && response.data) {
         setMilestones(prev =>
           prev.map(m =>
             m.id === milestoneId ? response.data! : m
           )
         );
-        setSuccessMessage('Milestone status updated');
-        setTimeout(() => setSuccessMessage(null), 3000);
+        toast.success('Milestone status updated successfully.');
       } else {
-        setMilestones(prev =>
-          prev.map(m =>
-            m.id === milestoneId ? { ...m, status: newStatus as MilestoneStatus } : m
-          )
-        );
-        setSuccessMessage('Milestone status updated in mock data');
-        setTimeout(() => setSuccessMessage(null), 3000);
+        throw new Error(response.message || 'Failed to update milestone status.');
       }
     } catch (err) {
-      setMilestones(prev =>
-        prev.map(m =>
-          m.id === milestoneId ? { ...m, status: newStatus as MilestoneStatus } : m
-        )
-      );
-      setSuccessMessage('Milestone status updated in mock data');
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setError(err instanceof Error ? err.message : 'Failed to update status');
+      toast.error(err instanceof Error ? err.message : 'Failed to update status');
     }
   };
 
@@ -306,22 +411,19 @@ export default function ManageMilestonesScreen() {
   }
   const remainingBudget = calculateRemainingBudget();
   const totalMilestoneAmount = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-  const completedMilestones = milestones.filter(m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.Paid).length;
+  const completedMilestones = milestones.filter(m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.PaymentConfirmed).length;
 
   const getNodeGlowClass = (status: MilestoneStatus) => {
     switch (status) {
-      case MilestoneStatus.Paid:
+      case MilestoneStatus.PaymentConfirmed:
         return 'bg-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)] text-white';
       case MilestoneStatus.Approved:
         return 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.25)] text-emerald-500';
-      case MilestoneStatus.SubmittedForReview:
+      case MilestoneStatus.Submitted:
         return 'bg-purple-500/10 border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.25)] text-purple-500';
       case MilestoneStatus.InProgress:
         return 'bg-blue-500/10 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.25)] text-blue-500 animate-pulse';
-      case MilestoneStatus.RevisionRequired:
-        return 'bg-red-500/10 border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.25)] text-red-500 animate-bounce';
       case MilestoneStatus.Pending:
-      case MilestoneStatus.NotStarted:
       default:
         return 'bg-secondary border-border/80 dark:border-border-strong/60 shadow-sm text-text-muted';
     }
@@ -329,18 +431,15 @@ export default function ManageMilestonesScreen() {
 
   const getNodeIcon = (status: MilestoneStatus) => {
     switch (status) {
-      case MilestoneStatus.Paid:
+      case MilestoneStatus.PaymentConfirmed:
         return <CheckCircle2 size={10} strokeWidth={3} className="text-white" />;
       case MilestoneStatus.Approved:
         return <CheckCircle2 size={10} strokeWidth={2.5} className="text-emerald-500" />;
-      case MilestoneStatus.SubmittedForReview:
+      case MilestoneStatus.Submitted:
         return <Layers size={10} className="text-purple-500" />;
       case MilestoneStatus.InProgress:
         return <Clock size={10} className="text-blue-500" />;
-      case MilestoneStatus.RevisionRequired:
-        return <AlertCircle size={10} className="text-red-500" />;
       case MilestoneStatus.Pending:
-      case MilestoneStatus.NotStarted:
       default:
         return <div className="w-1.5 h-1.5 rounded-full bg-text-muted/60" />;
     }
@@ -529,7 +628,7 @@ export default function ManageMilestonesScreen() {
                   <button
                     onClick={handleCreateClick}
                     className="btn-primary-custom px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
-                    disabled={showCreateForm}
+                    disabled={showCreateForm || !canEditMilestones}
                   >
                     <Plus size={13} />
                     New Milestone
@@ -552,7 +651,7 @@ export default function ManageMilestonesScreen() {
                     <div className="relative border-l-2 border-border/30 dark:border-border-strong/30 ml-3 pl-6 space-y-5 py-2">
                       {milestones.map((milestone, index) => {
                         const isExpanded = expandedMilestoneId === milestone.id;
-                        const isCompleted = milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.Paid;
+                        const isCompleted = milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.PaymentConfirmed;
 
                         return (
                           <div key={milestone.id} className="relative">
@@ -583,7 +682,7 @@ export default function ManageMilestonesScreen() {
                                     <h3 className="text-sm font-bold text-foreground truncate">{milestone.title}</h3>
                                     <div className="flex items-center gap-2 mt-1">
                                       <span className={`milestone-status-badge status-${milestone.status}`}>
-                                        {milestone.status === MilestoneStatus.Pending || milestone.status === MilestoneStatus.NotStarted ? (
+                                        {milestone.status === MilestoneStatus.Pending ? (
                                           <>
                                             <Clock size={10} className="text-amber-500 animate-pulse" />
                                             {getMilestoneStatusLabel(milestone.status)}
@@ -598,13 +697,13 @@ export default function ManageMilestonesScreen() {
                                     </div>
                                   </div>
                                 </div>
-
+ 
                                 <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
                                   <div className="flex items-center gap-0.5 font-black text-foreground text-xs">
                                     <DollarSign size={12} className="text-muted-foreground" />
                                     {formatContractAmount(milestone.amount)}
                                   </div>
-
+ 
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -618,13 +717,13 @@ export default function ManageMilestonesScreen() {
                                   </button>
                                 </div>
                               </div>
-
+ 
                               {/* Card Body - Collapsed (Due Date display only) */}
                               <div className="px-4 pl-6 pb-3 pt-0 border-t border-border/10 mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-semibold">
                                 <Calendar size={12} />
                                 <span>Due Date: {formatContractDate(milestone.due_date)}</span>
                               </div>
-
+ 
                               {/* Card Body - Expanded Details & Workflows */}
                               {isExpanded && (
                                 <div className="px-4 pl-6 pb-4 pt-3 border-t border-border/30 bg-secondary/5 flex flex-col gap-3 text-xs">
@@ -650,13 +749,13 @@ export default function ManageMilestonesScreen() {
                                       </div>
                                     )}
                                   </div>
-
+ 
                                   {/* Status Workflow Controls */}
-                                  {milestone.status !== MilestoneStatus.Paid && (
+                                  {contract && contract.status === ContractStatus.Active && milestone.status !== MilestoneStatus.PaymentConfirmed && (
                                     <div className="p-3 bg-secondary/10 border border-border/20 rounded-lg text-left flex flex-col gap-2">
                                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Update Status:</span>
                                       <div className="flex flex-wrap gap-1.5">
-                                        {(milestone.status === MilestoneStatus.NotStarted || milestone.status === MilestoneStatus.Pending) && (
+                                        {milestone.status === MilestoneStatus.Pending && (
                                           <button
                                             type="button"
                                             onClick={() => handleStatusChange(milestone.id, MilestoneStatus.InProgress)}
@@ -669,14 +768,14 @@ export default function ManageMilestonesScreen() {
                                         {milestone.status === MilestoneStatus.InProgress && (
                                           <button
                                             type="button"
-                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.SubmittedForReview)}
+                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.Submitted)}
                                             className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                                           >
                                             <CheckCircle2 size={10} />
                                             Submit Review
                                           </button>
                                         )}
-                                        {milestone.status === MilestoneStatus.SubmittedForReview && (
+                                        {milestone.status === MilestoneStatus.Submitted && (
                                           <button
                                             type="button"
                                             onClick={() => handleStatusChange(milestone.id, MilestoneStatus.Approved)}
@@ -689,7 +788,7 @@ export default function ManageMilestonesScreen() {
                                         {milestone.status === MilestoneStatus.Approved && (
                                           <button
                                             type="button"
-                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.Paid)}
+                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.PaymentConfirmed)}
                                             className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                                           >
                                             <CheckCircle2 size={10} />
@@ -706,7 +805,7 @@ export default function ManageMilestonesScreen() {
                                       type="button"
                                       onClick={() => handleEditClick(milestone)}
                                       className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-lg font-bold flex items-center gap-1 cursor-pointer"
-                                      disabled={!canEditMilestone(milestone.status)}
+                                      disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
                                     >
                                       <Edit size={11} />
                                       Edit
@@ -715,7 +814,7 @@ export default function ManageMilestonesScreen() {
                                       type="button"
                                       onClick={() => handleDeleteMilestone(milestone.id)}
                                       className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 rounded-lg font-bold flex items-center gap-1 cursor-pointer"
-                                      disabled={!canEditMilestone(milestone.status)}
+                                      disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
                                     >
                                       <Trash2 size={11} />
                                       Delete
@@ -795,6 +894,37 @@ export default function ManageMilestonesScreen() {
 
               {/* Sidebar Navigation Actions */}
               <div className="glass-card p-5 flex flex-col gap-2 text-left">
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={isSubmitting || milestones.length === 0 || !canEditMilestones}
+                  className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <Save size={13} />
+                  Save Draft Milestones
+                </button>
+
+                {mode === 'jobpost-setup' && (
+                  <button
+                    onClick={handleCompleteSetup}
+                    disabled={isSubmitting || milestones.length === 0 || !canEditMilestones}
+                    className="w-full py-2.5 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white border-none rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={13} />
+                    Complete Draft Setup & Publish
+                  </button>
+                )}
+
+                {mode === 'contract-edit' && (
+                  <button
+                    onClick={handleSubmitDetails}
+                    disabled={isSubmitting || milestones.length === 0 || remainingBudget !== 0}
+                    className="w-full py-2.5 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white border-none rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Send size={13} />
+                    Submit to Freelancer
+                  </button>
+                )}
+
                 <button
                   onClick={() => navigate(`/contracts/${contractId}`)}
                   className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"

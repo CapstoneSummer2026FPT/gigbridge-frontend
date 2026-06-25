@@ -18,11 +18,11 @@ export default function EarlyPayoutScreen() {
   const requestPayout = () => {
     setSuccess('');
     if (!isPremium) {
-      setError('MSG45: This feature requires a Premium subscription');
+      setError('This feature requires a Premium subscription');
       return;
     }
     if (amountValue > MOCK_EARLY_PAYOUT.availableBalanceVnd || amountValue <= 0) {
-      setError('MSG59: Insufficient available balance for withdrawal');
+      setError('Insufficient available balance for withdrawal');
       return;
     }
     setError('');

@@ -73,7 +73,6 @@ import {
   CreateEsignContractScreen,
   EsignDocumentSigningScreen,
   FreelancerContractScreen,
-  FreelancerRegisterContractScreen,
   ManageContractScreen,
   ManageMilestonesScreen,
   SignatureWorkflowScreen,
@@ -208,8 +207,7 @@ export const router = createBrowserRouter([
 
       // Workspace - requires authentication and setup
       { path: 'projects', element: <ProtectedRoute requireAuth requireSetup><ProjectsListScreen /></ProtectedRoute> },
-      { path: 'workspace/:id', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
-      { path: ':projectId/freelancer-contract', element: <ProtectedRoute requireAuth requireSetup><FreelancerRegisterContractScreen /></ProtectedRoute> },
+      { path: 'workspace/:contractId', element: <ProtectedRoute requireAuth requireSetup><ProjectWorkspaceScreen /></ProtectedRoute> },
 
       { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },
       { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },

@@ -121,11 +121,11 @@ export default function ManageCertificationsPortfolioScreen() {
     const newErrors: Record<string, string> = {};
 
     if (!portfolioFormData.title.trim()) {
-      newErrors.title = 'MSG35';
+      newErrors.title = 'Title is required';
     } else if (portfolioFormData.title.trim().length > 255) {
-      newErrors.title = 'MSG31';
+      newErrors.title = 'Title cannot exceed 255 characters';
     } else if (/^\s+$/.test(portfolioFormData.title)) {
-      newErrors.title = 'MSG32';
+      newErrors.title = 'Title cannot be all spaces';
     }
 
     if (portfolioFormData.description.length > 2000) {
@@ -142,9 +142,9 @@ export default function ManageCertificationsPortfolioScreen() {
 
     if (portfolioFormData.image) {
       if (!ALLOWED_FORMATS.includes(portfolioFormData.image.type)) {
-        newErrors.image = 'MSG48';
+        newErrors.image = 'Only JPG, PNG, GIF, or PDF formats are allowed';
       } else if (portfolioFormData.image.size > MAX_FILE_SIZE) {
-        newErrors.image = 'MSG49';
+        newErrors.image = 'File size cannot exceed 4MB';
       }
     }
 
@@ -157,35 +157,35 @@ export default function ManageCertificationsPortfolioScreen() {
     const newErrors: Record<string, string> = {};
 
     if (!certFormData.title.trim()) {
-      newErrors.title = 'MSG35';
+      newErrors.title = 'Title is required';
     } else if (certFormData.title.trim().length > 255) {
-      newErrors.title = 'MSG31';
+      newErrors.title = 'Title cannot exceed 255 characters';
     } else if (/^\s+$/.test(certFormData.title)) {
-      newErrors.title = 'MSG32';
+      newErrors.title = 'Title cannot be all spaces';
     }
 
     if (!certFormData.issuer.trim()) {
-      newErrors.issuer = 'MSG35';
+      newErrors.issuer = 'Issuer is required';
     } else if (certFormData.issuer.trim().length > 255) {
-      newErrors.issuer = 'MSG31';
+      newErrors.issuer = 'Issuer cannot exceed 255 characters';
     }
 
     if (!certFormData.issue_date) {
-      newErrors.issue_date = 'MSG35';
+      newErrors.issue_date = 'Issue date is required';
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(certFormData.issue_date)) {
-      newErrors.issue_date = 'MSG28';
+      newErrors.issue_date = 'Please enter a valid date (YYYY-MM-DD)';
     }
 
     if (certFormData.expiry_date) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(certFormData.expiry_date)) {
-        newErrors.expiry_date = 'MSG28';
+        newErrors.expiry_date = 'Please enter a valid date (YYYY-MM-DD)';
       } else if (certFormData.expiry_date < certFormData.issue_date) {
         newErrors.expiry_date = 'Expiry date must be after issue date';
       }
     }
 
     if (!certFormData.credential_url) {
-      newErrors.credential_url = 'MSG35';
+      newErrors.credential_url = 'Credential URL is required';
     } else {
       try {
         new URL(certFormData.credential_url);
@@ -196,9 +196,9 @@ export default function ManageCertificationsPortfolioScreen() {
 
     if (certFormData.image) {
       if (!ALLOWED_FORMATS.includes(certFormData.image.type)) {
-        newErrors.image = 'MSG48';
+        newErrors.image = 'Only JPG, PNG, GIF formats are allowed';
       } else if (certFormData.image.size > MAX_FILE_SIZE) {
-        newErrors.image = 'MSG49';
+        newErrors.image = 'File size cannot exceed 4MB';
       }
     }
 

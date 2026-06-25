@@ -5,7 +5,7 @@ import type {
   ESignSignatureDto,
   CreateESignDocumentDto,
   CreateSignatureDto,
-  UpdateSignatureStatusDto,
+  SubmitESignSignatureDto,
 } from '../../types/models/ESign';
 
 const esignUrl = 'ESign';
@@ -19,6 +19,19 @@ export const esignPostAPI = {
     data: CreateESignDocumentDto
   ): Promise<ApiResponse<ESignDocumentDto>> => {
     return apiService.post<ESignDocumentDto>(`${esignUrl}/documents`, data);
+  },
+
+  /**
+   * POST /api/ESign/documents/from-job/{jobPostId}
+   * Create a new job post e-sign document
+   */
+  createDocumentFromJob: async (
+    jobPostId: string
+  ): Promise<ApiResponse<ESignDocumentDto>> => {
+    return apiService.post<ESignDocumentDto>(
+      `${esignUrl}/documents/from-job/${jobPostId}`,
+      {}
+    );
   },
 
   /**
@@ -37,12 +50,25 @@ export const esignPostAPI = {
 
   /**
    * POST /api/ESign/signatures
-   * Create/submit a signature
+   * Submit e-sign signature
+   */
+  submitSignature: async (
+    data: SubmitESignSignatureDto
+  ): Promise<ApiResponse<ESignSignatureDto>> => {
+    return apiService.post<ESignSignatureDto>(`${esignUrl}/signatures`, data);
+  },
+
+  /**
+   * POST /api/ESign/signatures
+   * Legacy signing payload kept for older signing screens.
    */
   createSignature: async (
     data: CreateSignatureDto
   ): Promise<ApiResponse<ESignSignatureDto>> => {
-    return apiService.post<ESignSignatureDto>(`${esignUrl}/signatures`, data);
+    return apiService.post<ESignSignatureDto>(`${esignUrl}/signatures`, {
+      documentId: data.documentId,
+      signatureImageUrl: data.signatureData,
+    });
   },
 
   /**

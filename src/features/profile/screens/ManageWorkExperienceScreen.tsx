@@ -61,33 +61,33 @@ export default function ManageWorkExperienceScreen() {
 
     // Validate company name
     if (!formData.company_name.trim()) {
-      newErrors.company_name = 'MSG35';
+      newErrors.company_name = 'Company name is required';
     } else if (formData.company_name.trim().length < 1 || formData.company_name.trim().length > 255) {
-      newErrors.company_name = 'BR-35';
+      newErrors.company_name = 'Company name must be between 1 and 255 characters';
     } else if (/^\s+$/.test(formData.company_name)) {
-      newErrors.company_name = 'MSG32';
+      newErrors.company_name = 'Company name cannot be all spaces';
     }
 
     // Validate title
     if (!formData.title.trim()) {
-      newErrors.title = 'MSG35';
+      newErrors.title = 'Title is required';
     } else if (formData.title.trim().length < 1 || formData.title.trim().length > 255) {
-      newErrors.title = 'BR-35';
+      newErrors.title = 'Title must be between 1 and 255 characters';
     }
 
     // Validate start date
     if (!formData.start_date) {
-      newErrors.start_date = 'MSG35';
+      newErrors.start_date = 'Start date is required';
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(formData.start_date)) {
-      newErrors.start_date = 'MSG28';
+      newErrors.start_date = 'Please enter a valid date (YYYY-MM-DD)';
     }
 
     // Validate end date
     if (formData.end_date) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(formData.end_date)) {
-        newErrors.end_date = 'MSG28';
+        newErrors.end_date = 'Please enter a valid date (YYYY-MM-DD)';
       } else if (formData.end_date < formData.start_date) {
-        newErrors.end_date = 'MSG34';
+        newErrors.end_date = 'End date must be after start date';
       }
     }
 

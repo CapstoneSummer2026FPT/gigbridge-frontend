@@ -27,6 +27,10 @@ export const proposalPostAPI = {
     return apiService.post<ProposalAnswerDto>(`${proposalsUrl}/${proposalId}/answers`, data);
   },
 
+  acceptForNegotiation: async (proposalId: string): Promise<ApiResponse<string>> => {
+    return apiService.post<string>(`${proposalsUrl}/${proposalId}/accept-for-negotiation`);
+  },
+
   generateAICoverLetter: async (jobTitle: string, freelancerSkills: string[]): Promise<string> => {
     const skills = freelancerSkills.length ? freelancerSkills.join(', ') : 'your skills';
     return `Hello,\n\nI am interested in helping with ${jobTitle}. My experience with ${skills} makes me confident I can deliver reliable, well-structured work for this project.\n\nI would be glad to discuss the scope, timeline, and expected outcomes in more detail.`;

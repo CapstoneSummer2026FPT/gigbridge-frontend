@@ -75,13 +75,13 @@ export default function AdminDisputeManagementScreen() {
     setSuccess(null);
 
     if (!resolutionSummary.trim()) {
-      setError('MSG68: Please provide a resolution summary before closing');
+      setError('Please provide a resolution summary before closing');
       return;
     }
 
     const parsedRefund = Number(refundAmount || 0);
     if (parsedRefund > selectedDispute.escrowBalance) {
-      setError('MSG61: Escrow balance insufficient for this resolution');
+      setError('Escrow balance insufficient for this resolution');
       return;
     }
 

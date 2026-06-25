@@ -10,8 +10,11 @@ import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { getChatHubUrl } from '../../../service/apiService';
 import { scheduleAPI, type ScheduleEvent, type ScheduleMeetingResponse, type ScheduleResponse } from '../../../api/scheduleAPI';
+import type { ContractDto } from '../../../types/models/Contract';
+import { ContractStatus } from '../../../types/models/Contract';
 import { googleMeetAPI, type GoogleMeetConnectionStatus } from '../../../api/googleMeetAPI';
 
 interface ScheduleMeetingChangedEvent {
@@ -40,13 +43,23 @@ function mapOfferStatusToDealStatus(status: number | null | undefined): MsgConve
 }
 
 function mapBackendConversation(c: any): MsgConversation {
-  const isClient = c.otherParticipantRole === 0;
-  const isInvited = c.conversationType === 4;
+  const conversationType = c.conversationType ?? c.ConversationType;
+  const proposalId = c.proposalId ?? c.ProposalId ?? null;
+  const contractId = c.contractId ?? c.ContractId ?? null;
+  const lastOfferId = c.lastOfferId ?? c.LastOfferId ?? null;
+  const lastOfferPrice = c.lastOfferPrice ?? c.LastOfferPrice ?? null;
+  const lastOfferStatus = c.lastOfferStatus ?? c.LastOfferStatus ?? null;
+  const isClient = (c.otherParticipantRole ?? c.OtherParticipantRole) === 0;
+  const isInvited = conversationType === 4;
+  const isWorkspace = conversationType === 1;
+  const roomType = isInvited ? 'invited' : isWorkspace ? 'workspace' : 'negotiation';
+
   return {
-    id: c.conversationId,
-    proposalId: c.proposalId ?? c.ProposalId ?? null,
-    roomType: isInvited ? 'invited' : 'negotiation',
-    roomId: isInvited ? 'room_invited' : 'room_negotiation',
+    id: c.conversationId ?? c.ConversationId,
+    proposalId,
+    contractId,
+    roomType,
+    roomId: isInvited ? 'room_invited' : isWorkspace ? 'room_workspace' : 'room_negotiation',
     participantId: c.otherParticipantId || '',
     participantName: c.otherParticipantName || 'Partner',
     participantAvatar: c.otherParticipantAvatar || 'https://api.dicebear.com/9.x/avataaars/svg?seed=partner',
@@ -56,21 +69,42 @@ function mapBackendConversation(c: any): MsgConversation {
     job: {
       id: c.jobPostId || '',
       title: c.title || 'Untitled Job',
-      budget: c.lastOfferPrice ? `$${c.lastOfferPrice}` : 'N/A',
+      budget: lastOfferPrice ? `$${lastOfferPrice}` : 'N/A',
       category: '',
     },
     lastMessage: c.lastMessage?.content || '',
     lastMessageAt: c.lastMessageAt || c.createdAt || new Date().toISOString(),
     unreadCount: c.unreadCount || 0,
     isMuted: false,
-    dealStatus: mapOfferStatusToDealStatus(c.lastOfferStatus),
-    proposedPrice: c.lastOfferPrice ? c.lastOfferPrice.toString() : undefined,
-    conversationType: c.conversationType,
-    lastOfferId: c.lastOfferId,
+    dealStatus: mapOfferStatusToDealStatus(lastOfferStatus),
+    proposedPrice: lastOfferPrice ? lastOfferPrice.toString() : undefined,
+    conversationType,
+    lastOfferId,
   };
 }
 
+function parseNegotiationOfferId(metadata: unknown): string | null {
+  if (typeof metadata !== 'string' || !metadata.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(metadata);
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+
+    const source = parsed as Record<string, unknown>;
+    const value = source.negotiationOfferId ?? source.NegotiationOfferId ?? source.offerId ?? source.OfferId;
+    return typeof value === 'string' && value.trim() ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 function mapBackendMessage(m: any): MsgMessage {
+  const messageType = m.messageType ?? m.MessageType;
+  const metadata = m.metadata ?? m.Metadata;
   let msgType = 'text';
   if (m.messageType === 1) msgType = 'image';
   else if (m.messageType === 2) msgType = 'file';
@@ -79,7 +113,7 @@ function mapBackendMessage(m: any): MsgMessage {
   else if (m.messageType === 9) msgType = 'schedule';
 
   let dealStatus: MsgMessage['dealStatus'] = undefined;
-  if (m.messageType === 4) {
+  if (messageType === 4) {
     dealStatus = 'pending_freelancer'; // Default
   }
 
@@ -102,6 +136,7 @@ function mapBackendMessage(m: any): MsgMessage {
     fileName: firstAttachment?.fileName,
     dealStatus: dealStatus,
     schedule,
+    negotiationOfferId: messageType === 4 ? parseNegotiationOfferId(metadata) : undefined,
   };
 }
 
@@ -139,6 +174,45 @@ function formatSendError(res: { statusCode?: number; message?: string; errors?: 
   return parts.join(' | ');
 }
 
+function getEventValue(event: unknown, ...keys: string[]): string | null {
+  if (!event || typeof event !== 'object') return null;
+  const source = event as Record<string, unknown>;
+
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { path?: string; waitMessage?: string } {
+  const contractPath = `/contracts/${contract.contractsId}`;
+
+  switch (contract.status) {
+    case ContractStatus.PendingContractDetails:
+      return isClient
+        ? { path: `${contractPath}/milestones?mode=contract-edit` }
+        : { waitMessage: 'The client is updating milestone terms. You can review them once submitted.' };
+    case ContractStatus.PendingContractConfirmation:
+      return isClient
+        ? { waitMessage: 'Waiting for the freelancer to review the milestone terms.' }
+        : { path: contractPath };
+    case ContractStatus.PendingSignature:
+      return { path: contractPath };
+    case ContractStatus.PendingEscrow:
+      return isClient
+        ? { path: contractPath }
+        : { path: `/workspace/${contract.contractsId}` };
+    case ContractStatus.Active:
+      return { path: `/workspace/${contract.contractsId}` };
+    default:
+      return { path: contractPath };
+  }
+}
+
 export function useMessages() {
   const { user, role } = useApp();
   const navigate = useNavigate();
@@ -149,6 +223,7 @@ export function useMessages() {
   const [openRooms, setOpenRooms] = useState<Record<string, boolean>>({
     room_invited: true,
     room_negotiation: true,
+    room_workspace: true,
   });
 
   // ── Conversations state (mutable for room transfers) ─────────────────────
@@ -172,7 +247,7 @@ export function useMessages() {
 
   // ── Deal state per conversation ──────────────────────────────────────────
   const [dealStatusMap, setDealStatusMap] = useState<Record<string, MsgConversation['dealStatus']>>({});
-  const dealStatus = dealStatusMap[activeConvId] ?? 'idle';
+  const dealStatus = activeConv?.dealStatus ?? dealStatusMap[activeConvId] ?? 'idle';
 
   // ── UI state ─────────────────────────────────────────────────────────────
   const [showInfo, setShowInfo] = useState(true);
@@ -634,6 +709,50 @@ export function useMessages() {
       }
     };
 
+    const refreshActiveMessages = () => {
+      const conversationId = activeConvIdRef.current;
+      if (!conversationId) return;
+
+      messageGetAPI.getConversationMessages(conversationId).then(res => {
+        if (res.success && res.data) {
+          setMessagesMap(prev => ({
+            ...prev,
+            [conversationId]: res.data!.map(mapBackendMessage),
+          }));
+        }
+      });
+    };
+
+    const handleContractWorkflowUpdate = (event: unknown) => {
+      const eventConversationId = getEventValue(event, 'conversationId', 'ConversationId');
+      const eventContractId = getEventValue(event, 'contractId', 'ContractId', 'contractsId', 'ContractsId');
+
+      if (eventConversationId || eventContractId) {
+        setConversationsState(prev =>
+          prev.map(conversation => {
+            const sameConversation = eventConversationId && conversation.id === eventConversationId;
+            const sameContract = eventContractId && conversation.contractId === eventContractId;
+            if (!sameConversation && !sameContract) return conversation;
+
+            return {
+              ...conversation,
+              contractId: eventContractId ?? conversation.contractId,
+              dealStatus: 'agreed',
+            };
+          })
+        );
+      }
+
+      loadConversations();
+
+      const activeConversationId = activeConvIdRef.current;
+      const activeMatchesConversation = eventConversationId && eventConversationId === activeConversationId;
+      const activeMatchesContract = eventContractId && eventContractId === activeConv?.contractId;
+      if (!eventConversationId && !eventContractId || activeMatchesConversation || activeMatchesContract) {
+        refreshActiveMessages();
+      }
+    };
+
     const handleMeetingChanged = (event: ScheduleMeetingChangedEvent) => {
       const { scheduleId, meeting } = event;
       if (!scheduleId || !meeting) return;
@@ -686,6 +805,12 @@ export function useMessages() {
     hubConnection.on('ConversationRead', handleConversationRead);
     hubConnection.on('FinalOfferCreated', handleOfferUpdate);
     hubConnection.on('FinalOfferResponded', handleOfferUpdate);
+    hubConnection.on('ContractDraftUpdated', handleContractWorkflowUpdate);
+    hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
+    hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
+    hubConnection.on('ContractFullySigned', handleContractWorkflowUpdate);
+    hubConnection.on('ContractMilestonesAccepted', handleContractWorkflowUpdate);
+    hubConnection.on('WorkspaceOpened', handleContractWorkflowUpdate);
     hubConnection.on('ScheduleMeetingChanged', handleMeetingChanged);
     hubConnection.on('ScheduleChanged', handleScheduleChanged);
 
@@ -695,10 +820,16 @@ export function useMessages() {
       hubConnection.off('ConversationRead', handleConversationRead);
       hubConnection.off('FinalOfferCreated', handleOfferUpdate);
       hubConnection.off('FinalOfferResponded', handleOfferUpdate);
+      hubConnection.off('ContractDraftUpdated', handleContractWorkflowUpdate);
+      hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
+      hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
+      hubConnection.off('ContractFullySigned', handleContractWorkflowUpdate);
+      hubConnection.off('ContractMilestonesAccepted', handleContractWorkflowUpdate);
+      hubConnection.off('WorkspaceOpened', handleContractWorkflowUpdate);
       hubConnection.off('ScheduleMeetingChanged', handleMeetingChanged);
       hubConnection.off('ScheduleChanged', handleScheduleChanged);
     };
-  }, [hubConnection, activeConvId, loadConversations, user]);
+  }, [hubConnection, activeConvId, activeConv?.contractId, loadConversations, user]);
 
   // Close conv menu on outside click
   useEffect(() => {
@@ -844,44 +975,158 @@ export function useMessages() {
   };
 
   const handleProposeDeal = async () => {
-    if (!dealPriceInput.trim()) return;
+    if (!dealPriceInput.trim() || !activeConvId) return;
     const price = parseFloat(dealPriceInput);
     if (isNaN(price)) return;
 
     try {
-      await messagePostAPI.createFinalOffer({
+      const res = await messagePostAPI.createFinalOffer({
         conversationId: activeConvId,
         finalPrice: price,
         scopeSummary: 'Proposed price',
       });
+      if (!res.success || !res.data) {
+        throw new Error(res.message || 'Failed to create final offer.');
+      }
+
+      const offerId = String(res.data);
+      setConversationsState(prev =>
+        prev.map(c =>
+          c.id === activeConvId
+            ? {
+                ...c,
+                dealStatus: 'pending_freelancer',
+                proposedPrice: price.toString(),
+                lastOfferId: offerId,
+                job: {
+                  ...c.job,
+                  budget: `$${price}`,
+                },
+              }
+            : c
+        )
+      );
+      setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'pending_freelancer' }));
       setDealPriceInput('');
       setShowDealPrice(false);
+      loadConversations();
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to propose deal.';
+      setAnchorNotice(message);
       console.error('Failed to propose deal:', err);
     }
   };
 
-  const handleAcceptDeal = async (msgId: string, amount: string) => {
-    if (!activeConv?.lastOfferId) return;
+  const handleAcceptDeal = async (negotiationOfferId?: string | null) => {
+    const offerId = negotiationOfferId ?? activeConv?.lastOfferId;
+    if (!offerId || !activeConvId) return;
     try {
-      await messagePostAPI.respondFinalOffer({
-        negotiationOfferId: activeConv.lastOfferId,
+      const res = await messagePostAPI.respondFinalOffer({
+        negotiationOfferId: offerId,
         response: 0, // Accept
       });
+      if (!res.success) {
+        throw new Error(res.message || 'Failed to accept deal.');
+      }
+
+      const responseMessage = res.data?.message ?? res.message ?? null;
+      const acceptedContractId = res.data?.contractId ?? activeConv?.contractId ?? null;
+      setConversationsState(prev =>
+        prev.map(c =>
+          c.id === activeConvId
+            ? { ...c, contractId: acceptedContractId ?? c.contractId, dealStatus: 'agreed' }
+            : c
+        )
+      );
+      setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'agreed' }));
+      loadConversations();
+
+      if (!isClient) {
+        if (acceptedContractId) {
+          navigate(`/contracts/${acceptedContractId}`);
+          return;
+        }
+
+        if (activeConv?.proposalId) {
+          const contractRes = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+          if (contractRes.success && contractRes.data?.contractsId) {
+            navigate(`/contracts/${contractRes.data.contractsId}`);
+            return;
+          }
+        }
+
+        setAnchorNotice(responseMessage || 'Final budget accepted. Contract is being prepared for signing.');
+      }
     } catch (err) {
       console.error('Failed to accept deal:', err);
+      const message = err instanceof Error ? err.message : 'Failed to accept deal.';
+      setAnchorNotice(message);
     }
   };
 
-  const handleDeclineDeal = async (msgId: string) => {
-    if (!activeConv?.lastOfferId) return;
+  const handleDeclineDeal = async (negotiationOfferId?: string | null) => {
+    const offerId = negotiationOfferId ?? activeConv?.lastOfferId;
+    if (!offerId || !activeConvId) return;
     try {
-      await messagePostAPI.respondFinalOffer({
-        negotiationOfferId: activeConv.lastOfferId,
+      const res = await messagePostAPI.respondFinalOffer({
+        negotiationOfferId: offerId,
         response: 2, // Decline
       });
+      if (!res.success) {
+        throw new Error(res.message || 'Failed to decline deal.');
+      }
+
+      setConversationsState(prev =>
+        prev.map(c => (c.id === activeConvId ? { ...c, dealStatus: 'declined' } : c))
+      );
+      setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'declined' }));
+      loadConversations();
     } catch (err) {
       console.error('Failed to decline deal:', err);
+    }
+  };
+
+  const handleOpenAcceptedContract = async () => {
+    const openContract = (contract: ContractDto) => {
+      const route = getContractWorkflowRoute(contract, isClient);
+      if (route.path) {
+        navigate(route.path);
+        return;
+      }
+
+      setAnchorNotice(route.waitMessage || 'Waiting for the other party to continue the contract flow.');
+    };
+
+    if (activeConv?.contractId) {
+      try {
+        const res = await contractGetAPI.getContractById(activeConv.contractId);
+        if (res.success && res.data) {
+          openContract(res.data);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to load active contract:', err);
+      }
+
+      navigate(`/contracts/${activeConv.contractId}`);
+      return;
+    }
+
+    if (!activeConv?.proposalId) {
+      console.error('Cannot open contract: active conversation has no contractId or proposalId.');
+      return;
+    }
+
+    try {
+      const res = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+      if (res.success && res.data?.contractsId) {
+        openContract(res.data);
+        return;
+      }
+
+      console.error('Cannot open contract from proposal:', res);
+    } catch (err) {
+      console.error('Failed to open accepted contract:', err);
     }
   };
 
@@ -1064,6 +1309,7 @@ export function useMessages() {
     handleProposeDeal,
     handleAcceptDeal,
     handleDeclineDeal,
+    handleOpenAcceptedContract,
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,

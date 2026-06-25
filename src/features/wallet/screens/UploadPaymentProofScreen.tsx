@@ -40,10 +40,10 @@ export default function UploadPaymentProofScreen() {
 
   const validateFile = (file: File) => {
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      return 'MSG48: Only JPG, PNG, GIF, or PDF formats are allowed';
+      return 'Only JPG, PNG, GIF, or PDF formats are allowed';
     }
     if (file.size > MAX_FILE_SIZE) {
-      return 'MSG49: File must be under 10MB';
+      return 'File must be under 10MB';
     }
     return '';
   };

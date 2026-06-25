@@ -190,7 +190,7 @@ export default function PostJobScreen() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center w-full max-w-3xl mx-auto py-4">
+          <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm">1</div>
               <div className="flex flex-col">
@@ -204,6 +204,22 @@ export default function PostJobScreen() {
               <div className="flex flex-col">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 2</span>
                 <span className="text-xs text-muted-foreground font-bold">Contract Setup</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex items-center gap-3 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">3</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 3</span>
+                <span className="text-xs text-muted-foreground font-bold">E-Sign Contract</span>
+              </div>
+            </div>
+            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex items-center gap-3 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">4</div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
+                <span className="text-xs text-muted-foreground font-bold">Setup Milestone</span>
               </div>
             </div>
           </div>
@@ -557,7 +573,7 @@ export default function PostJobScreen() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estimated Duration</label>
                   <input
@@ -565,18 +581,6 @@ export default function PostJobScreen() {
                     placeholder="e.g. 2-4 weeks"
                     value={form.estimatedDuration}
                     onChange={event => setForm({ ...form, estimatedDuration: event.target.value })}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Max Hires</label>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="1"
-                    value={form.maxHires}
-                    onChange={event => setForm({ ...form, maxHires: event.target.value })}
                     disabled={isInstantJobMode && !isJobDetailsGenerated}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   />
@@ -612,12 +616,12 @@ export default function PostJobScreen() {
             </button>
             <button
               type="button"
-              onClick={() => submitDraftFlow('contract')}
+              onClick={() => submitDraftFlow('esign')}
               disabled={isActionDisabled}
               className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
             >
               <Check size={16} />
-              <span>{renderSubmitLabel('contract', 'Next: Create Contract')}</span>
+              <span>{renderSubmitLabel('esign', 'Next: Contract Setup')}</span>
               <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

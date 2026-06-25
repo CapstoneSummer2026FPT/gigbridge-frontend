@@ -52,7 +52,6 @@ export interface JobInvitationDto {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  maxHires?: number | null;
   location?: string | null;
   jobStatus?: number;
   jobVisibility?: number | null;

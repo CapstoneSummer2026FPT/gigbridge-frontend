@@ -24,7 +24,6 @@ import {
   formatContractDate,
   canSubmitMilestoneDeliverable,
 } from '../../../shared/utils/contractUtils';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../mock/data-for-ContractScreens';
 import '../styles/submit-milestone-deliverable-screen.css';
 
 interface SubmissionState {
@@ -110,16 +109,14 @@ export default function SubmitMilestoneDeliverableScreen() {
         setState((prev) => ({ ...prev, loading: true, error: null }));
 
         const contractResponse = await contractGetAPI.getContractById(contractId);
-        const mockContract = MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId);
-        const contract = contractResponse.success && contractResponse.data ? contractResponse.data : mockContract;
-        const isMockContract = Boolean(mockContract && contract === mockContract);
-
-        if (!contract) {
-          throw new Error('Failed to load contract details');
+        if (!contractResponse.success || !contractResponse.data) {
+          throw new Error(contractResponse.message || 'Failed to load contract details');
         }
+        const contract = contractResponse.data;
 
         // Verify freelancer ownership
-        if (!isMockContract && contract.freelancerProfilesId !== user?.profileId) {
+        const userProfileId = (user as { profileId?: string } | null)?.profileId;
+        if (userProfileId && contract.freelancerProfilesId !== userProfileId) {
           throw new Error('Unauthorized: You can only submit deliverables for your own contracts');
         }
 
@@ -130,12 +127,10 @@ export default function SubmitMilestoneDeliverableScreen() {
 
         // Load milestone
         const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
-        const mockMilestone = mockContract?.milestones.find(item => item.id === milestoneId);
-        const milestone = milestoneResponse.success && milestoneResponse.data ? milestoneResponse.data : mockMilestone;
-
-        if (!milestone) {
-          throw new Error('Failed to load milestone details');
+        if (!milestoneResponse.success || !milestoneResponse.data) {
+          throw new Error(milestoneResponse.message || 'Failed to load milestone details');
         }
+        const milestone = milestoneResponse.data;
 
         // Verify milestone belongs to this contract
         if (milestone.contract_id !== contractId) {
@@ -164,10 +159,10 @@ export default function SubmitMilestoneDeliverableScreen() {
       }
     };
 
-    if (user?.profileId) {
+    if (user?.id) {
       loadData();
     }
-  }, [contractId, milestoneId, user?.profileId]);
+  }, [contractId, milestoneId, user?.id]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);

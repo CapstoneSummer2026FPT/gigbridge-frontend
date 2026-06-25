@@ -1,241 +1,357 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB, SEED_MESSAGES } from '../../../mock_backend';
-import type { Message } from '../../../types';
-import { projectGetAPI } from '../../../api/projectAPI/GET';
-import { projectPutAPI } from '../../../api/projectAPI/PUT';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import type { Message } from '../../../types';
+import type { ContractDto, Milestone } from '../../../types/models/Contract';
+import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 
-export function useProjectWorkspace(initialProjectId: string) {
+interface WorkspaceMilestone {
+  id: string;
+  title: string;
+  description?: string;
+  amount: number;
+  dueDate: string;
+  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'paid' | 'disputed';
+  completedAt?: string;
+}
+
+interface WorkspaceProject {
+  id: string;
+  contractId: string;
+  jobId: string;
+  conversationId?: string | null;
+  title: string;
+  progress: number;
+  paidAmount: number;
+  totalBudget: number;
+  startDate?: string;
+  clientId?: string;
+  freelancerId?: string | null;
+  milestones: WorkspaceMilestone[];
+}
+
+interface WorkspaceProjectListItem {
+  id: string;
+  title: string;
+  partnerName: string;
+  partnerAvatar: string;
+  latestMessage: string;
+  time: string;
+  unread: boolean;
+  online: boolean;
+  titleLong: string;
+}
+
+const emptyProject: WorkspaceProject = {
+  id: '',
+  contractId: '',
+  jobId: '',
+  title: 'Workspace',
+  progress: 0,
+  paidAmount: 0,
+  totalBudget: 0,
+  milestones: [],
+};
+
+const formatTime = (value?: string): string => {
+  if (!value) return 'Just now';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Just now';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const getPartnerName = (contract: ContractDto, isClient: boolean): string =>
+  isClient
+    ? contract.freelancerName || contract.freelancerEmail || 'Freelancer'
+    : contract.clientName || contract.clientEmail || 'Client';
+
+const getAvatarUrl = (name: string): string =>
+  `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+
+const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status'] => {
+  switch (status) {
+    case MilestoneStatus.InProgress:
+      return 'in_progress';
+    case MilestoneStatus.Submitted:
+      return 'submitted';
+    case MilestoneStatus.Approved:
+      return 'approved';
+    case MilestoneStatus.PaymentProofUploaded:
+    case MilestoneStatus.PaymentConfirmed:
+      return 'paid';
+    case MilestoneStatus.Disputed:
+      return 'disputed';
+    case MilestoneStatus.Pending:
+    default:
+      return 'pending';
+  }
+};
+
+const isMilestonePaid = (milestone: WorkspaceMilestone): boolean =>
+  milestone.status === 'approved' || milestone.status === 'paid';
+
+const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
+  id: milestone.id,
+  title: milestone.title,
+  amount: milestone.amount,
+  dueDate: milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : 'Not set',
+  status: mapMilestoneStatus(milestone.status),
+  completedAt: milestone.paid_at ?? undefined,
+});
+
+const buildProject = (contract: ContractDto, milestones: Milestone[]): WorkspaceProject => {
+  const mappedMilestones = milestones.map(mapMilestone);
+  const completedCount = mappedMilestones.filter(isMilestonePaid).length;
+  const progress = mappedMilestones.length > 0
+    ? Math.round((completedCount / mappedMilestones.length) * 100)
+    : 0;
+
+  return {
+    id: contract.contractsId,
+    contractId: contract.contractsId,
+    jobId: contract.jobPostsId,
+    conversationId: contract.conversationId,
+    title: contract.jobTitle || contract.title,
+    progress,
+    paidAmount: mappedMilestones.filter(isMilestonePaid).reduce((sum, milestone) => sum + milestone.amount, 0),
+    totalBudget: contract.totalBudget,
+    startDate: contract.startDate,
+    clientId: contract.clientProfilesId,
+    freelancerId: contract.freelancerProfilesId,
+    milestones: mappedMilestones,
+  };
+};
+
+const mapContractListItem = (contract: ContractDto, isClient: boolean): WorkspaceProjectListItem => {
+  const partnerName = getPartnerName(contract, isClient);
+
+  return {
+    id: contract.contractsId,
+    title: contract.jobTitle || contract.title,
+    partnerName,
+    partnerAvatar: getAvatarUrl(partnerName),
+    latestMessage: contract.status === ContractStatus.Active
+      ? 'Workspace is open.'
+      : 'Workspace open. Waiting for escrow funding.',
+    time: formatTime(contract.updatedAt || contract.createdAt),
+    unread: false,
+    online: true,
+    titleLong: contract.jobTitle || contract.title,
+  };
+};
+
+const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
+  const messageType = Number(message.messageType ?? message.MessageType ?? 0);
+  const firstAttachment = Array.isArray(message.attachments) ? message.attachments[0] as Record<string, unknown> | undefined : undefined;
+
+  return {
+    id: String(message.messageId ?? message.MessageId ?? message.id ?? crypto.randomUUID()),
+    clientMessageId: typeof message.clientMessageId === 'string' ? message.clientMessageId : null,
+    conversationId: String(message.conversationId ?? message.ConversationId ?? ''),
+    senderId: String(message.senderUserId ?? message.SenderUserId ?? message.senderId ?? ''),
+    content: String(message.content ?? message.Content ?? ''),
+    type: messageType === 1 ? 'image' : messageType === 2 ? 'file' : 'text',
+    createdAt: String(message.sentAt ?? message.SentAt ?? message.createdAt ?? new Date().toISOString()),
+    isRead: true,
+    fileUrl: typeof firstAttachment?.fileUrl === 'string' ? firstAttachment.fileUrl : undefined,
+    fileName: typeof firstAttachment?.fileName === 'string' ? firstAttachment.fileName : undefined,
+  };
+};
+
+export function useProjectWorkspace(initialContractId: string) {
+  const navigate = useNavigate();
   const { user, role } = useApp();
   const isClient = role === 0;
 
-  const [activeProjectId, setActiveProjectId] = useState(initialProjectId || 'proj_1');
+  const [activeProjectId, setActiveProjectId] = useState(initialContractId);
+  const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
+  const [workspaceContracts, setWorkspaceContracts] = useState<ContractDto[]>([]);
+  const [project, setProject] = useState<WorkspaceProject>(emptyProject);
   const [showInfo, setShowInfo] = useState(true);
   const [messageInput, setMessageInput] = useState('');
   const [aiMessage, setAiMessage] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-
+  const [projectMessages, setProjectMessages] = useState<Message[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [aiChat, setAiChat] = useState<{ role: string; content: string }[]>([
-    { role: 'ai', content: 'Hello! I\'m your AI Work Assistant. I can help you with project updates, code reviews, milestone planning, and much more. What do you need today?' }
+    { role: 'ai', content: 'Hello! I can help summarize this workspace, milestone progress, and recent chat activity.' },
   ]);
 
-  // Load project details dynamically
-  const project = DB.getProjects().find(p => p.id === activeProjectId) || DB.getProjects()[0];
+  useEffect(() => {
+    setActiveProjectId(initialContractId);
+  }, [initialContractId]);
 
-  // Dynamic conversations/projects list mapped to mockup structure
-  const allProjects = DB.getProjects();
-  const mockProjects = allProjects.map(p => {
-    if (p.id === 'proj_1') {
-      return {
-        id: 'proj_1',
-        title: 'E-commerce Platform Build',
-        partnerName: isClient ? 'Alex Johnson' : 'Jordan Mitchell',
-        partnerAvatar: isClient 
-          ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt226TXncFjd6zQyyFNqkOAKj-pTYClfBHUGbG7EsCTL5gzWQbF5K-mojkZ1u9U91izwjnV--bOtLgKPwMjODHfOuVpg5nOAxiXsve-4RdrP3GeYe6L9llw_G0e7TExXaCWHruulVFEUP-acilXdvARPO-JVC17ShH6ztqc9CUYzp9r2Duy95bm3YrKoT0XmazmW2mgGKr4H_BYRs6iYRH0ATn2UaEHxrBE1AFiTPLNgtYDGnskVHrXWmKPI5nDsP3KsJHRYgTs29I' 
-          : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBeoKX1UynnkJ0b15ZqIqe0FGcJAeG-r0lmmDdDbCq_9lfPGs986ViSmQIz5X5Je-lT6mt1f75tc_3qUuEj_9zyqagKr9dnTiny_lzGv1OzrAGTpTIxTodcVIqD7Bxkd6FTFccqY2Ca6bKdb2VKNwcgZqYmTzZcj09OMTiNdybLbnS-wb_WxJhyeAJ_NARjM5HidZjgCFbCUZup_7-G2arZi-NMogLhwxyla0vxK5a0xl2w4XcMLfEc4KRaPz-CMm2twhh6r8nOs3Tb',
-        latestMessage: "Sounds great, I've sent the contract...",
-        time: '10:24 AM',
-        unread: false,
-        online: true,
-        titleLong: 'E-Commerce Platform Redesign',
-      };
-    }
-    
-    const partnerId = isClient ? p.freelancerId : p.clientId;
-    const partnerUser = DB.getUserById(partnerId);
-    const pName = partnerUser?.full_name || (isClient ? 'Freelancer' : 'Client');
-    return {
-      id: p.id,
-      title: p.title,
-      partnerName: pName,
-      partnerAvatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${pName}`,
-      latestMessage: 'Project started and workspace active.',
-      time: 'Just now',
-      unread: false,
-      online: true,
-      titleLong: p.title,
+  useEffect(() => {
+    let current = true;
+
+    const loadWorkspace = async (): Promise<void> => {
+      if (!activeProjectId) return;
+
+      try {
+        const [contractResponse, milestonesResponse, contractsResponse] = await Promise.all([
+          contractGetAPI.getContractById(activeProjectId),
+          contractGetAPI.getMilestonesByContract(activeProjectId),
+          contractGetAPI.getMyContracts(),
+        ]);
+
+        if (!current) return;
+
+        if (contractsResponse.success && contractsResponse.data) {
+          setWorkspaceContracts(
+            contractsResponse.data.filter(contract =>
+              contract.status === ContractStatus.PendingEscrow ||
+              contract.status === ContractStatus.Active
+            )
+          );
+        }
+
+        if (!contractResponse.success || !contractResponse.data) {
+          setProject(emptyProject);
+          setActiveContract(null);
+          return;
+        }
+
+        const nextContract = contractResponse.data;
+        const nextProject = buildProject(nextContract, milestonesResponse.data ?? []);
+        setActiveContract(nextContract);
+        setProject(nextProject);
+
+        if (nextContract.conversationId) {
+          const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
+          if (current && messagesResponse.success && messagesResponse.data) {
+            setProjectMessages(messagesResponse.data.map(message => mapWorkspaceMessage(message as Record<string, unknown>)));
+          }
+        } else {
+          setProjectMessages([]);
+        }
+      } catch (err) {
+        console.error('Failed to load workspace:', err);
+        if (current) {
+          setProject(emptyProject);
+          setActiveContract(null);
+          setProjectMessages([]);
+        }
+      }
     };
-  });
 
-  if (!mockProjects.some(p => p.id === 'proj_2')) {
-    mockProjects.push({
-      id: 'proj_2',
-      title: 'Fintech Mobile App Redesign',
-      partnerName: 'David Chen',
-      partnerAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCt226TXncFjd6zQyyFNqkOAKj-pTYClfBHUGbG7EsCTL5gzWQbF5K-mojkZ1u9U91izwjnV--bOtLgKPwMjODHfOuVpg5nOAxiXsve-4RdrP3GeYe6L9llw_G0e7TExXaCWHruulVFEUP-acilXdvARPO-JVC17ShH6ztqc9CUYzp9r2Duy95bm3YrKoT0XmazmW2mgGKr4H_BYRs6iYRH0ATn2UaEHxrBE1AFiTPLNgtYDGnskVHrXWmKPI5nDsP3KsJHRYgTs29I',
-      latestMessage: 'The API keys are updated now.',
-      time: '2m',
-      unread: true,
-      online: true,
-      titleLong: 'Fintech Mobile App Redesign',
-    });
-  }
+    void loadWorkspace();
+    return () => {
+      current = false;
+    };
+  }, [activeProjectId]);
 
-  if (!mockProjects.some(p => p.id === 'proj_3')) {
-    mockProjects.push({
-      id: 'proj_3',
-      title: 'SaaS Dashboard Analytics',
-      partnerName: 'Elena Rodriguez',
-      partnerAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCdLF72GSJAKTKAXQJTmZPrytHCNef0EG6PBa8RxPaGWZgX7RUdjbX130CZ1pIpbSfMGEx3KmopHX4jgiUbvhq6B5TXukEAT_AIiPOGs1SN4BRjDw61FLdp7frEThStyzCBbY7xelVeQlLA_EORhwu3gKWwfg9K26LgEOXbaWEpWdbw5ERIR1Eam3X2TJd6HMAqxsgwJuDdY-t9Dje5H0mM4kqDh2NfF7j8H4TnEPcCHTTrJnt8V3uQVeztENLHWLKKQk05XkftCx_j',
-      latestMessage: "Let's review the Figma file tomorrow.",
-      time: 'Yesterday',
-      unread: false,
-      online: false,
-      titleLong: 'SaaS Analytics Dashboard Build',
-    });
-  }
-
-  const currentProjData = mockProjects.find(p => p.id === activeProjectId) || mockProjects[0];
-  const partnerName = currentProjData.partnerName;
-  const partnerAvatar = currentProjData.partnerAvatar;
-  const partnerTitle = activeProjectId === 'proj_1' ? 'Project Manager' : activeProjectId === 'proj_2' ? 'Lead Architect' : 'UI/UX Designer';
-  const partnerCompany = activeProjectId === 'proj_1' ? 'TechFlow' : activeProjectId === 'proj_2' ? 'StartupXYZ' : 'Design Studio';
-  const isPartnerOnline = currentProjData.online;
-
-  // Manage message lists per project/conversation
-  const [projectMessagesMap, setProjectMessagesMap] = useState<Record<string, Message[]>>({
-    proj_1: [
-      ...SEED_MESSAGES.map(m => ({ ...m, senderId: m.senderId === 'u_client_1' ? 'client' : 'freelancer' }))
-    ],
-    proj_2: [
-      { id: 'm_p2_1', senderId: 'other', content: 'Hi! I am starting on the API gateway setup.', type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), isRead: true },
-      { id: 'm_p2_2', senderId: 'other', content: 'The API keys are updated now.', type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(), isRead: false }
-    ],
-    proj_3: [
-      { id: 'm_p3_1', senderId: 'other', content: 'Let\'s review the Figma file tomorrow.', type: 'text', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), isRead: true }
-    ]
-  });
-
-  const projectMessages = projectMessagesMap[activeProjectId] || [];
-
-  // Scroll to bottom when messages update
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [projectMessages]);
 
-  // Bind API queries on active project changes
-  useEffect(() => {
-    const fetchApiData = async () => {
-      try {
-        // reasonable API query to fetch project details
-        await projectGetAPI.getProjectById(activeProjectId);
-        // reasonable API query to fetch messages
-        await messageGetAPI.getConversationMessages(project.conversationId || 'conv_1');
-      } catch (e) {
-        console.warn('API call fallback to mock backend database: ', e);
-      }
-    };
-    void fetchApiData();
-  }, [activeProjectId, project.conversationId]);
+  const workspaceProjects = useMemo(() => {
+    const projects = workspaceContracts.map(contract => mapContractListItem(contract, isClient));
+    if (activeContract && !projects.some(item => item.id === activeContract.contractsId)) {
+      projects.unshift(mapContractListItem(activeContract, isClient));
+    }
+    return projects;
+  }, [activeContract, isClient, workspaceContracts]);
 
-  // Actions
-  const handleSendMessage = async () => {
-    if (!messageInput.trim()) return;
-    const newMsg = {
-      id: `msg_${Date.now()}`,
-      senderId: user?.id || (isClient ? 'client' : 'freelancer'),
-      content: messageInput,
-      type: 'text' as const,
+  const currentProjData = workspaceProjects.find(item => item.id === activeProjectId) ?? {
+    id: activeProjectId,
+    title: project.title,
+    titleLong: project.title,
+    partnerName: activeContract ? getPartnerName(activeContract, isClient) : 'Partner',
+    partnerAvatar: getAvatarUrl(activeContract ? getPartnerName(activeContract, isClient) : 'Partner'),
+    latestMessage: 'Workspace is open.',
+    time: 'Just now',
+    unread: false,
+    online: true,
+  };
+
+  const partnerName = currentProjData.partnerName;
+  const partnerAvatar = currentProjData.partnerAvatar;
+  const partnerTitle = isClient ? 'Freelancer' : 'Client';
+  const partnerCompany = activeContract ? activeContract.jobTitle || activeContract.title : '';
+  const isPartnerOnline = currentProjData.online;
+
+  const handleSendMessage = async (): Promise<void> => {
+    if (!messageInput.trim() || !project.conversationId) return;
+
+    const clientMessageId = crypto.randomUUID();
+    const newMessage: Message = {
+      id: clientMessageId,
+      clientMessageId,
+      conversationId: project.conversationId,
+      senderId: user?.id ?? '',
+      content: messageInput.trim(),
+      type: 'text',
       createdAt: new Date().toISOString(),
+      isRead: true,
+      sendStatus: 'pending',
     };
 
-    setProjectMessagesMap(prev => ({
-      ...prev,
-      [activeProjectId]: [...(prev[activeProjectId] || []), newMsg]
-    }));
+    setProjectMessages(prev => [...prev, newMessage]);
     setMessageInput('');
 
     try {
-      // reasonable API call to send message
-      await messagePostAPI.sendMessage({
-        conversationId: project.conversationId || 'conv_1',
-        clientMessageId: newMsg.id,
-        content: newMsg.content,
+      const response = await messagePostAPI.sendMessage({
+        conversationId: project.conversationId,
+        clientMessageId,
+        content: newMessage.content,
       });
-    } catch (e) {
-      console.warn('Fallback: sent message to local state.', e);
-    }
 
-    // Trigger partner reply
-    setTimeout(() => {
-      const replyMsg = {
-        id: `msg_reply_${Date.now()}`,
-        senderId: 'other',
-        content: `Thanks for the message! I'm reviewing this on "${project.title}" and will follow up.`,
-        type: 'text',
-        createdAt: new Date().toISOString(),
-      };
-      setProjectMessagesMap(prev => ({
-        ...prev,
-        [activeProjectId]: [...(prev[activeProjectId] || []), replyMsg]
-      }));
-    }, 2000);
+      if (response.success && response.data) {
+        setProjectMessages(prev =>
+          prev.map(message =>
+            message.id === clientMessageId
+              ? { ...mapWorkspaceMessage(response.data as Record<string, unknown>), sendStatus: 'sent' }
+              : message
+          )
+        );
+        return;
+      }
+
+      setProjectMessages(prev =>
+        prev.map(message =>
+          message.id === clientMessageId
+            ? { ...message, sendStatus: 'failed', sendError: response.message || 'Message failed to send.' }
+            : message
+        )
+      );
+    } catch (err) {
+      console.error('Failed to send workspace message:', err);
+      setProjectMessages(prev =>
+        prev.map(message =>
+          message.id === clientMessageId
+            ? { ...message, sendStatus: 'failed', sendError: 'Message failed to send.' }
+            : message
+        )
+      );
+    }
   };
 
-  const handleSendAiMessage = () => {
+  const handleSendAiMessage = (): void => {
     if (!aiMessage.trim()) return;
-    const userMsg = aiMessage;
-    setAiChat(prev => [...prev, { role: 'user', content: userMsg }]);
+    const userMessage = aiMessage.trim();
+    setAiChat(prev => [...prev, { role: 'user', content: userMessage }]);
     setAiMessage('');
-    setTimeout(() => {
-      setAiChat(prev => [...prev, { 
-        role: 'ai', 
-        content: `I've analyzed the query "${userMsg}" for the project "${project.title}". You are currently at ${project.progress}% progress. 1 milestone is completed and paid, and 1 is currently in-progress.` 
-      }]);
-    }, 1000);
-  };
-
-  // Removed deal handlers
-
-  const handleSimulateAttachment = () => {
-    const attachMsg = {
-      id: `file_${Date.now()}`,
-      senderId: user?.id || (isClient ? 'client' : 'freelancer'),
-      content: "Here's the latest preview of the updated design requirements.",
-      type: 'file',
-      fileName: 'UI_Requirements_v2.jpg',
-      fileUrl: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop',
-      createdAt: new Date().toISOString(),
-    };
-    setProjectMessagesMap(prev => ({
+    setAiChat(prev => [
       ...prev,
-      [activeProjectId]: [...(prev[activeProjectId] || []), attachMsg]
-    }));
-    alert('Mock file "UI_Requirements_v2.jpg" attached successfully.');
+      {
+        role: 'ai',
+        content: `This workspace is ${project.progress}% complete with ${project.milestones.length} milestone(s) tracked from the active contract.`,
+      },
+    ]);
   };
 
-  const handleCreateMockMilestone = async () => {
-    const title = prompt("Enter milestone title:");
-    if (!title) return;
-    const amountStr = prompt("Enter milestone amount ($):", "500");
-    if (!amountStr) return;
-    const amount = parseFloat(amountStr) || 500;
-    
-    const newMilestone = {
-      id: `m_${Date.now()}`,
-      title,
-      description: 'Custom milestone created from chat workspace.',
-      amount,
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      status: 'pending' as const,
-      completedAt: undefined,
-    };
-    project.milestones.push(newMilestone);
-    setActiveProjectId(prev => prev); // force re-render
-    
-    try {
-      // reasonable API call to add milestone
-      await projectPutAPI.updateMilestone(activeProjectId, newMilestone.id, { status: 'pending' });
-    } catch (e) {
-      console.warn(e);
-    }
-    
-    alert('New milestone proposed!');
+  const handleSimulateAttachment = (): void => {
+    alert('File attachments are not available in this workspace yet.');
+  };
+
+  const handleCreateMockMilestone = (): void => {
+    if (!activeProjectId) return;
+    navigate(`/contracts/${activeProjectId}/milestones?mode=contract-edit`);
   };
 
   return {
@@ -255,7 +371,8 @@ export function useProjectWorkspace(initialProjectId: string) {
     setIsBlocked,
     aiChat,
     project,
-    mockProjects,
+    activeContract,
+    workspaceProjects,
     currentProjData,
     partnerName,
     partnerAvatar,

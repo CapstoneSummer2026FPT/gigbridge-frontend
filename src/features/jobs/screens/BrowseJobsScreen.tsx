@@ -423,7 +423,7 @@ export default function BrowseJobsScreen() {
                 <div className="text-center py-20">
                   <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
                   <p className="text-primary font-semibold mb-2">
-                    {loadError || 'MSG73: No jobs match your criteria. Try adjusting filters.'}
+                    {loadError || 'No jobs match your criteria. Try adjusting filters.'}
                   </p>
                 </div>
               )}

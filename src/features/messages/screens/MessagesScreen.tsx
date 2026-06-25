@@ -122,6 +122,7 @@ export default function MessagesScreen() {
     handleProposeDeal,
     handleAcceptDeal,
     handleDeclineDeal,
+    handleOpenAcceptedContract,
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,
@@ -137,6 +138,16 @@ export default function MessagesScreen() {
     nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
+
+  const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
+    if (!isLatestOffer) return 'Đề xuất cũ';
+    if (status === 'pending_freelancer') return 'Đang chờ freelancer';
+    if (status === 'agreed') return 'Đã đồng ý ✓';
+    if (status === 'declined') return 'Đã từ chối';
+    if (status === 'pending_client') return 'Đang chờ cập nhật';
+    return 'Đang đồng bộ';
+  };
+  const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed';
 
   if (loading) {
     return (
@@ -199,7 +210,7 @@ export default function MessagesScreen() {
                 const convos = conversationsState.filter(c => c.roomId === room.id);
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isOpen = !!openRooms[room.id];
-                const RoomIcon = room.type === 'invited' ? Briefcase : Layers;
+                const RoomIcon = room.type === 'invited' ? Briefcase : room.type === 'workspace' ? CheckCircle : Layers;
 
                 return (
                   <div key={room.id}>
@@ -274,13 +285,18 @@ export default function MessagesScreen() {
             </div>
 
             {/* Bottom prominent Go to Workspace button */}
-            <div className="p-4 bg-muted/20 border-t border-border mt-auto">
+            <div
+              className="p-4 bg-muted/20 border-t border-border mt-auto"
+              style={{ display: activeConv?.roomType === 'workspace' && activeConv.contractId ? undefined : 'none' }}
+            >
               <button
-                onClick={() => navigate('/projects')}
+                onClick={() => {
+                  if (activeConv?.contractId) navigate(`/workspace/${activeConv.contractId}`);
+                }}
                 className="w-full flex items-center justify-center gap-2 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer border-none"
               >
                 <span>Go to Workspace</span>
-                <span>→</span>
+                <span>-&gt;</span>
               </button>
             </div>
           </section>
@@ -345,31 +361,29 @@ export default function MessagesScreen() {
             </div>
 
             {/* Agreed Deal Banner (freelancer: navigate to contract) */}
-            {dealStatus === 'agreed' && (
+            {dealStatus === 'agreed' && activeConv.roomType !== 'workspace' && (
               <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
                   <CheckCircle size={18} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-foreground">Mức giá đã được thống nhất</h4>
+                  <h4 className="text-sm font-bold text-foreground">Contract flow is ready</h4>
                   <p className="text-xs text-muted-foreground">
-                    {isClient ? 'Cùng đợi freelancer tiến hành ký hợp đồng.' : 'Tiến hành ký hợp đồng để bắt đầu công việc.'}
+                    {isClient ? 'Open the milestone and contract steps for this agreement.' : 'Review milestones, sign, or open the workspace when ready.'}
                   </p>
                 </div>
-                 {!isClient && (
-                  <button
-                    onClick={() => navigate('/proj_1/freelancer-contract', { state: { conversationId: activeConvId } })}
-                    className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-                  >
-                    <span>Ký hợp đồng</span>
-                    <span>→</span>
-                  </button>
-                )}
+                <button
+                  onClick={handleOpenAcceptedContract}
+                  className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                >
+                  <span>Open contract</span>
+                  <span>-&gt;</span>
+                </button>
               </div>
             )}
 
             {/* Negotiation accepted banner → conversation already moved */}
-            {negStatus === 'accepted' && (
+            {negStatus === 'accepted' && activeConv.roomType !== 'workspace' && (
               <div className="bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 px-6 py-2.5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <ArrowRightLeft size={14} className="text-[var(--gb-cyan)] flex-shrink-0" />
                 <p className="text-xs font-semibold text-[var(--gb-cyan)]">
@@ -383,7 +397,11 @@ export default function MessagesScreen() {
               {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
               <div className="flex justify-center">
                 <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                  {activeConv.roomType === 'invited' ? '📋 Invited Job Chat' : '🤝 Negotiation Chat'}
+                  {activeConv.roomType === 'invited'
+                    ? 'Invited Job Chat'
+                    : activeConv.roomType === 'workspace'
+                      ? 'Workspace Chat'
+                      : 'Negotiation Chat'}
                 </span>
               </div>
 
@@ -406,6 +424,12 @@ export default function MessagesScreen() {
                     </div>
                   );
                 }
+
+                const isLatestDealOffer =
+                  msg.type === 'deal' &&
+                  !!activeConv.lastOfferId &&
+                  msg.negotiationOfferId === activeConv.lastOfferId;
+                const dealBubbleStatus = isLatestDealOffer ? dealStatus : 'idle';
 
                 return (
                   <div
@@ -501,7 +525,7 @@ export default function MessagesScreen() {
                             <div>
                               <h3 className="text-sm text-foreground font-bold">Thỏa thuận giá (Deal)</h3>
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                {dealStatus === 'pending_freelancer' ? 'Đang chờ freelancer' : dealStatus === 'agreed' ? 'Đã đồng ý ✓' : 'Đã từ chối'}
+                                {getDealStatusLabel(dealBubbleStatus, isLatestDealOffer)}
                               </p>
                             </div>
                           </div>
@@ -511,17 +535,21 @@ export default function MessagesScreen() {
                             <div className="text-2xl font-black text-[var(--gb-cyan)] mt-1">${msg.content} USD</div>
                           </div>
 
-                          {dealStatus === 'pending_freelancer' ? (
+                          {!isLatestDealOffer ? (
+                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
+                              Đề xuất này không còn là đề xuất hiện tại.
+                            </div>
+                          ) : dealBubbleStatus === 'pending_freelancer' ? (
                             !mine ? (
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => handleAcceptDeal(msg.id, msg.content)}
+                                  onClick={() => handleAcceptDeal(msg.negotiationOfferId)}
                                   className="flex-1 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                                 >
                                   Đồng ý
                                 </button>
                                 <button
-                                  onClick={() => handleDeclineDeal(msg.id)}
+                                  onClick={() => handleDeclineDeal(msg.negotiationOfferId)}
                                   className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                                 >
                                   Từ chối
@@ -532,13 +560,17 @@ export default function MessagesScreen() {
                                 Đang đợi phản hồi từ đối tác...
                               </div>
                             )
-                          ) : dealStatus === 'agreed' ? (
+                          ) : dealBubbleStatus === 'agreed' ? (
                             <div className="text-xs text-emerald-600 bg-emerald-500/10 p-2.5 rounded-lg text-center font-bold">
                               Mức giá đã được thống nhất
                             </div>
-                          ) : (
+                          ) : dealBubbleStatus === 'declined' ? (
                             <div className="text-xs text-red-500 bg-red-500/10 p-2.5 rounded-lg text-center font-bold">
                               Đề xuất đã bị từ chối
+                            </div>
+                          ) : (
+                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
+                              Đang đồng bộ trạng thái đề xuất...
                             </div>
                           )}
                         </div>
@@ -594,7 +626,7 @@ export default function MessagesScreen() {
               <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
 
                 {/* Deal Price Popup */}
-                {showDealPrice && activeConv.roomType === 'negotiation' && isClient && (
+                {showDealPrice && canProposeDeal && (
                   <div className="p-4 border-b border-border bg-muted/50 rounded-t-2xl animate-in fade-in slide-in-from-bottom-2">
                     <div className="flex flex-col gap-3">
                       <div className="flex justify-between items-center">
@@ -611,6 +643,9 @@ export default function MessagesScreen() {
                         onChange={e => setDealPriceInput(e.target.value)}
                         className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
                       />
+                      <p className="text-[11px] leading-5 text-muted-foreground">
+                        Final budget can be negotiated here. Before the freelancer accepts, update milestones so their total matches this price.
+                      </p>
                       <div className="flex justify-between gap-2">
                         <button
                           onClick={() => setShowDealPrice(false)}
@@ -621,9 +656,10 @@ export default function MessagesScreen() {
                         <button
                           onClick={handleProposeDeal}
                           id="btn-propose-deal"
+                          disabled={!dealPriceInput.trim()}
                           className="flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none"
                         >
-                          Send Proposal
+                          Send
                         </button>
                       </div>
                     </div>
@@ -747,7 +783,7 @@ export default function MessagesScreen() {
                     )}
 
                     {/* Deal Price button – only in Negotiation rooms for clients */}
-                    {activeConv.roomType === 'negotiation' && isClient && (
+                    {canProposeDeal && (
                       <>
                         <div className="w-px h-5 bg-border mx-1" />
                         <button
