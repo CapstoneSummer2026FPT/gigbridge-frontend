@@ -14,24 +14,24 @@ interface SpotlightStep {
 
 const STEPS: SpotlightStep[] = [
   {
-    targetId: 'guide-questions-list',
-    title: 'Điền câu hỏi khảo sát',
-    description: 'Hãy điền các câu hỏi bạn muốn ứng viên trả lời trước. Đây sẽ là cơ sở dữ liệu để AI tự động tạo chi tiết công việc cho bạn.',
+    targetId: 'guide-prompt-textarea',
+    title: 'Nhập mô tả công việc (Prompt)',
+    description: 'Mô tả chi tiết vị trí công việc, yêu cầu tuyển dụng và quyền lợi tại đây. AI sẽ phân tích thông tin này để điền tự động các chi tiết công việc.',
   },
   {
-    targetId: 'guide-add-question',
-    title: 'Thêm câu hỏi mới',
-    description: 'Bấm vào nút này nếu bạn muốn bổ sung thêm các câu hỏi khảo sát khác. Số lượng câu hỏi không giới hạn.',
+    targetId: 'guide-prompt-suggestions',
+    title: 'Mẫu gợi ý nhanh',
+    description: 'Sử dụng các thẻ gợi ý sẵn có (Web Dev, UI/UX Design, Copywriting) để điền nhanh một bản prompt mẫu chi tiết và đầy đủ.',
   },
   {
-    targetId: 'guide-generate-job',
-    title: 'Bắt đầu tạo tin tuyển dụng',
-    description: 'Bấm nút "Start Generate Job" để hệ thống phân tích các câu hỏi của bạn và tự động điền các thông tin chi tiết (Tiêu đề, Kỹ năng, Mô tả, Ngân sách...).',
+    targetId: 'guide-prompt-generate-btn',
+    title: 'Tự động điền chi tiết công việc',
+    description: 'Bấm nút "Generate Job" để AI phân tích prompt của bạn và tự động điền đầy đủ Tiêu đề, Kỹ năng, Mô tả và Ngân sách.',
   },
   {
     targetId: 'guide-job-details-panel',
-    title: 'Hoàn tất tạo chi tiết công việc',
-    description: 'Các thông tin chi tiết công việc hiện đã được tự động điền đầy đủ! Bạn có thể kiểm tra lại và chỉnh sửa thủ công nếu muốn trước khi tiếp tục.',
+    title: 'Kiểm tra & Hoàn tất',
+    description: 'Toàn bộ thông tin chi tiết công việc đã được tự động điền đầy đủ! Bạn có thể rà soát lại và chỉnh sửa thủ công nếu cần thiết trước khi tiếp tục.',
   },
 ];
 
@@ -105,8 +105,9 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
   // Determine ideal position for the onboarding card (fixed viewport relative)
   const isDesktop = window.innerWidth >= 1024;
   const isDetailsStep = STEPS[currentStep].targetId === 'guide-job-details-panel';
+  const bubbleWidth = Math.min(320, window.innerWidth - 32);
 
-  let bubbleX = Math.max(16, Math.min(window.innerWidth - 336, spotlight.x + spotlight.width / 2 - 160));
+  let bubbleX = Math.max(16, Math.min(window.innerWidth - bubbleWidth - 16, spotlight.x + spotlight.width / 2 - bubbleWidth / 2));
   let bubbleY = spotlight.y + spotlight.height + 16;
 
   if (isDesktop && isDetailsStep) {
@@ -163,7 +164,7 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
 
       {/* Floating Guided Info Bubble */}
       <div
-        className="fixed bg-card/90 backdrop-blur-md border border-border rounded-2xl p-5 shadow-2xl z-[10000] w-[320px] pointer-events-auto flex flex-col gap-4 text-left transition-all duration-300"
+        className="fixed bg-card/90 backdrop-blur-md border border-border rounded-2xl p-5 shadow-2xl z-[10000] w-[calc(100vw-32px)] sm:w-[320px] pointer-events-auto flex flex-col gap-4 text-left transition-all duration-300"
         style={{
           top: `${bubbleY}px`,
           left: `${bubbleX}px`,

@@ -68,7 +68,7 @@ export function AppLayout({
           {excludeMeshGradient ? (
             children
           ) : (
-            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-6">
+            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6">
               {children}
             </MeshGradientBackground>
           )}
@@ -95,7 +95,7 @@ export function GuestLayout({
         {excludeMeshGradient ? (
           children
         ) : (
-          <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-6 m-4">
+          <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6 m-2 sm:m-4">
             {children}
           </MeshGradientBackground>
         )}

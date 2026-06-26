@@ -11,6 +11,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
 import { usePostJob } from '../hooks/usePostJob';
 import { JobPostGuide } from '../components/JobPostGuide';
+import { PromptSectionModal } from '../components/PromptSectionModal';
 import '../styles/PostJobScreen.css';
 
 export default function PostJobScreen() {
@@ -131,14 +132,14 @@ export default function PostJobScreen() {
 
   return (
     <AppLayout>
-      <div className="max-w-[1440px] mx-auto px-6 py-8 relative">
+      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-8 relative">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(159,75,255,0.02),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(0,119,255,0.02),transparent_50%)] opacity-50 pointer-events-none" />
 
         <div className="flex flex-col gap-6 items-center mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={loadDrafts}
@@ -184,7 +185,7 @@ export default function PostJobScreen() {
                 </button>
                 <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl p-4 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-xs text-muted-foreground leading-relaxed text-left select-text">
                   <p className="font-bold text-foreground mb-1">Instant Job Detail (Premium)</p>
-                  When enabled, you enter the screening questions first. Click <strong>Start Generate Job</strong> to let AI automatically generate the Job Title, Category, Description, and required Skills based on your questions.
+                  When enabled, a prompt input bar appears at the bottom. Describe your job requirements in the bar and click <strong>Generate Details</strong> to let AI automatically fill in the Job Title, Category, Description, and required Skills.
                 </div>
               </div>
             </div>
@@ -192,32 +193,32 @@ export default function PostJobScreen() {
 
           <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm">1</div>
-              <div className="flex flex-col">
+              <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm shrink-0">1</div>
+              <div className="hidden sm:flex flex-col">
                 <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">Step 1</span>
                 <span className="text-xs text-foreground font-bold">Project Details</span>
               </div>
             </div>
-            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
             <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">2</div>
-              <div className="flex flex-col">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">2</div>
+              <div className="hidden sm:flex flex-col">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 2</span>
                 <span className="text-xs text-muted-foreground font-bold">Contract Setup</span>
               </div>
             </div>
-            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
             <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">3</div>
-              <div className="flex flex-col">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">3</div>
+              <div className="hidden sm:flex flex-col">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 3</span>
                 <span className="text-xs text-muted-foreground font-bold">E-Sign Contract</span>
               </div>
             </div>
-            <div className="flex-grow mx-6 h-[2px] bg-border rounded-full opacity-50" />
+            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
             <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm">4</div>
-              <div className="flex flex-col">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">4</div>
+              <div className="hidden sm:flex flex-col">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
                 <span className="text-xs text-muted-foreground font-bold">Setup Milestone</span>
               </div>
@@ -256,9 +257,9 @@ export default function PostJobScreen() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
           <div
-            className="lg:col-span-5 flex flex-col gap-6 bg-card border border-border rounded-2xl p-6 shadow-sm"
+            className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm"
             style={{ maxHeight: detailsHeight ? `${detailsHeight}px` : undefined }}
           >
             <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
@@ -268,7 +269,7 @@ export default function PostJobScreen() {
               </div>
             </div>
 
-            <div id="guide-questions-list" className="space-y-3 lg:flex-grow lg:overflow-y-auto lg:min-h-0 lg:pr-1">
+            <div className="space-y-3 lg:flex-grow lg:overflow-y-auto lg:min-h-0 lg:pr-1">
               {questions.map((question, index) => (
                 <div
                   key={index}
@@ -340,7 +341,6 @@ export default function PostJobScreen() {
 
             <div className="flex flex-col gap-3 mt-2">
               <button
-                id="guide-add-question"
                 type="button"
                 onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
@@ -348,31 +348,10 @@ export default function PostJobScreen() {
                 <Plus size={14} /> Add Question
               </button>
 
-              {isInstantJobMode && (
-                <button
-                  id="guide-generate-job"
-                  type="button"
-                  onClick={handleGenerateInstantJob}
-                  disabled={questions.filter(q => q.questionText.trim()).length === 0 || isGeneratingInstant}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white text-xs font-extrabold hover:opacity-95 transition-all cursor-pointer shadow-lg disabled:opacity-40 disabled:cursor-not-allowed border-none uppercase tracking-wider"
-                >
-                  {isGeneratingInstant ? (
-                    <>
-                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      <span>Generating Details...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Bot size={15} />
-                      <span>Start Generate Job</span>
-                    </>
-                  )}
-                </button>
-              )}
             </div>
           </div>
 
-          <div id="guide-job-details-panel" className="lg:col-span-7 flex flex-col gap-6 bg-card border border-border rounded-2xl p-6 shadow-sm">
+          <div id="guide-job-details-panel" className="lg:col-span-7 order-1 lg:order-2 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm">
             <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">Job Details</h2>
 
             {isInstantJobMode && !isJobDetailsGenerated && (
@@ -381,7 +360,7 @@ export default function PostJobScreen() {
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-bold text-foreground">Premium Feature Active</span>
                   <span className="text-[11px] text-muted-foreground leading-relaxed">
-                    Please fill out the screening questions on the left first, then click <strong>Start Generate Job</strong>. The details below will be auto-generated based on your questions.
+                    Please describe the job role in the prompt input bar at the bottom, then click <strong>Generate Details</strong>. The fields below will be auto-filled based on your prompt.
                   </span>
                 </div>
               </div>
@@ -760,6 +739,12 @@ export default function PostJobScreen() {
           </div>
         </div>
       )}
+      <PromptSectionModal
+        isOpen={isInstantJobMode}
+        onClose={() => setIsInstantJobMode(false)}
+        onGenerate={handleGenerateInstantJob}
+        isGenerating={isGeneratingInstant}
+      />
     </AppLayout>
   );
 }

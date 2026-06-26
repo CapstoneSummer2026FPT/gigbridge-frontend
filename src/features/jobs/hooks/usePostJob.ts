@@ -519,16 +519,15 @@ export function usePostJob() {
     setDraggedIndex(null);
   };
 
-  const handleGenerateInstantJob = async () => {
-    const validQuestions = questions.filter(q => q.questionText.trim());
-    if (validQuestions.length === 0) {
-      toast.error('Please enter at least one question first.');
+  const handleGenerateInstantJob = async (prompt: string) => {
+    if (!prompt.trim()) {
+      toast.error('Please enter a prompt first.');
       return;
     }
 
     setIsGeneratingInstant(true);
     try {
-      const response = await jobAPI.generateAIDescription(validQuestions.map(q => q.questionText.trim()));
+      const response = await jobAPI.generateAIDescription([prompt.trim()]);
       if (!response.success || !response.data) {
         toast.error(response.message || 'Job details could not be generated.');
         return;
@@ -586,7 +585,7 @@ export function usePostJob() {
       }));
 
       setIsJobDetailsGenerated(true);
-      toast.success('Job details generated successfully based on your questions.');
+      toast.success('Job details generated successfully based on your prompt.');
     } catch (error) {
       toast.error('An error occurred during AI generation.');
     } finally {
