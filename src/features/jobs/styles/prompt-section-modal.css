@@ -21,7 +21,7 @@
 .prompt-modal-container {
     pointer-events: auto;
     width: 100%;
-    max-width: 600px;
+    max-width: 1000px;
     background-color: var(--gb-glass-bg);
     /* Glass background matching navbar */
     backdrop-filter: blur(12px);
@@ -34,7 +34,7 @@
     position: relative;
     /* overflow: visible to prevent backdrop-filter + overflow: hidden from clipping box-shadow */
     overflow: visible;
-    
+
     /* Setup for macOS Genie effect */
     transform-origin: bottom center;
     transform: translateY(120px) scaleX(0.1) scaleY(0.2);
@@ -58,11 +58,13 @@
             0 10px 25px rgba(0, 0, 0, 0.3),
             0 0 20px 2px var(--prompt-shadow-1);
     }
+
     50% {
         box-shadow:
             0 12px 32px rgba(0, 0, 0, 0.35),
             0 0 30px 4px var(--prompt-shadow-mid);
     }
+
     100% {
         box-shadow:
             0 15px 40px rgba(0, 0, 0, 0.4),
@@ -104,7 +106,7 @@
     opacity: 0 !important;
     pointer-events: none;
     box-shadow: none;
-    
+
     /* Fast snap exit with ease-in-back curve */
     transition: transform 0.55s cubic-bezier(0.36, 0, 0.66, -0.56), opacity 0.4s ease;
 }
