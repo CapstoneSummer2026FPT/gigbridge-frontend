@@ -12,6 +12,9 @@ export default function CreateReviewScreen() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [communicationRating, setCommunicationRating] = useState(0);
+  const [qualityRating, setQualityRating] = useState(0);
+  const [timelinessRating, setTimelinessRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -39,7 +42,10 @@ export default function CreateReviewScreen() {
     const response = await reviewPostAPI.createReview({
       contractId,
       rating,
-      comment,
+      comment: comment.trim() || null,
+      communicationRating: communicationRating || null,
+      qualityRating: qualityRating || null,
+      timelinessRating: timelinessRating || null,
       isAnonymous,
     });
     setIsSubmitting(false);
@@ -53,6 +59,19 @@ export default function CreateReviewScreen() {
     window.setTimeout(() => navigate(-1), 900);
   };
 
+  const renderSubRating = (label: string, value: number, onChange: (nextValue: number) => void) => (
+    <div className="review-subrating-row">
+      <span>{label}</span>
+      <div className="review-stars">
+        {[1, 2, 3, 4, 5].map(star => (
+          <button key={star} type="button" onClick={() => onChange(star)} className={star <= value ? 'active' : ''}>
+            <Star size={20} fill={star <= value ? 'currentColor' : 'none'} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <AppLayout>
       <div className="review-create-page">
@@ -62,10 +81,16 @@ export default function CreateReviewScreen() {
 
           <div className="review-stars">
             {[1, 2, 3, 4, 5].map(value => (
-              <button key={value} onClick={() => setRating(value)} className={value <= rating ? 'active' : ''}>
+              <button key={value} type="button" onClick={() => setRating(value)} className={value <= rating ? 'active' : ''}>
                 <Star size={28} fill={value <= rating ? 'currentColor' : 'none'} />
               </button>
             ))}
+          </div>
+
+          <div className="review-subratings">
+            {renderSubRating('Communication', communicationRating, setCommunicationRating)}
+            {renderSubRating('Quality', qualityRating, setQualityRating)}
+            {renderSubRating('Timeliness', timelinessRating, setTimelinessRating)}
           </div>
 
           <label>

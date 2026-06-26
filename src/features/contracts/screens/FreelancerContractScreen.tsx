@@ -452,7 +452,7 @@ export default function FreelancerContractScreen() {
                               </button>
                             )}
 
-                            {contract.status === ContractStatus.Completed && (
+                            {contract.canReview && (
                               <button
                                 onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
                                 className="p-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-xl flex items-center justify-center text-amber-500 transition-all duration-200 cursor-pointer"

@@ -29,6 +29,12 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
   createdAt: review.createdAt,
 });
 
+const resolveEloPoints = (data: any): number => {
+  const raw = data?.profile?.eloPoints ?? data?.profile?.EloPoints ?? data?.user?.elo_points ?? data?.user?.eloPoints ?? data?.user?.EloPoints;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : 100;
+};
+
 export function useClientProfile(targetId: string, currentUser: any) {
   const [profileData, setProfileData] = useState({
     user: DB.getUserById(targetId) || DB.getUserById('u_client_1')!,
@@ -36,7 +42,6 @@ export function useClientProfile(targetId: string, currentUser: any) {
   });
 
   const [loading, setLoading] = useState(true);
-  const [trustScore] = useState(88);
   const [isSaved, setIsSaved] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,6 +69,7 @@ export function useClientProfile(targetId: string, currentUser: any) {
               avatar: apiData.userAvatar,
               email: apiData.userEmail || '',
               phone_number: '',
+              elo_points: apiData.eloPoints ?? 100,
             },
             profile: {
               user_id: apiData.userId,
@@ -74,6 +80,7 @@ export function useClientProfile(targetId: string, currentUser: any) {
               company_description: apiData.companyDescription || '',
               location: apiData.location || 'San Francisco, CA',
               avatar: apiData.userAvatar,
+              eloPoints: apiData.eloPoints ?? 100,
             }
           });
         }
@@ -130,11 +137,14 @@ export function useClientProfile(targetId: string, currentUser: any) {
   const paginatedReviews = reviewsList.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
 
   const jobs = DB.getJobsByClient(targetId);
+  const eloPoints = resolveEloPoints(profileData);
+  const eloRingPercent = Math.min(100, Math.max(0, (eloPoints / 300) * 100));
 
   return {
     loading,
     profileData,
-    trustScore,
+    eloPoints,
+    eloRingPercent,
     isSaved,
     showMoreMenu,
     currentPage,

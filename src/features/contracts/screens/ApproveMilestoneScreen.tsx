@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { contractPutAPI } from '../../../api/contractAPI/PUT';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone, MilestoneAttachment } from '../../../types/models/Contract';
 import { MilestoneStatus } from '../../../types/models/Contract';
@@ -91,13 +91,10 @@ export default function ApproveMilestoneScreen() {
       setIsSubmitting(true);
       setError(null);
 
-      const response = await contractPutAPI.updateMilestoneStatus(
-        milestone.id,
-        MilestoneStatus.Approved
-      );
+      const response = await contractPostAPI.approveMilestone(contractId!, milestone.id);
 
       if (response.success) {
-        setMilestone(response.data ? { ...response.data, status: MilestoneStatus.Approved } : { ...milestone, status: MilestoneStatus.Approved });
+        setMilestone({ ...milestone, status: MilestoneStatus.Approved });
         setApprovalAction('pending');
         setApprovalNotes('');
         setSuccessMessage('Milestone approved successfully.');
@@ -121,9 +118,9 @@ export default function ApproveMilestoneScreen() {
       setIsSubmitting(true);
       setError(null);
 
-      const response = await contractPutAPI.updateMilestoneStatus(milestone.id, MilestoneStatus.InProgress);
+      const response = await contractPostAPI.requestMilestoneRevision(contractId!, milestone.id);
       if (response.success) {
-        setMilestone(response.data ? { ...response.data, status: MilestoneStatus.InProgress } : { ...milestone, status: MilestoneStatus.InProgress });
+        setMilestone({ ...milestone, status: MilestoneStatus.InProgress });
         setApprovalAction('pending');
         setApprovalNotes('');
         setSuccessMessage('Revision requested. The freelancer can resubmit deliverables.');

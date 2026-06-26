@@ -1139,7 +1139,7 @@ export function ClientContractDetails({
                     </motion.button>
                   )}
 
-                  {contract.status === ContractStatus.Completed && (
+                  {contract.canReview && (
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}

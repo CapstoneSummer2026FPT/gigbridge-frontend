@@ -4,12 +4,18 @@ import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
 import {
-  JobPostStatus,
   JobPostVisibility,
+  type CreateDraftJobPostResponse,
   type GetMyJobPostDetailDto,
   type JobPostQuestionDto,
   type SaveDraftJobPostRequest,
 } from '../../../types/models/Job';
+import {
+  formatJobDuration,
+  isValidJobDurationValue,
+  parseJobDuration,
+  type JobDurationUnit,
+} from '../utils/jobDuration';
 
 const MAX_QUESTION_LENGTH = 1000;
 const DEFAULT_DRAFT_TITLE = 'Untitled Job Post';
@@ -20,10 +26,11 @@ export interface QuestionInput {
   isRequired: boolean;
 }
 
-type SubmitMode = 'draft' | 'publish' | 'esign';
-type LeaveAction = 'save' | 'discard' | null;
+export interface OrderedQuestionInput extends QuestionInput {
+  orderIndex: number;
+}
 
-type PostJobFormState = {
+export interface PostJobFormState {
   title: string;
   majorId: string;
   majorCategoryId: string;
@@ -34,11 +41,53 @@ type PostJobFormState = {
   budgetMin: string;
   budgetMax: string;
   currency: string;
-  estimatedDuration: string;
+  estimatedDurationValue: string;
+  estimatedDurationUnit: JobDurationUnit;
   location: string;
   visibility: string;
   deadline: string;
   isAigenerated: boolean;
+}
+
+export interface PostJobRouteQuestion {
+  questionText?: string | null;
+  question?: string | null;
+  isRequired?: boolean | null;
+}
+
+export interface PostJobRouteJobData {
+  title?: string | null;
+  majorId?: string | null;
+  majorCategoryId?: string | null;
+  categoryId?: string | null;
+  description?: string | null;
+  skillIds?: readonly string[] | null;
+  customSkillNames?: readonly string[] | null;
+  customSkills?: readonly string[] | null;
+  budgetMin?: string | number | null;
+  budgetMax?: string | number | null;
+  currency?: string | null;
+  estimatedDuration?: string | null;
+  location?: string | null;
+  visibility?: string | number | null;
+  deadline?: string | null;
+  endDate?: string | null;
+  isAigenerated?: boolean | null;
+  skillNameById?: Record<string, string>;
+  skillNamesById?: Record<string, string>;
+  interviewQuestions?: readonly PostJobRouteQuestion[] | null;
+}
+
+export interface PostJobRouteState {
+  jobPostId?: string | null;
+  jobData?: PostJobRouteJobData | null;
+}
+
+type SubmitMode = 'draft' | 'questions' | 'contract';
+type LeaveAction = 'save' | 'discard' | null;
+
+type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
+  JobPostId?: string;
 };
 
 let draftJobPostRequest: Promise<string> | null = null;
@@ -47,7 +96,7 @@ const createDraftJobPostOnce = async (): Promise<string> => {
   if (!draftJobPostRequest) {
     draftJobPostRequest = jobAPI.createDraftJobPost()
       .then(response => {
-        const data = response.data as any;
+        const data = response.data as DraftResponseWithLegacyId | undefined;
         const jobPostId = data?.jobPostId ?? data?.JobPostId;
 
         if (!response.success || !jobPostId) {
@@ -65,14 +114,20 @@ const createDraftJobPostOnce = async (): Promise<string> => {
 };
 
 const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: true });
-const normalizeSkillName = (value: string) => value.trim().toLowerCase();
-const isDefaultDraftTitle = (value: string) => {
+
+const normalizeSkillName = (value: string): string => value.trim().toLowerCase();
+
+const isDefaultDraftTitle = (value: string): boolean => {
   const title = value.trim();
   return !title || title.toLowerCase() === DEFAULT_DRAFT_TITLE.toLowerCase() || title.toLowerCase() === 'untitled draft';
 };
 
-const initialQuestionsFromState = (initialJobData: any): QuestionInput[] => {
-  const initialQuestions = initialJobData?.interviewQuestions?.map((question: any) => ({
+const toStringValue = (value: string | number | null | undefined): string => (
+  value !== undefined && value !== null ? String(value) : ''
+);
+
+const initialQuestionsFromState = (initialJobData?: PostJobRouteJobData | null): QuestionInput[] => {
+  const initialQuestions = initialJobData?.interviewQuestions?.map(question => ({
     questionText: question.questionText || question.question || '',
     isRequired: question.isRequired ?? true,
   })) || [];
@@ -92,6 +147,13 @@ const questionsFromDtos = (questions: JobPostQuestionDto[]): QuestionInput[] => 
 };
 
 const formFromJobDetail = (job: GetMyJobPostDetailDto): PostJobFormState => ({
+  ...(() => {
+    const duration = parseJobDuration(job.estimatedDuration);
+    return {
+      estimatedDurationValue: duration.value,
+      estimatedDurationUnit: duration.unit,
+    };
+  })(),
   title: isDefaultDraftTitle(job.title || '') ? '' : job.title || '',
   description: job.description || '',
   majorId: job.majorId || '',
@@ -99,39 +161,44 @@ const formFromJobDetail = (job: GetMyJobPostDetailDto): PostJobFormState => ({
   categoryId: job.categoryId || '',
   skillIds: job.skills?.map(skill => skill.skillsId) || [],
   customSkillNames: job.customSkillNames || [],
-  budgetMin: job.budgetMin !== undefined && job.budgetMin !== null ? String(job.budgetMin) : '',
-  budgetMax: job.budgetMax !== undefined && job.budgetMax !== null ? String(job.budgetMax) : '',
+  budgetMin: toStringValue(job.budgetMin),
+  budgetMax: toStringValue(job.budgetMax),
   currency: job.currency || 'USD',
-  estimatedDuration: job.estimatedDuration || '',
   location: job.location || '',
   visibility: String(job.visibility ?? JobPostVisibility.Public),
   deadline: job.endDate?.split?.('T')?.[0] || '',
   isAigenerated: false,
 });
 
-const initialFormFromState = (initialJobData: any): PostJobFormState => ({
-  title: initialJobData?.title || '',
-  majorId: initialJobData?.majorId || '',
-  majorCategoryId: initialJobData?.majorCategoryId || '',
-  categoryId: initialJobData?.categoryId || '',
-  description: initialJobData?.description || '',
-  skillIds: (initialJobData?.skillIds || []) as string[],
-  customSkillNames: (initialJobData?.customSkillNames || initialJobData?.customSkills || []) as string[],
-  budgetMin: initialJobData?.budgetMin !== undefined && initialJobData?.budgetMin !== null ? String(initialJobData.budgetMin) : '',
-  budgetMax: initialJobData?.budgetMax !== undefined && initialJobData?.budgetMax !== null ? String(initialJobData.budgetMax) : '',
-  currency: initialJobData?.currency || 'USD',
-  estimatedDuration: initialJobData?.estimatedDuration || '',
-  location: initialJobData?.location || '',
-  visibility: String(initialJobData?.visibility ?? JobPostVisibility.Public),
-  deadline: initialJobData?.deadline || initialJobData?.endDate?.split?.('T')?.[0] || '',
-  isAigenerated: initialJobData?.isAigenerated ?? false,
-});
+const initialFormFromState = (initialJobData?: PostJobRouteJobData | null): PostJobFormState => {
+  const duration = parseJobDuration(initialJobData?.estimatedDuration);
+
+  return {
+    title: initialJobData?.title || '',
+    majorId: initialJobData?.majorId || '',
+    majorCategoryId: initialJobData?.majorCategoryId || '',
+    categoryId: initialJobData?.categoryId || '',
+    description: initialJobData?.description || '',
+    skillIds: [...(initialJobData?.skillIds || [])],
+    customSkillNames: [...(initialJobData?.customSkillNames || initialJobData?.customSkills || [])],
+    budgetMin: toStringValue(initialJobData?.budgetMin),
+    budgetMax: toStringValue(initialJobData?.budgetMax),
+    currency: initialJobData?.currency || 'USD',
+    estimatedDurationValue: duration.value,
+    estimatedDurationUnit: duration.unit,
+    location: initialJobData?.location || '',
+    visibility: String(initialJobData?.visibility ?? JobPostVisibility.Public),
+    deadline: initialJobData?.deadline || initialJobData?.endDate?.split?.('T')?.[0] || '',
+    isAigenerated: initialJobData?.isAigenerated ?? false,
+  };
+};
 
 export function usePostJob() {
   const navigate = useNavigate();
   const location = useLocation();
-  const initialJobData = location.state?.jobData;
-  const initialJobPostId = location.state?.jobPostId ? String(location.state.jobPostId) : null;
+  const routeState = location.state as PostJobRouteState | null;
+  const initialJobData = routeState?.jobData ?? null;
+  const initialJobPostId = routeState?.jobPostId ? String(routeState.jobPostId) : null;
   const navigationAllowedRef = useRef(false);
 
   const [skillInput, setSkillInput] = useState('');
@@ -143,10 +210,6 @@ export function usePostJob() {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftRequestAttempt, setDraftRequestAttempt] = useState(0);
   const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
-
-  const [isInstantJobMode, setIsInstantJobMode] = useState(false);
-  const [isJobDetailsGenerated, setIsJobDetailsGenerated] = useState(false);
-  const [isGeneratingInstant, setIsGeneratingInstant] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
@@ -163,7 +226,7 @@ export function usePostJob() {
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
 
-  const questionsWithOrder = useMemo(
+  const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
     [questions]
   );
@@ -177,7 +240,7 @@ export function usePostJob() {
       Boolean(form.budgetMin) ||
       Boolean(form.budgetMax) ||
       Boolean(form.currency.trim() && form.currency.trim().toUpperCase() !== 'USD') ||
-      Boolean(form.estimatedDuration.trim()) ||
+      Boolean(form.estimatedDurationValue.trim()) ||
       Boolean(form.location.trim()) ||
       Boolean(form.deadline) ||
       (!Number.isNaN(visibility) && visibility !== JobPostVisibility.Public) ||
@@ -206,7 +269,7 @@ export function usePostJob() {
   }, [blocker.state]);
 
   useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent): void => {
       if (!shouldBlockNavigation) return;
 
       event.preventDefault();
@@ -376,14 +439,14 @@ export function usePostJob() {
   );
 
   const isSubmitting = submitMode !== null || leaveAction !== null;
-  const isActionDisabled = isSubmitting || isDraftInitializing || (isInstantJobMode && !isJobDetailsGenerated);
+  const isActionDisabled = isSubmitting || isDraftInitializing;
   const previewTitle = form.title.trim() || 'Untitled Job Post';
 
-  const allowNextNavigation = () => {
+  const allowNextNavigation = (): void => {
     navigationAllowedRef.current = true;
   };
 
-  const resetToNewDraft = () => {
+  const resetToNewDraft = (): void => {
     navigationAllowedRef.current = false;
     setJobPostId(null);
     setDraftError(null);
@@ -394,15 +457,13 @@ export function usePostJob() {
     setSkillNameById({});
     setForm(initialFormFromState(null));
     setQuestions([emptyQuestion()]);
-    setIsInstantJobMode(false);
-    setIsJobDetailsGenerated(false);
   };
 
-  const insertMarkdown = (before: string, after: string) => {
+  const insertMarkdown = (before: string, after: string): void => {
     setForm(prev => ({ ...prev, description: prev.description + before + after }));
   };
 
-  const handleMajorChange = (majorId: string) => {
+  const handleMajorChange = (majorId: string): void => {
     setSkillInput('');
     setAvailableSkills([]);
     setForm(prev => ({
@@ -415,7 +476,7 @@ export function usePostJob() {
     }));
   };
 
-  const handleCategoryChange = (majorCategoryId: string) => {
+  const handleCategoryChange = (majorCategoryId: string): void => {
     const selectedCategory = categories.find(category => category.majorCategoryId === majorCategoryId);
     setSkillInput('');
     setForm(prev => ({
@@ -427,11 +488,12 @@ export function usePostJob() {
     }));
   };
 
-  const addOfficialSkill = (skill: SkillOptionDto) => {
+  const addOfficialSkill = (skill: SkillOptionDto): void => {
     if (form.skillIds.length + form.customSkillNames.length >= 10) {
       toast.error('You can select up to 10 skills in total.');
       return;
     }
+
     setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
     setForm(prev => {
       if (prev.skillIds.includes(skill.skillId)) {
@@ -442,7 +504,7 @@ export function usePostJob() {
     });
   };
 
-  const addSkill = (skillName: string) => {
+  const addSkill = (skillName: string): void => {
     const trimmedSkillName = skillName.trim();
     if (!trimmedSkillName) {
       return;
@@ -482,11 +544,11 @@ export function usePostJob() {
     setSkillInput('');
   };
 
-  const removeOfficialSkill = (skillId: string) => {
+  const removeOfficialSkill = (skillId: string): void => {
     setForm(prev => ({ ...prev, skillIds: prev.skillIds.filter(item => item !== skillId) }));
   };
 
-  const removeCustomSkill = (skillName: string) => {
+  const removeCustomSkill = (skillName: string): void => {
     const normalized = normalizeSkillName(skillName);
     setForm(prev => ({
       ...prev,
@@ -494,17 +556,17 @@ export function usePostJob() {
     }));
   };
 
-  const updateQuestion = (index: number, patch: Partial<QuestionInput>) => {
+  const updateQuestion = (index: number, patch: Partial<QuestionInput>): void => {
     setQuestions(prev => prev.map((question, idx) => idx === index ? { ...question, ...patch } : question));
   };
 
-  const handleDragStart = (event: DragEvent, index: number) => {
+  const handleDragStart = (event: DragEvent, index: number): void => {
     setDraggedIndex(index);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', String(index));
   };
 
-  const handleDragOver = (event: DragEvent, index: number) => {
+  const handleDragOver = (event: DragEvent, index: number): void => {
     event.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
     const updated = [...questions];
@@ -515,86 +577,11 @@ export function usePostJob() {
     setQuestions(updated);
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (): void => {
     setDraggedIndex(null);
   };
 
-  const handleGenerateInstantJob = async () => {
-    const validQuestions = questions.filter(q => q.questionText.trim());
-    if (validQuestions.length === 0) {
-      toast.error('Please enter at least one question first.');
-      return;
-    }
-
-    setIsGeneratingInstant(true);
-    try {
-      const response = await jobAPI.generateAIDescription(validQuestions.map(q => q.questionText.trim()));
-      if (!response.success || !response.data) {
-        toast.error(response.message || 'Job details could not be generated.');
-        return;
-      }
-
-      const generatedData = response.data;
-
-      // 1. Fetch categories and skills in parallel based on AI recommendations
-      const [categoriesResponse, skillsResponse] = await Promise.all([
-        generatedData.majorId ? jobAPI.getCategoriesByMajor(generatedData.majorId) : null,
-        generatedData.categoryId ? jobAPI.getSkillsByCategory(generatedData.categoryId) : null
-      ]);
-
-      if (categoriesResponse?.success && categoriesResponse.data) {
-        setCategories(categoriesResponse.data);
-      }
-      
-      if (skillsResponse?.success && skillsResponse.data) {
-        setAvailableSkills(skillsResponse.data);
-        setSkillNameById(prev => {
-          const next = { ...prev };
-          skillsResponse.data?.forEach(skill => {
-            next[skill.skillId] = skill.name;
-          });
-          return next;
-        });
-      }
-
-      // 2. Add AI system skills name map entries so they display as selected chips/badges
-      const generatedSkillIds = generatedData.skills.map(skill => skill.skillsId);
-      setSkillNameById(prev => {
-        const next = { ...prev };
-        generatedData.skills.forEach(skill => {
-          next[skill.skillsId] = skill.name;
-        });
-        return next;
-      });
-
-      // 3. Update the form state with all AI recommendations
-      setForm(prev => ({
-        ...prev,
-        title: generatedData.title || prev.title,
-        majorId: generatedData.majorId || '',
-        majorCategoryId: generatedData.majorCategoryId || '',
-        categoryId: generatedData.categoryId || '',
-        skillIds: generatedSkillIds,
-        customSkillNames: generatedData.customSkills || [],
-        description: generatedData.description || prev.description,
-        currency: prev.currency || 'USD',
-        estimatedDuration: prev.estimatedDuration || '2-4 weeks',
-        location: prev.location || 'Remote',
-        visibility: String(JobPostVisibility.Public),
-        deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        isAigenerated: true,
-      }));
-
-      setIsJobDetailsGenerated(true);
-      toast.success('Job details generated successfully based on your questions.');
-    } catch (error) {
-      toast.error('An error occurred during AI generation.');
-    } finally {
-      setIsGeneratingInstant(false);
-    }
-  };
-
-  const validateForm = () => {
+  const validateJobDetails = (): string | null => {
     if (!form.title.trim()) return 'Job title is required.';
     if (form.title.trim().length > 200) return 'Job title must not exceed 200 characters.';
     if (!form.majorId) return 'Major is required.';
@@ -607,13 +594,17 @@ export function usePostJob() {
     if (budgetMin !== null && (Number.isNaN(budgetMin) || budgetMin < 0)) return 'Budget min must be greater than or equal to 0.';
     if (budgetMax !== null && (Number.isNaN(budgetMax) || budgetMax < 0)) return 'Budget max must be greater than or equal to 0.';
     if (budgetMin !== null && budgetMax !== null && budgetMax < budgetMin) return 'Budget max must be greater than or equal to budget min.';
-
+    if (!isValidJobDurationValue(form.estimatedDurationValue)) return 'Estimated duration must be a positive whole number.';
 
     if (form.deadline) {
       const endDate = new Date(`${form.deadline}T23:59:59`);
       if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) return 'End date must be in the future.';
     }
 
+    return null;
+  };
+
+  const validateQuestions = (): string | null => {
     const nonEmptyQuestions = questionsWithOrder.filter(question => question.questionText.trim());
     const orderIndexes = nonEmptyQuestions.map(question => question.orderIndex);
     if (new Set(orderIndexes).size !== orderIndexes.length) return 'Question order indexes must be unique.';
@@ -626,6 +617,11 @@ export function usePostJob() {
     return null;
   };
 
+  const showValidationError = (message: string): void => {
+    setErrorMessage(message);
+    toast.error(message);
+  };
+
   const buildDraftRequest = (): SaveDraftJobPostRequest => {
     const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
     const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
@@ -634,10 +630,10 @@ export function usePostJob() {
       title: form.title.trim() || null,
       description: form.description.trim() || null,
       majorCategoryId: form.majorCategoryId || null,
-      budgetMin: Number.isNaN(budgetMin) ? null : budgetMin,
-      budgetMax: Number.isNaN(budgetMax) ? null : budgetMax,
+      budgetMin: budgetMin !== null && Number.isNaN(budgetMin) ? null : budgetMin,
+      budgetMax: budgetMax !== null && Number.isNaN(budgetMax) ? null : budgetMax,
       currency: form.currency.trim() || 'USD',
-      estimatedDuration: form.estimatedDuration.trim() || null,
+      estimatedDuration: formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit),
       location: form.location.trim() || null,
       visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,
       endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
@@ -654,7 +650,21 @@ export function usePostJob() {
     };
   };
 
-  const ensureDraftJobPostId = async () => {
+  const buildRouteJobData = (): PostJobRouteJobData => ({
+    ...buildDraftRequest(),
+    majorId: form.majorId,
+    categoryId: form.categoryId,
+    deadline: form.deadline,
+    skillNameById,
+    interviewQuestions: questionsWithOrder,
+  });
+
+  const buildNavigationState = (currentJobPostId: string | null = jobPostId): PostJobRouteState => ({
+    jobPostId: currentJobPostId,
+    jobData: buildRouteJobData(),
+  });
+
+  const ensureDraftJobPostId = async (): Promise<string> => {
     if (jobPostId) {
       return jobPostId;
     }
@@ -664,7 +674,7 @@ export function usePostJob() {
     return createdJobPostId;
   };
 
-  const saveDraftPartial = async () => {
+  const saveDraftPartial = async (): Promise<string> => {
     const currentJobPostId = await ensureDraftJobPostId();
     const response = await jobAPI.saveDraftJobPost(currentJobPostId, buildDraftRequest());
 
@@ -675,12 +685,19 @@ export function usePostJob() {
     return currentJobPostId;
   };
 
-  const submitDraftFlow = async (mode: SubmitMode) => {
-    if (mode !== 'draft') {
-      const validationError = validateForm();
-      if (validationError) {
-        setErrorMessage(validationError);
-        toast.error(validationError);
+  const submitDraftFlow = async (mode: SubmitMode): Promise<void> => {
+    if (mode === 'questions' || mode === 'contract') {
+      const detailValidationError = validateJobDetails();
+      if (detailValidationError) {
+        showValidationError(detailValidationError);
+        return;
+      }
+    }
+
+    if (mode === 'contract') {
+      const questionValidationError = validateQuestions();
+      if (questionValidationError) {
+        showValidationError(questionValidationError);
         return;
       }
     }
@@ -690,33 +707,21 @@ export function usePostJob() {
 
     try {
       const currentJobPostId = await saveDraftPartial();
+      const navigationState = buildNavigationState(currentJobPostId);
 
-      if (mode === 'publish') {
-        const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
-        if (!publishResponse.success) {
-          throw new Error('JobPost was saved, but publishing failed. Please publish it later from My Jobs.');
-        }
-      }
-
-      if (mode === 'esign') {
+      if (mode === 'questions') {
         allowNextNavigation();
-        navigate(`/jobs/post/contract`, {
-          state: {
-            jobPostId: currentJobPostId,
-            jobData: {
-              ...buildDraftRequest(),
-              majorId: form.majorId,
-              categoryId: form.categoryId,
-              deadline: form.deadline,
-              skillNameById,
-              interviewQuestions: questionsWithOrder,
-            },
-          },
-        });
+        navigate('/jobs/post/questions', { state: navigationState });
         return;
       }
 
-      toast.success(mode === 'publish' ? 'JobPost published successfully.' : 'JobPost saved as draft.');
+      if (mode === 'contract') {
+        allowNextNavigation();
+        navigate('/jobs/post/contract', { state: navigationState });
+        return;
+      }
+
+      toast.success('JobPost saved as draft.');
       allowNextNavigation();
       navigate('/jobs/my-jobs');
     } catch (error) {
@@ -728,19 +733,24 @@ export function usePostJob() {
     }
   };
 
-  const continueBlockedNavigation = () => {
+  const navigateBackToDetails = (): void => {
+    allowNextNavigation();
+    navigate('/jobs/post/details', { state: buildNavigationState() });
+  };
+
+  const continueBlockedNavigation = (): void => {
     setIsLeavePromptOpen(false);
     allowNextNavigation();
     blocker.proceed?.();
   };
 
-  const cancelBlockedNavigation = () => {
+  const cancelBlockedNavigation = (): void => {
     setIsLeavePromptOpen(false);
     setLeaveAction(null);
     blocker.reset?.();
   };
 
-  const handleLeaveSaveDraft = async () => {
+  const handleLeaveSaveDraft = async (): Promise<void> => {
     setLeaveAction('save');
     try {
       await saveDraftPartial();
@@ -754,7 +764,7 @@ export function usePostJob() {
     }
   };
 
-  const handleLeaveDiscardDraft = async () => {
+  const handleLeaveDiscardDraft = async (): Promise<void> => {
     setLeaveAction('discard');
     try {
       if (!jobPostId) {
@@ -781,7 +791,9 @@ export function usePostJob() {
     }
   };
 
-  const renderSubmitLabel = (mode: SubmitMode, label: string) => submitMode === mode ? 'Submitting...' : label;
+  const renderSubmitLabel = (mode: SubmitMode, label: string): string => (
+    submitMode === mode ? 'Submitting...' : label
+  );
 
   return {
     form,
@@ -799,11 +811,6 @@ export function usePostJob() {
     isDraftInitializing,
     draftError,
     setDraftRequestAttempt,
-    isInstantJobMode,
-    setIsInstantJobMode,
-    isJobDetailsGenerated,
-    setIsJobDetailsGenerated,
-    isGeneratingInstant,
     draggedIndex,
     questions,
     setQuestions,
@@ -828,11 +835,12 @@ export function usePostJob() {
     handleDragStart,
     handleDragOver,
     handleDragEnd,
-    handleGenerateInstantJob,
     handleLeaveSaveDraft,
     handleLeaveDiscardDraft,
     cancelBlockedNavigation,
     submitDraftFlow,
+    navigateBackToDetails,
+    buildNavigationState,
     renderSubmitLabel,
     MAX_QUESTION_LENGTH,
   };
