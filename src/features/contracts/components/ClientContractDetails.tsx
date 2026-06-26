@@ -10,9 +10,10 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
+import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
-import { useApp } from '../../../app/providers/AppProvider';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
+import { ESignerRole, ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import {
   getContractStatusLabel,
   getContractStatusClass,
@@ -49,7 +50,6 @@ export function ClientContractDetails({
   isAdminOverride = false
 }: ClientContractDetailsProps) {
   const navigate = useNavigate();
-  const { user } = useApp();
 
   // States
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
@@ -57,6 +57,7 @@ export function ClientContractDetails({
   const [copySuccess, setCopySuccess] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [isFullySignedPendingEscrow, setIsFullySignedPendingEscrow] = useState(false);
 
   // Form states (pre-populated from props)
   const [scopeOfWork, setScopeOfWork] = useState(contract.scopeOfWork || '');
@@ -92,16 +93,84 @@ export function ClientContractDetails({
     );
   }, [contract, milestones]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadESignStatus = async (): Promise<void> => {
+      if (!contract?.contractsId || contract.status !== ContractStatus.PendingSignature) {
+        setIsFullySignedPendingEscrow(false);
+        return;
+      }
+
+      try {
+        const response = await esignGetAPI.getDocumentByContract(contract.contractsId);
+        if (isCancelled) {
+          return;
+        }
+
+        const contractDocument = response.success ? response.data : null;
+        const isContractFullySigned = contractDocument?.status === ESignDocumentStatus.FullySigned;
+        const hasFreelancerContractSignature = Boolean(
+          contractDocument?.signatures.some(
+            signature =>
+              signature.signerRole === ESignerRole.Freelancer &&
+              signature.status === SignatureStatus.Signed
+          )
+        );
+
+        let isClientJobPostSigned = false;
+        const jobPostId = String(contract.jobPostsId || contract.jobPostId || '');
+        if (!isContractFullySigned && hasFreelancerContractSignature && jobPostId) {
+          try {
+            const jobPostDocumentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
+            if (isCancelled) {
+              return;
+            }
+
+            isClientJobPostSigned = Boolean(
+              jobPostDocumentResponse.success &&
+              jobPostDocumentResponse.data?.status === ESignDocumentStatus.FullySigned
+            );
+          } catch (error) {
+            isClientJobPostSigned = false;
+          }
+        }
+
+        setIsFullySignedPendingEscrow(
+          isContractFullySigned || (hasFreelancerContractSignature && isClientJobPostSigned)
+        );
+      } catch (error) {
+        if (!isCancelled) {
+          setIsFullySignedPendingEscrow(false);
+        }
+      }
+    };
+
+    void loadESignStatus();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [contract?.contractsId, contract?.jobPostId, contract?.jobPostsId, contract.status]);
+
+  const effectiveStatus =
+    contract.status === ContractStatus.PendingSignature && isFullySignedPendingEscrow
+      ? ContractStatus.PendingEscrow
+      : contract.status;
+  const escrowFundingAmount = Number(contract.totalBudget || 0);
+
   // Fetch Wallet Balance if in PendingEscrow status
   useEffect(() => {
-    if (contract.status === ContractStatus.PendingEscrow) {
+    if (effectiveStatus === ContractStatus.PendingEscrow) {
       walletGetAPI.getMyWallet().then(res => {
         if (res.success && res.data) {
           setWalletBalance(res.data.availableTokens);
         }
       });
+    } else {
+      setWalletBalance(null);
     }
-  }, [contract.status]);
+  }, [effectiveStatus]);
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
@@ -110,14 +179,14 @@ export function ClientContractDetails({
   // Stepper: Terms Setup -> Review & Confirm -> Escrow Funding
   // (Client already e-signed during job post session — no separate signature step)
   let currentStep = 1;
-  if (contract.status === ContractStatus.PendingContractConfirmation) {
+  if (effectiveStatus === ContractStatus.PendingContractConfirmation) {
     currentStep = 2;
   } else if (
-    contract.status === ContractStatus.PendingSignature ||
-    contract.status === ContractStatus.PendingEscrow
+    effectiveStatus === ContractStatus.PendingSignature ||
+    effectiveStatus === ContractStatus.PendingEscrow
   ) {
     currentStep = 3;
-  } else if (contract.status >= ContractStatus.Active) {
+  } else if (effectiveStatus >= ContractStatus.Active) {
     currentStep = 4;
   }
 
@@ -605,7 +674,7 @@ export function ClientContractDetails({
                 )}
 
                 {/* PendingSignature: Freelancer is still signing — show waiting state for client */}
-                {contract.status === ContractStatus.PendingSignature && (
+                {effectiveStatus === ContractStatus.PendingSignature && (
                   <>
                     <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
                       <Clock size={20} className="shrink-0 animate-pulse" />
@@ -619,7 +688,7 @@ export function ClientContractDetails({
                 )}
 
                 {/* 4. Escrow Funding Step */}
-                {contract.status === ContractStatus.PendingEscrow && (
+                {effectiveStatus === ContractStatus.PendingEscrow && (
                   <>
                     <div className="glass-card p-8 md:p-10 space-y-6">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
@@ -628,7 +697,7 @@ export function ClientContractDetails({
                       </div>
 
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        Escrow funding secures the payment for milestones. We require funding <strong>80% of the total budget</strong> to proceed.
+                        Escrow funding secures the payment for milestones. We require funding <strong>100% of the total budget</strong> to proceed.
                       </p>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -642,12 +711,12 @@ export function ClientContractDetails({
                           </span>
                         </div>
                         <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Required Escrow (80%)</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Required Escrow (100%)</span>
                           <span className="text-2xl font-bold text-primary mt-1.5 block">
-                            {formatContractAmount(contract.totalBudget * 0.8)}
+                            {formatContractAmount(escrowFundingAmount)}
                           </span>
                           <span className="text-xs text-muted-foreground block mt-1">
-                            = {new Intl.NumberFormat('vi-VN').format(contract.totalBudget * 0.8 * 1000)} VND
+                            = {new Intl.NumberFormat('vi-VN').format(escrowFundingAmount * 1000)} VND
                           </span>
                         </div>
                       </div>
@@ -665,16 +734,16 @@ export function ClientContractDetails({
                           )}
                         </div>
                         
-                        {walletBalance !== null && walletBalance < (contract.totalBudget * 0.8) && (
+                        {walletBalance !== null && walletBalance < escrowFundingAmount && (
                           <div className="text-right shrink-0">
                             <span className="text-xs font-bold text-destructive block mb-1">
-                              Short of {(contract.totalBudget * 0.8) - walletBalance} Tokens
+                              Short of {escrowFundingAmount - walletBalance} Tokens
                             </span>
                           </div>
                         )}
                       </div>
 
-                      {walletBalance !== null && walletBalance < (contract.totalBudget * 0.8) ? (
+                      {walletBalance !== null && walletBalance < escrowFundingAmount ? (
                         <div className="space-y-4">
                           <div className="bg-destructive/10 text-destructive border border-destructive/20 p-4 rounded-2xl text-xs font-medium">
                             You do not have enough tokens to fund this contract escrow. Please top up your wallet first.
