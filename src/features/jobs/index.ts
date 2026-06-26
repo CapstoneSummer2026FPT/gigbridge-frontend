@@ -1,7 +1,10 @@
 // Jobs Feature Public Exports
 
 // Screens
-export { default as PostJobScreen } from './screens/PostJobScreen';
+export { PostJobScreen } from './screens/PostJobScreen';
+export { PostJobAIScreen } from './screens/PostJobAIScreen';
+export { PostJobDetailsScreen } from './screens/PostJobDetailsScreen';
+export { PostJobQuestionsScreen } from './screens/PostJobQuestionsScreen';
 export { default as BrowseJobsScreen } from './screens/BrowseJobsScreen';
 export { default as JobDetailScreen } from './screens/JobDetailScreen';
 export { default as CreatePostJobContractScreen } from './screens/CreatePostJobContractScreen';

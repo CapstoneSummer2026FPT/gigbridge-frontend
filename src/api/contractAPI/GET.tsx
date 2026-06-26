@@ -60,6 +60,10 @@ interface BackendContractResponse {
   FreelancerEmail?: string | null;
   conversationId?: string | null;
   ConversationId?: string | null;
+  canReview?: boolean;
+  CanReview?: boolean;
+  hasReviewedByCurrentUser?: boolean;
+  HasReviewedByCurrentUser?: boolean;
 }
 
 interface BackendMilestoneResponse {
@@ -125,6 +129,8 @@ const normalizeContract = (contract: BackendContractResponse): ContractDto => {
     clientEmail: getValue<string | undefined>(source, 'clientEmail', 'ClientEmail'),
     freelancerEmail: getValue<string | undefined>(source, 'freelancerEmail', 'FreelancerEmail'),
     conversationId: getValue<string | null>(source, 'conversationId', 'ConversationId') ?? null,
+    canReview: Boolean(getValue<boolean>(source, 'canReview', 'CanReview') ?? false),
+    hasReviewedByCurrentUser: Boolean(getValue<boolean>(source, 'hasReviewedByCurrentUser', 'HasReviewedByCurrentUser') ?? false),
   };
 };
 
@@ -143,6 +149,8 @@ const normalizeMilestone = (milestone: BackendMilestoneResponse): Milestone => {
     due_date: getValue<string | undefined>(source, 'due_date', 'dueDate', 'DueDate') ?? '',
     status,
     paid_at: paidAt ?? null,
+    releasedAmount: Number(getValue(source, 'releasedAmount', 'ReleasedAmount') ?? 0),
+    lastReleasedAt: paidAt ?? null,
   };
 };
 

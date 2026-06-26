@@ -8,9 +8,11 @@ import {
   Star, ShieldAlert, Edit3, XCircle
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
+import { SignatureStatus } from '../../../types/models/ESign';
 import {
   getContractStatusLabel,
   getContractStatusClass,
@@ -57,6 +59,7 @@ export function FreelancerContractDetails({
   const [changeRequestReason, setChangeRequestReason] = useState('');
   const [showMilestoneChangeModal, setShowMilestoneChangeModal] = useState(false);
   const [milestoneChangeReason, setMilestoneChangeReason] = useState('');
+  const [currentUserSignedESign, setCurrentUserSignedESign] = useState(false);
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
@@ -72,6 +75,46 @@ export function FreelancerContractDetails({
   const freelancerEmail = freelancerProfile?.email || contract.freelancerEmail || '';
   const freelancerHeadline = freelancerProfile?.headline || '';
   const freelancerAvatar = freelancerProfile?.profileImageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(freelancerName)}`;
+  const hasSignedESignContract =
+    currentUserSignedESign ||
+    contract.status === ContractStatus.PendingEscrow ||
+    contract.status >= ContractStatus.Active;
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadESignStatus = async () => {
+      if (!contract?.contractsId || !user?.id) {
+        setCurrentUserSignedESign(false);
+        return;
+      }
+
+      try {
+        const response = await esignGetAPI.getDocumentByContract(contract.contractsId);
+        if (isCancelled) {
+          return;
+        }
+
+        const hasSigned = Boolean(
+          response.success &&
+          response.data?.signatures.some(
+            signature => signature.userId === user.id && signature.status === SignatureStatus.Signed
+          )
+        );
+        setCurrentUserSignedESign(hasSigned);
+      } catch (error) {
+        if (!isCancelled) {
+          setCurrentUserSignedESign(false);
+        }
+      }
+    };
+
+    void loadESignStatus();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [contract?.contractsId, user?.id]);
 
   // Stepper: PendingContractConfirmation -> PendingSignature -> PendingEscrow -> Active
   let currentStep = 1;
@@ -99,6 +142,10 @@ export function FreelancerContractDetails({
 
   const handleScrollToReview = () => {
     reviewContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleViewESignContract = () => {
+    navigate(`/contracts/${contract.contractsId}/sign`);
   };
 
   // Confirm contract details (step 1)
@@ -464,7 +511,7 @@ export function FreelancerContractDetails({
                           </div>
                         </div>
                         <span className="px-3 py-1 bg-teal-500/10 border border-teal-500/20 text-teal-500 rounded-full text-xs font-bold uppercase tracking-wider shrink-0">
-                          Ready for E-signature
+                          {hasSignedESignContract ? 'E-signature recorded' : 'Ready for E-signature'}
                         </span>
                       </div>
 
@@ -517,20 +564,24 @@ export function FreelancerContractDetails({
                           <ListChecks size={14} />
                           Review Milestones
                         </button>
+                        {!hasSignedESignContract && (
+                          <button
+                            disabled={actionLoading}
+                            onClick={() => setShowMilestoneChangeModal(true)}
+                            className="px-5 py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                          >
+                            <Edit3 size={14} />
+                            Request Milestone Changes
+                          </button>
+                        )}
                         <button
-                          disabled={actionLoading}
-                          onClick={() => setShowMilestoneChangeModal(true)}
-                          className="px-5 py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                          onClick={hasSignedESignContract ? handleViewESignContract : () => navigate(`/contracts/${contract.contractsId}/sign`)}
+                          className={hasSignedESignContract
+                            ? "px-8 py-3 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-sm font-bold text-foreground transition-all cursor-pointer inline-flex items-center justify-center gap-2"
+                            : "btn-primary-custom px-8 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2"}
                         >
-                          <Edit3 size={14} />
-                          Request Milestone Changes
-                        </button>
-                        <button
-                          onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                          className="btn-primary-custom px-8 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2"
-                        >
-                          <FileCheck size={18} />
-                          Proceed to E-sign Contract
+                          {hasSignedESignContract ? <FileText size={18} /> : <FileCheck size={18} />}
+                          {hasSignedESignContract ? 'View E-sign Contract' : 'Proceed to E-sign Contract'}
                         </button>
                       </div>
                     </div>
@@ -1019,8 +1070,20 @@ export function FreelancerContractDetails({
                   )}
 
                   {/* Review terms action in PendingContractConfirmation */}
+                  {contract.status === ContractStatus.PendingSignature && hasSignedESignContract && (
+                    <motion.button
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleViewESignContract}
+                      className="w-full py-3 bg-secondary/50 hover:bg-secondary border border-border/60 rounded-xl font-bold text-sm text-foreground cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      <FileText size={17} />
+                      View E-sign Contract
+                    </motion.button>
+                  )}
+
                   {(contract.status === ContractStatus.PendingContractConfirmation ||
-                    contract.status === ContractStatus.PendingSignature) && (
+                    (contract.status === ContractStatus.PendingSignature && !hasSignedESignContract)) && (
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
@@ -1044,7 +1107,7 @@ export function FreelancerContractDetails({
                     </motion.button>
                   )}
 
-                  {contract.status === ContractStatus.Completed && (
+                  {contract.canReview && (
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}

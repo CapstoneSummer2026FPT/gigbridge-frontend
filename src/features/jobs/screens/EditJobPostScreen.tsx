@@ -11,6 +11,14 @@ import {
   type SaveDraftJobPostRequest,
   type UpdateJobPostRequest,
 } from '../../../types/models/Job';
+import {
+  DEFAULT_JOB_DURATION_UNIT,
+  formatJobDuration,
+  isValidJobDurationValue,
+  JOB_DURATION_UNITS,
+  parseJobDuration,
+  type JobDurationUnit,
+} from '../utils/jobDuration';
 import '../styles/edit-job-post-screen.css';
 
 interface FormErrors {
@@ -21,6 +29,24 @@ interface FormErrors {
   duration?: string;
 }
 
+interface EditJobPostFormData {
+  title: string;
+  description: string;
+  majorId: string;
+  majorCategoryId: string;
+  categoryId: string;
+  budgetMin: string;
+  budgetMax: string;
+  currency: string;
+  estimatedDurationValue: string;
+  estimatedDurationUnit: JobDurationUnit;
+  location: string;
+  visibility: string;
+  endDate: string;
+  skillIds: string[];
+  customSkillNames: string[];
+}
+
 const normalizeSkillName = (value: string) => value.trim().toLowerCase();
 const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
 
@@ -29,7 +55,7 @@ export default function EditJobPostScreen() {
   const { id } = useParams();
   const navigationAllowedRef = useRef(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<EditJobPostFormData>({
     title: '',
     description: '',
     majorId: '',
@@ -38,12 +64,13 @@ export default function EditJobPostScreen() {
     budgetMin: '',
     budgetMax: '',
     currency: 'USD',
-    estimatedDuration: '',
+    estimatedDurationValue: '',
+    estimatedDurationUnit: DEFAULT_JOB_DURATION_UNIT,
     location: '',
     visibility: String(JobPostVisibility.Public),
     endDate: '',
-    skillIds: [] as string[],
-    customSkillNames: [] as string[],
+    skillIds: [],
+    customSkillNames: [],
   });
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
@@ -126,6 +153,7 @@ export default function EditJobPostScreen() {
         }
 
         const job = response.data;
+        const duration = parseJobDuration(job.estimatedDuration);
         setIsDraftJob(Number(job.status) === JobPostStatus.Draft);
         setFormData({
           title: job.title || '',
@@ -136,7 +164,8 @@ export default function EditJobPostScreen() {
           budgetMin: job.budgetMin !== undefined && job.budgetMin !== null ? String(job.budgetMin) : '',
           budgetMax: job.budgetMax !== undefined && job.budgetMax !== null ? String(job.budgetMax) : '',
           currency: job.currency || 'USD',
-          estimatedDuration: job.estimatedDuration || '',
+          estimatedDurationValue: duration.value,
+          estimatedDurationUnit: duration.unit,
           location: job.location || '',
           visibility: String(job.visibility ?? JobPostVisibility.Public),
           endDate: job.endDate?.split('T')?.[0] || '',
@@ -219,10 +248,16 @@ export default function EditJobPostScreen() {
     [availableSkills, formData.skillIds]
   );
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = <Field extends keyof EditJobPostFormData>(
+    field: Field,
+    value: EditJobPostFormData[Field]
+  ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+    if (field === 'estimatedDurationValue' || field === 'estimatedDurationUnit') {
+      setErrors(prev => ({ ...prev, duration: undefined }));
     }
   };
 
@@ -325,6 +360,10 @@ export default function EditJobPostScreen() {
       newErrors.budget = 'Budget max must be greater than or equal to budget min.';
     }
 
+    if (!isValidJobDurationValue(formData.estimatedDurationValue)) {
+      newErrors.duration = 'Project duration must be a positive whole number.';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -336,7 +375,7 @@ export default function EditJobPostScreen() {
     budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
     currency: formData.currency.trim() || 'USD',
-    estimatedDuration: formData.estimatedDuration.trim() || null,
+    estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
     location: formData.location.trim() || null,
     visibility: Number(formData.visibility),
     endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
@@ -351,7 +390,7 @@ export default function EditJobPostScreen() {
     budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
     currency: formData.currency.trim() || 'USD',
-    estimatedDuration: formData.estimatedDuration.trim() || null,
+    estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
     location: formData.location.trim() || null,
     visibility: Number(formData.visibility),
     endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
@@ -550,12 +589,27 @@ export default function EditJobPostScreen() {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Project Duration</label>
-              <input
-                value={formData.estimatedDuration}
-                onChange={(e) => handleInputChange('estimatedDuration', e.target.value)}
-                placeholder="e.g. 2-4 weeks"
-                className="form-input"
-              />
+              <div className="form-row" style={{ gap: 12 }}>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.estimatedDurationValue}
+                  onChange={(e) => handleInputChange('estimatedDurationValue', e.target.value)}
+                  placeholder="e.g. 3"
+                  className={`form-input ${errors.duration ? 'error' : ''}`}
+                />
+                <select
+                  value={formData.estimatedDurationUnit}
+                  onChange={(e) => handleInputChange('estimatedDurationUnit', e.target.value as JobDurationUnit)}
+                  className="form-select"
+                >
+                  {JOB_DURATION_UNITS.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+              {errors.duration && <div className="form-error"><AlertCircle size={14} />{errors.duration}</div>}
             </div>
             <div className="form-group">
               <label className="form-label">End Date</label>
