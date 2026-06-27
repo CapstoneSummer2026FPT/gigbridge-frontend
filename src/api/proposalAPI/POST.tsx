@@ -3,6 +3,8 @@ import type { ApiResponse } from '../../types/common';
 import type {
   CreateProposalAnswerRequest,
   CreateProposalRequest,
+  CheatingEventLogResponse,
+  LogProposalCheatingEventRequest,
   ProposalAnswerDto,
 } from '../../types/models/Proposal';
 
@@ -25,6 +27,13 @@ export const proposalPostAPI = {
     data: CreateProposalAnswerRequest
   ): Promise<ApiResponse<ProposalAnswerDto>> => {
     return apiService.post<ProposalAnswerDto>(`${proposalsUrl}/${proposalId}/answers`, data);
+  },
+
+  logCheatingEvent: async (
+    proposalId: string,
+    data: LogProposalCheatingEventRequest
+  ): Promise<ApiResponse<CheatingEventLogResponse>> => {
+    return apiService.post<CheatingEventLogResponse>(`${proposalsUrl}/${proposalId}/cheating-events`, data);
   },
 
   acceptForNegotiation: async (proposalId: string): Promise<ApiResponse<string>> => {
