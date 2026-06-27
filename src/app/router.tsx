@@ -46,6 +46,7 @@ import AdminSystemTrackingScreen from '../features/admin/screens/AdminSystemTrac
 import AdminRevenueScreen from '../features/admin/screens/AdminRevenueScreen';
 import AdminReportsScreen from '../features/admin/screens/AdminReportsScreen';
 import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
+import AdminCheatingManagementScreen from '../features/admin/screens/AdminCheatingManagementScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
 import AdminContractAuditScreen from '../features/admin/screens/AdminContractAuditScreen';
 import AdminContractTemplatesScreen from '../features/admin/screens/AdminContractTemplatesScreen';
@@ -243,6 +244,7 @@ export const router = createBrowserRouter([
       { path: 'admin/ads-packages', element: <AdminRoute><AdminAdsPackagesScreen /></AdminRoute> },
       { path: 'admin/disputes', element: <AdminRoute><AdminDisputeManagementScreen /></AdminRoute> },
       { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
+      { path: 'admin/cheating', element: <AdminRoute><AdminCheatingManagementScreen /></AdminRoute> },
       { path: 'admin/feedback', element: <AdminRoute><AdminFeedbackScreen /></AdminRoute> },
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/revenue', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },

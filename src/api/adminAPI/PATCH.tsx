@@ -1,5 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type { AdminCheatingViolationDto, ReviewCheatingViolationRequest } from '../../types/models/Cheating';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -24,5 +25,15 @@ export const adminPatchAPI = {
 
   toggleFAQCategoryActivity: async (id: number): Promise<ApiResponse<object>> => {
     return apiService.patch<object>(`${Admin_Api_Base_Url}/faq/categories/${id}/toggle-activity`);
+  },
+
+  reviewCheatingViolation: async (
+    violationId: string,
+    data: ReviewCheatingViolationRequest
+  ): Promise<ApiResponse<AdminCheatingViolationDto>> => {
+    return apiService.patch<AdminCheatingViolationDto>(
+      `${Admin_Api_Base_Url}/cheating/violations/${violationId}/review`,
+      data
+    );
   },
 };

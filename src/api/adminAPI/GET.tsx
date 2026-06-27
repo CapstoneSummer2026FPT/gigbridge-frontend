@@ -1,5 +1,12 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type {
+  AdminCheatingEventsResponse,
+  AdminCheatingViolationDetailDto,
+  AdminCheatingViolationsResponse,
+  GetAdminCheatingEventsParams,
+  GetAdminCheatingViolationsParams,
+} from '../../types/models/Cheating';
 import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
 
@@ -34,5 +41,25 @@ export const adminGetAPI = {
 
   getFAQCategories: async (): Promise<ApiResponse<FAQCategoryDto[]>> => {
     return apiService.get<FAQCategoryDto[]>(`${Admin_Api_Base_Url}/faq/categories`);
+  },
+
+  getCheatingEvents: async (
+    params: GetAdminCheatingEventsParams = {}
+  ): Promise<ApiResponse<AdminCheatingEventsResponse>> => {
+    return apiService.get<AdminCheatingEventsResponse>(`${Admin_Api_Base_Url}/cheating/events`, params);
+  },
+
+  getCheatingViolations: async (
+    params: GetAdminCheatingViolationsParams = {}
+  ): Promise<ApiResponse<AdminCheatingViolationsResponse>> => {
+    return apiService.get<AdminCheatingViolationsResponse>(`${Admin_Api_Base_Url}/cheating/violations`, params);
+  },
+
+  getCheatingViolationDetail: async (
+    violationId: string
+  ): Promise<ApiResponse<AdminCheatingViolationDetailDto>> => {
+    return apiService.get<AdminCheatingViolationDetailDto>(
+      `${Admin_Api_Base_Url}/cheating/violations/${violationId}`
+    );
   },
 };
