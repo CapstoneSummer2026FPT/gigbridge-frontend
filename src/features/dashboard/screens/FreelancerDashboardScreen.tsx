@@ -8,6 +8,7 @@ import { useFreelancerDashboard } from '../hooks/useFreelancerDashboard';
 import { use3DTilt } from '../hooks/use3DTilt';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/freelancer-dashboard-screen.css';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 export default function FreelancerDashboardScreen() {
   const navigate = useNavigate();

@@ -14,8 +14,9 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
-const VND_PER_TOKEN = 1000;
+const VND_PER_GIGCOIN = 1000;
 const MIN_VND = 10_000;
 const MAX_VND = 250_000_000;
 const LAST_PAYOS_ORDER_CODE_KEY = 'gigbridge:lastPayOsTopUpOrderCode';
@@ -49,7 +50,7 @@ export default function WalletDepositScreen() {
   const [errorText, setErrorText] = useState<string | null>(null);
 
   const finalVnd = customVnd ? parseInt(customVnd, 10) || 0 : selectedVnd;
-  const tokenAmount = finalVnd / VND_PER_TOKEN;
+  const gigcoinAmount = finalVnd / VND_PER_GIGCOIN;
   const isAmountValid = finalVnd >= MIN_VND && finalVnd <= MAX_VND;
 
   const fetchBalance = async () => {
@@ -164,7 +165,7 @@ export default function WalletDepositScreen() {
       const cancelUrl = `${window.location.origin}/wallet/deposit?result=cancel`;
 
       const res = await walletPostAPI.createTopUp({
-        tokenAmount,
+        tokenAmount: gigcoinAmount,
         returnUrl,
         cancelUrl,
         idempotencyKey: makeIdempotencyKey(),
@@ -209,7 +210,7 @@ export default function WalletDepositScreen() {
                 <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
                 <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
                 <div className="flex items-center justify-center gap-2">
-                  <Coins className="text-green" size={20} />
+                  <GigCoinLogo size={20} />
                   <p className="text-2xl font-bold text-green">
                     {loadingBalance ? (
                       <Loader2 size={20} className="animate-spin inline" />
@@ -217,7 +218,7 @@ export default function WalletDepositScreen() {
                       fmtVnd(currentBalance)
                     )}
                   </p>
-                  <span className="text-sm text-secondary">tokens</span>
+                  <span className="text-sm text-secondary"></span>
                 </div>
               </div>
               <div className="space-y-3">
@@ -252,11 +253,11 @@ export default function WalletDepositScreen() {
               <Coins size={20} className="text-amber-400" />
               <span className="badge-green text-xs">Nạp Tiền</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-primary">Nạp Gig Coin</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-primary">NạN?p GigCoin</h1>
             <p className="text-sm text-secondary mt-1">Thanh toán qua PayOS - Chuyển khoản ngân hàng / QR Code</p>
             <div className="flex items-center gap-2 mt-3 p-3 glass-card inline-flex">
               <Coins className="text-amber-400" size={16} />
-              <span className="text-xs text-secondary font-semibold">1 Token = {fmtVnd(VND_PER_TOKEN)} VND</span>
+              <span className="text-xs text-secondary font-semibold">1 {fmtVnd(VND_PER_GIGCOIN)} VND</span>
             </div>
           </div>
 
@@ -272,7 +273,7 @@ export default function WalletDepositScreen() {
               <div className="glass-card p-6">
                 <p className="text-xs text-muted mb-2">Số Dư Hiện Tại</p>
                 <div className="flex items-center gap-2">
-                  <Coins className="text-green" size={32} />
+                  <GigCoinLogo size={32} />
                   <p className="text-3xl font-bold text-green">
                     {loadingBalance ? (
                       <Loader2 size={24} className="animate-spin" />
@@ -280,7 +281,7 @@ export default function WalletDepositScreen() {
                       fmtVnd(currentBalance)
                     )}
                   </p>
-                  <span className="text-sm text-secondary">tokens</span>
+                  <span className="text-sm text-secondary"></span>
                 </div>
               </div>
 
@@ -299,8 +300,8 @@ export default function WalletDepositScreen() {
                     >
                       <div>{fmtVnd(amount)} đ</div>
                       <div className="text-xs opacity-60 mt-1">
-                        <Coins className="inline w-3 h-3 mr-1" />
-                        {fmtVnd(amount / VND_PER_TOKEN)} tokens
+                        <GigCoinLogo className="inline mr-1" size={12} />
+                        {fmtVnd(amount / VND_PER_GIGCOIN)} 
                       </div>
                     </button>
                   ))}
@@ -325,10 +326,10 @@ export default function WalletDepositScreen() {
                 {customVnd && parseInt(customVnd, 10) > 0 && (
                   <div className="mt-2 p-2 bg-amber-400/10 rounded-lg">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-secondary">Tokens nhận được:</span>
+                      <span className="text-secondary">GigCoin nhận được:</span>
                       <span className="text-amber-400 font-bold flex items-center gap-1">
-                        <Coins size={14} />
-                        {fmtVnd((parseInt(customVnd, 10) || 0) / VND_PER_TOKEN)}
+                        <GigCoinLogo size={14} />
+                        {fmtVnd((parseInt(customVnd, 10) || 0) / VND_PER_GIGCOIN)}
                       </span>
                     </div>
                   </div>
@@ -378,10 +379,10 @@ export default function WalletDepositScreen() {
                     <span className="text-green font-semibold">0 đ</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-secondary">Tokens Nhận</span>
+                    <span className="text-secondary">GigCoin Nhận</span>
                     <div className="flex items-center gap-1">
                       <Coins className="text-amber-400" size={14} />
-                      <span className="text-amber-400 font-bold">{fmtVnd(tokenAmount)}</span>
+                      <span className="text-amber-400 font-bold">{fmtVnd(gigcoinAmount)}</span>
                     </div>
                   </div>
                 </div>
@@ -390,7 +391,7 @@ export default function WalletDepositScreen() {
                   <div className="flex justify-between text-sm">
                     <span className="text-secondary">Số Dư Hiện Tại</span>
                     <div className="flex items-center gap-1">
-                      <Coins className="text-primary" size={14} />
+                      <GigCoinLogo size={14} />
                       <span className="text-primary font-semibold">
                         {loadingBalance ? '...' : fmtVnd(currentBalance)}
                       </span>
@@ -403,9 +404,9 @@ export default function WalletDepositScreen() {
                     <span className="text-sm font-semibold text-primary">Số Dư Mới (dự kiến)</span>
                   </div>
                   <div className="flex items-center gap-2 justify-end">
-                    <Coins className="text-green" size={24} />
+                    <GigCoinLogo size={24} />
                     <span className="text-2xl font-bold text-green">
-                      {loadingBalance ? '...' : fmtVnd(currentBalance + tokenAmount)}
+                      {loadingBalance ? '...' : fmtVnd(currentBalance + gigcoinAmount)}
                     </span>
                   </div>
                 </div>

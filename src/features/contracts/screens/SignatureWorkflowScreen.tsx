@@ -12,6 +12,7 @@ import { ContractStatus } from '../../../types/models/Contract';
 import { SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
+import { formatGigCoin } from '../../../shared/utils/gigcoin';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
 
@@ -27,7 +28,7 @@ interface SignContractResponse {
 }
 
 const formatMoney = (value?: number): string =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value ?? 0);
+  formatGigCoin(value ?? 0);
 
 const formatDate = (value?: string | null): string => {
   if (!value) return 'Not set';

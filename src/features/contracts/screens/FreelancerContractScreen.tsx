@@ -4,7 +4,6 @@ import {
   Search,
   Eye,
   Calendar,
-  DollarSign,
   User,
   FileUp,
   PenTool,
@@ -35,6 +34,7 @@ import {
 } from '../../../shared/utils/contractUtils';
 import { MilestoneDetailCard } from '../components/MilestoneDetailCard';
 import '../styles/freelancer-contract-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface MilestoneDisplay extends Milestone {
   percentageComplete: number;

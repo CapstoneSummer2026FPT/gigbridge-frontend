@@ -2,6 +2,7 @@ import { FC } from 'react';
 import { X, Download, FileText, Award } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 interface ProposalDetailModalProps {
   proposal: ProposalViewModel;
@@ -115,7 +116,7 @@ export const ProposalDetailModal: FC<ProposalDetailModalProps> = ({
               </div>
               <div>
                 <span>Proposed Budget</span>
-                <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
+                <strong><GigCoinAmount amount={proposal.proposedBudget || 0} /></strong>
               </div>
               <div>
                 <span>Duration</span>

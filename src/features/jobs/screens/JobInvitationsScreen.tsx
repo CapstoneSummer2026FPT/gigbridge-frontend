@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { AlertCircle, Briefcase, CheckCircle2, Clock, DollarSign, Eye, Send, XCircle } from 'lucide-react';
+import { AlertCircle, Briefcase, CheckCircle2, Clock, Eye, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -8,6 +8,7 @@ import { jobInvitationAPI } from '../../../api/jobInvitationAPI';
 import { UserRole } from '../../../types/models/User';
 import { JobInvitationStatus, type JobInvitationDto } from '../../../types/jobInvitation';
 import '../styles/browse-jobs-screen.css';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 
 type StatusFilter = 'all' | 'active' | 'applied' | 'declined' | 'cancelled';
 
@@ -260,8 +261,6 @@ export default function JobInvitationsScreen() {
               const invitationId = getInvitationId(invitation);
               const isActioning = actioningIds.has(invitationId);
               const active = isActiveInvitation(invitation);
-              const budget = `${invitation.currency || '$'}${invitation.budgetMin ?? 0} - ${invitation.currency || '$'}${invitation.budgetMax ?? 0}`;
-
               return (
                 <div key={invitationId} className="glass-card p-5 browse-jobs-job-card">
                   <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
@@ -276,7 +275,7 @@ export default function JobInvitationsScreen() {
                         {skillNames(invitation).slice(0, 8).map(skill => <span key={skill} className="tag-pill">{skill}</span>)}
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-xs browse-jobs-job-meta">
-                        <span className="flex items-center gap-1"><DollarSign size={12} />{budget}</span>
+                        <span className="flex items-center gap-1"><GigCoinBudget min={invitation.budgetMin} max={invitation.budgetMax} /></span>
                         <span className="flex items-center gap-1"><Clock size={12} />Invited {formatDate(invitation.createdAt)}</span>
                         <span>Client: {invitation.clientCompanyName || invitation.clientName || 'Client'}</span>
                         {invitation.message && <span>Message: {invitation.message}</span>}

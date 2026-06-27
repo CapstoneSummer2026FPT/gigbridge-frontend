@@ -30,7 +30,7 @@ export const mapGeneratedJobDescriptionToJobData = (
     skillIds: generatedData.skills.map(skill => skill.skillsId),
     customSkillNames: generatedData.customSkills || [],
     description: generatedData.description,
-    currency: 'USD',
+    currency: 'GIG',
     estimatedDuration: AI_DEFAULT_DURATION,
     location: AI_DEFAULT_LOCATION,
     visibility: JobPostVisibility.Public,

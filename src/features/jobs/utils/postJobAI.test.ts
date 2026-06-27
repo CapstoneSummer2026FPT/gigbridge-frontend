@@ -33,7 +33,7 @@ describe('postJobAI utilities', () => {
       skillIds: ['skill-1', 'skill-2'],
       customSkillNames: ['HAProxy'],
       description: generated.description,
-      currency: 'USD',
+      currency: 'GIG',
       estimatedDuration: '2 weeks',
       location: 'Remote',
       visibility: JobPostVisibility.Public,

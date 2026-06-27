@@ -1,7 +1,9 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
-import { Clock, DollarSign, Sparkles, Eye, CheckCircle, XCircle, FileSignature, Briefcase } from 'lucide-react';
+import { Clock, Sparkles, Eye, CheckCircle, XCircle, FileSignature, Briefcase } from 'lucide-react';
 import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { GigCoinAmount, GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface ProposalCardProps {
   proposal: ProposalViewModel;
@@ -81,8 +83,8 @@ export const ProposalCard: FC<ProposalCardProps> = ({
       {/* Metadata: Budget, Duration, AI Flag */}
       <div className="proposal-review-meta">
         <div>
-          <DollarSign size={14} />
-          <span>${(proposal.proposedBudget || 0).toLocaleString()}/project</span>
+          <GigCoinLogo size={14} />
+          <span><GigCoinAmount amount={proposal.proposedBudget || 0} suffix="/project" /></span>
         </div>
         <div>
           <Clock size={14} />

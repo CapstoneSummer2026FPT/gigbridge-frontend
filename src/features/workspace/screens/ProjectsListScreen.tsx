@@ -7,6 +7,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 const getStatusLabel = (status: ContractStatus): string => {
   switch (status) {
@@ -167,7 +168,7 @@ export default function ProjectsListScreen() {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-secondary">
                       <DollarSign className="w-4 h-4 text-green-400" />
-                      <span className="text-primary font-semibold">${project.totalBudget.toLocaleString()}</span>
+                      <span className="text-primary font-semibold"><GigCoinAmount amount={project.totalBudget} /></span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-secondary">
                       <Calendar className="w-4 h-4 text-cyan" />

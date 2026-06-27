@@ -4,7 +4,7 @@ import { Calendar, Download, Landmark, ShieldCheck, TrendingDown, TrendingUp, Wa
 import { AppLayout } from '../../../shared/components/AppLayout';
 import {
   CLIENT_CASH_FLOW_RECORDS,
-  formatVnd,
+  formatGigCoinAmount,
   getQuarter,
   type ClientCashFlowRecord,
   type ClientCashFlowStatus,
@@ -40,16 +40,16 @@ export default function FinancialOverviewScreen() {
   const stats = useMemo(() => {
     const totalSpent = CLIENT_CASH_FLOW_RECORDS
       .filter(record => record.status === 'spent' || record.status === 'subscription' || record.status === 'released')
-      .reduce((sum, record) => sum + record.amountVnd, 0);
+      .reduce((sum, record) => sum + record.amountGigcoin, 0);
     const totalInEscrow = CLIENT_CASH_FLOW_RECORDS
       .filter(record => record.status === 'escrow')
-      .reduce((sum, record) => sum + record.amountVnd, 0);
+      .reduce((sum, record) => sum + record.amountGigcoin, 0);
     const totalReleased = CLIENT_CASH_FLOW_RECORDS
       .filter(record => record.status === 'released')
-      .reduce((sum, record) => sum + record.amountVnd, 0);
+      .reduce((sum, record) => sum + record.amountGigcoin, 0);
     const subscriptionCost = CLIENT_CASH_FLOW_RECORDS
       .filter(record => record.status === 'subscription')
-      .reduce((sum, record) => sum + record.amountVnd, 0);
+      .reduce((sum, record) => sum + record.amountGigcoin, 0);
 
     return { totalSpent, totalInEscrow, totalReleased, subscriptionCost };
   }, []);
@@ -59,9 +59,9 @@ export default function FinancialOverviewScreen() {
     CLIENT_CASH_FLOW_RECORDS.forEach(record => {
       const period = getBucketLabel(record, dateRange);
       const current = buckets.get(period) || { period, spent: 0, escrow: 0, released: 0 };
-      if (record.status === 'escrow') current.escrow += record.amountVnd;
-      if (record.status === 'released') current.released += record.amountVnd;
-      if (record.status === 'spent' || record.status === 'subscription') current.spent += record.amountVnd;
+      if (record.status === 'escrow') current.escrow += record.amountGigcoin;
+      if (record.status === 'released') current.released += record.amountGigcoin;
+      if (record.status === 'spent' || record.status === 'subscription') current.spent += record.amountGigcoin;
       buckets.set(period, current);
     });
     return Array.from(buckets.values());
@@ -72,7 +72,7 @@ export default function FinancialOverviewScreen() {
       name: STATUS_LABELS[status],
       value: CLIENT_CASH_FLOW_RECORDS
         .filter(record => record.status === status)
-        .reduce((sum, record) => sum + record.amountVnd, 0),
+        .reduce((sum, record) => sum + record.amountGigcoin, 0),
       color: STATUS_COLORS[status],
     })).filter(item => item.value > 0);
   }, []);
@@ -87,7 +87,7 @@ export default function FinancialOverviewScreen() {
               Client Finance
             </div>
             <h1>Financial Overview</h1>
-            <p>Cash flow statistics for planning, escrow visibility, and released project payments. All amounts are shown in VND.</p>
+            <p>Cash flow statistics for planning, escrow visibility, and released project payments. All amounts are shown in GigCoin.</p>
           </div>
           <button type="button" className="financial-overview-export">
             <Download size={16} />
@@ -97,10 +97,10 @@ export default function FinancialOverviewScreen() {
 
         <section className="financial-overview-stats">
           {[
-            { label: 'Total Spent', value: formatVnd(stats.totalSpent), icon: <TrendingDown size={18} />, tone: 'cyan' },
-            { label: 'Total In Escrow', value: formatVnd(stats.totalInEscrow), icon: <ShieldCheck size={18} />, tone: 'amber' },
-            { label: 'Total Released', value: formatVnd(stats.totalReleased), icon: <TrendingUp size={18} />, tone: 'green' },
-            { label: 'Subscriptions', value: formatVnd(stats.subscriptionCost), icon: <Wallet size={18} />, tone: 'purple' },
+            { label: 'Total Spent', value: formatGigCoinAmount(stats.totalSpent), icon: <TrendingDown size={18} />, tone: 'cyan' },
+            { label: 'Total In Escrow', value: formatGigCoinAmount(stats.totalInEscrow), icon: <ShieldCheck size={18} />, tone: 'amber' },
+            { label: 'Total Released', value: formatGigCoinAmount(stats.totalReleased), icon: <TrendingUp size={18} />, tone: 'green' },
+            { label: 'Subscriptions', value: formatGigCoinAmount(stats.subscriptionCost), icon: <Wallet size={18} />, tone: 'purple' },
           ].map(stat => (
             <div key={stat.label} className="financial-stat-card">
               <span className={stat.tone}>{stat.icon}</span>
@@ -130,7 +130,7 @@ export default function FinancialOverviewScreen() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
                 <XAxis dataKey="period" tick={{ fill: '#8892A4', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} tickFormatter={value => `${Number(value) / 1000000}M`} />
-                <Tooltip formatter={(value: number) => formatVnd(value)} contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,119,255,0.25)', borderRadius: 10, color: 'white' }} />
+                <Tooltip formatter={(value: number) => formatGigCoinAmount(value)} contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,119,255,0.25)', borderRadius: 10, color: 'white' }} />
                 <Bar dataKey="spent" name="Spent" fill="#0077FF" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="escrow" name="In Escrow" fill="#F59E0B" radius={[6, 6, 0, 0]} />
                 <Bar dataKey="released" name="Released" fill="#22C55E" radius={[6, 6, 0, 0]} />
@@ -150,7 +150,7 @@ export default function FinancialOverviewScreen() {
                 <Pie data={statusBreakdown} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92}>
                   {statusBreakdown.map(item => <Cell key={item.name} fill={item.color} />)}
                 </Pie>
-                <Tooltip formatter={(value: number) => formatVnd(value)} contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.25)', borderRadius: 10, color: 'white' }} />
+                <Tooltip formatter={(value: number) => formatGigCoinAmount(value)} contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.25)', borderRadius: 10, color: 'white' }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="financial-legend">
@@ -176,7 +176,7 @@ export default function FinancialOverviewScreen() {
                   <span><Calendar size={13} /> {new Date(record.date).toLocaleDateString('vi-VN')} · {record.project}</span>
                 </div>
                 <span className={`financial-status ${record.status}`}>{STATUS_LABELS[record.status]}</span>
-                <b>{formatVnd(record.amountVnd)}</b>
+                <b>{formatGigCoinAmount(record.amountGigcoin)}</b>
               </article>
             ))}
           </div>

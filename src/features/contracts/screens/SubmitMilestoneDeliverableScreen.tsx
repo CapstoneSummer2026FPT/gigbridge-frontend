@@ -7,7 +7,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Calendar,
-  DollarSign,
   Clock,
   ChevronRight,
   FileUp,
@@ -25,6 +24,7 @@ import {
   canSubmitMilestoneDeliverable,
 } from '../../../shared/utils/contractUtils';
 import '../styles/submit-milestone-deliverable-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface SubmissionState {
   milestone: Milestone | null;
@@ -397,7 +397,7 @@ export default function SubmitMilestoneDeliverableScreen() {
 
                 <div className="milestone-details">
                   <div className="detail-item">
-                    <DollarSign size={18} className="detail-icon" />
+                    <GigCoinLogo size={18} />
                     <div className="detail-text">
                       <span className="detail-label">Milestone Amount</span>
                       <span className="detail-value">

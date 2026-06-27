@@ -17,6 +17,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { walletGetAPI, WalletTransactionResponse } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 export default function WalletHistoryScreen() {
   const navigate = useNavigate();
@@ -190,8 +191,7 @@ export default function WalletHistoryScreen() {
     return (
       <div className="text-right ml-4 shrink-0">
         <div className={`text-lg sm:text-xl font-bold flex items-center justify-end gap-1 ${colorClass}`}>
-          <span>{prefix}{fmtNumber(trans.tokenAmount)}</span>
-          <Coins size={16} className="inline opacity-80" />
+          <GigCoinAmount amount={trans.tokenAmount} prefix={prefix} />
         </div>
         {trans.type === 1 && trans.vndAmount > 0 && (
           <p className="text-xs text-secondary mt-0.5 font-semibold">
@@ -239,9 +239,9 @@ export default function WalletHistoryScreen() {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
             {[
-              { label: 'Tổng nạp tiền', value: `${fmtNumber(stats.totalDeposits)} tokens`, icon: <ArrowUpRight size={16} />, color: 'green' },
-              { label: 'Ký quỹ dự án', value: `${fmtNumber(stats.totalHold)} tokens`, icon: <ArrowDownRight size={16} />, color: 'red' },
-              { label: 'Tổng hoàn trả', value: `${fmtNumber(stats.totalRefund)} tokens`, icon: <RefreshCw size={16} />, color: 'cyan' },
+              { label: 'Tổng nạp tiền', value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} />, color: 'green' },
+              { label: 'Ký quỹ dự án', value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} />, color: 'red' },
+              { label: 'Tổng hoàn trả', value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} />, color: 'cyan' },
               { label: 'Đang xử lý', value: stats.pending.toString(), icon: <Loader2 size={16} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber' },
               { label: 'Tổng số giao dịch', value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
             ].map(stat => (

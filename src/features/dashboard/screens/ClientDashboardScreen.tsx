@@ -8,6 +8,7 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/client-dashboard-screen.css';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 export default function ClientDashboardScreen() {
   const {
@@ -464,7 +465,7 @@ export default function ClientDashboardScreen() {
                         <div className="space-y-3 mb-6">
                           <div className="flex justify-between items-center text-xs font-semibold">
                             <span className="text-text-secondary">Next: {activeMilestone?.title || 'Milestone'}</span>
-                            <span className="text-text-primary">${activeMilestone?.amount.toLocaleString()}</span>
+                            <span className="text-text-primary"><GigCoinAmount amount={activeMilestone?.amount} /></span>
                           </div>
                           <div className="h-1.5 w-full bg-surface-muted rounded-full overflow-hidden">
                             <div

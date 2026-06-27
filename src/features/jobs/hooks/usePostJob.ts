@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useBlocker, useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
 import {
@@ -163,7 +164,7 @@ const formFromJobDetail = (job: GetMyJobPostDetailDto): PostJobFormState => ({
   customSkillNames: job.customSkillNames || [],
   budgetMin: toStringValue(job.budgetMin),
   budgetMax: toStringValue(job.budgetMax),
-  currency: job.currency || 'USD',
+  currency: job.currency || GIGCOIN_CURRENCY_CODE,
   location: job.location || '',
   visibility: String(job.visibility ?? JobPostVisibility.Public),
   deadline: job.endDate?.split?.('T')?.[0] || '',
@@ -183,7 +184,7 @@ const initialFormFromState = (initialJobData?: PostJobRouteJobData | null): Post
     customSkillNames: [...(initialJobData?.customSkillNames || initialJobData?.customSkills || [])],
     budgetMin: toStringValue(initialJobData?.budgetMin),
     budgetMax: toStringValue(initialJobData?.budgetMax),
-    currency: initialJobData?.currency || 'USD',
+    currency: initialJobData?.currency || GIGCOIN_CURRENCY_CODE,
     estimatedDurationValue: duration.value,
     estimatedDurationUnit: duration.unit,
     location: initialJobData?.location || '',
@@ -239,7 +240,7 @@ export function usePostJob() {
       Boolean(form.majorCategoryId) ||
       Boolean(form.budgetMin) ||
       Boolean(form.budgetMax) ||
-      Boolean(form.currency.trim() && form.currency.trim().toUpperCase() !== 'USD') ||
+      Boolean(form.currency.trim() && form.currency.trim().toUpperCase() !== GIGCOIN_CURRENCY_CODE) ||
       Boolean(form.estimatedDurationValue.trim()) ||
       Boolean(form.location.trim()) ||
       Boolean(form.deadline) ||
@@ -632,7 +633,7 @@ export function usePostJob() {
       majorCategoryId: form.majorCategoryId || null,
       budgetMin: budgetMin !== null && Number.isNaN(budgetMin) ? null : budgetMin,
       budgetMax: budgetMax !== null && Number.isNaN(budgetMax) ? null : budgetMax,
-      currency: form.currency.trim() || 'USD',
+      currency: form.currency.trim() || GIGCOIN_CURRENCY_CODE,
       estimatedDuration: formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit),
       location: form.location.trim() || null,
       visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,

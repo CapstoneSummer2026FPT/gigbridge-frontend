@@ -4,6 +4,7 @@ import { ProposalCard } from './ProposalCard';
 import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
 import type { JobProposalGroup, ProposalDetailMode, ProposalStatusFilter } from '../types';
 import { getStatusLabel, getStatusClass } from '../utils/statusHelpers';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 interface FreelancerProposalViewProps {
   loading: boolean;
@@ -90,7 +91,7 @@ export function FreelancerProposalView({
                   </div>
                   <div className="freelancer-proposal-rate">
                     <span>Bid</span>
-                    <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
+                    <strong><GigCoinAmount amount={proposal.proposedBudget || 0} /></strong>
                   </div>
                 </div>
 
@@ -112,7 +113,7 @@ export function FreelancerProposalView({
                   {(proposal.boostedTokenAmount || 0) > 0 && (
                     <div>
                       <Rocket size={14} />
-                      <span>Boosted {proposal.boostedTokenAmount} tokens</span>
+                      <span>Boosted {proposal.boostedTokenAmount}</span>
                     </div>
                   )}
                 </div>
