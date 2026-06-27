@@ -131,8 +131,21 @@ select.form-select {
   color: #ef4444;
   font-weight: 600;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
+  white-space: pre-line;
+}
+
+.form-error svg {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.edit-job-server-error {
+  padding: 0.875rem 1rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 0.75rem;
+  background: rgba(239, 68, 68, 0.08);
 }
 
 /* Form Hint */
