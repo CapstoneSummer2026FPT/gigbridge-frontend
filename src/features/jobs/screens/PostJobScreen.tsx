@@ -521,8 +521,8 @@ export default function PostJobScreen() {
                   <Lightbulb className="text-[var(--gb-purple)]" size={14} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-foreground mb-1">Questions for Interview là gì?</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">
+                  <p className="text-sm font-bold text-foreground mb-1">Questions for Interview là gì?</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-2">
                     Đây là các câu hỏi bạn muốn ứng viên <strong className="text-foreground">trả lời khi nộp đề xuất (proposal)</strong> cho công việc này.
                     Thay vì phỏng vấn trực tiếp ngay từ đầu, bạn có thể lọc ứng viên phù hợp qua câu trả lời của họ.
                   </p>
@@ -533,8 +533,8 @@ export default function PostJobScreen() {
                       '"Nếu gặp vấn đề kỹ thuật không giải quyết được một mình, bạn xử lý như thế nào?"',
                     ].map((example, i) => (
                       <div key={i} className="flex items-start gap-1.5">
-                        <span className="text-[var(--gb-purple)] mt-0.5 shrink-0 font-black text-[10px]">›</span>
-                        <span className="text-[10px] text-muted-foreground italic">{example}</span>
+                        <span className="text-[var(--gb-purple)] mt-0.5 shrink-0 font-black text-xs">›</span>
+                        <span className="text-[11px] text-muted-foreground italic">{example}</span>
                       </div>
                     ))}
                   </div>

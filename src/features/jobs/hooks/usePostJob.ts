@@ -214,7 +214,9 @@ export function usePostJob() {
   const [draftRequestAttempt, setDraftRequestAttempt] = useState(0);
   const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
 
-  const [isInstantJobMode, setIsInstantJobMode] = useState(false);
+  const [isInstantJobMode, setIsInstantJobMode] = useState(() => {
+    return (location.state as any)?.instantJobMode ?? false;
+  });
   const [isJobDetailsGenerated, setIsJobDetailsGenerated] = useState(false);
   const [isGeneratingInstant, setIsGeneratingInstant] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -588,16 +590,24 @@ export function usePostJob() {
     setDraggedIndex(null);
   };
 
-  const handleGenerateInstantJob = async () => {
-    const validQuestions = questions.filter(q => q.questionText.trim());
-    if (validQuestions.length === 0) {
-      toast.error('Please enter at least one question first.');
+  const handleGenerateInstantJob = async (prompt?: string) => {
+    let promptText = typeof prompt === 'string' ? prompt.trim() : '';
+    
+    if (!promptText) {
+      const textarea = document.getElementById('guide-prompt-textarea') as HTMLTextAreaElement | null;
+      if (textarea && textarea.value.trim()) {
+        promptText = textarea.value.trim();
+      }
+    }
+
+    if (!promptText) {
+      toast.error('Vui lòng nhập mô tả yêu cầu tuyển dụng để AI bắt đầu sinh tin.');
       return;
     }
 
     setIsGeneratingInstant(true);
     try {
-      const response = await jobAPI.generateAIDescription(validQuestions.map(q => q.questionText.trim()));
+      const response = await mockGenerateAIJob(promptText);
       if (!response.success || !response.data) {
         toast.error(response.message || 'Job details could not be generated.');
         return;
@@ -655,7 +665,7 @@ export function usePostJob() {
       }));
 
       setIsJobDetailsGenerated(true);
-      toast.success('Job details generated successfully based on your questions.');
+      toast.success('Job details generated successfully based on your prompt.');
     } catch (error) {
       toast.error('An error occurred during AI generation.');
     } finally {
@@ -925,5 +935,10 @@ export function usePostJob() {
     buildNavigationState,
     renderSubmitLabel,
     MAX_QUESTION_LENGTH,
+    isInstantJobMode,
+    setIsInstantJobMode,
+    isJobDetailsGenerated,
+    isGeneratingInstant,
+    handleGenerateInstantJob,
   };
 }
