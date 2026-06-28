@@ -86,7 +86,7 @@ export interface PostJobRouteState {
   jobData?: PostJobRouteJobData | null;
 }
 
-type SubmitMode = 'draft' | 'questions' | 'contract';
+type SubmitMode = 'draft' | 'questions' | 'esign' | 'contract';
 type LeaveAction = 'save' | 'discard' | null;
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
@@ -778,15 +778,15 @@ export function usePostJob() {
   };
 
   const submitDraftFlow = async (mode: SubmitMode): Promise<void> => {
-    if (mode === 'questions' || mode === 'contract') {
-      const detailValidationError = validateJobDetails();
+    if (mode === 'questions' || mode === 'esign' || mode === 'contract') {
+      const detailValidationError = validateForm();
       if (detailValidationError) {
         showValidationError(detailValidationError);
         return;
       }
     }
 
-    if (mode === 'contract') {
+    if (mode === 'esign' || mode === 'contract') {
       const questionValidationError = validateQuestions();
       if (questionValidationError) {
         showValidationError(questionValidationError);
@@ -807,7 +807,7 @@ export function usePostJob() {
         return;
       }
 
-      if (mode === 'contract') {
+      if (mode === 'esign' || mode === 'contract') {
         allowNextNavigation();
         navigate('/jobs/post/contract', { state: navigationState });
         return;
