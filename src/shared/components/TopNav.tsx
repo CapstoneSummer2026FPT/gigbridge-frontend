@@ -325,7 +325,6 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <div className="px-3 py-2 mb-1">
                   <p className="text-xs text-muted">GigCoin Balance</p>
                   <div className="flex items-center gap-1">
-                    <GigCoinLogo size={18} />
                     <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-amber-400" />
                   </div>
                 </div>

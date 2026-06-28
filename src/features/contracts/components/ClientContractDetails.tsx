@@ -419,8 +419,8 @@ export function ClientContractDetails({
                 <span className="font-bold text-primary truncate max-w-[150px] md:max-w-xl">{contract.title}</span>
                 <span className="text-text-subtle">/</span>
                 <span className="text-text-primary font-black uppercase tracking-wider text-xs">Contract Details (Client)</span>
-                <span className={`status-badge ${getContractStatusClass(contract.status)} ml-2 text-[9px] py-0.5 px-2`}>
-                  {getContractStatusLabel(contract.status)}
+                <span className={`status-badge ${getContractStatusClass(effectiveStatus)} ml-2 text-[9px] py-0.5 px-2`}>
+                  {getContractStatusLabel(effectiveStatus)}
                 </span>
               </h1>
             </div>

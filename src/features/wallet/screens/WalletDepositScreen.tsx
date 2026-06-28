@@ -253,7 +253,7 @@ export default function WalletDepositScreen() {
               <Coins size={20} className="text-amber-400" />
               <span className="badge-green text-xs">Nạp Tiền</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-primary">NạN?p GigCoin</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-primary">Nạp GigCoin</h1>
             <p className="text-sm text-secondary mt-1">Thanh toán qua PayOS - Chuyển khoản ngân hàng / QR Code</p>
             <div className="flex items-center gap-2 mt-3 p-3 glass-card inline-flex">
               <Coins className="text-amber-400" size={16} />
