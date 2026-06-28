@@ -3,6 +3,9 @@ import { useBlocker, useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
+// ⚠️  MOCK: Import mock function for testing AI generate while BE is unavailable.
+//    To restore real API, remove this import and revert the call in handleGenerateInstantJob.
+import { mockGenerateAIJob } from '../mock/mockGenerateAIJob';
 import {
   JobPostStatus,
   JobPostVisibility,
@@ -144,7 +147,9 @@ export function usePostJob() {
   const [draftRequestAttempt, setDraftRequestAttempt] = useState(0);
   const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
 
-  const [isInstantJobMode, setIsInstantJobMode] = useState(false);
+  const [isInstantJobMode, setIsInstantJobMode] = useState(() => {
+    return location.state?.instantJobMode ?? false;
+  });
   const [isJobDetailsGenerated, setIsJobDetailsGenerated] = useState(false);
   const [isGeneratingInstant, setIsGeneratingInstant] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -527,7 +532,11 @@ export function usePostJob() {
 
     setIsGeneratingInstant(true);
     try {
-      const response = await jobAPI.generateAIDescription([prompt.trim()]);
+      // ⚠️  MOCK MODE: Using mock response while backend AI endpoint is unavailable.
+      //    To restore real API: replace the line below with:
+      //    const response = await jobAPI.generateAIDescription([prompt.trim()]);
+      const response = await mockGenerateAIJob(prompt.trim());
+      void jobAPI; // suppress unused import warning during mock mode
       if (!response.success || !response.data) {
         toast.error(response.message || 'Job details could not be generated.');
         return;

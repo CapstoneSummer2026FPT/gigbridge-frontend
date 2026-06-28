@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  Bot, Sparkles, X, Plus, ChevronRight,
+  Sparkles, X, Plus, ChevronRight,
   Bold, Italic, Underline, List, ListOrdered, Check, Save,
-  GripVertical, Trash2, FileText, Clock
+  GripVertical, Trash2, FileText, Clock,
+  Lightbulb, MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
@@ -12,6 +13,7 @@ import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/J
 import { usePostJob } from '../hooks/usePostJob';
 import { JobPostGuide } from '../components/JobPostGuide';
 import { PromptSectionModal } from '../components/PromptSectionModal';
+import { AIGenJobGuide } from '../components/AIGenJobGuide';
 import '../styles/PostJobScreen.css';
 
 export default function PostJobScreen() {
@@ -131,8 +133,10 @@ export default function PostJobScreen() {
   }, []);
 
   return (
-    <AppLayout>
-      <div className="max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-8 relative">
+    <AppLayout mainClassName={isInstantJobMode && !isJobDetailsGenerated ? 'ai-guide-active-layout' : ''}>
+      <div className={`max-w-[1440px] mx-auto px-3 sm:px-6 py-4 sm:py-8 relative ${
+        isInstantJobMode && !isJobDetailsGenerated ? 'pb-[620px]' : ''
+      }`}>
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(159,75,255,0.02),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(0,119,255,0.02),transparent_50%)] opacity-50 pointer-events-none" />
 
         <div className="flex flex-col gap-6 items-center mb-8">
@@ -257,101 +261,19 @@ export default function PostJobScreen() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
-          <div
-            className="lg:col-span-5 order-2 lg:order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm"
-            style={{ maxHeight: detailsHeight ? `${detailsHeight}px` : undefined }}
-          >
-            <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
-              <div className="flex items-center gap-2">
-                <Bot className="text-[var(--gb-purple)]" size={20} />
-                <h2 className="text-lg font-bold text-foreground">JobPost Questions</h2>
-              </div>
-            </div>
+        {/* AI Guide — extracted component, shown when instant job mode is active but not yet generated */}
+        {isInstantJobMode && !isJobDetailsGenerated && (
+          <AIGenJobGuide showMockBadge />
+        )}
 
-            <div className="space-y-3 lg:flex-grow lg:overflow-y-auto lg:min-h-0 lg:pr-1">
-              {questions.map((question, index) => (
-                <div
-                  key={index}
-                  draggable
-                  onDragStart={e => handleDragStart(e, index)}
-                  onDragOver={e => handleDragOver(e, index)}
-                  onDragEnd={handleDragEnd}
-                  className={`bg-background border rounded-xl p-4 transition-all duration-200 ${
-                    draggedIndex === index
-                      ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 opacity-50 scale-[0.98]'
-                      : 'border-border hover:border-muted-foreground/30'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2 select-none">
-                    <div className="flex items-center gap-2">
-                      <div className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted flex items-center justify-center">
-                        <GripVertical size={14} />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                        Question {index + 1}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-wider cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={question.isRequired}
-                          onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
-                          className="rounded border-border text-[var(--gb-cyan)] focus:ring-[var(--gb-cyan)]"
-                        />
-                        Required
-                      </label>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = questions.filter((_, idx) => idx !== index);
-                          setQuestions(updated);
-                        }}
-                        className="text-muted-foreground hover:text-red-500 p-1 rounded hover:bg-muted transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
-                        title="Delete Question"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <textarea
-                    value={question.questionText}
-                    maxLength={MAX_QUESTION_LENGTH}
-                    onChange={event => updateQuestion(index, { questionText: event.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
-                    rows={3}
-                    placeholder="Enter a question applicants must answer..."
-                  />
-                  <div className="text-right mt-1 text-[10px] text-muted-foreground">
-                    {question.questionText.length}/{MAX_QUESTION_LENGTH}
-                  </div>
-                </div>
-              ))}
-
-              {questions.length === 0 && (
-                <div className="text-center py-8 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
-                  No questions added. Click "Add Question" to add one.
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-3 mt-2">
-              <button
-                type="button"
-                onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
-              >
-                <Plus size={14} /> Add Question
-              </button>
-
-            </div>
-          </div>
-
-          <div id="guide-job-details-panel" className="lg:col-span-7 order-1 lg:order-2 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm">
+        {/* Main panels grid - hidden when instant job mode is active but not generated */}
+        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start ${
+          isInstantJobMode && !isJobDetailsGenerated ? 'hidden' : ''
+        }`}>
+          {/* LEFT: Job Details (col-span-7) */}
+          <div id="guide-job-details-panel" className={`lg:col-span-7 order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
+            isJobDetailsGenerated ? 'panels-fade-in' : ''
+          }`}>
             <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">Job Details</h2>
 
             {isInstantJobMode && !isJobDetailsGenerated && (
@@ -577,34 +499,160 @@ export default function PostJobScreen() {
               </div>
             </div>
           </div>
+
+          {/* RIGHT: Questions for Interview (col-span-5) */}
+          <div
+            className={`lg:col-span-5 order-2 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
+              isJobDetailsGenerated ? 'panels-fade-in-delay' : ''
+            }`}
+            style={{ maxHeight: detailsHeight ? `${detailsHeight}px` : undefined }}
+          >
+            <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="text-[var(--gb-purple)]" size={20} />
+                <h2 className="text-lg font-bold text-foreground">Questions for Interview</h2>
+              </div>
+            </div>
+
+            {/* Interview Questions Guide */}
+            <div className="rounded-xl border border-[var(--gb-purple)]/20 bg-gradient-to-br from-[var(--gb-purple)]/6 to-transparent p-4 -mt-2 mb-1">
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-lg bg-[var(--gb-purple)]/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <Lightbulb className="text-[var(--gb-purple)]" size={14} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-foreground mb-1">Questions for Interview là gì?</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">
+                    Đây là các câu hỏi bạn muốn ứng viên <strong className="text-foreground">trả lời khi nộp đề xuất (proposal)</strong> cho công việc này.
+                    Thay vì phỏng vấn trực tiếp ngay từ đầu, bạn có thể lọc ứng viên phù hợp qua câu trả lời của họ.
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    {[
+                      '"Hãy chia sẻ 1–2 dự án freelance bạn đã hoàn thành gần đây có liên quan đến yêu cầu này."',
+                      '"Bạn dự kiến hoàn thành công việc trong bao lâu và kế hoạch triển khai như thế nào?"',
+                      '"Nếu gặp vấn đề kỹ thuật không giải quyết được một mình, bạn xử lý như thế nào?"',
+                    ].map((example, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <span className="text-[var(--gb-purple)] mt-0.5 shrink-0 font-black text-[10px]">›</span>
+                        <span className="text-[10px] text-muted-foreground italic">{example}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 lg:flex-grow lg:overflow-y-auto lg:min-h-0 lg:pr-1">
+              {questions.map((question, index) => (
+                <div
+                  key={index}
+                  draggable
+                  onDragStart={e => handleDragStart(e, index)}
+                  onDragOver={e => handleDragOver(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={`bg-background border rounded-xl p-4 transition-all duration-200 ${
+                    draggedIndex === index
+                      ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 opacity-50 scale-[0.98]'
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2 select-none">
+                    <div className="flex items-center gap-2">
+                      <div className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted flex items-center justify-center">
+                        <GripVertical size={14} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                        Question {index + 1}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-wider cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={question.isRequired}
+                          onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
+                          className="rounded border-border text-[var(--gb-cyan)] focus:ring-[var(--gb-cyan)]"
+                        />
+                        Required
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = questions.filter((_, idx) => idx !== index);
+                          setQuestions(updated);
+                        }}
+                        className="text-muted-foreground hover:text-red-500 p-1 rounded hover:bg-muted transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
+                        title="Delete Question"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={question.questionText}
+                    maxLength={MAX_QUESTION_LENGTH}
+                    onChange={event => updateQuestion(index, { questionText: event.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
+                    rows={3}
+                    placeholder="Enter a question applicants must answer..."
+                  />
+                  <div className="text-right mt-1 text-[10px] text-muted-foreground">
+                    {question.questionText.length}/{MAX_QUESTION_LENGTH}
+                  </div>
+                </div>
+              ))}
+
+              {questions.length === 0 && (
+                <div className="text-center py-8 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
+                  No questions added. Click "Add Question" to add one.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
+              >
+                <Plus size={14} /> Add Question
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm max-w-[1440px] mx-auto">
-          <div className="hidden md:flex flex-col">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
-            <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
+        {/* New Job Post Preview bar — hidden in instant job guide mode */}
+        {!(isInstantJobMode && !isJobDetailsGenerated) && (
+          <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm max-w-[1440px] mx-auto">
+            <div className="hidden md:flex flex-col">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
+              <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => submitDraftFlow('draft')}
+                disabled={isActionDisabled}
+                className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
+              >
+                <Save size={16} /> {renderSubmitLabel('draft', 'Save as Draft')}
+              </button>
+              <button
+                type="button"
+                onClick={() => submitDraftFlow('esign')}
+                disabled={isActionDisabled}
+                className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
+              >
+                <Check size={16} />
+                <span>{renderSubmitLabel('esign', 'Next: Contract Setup')}</span>
+                <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              type="button"
-              onClick={() => submitDraftFlow('draft')}
-              disabled={isActionDisabled}
-              className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
-            >
-              <Save size={16} /> {renderSubmitLabel('draft', 'Save as Draft')}
-            </button>
-            <button
-              type="button"
-              onClick={() => submitDraftFlow('esign')}
-              disabled={isActionDisabled}
-              className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
-            >
-              <Check size={16} />
-              <span>{renderSubmitLabel('esign', 'Next: Contract Setup')}</span>
-              <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
-            </button>
-          </div>
-        </div>
+        )}
       </div>
       <JobPostGuide isActive={isGuideActive} onClose={() => setIsGuideActive(false)} />
 
@@ -744,6 +792,7 @@ export default function PostJobScreen() {
         onClose={() => setIsInstantJobMode(false)}
         onGenerate={handleGenerateInstantJob}
         isGenerating={isGeneratingInstant}
+        threshold={!isJobDetailsGenerated ? 700 : 150}
       />
     </AppLayout>
   );

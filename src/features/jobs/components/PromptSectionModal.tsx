@@ -7,9 +7,10 @@ interface PromptSectionModalProps {
     onClose: () => void;
     onGenerate: (prompt: string) => Promise<void>;
     isGenerating: boolean;
+    threshold?: number;
 }
 
-export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating }: PromptSectionModalProps) {
+export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating, threshold = 150 }: PromptSectionModalProps) {
     const [prompt, setPrompt] = useState('');
     const [isScrolledToBottom, setIsScrolledToBottom] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
@@ -37,7 +38,6 @@ export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating }
         if (!isOpen) return;
 
         const handleScroll = () => {
-            const threshold = 150; // px threshold from bottom
             const totalHeight = document.documentElement.scrollHeight;
             const scrollPosition = window.innerHeight + window.scrollY;
             const scrollableDistance = totalHeight - window.innerHeight;
@@ -55,7 +55,7 @@ export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating }
         return () => {
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [isOpen]);
+    }, [isOpen, threshold]);
 
     // Helper to start/reset animation for a specific duration
     const triggerAnimation = (durationMs: number) => {

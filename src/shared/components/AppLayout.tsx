@@ -12,6 +12,7 @@ interface AppLayoutProps {
   fullWidth?: boolean;
   excludeMeshGradient?: boolean;
   hideAIWidget?: boolean;
+  mainClassName?: string;
 }
 
 export function AppLayout({
@@ -20,6 +21,7 @@ export function AppLayout({
   fullWidth = false,
   excludeMeshGradient = false,
   hideAIWidget = false,
+  mainClassName = '',
 }: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
@@ -63,7 +65,7 @@ export function AppLayout({
         )}
 
         <main
-          className={`app-layout-main ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''}`}
+          className={`app-layout-main ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
         >
           {excludeMeshGradient ? (
             children
