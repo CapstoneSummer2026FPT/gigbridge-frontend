@@ -12,10 +12,8 @@ import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen';
 import ProfileSetupScreen from '../features/onboarding/screens/ProfileSetupScreen';
 import ClientDashboardScreen from '../features/dashboard/screens/ClientDashboardScreen';
 import FreelancerDashboardScreen from '../features/dashboard/screens/FreelancerDashboardScreen';
-import { PostJobScreen } from '../features/jobs/screens/PostJobScreen';
-import { PostJobAIScreen } from '../features/jobs/screens/PostJobAIScreen';
-import { PostJobDetailsScreen } from '../features/jobs/screens/PostJobDetailsScreen';
-import { PostJobQuestionsScreen } from '../features/jobs/screens/PostJobQuestionsScreen';
+import PostJobScreen from '../features/jobs/screens/PostJobScreen';
+import PostJobPreGuideScreen from '../features/jobs/screens/PostJobPreGuideScreen';
 import CreatePostJobContractScreen from '../features/jobs/screens/CreatePostJobContractScreen';
 import CreatePostJobEsignScreen from '../features/jobs/screens/CreatePostJobEsignScreen';
 import BrowseJobsScreen from '../features/jobs/screens/BrowseJobsScreen';
@@ -46,7 +44,6 @@ import AdminSystemTrackingScreen from '../features/admin/screens/AdminSystemTrac
 import AdminRevenueScreen from '../features/admin/screens/AdminRevenueScreen';
 import AdminReportsScreen from '../features/admin/screens/AdminReportsScreen';
 import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
-import AdminCheatingManagementScreen from '../features/admin/screens/AdminCheatingManagementScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
 import AdminContractAuditScreen from '../features/admin/screens/AdminContractAuditScreen';
 import AdminContractTemplatesScreen from '../features/admin/screens/AdminContractTemplatesScreen';
@@ -168,10 +165,8 @@ export const router = createBrowserRouter([
       { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
 
       // Jobs - requires authentication
+      { path: 'jobs/post/guide', element: <ProtectedRoute requireAuth requireSetup><PostJobPreGuideScreen /></ProtectedRoute> },
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
-      { path: 'jobs/post/ai', element: <ProtectedRoute requireAuth requireSetup><PostJobAIScreen /></ProtectedRoute> },
-      { path: 'jobs/post/details', element: <ProtectedRoute requireAuth requireSetup><PostJobDetailsScreen /></ProtectedRoute> },
-      { path: 'jobs/post/questions', element: <ProtectedRoute requireAuth requireSetup><PostJobQuestionsScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract/esign', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobEsignScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
@@ -244,7 +239,6 @@ export const router = createBrowserRouter([
       { path: 'admin/ads-packages', element: <AdminRoute><AdminAdsPackagesScreen /></AdminRoute> },
       { path: 'admin/disputes', element: <AdminRoute><AdminDisputeManagementScreen /></AdminRoute> },
       { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
-      { path: 'admin/cheating', element: <AdminRoute><AdminCheatingManagementScreen /></AdminRoute> },
       { path: 'admin/feedback', element: <AdminRoute><AdminFeedbackScreen /></AdminRoute> },
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/revenue', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },

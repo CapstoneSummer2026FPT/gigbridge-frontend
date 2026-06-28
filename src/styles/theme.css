@@ -29,6 +29,10 @@
   --warning: #d97706;
   --destructive: #dc2626;
   --info: #0284c7;
+  --mint: #AFDBFF;
+  --prompt-shadow-1: rgba(73, 75, 231, 0.45);
+  --prompt-shadow-mid: rgba(124, 147, 243, 0.6);
+  --prompt-shadow-2: rgba(175, 219, 255, 0.75);
 
   --mesh-gradient: none;
   --mesh-gradient-bg: var(--background);
@@ -51,6 +55,10 @@
   --warning: #f59e0b;
   --destructive: #ef4444;
   --info: #3b82f6;
+  --mint: #AFDBFF;
+  --prompt-shadow-1: rgba(130, 132, 255, 0.7);
+  --prompt-shadow-mid: rgba(152, 175, 255, 0.8);
+  --prompt-shadow-2: rgba(175, 219, 255, 0.9);
 
   --mesh-gradient: none;
   --mesh-gradient-bg: var(--background);
@@ -73,6 +81,10 @@
   --warning: #d97706;
   --destructive: #dc2626;
   --info: #0284c7;
+  --mint: #AFDBFF;
+  --prompt-shadow-1: rgba(73, 75, 231, 0.45);
+  --prompt-shadow-mid: rgba(124, 147, 243, 0.6);
+  --prompt-shadow-2: rgba(175, 219, 255, 0.75);
 
   --mesh-gradient: none;
   --mesh-gradient-bg: var(--background);

@@ -3,6 +3,9 @@ import { useBlocker, useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
+// ⚠️  MOCK: Import mock function for testing AI generate while BE is unavailable.
+//    To restore real API, remove this import and revert the call in handleGenerateInstantJob.
+import { mockGenerateAIJob } from '../mock/mockGenerateAIJob';
 import {
   JobPostVisibility,
   type CreateDraftJobPostResponse,
@@ -83,7 +86,7 @@ export interface PostJobRouteState {
   jobData?: PostJobRouteJobData | null;
 }
 
-type SubmitMode = 'draft' | 'questions' | 'contract';
+type SubmitMode = 'draft' | 'questions' | 'esign' | 'contract';
 type LeaveAction = 'save' | 'discard' | null;
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
@@ -210,6 +213,12 @@ export function usePostJob() {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftRequestAttempt, setDraftRequestAttempt] = useState(0);
   const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
+
+  const [isInstantJobMode, setIsInstantJobMode] = useState(() => {
+    return (location.state as any)?.instantJobMode ?? false;
+  });
+  const [isJobDetailsGenerated, setIsJobDetailsGenerated] = useState(false);
+  const [isGeneratingInstant, setIsGeneratingInstant] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
@@ -581,7 +590,90 @@ export function usePostJob() {
     setDraggedIndex(null);
   };
 
-  const validateJobDetails = (): string | null => {
+  const handleGenerateInstantJob = async (prompt?: string) => {
+    let promptText = typeof prompt === 'string' ? prompt.trim() : '';
+    
+    if (!promptText) {
+      const textarea = document.getElementById('guide-prompt-textarea') as HTMLTextAreaElement | null;
+      if (textarea && textarea.value.trim()) {
+        promptText = textarea.value.trim();
+      }
+    }
+
+    if (!promptText) {
+      toast.error('Vui lòng nhập mô tả yêu cầu tuyển dụng để AI bắt đầu sinh tin.');
+      return;
+    }
+
+    setIsGeneratingInstant(true);
+    try {
+      const response = await mockGenerateAIJob(promptText);
+      if (!response.success || !response.data) {
+        toast.error(response.message || 'Job details could not be generated.');
+        return;
+      }
+
+      const generatedData = response.data;
+
+      // 1. Fetch categories and skills in parallel based on AI recommendations
+      const [categoriesResponse, skillsResponse] = await Promise.all([
+        generatedData.majorId ? jobAPI.getCategoriesByMajor(generatedData.majorId) : null,
+        generatedData.categoryId ? jobAPI.getSkillsByCategory(generatedData.categoryId) : null
+      ]);
+
+      if (categoriesResponse?.success && categoriesResponse.data) {
+        setCategories(categoriesResponse.data);
+      }
+      
+      if (skillsResponse?.success && skillsResponse.data) {
+        setAvailableSkills(skillsResponse.data);
+        setSkillNameById(prev => {
+          const next = { ...prev };
+          skillsResponse.data?.forEach(skill => {
+            next[skill.skillId] = skill.name;
+          });
+          return next;
+        });
+      }
+
+      // 2. Add AI system skills name map entries so they display as selected chips/badges
+      const generatedSkillIds = generatedData.skills.map(skill => skill.skillsId);
+      setSkillNameById(prev => {
+        const next = { ...prev };
+        generatedData.skills.forEach(skill => {
+          next[skill.skillsId] = skill.name;
+        });
+        return next;
+      });
+
+      // 3. Update the form state with all AI recommendations
+      setForm(prev => ({
+        ...prev,
+        title: generatedData.title || prev.title,
+        majorId: generatedData.majorId || '',
+        majorCategoryId: generatedData.majorCategoryId || '',
+        categoryId: generatedData.categoryId || '',
+        skillIds: generatedSkillIds,
+        customSkillNames: generatedData.customSkills || [],
+        description: generatedData.description || prev.description,
+        currency: prev.currency || 'USD',
+        estimatedDuration: prev.estimatedDuration || '2-4 weeks',
+        location: prev.location || 'Remote',
+        visibility: String(JobPostVisibility.Public),
+        deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        isAigenerated: true,
+      }));
+
+      setIsJobDetailsGenerated(true);
+      toast.success('Job details generated successfully based on your prompt.');
+    } catch (error) {
+      toast.error('An error occurred during AI generation.');
+    } finally {
+      setIsGeneratingInstant(false);
+    }
+  };
+
+  const validateForm = () => {
     if (!form.title.trim()) return 'Job title is required.';
     if (form.title.trim().length > 200) return 'Job title must not exceed 200 characters.';
     if (!form.majorId) return 'Major is required.';
@@ -686,15 +778,15 @@ export function usePostJob() {
   };
 
   const submitDraftFlow = async (mode: SubmitMode): Promise<void> => {
-    if (mode === 'questions' || mode === 'contract') {
-      const detailValidationError = validateJobDetails();
+    if (mode === 'questions' || mode === 'esign' || mode === 'contract') {
+      const detailValidationError = validateForm();
       if (detailValidationError) {
         showValidationError(detailValidationError);
         return;
       }
     }
 
-    if (mode === 'contract') {
+    if (mode === 'esign' || mode === 'contract') {
       const questionValidationError = validateQuestions();
       if (questionValidationError) {
         showValidationError(questionValidationError);
@@ -715,7 +807,7 @@ export function usePostJob() {
         return;
       }
 
-      if (mode === 'contract') {
+      if (mode === 'esign' || mode === 'contract') {
         allowNextNavigation();
         navigate('/jobs/post/contract', { state: navigationState });
         return;
@@ -843,5 +935,10 @@ export function usePostJob() {
     buildNavigationState,
     renderSubmitLabel,
     MAX_QUESTION_LENGTH,
+    isInstantJobMode,
+    setIsInstantJobMode,
+    isJobDetailsGenerated,
+    isGeneratingInstant,
+    handleGenerateInstantJob,
   };
 }

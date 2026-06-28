@@ -1,0 +1,134 @@
+/* AI mode selection card */
+.ai-mode-card {
+  position: relative;
+  border: 1px solid rgba(159, 75, 255, 0.35); /* Brand purple border */
+  background: linear-gradient(135deg, rgba(159, 75, 255, 0.08), var(--surface), rgba(0, 119, 255, 0.04));
+  box-shadow: 0 10px 30px rgba(159, 75, 255, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Gradient border wrapper using pseudo-element */
+.ai-mode-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--gb-purple), var(--mint));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.ai-mode-card:hover::before {
+  opacity: 1;
+}
+
+.ai-mode-card:hover {
+  /* Keep background identical, do not modify background color on hover */
+  background: linear-gradient(135deg, rgba(159, 75, 255, 0.08), var(--surface), rgba(0, 119, 255, 0.04)) !important;
+  border-color: transparent;
+  box-shadow: 0 12px 35px rgba(159, 75, 255, 0.12);
+}
+
+/* Heading/Text gradient change on hover */
+.ai-mode-card:hover h2 {
+  background: linear-gradient(135deg, var(--gb-purple), var(--mint));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* White theme overrides for AI card */
+.white .ai-mode-card {
+  border-color: rgba(84, 112, 235, 0.25);
+  background: linear-gradient(135deg, rgba(84, 112, 235, 0.05), var(--surface), rgba(159, 75, 255, 0.03));
+  box-shadow: 0 10px 30px rgba(84, 112, 235, 0.04);
+}
+
+.white .ai-mode-card::before {
+  background: linear-gradient(135deg, #5470EB, var(--mint));
+}
+
+.white .ai-mode-card:hover {
+  background: linear-gradient(135deg, rgba(84, 112, 235, 0.05), var(--surface), rgba(159, 75, 255, 0.03)) !important;
+  border-color: transparent;
+  box-shadow: 0 12px 35px rgba(84, 112, 235, 0.08);
+}
+
+.white .ai-mode-card:hover h2 {
+  background: linear-gradient(135deg, #5470EB, var(--mint));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Brand-to-mint gradient orb with white icon */
+.ai-select-orb {
+  background: linear-gradient(135deg, var(--gb-purple), var(--mint)) !important;
+  box-shadow: 0 8px 20px rgba(159, 75, 255, 0.2) !important;
+}
+
+.ai-select-sparkles-icon {
+  color: #ffffff !important;
+}
+
+.white .ai-select-orb {
+  background: linear-gradient(135deg, #5470EB, var(--mint)) !important;
+  box-shadow: 0 8px 20px rgba(84, 112, 235, 0.2) !important;
+}
+
+.white .ai-select-sparkles-icon {
+  color: #ffffff !important;
+}
+
+.guide-mode-btn {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.guide-mode-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Micro-animations and highlights */
+.ai-premium-border {
+  position: relative;
+}
+
+.ai-premium-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--gb-purple), var(--gb-cyan));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box exclude, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+.group:hover .ai-premium-border::before {
+  opacity: 0.8;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(159, 75, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(159, 75, 255, 0.25);
+  }
+}
+
+.group:hover {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
