@@ -47,6 +47,7 @@ export default function ProjectWorkspaceScreen() {
     handleCreateMockMilestone,
     chatEndRef,
   } = useProjectWorkspace(contractId || '');
+  const workspaceContractId = contractId || activeProjectId;
 
   return (
     <AppLayout fullWidth hideAIWidget>
@@ -310,26 +311,14 @@ export default function ProjectWorkspaceScreen() {
                           <div>
                             {isClient ? (
                               <button
-                                onClick={async () => {
-                                  try {
-                                    milestone.status = 'paid';
-                                    milestone.completedAt = new Date().toISOString();
-                                    const completedMilestones = project.milestones.filter(m => m.status === 'paid' || m.status === 'approved').length;
-                                    project.progress = Math.round((completedMilestones / project.milestones.length) * 100);
-                                    project.paidAmount = (project.paidAmount || 0) + milestone.amount;
-                                    setActiveProjectId(activeProjectId);
-                                    alert('Milestone approved & paid successfully!');
-                                  } catch (e) {
-                                    console.error(e);
-                                  }
-                                }}
+                                onClick={() => navigate(`/contracts/${workspaceContractId}/milestones/${milestone.id}/approve`)}
                                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                Approve & Pay
+                                Review Milestone
                               </button>
                             ) : (
                               <button
-                                onClick={() => alert('Deliverable submitted for client review!')}
+                                onClick={() => navigate(`/contracts/${workspaceContractId}/deliverables/${milestone.id}`)}
                                 className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
                                 Submit Deliverable

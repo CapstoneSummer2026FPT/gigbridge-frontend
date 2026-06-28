@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet
+  ChevronDown, Wallet, ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -186,6 +186,7 @@ function getAdminNavSections(openReportCount: number | null): NavSection[] {
         { label: 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
         { label: 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },
         { label: 'User Feedback', icon: <MessageSquare size={18} />, path: '/admin/feedback' },
+        { label: 'Cheating Management', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
         {
           label: 'Reports',
           icon: <Flag size={18} />,

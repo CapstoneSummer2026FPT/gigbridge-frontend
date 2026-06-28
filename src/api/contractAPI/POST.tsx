@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { CreateContractDto, ContractDto, GenerateContractPdfDto } from '../../types/models/Contract';
+import type { CreateContractDto, ContractDto, GenerateContractPdfDto, Milestone, WithdrawMilestoneResponse } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 const milestonesUrl = 'Milestones';
@@ -52,6 +52,56 @@ export const contractPostAPI = {
       `${milestonesUrl}/${milestoneId}/submit-deliverables`,
       formData
     );
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/start
+   */
+  startMilestone: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<Milestone>> => {
+    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/start`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/submit
+   */
+  submitMilestone: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<Milestone>> => {
+    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/submit`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/approve
+   */
+  approveMilestone: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<Milestone>> => {
+    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/approve`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/request-revision
+   */
+  requestMilestoneRevision: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<Milestone>> => {
+    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/request-revision`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/withdraw
+   */
+  withdrawMilestone: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<WithdrawMilestoneResponse>> => {
+    return apiService.post<WithdrawMilestoneResponse>(`contracts/${contractId}/milestones/${milestoneId}/withdraw`);
   },
 
   /**

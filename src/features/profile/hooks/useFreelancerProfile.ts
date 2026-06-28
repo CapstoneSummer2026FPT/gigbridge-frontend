@@ -29,6 +29,12 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
   createdAt: review.createdAt,
 });
 
+const resolveEloPoints = (data: any): number => {
+  const raw = data?.profile?.eloPoints ?? data?.profile?.EloPoints ?? data?.user?.elo_points ?? data?.user?.eloPoints ?? data?.user?.EloPoints;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : 100;
+};
+
 export function useFreelancerProfile(targetId: string, currentUser: any) {
   const [profileData, setProfileData] = useState<any>({
     user: DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!,
@@ -47,7 +53,6 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
   const [loading, setLoading] = useState(true);
   const [isPremium] = useState(true);
   const [isIdentityVerified] = useState(true);
-  const [trustScore] = useState(92);
   const [cvFile] = useState<{ name: string; url: string } | null>({
     name: 'john_doe_resume.pdf',
     url: '#'
@@ -79,6 +84,7 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
               avatar: apiData.userAvatar,
               email: apiData.userEmail || '',
               phone_number: '',
+              elo_points: apiData.eloPoints ?? 100,
             },
             profile: {
               freelancerProfilesId: apiData.freelancerProfilesId,
@@ -88,6 +94,7 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
               location: apiData.location || 'San Francisco, CA',
               hourly_rate: 95,
               avatar: apiData.userAvatar,
+              eloPoints: apiData.eloPoints ?? 100,
             },
             skills: apiData.skills && apiData.skills.length > 0
               ? apiData.skills.map(s => s.skillName)
@@ -166,14 +173,17 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
   const paginatedReviews = reviewsList.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
 
   const circumference = 263.89;
-  const strokeDashoffset = circumference - (trustScore / 100) * circumference;
+  const eloPoints = resolveEloPoints(profileData);
+  const eloRingPercent = Math.min(100, Math.max(0, (eloPoints / 300) * 100));
+  const strokeDashoffset = circumference - (eloRingPercent / 100) * circumference;
 
   return {
     loading,
     profileData,
     isPremium,
     isIdentityVerified,
-    trustScore,
+    eloPoints,
+    eloRingPercent,
     cvFile,
     freelancerProfileId: (profileData.profile as any).freelancerProfilesId || targetId,
     isSaved,

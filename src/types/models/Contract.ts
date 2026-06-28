@@ -67,6 +67,8 @@ export interface ContractDto {
   clientEmail?: string;
   freelancerEmail?: string;
   conversationId?: string | null;
+  canReview?: boolean;
+  hasReviewedByCurrentUser?: boolean;
 }
 
 export interface CreateContractDto {
@@ -104,6 +106,19 @@ export interface Milestone {
   due_date: string;
   status: MilestoneStatus;
   paid_at: string | null;
+  releasedAmount?: number;
+  lastReleasedAt?: string | null;
+}
+
+export interface WithdrawMilestoneResponse {
+  contractId: string;
+  milestoneId: string;
+  escrowId: string;
+  releasedAmountVnd: number;
+  releasedTokens: number;
+  milestoneReleasedAmountVnd: number;
+  escrowReleasedAmountVnd: number;
+  escrowStatus: number;
 }
 
 export interface MilestoneAttachment {

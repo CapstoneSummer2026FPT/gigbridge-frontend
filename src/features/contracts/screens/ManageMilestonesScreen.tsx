@@ -9,8 +9,10 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
+import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import { MilestoneStatus, ContractStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
 import { toast } from 'sonner';
 import '../styles/manage-milestones-screen.css';
@@ -26,6 +28,7 @@ export default function ManageMilestonesScreen() {
   const { contractId } = useParams<{ contractId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { role } = useApp();
 
   const stateContract = location.state?.contractForm;
   const mode = new URLSearchParams(location.search).get('mode');
@@ -54,6 +57,15 @@ export default function ManageMilestonesScreen() {
       contract.status === ContractStatus.PendingContractDetails
     : false;
   const shouldEnforceBudgetTotal = mode === 'contract-edit';
+  const isClient = role === UserRole.Client;
+  const isFreelancer = role === UserRole.Freelancer;
+  const baselineReleasePercentage = 0.8;
+  const getBaselineReleaseCap = (milestone: Milestone) => Number((milestone.amount * baselineReleasePercentage).toFixed(2));
+  const isMilestoneReleasedToCap = (milestone: Milestone) => (milestone.releasedAmount ?? 0) >= getBaselineReleaseCap(milestone);
+  const isMilestoneCompleteForReview = (milestone: Milestone) =>
+    milestone.status === MilestoneStatus.PaymentConfirmed || isMilestoneReleasedToCap(milestone);
+  const getMilestoneDisplayLabel = (milestone: Milestone) =>
+    isMilestoneReleasedToCap(milestone) ? 'Paid' : getMilestoneStatusLabel(milestone.status);
 
   // Load contract and milestones
   const loadData = async () => {
@@ -376,24 +388,45 @@ export default function ManageMilestonesScreen() {
     }
   };
 
-  const handleStatusChange = async (milestoneId: string, newStatus: number) => {
+  const handleMilestoneWorkflowAction = async (
+    milestoneId: string,
+    action: 'start' | 'approve' | 'request-revision' | 'withdraw'
+  ) => {
+    if (!contractId) return;
+
     try {
       setError(null);
-      const response = await contractPutAPI.updateMilestoneStatus(milestoneId, newStatus);
+      setIsSubmitting(true);
 
-      if (response.success && response.data) {
-        setMilestones(prev =>
-          prev.map(m =>
-            m.id === milestoneId ? response.data! : m
-          )
-        );
-        toast.success('Milestone status updated successfully.');
-      } else {
-        throw new Error(response.message || 'Failed to update milestone status.');
+      const response = action === 'start'
+        ? await contractPostAPI.startMilestone(contractId, milestoneId)
+        : action === 'approve'
+          ? await contractPostAPI.approveMilestone(contractId, milestoneId)
+          : action === 'request-revision'
+            ? await contractPostAPI.requestMilestoneRevision(contractId, milestoneId)
+            : await contractPostAPI.withdrawMilestone(contractId, milestoneId);
+
+      if (!response.success) {
+        throw new Error(response.message || 'Milestone action failed.');
       }
+
+      const message = action === 'start'
+        ? 'Milestone started.'
+        : action === 'approve'
+          ? 'Milestone approved.'
+          : action === 'request-revision'
+            ? 'Revision requested.'
+            : 'Milestone payout released.';
+
+      toast.success(message);
+      setSuccessMessage(message);
+      setTimeout(() => setSuccessMessage(null), 3000);
+      await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update status');
-      toast.error(err instanceof Error ? err.message : 'Failed to update status');
+      setError(err instanceof Error ? err.message : 'Failed to update milestone workflow');
+      toast.error(err instanceof Error ? err.message : 'Failed to update milestone workflow');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -411,7 +444,7 @@ export default function ManageMilestonesScreen() {
   }
   const remainingBudget = calculateRemainingBudget();
   const totalMilestoneAmount = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-  const completedMilestones = milestones.filter(m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.PaymentConfirmed).length;
+  const completedMilestones = milestones.filter(isMilestoneCompleteForReview).length;
 
   const getNodeGlowClass = (status: MilestoneStatus) => {
     switch (status) {
@@ -651,7 +684,7 @@ export default function ManageMilestonesScreen() {
                     <div className="relative border-l-2 border-border/30 dark:border-border-strong/30 ml-3 pl-6 space-y-5 py-2">
                       {milestones.map((milestone, index) => {
                         const isExpanded = expandedMilestoneId === milestone.id;
-                        const isCompleted = milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.PaymentConfirmed;
+                        const isCompleted = isMilestoneCompleteForReview(milestone);
 
                         return (
                           <div key={milestone.id} className="relative">
@@ -685,12 +718,12 @@ export default function ManageMilestonesScreen() {
                                         {milestone.status === MilestoneStatus.Pending ? (
                                           <>
                                             <Clock size={10} className="text-amber-500 animate-pulse" />
-                                            {getMilestoneStatusLabel(milestone.status)}
+                                            {getMilestoneDisplayLabel(milestone)}
                                           </>
                                         ) : (
                                           <>
                                             <CheckCircle2 size={10} className="text-emerald-500" />
-                                            {getMilestoneStatusLabel(milestone.status)}
+                                            {getMilestoneDisplayLabel(milestone)}
                                           </>
                                         )}
                                       </span>
@@ -739,7 +772,7 @@ export default function ManageMilestonesScreen() {
                                     <div className="flex flex-col">
                                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Status</span>
                                       <span className="font-semibold text-foreground mt-0.5">
-                                        {getMilestoneStatusLabel(milestone.status)}
+                                        {getMilestoneDisplayLabel(milestone)}
                                       </span>
                                     </div>
                                     {milestone.paid_at && (
@@ -751,54 +784,67 @@ export default function ManageMilestonesScreen() {
                                   </div>
  
                                   {/* Status Workflow Controls */}
-                                  {contract && contract.status === ContractStatus.Active && milestone.status !== MilestoneStatus.PaymentConfirmed && (
+                                  {contract && contract.status === ContractStatus.Active && !isMilestoneReleasedToCap(milestone) && (
                                     <div className="p-3 bg-secondary/10 border border-border/20 rounded-lg text-left flex flex-col gap-2">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Update Status:</span>
+                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Workflow:</span>
                                       <div className="flex flex-wrap gap-1.5">
-                                        {milestone.status === MilestoneStatus.Pending && (
+                                        {isClient && milestone.status === MilestoneStatus.Pending && (
                                           <button
                                             type="button"
-                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.InProgress)}
-                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                            disabled={isSubmitting}
+                                            onClick={() => handleMilestoneWorkflowAction(milestone.id, 'start')}
+                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                           >
                                             <Clock size={10} />
                                             Start Work
                                           </button>
                                         )}
-                                        {milestone.status === MilestoneStatus.InProgress && (
+                                        {isFreelancer && milestone.status === MilestoneStatus.InProgress && (
                                           <button
                                             type="button"
-                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.Submitted)}
+                                            onClick={() => navigate(`/contracts/${contractId}/deliverables/${milestone.id}`)}
                                             className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                                           >
                                             <CheckCircle2 size={10} />
-                                            Submit Review
+                                            Submit Deliverables
                                           </button>
                                         )}
-                                        {milestone.status === MilestoneStatus.Submitted && (
-                                          <button
-                                            type="button"
-                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.Approved)}
-                                            className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                                          >
-                                            <CheckCircle2 size={10} />
-                                            Approve
-                                          </button>
+                                        {isClient && milestone.status === MilestoneStatus.Submitted && (
+                                          <>
+                                            <button
+                                              type="button"
+                                              disabled={isSubmitting}
+                                              onClick={() => handleMilestoneWorkflowAction(milestone.id, 'approve')}
+                                              className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                            >
+                                              <CheckCircle2 size={10} />
+                                              Approve
+                                            </button>
+                                            <button
+                                              type="button"
+                                              disabled={isSubmitting}
+                                              onClick={() => handleMilestoneWorkflowAction(milestone.id, 'request-revision')}
+                                              className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                            >
+                                              <X size={10} />
+                                              Request Revision
+                                            </button>
+                                          </>
                                         )}
-                                        {milestone.status === MilestoneStatus.Approved && (
+                                        {isFreelancer && milestone.status === MilestoneStatus.Approved && (
                                           <button
                                             type="button"
-                                            onClick={() => handleStatusChange(milestone.id, MilestoneStatus.PaymentConfirmed)}
-                                            className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                            disabled={isSubmitting}
+                                            onClick={() => handleMilestoneWorkflowAction(milestone.id, 'withdraw')}
+                                            className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                           >
-                                            <CheckCircle2 size={10} />
-                                            Mark Paid
+                                            <DollarSign size={10} />
+                                            Withdraw
                                           </button>
                                         )}
                                       </div>
                                     </div>
                                   )}
-
                                   {/* Actions panel */}
                                   <div className="flex gap-2 border-t border-border/10 pt-3 mt-1">
                                     <button
@@ -882,7 +928,7 @@ export default function ManageMilestonesScreen() {
                     <div>
                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Milestones Completion</span>
                       <span className="text-lg font-black text-foreground mt-0.5 block">
-                        {completedMilestones} <span className="text-[10px] font-semibold text-muted-foreground">/ {milestones.length} approved</span>
+                        {completedMilestones} <span className="text-[10px] font-semibold text-muted-foreground">/ {milestones.length} paid</span>
                       </span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">

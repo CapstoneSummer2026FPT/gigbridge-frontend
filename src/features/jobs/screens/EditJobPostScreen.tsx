@@ -3,7 +3,9 @@ import { useBlocker, useNavigate, useParams } from 'react-router';
 import { ArrowLeft, AlertCircle, Check, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import { jobAPI } from '../../../api/jobAPI';
+import type { ApiResponse } from '../../../types/common';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
 import {
   JobPostStatus,
@@ -11,6 +13,14 @@ import {
   type SaveDraftJobPostRequest,
   type UpdateJobPostRequest,
 } from '../../../types/models/Job';
+import {
+  DEFAULT_JOB_DURATION_UNIT,
+  formatJobDuration,
+  isValidJobDurationValue,
+  JOB_DURATION_UNITS,
+  parseJobDuration,
+  type JobDurationUnit,
+} from '../utils/jobDuration';
 import '../styles/edit-job-post-screen.css';
 
 interface FormErrors {
@@ -19,17 +29,102 @@ interface FormErrors {
   taxonomy?: string;
   budget?: string;
   duration?: string;
+  endDate?: string;
+  skills?: string;
+  server?: string;
+}
+
+interface EditJobPostFormData {
+  title: string;
+  description: string;
+  majorId: string;
+  majorCategoryId: string;
+  categoryId: string;
+  budgetMin: string;
+  budgetMax: string;
+  currency: string;
+  estimatedDurationValue: string;
+  estimatedDurationUnit: JobDurationUnit;
+  location: string;
+  visibility: string;
+  endDate: string;
+  skillIds: string[];
+  customSkillNames: string[];
 }
 
 const normalizeSkillName = (value: string) => value.trim().toLowerCase();
 const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
+
+const normalizeApiFieldErrors = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((message): message is string => typeof message === 'string' && message.trim().length > 0);
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return [value];
+  }
+
+  return [];
+};
+
+const uniqueMessages = (messages: string[]): string[] => (
+  Array.from(new Set(messages.map(message => message.trim()).filter(Boolean)))
+);
+
+const joinMessages = (messages: string[]): string => uniqueMessages(messages).join('\n');
+
+const appendFormError = (target: FormErrors, field: keyof FormErrors, messages: string[]) => {
+  const message = joinMessages(messages);
+  if (!message) return;
+
+  target[field] = target[field] ? `${target[field]}\n${message}` : message;
+};
+
+const mapApiErrorsToEditFormErrors = (response: ApiResponse<unknown>, fallback: string): FormErrors => {
+  const mappedErrors: FormErrors = {};
+  const serverMessages: string[] = [];
+
+  Object.entries(response.errors ?? {}).forEach(([rawField, rawMessages]) => {
+    const messages = normalizeApiFieldErrors(rawMessages);
+    if (messages.length === 0) return;
+
+    const field = rawField.toLowerCase();
+
+    if (field.includes('title')) {
+      appendFormError(mappedErrors, 'title', messages);
+    } else if (field.includes('description') || field.includes('jobpostcontent')) {
+      appendFormError(mappedErrors, 'description', messages);
+    } else if (field.includes('major') || field.includes('category')) {
+      appendFormError(mappedErrors, 'taxonomy', messages);
+    } else if (field.includes('budget')) {
+      appendFormError(mappedErrors, 'budget', messages);
+    } else if (field.includes('estimatedduration') || field.includes('duration')) {
+      appendFormError(mappedErrors, 'duration', messages);
+    } else if (field.includes('enddate')) {
+      appendFormError(mappedErrors, 'endDate', messages);
+    } else if (field.includes('skill')) {
+      appendFormError(mappedErrors, 'skills', messages);
+    } else {
+      serverMessages.push(...messages);
+    }
+  });
+
+  const fallbackMessage = getErrorMessage({
+    message: response.message || fallback,
+    errors: response.errors,
+  });
+
+  mappedErrors.server = fallbackMessage || joinMessages(serverMessages) || fallback;
+
+  return mappedErrors;
+};
 
 export default function EditJobPostScreen() {
   const navigate = useNavigate();
   const { id } = useParams();
   const navigationAllowedRef = useRef(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<EditJobPostFormData>({
     title: '',
     description: '',
     majorId: '',
@@ -38,12 +133,13 @@ export default function EditJobPostScreen() {
     budgetMin: '',
     budgetMax: '',
     currency: 'USD',
-    estimatedDuration: '',
+    estimatedDurationValue: '',
+    estimatedDurationUnit: DEFAULT_JOB_DURATION_UNIT,
     location: '',
     visibility: String(JobPostVisibility.Public),
     endDate: '',
-    skillIds: [] as string[],
-    customSkillNames: [] as string[],
+    skillIds: [],
+    customSkillNames: [],
   });
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
@@ -126,6 +222,7 @@ export default function EditJobPostScreen() {
         }
 
         const job = response.data;
+        const duration = parseJobDuration(job.estimatedDuration);
         setIsDraftJob(Number(job.status) === JobPostStatus.Draft);
         setFormData({
           title: job.title || '',
@@ -136,7 +233,8 @@ export default function EditJobPostScreen() {
           budgetMin: job.budgetMin !== undefined && job.budgetMin !== null ? String(job.budgetMin) : '',
           budgetMax: job.budgetMax !== undefined && job.budgetMax !== null ? String(job.budgetMax) : '',
           currency: job.currency || 'USD',
-          estimatedDuration: job.estimatedDuration || '',
+          estimatedDurationValue: duration.value,
+          estimatedDurationUnit: duration.unit,
           location: job.location || '',
           visibility: String(job.visibility ?? JobPostVisibility.Public),
           endDate: job.endDate?.split('T')?.[0] || '',
@@ -219,16 +317,43 @@ export default function EditJobPostScreen() {
     [availableSkills, formData.skillIds]
   );
 
-  const handleInputChange = (field: string, value: any) => {
+  const clearFormErrors = (...fields: (keyof FormErrors)[]) => {
+    setErrors(prev => {
+      const next = { ...prev, server: undefined };
+      fields.forEach(field => {
+        next[field] = undefined;
+      });
+      return next;
+    });
+  };
+
+  const handleInputChange = <Field extends keyof EditJobPostFormData>(
+    field: Field,
+    value: EditJobPostFormData[Field]
+  ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+
+    if (field === 'title') {
+      clearFormErrors('title');
+    } else if (field === 'description') {
+      clearFormErrors('description');
+    } else if (field === 'budgetMin' || field === 'budgetMax') {
+      clearFormErrors('budget');
+    } else if (field === 'endDate') {
+      clearFormErrors('endDate');
+    } else {
+      clearFormErrors();
+    }
+
+    if (field === 'estimatedDurationValue' || field === 'estimatedDurationUnit') {
+      clearFormErrors('duration');
     }
   };
 
   const handleMajorChange = (majorId: string) => {
     setSkillInput('');
     setAvailableSkills([]);
+    clearFormErrors('taxonomy', 'skills');
     setFormData(prev => ({
       ...prev,
       majorId,
@@ -242,6 +367,7 @@ export default function EditJobPostScreen() {
   const handleCategoryChange = (majorCategoryId: string) => {
     const selectedCategory = categories.find(category => category.majorCategoryId === majorCategoryId);
     setSkillInput('');
+    clearFormErrors('taxonomy', 'skills');
     setFormData(prev => ({
       ...prev,
       majorCategoryId,
@@ -256,6 +382,7 @@ export default function EditJobPostScreen() {
       toast.error('You can select up to 10 skills in total.');
       return;
     }
+    clearFormErrors('skills');
     setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
     setFormData(prev => {
       if (prev.skillIds.includes(skill.skillId)) return prev;
@@ -287,6 +414,7 @@ export default function EditJobPostScreen() {
       return;
     }
 
+    clearFormErrors('skills');
     setFormData(prev => {
       const exists = prev.customSkillNames.some(
         skillName => normalizeSkillName(skillName) === normalizeSkillName(trimmedSkillName)
@@ -325,6 +453,22 @@ export default function EditJobPostScreen() {
       newErrors.budget = 'Budget max must be greater than or equal to budget min.';
     }
 
+    if (!isValidJobDurationValue(formData.estimatedDurationValue)) {
+      newErrors.duration = 'Project duration must be a positive whole number.';
+    }
+
+    if (formData.endDate) {
+      const endDate = new Date(`${formData.endDate}T23:59:59`);
+      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
+        newErrors.endDate = 'End date must be in the future.';
+      }
+    }
+
+    const firstError = Object.values(newErrors).find(Boolean);
+    if (firstError) {
+      newErrors.server = firstError;
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -336,7 +480,7 @@ export default function EditJobPostScreen() {
     budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
     currency: formData.currency.trim() || 'USD',
-    estimatedDuration: formData.estimatedDuration.trim() || null,
+    estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
     location: formData.location.trim() || null,
     visibility: Number(formData.visibility),
     endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
@@ -351,7 +495,7 @@ export default function EditJobPostScreen() {
     budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
     currency: formData.currency.trim() || 'USD',
-    estimatedDuration: formData.estimatedDuration.trim() || null,
+    estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
     location: formData.location.trim() || null,
     visibility: Number(formData.visibility),
     endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
@@ -383,7 +527,9 @@ export default function EditJobPostScreen() {
     setLeaveAction(null);
 
     if (!response.success) {
-      toast.error(response.message || 'Draft JobPost could not be saved.');
+      const formErrors = mapApiErrorsToEditFormErrors(response, 'Draft JobPost could not be saved.');
+      setErrors(formErrors);
+      toast.error(formErrors.server || 'Draft JobPost could not be saved.');
       return;
     }
 
@@ -421,7 +567,9 @@ export default function EditJobPostScreen() {
     setIsSubmitting(false);
 
     if (!response.success) {
-      toast.error(response.message || 'Job post could not be updated.');
+      const formErrors = mapApiErrorsToEditFormErrors(response, 'Job post could not be updated.');
+      setErrors(formErrors);
+      toast.error(formErrors.server || 'Job post could not be updated.');
       return;
     }
 
@@ -468,6 +616,13 @@ export default function EditJobPostScreen() {
         </div>
 
         <form onSubmit={handleSubmit} className="edit-job-form glass-card">
+          {errors.server && (
+            <div className="form-error edit-job-server-error" role="alert">
+              <AlertCircle size={16} />
+              <span>{errors.server}</span>
+            </div>
+          )}
+
           <div className="form-group">
             <label className="form-label">Job Title *</label>
             <input
@@ -477,7 +632,7 @@ export default function EditJobPostScreen() {
               placeholder="e.g., Build E-Commerce Platform"
               className={`form-input ${errors.title ? 'error' : ''}`}
             />
-            {errors.title && <div className="form-error"><AlertCircle size={14} />{errors.title}</div>}
+            {errors.title && <div className="form-error"><AlertCircle size={14} /><span>{errors.title}</span></div>}
             <div className="form-hint">{formData.title.length}/200 characters</div>
           </div>
 
@@ -490,7 +645,7 @@ export default function EditJobPostScreen() {
               rows={8}
               className={`form-textarea ${errors.description ? 'error' : ''}`}
             />
-            {errors.description && <div className="form-error"><AlertCircle size={14} />{errors.description}</div>}
+            {errors.description && <div className="form-error"><AlertCircle size={14} /><span>{errors.description}</span></div>}
           </div>
 
           <div className="form-row">
@@ -521,7 +676,7 @@ export default function EditJobPostScreen() {
               </select>
             </div>
           </div>
-          {errors.taxonomy && <div className="form-error"><AlertCircle size={14} />{errors.taxonomy}</div>}
+          {errors.taxonomy && <div className="form-error"><AlertCircle size={14} /><span>{errors.taxonomy}</span></div>}
 
           <div className="form-row">
             <div className="form-group">
@@ -545,17 +700,32 @@ export default function EditJobPostScreen() {
               />
             </div>
           </div>
-          {errors.budget && <div className="form-error"><AlertCircle size={14} />{errors.budget}</div>}
+          {errors.budget && <div className="form-error"><AlertCircle size={14} /><span>{errors.budget}</span></div>}
 
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Project Duration</label>
-              <input
-                value={formData.estimatedDuration}
-                onChange={(e) => handleInputChange('estimatedDuration', e.target.value)}
-                placeholder="e.g. 2-4 weeks"
-                className="form-input"
-              />
+              <div className="form-row" style={{ gap: 12 }}>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.estimatedDurationValue}
+                  onChange={(e) => handleInputChange('estimatedDurationValue', e.target.value)}
+                  placeholder="e.g. 3"
+                  className={`form-input ${errors.duration ? 'error' : ''}`}
+                />
+                <select
+                  value={formData.estimatedDurationUnit}
+                  onChange={(e) => handleInputChange('estimatedDurationUnit', e.target.value as JobDurationUnit)}
+                  className="form-select"
+                >
+                  {JOB_DURATION_UNITS.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+              {errors.duration && <div className="form-error"><AlertCircle size={14} /><span>{errors.duration}</span></div>}
             </div>
             <div className="form-group">
               <label className="form-label">End Date</label>
@@ -563,8 +733,9 @@ export default function EditJobPostScreen() {
                 type="date"
                 value={formData.endDate}
                 onChange={(e) => handleInputChange('endDate', e.target.value)}
-                className="form-input"
+                className={`form-input ${errors.endDate ? 'error' : ''}`}
               />
+              {errors.endDate && <div className="form-error"><AlertCircle size={14} /><span>{errors.endDate}</span></div>}
             </div>
           </div>
 
@@ -576,10 +747,13 @@ export default function EditJobPostScreen() {
                   {skill.name}
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({
-                      ...prev,
-                      skillIds: prev.skillIds.filter(skillId => skillId !== skill.skillId),
-                    }))}
+                    onClick={() => {
+                      clearFormErrors('skills');
+                      setFormData(prev => ({
+                        ...prev,
+                        skillIds: prev.skillIds.filter(skillId => skillId !== skill.skillId),
+                      }));
+                    }}
                     className="skill-remove"
                   >
                     <X size={12} />
@@ -591,10 +765,13 @@ export default function EditJobPostScreen() {
                   {skillName} (custom)
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({
-                      ...prev,
-                      customSkillNames: prev.customSkillNames.filter(item => normalizeSkillName(item) !== normalizeSkillName(skillName)),
-                    }))}
+                    onClick={() => {
+                      clearFormErrors('skills');
+                      setFormData(prev => ({
+                        ...prev,
+                        customSkillNames: prev.customSkillNames.filter(item => normalizeSkillName(item) !== normalizeSkillName(skillName)),
+                      }));
+                    }}
                     className="skill-remove"
                   >
                     <X size={12} />
@@ -631,6 +808,7 @@ export default function EditJobPostScreen() {
                 ))}
               </div>
             )}
+            {errors.skills && <div className="form-error"><AlertCircle size={14} /><span>{errors.skills}</span></div>}
           </div>
 
           <div className="edit-job-info-box">

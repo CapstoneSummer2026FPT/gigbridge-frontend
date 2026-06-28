@@ -5,6 +5,7 @@ import type {
   UpdateBulkProposalAnswersRequest,
   UpdateProposalAnswerRequest,
   UpdateProposalStatusRequest,
+  UpdateProposalStatusResponse,
 } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
@@ -16,8 +17,8 @@ export const proposalPatchAPI = {
   updateProposalStatus: async (
     proposalId: string,
     data: UpdateProposalStatusRequest
-  ): Promise<ApiResponse<boolean>> => {
-    return apiService.patch<boolean>(`${proposalsUrl}/${proposalId}/status`, data);
+  ): Promise<ApiResponse<UpdateProposalStatusResponse>> => {
+    return apiService.patch<UpdateProposalStatusResponse>(`${proposalsUrl}/${proposalId}/status`, data);
   },
 
   /**

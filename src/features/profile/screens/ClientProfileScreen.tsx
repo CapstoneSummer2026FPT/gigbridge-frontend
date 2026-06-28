@@ -22,7 +22,8 @@ export default function ClientProfileScreen() {
   const {
     loading,
     profileData,
-    trustScore,
+    eloPoints,
+    eloRingPercent,
     isSaved,
     showMoreMenu,
     currentPage,
@@ -261,9 +262,9 @@ export default function ClientProfileScreen() {
               </div>
             </div>
 
-            {/* ELO / Trust Score */}
+            {/* ELO / ELO Points */}
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col items-center justify-center text-center h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface w-full text-left mb-6">Trust Score</h2>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface w-full text-left mb-6">ELO Points</h2>
               <div className="relative w-36 h-36 flex items-center justify-center mb-4">
                 <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                   <defs>
@@ -272,17 +273,17 @@ export default function ClientProfileScreen() {
                       <stop offset="100%" stopColor="var(--gb-purple)" />
                     </linearGradient>
                   </defs>
-                  <circle className="score-circle drop-shadow-lg" cx="50" cy="50" fill="transparent" r="42" stroke="url(#trustGradient)" strokeLinecap="round" strokeWidth="8" style={{ '--score-percent': trustScore } as React.CSSProperties}></circle>
+                  <circle className="score-circle drop-shadow-lg" cx="50" cy="50" fill="transparent" r="42" stroke="url(#trustGradient)" strokeLinecap="round" strokeWidth="8" style={{ '--score-percent': eloRingPercent } as React.CSSProperties}></circle>
                 </svg>
                 <div className="flex flex-col items-center">
                   <span className="font-display-lg text-[48px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--gb-cyan)] to-[var(--gb-purple)]">
-                    {trustScore}
+                    {eloPoints}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-1 mt-2 text-[var(--gb-cyan)] font-bold">
                 <Shield size={16} className="text-[var(--gb-cyan)] fill-current" />
-                <span className="font-label-md text-label-md uppercase tracking-wider">Trust Score</span>
+                <span className="font-label-md text-label-md uppercase tracking-wider">ELO Points</span>
               </div>
             </div>
 
@@ -393,7 +394,7 @@ export default function ClientProfileScreen() {
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-12 p-8">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Freelancer Reviews</h2>
-                {currentUser?.role === 1 && (
+                {false && currentUser?.role === 1 && (
                   <button 
                     onClick={() => setShowReviewModal(true)}
                     className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer"

@@ -24,7 +24,7 @@ export default function FreelancerProfileScreen() {
     profileData,
     isPremium,
     isIdentityVerified,
-    trustScore,
+    eloPoints,
     cvFile,
     freelancerProfileId,
     isSaved,
@@ -238,9 +238,9 @@ export default function FreelancerProfileScreen() {
               </div>
             </div>
 
-            {/* ELO Score */}
+            {/* ELO Points */}
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col items-center justify-center text-center h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface w-full text-left mb-6">ELO Score</h2>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface w-full text-left mb-6">ELO Points</h2>
               <div className="relative w-36 h-36 flex items-center justify-center mb-4">
                 <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                   <defs>
@@ -253,13 +253,13 @@ export default function FreelancerProfileScreen() {
                 </svg>
                 <div className="flex flex-col items-center">
                   <span className="font-display-lg text-[48px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--gb-cyan)] to-[var(--gb-purple)]">
-                    {trustScore}
+                    {eloPoints}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-1 mt-2 text-[var(--gb-cyan)] font-bold">
                 <CheckCircle size={16} className="text-[var(--gb-cyan)] fill-current" />
-                <span className="font-label-md text-label-md uppercase tracking-wider">ELO Rating</span>
+                <span className="font-label-md text-label-md uppercase tracking-wider">ELO Points</span>
               </div>
             </div>
 
