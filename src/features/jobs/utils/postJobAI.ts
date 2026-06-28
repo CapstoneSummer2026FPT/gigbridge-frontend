@@ -11,7 +11,7 @@ export const buildDefaultAIDeadline = (now: Date = new Date()): string => {
 };
 
 export const buildAIJobGenerateRequest = (prompt: string): GenerateJobDescriptionRequest => ({
-  vettingQuestions: [prompt.trim()],
+  clientPrompt: prompt.trim(),
 });
 
 export const mapGeneratedJobDescriptionToJobData = (
@@ -37,6 +37,9 @@ export const mapGeneratedJobDescriptionToJobData = (
     deadline: buildDefaultAIDeadline(now),
     isAigenerated: true,
     skillNameById,
-    interviewQuestions: [],
+    interviewQuestions: generatedData.questionRecruitment?.map(qText => ({
+      questionText: qText,
+      isRequired: true,
+    })) || [],
   };
 };
