@@ -12,6 +12,7 @@ interface AppLayoutProps {
   fullWidth?: boolean;
   excludeMeshGradient?: boolean;
   hideAIWidget?: boolean;
+  mainClassName?: string;
 }
 
 export function AppLayout({
@@ -20,6 +21,7 @@ export function AppLayout({
   fullWidth = false,
   excludeMeshGradient = false,
   hideAIWidget = false,
+  mainClassName = '',
 }: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
@@ -63,12 +65,12 @@ export function AppLayout({
         )}
 
         <main
-          className={`app-layout-main ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''}`}
+          className={`app-layout-main ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
         >
           {excludeMeshGradient ? (
             children
           ) : (
-            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-6">
+            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6">
               {children}
             </MeshGradientBackground>
           )}
@@ -95,7 +97,7 @@ export function GuestLayout({
         {excludeMeshGradient ? (
           children
         ) : (
-          <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-6 m-4">
+          <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6 m-2 sm:m-4">
             {children}
           </MeshGradientBackground>
         )}

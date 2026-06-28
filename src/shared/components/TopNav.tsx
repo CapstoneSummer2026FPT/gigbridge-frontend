@@ -5,11 +5,9 @@ import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
-import { useApp, AppTheme } from '../../app/providers/AppProvider';
+import { useApp } from '../../app/providers/AppProvider';
 import { walletGetAPI } from '../../api/walletAPI/GET';
-import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
-import { CompactLanguageSwitcher, CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
-import { useTranslation } from '../../hooks/useTranslation';
+import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useUserNotifications } from '../../features/notifications/hooks/useUserNotifications';
 import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
@@ -29,7 +27,6 @@ const navItems = [
 export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useTranslation();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
@@ -156,12 +153,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
     return (
       <div
         ref={navContainerRef}
-        className="fixed inset-x-0 top-4 z-50 h-16 border-none transition-all duration-700 sm:inset-x-6 landing-nav-container"
+        className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-50 h-16 border-none transition-all duration-700 landing-nav-container"
       >
         <header className="absolute top-1/2 w-full -translate-y-1/2">
           <nav className="flex size-full items-center justify-between p-4">
             {/* Logo and CTA Button */}
-            <div className="flex items-center gap-7">
+            <div className="flex items-center gap-3 sm:gap-7">
               <div
                 onClick={() => navigate('/')}
                 className="flex items-center gap-2 cursor-pointer select-none"
@@ -171,7 +168,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   alt="GigBridge Logo"
                   className="w-8 h-8 rounded-lg object-cover"
                 />
-                <span className="text-xl font-bold tracking-tight font-zentry logo-text">
+                <span className="text-xl font-bold tracking-tight font-zentry logo-text hidden sm:block">
                   GIGBRIDGE
                 </span>
               </div>
@@ -181,7 +178,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 title={isAuthenticated ? 'Dashboard' : 'Login'}
                 rightIcon={<TiLocationArrow />}
                 onClick={handleCtaClick}
-                containerClass="bg-blue-50 md:flex hidden items-center justify-center gap-1"
+                containerClass="bg-blue-50 flex items-center justify-center gap-1 !px-4 !py-2 sm:!px-7 sm:!py-3"
               />
             </div>
 
@@ -215,12 +212,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               <CombinedThemeLanguageSwitcher
                 theme={theme}
                 setTheme={setTheme}
-                className="ml-10 hidden sm:flex"
+                className="ml-3 sm:ml-10 flex"
               />
 
               <button
                 onClick={toggleAudioIndicator}
-                className="ml-10 flex items-center space-x-0.5"
+                className="ml-3 sm:ml-10 flex items-center space-x-0.5"
               >
                 <audio
                   ref={audioElementRef}
@@ -252,7 +249,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   // STANDARD APPLICATION TOP NAV
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="fixed inset-x-0 top-4 z-50 h-16 border-none sm:inset-x-6 landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
+    <div className="fixed inset-x-3 sm:inset-x-6 top-3 sm:top-4 z-50 h-16 border-none landing-nav-container floating-nav flex items-center px-4 md:px-6 gap-4 transition-all duration-300">
       {/* Hamburger Menu Button - Show on both mobile and desktop when logged in */}
       {showMenuButton && (
         <button
@@ -465,18 +462,18 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Combined Theme and Language Switcher for Guest Users */}
             <CombinedThemeLanguageSwitcher
               theme={theme}
               setTheme={setTheme}
-              className="hidden sm:flex"
+              className="flex"
             />
-            <button className="btn-ghost-cyan px-4 py-2 text-sm"
+            <button className="btn-ghost-cyan px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
               onClick={() => navigate('/auth/login')}>
               Log In
             </button>
-            <button className="btn-cyan px-4 py-2 text-sm"
+            <button className="btn-cyan px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
               onClick={() => navigate('/auth/signup')}>
               Sign Up
             </button>
