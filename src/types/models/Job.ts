@@ -257,7 +257,7 @@ export interface SaveDraftJobPostRequest {
 }
 
 export interface GenerateJobDescriptionRequest {
-  vettingQuestions: string[];
+  clientPrompt: string;
 }
 
 export interface GeneratedJobSkillDto {
@@ -275,6 +275,7 @@ export interface GenerateJobDescriptionResponse {
   skills: GeneratedJobSkillDto[];
   customSkills: string[];
   description: string;
+  questionRecruitment?: string[] | null;
 }
 
 export interface JobPostQuestionDto {

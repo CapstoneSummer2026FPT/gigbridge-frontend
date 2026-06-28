@@ -3,9 +3,7 @@ import { useBlocker, useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
-// ⚠️  MOCK: Import mock function for testing AI generate while BE is unavailable.
-//    To restore real API, remove this import and revert the call in handleGenerateInstantJob.
-import { mockGenerateAIJob } from '../mock/mockGenerateAIJob';
+
 import {
   JobPostVisibility,
   type CreateDraftJobPostResponse,
@@ -607,7 +605,7 @@ export function usePostJob() {
 
     setIsGeneratingInstant(true);
     try {
-      const response = await mockGenerateAIJob(promptText);
+      const response = await jobAPI.generateAIDescription({ clientPrompt: promptText });
       if (!response.success || !response.data) {
         toast.error(response.message || 'Job details could not be generated.');
         return;
@@ -663,6 +661,16 @@ export function usePostJob() {
         deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         isAigenerated: true,
       }));
+
+      // 4. Update the questions state with generated recruitment questions
+      if (generatedData.questionRecruitment && generatedData.questionRecruitment.length > 0) {
+        setQuestions(
+          generatedData.questionRecruitment.map(qText => ({
+            questionText: qText,
+            isRequired: true,
+          }))
+        );
+      }
 
       setIsJobDetailsGenerated(true);
       toast.success('Job details generated successfully based on your prompt.');
