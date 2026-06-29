@@ -610,13 +610,15 @@ export default function EditJobPostScreen() {
       <div className="edit-job-wrapper">
         <div className="edit-job-header">
           <button onClick={() => navigate(-1)} className="edit-job-back-btn">
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
             Back to Jobs
           </button>
-          <h1 className="edit-job-title">Edit Job Post</h1>
+          <h1 className="edit-job-title">
+            Edit <span className="text-blue-600 dark:text-cyan-400 italic font-light">Job</span> Post
+          </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="edit-job-form glass-card">
+        <form onSubmit={handleSubmit} className="edit-job-form">
           {errors.server && (
             <div className="form-error edit-job-server-error" role="alert">
               <AlertCircle size={16} />
@@ -624,195 +626,221 @@ export default function EditJobPostScreen() {
             </div>
           )}
 
-          <div className="form-group">
-            <label className="form-label">Job Title *</label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              placeholder="e.g., Build E-Commerce Platform"
-              className={`form-input ${errors.title ? 'error' : ''}`}
-            />
-            {errors.title && <div className="form-error"><AlertCircle size={14} /><span>{errors.title}</span></div>}
-            <div className="form-hint">{formData.title.length}/200 characters</div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Job Description *</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Describe the job in detail..."
-              rows={8}
-              className={`form-textarea ${errors.description ? 'error' : ''}`}
-            />
-            {errors.description && <div className="form-error"><AlertCircle size={14} /><span>{errors.description}</span></div>}
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Major *</label>
-              <select
-                value={formData.majorId}
-                onChange={(e) => handleMajorChange(e.target.value)}
-                className={`form-select ${errors.taxonomy ? 'error' : ''}`}
-              >
-                <option value="">Select major</option>
-                {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Category *</label>
-              <select
-                value={formData.majorCategoryId}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-                disabled={!formData.majorId || isTaxonomyLoading}
-                className={`form-select ${errors.taxonomy ? 'error' : ''}`}
-              >
-                <option value="">{!formData.majorId ? 'Select a major first' : 'Select category'}</option>
-                {categories.map(category => (
-                  <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {errors.taxonomy && <div className="form-error"><AlertCircle size={14} /><span>{errors.taxonomy}</span></div>}
-
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Budget Min</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.budgetMin}
-                onChange={(e) => handleInputChange('budgetMin', e.target.value)}
-                className={`form-input ${errors.budget ? 'error' : ''}`}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Budget Max</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.budgetMax}
-                onChange={(e) => handleInputChange('budgetMax', e.target.value)}
-                className={`form-input ${errors.budget ? 'error' : ''}`}
-              />
-            </div>
-          </div>
-          {errors.budget && <div className="form-error"><AlertCircle size={14} /><span>{errors.budget}</span></div>}
-
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Project Duration</label>
-              <div className="form-row" style={{ gap: 12 }}>
+          {/* Section 1: Job Details */}
+          <div className="edit-job-section">
+            <h2 className="edit-job-section-title">Job Details</h2>
+            <div className="space-y-5">
+              <div className="form-group">
+                <label className="form-label">Job Title *</label>
                 <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={formData.estimatedDurationValue}
-                  onChange={(e) => handleInputChange('estimatedDurationValue', e.target.value)}
-                  placeholder="e.g. 3"
-                  className={`form-input ${errors.duration ? 'error' : ''}`}
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  placeholder="e.g., Build E-Commerce Platform"
+                  className={`form-input ${errors.title ? 'error' : ''}`}
                 />
-                <select
-                  value={formData.estimatedDurationUnit}
-                  onChange={(e) => handleInputChange('estimatedDurationUnit', e.target.value as JobDurationUnit)}
-                  className="form-select"
-                >
-                  {JOB_DURATION_UNITS.map(unit => (
-                    <option key={unit} value={unit}>{unit}</option>
+                {errors.title && <div className="form-error"><AlertCircle size={14} /><span>{errors.title}</span></div>}
+                <div className="form-hint">{formData.title.length}/200 characters</div>
+              </div>
+
+              <div className="form-group" style={{ marginTop: '1.25rem' }}>
+                <label className="form-label">Job Description *</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder="Describe the job in detail..."
+                  rows={8}
+                  className={`form-textarea ${errors.description ? 'error' : ''}`}
+                />
+                {errors.description && <div className="form-error"><AlertCircle size={14} /><span>{errors.description}</span></div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Classification & Skills */}
+          <div className="edit-job-section" style={{ marginTop: '1rem' }}>
+            <h2 className="edit-job-section-title">Classification & Skills</h2>
+            <div className="space-y-5">
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Major *</label>
+                  <select
+                    value={formData.majorId}
+                    onChange={(e) => handleMajorChange(e.target.value)}
+                    className={`form-select ${errors.taxonomy ? 'error' : ''}`}
+                  >
+                    <option value="">Select major</option>
+                    {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Category *</label>
+                  <select
+                    value={formData.majorCategoryId}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    disabled={!formData.majorId || isTaxonomyLoading}
+                    className={`form-select ${errors.taxonomy ? 'error' : ''}`}
+                  >
+                    <option value="">{!formData.majorId ? 'Select a major first' : 'Select category'}</option>
+                    {categories.map(category => (
+                      <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {errors.taxonomy && <div className="form-error" style={{ marginTop: '0.5rem' }}><AlertCircle size={14} /><span>{errors.taxonomy}</span></div>}
+
+              <div className="form-group" style={{ marginTop: '1.25rem' }}>
+                <label className="form-label">Required Skills</label>
+                <div className="skills-display">
+                  {selectedOfficialSkills.map(skill => (
+                    <div key={skill.skillId} className="skill-tag">
+                      {skill.name}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearFormErrors('skills');
+                          setFormData(prev => ({
+                            ...prev,
+                            skillIds: prev.skillIds.filter(skillId => skillId !== skill.skillId),
+                          }));
+                        }}
+                        className="skill-remove"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   ))}
-                </select>
+                  {formData.customSkillNames.map(skillName => (
+                    <div key={skillName} className="skill-tag">
+                      {skillName} (custom)
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearFormErrors('skills');
+                          setFormData(prev => ({
+                            ...prev,
+                            customSkillNames: prev.customSkillNames.filter(item => normalizeSkillName(item) !== normalizeSkillName(skillName)),
+                          }));
+                        }}
+                        className="skill-remove"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {selectedOfficialSkills.length === 0 && formData.customSkillNames.length === 0 && (
+                    <span className="text-xs text-muted-foreground">No skills selected yet.</span>
+                  )}
+                </div>
+
+                <div className="flex gap-3" style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                  <input
+                    value={skillInput}
+                    onChange={event => setSkillInput(event.target.value)}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addTypedSkill();
+                      }
+                    }}
+                    disabled={!formData.categoryId}
+                    placeholder={formData.categoryId ? 'Type a skill and click Add' : 'Select a category first'}
+                    className="form-input"
+                    style={{ flex: 1 }}
+                  />
+                  <button type="button" onClick={addTypedSkill} disabled={!formData.categoryId || !skillInput.trim()} className="btn-add-skill">
+                    <Plus size={16} /> Add
+                  </button>
+                </div>
+
+                {remainingSkills.length > 0 && (
+                  <div className="skills-display" style={{ marginTop: 12 }}>
+                    {remainingSkills.slice(0, 8).map(skill => (
+                      <button key={skill.skillId} type="button" onClick={() => addOfficialSkill(skill)} className="skill-tag">
+                        <Plus size={12} /> {skill.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {errors.skills && <div className="form-error" style={{ marginTop: '0.5rem' }}><AlertCircle size={14} /><span>{errors.skills}</span></div>}
               </div>
-              {errors.duration && <div className="form-error"><AlertCircle size={14} /><span>{errors.duration}</span></div>}
-            </div>
-            <div className="form-group">
-              <label className="form-label">End Date</label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => handleInputChange('endDate', e.target.value)}
-                className={`form-input ${errors.endDate ? 'error' : ''}`}
-              />
-              {errors.endDate && <div className="form-error"><AlertCircle size={14} /><span>{errors.endDate}</span></div>}
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Required Skills</label>
-            <div className="skills-display">
-              {selectedOfficialSkills.map(skill => (
-                <div key={skill.skillId} className="skill-tag">
-                  {skill.name}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearFormErrors('skills');
-                      setFormData(prev => ({
-                        ...prev,
-                        skillIds: prev.skillIds.filter(skillId => skillId !== skill.skillId),
-                      }));
-                    }}
-                    className="skill-remove"
-                  >
-                    <X size={12} />
-                  </button>
+          {/* Section 3: Budget & Logistics */}
+          <div className="edit-job-section" style={{ marginTop: '1rem' }}>
+            <h2 className="edit-job-section-title">Budget & Logistics</h2>
+            <div className="space-y-5">
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Budget Min (USD)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.budgetMin}
+                    onChange={(e) => handleInputChange('budgetMin', e.target.value)}
+                    placeholder="e.g. 500"
+                    className={`form-input ${errors.budget ? 'error' : ''}`}
+                  />
                 </div>
-              ))}
-              {formData.customSkillNames.map(skillName => (
-                <div key={skillName} className="skill-tag">
-                  {skillName} (custom)
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearFormErrors('skills');
-                      setFormData(prev => ({
-                        ...prev,
-                        customSkillNames: prev.customSkillNames.filter(item => normalizeSkillName(item) !== normalizeSkillName(skillName)),
-                      }));
-                    }}
-                    className="skill-remove"
-                  >
-                    <X size={12} />
-                  </button>
+                <div className="form-group">
+                  <label className="form-label">Budget Max (USD)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.budgetMax}
+                    onChange={(e) => handleInputChange('budgetMax', e.target.value)}
+                    placeholder="e.g. 2000"
+                    className={`form-input ${errors.budget ? 'error' : ''}`}
+                  />
                 </div>
-              ))}
-            </div>
-
-            <div className="form-row" style={{ marginTop: 12 }}>
-              <input
-                value={skillInput}
-                onChange={event => setSkillInput(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    addTypedSkill();
-                  }
-                }}
-                disabled={!formData.categoryId}
-                placeholder={formData.categoryId ? 'Type a skill and click Add' : 'Select a category first'}
-                className="form-input"
-              />
-              <button type="button" onClick={addTypedSkill} disabled={!formData.categoryId || !skillInput.trim()} className="btn-save">
-                <Plus size={16} /> Add
-              </button>
-            </div>
-
-            {remainingSkills.length > 0 && (
-              <div className="skills-display" style={{ marginTop: 12 }}>
-                {remainingSkills.slice(0, 8).map(skill => (
-                  <button key={skill.skillId} type="button" onClick={() => addOfficialSkill(skill)} className="skill-tag">
-                    <Plus size={12} /> {skill.name}
-                  </button>
-                ))}
               </div>
-            )}
-            {errors.skills && <div className="form-error"><AlertCircle size={14} /><span>{errors.skills}</span></div>}
+              {errors.budget && <div className="form-error" style={{ marginTop: '0.5rem' }}><AlertCircle size={14} /><span>{errors.budget}</span></div>}
+
+              <div className="form-row" style={{ marginTop: '1.25rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Project Duration</label>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={formData.estimatedDurationValue}
+                      onChange={(e) => handleInputChange('estimatedDurationValue', e.target.value)}
+                      placeholder="e.g. 3"
+                      className={`form-input ${errors.duration ? 'error' : ''}`}
+                      style={{ flex: 1 }}
+                    />
+                    <select
+                      value={formData.estimatedDurationUnit}
+                      onChange={(e) => handleInputChange('estimatedDurationUnit', e.target.value as JobDurationUnit)}
+                      className="form-select"
+                      style={{ width: '120px' }}
+                    >
+                      {JOB_DURATION_UNITS.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {errors.duration && <div className="form-error" style={{ marginTop: '0.5rem' }}><AlertCircle size={14} /><span>{errors.duration}</span></div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">End Date</label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => handleInputChange('endDate', e.target.value)}
+                    className={`form-input ${errors.endDate ? 'error' : ''}`}
+                  />
+                  {errors.endDate && <div className="form-error" style={{ marginTop: '0.5rem' }}><AlertCircle size={14} /><span>{errors.endDate}</span></div>}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="edit-job-info-box">
+          <div className="edit-job-info-box" style={{ marginTop: '1.5rem' }}>
             <div className="info-box-content">
               <AlertCircle size={20} className="info-icon" />
               <div>
@@ -837,7 +865,10 @@ export default function EditJobPostScreen() {
               ) : isSubmitting ? (
                 'Updating...'
               ) : (
-                'Save Changes'
+                <>
+                  <Check size={16} />
+                  Save Changes
+                </>
               )}
             </button>
           </div>

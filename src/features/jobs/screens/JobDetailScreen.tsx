@@ -107,13 +107,13 @@ export default function JobDetailScreen() {
               {!isClientMode && (
                 <div className="flex gap-1.5 shrink-0">
                   {role === UserRole.Freelancer && (
-                  <button
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted ${isSavingSavedJob ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    onClick={toggleSavedJob}
-                    disabled={isSavingSavedJob}
-                  >
-                    <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
-                  </button>
+                    <button
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted ${isSavingSavedJob ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      onClick={toggleSavedJob}
+                      disabled={isSavingSavedJob}
+                    >
+                      <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
+                    </button>
                   )}
                   <button className="w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted">
                     <Share2 size={14} />
@@ -344,7 +344,7 @@ export default function JobDetailScreen() {
                 {clientProfile?.isVerifiedClient && (
                   <div className="jd-verified"><CheckCircle size={12} />Payment Verified</div>
                 )}
-                <button className="jd-btn-secondary mt-3" onClick={() => navigate(`/profile/client/${job.clientId}`)}>View Client Profile</button>
+                <button className="jd-btn-secondary mt-3" onClick={() => navigate(`/profile/client/${client?.id || job.clientId}`)}>View Client Profile</button>
               </div>
             )}
 

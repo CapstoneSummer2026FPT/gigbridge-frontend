@@ -744,7 +744,10 @@ export default function SmartTalentMatchingScreen() {
                   className="bento-card rounded-3xl p-6 flex flex-col md:flex-row gap-6 relative overflow-hidden group"
                 >
                   {/* Photo area */}
-                  <div className="w-full md:w-48 h-64 md:h-auto rounded-2xl overflow-hidden relative shrink-0 bg-gray-100 black:bg-gray-800">
+                  <div
+                    onClick={() => navigate(`/profile/freelancer/${talent.userId}`)}
+                    className="w-full md:w-48 h-64 md:h-auto rounded-2xl overflow-hidden relative shrink-0 bg-gray-100 black:bg-gray-800 cursor-pointer hover:opacity-95 transition-all"
+                  >
                     <img
                       alt={`${talent.fullName} Profile`}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
@@ -773,7 +776,10 @@ export default function SmartTalentMatchingScreen() {
                   <div className="flex-1 flex flex-col font-sans">
                     <div className="flex justify-between items-start mb-2 gap-4">
                       <div>
-                        <h2 className="font-bold text-xl text-foreground leading-tight">
+                        <h2
+                          onClick={() => navigate(`/profile/freelancer/${talent.userId}`)}
+                          className="font-bold text-xl text-foreground leading-tight cursor-pointer hover:text-blue-600 black:hover:text-cyan-400 transition-colors"
+                        >
                           {talent.fullName}
                         </h2>
                         <p className="text-blue-600 black:text-blue-400 font-semibold text-sm">
