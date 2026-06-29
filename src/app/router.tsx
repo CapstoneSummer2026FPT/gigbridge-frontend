@@ -39,6 +39,7 @@ import AIInterviewScreen from '../features/ai-interview/screens/AIInterviewScree
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import AdminDashboardScreen from '../features/admin/screens/AdminDashboardScreen';
 import AdminUsersScreen from '../features/admin/screens/AdminUsersScreen';
+import AdminCheatingManagementScreen from '../features/admin/screens/AdminCheatingManagementScreen';
 import AdminJobsScreen from '../features/admin/screens/AdminJobsScreen';
 import AdminSystemTrackingScreen from '../features/admin/screens/AdminSystemTrackingScreen';
 import AdminRevenueScreen from '../features/admin/screens/AdminRevenueScreen';
@@ -244,6 +245,7 @@ export const router = createBrowserRouter([
       { path: 'admin/revenue', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
       { path: 'admin/system-finance', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
       { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
+      { path: 'admin/cheating', element: <AdminRoute><AdminCheatingManagementScreen /></AdminRoute> },
 
       // Market Insights - public
       { path: 'market-insights', element: <MarketInsightsScreen /> },
