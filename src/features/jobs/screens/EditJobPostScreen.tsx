@@ -146,6 +146,11 @@ export default function EditJobPostScreen() {
   const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
   const [availableSkills, setAvailableSkills] = useState<SkillOptionDto[]>([]);
   const [skillNameById, setSkillNameById] = useState<Record<string, string>>({});
+  const skillNameByIdRef = useRef(skillNameById);
+  useEffect(() => {
+    skillNameByIdRef.current = skillNameById;
+  }, [skillNameById]);
+
   const [skillInput, setSkillInput] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -238,12 +243,16 @@ export default function EditJobPostScreen() {
           location: job.location || '',
           visibility: String(job.visibility ?? JobPostVisibility.Public),
           endDate: job.endDate?.split('T')?.[0] || '',
-          skillIds: job.skills?.map(skill => skill.skillsId) || [],
+          skillIds: job.skills?.map(skill => skill.skillsId.toLowerCase()) || [],
           customSkillNames: job.customSkillNames || [],
         });
-        setSkillNameById(
-          Object.fromEntries((job.skills || []).map(skill => [skill.skillsId, skill.skillName]))
-        );
+        setSkillNameById(prev => {
+          const next = { ...prev };
+          (job.skills || []).forEach(skill => {
+            next[skill.skillsId.toLowerCase()] = skill.skillName;
+          });
+          return next;
+        });
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -280,6 +289,7 @@ export default function EditJobPostScreen() {
   useEffect(() => {
     if (!formData.categoryId) {
       setAvailableSkills([]);
+      setFormData(prev => ({ ...prev, skillIds: [] }));
       return;
     }
 
@@ -293,9 +303,34 @@ export default function EditJobPostScreen() {
         setSkillNameById(prev => {
           const next = { ...prev };
           skills.forEach(skill => {
-            next[skill.skillId] = skill.name;
+            next[skill.skillId.toLowerCase()] = skill.name;
           });
           return next;
+        });
+
+        // Filter selected official skills and convert mismatched ones to custom skills
+        const newSkillIds = skills.map(s => s.skillId.toLowerCase());
+        setFormData(prev => {
+          const preservedSkillIds: string[] = [];
+          const convertedCustomNames: string[] = [];
+
+          prev.skillIds.forEach(id => {
+            const idLower = id.toLowerCase();
+            if (newSkillIds.includes(idLower)) {
+              preservedSkillIds.push(idLower);
+            } else {
+              const name = skillNameByIdRef.current[idLower] || skills.find(s => s.skillId.toLowerCase() === idLower)?.name || 'Unknown skill';
+              if (name && name !== 'Unknown skill' && !prev.customSkillNames.includes(name)) {
+                convertedCustomNames.push(name);
+              }
+            }
+          });
+
+          return {
+            ...prev,
+            skillIds: preservedSkillIds,
+            customSkillNames: [...prev.customSkillNames, ...convertedCustomNames],
+          };
         });
       });
 
@@ -372,8 +407,6 @@ export default function EditJobPostScreen() {
       ...prev,
       majorCategoryId,
       categoryId: selectedCategory?.categoryId || '',
-      skillIds: [],
-      customSkillNames: [],
     }));
   };
 
@@ -383,10 +416,11 @@ export default function EditJobPostScreen() {
       return;
     }
     clearFormErrors('skills');
-    setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
+    const skillIdLower = skill.skillId.toLowerCase();
+    setSkillNameById(prev => ({ ...prev, [skillIdLower]: skill.name }));
     setFormData(prev => {
-      if (prev.skillIds.includes(skill.skillId)) return prev;
-      return { ...prev, skillIds: [...prev.skillIds, skill.skillId] };
+      if (prev.skillIds.map(id => id.toLowerCase()).includes(skillIdLower)) return prev;
+      return { ...prev, skillIds: [...prev.skillIds, skillIdLower] };
     });
   };
 
@@ -702,7 +736,7 @@ export default function EditJobPostScreen() {
                           clearFormErrors('skills');
                           setFormData(prev => ({
                             ...prev,
-                            skillIds: prev.skillIds.filter(skillId => skillId !== skill.skillId),
+                            skillIds: prev.skillIds.filter(skillId => skillId.toLowerCase() !== skill.skillId.toLowerCase()),
                           }));
                         }}
                         className="skill-remove"
