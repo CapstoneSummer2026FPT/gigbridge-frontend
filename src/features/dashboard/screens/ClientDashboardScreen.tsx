@@ -2,10 +2,11 @@ import { useClientDashboard } from '../hooks/useClientDashboard';
 import { use3DTilt } from '../hooks/use3DTilt';
 import { useApp } from '../../../app/providers/AppProvider';
 import {
-  PlusCircle, FileText, TrendingUp, DollarSign, ChevronRight,
+  PlusCircle, FileText, TrendingUp, ChevronRight,
   Bot, Briefcase, Star, CheckCircle, Activity, Wallet
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/client-dashboard-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
@@ -52,7 +53,7 @@ export default function ClientDashboardScreen() {
     CheckCircle: <CheckCircle size={14} className="client-dash-activity-icon-milestone" />,
     FileText: <FileText size={14} className="client-dash-activity-icon-proposal" />,
     Bot: <Bot size={14} className="client-dash-activity-icon-ai" />,
-    DollarSign: <DollarSign size={14} className="client-dash-activity-icon-payment" />,
+    DollarSign: <GCoinIcon size={14} className="client-dash-activity-icon-payment" />,
   };
 
   return (

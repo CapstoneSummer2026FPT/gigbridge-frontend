@@ -23,6 +23,7 @@ import {
 } from '../utils/jobDuration';
 import '../styles/edit-job-post-screen.css';
 import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface FormErrors {
   title?: string;
@@ -123,6 +124,7 @@ const mapApiErrorsToEditFormErrors = (response: ApiResponse<unknown>, fallback: 
 export default function EditJobPostScreen() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [isBudgetGuideOpen, setIsBudgetGuideOpen] = useState(false);
   const navigationAllowedRef = useRef(false);
 
   const [formData, setFormData] = useState<EditJobPostFormData>({
@@ -809,7 +811,7 @@ export default function EditJobPostScreen() {
             <div className="space-y-5">
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Budget Min (USD)</label>
+                  <label className="form-label">Budget Min (G-coin)</label>
                   <input
                     type="number"
                     min="0"
@@ -820,7 +822,47 @@ export default function EditJobPostScreen() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Budget Max (USD)</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="form-label !mb-0">Budget Max (G-coin)</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsBudgetGuideOpen(!isBudgetGuideOpen)}
+                        className="w-5 h-5 rounded-full bg-[var(--gb-cyan)]/20 border border-[var(--gb-cyan)]/40 text-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)] hover:text-white flex items-center justify-center text-xs font-extrabold transition-all cursor-pointer shadow-[0_0_10px_rgba(0,119,255,0.2)]"
+                        title="Currency guide"
+                      >
+                        ?
+                      </button>
+                      {isBudgetGuideOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsBudgetGuideOpen(false)} />
+                          <div className="absolute right-0 bottom-7 w-72 bg-card border border-border rounded-2xl p-4 shadow-2xl z-50 text-left select-text">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)]" />
+                            <h4 className="text-xs font-extrabold text-foreground mb-1.5 flex items-center gap-1.5">
+                              <span className="w-4.5 h-4.5 rounded-full bg-[var(--gb-cyan)]/15 text-[var(--gb-cyan)] flex items-center justify-center text-[10px] font-black">?</span>
+                              Hướng dẫn Đơn vị Ngân sách
+                            </h4>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
+                              Đơn vị tiền tệ sử dụng cho ngân sách công việc trên hệ thống GigBridge là <strong className="text-foreground">G-coin</strong>.
+                            </p>
+                            
+                            <div className="bg-muted/40 rounded-xl p-2.5 border border-border/60 flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-1.5">
+                                <GigCoinLogo size={16} />
+                                <span className="text-xs font-bold text-foreground">1 G-coin</span>
+                              </div>
+                              <span className="text-muted-foreground text-[10px] font-bold">⇄</span>
+                              <span className="text-xs font-black text-brand">1,000 VND</span>
+                            </div>
+
+                            <p className="text-[10px] text-muted-foreground leading-relaxed">
+                              Bạn có thể quy đổi và nạp G-coin qua cổng thanh toán PayOS (chuyển khoản ngân hàng hoặc QR Code) để thực hiện giao dịch bảo chứng (escrow).
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                   <input
                     type="number"
                     min="0"

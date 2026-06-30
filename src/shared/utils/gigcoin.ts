@@ -1,6 +1,6 @@
 export const GIGCOIN_CURRENCY_CODE = 'GIG';
-export const GIGCOIN_UNIT_LABEL = 'GigCoin';
-export const GIGCOIN_LOGO_SRC = '/assets/gigcoin.svg';
+export const GIGCOIN_UNIT_LABEL = 'G-coin';
+export const GIGCOIN_LOGO_SRC = '/icons/G-coin.png';
 
 export const GIGCOIN_INLINE_SVG = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <circle cx="32" cy="32" r="30" fill="#F7B731"/>

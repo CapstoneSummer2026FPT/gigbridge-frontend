@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Filter, FileText, Eye, Edit, MoreVertical, Calendar, DollarSign, Users, CheckCircle, XCircle, Clock, AlertCircle, Download, FileSignature } from 'lucide-react';
+import { Search, Filter, FileText, Eye, Edit, MoreVertical, Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, Download, FileSignature } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { DB } from '../../../mock_backend';
 import '../styles/admin-users-screen.css';
 
@@ -114,7 +115,7 @@ FREELANCER: [FREELANCER_NAME]
 [DESCRIPTION]
 
 2. COMPENSATION
-Total Budget: $[TOTAL_BUDGET]
+Total Budget: [TOTAL_BUDGET] G-coin
 Contract Type: Fixed Price
 
 3. TERM
@@ -342,7 +343,7 @@ Freelancer Signature`);
                       <div>
                         <p className="text-muted mb-1">Budget</p>
                         <div className="flex items-center gap-1">
-                          <DollarSign size={12} className="text-green" />
+                          <GCoinIcon size={12} />
                           <span className="text-primary font-semibold">
                             {contract.totalBudget.toLocaleString()}
                           </span>
@@ -443,9 +444,9 @@ Freelancer Signature`);
                       <div>
                         <p className="text-xs text-muted mb-1">Total Budget</p>
                         <div className="flex items-center gap-1">
-                          <DollarSign size={14} className="text-green" />
+                          <GCoinIcon size={14} />
                           <p className="text-sm font-semibold text-primary">
-                            ${viewContract.totalBudget.toLocaleString()}
+                            {viewContract.totalBudget.toLocaleString()}
                           </p>
                         </div>
                       </div>

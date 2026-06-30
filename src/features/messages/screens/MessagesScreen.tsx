@@ -10,6 +10,7 @@ import { useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { useMessages } from '../hooks/useMessages';
 import { MOCK_ROOMS } from '../mock/data-for-MessagesScreen';
 import '../styles/messages-screen.css';
@@ -532,7 +533,10 @@ export default function MessagesScreen() {
 
                           <div className="bg-muted/50 rounded-xl p-3.5 mb-4 border border-border/50">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Đề xuất mức giá</span>
-                            <div className="text-2xl font-black text-[var(--gb-cyan)] mt-1">${msg.content} USD</div>
+                            <div className="text-2xl font-black text-[var(--gb-cyan)] mt-1 flex items-center gap-1">
+                              <GCoinIcon size={24} />
+                              {msg.content}
+                            </div>
                           </div>
 
                           {!isLatestDealOffer ? (
@@ -638,7 +642,7 @@ export default function MessagesScreen() {
                       <input
                         type="number"
                         id="input-deal-price"
-                        placeholder="Enter proposed price (USD)"
+                        placeholder="Enter proposed price (G-coin)"
                         value={dealPriceInput}
                         onChange={e => setDealPriceInput(e.target.value)}
                         className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"

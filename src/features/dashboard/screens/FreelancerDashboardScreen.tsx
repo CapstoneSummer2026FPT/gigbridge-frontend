@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router';
 import {
-  TrendingUp, DollarSign, Star, Zap, ChevronRight,
+  TrendingUp, Star, Zap, ChevronRight,
   FileText, Briefcase, ArrowUpRight,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useFreelancerDashboard } from '../hooks/useFreelancerDashboard';
 import { use3DTilt } from '../hooks/use3DTilt';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import '../styles/freelancer-dashboard-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
@@ -225,7 +226,7 @@ export default function FreelancerDashboardScreen() {
                     <div>
                       <span className="block text-[8px] uppercase text-text-muted tracking-wider font-semibold">This Month</span>
                       <span className="text-2xl font-black text-text-primary tracking-tight">
-                        {isLoading ? '—' : '$8,200'}
+                        {isLoading ? '—' : '8,200 G-coin'}
                       </span>
                     </div>
                     <span className="text-xs font-bold text-success">↑ 10.8% vs last month</span>
@@ -236,7 +237,7 @@ export default function FreelancerDashboardScreen() {
               {/* Bento Stat Tiles */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {[
-                  { label: 'Total Earnings', value: '$142.5K', icon: <DollarSign size={18} />, change: '+$8.2K this month', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' },
+                  { label: 'Total Earnings', value: '142.5K G-coin', icon: <GCoinIcon size={18} />, change: '+8.2K G-coin this month', color: 'text-success', bg: 'bg-success/10', border: 'border-success/20' },
                   { label: 'Completed Projects', value: '87', icon: <Briefcase size={18} />, change: '+3 this month', color: 'text-brand', bg: 'bg-brand/10', border: 'border-brand/20' },
                   { label: 'Active Proposals', value: isLoading ? '—' : String(pendingProposalsCount), icon: <FileText size={18} />, change: '2 shortlisted', color: 'text-info', bg: 'bg-info/10', border: 'border-info/20' },
                   { label: 'Success Rate', value: '96.4%', icon: <TrendingUp size={18} />, change: 'Top 5% globally', color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20' },

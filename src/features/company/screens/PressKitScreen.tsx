@@ -55,7 +55,7 @@ const KEY_STATS = [
   { label: 'Active Freelancers', value: '52,847' },
   { label: 'Active Clients', value: '18,234' },
   { label: 'Projects Completed', value: '134,562' },
-  { label: 'Total Paid Out', value: '$28.4M' },
+  { label: 'Total Paid Out', value: '28.4M G-coin' },
   { label: 'Average Match Time', value: '<2 hours' },
   { label: 'Success Rate', value: '96.4%' },
 ];

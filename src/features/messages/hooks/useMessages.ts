@@ -69,7 +69,7 @@ function mapBackendConversation(c: any): MsgConversation {
     job: {
       id: c.jobPostId || '',
       title: c.title || 'Untitled Job',
-      budget: lastOfferPrice ? `$${lastOfferPrice}` : 'N/A',
+      budget: lastOfferPrice ? `${lastOfferPrice} G-coin` : 'N/A',
       category: '',
     },
     lastMessage: c.lastMessage?.content || '',
@@ -1000,7 +1000,7 @@ export function useMessages() {
                 lastOfferId: offerId,
                 job: {
                   ...c.job,
-                  budget: `$${price}`,
+                  budget: `${price} G-coin`,
                 },
               }
             : c

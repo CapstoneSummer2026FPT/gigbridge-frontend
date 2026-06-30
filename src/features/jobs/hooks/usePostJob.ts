@@ -695,7 +695,7 @@ export function usePostJob() {
         skillIds: generatedSkillIds,
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
-        currency: prev.currency || 'USD',
+        currency: prev.currency || GIGCOIN_CURRENCY_CODE,
         estimatedDuration: prev.estimatedDuration || '2-4 weeks',
         location: prev.location || 'Remote',
         visibility: String(JobPostVisibility.Public),

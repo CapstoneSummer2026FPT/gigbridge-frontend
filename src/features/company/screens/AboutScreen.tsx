@@ -122,7 +122,7 @@ export default function AboutScreen() {
               {[
                 { value: '52,847', label: 'Freelancers', icon: <Users size={20} /> },
                 { value: '18,234', label: 'Clients', icon: <Globe size={20} /> },
-                { value: '$28.4M', label: 'Paid Out', icon: <TrendingUp size={20} /> },
+                { value: '28.4M G-coin', label: 'Paid Out', icon: <TrendingUp size={20} /> },
                 { value: '96.4%', label: 'Success Rate', icon: <Award size={20} /> },
               ].map((stat, i) => (
                 <div key={i} className="text-center">

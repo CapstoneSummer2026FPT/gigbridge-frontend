@@ -1,7 +1,8 @@
 import {
-  WandSparkles, Target, Search, DollarSign, Pencil,
+  WandSparkles, Target, Search, Pencil,
   CheckCircle2, Lightbulb, ChevronDown, FlaskConical,
 } from 'lucide-react';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 
 interface AIGenJobGuideProps {
   /** Show the "Mock Mode" badge when the backend AI endpoint is unavailable */
@@ -38,7 +39,7 @@ const STEPS = [
     ),
   },
   {
-    icon: <DollarSign size={18} />,
+    icon: <GCoinIcon size={18} />,
     accent: 'purple',
     step: '03',
     title: 'Nêu phạm vi, ngân sách & thời hạn',
@@ -83,7 +84,7 @@ const EXAMPLE_PROMPTS = [
         Next.js, có kinh nghiệm 3+ năm với REST API và state management (Zustand/Redux). Dự án
         thương mại điện tử, scope{' '}
         <strong className="text-foreground">4 tháng</strong>, remote, ngân sách{' '}
-        <strong className="text-foreground">$3,000–$5,000</strong>."
+        <strong className="text-foreground">3,000–5,000 G-coin</strong>."
       </>
     ),
   },
