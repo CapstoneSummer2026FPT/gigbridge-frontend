@@ -4,8 +4,11 @@ import type {
   CreateProposalAnswerRequest,
   CreateProposalRequest,
   CheatingEventLogResponse,
+  CompleteQuestionTimerRequest,
+  InterviewReviewSessionDto,
   LogProposalCheatingEventRequest,
   ProposalAnswerDto,
+  QuestionTimerStateDto,
 } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
@@ -34,6 +37,33 @@ export const proposalPostAPI = {
     data: LogProposalCheatingEventRequest
   ): Promise<ApiResponse<CheatingEventLogResponse>> => {
     return apiService.post<CheatingEventLogResponse>(`${proposalsUrl}/${proposalId}/cheating-events`, data);
+  },
+
+  startQuestionTimer: async (
+    proposalId: string,
+    questionId: string
+  ): Promise<ApiResponse<QuestionTimerStateDto>> => {
+    return apiService.post<QuestionTimerStateDto>(`${proposalsUrl}/${proposalId}/question-timers/${questionId}/start`);
+  },
+
+  completeQuestionTimer: async (
+    proposalId: string,
+    questionId: string,
+    data: CompleteQuestionTimerRequest
+  ): Promise<ApiResponse<QuestionTimerStateDto>> => {
+    return apiService.post<QuestionTimerStateDto>(`${proposalsUrl}/${proposalId}/question-timers/${questionId}/complete`, data);
+  },
+
+  startInterviewReview: async (
+    proposalId: string
+  ): Promise<ApiResponse<InterviewReviewSessionDto>> => {
+    return apiService.post<InterviewReviewSessionDto>(`${proposalsUrl}/${proposalId}/interview-review/start`);
+  },
+
+  completeInterviewReview: async (
+    proposalId: string
+  ): Promise<ApiResponse<InterviewReviewSessionDto>> => {
+    return apiService.post<InterviewReviewSessionDto>(`${proposalsUrl}/${proposalId}/interview-review/complete`);
   },
 
   acceptForNegotiation: async (proposalId: string): Promise<ApiResponse<string>> => {
