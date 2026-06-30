@@ -161,7 +161,7 @@ const formFromJobDetail = (job: GetMyJobPostDetailDto): PostJobFormState => ({
   majorId: job.majorId || '',
   majorCategoryId: job.majorCategoryId || '',
   categoryId: job.categoryId || '',
-  skillIds: job.skills?.map(skill => skill.skillsId) || [],
+  skillIds: job.skills?.map(skill => skill.skillsId.toLowerCase()) || [],
   customSkillNames: job.customSkillNames || [],
   budgetMin: toStringValue(job.budgetMin),
   budgetMax: toStringValue(job.budgetMax),
@@ -181,7 +181,7 @@ const initialFormFromState = (initialJobData?: PostJobRouteJobData | null): Post
     majorCategoryId: initialJobData?.majorCategoryId || '',
     categoryId: initialJobData?.categoryId || '',
     description: initialJobData?.description || '',
-    skillIds: [...(initialJobData?.skillIds || [])],
+    skillIds: (initialJobData?.skillIds || []).map(id => id.toLowerCase()),
     customSkillNames: [...(initialJobData?.customSkillNames || initialJobData?.customSkills || [])],
     budgetMin: toStringValue(initialJobData?.budgetMin),
     budgetMax: toStringValue(initialJobData?.budgetMax),
@@ -227,9 +227,19 @@ export function usePostJob() {
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [isSkillsLoading, setIsSkillsLoading] = useState(false);
   const [taxonomyError, setTaxonomyError] = useState<string | null>(null);
-  const [skillNameById, setSkillNameById] = useState<Record<string, string>>(
-    initialJobData?.skillNameById || initialJobData?.skillNamesById || {}
-  );
+  const [skillNameById, setSkillNameById] = useState<Record<string, string>>(() => {
+    const initialMap: Record<string, string> = {};
+    const srcMap = initialJobData?.skillNameById || initialJobData?.skillNamesById || {};
+    Object.entries(srcMap).forEach(([k, v]) => {
+      initialMap[k.toLowerCase()] = v;
+    });
+    return initialMap;
+  });
+
+  const skillNameByIdRef = useRef(skillNameById);
+  useEffect(() => {
+    skillNameByIdRef.current = skillNameById;
+  }, [skillNameById]);
 
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
@@ -340,10 +350,13 @@ export function usePostJob() {
 
         const job = jobResponse.data;
         setForm(formFromJobDetail(job));
-        setSkillNameById(prev => ({
-          ...prev,
-          ...Object.fromEntries((job.skills || []).map(skill => [skill.skillsId, skill.skillName])),
-        }));
+        setSkillNameById(prev => {
+          const next = { ...prev };
+          (job.skills || []).forEach(skill => {
+            next[skill.skillsId.toLowerCase()] = skill.skillName;
+          });
+          return next;
+        });
 
         if (questionsResponse.success && questionsResponse.data) {
           setQuestions(questionsFromDtos(questionsResponse.data));
@@ -399,6 +412,7 @@ export function usePostJob() {
   useEffect(() => {
     if (!form.categoryId) {
       setAvailableSkills([]);
+      setForm(prev => ({ ...prev, skillIds: [] }));
       return;
     }
 
@@ -415,13 +429,39 @@ export function usePostJob() {
           return;
         }
 
-        setAvailableSkills(response.data);
+        const newSkills = response.data;
+        setAvailableSkills(newSkills);
         setSkillNameById(prev => {
           const next = { ...prev };
-          response.data?.forEach(skill => {
-            next[skill.skillId] = skill.name;
+          newSkills.forEach(skill => {
+            next[skill.skillId.toLowerCase()] = skill.name;
           });
           return next;
+        });
+
+        // Filter selected official skills and convert mismatched ones to custom skills
+        const newSkillIds = newSkills.map(s => s.skillId.toLowerCase());
+        setForm(prev => {
+          const preservedSkillIds: string[] = [];
+          const convertedCustomNames: string[] = [];
+
+          prev.skillIds.forEach(id => {
+            const idLower = id.toLowerCase();
+            if (newSkillIds.includes(idLower)) {
+              preservedSkillIds.push(idLower);
+            } else {
+              const name = skillNameByIdRef.current[idLower] || newSkills.find(s => s.skillId.toLowerCase() === idLower)?.name || 'Unknown skill';
+              if (name && name !== 'Unknown skill' && !prev.customSkillNames.includes(name)) {
+                convertedCustomNames.push(name);
+              }
+            }
+          });
+
+          return {
+            ...prev,
+            skillIds: preservedSkillIds,
+            customSkillNames: [...prev.customSkillNames, ...convertedCustomNames],
+          };
         });
       })
       .finally(() => {
@@ -491,8 +531,6 @@ export function usePostJob() {
       ...prev,
       majorCategoryId,
       categoryId: selectedCategory?.categoryId || '',
-      skillIds: [],
-      customSkillNames: [],
     }));
   };
 
@@ -502,13 +540,14 @@ export function usePostJob() {
       return;
     }
 
-    setSkillNameById(prev => ({ ...prev, [skill.skillId]: skill.name }));
+    const skillIdLower = skill.skillId.toLowerCase();
+    setSkillNameById(prev => ({ ...prev, [skillIdLower]: skill.name }));
     setForm(prev => {
-      if (prev.skillIds.includes(skill.skillId)) {
+      if (prev.skillIds.map(id => id.toLowerCase()).includes(skillIdLower)) {
         return prev;
       }
 
-      return { ...prev, skillIds: [...prev.skillIds, skill.skillId] };
+      return { ...prev, skillIds: [...prev.skillIds, skillIdLower] };
     });
   };
 
@@ -553,7 +592,8 @@ export function usePostJob() {
   };
 
   const removeOfficialSkill = (skillId: string): void => {
-    setForm(prev => ({ ...prev, skillIds: prev.skillIds.filter(item => item !== skillId) }));
+    const skillIdLower = skillId.toLowerCase();
+    setForm(prev => ({ ...prev, skillIds: prev.skillIds.filter(item => item.toLowerCase() !== skillIdLower) }));
   };
 
   const removeCustomSkill = (skillName: string): void => {
@@ -629,18 +669,18 @@ export function usePostJob() {
         setSkillNameById(prev => {
           const next = { ...prev };
           skillsResponse.data?.forEach(skill => {
-            next[skill.skillId] = skill.name;
+            next[skill.skillId.toLowerCase()] = skill.name;
           });
           return next;
         });
       }
 
       // 2. Add AI system skills name map entries so they display as selected chips/badges
-      const generatedSkillIds = generatedData.skills.map(skill => skill.skillsId);
+      const generatedSkillIds = generatedData.skills.map(skill => skill.skillsId.toLowerCase());
       setSkillNameById(prev => {
         const next = { ...prev };
         generatedData.skills.forEach(skill => {
-          next[skill.skillsId] = skill.name;
+          next[skill.skillsId.toLowerCase()] = skill.name;
         });
         return next;
       });
