@@ -12,8 +12,8 @@ export function GigCoinAmount({ amount, className = '', iconClassName = '', pref
   return (
     <span className={`inline-flex items-center gap-1 whitespace-nowrap ${className}`}>
       {prefix && <span>{prefix}</span>}
-      <span>{formatGigCoinNumber(amount)}</span>
       <GigCoinLogo className={iconClassName} size={16} />
+      <span>{formatGigCoinNumber(amount)}</span>
       {showLabel && <span className="sr-only">GigCoin</span>}
       {suffix && <span>{suffix}</span>}
     </span>

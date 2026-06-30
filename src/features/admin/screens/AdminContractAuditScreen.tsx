@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Search, Filter, Eye, Download, AlertCircle, CheckCircle2, Clock,
-  DollarSign, ChevronDown, FileText, MoreVertical, TrendingUp, AlertTriangle, BarChart3, Calendar
+  ChevronDown, FileText, MoreVertical, TrendingUp, AlertTriangle, BarChart3, Calendar
 } from 'lucide-react';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import type { ContractDto, ContractQueryParams } from '../../../types/models/Contract';
@@ -683,7 +684,7 @@ ${idx + 1}. ${c.title}
                     </div>
 
                     <div className="contract-card-metric">
-                      <DollarSign size={17} />
+                      <GCoinIcon size={17} />
                       <div>
                         <span>Budget</span>
                         <strong>{formatContractAmount(contract.totalBudget)}</strong>

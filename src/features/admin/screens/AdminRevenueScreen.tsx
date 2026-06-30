@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
-import { DollarSign, TrendingUp, Wallet, CreditCard, Search, Download, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Eye, CheckCircle, XCircle, Clock, AlertCircle, Ban, RotateCw, Plus, Percent, ShieldCheck } from 'lucide-react';
+import { TrendingUp, Wallet, CreditCard, Search, Download, RefreshCw, Calendar, ArrowUpRight, ArrowDownRight, Eye, CheckCircle, XCircle, Clock, AlertCircle, Ban, RotateCw, Plus, Percent, ShieldCheck } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DB } from '../../../mock_backend';
 import '../styles/admin-users-screen.css';
@@ -35,7 +36,7 @@ const MOCK_WALLETS = [
     userId: 'user_client_1',
     userName: 'John Doe',
     balance: 2450.50,
-    currency: 'USD',
+    currency: 'G-coin',
     createdAt: '2024-01-15T10:00:00Z',
     updatedAt: '2024-05-16T14:30:00Z',
   },
@@ -44,7 +45,7 @@ const MOCK_WALLETS = [
     userId: 'user_freelancer_1',
     userName: 'Sarah Smith',
     balance: 5780.25,
-    currency: 'USD',
+    currency: 'G-coin',
     createdAt: '2024-02-20T09:00:00Z',
     updatedAt: '2024-05-16T13:45:00Z',
   },
@@ -53,7 +54,7 @@ const MOCK_WALLETS = [
     userId: 'user_client_2',
     userName: 'Tech Corp',
     balance: 12300.00,
-    currency: 'USD',
+    currency: 'G-coin',
     createdAt: '2024-01-10T11:30:00Z',
     updatedAt: '2024-05-16T12:20:00Z',
   },
@@ -118,7 +119,7 @@ const MOCK_TRANSACTIONS = [
     userName: 'John Doe',
     type: 'subscription' as const,
     amount: 29.99,
-    currency: 'USD',
+    currency: 'G-coin',
     status: 'completed' as const,
     description: 'Pro Monthly Subscription Payment',
     createdAt: '2024-05-01T10:00:00Z',
@@ -131,7 +132,7 @@ const MOCK_TRANSACTIONS = [
     userName: 'Sarah Smith',
     type: 'deposit' as const,
     amount: 500.00,
-    currency: 'USD',
+    currency: 'G-coin',
     status: 'completed' as const,
     description: 'Wallet deposit via credit card',
     createdAt: '2024-05-16T13:45:00Z',
@@ -144,7 +145,7 @@ const MOCK_TRANSACTIONS = [
     userName: 'Tech Corp',
     type: 'withdrawal' as const,
     amount: 1200.00,
-    currency: 'USD',
+    currency: 'G-coin',
     status: 'completed' as const,
     description: 'Withdrawal to bank account',
     createdAt: '2024-05-15T14:20:00Z',
@@ -157,7 +158,7 @@ const MOCK_TRANSACTIONS = [
     userName: 'John Doe',
     type: 'deposit' as const,
     amount: 250.00,
-    currency: 'USD',
+    currency: 'G-coin',
     status: 'pending' as const,
     description: 'Wallet deposit via PayPal',
     createdAt: '2024-05-16T15:00:00Z',
@@ -170,7 +171,7 @@ const MOCK_TRANSACTIONS = [
     userName: 'Sarah Designer',
     type: 'refund' as const,
     amount: 29.99,
-    currency: 'USD',
+    currency: 'G-coin',
     status: 'completed' as const,
     description: 'Refund for cancelled subscription',
     createdAt: '2024-05-14T11:30:00Z',
@@ -349,7 +350,7 @@ export default function AdminRevenueScreen() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <DollarSign size={20} className="text-green" />
+                <GCoinIcon size={20} />
                 <span className="badge-green text-xs">Revenue Management</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-primary">Revenue & Finance</h1>
@@ -370,12 +371,12 @@ export default function AdminRevenueScreen() {
           {/* Stats Grid */}
           <div className="revenue-stats-grid mb-6 sm:mb-8">
             {[
-              { label: 'Total Revenue', value: `$${stats.totalRevenue.toLocaleString()}`, icon: <TrendingUp size={16} />, color: 'green', trend: '+12%' },
-              { label: 'Wallet Balance', value: `$${stats.totalWalletBalance.toLocaleString()}`, icon: <Wallet size={16} />, color: 'cyan', trend: '+8%' },
+              { label: 'Total Revenue', value: `${stats.totalRevenue.toLocaleString()} G-coin`, icon: <TrendingUp size={16} />, color: 'green', trend: '+12%' },
+              { label: 'Wallet Balance', value: `${stats.totalWalletBalance.toLocaleString()} G-coin`, icon: <Wallet size={16} />, color: 'cyan', trend: '+8%' },
               { label: 'Active Subs', value: stats.activeSubscriptions.toString(), icon: <CreditCard size={16} />, color: 'purple', trend: '+15' },
-              { label: 'Transactions', value: stats.totalTransactions.toString(), icon: <DollarSign size={16} />, color: 'amber', trend: '+23' },
+              { label: 'Transactions', value: stats.totalTransactions.toString(), icon: <GCoinIcon size={16} />, color: 'amber', trend: '+23' },
               { label: 'Pending', value: stats.pendingTransactions.toString(), icon: <Clock size={16} />, color: 'amber', trend: '2' },
-              { label: 'Monthly MRR', value: `$${stats.monthlyRecurring.toFixed(0)}`, icon: <TrendingUp size={16} />, color: 'green', trend: '+$180' },
+              { label: 'Monthly MRR', value: `${stats.monthlyRecurring.toFixed(0)} G-coin`, icon: <TrendingUp size={16} />, color: 'green', trend: '+180 G-coin' },
             ].map(stat => (
               <div key={stat.label} className="revenue-stat-card">
                 <div className="revenue-stat-header">
@@ -395,7 +396,7 @@ export default function AdminRevenueScreen() {
               { id: 'overview', label: 'Overview', icon: <TrendingUp size={14} /> },
               { id: 'wallets', label: 'Wallets', icon: <Wallet size={14} /> },
               { id: 'subscriptions', label: 'Subscriptions', icon: <CreditCard size={14} /> },
-              { id: 'transactions', label: 'Transactions', icon: <DollarSign size={14} /> },
+              { id: 'transactions', label: 'Transactions', icon: <GCoinIcon size={14} /> },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -431,17 +432,17 @@ export default function AdminRevenueScreen() {
               <section className="system-finance-summary-grid">
                 <div className="system-finance-card">
                   <span>Total Platform Balance</span>
-                  <strong>${systemFinanceSummary.totalPlatformBalance.toLocaleString()}</strong>
+                  <strong>{systemFinanceSummary.totalPlatformBalance.toLocaleString()} G-coin</strong>
                   <small>Across all user wallets</small>
                 </div>
                 <div className="system-finance-card">
                   <span>Total Escrow Held</span>
-                  <strong>${systemFinanceSummary.totalEscrowHeld.toLocaleString()}</strong>
+                  <strong>{systemFinanceSummary.totalEscrowHeld.toLocaleString()} G-coin</strong>
                   <small>Funds reserved for active contracts</small>
                 </div>
                 <div className="system-finance-card">
                   <span>Total Commissions</span>
-                  <strong>${systemFinanceSummary.totalCommissions.toFixed(2)}</strong>
+                  <strong>{systemFinanceSummary.totalCommissions.toFixed(2)} G-coin</strong>
                   <small>Estimated from completed transactions</small>
                 </div>
                 <div className="system-finance-card">
@@ -569,8 +570,8 @@ export default function AdminRevenueScreen() {
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="date" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                      <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v.toLocaleString()}`, 'Revenue']} />
+                      <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k G-coin`} />
+                      <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`${v.toLocaleString()} G-coin`, 'Revenue']} />
                       <Area type="monotone" dataKey="revenue" stroke="#22C55E" strokeWidth={2} fill="url(#revenueGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -609,7 +610,7 @@ export default function AdminRevenueScreen() {
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={REVENUE_DATA}>
                     <XAxis dataKey="date" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                    <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k G-coin`} />
                     <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.3)', borderRadius: 10, color: 'white' }} />
                     <Bar key="bar-subscriptions" dataKey="subscriptions" fill="#9F4BFF" radius={[4, 4, 0, 0]} name="Subscriptions" />
                     <Bar key="bar-deposits" dataKey="deposits" fill="#0077FF" radius={[4, 4, 0, 0]} name="Deposits" />
@@ -652,7 +653,7 @@ export default function AdminRevenueScreen() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-green">${wallet.balance.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-green flex items-center justify-end gap-1"><GCoinIcon size={20} />{wallet.balance.toLocaleString()}</p>
                         <p className="text-xs text-muted">{wallet.currency}</p>
                       </div>
                     </div>
@@ -718,7 +719,7 @@ export default function AdminRevenueScreen() {
                         <p className="text-xs text-muted">ID: {sub.id}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-green">${sub.amount}</p>
+                        <p className="text-2xl font-bold text-green flex items-center justify-end gap-1"><GCoinIcon size={20} />{sub.amount}</p>
                         <p className="text-xs text-muted capitalize">{sub.duration}</p>
                       </div>
                     </div>
@@ -816,9 +817,10 @@ export default function AdminRevenueScreen() {
                         <p className="text-xs text-muted">ID: {trans.id}</p>
                       </div>
                       <div className="text-right">
-                        <p className={`text-2xl font-bold flex items-center gap-1 ${trans.type === 'deposit' || trans.type === 'refund' ? 'text-green' : 'text-red'}`}>
+                        <p className={`text-2xl font-bold flex items-center justify-end gap-1 ${trans.type === 'deposit' || trans.type === 'refund' ? 'text-green' : 'text-red'}`}>
                           {trans.type === 'deposit' || trans.type === 'refund' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
-                          ${trans.amount.toLocaleString()}
+                          <GCoinIcon size={20} />
+                          {trans.amount.toLocaleString()}
                         </p>
                         <p className="text-xs text-muted">{trans.currency}</p>
                       </div>
@@ -865,8 +867,9 @@ export default function AdminRevenueScreen() {
                         <p className="text-sm text-secondary">{viewTransaction.description}</p>
                       </div>
                       <div className="text-right">
-                        <p className={`text-3xl font-bold ${viewTransaction.type === 'deposit' || viewTransaction.type === 'refund' ? 'text-green' : 'text-red'}`}>
-                          ${viewTransaction.amount.toLocaleString()}
+                        <p className={`text-3xl font-bold flex items-center justify-end gap-1 ${viewTransaction.type === 'deposit' || viewTransaction.type === 'refund' ? 'text-green' : 'text-red'}`}>
+                          <GCoinIcon size={24} />
+                          {viewTransaction.amount.toLocaleString()}
                         </p>
                         <p className="text-xs text-muted">{viewTransaction.currency}</p>
                       </div>
@@ -961,7 +964,7 @@ export default function AdminRevenueScreen() {
                       <div className="grid grid-cols-2 gap-3 text-xs pt-3 border-t border-white/5">
                         <div>
                           <p className="text-muted mb-1">Amount</p>
-                          <p className="text-primary font-bold">${subscriptionAction.subscription.amount}</p>
+                          <p className="text-primary font-bold flex items-center gap-1"><GCoinIcon size={14} />{subscriptionAction.subscription.amount}</p>
                         </div>
                         <div>
                           <p className="text-muted mb-1">Renews At</p>
@@ -1035,7 +1038,7 @@ export default function AdminRevenueScreen() {
                       <div className="grid grid-cols-2 gap-3 text-xs pt-3 border-t border-white/5">
                         <div>
                           <p className="text-muted mb-1">Current Amount</p>
-                          <p className="text-primary font-bold">${subscriptionAction.subscription.amount}</p>
+                          <p className="text-primary font-bold flex items-center gap-1"><GCoinIcon size={14} />{subscriptionAction.subscription.amount}</p>
                         </div>
                         <div>
                           <p className="text-muted mb-1">{subscriptionAction.action === 'extend' ? 'Current End Date' : 'Expired At'}</p>
@@ -1054,10 +1057,10 @@ export default function AdminRevenueScreen() {
                           onChange={e => setExtendMonths(Number(e.target.value))}
                           className="input-gb w-full px-4 py-3 text-sm cursor-pointer"
                         >
-                          <option value={1}>1 Month (+${subscriptionAction.subscription.amount})</option>
-                          <option value={3}>3 Months (+${(subscriptionAction.subscription.amount * 3).toFixed(2)})</option>
-                          <option value={6}>6 Months (+${(subscriptionAction.subscription.amount * 6).toFixed(2)})</option>
-                          <option value={12}>12 Months (+${(subscriptionAction.subscription.amount * 12).toFixed(2)})</option>
+                          <option value={1}>1 Month (+{subscriptionAction.subscription.amount} G-coin)</option>
+                          <option value={3}>3 Months (+{(subscriptionAction.subscription.amount * 3).toFixed(2)} G-coin)</option>
+                          <option value={6}>6 Months (+{(subscriptionAction.subscription.amount * 6).toFixed(2)} G-coin)</option>
+                          <option value={12}>12 Months (+{(subscriptionAction.subscription.amount * 12).toFixed(2)} G-coin)</option>
                         </select>
                       </div>
 

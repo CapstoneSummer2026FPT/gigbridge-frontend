@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Building2,
   CheckCircle,
-  Coins,
   CreditCard,
   Loader2,
   QrCode,
@@ -250,13 +249,13 @@ export default function WalletDepositScreen() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-2">
-              <Coins size={20} className="text-amber-400" />
+              <GigCoinLogo size={20} />
               <span className="badge-green text-xs">Nạp Tiền</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-primary">Nạp GigCoin</h1>
             <p className="text-sm text-secondary mt-1">Thanh toán qua PayOS - Chuyển khoản ngân hàng / QR Code</p>
             <div className="flex items-center gap-2 mt-3 p-3 glass-card inline-flex">
-              <Coins className="text-amber-400" size={16} />
+              <GigCoinLogo size={16} />
               <span className="text-xs text-secondary font-semibold">1 {fmtVnd(VND_PER_GIGCOIN)} VND</span>
             </div>
           </div>
@@ -381,7 +380,7 @@ export default function WalletDepositScreen() {
                   <div className="flex justify-between text-sm">
                     <span className="text-secondary">GigCoin Nhận</span>
                     <div className="flex items-center gap-1">
-                      <Coins className="text-amber-400" size={14} />
+                      <GigCoinLogo size={14} />
                       <span className="text-amber-400 font-bold">{fmtVnd(gigcoinAmount)}</span>
                     </div>
                   </div>

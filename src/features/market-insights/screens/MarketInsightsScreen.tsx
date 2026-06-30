@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { TrendingUp, DollarSign, BarChart2, ArrowUpRight, Bot, Globe, Zap } from 'lucide-react';
+import { TrendingUp, BarChart2, ArrowUpRight, Bot, Globe, Zap } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { MARKET_INSIGHTS } from '../../../mock_backend';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -41,7 +42,7 @@ export default function MarketInsightsScreen() {
           {[
             { label: 'Active Freelancers', value: platformStats.totalFreelancers.toLocaleString(), icon: <Globe size={16} />, iconClass: 'stat-icon-cyan icon-cyan', change: '+2,847 this month' },
             { label: 'Completed Projects', value: platformStats.totalProjects.toLocaleString(), icon: <BarChart2 size={16} />, iconClass: 'stat-icon-purple icon-purple', change: '+1,284 this week' },
-            { label: 'Total Paid Out', value: `$${(platformStats.totalPaid / 1000000).toFixed(1)}M`, icon: <DollarSign size={16} />, iconClass: 'stat-icon-green icon-green', change: '+$1.2M this month' },
+            { label: 'Total Paid Out', value: `${(platformStats.totalPaid / 1000000).toFixed(1)}M G-coin`, icon: <GCoinIcon size={16} />, iconClass: 'stat-icon-green icon-green', change: '+1.2M G-coin this month' },
             { label: 'Platform Success Rate', value: `${platformStats.successRate}%`, icon: <TrendingUp size={16} />, iconClass: 'stat-icon-amber icon-amber', change: '+0.8% vs last month' },
           ].map(stat => (
             <div key={stat.label} className="stat-card">
@@ -62,7 +63,7 @@ export default function MarketInsightsScreen() {
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-primary font-semibold">Average Project Budgets</h2>
-              <span className="badge-cyan text-xs">$/project</span>
+              <span className="badge-cyan text-xs">G-coin/project</span>
             </div>
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={averageRatesBySkill} layout="vertical">
@@ -72,9 +73,9 @@ export default function MarketInsightsScreen() {
                     <stop offset="100%" stopColor="#0077FF" />
                   </linearGradient>
                 </defs>
-                <XAxis key="market-rates-xaxis" type="number" tick={{ fill: '#8892A4', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                <XAxis key="market-rates-xaxis" type="number" tick={{ fill: '#8892A4', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}k G-coin`} />
                 <YAxis key="market-rates-yaxis" type="category" dataKey="skill" tick={{ fill: '#8892A4', fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
-                <Tooltip key="market-rates-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v}k/project`, 'Budget']} />
+                <Tooltip key="market-rates-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`${v}k G-coin/project`, 'Budget']} />
                 <Bar key="market-rates-bar" dataKey="rate" radius={[0, 4, 4, 0]} fill="url(#marketBarGrad2026)" isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
@@ -108,7 +109,7 @@ export default function MarketInsightsScreen() {
                   </linearGradient>
                 </defs>
                 <XAxis key="market-earnings-xaxis" dataKey="month" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} interval={0} />
-                <YAxis key="market-earnings-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                <YAxis key="market-earnings-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k G-coin`} />
                 <Tooltip key="market-earnings-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,240,255,0.2)', borderRadius: 10, color: 'white' }} />
                 <Area key="market-earnings-freelancer" type="monotone" dataKey="freelancer" stroke="#0077FF" strokeWidth={2} fill="url(#marketFlGrad2026)" isAnimationActive={false} />
                 <Area key="market-earnings-client" type="monotone" dataKey="client" stroke="#9F4BFF" strokeWidth={2} fill="url(#marketClGrad2026)" isAnimationActive={false} />
@@ -170,7 +171,7 @@ export default function MarketInsightsScreen() {
             </div>
             <div className="space-y-4">
               {[
-                { title: '🚀 Hottest Skill: AI/ML Integration', body: 'Demand surged 142% YoY. Average project budget index reached $12.5K. Expected to grow another 60% by Q4 2026.', borderClass: 'border-purple' },
+                { title: '🚀 Hottest Skill: AI/ML Integration', body: 'Demand surged 142% YoY. Average project budget index reached 12.5K G-coin. Expected to grow another 60% by Q4 2026.', borderClass: 'border-purple' },
                 { title: '📈 Fastest Growing: React + AI Skills', body: 'Developers combining React with AI integration command 35% higher project budgets than React-only developers.', borderClass: 'border-cyan' },
                 { title: '💡 Career Advice', body: 'Top earners in 2026 combine core programming skills with domain expertise in AI, fintech, or healthcare.', borderClass: 'border-green' },
                 { title: '⚠️ Market Watch', body: 'Pure frontend roles declining 8% as AI tools automate routine UI tasks. Focus on architecture and AI integration.', borderClass: 'border-amber' },

@@ -7,7 +7,6 @@ import {
   Eye,
   ArrowUpRight,
   ArrowDownRight,
-  Coins,
   Wallet,
   RefreshCw,
   XCircle,

@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, DollarSign, Users, FileText, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, Users, FileText, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { JobPostStatus, type Job, type JobPostSummaryDto } from '../../../types/models/Job';
 import '../styles/admin-users-screen.css';
@@ -292,9 +293,9 @@ export default function AdminJobsScreen() {
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-1 whitespace-nowrap">
-                          <DollarSign size={12} className="text-green flex-shrink-0" />
+                          <GCoinIcon size={12} />
                           <span className="text-xs text-primary font-semibold">
-                            ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()}
+                            {job.budgetMin.toLocaleString()} - {job.budgetMax.toLocaleString()}
                           </span>
                         </div>
                       </td>
@@ -392,9 +393,9 @@ export default function AdminJobsScreen() {
                 <div>
                   <p className="text-muted mb-1">Budget</p>
                   <div className="flex items-center gap-1">
-                    <DollarSign size={12} className="text-green" />
+                    <GCoinIcon size={12} />
                     <span className="text-primary font-semibold text-xs">
-                      ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()}
+                      {job.budgetMin.toLocaleString()} - {job.budgetMax.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -498,9 +499,9 @@ export default function AdminJobsScreen() {
                     <div>
                       <p className="text-xs text-muted mb-1">Budget</p>
                       <div className="flex items-center gap-1">
-                        <DollarSign size={14} className="text-green" />
+                        <GCoinIcon size={14} />
                         <p className="text-sm font-semibold text-primary">
-                          ${previewJob.budgetMin.toLocaleString()} - ${previewJob.budgetMax.toLocaleString()}
+                          {previewJob.budgetMin.toLocaleString()} - {previewJob.budgetMax.toLocaleString()}
                         </p>
                       </div>
                     </div>

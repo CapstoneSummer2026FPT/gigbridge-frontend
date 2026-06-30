@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, CreditCard, TrendingUp, History, Moon, Sun, Coins } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, CreditCard, TrendingUp, History, Moon, Sun } from 'lucide-react';
 import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
@@ -11,6 +11,7 @@ import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useUserNotifications } from '../../features/notifications/hooks/useUserNotifications';
 import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
+import { formatGigCoinNumber } from '../utils/gigcoin';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -313,7 +314,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all glass-button"
             >
               <GigCoinLogo size={16} />
-              <GigCoinAmount amount={walletBalance} className="text-primary text-sm font-semibold hidden sm:inline-flex" />
+              <span className="text-primary text-sm font-semibold hidden sm:inline-flex">{formatGigCoinNumber(walletBalance)}</span>
               <ChevronDown size={14} className="text-muted" />
             </button>
 
@@ -322,14 +323,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <div className="px-3 py-2 mb-1">
                   <p className="text-xs text-muted">GigCoin Balance</p>
                   <div className="flex items-center gap-1">
-                    <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-amber-400" />
+                    <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-brand" />
                   </div>
                 </div>
                 <div className="h-px mb-1 dropdown-divider" />
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/wallet/deposit'); setShowWalletMenu(false); }}>
-                  <Coins size={14} className="text-amber-400" />
+                  <GigCoinLogo size={14} />
                   <span>Deposit GigCoin</span>
                 </button>
 

@@ -102,7 +102,7 @@ export default function CreatePostJobEsignScreen() {
                 <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">BÊN A: NHÀ TUYỂN DỤNG (BÊN GIAO VIỆC)</h3>
                 <p style="margin-left: 12px; color: #334155;">Họ và tên: <strong>${user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Chủ dự án'}</strong></p>
                 <p style="margin-left: 12px; color: #334155;">Tên công việc / Dự án: <strong>${jobData?.title || contractForm?.title || 'Dự án capstone'}</strong></p>
-                <p style="margin-left: 12px; color: #334155;">Ngân sách dự kiến tối đa: <strong>$${contractForm?.budget || '5,000'}</strong></p>
+                <p style="margin-left: 12px; color: #334155;">Ngân sách dự kiến tối đa: <strong>${contractForm?.budget || '5,000'} G-coin</strong></p>
                 
                 <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">BÊN B: CỘNG TÁC VIÊN FREELANCER (BÊN NHẬN VIỆC)</h3>
                 <p style="margin-left: 12px; color: #334155;">Ứng viên Freelancer được tuyển dụng thông qua nền tảng GigBridge.</p>
@@ -112,7 +112,7 @@ export default function CreatePostJobEsignScreen() {
                 <p style="margin-left: 12px; color: #334155;">Thời hạn hoàn thành dự kiến: <strong>${contractForm?.endDate || 'Theo thoả thuận'}</strong>.</p>
                 
                 <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">ĐIỀU 2: PHÍ DỊCH VỤ VÀ PHƯƠNG THỨC THANH TOÁN</h3>
-                <p style="margin-left: 12px; color: #334155;">Tổng giá trị hợp đồng là <strong>$${contractForm?.budget || '5,000'} USD</strong>. Việc thanh toán sẽ được chia làm các giai đoạn (Milestones) dựa trên khối lượng công việc hoàn thành thực tế và được phê duyệt bởi Bên A thông qua cơ chế ký quỹ (Escrow) của GigBridge.</p>
+                <p style="margin-left: 12px; color: #334155;">Tổng giá trị hợp đồng là <strong>${contractForm?.budget || '5,000'} G-coin</strong>. Việc thanh toán sẽ được chia làm các giai đoạn (Milestones) dựa trên khối lượng công việc hoàn thành thực tế và được phê duyệt bởi Bên A thông qua cơ chế ký quỹ (Escrow) của GigBridge.</p>
                 
                 <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">ĐIỀU 3: ĐIỀU KHOẢN BẢO MẬT</h3>
                 <p style="margin-left: 12px; color: #334155;">Hai bên cam kết bảo mật toàn bộ thông tin trao đổi, dữ liệu dự án và mã nguồn được chia sẻ trong suốt quá trình thực hiện hợp đồng này.</p>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Users, Briefcase, DollarSign, TrendingUp, Shield, AlertCircle, CheckCircle, XCircle, BarChart2, Activity, Bot, Flag, FileText, Terminal, MessageSquare, HelpCircle } from 'lucide-react';
+import { Users, Briefcase, TrendingUp, Shield, AlertCircle, CheckCircle, XCircle, BarChart2, Activity, Bot, Flag, FileText, Terminal, MessageSquare, HelpCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { adminAPI } from '../../../api/adminAPI';
 import { DB } from '../../../mock_backend';
 import type { AdminUserDto } from '../../../types';
@@ -248,13 +249,13 @@ export default function AdminDashboardScreen() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign size={20} className="text-green" />
+                  <GCoinIcon size={20} />
                   <h3 className="text-lg font-bold text-primary">Revenue</h3>
                 </div>
                 <p className="text-sm text-secondary">Financial analytics</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-green/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <DollarSign size={20} className="text-green" />
+                <GCoinIcon size={20} />
               </div>
             </div>
           </button>
@@ -265,7 +266,7 @@ export default function AdminDashboardScreen() {
           {[
             { label: 'Total Users', value: usersLoading ? '...' : userStats.total.toLocaleString(), change: userStats.change, icon: <Users size={16} />, iconClass: 'stat-icon-cyan icon-cyan' },
             { label: 'Active Jobs', value: allJobs.filter(j => j.status === 'open').length.toString(), change: '+42 today', icon: <Briefcase size={16} />, iconClass: 'stat-icon-purple icon-purple' },
-            { label: 'Platform Revenue', value: '$398K', change: '+16.4% MoM', icon: <DollarSign size={16} />, iconClass: 'stat-icon-green icon-green' },
+            { label: 'Platform Revenue', value: '398K G-coin', change: '+16.4% MoM', icon: <GCoinIcon size={16} />, iconClass: 'stat-icon-green icon-green' },
             { label: 'Success Rate', value: '96.4%', change: '+0.8% this month', icon: <TrendingUp size={16} />, iconClass: 'stat-icon-amber icon-amber' },
           ].map(stat => (
             <div key={stat.label} className="stat-card">
@@ -307,8 +308,8 @@ export default function AdminDashboardScreen() {
                       </linearGradient>
                     </defs>
                     <XAxis key="admin-revenue-xaxis" dataKey="month" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} interval={0} />
-                    <YAxis key="admin-revenue-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                    <Tooltip key="admin-revenue-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v.toLocaleString()}`, 'Revenue']} />
+                    <YAxis key="admin-revenue-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k G-coin`} />
+                    <Tooltip key="admin-revenue-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`${v.toLocaleString()} G-coin`, 'Revenue']} />
                     <Area key="admin-revenue-area" type="monotone" dataKey="revenue" stroke="#9F4BFF" strokeWidth={2} fill="url(#adminRevGrad2026)" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -501,8 +502,8 @@ export default function AdminDashboardScreen() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={REVENUE_DATA}>
                 <XAxis key="admin-revenue-bar-xaxis" dataKey="month" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis key="admin-revenue-bar-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip key="admin-revenue-bar-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v.toLocaleString()}`, 'Revenue']} />
+                <YAxis key="admin-revenue-bar-yaxis" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k G-coin`} />
+                <Tooltip key="admin-revenue-bar-tooltip" contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`${v.toLocaleString()} G-coin`, 'Revenue']} />
                 <Bar key="admin-revenue-bar" dataKey="revenue" fill="#9F4BFF" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

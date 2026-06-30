@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
-import { ArrowLeft, BookOpen, User, Briefcase, Search, FileText, MessageSquare, DollarSign, Shield, Bot, Star, CheckCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, User, Briefcase, Search, FileText, MessageSquare, Shield, Bot, Star, CheckCircle } from 'lucide-react';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 
 const GUIDES = {
   'For Freelancers': [
@@ -70,7 +71,7 @@ const GUIDES = {
     },
     {
       title: 'Payment & Budgeting',
-      icon: <DollarSign size={20} />,
+      icon: <GCoinIcon size={20} />,
       color: 'green',
       steps: [
         { title: 'Set Your Budget', desc: 'Use AI Market Insights to understand typical rates for your project type.' },

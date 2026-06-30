@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, MessageSquare, Bot, DollarSign, CheckCircle, Briefcase, Star, Trash2, AlertTriangle, FileText, CalendarDays } from 'lucide-react';
+import { Bell, MessageSquare, Bot, CheckCircle, Briefcase, Star, Trash2, AlertTriangle, FileText, CalendarDays } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useUserNotifications } from '../hooks/useUserNotifications';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 import type { ReactNode } from 'react';
 import '../styles/notifications-screen.css';
 
@@ -13,7 +14,7 @@ const NOTIF_ICONS: Record<string, ReactNode> = {
   contract: <FileText size={16} className="text-cyan" />,
   message: <MessageSquare size={16} className="text-purple" />,
   milestone: <CheckCircle size={16} className="text-green" />,
-  payment: <DollarSign size={16} className="text-green" />,
+  payment: <GCoinIcon size={16} />,
   review: <Star size={16} className="text-amber" />,
   dispute: <AlertTriangle size={16} className="text-red" />,
   ai_suggestion: <Bot size={16} className="text-purple" />,
@@ -222,7 +223,7 @@ export default function NotificationsScreen() {
                   { label: 'New Proposals', value: '2', color: '#0077FF' },
                   { label: 'Messages', value: '5', color: '#9F4BFF' },
                   { label: 'AI Matches', value: '3', color: '#22C55E' },
-                  { label: 'Payments', value: '$1,500', color: '#22C55E' },
+                  { label: 'Payments', value: '1,500 G-coin', color: '#22C55E' },
                 ].map(item => (
                   <div key={item.label} className="flex justify-between py-2 border-b"
                     style={{ borderColor: 'rgba(255,255,255,0.06)' }}>

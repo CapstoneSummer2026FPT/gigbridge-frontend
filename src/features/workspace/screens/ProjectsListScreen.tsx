@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { Flag, Calendar, DollarSign, Clock, User } from 'lucide-react';
+import { Flag, Calendar, Clock, User } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 
 const getStatusLabel = (status: ContractStatus): string => {
   switch (status) {
@@ -167,7 +168,7 @@ export default function ProjectsListScreen() {
 
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-secondary">
-                      <DollarSign className="w-4 h-4 text-green-400" />
+                      <GCoinIcon size={16} />
                       <span className="text-primary font-semibold"><GigCoinAmount amount={project.totalBudget} /></span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-secondary">
