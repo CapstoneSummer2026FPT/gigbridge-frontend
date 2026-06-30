@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import '../styles/LiquidLoading.css';
 
 interface LiquidLoadingProps {
@@ -8,6 +9,12 @@ interface LiquidLoadingProps {
 }
 
 export function LiquidLoading({ message = 'Đang xử lý...', overlay = false, className = '' }: LiquidLoadingProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const content = (
     <div className={`liquid-loader-wrapper ${overlay ? '' : className}`}>
       <div className="liquid-blob-container">
@@ -31,10 +38,12 @@ export function LiquidLoading({ message = 'Đang xử lý...', overlay = false, 
   );
 
   if (overlay) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-black/65 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-fade-in">
+    if (!mounted) return null;
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] bg-black/65 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-fade-in">
         {content}
-      </div>
+      </div>,
+      document.body
     );
   }
 
