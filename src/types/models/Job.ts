@@ -110,6 +110,25 @@ export interface GetMyJobPostSkillDto {
   name: string;
 }
 
+export type JobPostSetupStep =
+  | 'Details'
+  | 'ESign'
+  | 'Milestones'
+  | 'ReadyToPublish'
+  | 'Published';
+
+export interface JobPostSetupProgressDto {
+  nextIncompleteStep: JobPostSetupStep;
+  isDetailsComplete: boolean;
+  contractId?: string | null;
+  eSignDocumentId?: string | null;
+  esignDocumentId?: string | null;
+  eSignStatus?: number | null;
+  esignStatus?: number | null;
+  hasMilestones: boolean;
+  canPublish: boolean;
+}
+
 export interface GetMyJobPostDto {
   jobPostsId: string;
   clientProfilesId: string;
@@ -134,6 +153,7 @@ export interface GetMyJobPostDto {
   createdAt: string;
   updatedAt?: string | null;
   proposalCount: number;
+  setupProgress?: JobPostSetupProgressDto | null;
 }
 
 export interface JobPostSkillDto {
@@ -196,6 +216,7 @@ export interface GetMyJobPostDetailDto {
   customSkillNames: string[];
   attachments: JobPostAttachmentDto[];
   proposalCount: number;
+  setupProgress?: JobPostSetupProgressDto | null;
 }
 
 export interface CreateJobPostRequest {

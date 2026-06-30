@@ -10,12 +10,20 @@
   padding-top: 4rem;
 }
 
+.app-layout-content.no-top-nav {
+  padding-top: 0;
+}
+
 .app-layout-main {
   flex: 1;
   min-height: calc(100vh - 4rem);
   position: relative;
   z-index: 1;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-layout-main.no-top-nav {
+  min-height: 100vh;
 }
 
 .app-layout-main.with-sidebar {

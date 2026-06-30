@@ -170,7 +170,11 @@ export default function AdminUsersScreen() {
       if (response.success) {
         await loadUsers();
       } else {
-        alert(response.message || 'Failed to clear user suspension');
+        alert(
+          response.statusCode === 404
+            ? 'Clear suspension endpoint was not found. Please restart or update the backend API.'
+            : response.message || 'Failed to clear user suspension'
+        );
       }
       setShowActionMenu(null);
     }

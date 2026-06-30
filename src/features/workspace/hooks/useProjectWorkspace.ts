@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import type { Message } from '../../../types';
-import type { ContractDto, Milestone } from '../../../types/models/Contract';
+import type { ContractDto, ContractProductHandoffResponse, Milestone } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 
 interface WorkspaceMilestone {
   id: string;
@@ -43,6 +45,23 @@ interface WorkspaceProjectListItem {
   unread: boolean;
   online: boolean;
   titleLong: string;
+}
+
+interface SubmitMilestoneDeliverablePayload {
+  description?: string;
+  file?: File | null;
+  externalUrl?: string;
+}
+
+interface SubmitMilestoneDeliverableResult {
+  success: boolean;
+  message?: string;
+}
+
+interface SubmitProductHandoffPayload {
+  note?: string;
+  file?: File | null;
+  externalUrl?: string;
 }
 
 const emptyProject: WorkspaceProject = {
@@ -164,10 +183,12 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
 export function useProjectWorkspace(initialContractId: string) {
   const navigate = useNavigate();
   const { user, role } = useApp();
-  const isClient = role === 0;
+  const roleValue = role as UserRole | string | null;
+  const isClient = roleValue === UserRole.Client || roleValue === 'client';
 
   const [activeProjectId, setActiveProjectId] = useState(initialContractId);
   const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
+  const [currentProductHandoff, setCurrentProductHandoff] = useState<ContractProductHandoffResponse | null>(null);
   const [workspaceContracts, setWorkspaceContracts] = useState<ContractDto[]>([]);
   const [project, setProject] = useState<WorkspaceProject>(emptyProject);
   const [showInfo, setShowInfo] = useState(true);
@@ -213,6 +234,7 @@ export function useProjectWorkspace(initialContractId: string) {
         if (!contractResponse.success || !contractResponse.data) {
           setProject(emptyProject);
           setActiveContract(null);
+          setCurrentProductHandoff(null);
           return;
         }
 
@@ -220,6 +242,9 @@ export function useProjectWorkspace(initialContractId: string) {
         const nextProject = buildProject(nextContract, milestonesResponse.data ?? []);
         setActiveContract(nextContract);
         setProject(nextProject);
+
+        const productHandoffResponse = await contractGetAPI.getCurrentProductHandoff(activeProjectId);
+        setCurrentProductHandoff(productHandoffResponse.success ? productHandoffResponse.data ?? null : null);
 
         if (nextContract.conversationId) {
           const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
@@ -234,6 +259,7 @@ export function useProjectWorkspace(initialContractId: string) {
         if (current) {
           setProject(emptyProject);
           setActiveContract(null);
+          setCurrentProductHandoff(null);
           setProjectMessages([]);
         }
       }
@@ -354,6 +380,98 @@ export function useProjectWorkspace(initialContractId: string) {
     navigate(`/contracts/${activeProjectId}/milestones?mode=contract-edit`);
   };
 
+  const reloadActiveWorkspace = async (): Promise<void> => {
+    if (!activeProjectId) return;
+
+    const [contractResponse, milestonesResponse, productHandoffResponse] = await Promise.all([
+      contractGetAPI.getContractById(activeProjectId),
+      contractGetAPI.getMilestonesByContract(activeProjectId),
+      contractGetAPI.getCurrentProductHandoff(activeProjectId),
+    ]);
+
+    if (contractResponse.success && contractResponse.data) {
+      const nextContract = contractResponse.data;
+      setActiveContract(nextContract);
+      setProject(buildProject(nextContract, milestonesResponse.data ?? []));
+      setCurrentProductHandoff(productHandoffResponse.success ? productHandoffResponse.data ?? null : null);
+
+      if (nextContract.conversationId) {
+        const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
+        if (messagesResponse.success && messagesResponse.data) {
+          setProjectMessages(messagesResponse.data.map(message => mapWorkspaceMessage(message as Record<string, unknown>)));
+        }
+      }
+    }
+  };
+
+  const handleSubmitMilestoneDeliverable = async (
+    milestoneId: string,
+    payload: SubmitMilestoneDeliverablePayload
+  ): Promise<SubmitMilestoneDeliverableResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const formData = new FormData();
+    const description = payload.description?.trim();
+    const externalUrl = payload.externalUrl?.trim();
+
+    if (description) {
+      formData.append('description', description);
+    }
+
+    if (payload.file) {
+      formData.append('file', payload.file);
+    }
+
+    if (externalUrl) {
+      formData.append('externalUrl', externalUrl);
+    }
+
+    const response = await contractPostAPI.submitMilestone(activeProjectId, milestoneId, formData);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to submit deliverable.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleSubmitProductHandoff = async (
+    payload: SubmitProductHandoffPayload
+  ): Promise<SubmitMilestoneDeliverableResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const formData = new FormData();
+    const note = payload.note?.trim();
+    const externalUrl = payload.externalUrl?.trim();
+
+    if (note) {
+      formData.append('note', note);
+    }
+
+    if (payload.file) {
+      formData.append('file', payload.file);
+    }
+
+    if (externalUrl) {
+      formData.append('externalUrl', externalUrl);
+    }
+
+    const response = await contractPostAPI.submitProductHandoff(activeProjectId, formData);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to send work materials.' };
+    }
+
+    setCurrentProductHandoff(response.data ?? null);
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
   return {
     user,
     isClient,
@@ -372,6 +490,7 @@ export function useProjectWorkspace(initialContractId: string) {
     aiChat,
     project,
     activeContract,
+    currentProductHandoff,
     workspaceProjects,
     currentProjData,
     partnerName,
@@ -384,6 +503,8 @@ export function useProjectWorkspace(initialContractId: string) {
     handleSendAiMessage,
     handleSimulateAttachment,
     handleCreateMockMilestone,
+    handleSubmitMilestoneDeliverable,
+    handleSubmitProductHandoff,
     chatEndRef,
   };
 }
