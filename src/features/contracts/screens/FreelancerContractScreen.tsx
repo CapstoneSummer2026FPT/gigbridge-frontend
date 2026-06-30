@@ -35,6 +35,7 @@ import {
 import { MilestoneDetailCard } from '../components/MilestoneDetailCard';
 import '../styles/freelancer-contract-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { ContractAreaTabs } from '../components/ContractAreaTabs';
 
 interface MilestoneDisplay extends Milestone {
   percentageComplete: number;
@@ -201,6 +202,8 @@ export default function FreelancerContractScreen() {
   return (
     <AppLayout>
       <div className="contract-screen-wrapper">
+        <ContractAreaTabs />
+
         {/* Header Section */}
         <div
           className="contract-header-section"

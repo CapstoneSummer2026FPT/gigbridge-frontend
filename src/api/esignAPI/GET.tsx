@@ -1,6 +1,13 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ESignDocumentDto, ESignSignatureDto, SignatureAuditTrail } from '../../types/models/ESign';
+import type {
+  ESignDocumentDto,
+  ESignDocumentListItemDto,
+  ESignDocumentListPageDto,
+  ESignDocumentListQueryParams,
+  ESignSignatureDto,
+  SignatureAuditTrail,
+} from '../../types/models/ESign';
 
 const esignUrl = 'ESign';
 
@@ -66,6 +73,56 @@ interface BackendESignDocumentResponse {
   Signatures?: BackendESignSignatureResponse[];
 }
 
+interface BackendESignDocumentListItemResponse {
+  documentId?: string;
+  DocumentId?: string;
+  jobPostId?: string;
+  JobPostId?: string;
+  contractId?: string | null;
+  ContractId?: string | null;
+  documentCode?: string;
+  DocumentCode?: string;
+  documentType?: string;
+  DocumentType?: string;
+  title?: string;
+  Title?: string;
+  documentStatus?: number;
+  DocumentStatus?: number;
+  currentUserSignerRole?: number;
+  CurrentUserSignerRole?: number;
+  currentUserSignedAt?: string | null;
+  CurrentUserSignedAt?: string | null;
+  hasClientSigned?: boolean;
+  HasClientSigned?: boolean;
+  hasFreelancerSigned?: boolean;
+  HasFreelancerSigned?: boolean;
+  signatureCount?: number;
+  SignatureCount?: number;
+  finalizedAt?: string | null;
+  FinalizedAt?: string | null;
+  exportedPdfUrl?: string | null;
+  ExportedPdfUrl?: string | null;
+  createdAt?: string;
+  CreatedAt?: string;
+  updatedAt?: string | null;
+  UpdatedAt?: string | null;
+}
+
+interface BackendPaginatedESignDocumentsResponse {
+  items?: BackendESignDocumentListItemResponse[];
+  Items?: BackendESignDocumentListItemResponse[];
+  pageNumber?: number;
+  PageNumber?: number;
+  totalPages?: number;
+  TotalPages?: number;
+  totalCount?: number;
+  TotalCount?: number;
+  hasPreviousPage?: boolean;
+  HasPreviousPage?: boolean;
+  hasNextPage?: boolean;
+  HasNextPage?: boolean;
+}
+
 const getValue = <T,>(source: Record<string, unknown>, ...keys: string[]): T | undefined => {
   for (const key of keys) {
     const value = source[key];
@@ -123,6 +180,47 @@ export const normalizeESignDocument = (
   };
 };
 
+export const normalizeESignDocumentListItem = (
+  document: BackendESignDocumentListItemResponse
+): ESignDocumentListItemDto => {
+  const source = document as Record<string, unknown>;
+
+  return {
+    documentId: String(getValue(source, 'documentId', 'DocumentId') ?? ''),
+    jobPostId: String(getValue(source, 'jobPostId', 'JobPostId') ?? ''),
+    contractId: getValue<string | null>(source, 'contractId', 'ContractId') ?? null,
+    documentCode: String(getValue(source, 'documentCode', 'DocumentCode') ?? ''),
+    documentType: String(getValue(source, 'documentType', 'DocumentType') ?? ''),
+    title: String(getValue(source, 'title', 'Title') ?? 'Untitled E-sign contract'),
+    documentStatus: Number(getValue(source, 'documentStatus', 'DocumentStatus') ?? 0),
+    currentUserSignerRole: Number(getValue(source, 'currentUserSignerRole', 'CurrentUserSignerRole') ?? 0),
+    currentUserSignedAt: getValue<string | null>(source, 'currentUserSignedAt', 'CurrentUserSignedAt') ?? null,
+    hasClientSigned: Boolean(getValue<boolean>(source, 'hasClientSigned', 'HasClientSigned') ?? false),
+    hasFreelancerSigned: Boolean(getValue<boolean>(source, 'hasFreelancerSigned', 'HasFreelancerSigned') ?? false),
+    signatureCount: Number(getValue(source, 'signatureCount', 'SignatureCount') ?? 0),
+    finalizedAt: getValue<string | null>(source, 'finalizedAt', 'FinalizedAt') ?? null,
+    exportedPdfUrl: getValue<string | null>(source, 'exportedPdfUrl', 'ExportedPdfUrl') ?? null,
+    createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
+    updatedAt: getValue<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
+  };
+};
+
+export const normalizeESignDocumentListPage = (
+  page: BackendPaginatedESignDocumentsResponse
+): ESignDocumentListPageDto => {
+  const source = page as Record<string, unknown>;
+  const items = getValue<BackendESignDocumentListItemResponse[]>(source, 'items', 'Items') ?? [];
+
+  return {
+    items: items.map(normalizeESignDocumentListItem),
+    pageNumber: Number(getValue(source, 'pageNumber', 'PageNumber') ?? 1),
+    totalPages: Number(getValue(source, 'totalPages', 'TotalPages') ?? 1),
+    totalCount: Number(getValue(source, 'totalCount', 'TotalCount') ?? items.length),
+    hasPreviousPage: Boolean(getValue<boolean>(source, 'hasPreviousPage', 'HasPreviousPage') ?? false),
+    hasNextPage: Boolean(getValue<boolean>(source, 'hasNextPage', 'HasNextPage') ?? false),
+  };
+};
+
 const normalizeDocumentResponse = (
   response: ApiResponse<BackendESignDocumentResponse>
 ): ApiResponse<ESignDocumentDto> => ({
@@ -142,6 +240,22 @@ const normalizeSignaturesResponse = (
 ): ApiResponse<ESignSignatureDto[]> => ({
   ...response,
   data: response.data ? response.data.map(normalizeESignSignature) : [],
+});
+
+const normalizeDocumentListResponse = (
+  response: ApiResponse<BackendPaginatedESignDocumentsResponse>
+): ApiResponse<ESignDocumentListPageDto> => ({
+  ...response,
+  data: response.data
+    ? normalizeESignDocumentListPage(response.data)
+    : {
+        items: [],
+        pageNumber: 1,
+        totalPages: 1,
+        totalCount: 0,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
 });
 
 export const esignGetAPI = {
@@ -180,6 +294,20 @@ export const esignGetAPI = {
       `${esignUrl}/documents/by-contract/${contractId}`
     );
     return normalizeDocumentResponse(response);
+  },
+
+  /**
+   * GET /api/ESign/documents/my-signed
+   * Get signed documents for current user
+   */
+  getMySignedDocuments: async (
+    params: ESignDocumentListQueryParams = {}
+  ): Promise<ApiResponse<ESignDocumentListPageDto>> => {
+    const response = await apiService.get<BackendPaginatedESignDocumentsResponse>(
+      `${esignUrl}/documents/my-signed`,
+      params
+    );
+    return normalizeDocumentListResponse(response);
   },
 
   /**

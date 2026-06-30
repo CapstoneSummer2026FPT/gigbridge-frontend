@@ -73,6 +73,7 @@ import GoogleMeetOAuthCallbackScreen from '../features/integrations/screens/Goog
 import {
   ApproveMilestoneScreen,
   CreateEsignContractScreen,
+  ESignContractsScreen,
   EsignDocumentSigningScreen,
   FreelancerContractScreen,
   ManageContractScreen,
@@ -197,6 +198,7 @@ export const router = createBrowserRouter([
 
       // Contracts - requires authentication and setup
       { path: 'contracts', element: <ProtectedRoute requireAuth requireSetup><ContractListRoute /></ProtectedRoute> },
+      { path: 'contracts/esign', element: <ProtectedRoute requireAuth requireSetup><ESignContractsScreen /></ProtectedRoute> },
       { path: 'contracts/create/:proposalId', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/disputes/create', element: <ProtectedRoute requireAuth requireSetup><CreateDisputeScreen /></ProtectedRoute> },

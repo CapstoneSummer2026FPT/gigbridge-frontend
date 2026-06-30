@@ -3,6 +3,9 @@ export { esignPostAPI } from './POST';
 export type {
   ESignDocument,
   ESignDocumentDto,
+  ESignDocumentListItemDto,
+  ESignDocumentListPageDto,
+  ESignDocumentListQueryParams,
   ESignSignature,
   ESignSignatureDto,
   ESignTemplate,
