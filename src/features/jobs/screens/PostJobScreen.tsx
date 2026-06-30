@@ -16,6 +16,7 @@ import { JobPostGuide } from '../components/JobPostGuide';
 import { PromptSectionModal } from '../components/PromptSectionModal';
 import { AIGenJobGuide } from '../components/AIGenJobGuide';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { LiquidLoading } from '../../../shared/components/LiquidLoading';
 import '../styles/PostJobScreen.css';
 
 export default function PostJobScreen() {
@@ -851,6 +852,10 @@ export default function PostJobScreen() {
         isGenerating={isGeneratingInstant}
         threshold={!isJobDetailsGenerated ? 700 : 150}
       />
+
+      {isGeneratingInstant && (
+        <LiquidLoading overlay message="AI đang tạo thông tin chi tiết công việc..." />
+      )}
     </AppLayout>
   );
 }
