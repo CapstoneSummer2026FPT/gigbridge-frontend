@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { AlertCircle, ArrowRight, Calendar, DollarSign, FileText, Users, X, CheckCircle, Download, Send, Zap } from 'lucide-react';
+import { AlertCircle, ArrowRight, Calendar, FileText, Users, X, CheckCircle, Download, Send, Zap } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -9,6 +9,7 @@ import type { ProposalDto } from '../../../types/models/Proposal';
 import type { CreateContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import '../styles/create-esign-contract-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface ContractMilestoneDraft {
   title: string;
@@ -381,7 +382,7 @@ export default function CreateEsignContractScreen() {
 
                 <div className="summary-details">
                   <div className="detail-item">
-                    <DollarSign size={16} />
+                    <GigCoinLogo size={16} />
                     <span>Proposed Budget</span>
                     <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
                   </div>
@@ -683,7 +684,7 @@ export default function CreateEsignContractScreen() {
                   </div>
 
                   <div className="detail-box">
-                    <DollarSign size={20} />
+                    <GigCoinLogo size={20} />
                     <div>
                       <h4>Amount</h4>
                       <p>${(formData.totalBudget || 0).toLocaleString()}</p>

@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Lock, AlertCircle, CheckCircle, Clock, DollarSign,
+  Lock, AlertCircle, CheckCircle, Clock,
   User, FileText, Calendar, Download, ArrowLeft, Shield,
   Mail, ListChecks, Copy, Check, FileCheck, ChevronDown,
   Star, ShieldAlert, Edit3, XCircle
@@ -22,6 +22,7 @@ import {
   getMilestoneStatusClass
 } from '../../../shared/utils/contractUtils';
 import '../styles/view-contract-details-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface AuditTrailEntry {
   id: string;
@@ -304,7 +305,6 @@ export function FreelancerContractDetails({
             <div className="text-right">
               <span className="text-sm font-bold text-foreground block">{formatContractAmount(milestone.amount)}</span>
               <span className="text-xs text-muted-foreground block">
-                = {new Intl.NumberFormat('vi-VN').format(milestone.amount * 1000)} VND
               </span>
             </div>
           </div>
@@ -663,7 +663,6 @@ export function FreelancerContractDetails({
                             {formatContractAmount(contract.totalBudget)}
                           </span>
                           <span className="text-xs text-muted-foreground block mt-1">
-                            = {new Intl.NumberFormat('vi-VN').format(contract.totalBudget * 1000)} VND
                           </span>
                         </div>
                         <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
@@ -998,7 +997,7 @@ export function FreelancerContractDetails({
                       <span className="text-base font-black text-foreground mt-0.5 block">{formatContractAmount(contract.totalBudget)}</span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0">
-                      <DollarSign size={15} />
+                      <GigCoinLogo size={15} />
                     </div>
                   </div>
 

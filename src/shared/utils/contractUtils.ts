@@ -1,5 +1,6 @@
 import { ContractStatus, MilestoneStatus } from '../../types/models/Contract';
 
+import { formatGigCoin } from './gigcoin';
 /**
  * Get human-readable status label for contract status enum
  */
@@ -90,12 +91,7 @@ export const validateContractForm = (data: {
 /**
  * Format contract details for display
  */
-export const formatContractAmount = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
+export const formatContractAmount = (amount: number): string => formatGigCoin(amount);
 
 /**
  * Format date for contract display

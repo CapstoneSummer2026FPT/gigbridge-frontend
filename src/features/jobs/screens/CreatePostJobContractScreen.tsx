@@ -145,7 +145,7 @@ export default function CreatePostJobContractScreen() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="contract-budget">Total Budget ($) *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="contract-budget">Total Budget *</label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
                     <input 

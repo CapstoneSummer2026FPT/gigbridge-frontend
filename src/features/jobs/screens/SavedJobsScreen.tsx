@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bookmark, Briefcase, Clock, DollarSign, Globe } from 'lucide-react';
+import { Bookmark, Briefcase, Clock, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { savedJobAPI } from '../../../api/savedJobAPI';
 import type { SavedJobDto } from '../../../types/savedJob';
 import '../styles/browse-jobs-screen.css';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 
 const getSavedJobPostId = (job: SavedJobDto): string => job.jobPostId ?? job.jobPostsId ?? '';
 
@@ -126,7 +127,7 @@ export default function SavedJobsScreen() {
                       {(job.customSkillNames || []).map(skill => <span key={skill} className="tag-pill">{skill} (custom)</span>)}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs browse-jobs-job-meta">
-                      <span className="flex items-center gap-1"><DollarSign size={12} />{job.currency || '$'}{job.budgetMin ?? 0} - {job.currency || '$'}{job.budgetMax ?? 0}</span>
+                      <span className="flex items-center gap-1"><GigCoinBudget min={job.budgetMin} max={job.budgetMax} /></span>
                       <span className="flex items-center gap-1"><Globe size={12} />{job.estimatedDuration || 'Duration not specified'}</span>
                       <span className="flex items-center gap-1"><Clock size={12} />Posted {formatDate(job.jobCreatedAt)}</span>
                       <span>Saved {formatDate(job.savedAt)}</span>

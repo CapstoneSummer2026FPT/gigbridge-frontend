@@ -17,6 +17,7 @@ import {
   type GetMyJobPostDto,
 } from '../../../types/models/Job';
 import '../styles/my-jobs-screen.css';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
@@ -69,16 +70,6 @@ const visibilityIcon = (visibility?: number | null) => {
 
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-const formatBudget = (job: GetMyJobPostDto) => {
-  const min = job.budgetMin ?? null;
-  const max = job.budgetMax ?? null;
-
-  if (min !== null && max !== null) return `$${min.toLocaleString()}-${max.toLocaleString()}`;
-  if (min !== null) return `From $${min.toLocaleString()}`;
-  if (max !== null) return `Up to $${max.toLocaleString()}`;
-  return 'Not set';
-};
 
 const canEditDraftMilestones = (status?: number | null): boolean =>
   status === ContractStatus.PendingFreelancerSelection ||
@@ -392,7 +383,7 @@ export default function MyJobsScreen() {
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div className="mj-budget-value">{formatBudget(job)}</div>
+                        <div className="mj-budget-value"><GigCoinBudget min={job.budgetMin} max={job.budgetMax} /></div>
                         <div className="mj-budget-label">Budget</div>
                       </div>
                     </div>

@@ -11,6 +11,21 @@ import '../styles/admin-users-screen.css';
 type UserFilter = 'all' | 'client' | 'freelancer' | 'admin' | 'banned';
 type UserSort = 'name' | 'joined' | 'status';
 
+const isUserSuspended = (user: User): boolean => {
+  if (!user.suspended_until) {
+    return false;
+  }
+
+  return new Date(user.suspended_until).getTime() > Date.now();
+};
+
+const getUserStatusRank = (user: User): number => {
+  if (isUserSuspended(user)) return 2;
+  if (!user.is_active) return 3;
+  if (!user.is_email_verified) return 1;
+  return 0;
+};
+
 const initialCreateForm = {
   fullName: '',
   email: '',
@@ -35,6 +50,9 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
     role: dto.role as UserRole,
     is_email_verified: dto.isEmailVerified,
     is_active: dto.isActive,
+    suspended_until: dto.suspendedUntil ?? null,
+    suspended_at: dto.suspendedAt ?? null,
+    suspension_reason: dto.suspensionReason ?? null,
     is_setup: false,
     preferred_language: dto.preferredLanguage || 'en',
     last_login_at: null,
@@ -61,7 +79,7 @@ export default function AdminUsersScreen() {
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ type: 'ban' | 'unban' | 'role', user: User, newRole?: 0 | 1 | 2 } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'ban' | 'unban' | 'clearSuspension' | 'role', user: User, newRole?: 0 | 1 | 2 } | null>(null);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '' });
 
   // Real API state
@@ -104,7 +122,7 @@ export default function AdminUsersScreen() {
           filterType === 'client' ? user.role === 0 :
             filterType === 'freelancer' ? user.role === 1 :
               filterType === 'admin' ? user.role === 2 :
-                filterType === 'banned' ? !user.is_active : true;
+                filterType === 'banned' ? !user.is_active || isUserSuspended(user) : true;
 
       return matchesSearch && matchesFilter;
     });
@@ -113,7 +131,7 @@ export default function AdminUsersScreen() {
     filtered.sort((a, b) => {
       if (sortBy === 'name') return a.full_name.localeCompare(b.full_name);
       if (sortBy === 'joined') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      if (sortBy === 'status') return (a.is_active ? 0 : 1) - (b.is_active ? 0 : 1);
+      if (sortBy === 'status') return getUserStatusRank(a) - getUserStatusRank(b);
       return 0;
     });
 
@@ -125,7 +143,7 @@ export default function AdminUsersScreen() {
     const clients = allUsers.filter(u => u.role === 0).length;
     const freelancers = allUsers.filter(u => u.role === 1).length;
     const admins = allUsers.filter(u => u.role === 2).length;
-    const banned = allUsers.filter(u => !u.is_active).length;
+    const banned = allUsers.filter(u => !u.is_active || isUserSuspended(u)).length;
     const verified = allUsers.filter(u => u.is_email_verified).length;
     const reported = reportedUserTotal;
 
@@ -140,6 +158,19 @@ export default function AdminUsersScreen() {
         await loadUsers();
       } else {
         alert(response.message || 'Failed to update user status');
+      }
+      setShowActionMenu(null);
+    }
+  };
+
+  const handleClearSuspension = async (userId: string) => {
+    const user = allUsers.find(u => u.id === userId);
+    if (user) {
+      const response = await adminAPI.clearUserSuspension(user.email);
+      if (response.success) {
+        await loadUsers();
+      } else {
+        alert(response.message || 'Failed to clear user suspension');
       }
       setShowActionMenu(null);
     }
@@ -196,6 +227,7 @@ export default function AdminUsersScreen() {
   };
 
   const getStatusBadge = (user: User) => {
+    if (isUserSuspended(user)) return <span className="badge-amber text-xs">Suspended</span>;
     if (!user.is_active) return <span className="badge-red text-xs">Banned</span>;
     if (!user.is_email_verified) return <span className="badge-gray text-xs">Unverified</span>;
     return <span className="badge-green text-xs">Active</span>;
@@ -241,7 +273,7 @@ export default function AdminUsersScreen() {
             { label: 'Freelancers', value: stats.freelancers.toLocaleString(), icon: <UserCheck size={16} />, color: 'green' },
             { label: 'Admins', value: stats.admins.toString(), icon: <Shield size={16} />, color: 'amber' },
             { label: 'Verified', value: stats.verified.toLocaleString(), icon: <CheckCircle size={16} />, color: 'green' },
-            { label: 'Banned', value: stats.banned.toString(), icon: <Ban size={16} />, color: 'red' },
+            { label: 'Restricted', value: stats.banned.toString(), icon: <Ban size={16} />, color: 'red' },
             { label: 'Reported Users', value: (stats.reported ?? 0).toLocaleString(), icon: <Flag size={16} />, color: 'red' },
           ].map(stat => (
             <div key={stat.label} className="stat-card">
@@ -292,7 +324,7 @@ export default function AdminUsersScreen() {
                     { type: 'client', label: 'Clients', icon: <Briefcase size={16} />, color: 'purple' },
                     { type: 'freelancer', label: 'Freelancers', icon: <UserCheck size={16} />, color: 'green' },
                     { type: 'admin', label: 'Admins', icon: <Shield size={16} />, color: 'amber' },
-                    { type: 'banned', label: 'Banned', icon: <Ban size={16} />, color: 'red' },
+                    { type: 'banned', label: 'Restricted', icon: <Ban size={16} />, color: 'red' },
                   ].map(filter => (
                     <button
                       key={filter.type}
@@ -483,6 +515,19 @@ export default function AdminUsersScreen() {
                                 </button>
 
                                 <div className="h-px my-1 dropdown-divider" />
+
+                                {isUserSuspended(user) ? (
+                                  <button
+                                    onClick={() => {
+                                      setConfirmAction({ type: 'clearSuspension', user });
+                                      setShowActionMenu(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-amber/10 text-amber"
+                                  >
+                                    <CheckCircle size={14} />
+                                    Clear Suspension
+                                  </button>
+                                ) : null}
 
                                 <button
                                   onClick={() => {
@@ -902,6 +947,30 @@ export default function AdminUsersScreen() {
                         )}
                       </div>
 
+                      {isUserSuspended(selectedUser) ? (
+                        <div className="p-3 glass-card">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium text-amber">Temporarily Suspended</p>
+                              <p className="text-xs text-secondary mt-1">
+                                Until {new Date(selectedUser.suspended_until || '').toLocaleString()}
+                              </p>
+                              {selectedUser.suspension_reason ? (
+                                <p className="text-xs text-muted mt-1">{selectedUser.suspension_reason}</p>
+                              ) : null}
+                            </div>
+                            <button
+                              onClick={() => {
+                                setConfirmAction({ type: 'clearSuspension', user: selectedUser });
+                              }}
+                              className="px-3 py-2 rounded-lg text-xs font-medium bg-amber/20 text-amber border border-amber hover:bg-amber/30 transition-all"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
                       <button
                         onClick={() => {
                           setConfirmAction({ type: selectedUser.is_active ? 'ban' : 'unban', user: selectedUser });
@@ -1006,6 +1075,7 @@ export default function AdminUsersScreen() {
                 <p className="text-secondary text-sm">
                   {confirmAction.type === 'ban' && `Are you sure you want to ban this user? They will lose access to the platform.`}
                   {confirmAction.type === 'unban' && `Are you sure you want to unban this user? They will regain access to the platform.`}
+                  {confirmAction.type === 'clearSuspension' && `Are you sure you want to clear this user's temporary suspension? Their access will be restored if the account is active.`}
                   {confirmAction.type === 'role' && `Are you sure you want to change this user's role to ${confirmAction.newRole === 0 ? 'Client' : confirmAction.newRole === 1 ? 'Freelancer' : 'Admin'}?`}
                 </p>
               </div>
@@ -1023,6 +1093,8 @@ export default function AdminUsersScreen() {
                       handleChangeRole(confirmAction.user.id, confirmAction.newRole);
                     } else if (confirmAction.type === 'ban' || confirmAction.type === 'unban') {
                       await handleBanUser(confirmAction.user.id);
+                    } else if (confirmAction.type === 'clearSuspension') {
+                      await handleClearSuspension(confirmAction.user.id);
                     }
                     setConfirmAction(null);
                     setSelectedUser(null);
@@ -1031,11 +1103,14 @@ export default function AdminUsersScreen() {
                     ? 'bg-red/20 text-red border border-red hover:bg-red/30'
                     : confirmAction.type === 'unban'
                       ? 'bg-green/20 text-green border border-green hover:bg-green/30'
+                      : confirmAction.type === 'clearSuspension'
+                        ? 'bg-amber/20 text-amber border border-amber hover:bg-amber/30'
                       : 'btn-cyan'
                     }`}
                 >
                   {confirmAction.type === 'ban' && 'Ban User'}
                   {confirmAction.type === 'unban' && 'Unban User'}
+                  {confirmAction.type === 'clearSuspension' && 'Clear Suspension'}
                   {confirmAction.type === 'role' && 'Change Role'}
                 </button>
               </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Coins } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, CreditCard, TrendingUp, History, Moon, Sun, Coins } from 'lucide-react';
 import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
@@ -10,6 +10,7 @@ import { walletGetAPI } from '../../api/walletAPI/GET';
 import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
 import { useUserNotifications } from '../../features/notifications/hooks/useUserNotifications';
 import Button from './Button';
+import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -311,18 +312,17 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               onClick={() => { setShowWalletMenu(!showWalletMenu); setShowNotifs(false); setShowUserMenu(false); }}
               className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all glass-button"
             >
-              <Coins size={16} className="text-amber-400" />
-              <span className="text-primary text-sm font-semibold hidden sm:block">{walletBalance.toLocaleString()}</span>
+              <GigCoinLogo size={16} />
+              <GigCoinAmount amount={walletBalance} className="text-primary text-sm font-semibold hidden sm:inline-flex" />
               <ChevronDown size={14} className="text-muted" />
             </button>
 
             {showWalletMenu && (
               <div className="absolute right-0 top-12 w-56 rounded-2xl p-2 z-50 dropdown-menu">
                 <div className="px-3 py-2 mb-1">
-                  <p className="text-xs text-muted">Gig Coin Balance</p>
+                  <p className="text-xs text-muted">GigCoin Balance</p>
                   <div className="flex items-center gap-1">
-                    <Coins className="text-amber-400" size={18} />
-                    <p className="text-lg font-bold text-amber-400">{walletBalance.toLocaleString()}</p>
+                    <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-amber-400" />
                   </div>
                 </div>
                 <div className="h-px mb-1 dropdown-divider" />
@@ -330,7 +330,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/wallet/deposit'); setShowWalletMenu(false); }}>
                   <Coins size={14} className="text-amber-400" />
-                  <span>Deposit Gig Coin</span>
+                  <span>Deposit GigCoin</span>
                 </button>
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"

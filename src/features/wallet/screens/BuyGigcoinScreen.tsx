@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Zap, ArrowLeft, Check } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 const GIGCOIN_PACKAGES = [
   { id: 1, coins: 50, price: 4.99, popular: false },
@@ -37,7 +38,7 @@ export default function BuyGigcoinScreen() {
             <ArrowLeft size={16} />
             Back
           </button>
-          <h1 className="text-3xl font-black text-primary mb-2">Buy GigCoins</h1>
+          <h1 className="text-3xl font-black text-primary mb-2">Buy GigCoin</h1>
           <p className="text-sm job-detail-desc">Boost your applications and stand out to clients</p>
         </div>
 
@@ -61,10 +62,10 @@ export default function BuyGigcoinScreen() {
 
               <div className="flex items-center gap-2 mb-4">
                 <Zap size={20} className="text-purple" />
-                <span className="text-2xl font-black text-primary">{pkg.coins}</span>
+                <GigCoinAmount amount={pkg.coins} className="text-2xl font-black text-primary" />
               </div>
 
-              <p className="text-sm job-detail-desc mb-4">GigCoins</p>
+              <p className="text-sm job-detail-desc mb-4">GigCoin</p>
 
               <div className="mb-4">
                 <span className="text-2xl font-black text-primary">${pkg.price}</span>
@@ -90,7 +91,7 @@ export default function BuyGigcoinScreen() {
               <p className="text-sm job-detail-desc mb-1">Selected Package</p>
               <p className="text-lg font-semibold text-primary">
                 {selectedPackage 
-                  ? `${GIGCOIN_PACKAGES.find(p => p.id === selectedPackage)?.coins} GigCoins - $${GIGCOIN_PACKAGES.find(p => p.id === selectedPackage)?.price}`
+                  ? `${GIGCOIN_PACKAGES.find(p => p.id === selectedPackage)?.coins} GigCoin - $${GIGCOIN_PACKAGES.find(p => p.id === selectedPackage)?.price}`
                   : 'No package selected'}
               </p>
             </div>
@@ -103,7 +104,7 @@ export default function BuyGigcoinScreen() {
             {isProcessing ? (
               <><div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />Processing...</>
             ) : (
-              <><Zap size={16} />Purchase GigCoins</>
+              <><Zap size={16} />Purchase GigCoin</>
             )}
           </button>
 
@@ -114,7 +115,7 @@ export default function BuyGigcoinScreen() {
 
         {/* Benefits */}
         <div className="glass-card p-6">
-          <h2 className="text-primary font-semibold mb-4">Why GigCoins?</h2>
+          <h2 className="text-primary font-semibold mb-4">Why GigCoin?</h2>
           <div className="space-y-3">
             {[
               'Stand out with priority applications',

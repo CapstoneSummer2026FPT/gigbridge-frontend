@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, DollarSign, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Medal, Zap } from 'lucide-react';
+import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Medal, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -10,6 +10,7 @@ import { UserRole } from '../../../types/models/User';
 import type { Job } from '../../../types/models/Job';
 import type { SavedJobDto } from '../../../types/savedJob';
 import '../styles/browse-jobs-screen.css';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 
 const PAGE_SIZE = 20;
 const WORK_TYPES = ['All', 'fixed'];
@@ -371,8 +372,7 @@ export default function BrowseJobsScreen() {
 
                         <div className="flex flex-wrap items-center gap-3 mb-3">
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                            <DollarSign size={12} />
-                            ${job.budgetMin.toLocaleString()} - ${job.budgetMax.toLocaleString()} · Fixed
+                            <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> ? Fixed
                           </div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> Remote</div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} proposals</div>

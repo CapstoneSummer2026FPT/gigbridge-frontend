@@ -11,6 +11,7 @@ import {
   type GetMyJobPostDto,
 } from '../../../types/models/Job';
 import '../styles/manage-job-posts-screen.css';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 
 type StatusFilter = 'All' | 'Draft' | 'Open' | 'Closed' | 'Cancelled';
 
@@ -44,11 +45,11 @@ const formatDate = (date: string) =>
 
 const formatBudget = (job: GetMyJobPostDto) => {
   if (job.budgetMin !== undefined && job.budgetMin !== null && job.budgetMax !== undefined && job.budgetMax !== null) {
-    return `$${job.budgetMin.toLocaleString()}-${job.budgetMax.toLocaleString()}`;
+    return `${job.budgetMin.toLocaleString()}-${job.budgetMax.toLocaleString()} GigCoin`;
   }
 
-  if (job.budgetMin !== undefined && job.budgetMin !== null) return `From $${job.budgetMin.toLocaleString()}`;
-  if (job.budgetMax !== undefined && job.budgetMax !== null) return `Up to $${job.budgetMax.toLocaleString()}`;
+  if (job.budgetMin !== undefined && job.budgetMin !== null) return `From ${job.budgetMin.toLocaleString()} GigCoin`;
+  if (job.budgetMax !== undefined && job.budgetMax !== null) return `Up to ${job.budgetMax.toLocaleString()} GigCoin`;
   return 'Not set';
 };
 
@@ -282,7 +283,7 @@ export default function ManageJobPostsScreen() {
                       </div>
 
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div className="mjp-budget">{formatBudget(job)}</div>
+                        <div className="mjp-budget"><GigCoinBudget min={job.budgetMin} max={job.budgetMax} /></div>
                         <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Budget</div>
                       </div>
                     </div>

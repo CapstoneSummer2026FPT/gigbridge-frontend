@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  ArrowLeft, CheckCircle2, XCircle, AlertCircle, DollarSign, Calendar,
+  ArrowLeft, CheckCircle2, XCircle, AlertCircle, Calendar,
   Clock, FileText, User, Download, Eye, EyeOff, ChevronDown
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -12,6 +12,7 @@ import type { ContractDto, Milestone, MilestoneAttachment } from '../../../types
 import { MilestoneStatus } from '../../../types/models/Contract';
 import { canApproveMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
 import '../styles/approve-milestone-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface MilestoneWithAttachments extends Milestone {
   attachments?: MilestoneAttachment[];
@@ -244,7 +245,7 @@ export default function ApproveMilestoneScreen() {
               </div>
 
               <div className="milestone-amount-badge">
-                <DollarSign size={24} />
+                <GigCoinLogo size={24} />
                 <span className="amount">{formatContractAmount(milestone.amount)}</span>
               </div>
             </div>

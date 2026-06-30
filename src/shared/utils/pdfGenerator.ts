@@ -1,5 +1,6 @@
 import type { ContractDto } from '../../types/models/Contract';
 
+import { GIGCOIN_INLINE_SVG, formatGigCoinNumber } from './gigcoin';
 /**
  * Contract PDF Generation Utilities
  * Client-side PDF generation for contracts
@@ -179,7 +180,7 @@ export const generateContractHTML = (
               </div>
               <div class="detail-row">
                 <span class="detail-label">Total Budget:</span>
-                <span class="detail-value">$${(contract.totalBudget || 0).toLocaleString()}</span>
+                <span class="detail-value">${formatGigCoinNumber(contract.totalBudget || 0)} <span style="display:inline-flex;width:13px;height:13px;vertical-align:-2px">${GIGCOIN_INLINE_SVG}</span></span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Start Date:</span>

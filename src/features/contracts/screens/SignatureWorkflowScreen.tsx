@@ -12,12 +12,15 @@ import { ContractStatus } from '../../../types/models/Contract';
 import { SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
+import { formatGigCoin } from '../../../shared/utils/gigcoin';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
 
 interface SignContractResponse {
   status?: ContractStatus;
   Status?: ContractStatus;
+  contractStatus?: ContractStatus;
+  ContractStatus?: ContractStatus;
   contractId?: string;
   ContractId?: string;
   documentId?: string;
@@ -27,7 +30,7 @@ interface SignContractResponse {
 }
 
 const formatMoney = (value?: number): string =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value ?? 0);
+  formatGigCoin(value ?? 0);
 
 const formatDate = (value?: string | null): string => {
   if (!value) return 'Not set';
@@ -37,7 +40,7 @@ const formatDate = (value?: string | null): string => {
 
 const getStatusFromResponse = (data: unknown): ContractStatus | undefined => {
   const response = data as SignContractResponse | undefined;
-  const status = response?.status ?? response?.Status;
+  const status = response?.status ?? response?.Status ?? response?.contractStatus ?? response?.ContractStatus;
   return typeof status === 'number' ? status : undefined;
 };
 
@@ -214,6 +217,18 @@ export default function SignatureWorkflowScreen() {
     if (refreshedContract.success && refreshedContract.data) {
       setContract(refreshedContract.data);
       await loadDocument(contractId);
+      if (
+        nextStatus === ContractStatus.PendingEscrow &&
+        refreshedContract.data.status === ContractStatus.PendingSignature
+      ) {
+        return nextStatus;
+      }
+      if (
+        nextStatus === ContractStatus.Active &&
+        refreshedContract.data.status !== ContractStatus.Active
+      ) {
+        return nextStatus;
+      }
       return refreshedContract.data.status;
     }
 

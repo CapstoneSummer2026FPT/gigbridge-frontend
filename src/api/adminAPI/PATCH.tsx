@@ -1,6 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { AdminCheatingViolationDto, ReviewCheatingViolationRequest } from '../../types/models/Cheating';
+import type { AdminUserDto } from '../../types/models/User';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -15,6 +16,24 @@ export const adminPatchAPI = {
    */
   toggleUserActivity: async (email: string): Promise<ApiResponse<object>> => {
     return apiService.patch<object>(`${Admin_Api_Base_Url}/users/toggle-activity`, {
+      email,
+    });
+  },
+
+  suspendUser: async (
+    email: string,
+    suspendedUntil: string,
+    reason?: string
+  ): Promise<ApiResponse<AdminUserDto>> => {
+    return apiService.patch<AdminUserDto>(`${Admin_Api_Base_Url}/users/suspend`, {
+      email,
+      suspendedUntil,
+      reason,
+    });
+  },
+
+  clearUserSuspension: async (email: string): Promise<ApiResponse<AdminUserDto>> => {
+    return apiService.patch<AdminUserDto>(`${Admin_Api_Base_Url}/users/clear-suspension`, {
       email,
     });
   },

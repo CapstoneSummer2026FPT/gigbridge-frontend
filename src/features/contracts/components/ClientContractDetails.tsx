@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Lock, CheckCircle, Clock, DollarSign,
+  Lock, CheckCircle, Clock,
   User, FileText, Calendar, Download, ArrowLeft,
   Mail, ShieldAlert, ListChecks, Copy, Check, ChevronDown, Star
 } from 'lucide-react';
@@ -23,6 +23,7 @@ import {
   getMilestoneStatusClass
 } from '../../../shared/utils/contractUtils';
 import '../styles/view-contract-details-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface AuditTrailEntry {
   id: string;
@@ -381,9 +382,6 @@ export function ClientContractDetails({
             </div>
             <div className="text-right">
               <span className="text-sm font-bold text-foreground block">{formatContractAmount(milestone.amount)}</span>
-              <span className="text-xs text-muted-foreground block">
-                = {new Intl.NumberFormat('vi-VN').format(milestone.amount * 1000)} VND
-              </span>
             </div>
           </div>
         ))}
@@ -421,8 +419,8 @@ export function ClientContractDetails({
                 <span className="font-bold text-primary truncate max-w-[150px] md:max-w-xl">{contract.title}</span>
                 <span className="text-text-subtle">/</span>
                 <span className="text-text-primary font-black uppercase tracking-wider text-xs">Contract Details (Client)</span>
-                <span className={`status-badge ${getContractStatusClass(contract.status)} ml-2 text-[9px] py-0.5 px-2`}>
-                  {getContractStatusLabel(contract.status)}
+                <span className={`status-badge ${getContractStatusClass(effectiveStatus)} ml-2 text-[9px] py-0.5 px-2`}>
+                  {getContractStatusLabel(effectiveStatus)}
                 </span>
               </h1>
             </div>
@@ -610,7 +608,6 @@ export function ClientContractDetails({
                                 placeholder="0"
                               />
                               <span className="text-[10px] text-muted-foreground mt-1 block pl-1">
-                                = {new Intl.NumberFormat('vi-VN').format(Number(milestone.amount) * 1000)} VND
                               </span>
                             </div>
                             <div className="w-full md:w-44">
@@ -707,7 +704,6 @@ export function ClientContractDetails({
                             {formatContractAmount(contract.totalBudget)}
                           </span>
                           <span className="text-xs text-muted-foreground block mt-1">
-                            = {new Intl.NumberFormat('vi-VN').format(contract.totalBudget * 1000)} VND
                           </span>
                         </div>
                         <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
@@ -716,7 +712,6 @@ export function ClientContractDetails({
                             {formatContractAmount(escrowFundingAmount)}
                           </span>
                           <span className="text-xs text-muted-foreground block mt-1">
-                            = {new Intl.NumberFormat('vi-VN').format(escrowFundingAmount * 1000)} VND
                           </span>
                         </div>
                       </div>
@@ -729,7 +724,6 @@ export function ClientContractDetails({
                           </span>
                           {walletBalance !== null && (
                             <span className="text-xs text-muted-foreground block mt-1">
-                              = {new Intl.NumberFormat('vi-VN').format(walletBalance * 1000)} VND
                             </span>
                           )}
                         </div>
@@ -746,14 +740,14 @@ export function ClientContractDetails({
                       {walletBalance !== null && walletBalance < escrowFundingAmount ? (
                         <div className="space-y-4">
                           <div className="bg-destructive/10 text-destructive border border-destructive/20 p-4 rounded-2xl text-xs font-medium">
-                            You do not have enough tokens to fund this contract escrow. Please top up your wallet first.
+                            You do not have enough GigCoin to fund this contract escrow. Please top up your wallet first.
                           </div>
                           <button
                             onClick={() => navigate('/wallet/deposit')}
                             className="btn-primary-custom w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all flex items-center justify-center gap-2"
                           >
-                            <DollarSign size={17} />
-                            Top Up Wallet (Add Tokens)
+                            <GigCoinLogo size={17} />
+                            Top Up Wallet
                           </button>
                         </div>
                       ) : (
@@ -1073,7 +1067,7 @@ export function ClientContractDetails({
                       <span className="text-base font-black text-foreground mt-0.5 block">{formatContractAmount(contract.totalBudget)}</span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                      <DollarSign size={15} />
+                      <GigCoinLogo size={15} />
                     </div>
                   </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
 import {
-  Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock, DollarSign,
+  Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock,
   Calendar, ChevronDown, Save, X, Eye, ArrowLeft, Layers, ShieldAlert,
   TrendingUp, Send
 } from 'lucide-react';
@@ -16,6 +16,7 @@ import { UserRole } from '../../../types/models/User';
 import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
 import { toast } from 'sonner';
 import '../styles/manage-milestones-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface MilestoneFormData {
   title: string;
@@ -593,7 +594,7 @@ export default function ManageMilestonesScreen() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1 text-left">
                           <label htmlFor="amount" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                            Amount (USD) <span className="text-red-500">*</span>
+                            Amount (GigCoin) <span className="text-red-500">*</span>
                           </label>
                           <input
                             id="amount"
@@ -733,7 +734,7 @@ export default function ManageMilestonesScreen() {
  
                                 <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
                                   <div className="flex items-center gap-0.5 font-black text-foreground text-xs">
-                                    <DollarSign size={12} className="text-muted-foreground" />
+                                    <GigCoinLogo size={12} />
                                     {formatContractAmount(milestone.amount)}
                                   </div>
  
@@ -838,7 +839,7 @@ export default function ManageMilestonesScreen() {
                                             onClick={() => handleMilestoneWorkflowAction(milestone.id, 'withdraw')}
                                             className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                           >
-                                            <DollarSign size={10} />
+                                            <GigCoinLogo size={10} />
                                             Withdraw
                                           </button>
                                         )}
@@ -895,7 +896,7 @@ export default function ManageMilestonesScreen() {
                       <span className="text-lg font-black text-foreground mt-0.5 block">{formatContractAmount(contract?.totalBudget || 0)}</span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                      <DollarSign size={15} />
+                      <GigCoinLogo size={15} />
                     </div>
                   </div>
 

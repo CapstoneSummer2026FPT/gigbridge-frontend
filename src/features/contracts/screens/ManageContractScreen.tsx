@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Filter, Eye, AlertCircle, ChevronDown, Calendar, 
-  DollarSign, User, CheckCircle2, Clock, PenTool, ListChecks, 
+  User, CheckCircle2, Clock, PenTool, ListChecks, 
   Star, ShieldAlert, X, ChevronRight, TrendingUp, Award, Layers
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -21,6 +21,7 @@ import {
   calculateMilestoneCompletion,
 } from '../../../shared/utils/contractUtils';
 import '../styles/manage-contract-screen.css';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface MilestoneDisplay extends Milestone {
   percentageComplete: number;
@@ -336,7 +337,7 @@ export default function ManageContractScreen() {
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-bl-full translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform duration-300" />
             <div className="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-500 border border-purple-500/15 flex items-center justify-center shrink-0">
-              <DollarSign size={24} />
+              <GigCoinLogo size={24} />
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Committed Value</span>

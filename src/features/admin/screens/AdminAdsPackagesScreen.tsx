@@ -45,7 +45,7 @@ const isValidUrl = (value: string) => {
   }
 };
 
-const formatVnd = (amount: number) => `${amount.toLocaleString('vi-VN')} VND`;
+const formatGigCoinAdmin = (amount: number) => `${amount.toLocaleString('vi-VN')} GigCoin`;
 
 export default function AdminAdsPackagesScreen() {
   const [ads, setAds] = useState<AdminAdBannerRecord[]>(ADMIN_AD_BANNERS);
@@ -194,7 +194,7 @@ export default function AdminAdsPackagesScreen() {
           <div><span>Active Ads</span><strong>{stats.activeAds}</strong></div>
           <div><span>Draft Ads</span><strong>{stats.draftAds}</strong></div>
           <div><span>Packages</span><strong>{stats.packages}</strong></div>
-          <div><span>VND / Token</span><strong>{stats.tokenRate.toLocaleString('vi-VN')}</strong></div>
+          <div><span>GigCoin / Token</span><strong>{stats.tokenRate.toLocaleString('vi-VN')}</strong></div>
         </section>
 
         {error && (
@@ -273,14 +273,14 @@ export default function AdminAdsPackagesScreen() {
               <Zap size={22} />
             </div>
 
-            <label>VND per token</label>
+            <label>GigCoin per token</label>
             <input type="number" min="1" value={tokenRate} onChange={(event) => setTokenRate(event.target.value)} />
 
             <label>Minimum purchase tokens</label>
             <input type="number" min="1" value={minimumPurchase} onChange={(event) => setMinimumPurchase(event.target.value)} />
 
             <div className="token-preview">
-              <strong>{formatVnd(Number(tokenRate || 0))}</strong>
+              <strong>{formatGigCoinAdmin(Number(tokenRate || 0))}</strong>
               <span>per GigCoin. Changes apply to future transactions.</span>
             </div>
 
@@ -348,7 +348,7 @@ export default function AdminAdsPackagesScreen() {
                   <>
                     <div>
                       <h3>{pkg.name}</h3>
-                      <p>{formatVnd(pkg.priceVnd)} / {pkg.billingCycle}</p>
+                      <p>{formatGigCoinAdmin(pkg.priceVnd)} / {pkg.billingCycle}</p>
                       <ul>{pkg.features.map(feature => <li key={feature}>{feature}</li>)}</ul>
                     </div>
                     <button className="ads-secondary-btn" onClick={() => handleEditPackage(pkg)}><Edit size={16} />Edit Package</button>

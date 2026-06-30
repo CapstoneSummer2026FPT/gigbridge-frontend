@@ -9,6 +9,7 @@ import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal
 import type { ProposalStatusFilter } from '../types';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
 import '../../workspace/styles/project-workspace-screen.css';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 type ProposalItem = ProposalDto & {
   updatedAt?: string | null;
@@ -179,7 +180,7 @@ export default function FreelancerProposalsScreen() {
                     >
                       <h3 className="text-sm font-semibold truncate text-foreground">{proposal.jobTitle || 'Untitled JobPost'}</h3>
                       <div className="flex justify-between items-center mt-2.5">
-                        <span className="text-[11px] font-bold text-foreground">${proposal.proposedBudget?.toLocaleString()}</span>
+                        <span className="text-[11px] font-bold text-foreground"><GigCoinAmount amount={proposal.proposedBudget} /></span>
                         <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${statusBadgeClass(proposal.status)}`}>
                           {getStatusLabel(proposal.status)}
                         </span>
@@ -209,7 +210,7 @@ export default function FreelancerProposalsScreen() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="rounded-xl border border-border bg-background p-4">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Your Bid</span>
-                    <p className="text-base font-bold text-foreground mt-1">${activeProposal.proposedBudget?.toLocaleString()}</p>
+                    <p className="text-base font-bold text-foreground mt-1"><GigCoinAmount amount={activeProposal.proposedBudget} /></p>
                   </div>
                   <div className="rounded-xl border border-border bg-background p-4">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Duration</span>

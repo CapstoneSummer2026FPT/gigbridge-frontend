@@ -5,7 +5,6 @@ import {
   ArrowUpDown,
   CheckCircle,
   Clock,
-  DollarSign,
   Eye,
   FileText,
   Filter,
@@ -28,6 +27,7 @@ import {
 import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
 import { getStatusLabel } from '../utils/statusHelpers';
 import '../../workspace/styles/project-workspace-screen.css';
+import { formatGigCoin } from '../../../shared/utils/gigcoin';
 
 type SortBy = 'submittedAt' | 'status' | 'rate';
 
@@ -40,7 +40,7 @@ const statusBadgeClass = (status: number | string | null | undefined) => {
 };
 
 const formatCurrency = (value?: number | null) =>
-  typeof value === 'number' ? `$${value.toLocaleString()}` : 'Not specified';
+  typeof value === 'number' ? formatGigCoin(value) : 'Not specified';
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return 'Not available';

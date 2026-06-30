@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, Filter, MapPin, Briefcase, DollarSign, Clock, Star, Zap, X } from 'lucide-react';
+import { Search, Filter, MapPin, Briefcase, Clock, Star, Zap, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import '../styles/browse-jobs-screen.css';
+import { GigCoinBudget, GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface JobListing {
   id: string;
@@ -211,7 +212,7 @@ export default function BrowseJobsForFreelancerScreen() {
                   className="budget-input"
                 />
               </div>
-              <p className="budget-display">${budgetRange.min} - ${budgetRange.max}</p>
+              <p className="budget-display"><GigCoinBudget min={budgetRange.min} max={budgetRange.max} /></p>
             </div>
 
             {/* Skills */}
@@ -290,9 +291,9 @@ export default function BrowseJobsForFreelancerScreen() {
                     {/* Meta Info */}
                     <div className="job-meta">
                       <div className="meta-item">
-                        <DollarSign size={14} />
+                        <GigCoinLogo size={14} />
                         <span className="meta-text">
-                          ${job.budget}
+                          {job.budget} GigCoin
                         </span>
                       </div>
                       <div className="meta-item">

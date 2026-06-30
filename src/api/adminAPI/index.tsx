@@ -29,6 +29,8 @@ export const adminAPI = {
   banUser: adminPutAPI.banUser,
   unbanUser: adminPutAPI.unbanUser,
   toggleUserActivity: adminPatchAPI.toggleUserActivity,
+  suspendUser: adminPatchAPI.suspendUser,
+  clearUserSuspension: adminPatchAPI.clearUserSuspension,
   toggleFAQActivity: adminPatchAPI.toggleFAQActivity,
   toggleFAQCategoryActivity: adminPatchAPI.toggleFAQCategoryActivity,
   reviewCheatingViolation: adminPatchAPI.reviewCheatingViolation,

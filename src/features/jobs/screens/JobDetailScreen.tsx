@@ -1,5 +1,5 @@
 import {
-  Clock, DollarSign, Users, Globe, Star, CheckCircle,
+  Clock, Users, Globe, Star, CheckCircle,
   Bot, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText,
   Briefcase, ArrowUpRight,
 } from 'lucide-react';
@@ -8,6 +8,7 @@ import { UserRole } from '../../../types/models/User';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import { useJobDetail } from '../hooks/useJobDetail';
 import '../styles/job-detail-screen.css';
+import { GigCoinAmount, GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 
 export default function JobDetailScreen() {
   const {
@@ -126,7 +127,7 @@ export default function JobDetailScreen() {
 
             {/* Row 3: Meta pills */}
             <div className="jd-meta-row mb-5">
-              <span className="jd-meta-pill"><DollarSign size={12} />${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()}</span>
+              <span className="jd-meta-pill"><GigCoinBudget min={job.budgetMin} max={job.budgetMax} /></span>
               <span className="jd-meta-pill"><Globe size={12} />{job.isRemote ? 'Remote' : 'On-site'}</span>
               <span className="jd-meta-pill"><Users size={12} />{job.proposalCount} proposals</span>
               <span className="jd-meta-pill"><Clock size={12} />Posted {job.postedAt || 'recently'}</span>
@@ -145,7 +146,7 @@ export default function JobDetailScreen() {
             {/* Row 4: Stat tiles */}
             <div className="jd-stat-row">
               {[
-                { label: 'Budget Range', value: `$${job.budgetMin.toLocaleString()} – $${job.budgetMax.toLocaleString()}` },
+                { label: 'Budget Range', value: <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> },
                 { label: 'Work Type', value: 'Fixed Price' },
                 { label: 'Deadline', value: job.deadline || 'Flexible' },
                 { label: 'Proposals', value: `${job.proposalCount} received` },
@@ -228,7 +229,7 @@ export default function JobDetailScreen() {
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-black text-text-primary truncate">{sj.title}</h4>
                         <p className="text-[11px] text-text-muted font-medium mt-0.5">
-                          ${sj.budgetMin.toLocaleString()}–${sj.budgetMax.toLocaleString()} · Fixed · Remote
+                          {sj.budgetMin.toLocaleString()}-{sj.budgetMax.toLocaleString()} GigCoin ? Fixed ? Remote
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -266,13 +267,13 @@ export default function JobDetailScreen() {
                       <span className="block text-[8px] font-black text-text-muted uppercase tracking-widest">Application Cost</span>
                       <div className="flex items-center gap-1 mt-0.5">
                         <Zap size={13} className="text-brand" />
-                        <span className="text-sm font-black text-text-primary">{applicationCost} GC</span>
+                        <GigCoinAmount amount={applicationCost} className="text-sm font-black text-text-primary" />
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="block text-[8px] font-black text-text-muted uppercase tracking-widest">Your Balance</span>
                       <span className={`text-sm font-black mt-0.5 block ${canApplyWithGigcoins ? 'text-success' : 'text-destructive'}`}>
-                        {applicationCost === 0 && gigcoinBalance === null ? 'Free' : `${gigcoinBalance ?? '…'} GC`}
+                        {applicationCost === 0 && gigcoinBalance === null ? 'Free' : <GigCoinAmount amount={gigcoinBalance ?? 0} />} 
                       </span>
                     </div>
                   </div>
@@ -329,7 +330,7 @@ export default function JobDetailScreen() {
                   </div>
                   <div className="jd-client-row">
                     <span className="text-[11px] text-text-muted font-semibold">Total Spent</span>
-                    <span className="text-xs font-black text-text-primary">${((clientProfile?.totalSpent || 0) / 1000).toFixed(0)}K+</span>
+                    <span className="text-xs font-black text-text-primary"><GigCoinAmount amount={clientProfile?.totalSpent || 0} /></span>
                   </div>
                   <div className="jd-client-row">
                     <span className="text-[11px] text-text-muted font-semibold">Jobs Posted</span>
@@ -352,7 +353,7 @@ export default function JobDetailScreen() {
               <h3 className="jd-section-title">Quick Facts</h3>
               <div className="space-y-0.5">
                 {[
-                  { label: 'Budget', val: `$${job.budgetMin.toLocaleString()} – $${job.budgetMax.toLocaleString()}` },
+                  { label: 'Budget', val: <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> },
                   { label: 'Type', val: 'Fixed Price' },
                   { label: 'Location', val: job.isRemote ? 'Remote Worldwide' : 'On-site' },
                   { label: 'Proposals', val: `${job.proposalCount} submitted` },

@@ -4,6 +4,7 @@ import { CreditCard, Check, Zap, Star, TrendingUp, Shield, Bot, Calendar } from 
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { SubscriptionDuration } from '../../../types/models/Financial';
 import '../../admin/styles/admin-users-screen.css';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 const FREE_FEATURES = [
   'Basic job posting',
@@ -82,7 +83,7 @@ export default function SubscriptionScreen() {
                 className={`role-toggle-btn ${duration === SubscriptionDuration.Yearly ? 'active' : ''}`}
               >
                 Yearly
-                <span className="badge-green text-[10px] ml-1.5">Save ${yearlySavings.toFixed(0)}</span>
+                <span className="badge-green text-[10px] ml-1.5 inline-flex items-center gap-1">Save <GigCoinAmount amount={yearlySavings} /></span>
               </button>
             </div>
           </div>
@@ -99,7 +100,7 @@ export default function SubscriptionScreen() {
               <div className="mb-6">
                 <h3 className="text-2xl font-bold text-primary mb-2">Free</h3>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-primary">$0</span>
+                  <GigCoinAmount amount={0} className="text-4xl font-black text-primary" />
                   <span className="text-sm text-secondary">/month</span>
                 </div>
               </div>
@@ -236,7 +237,7 @@ export default function SubscriptionScreen() {
                   <span className="text-secondary">
                     {duration === SubscriptionDuration.Monthly ? 'Monthly' : 'Yearly'} Price
                   </span>
-                  <span className="text-primary font-semibold">${selectedPrice.toFixed(2)}</span>
+                  <span className="text-primary font-semibold">{selectedPrice.toFixed(2)} GigCoin</span>
                 </div>
                 {duration === SubscriptionDuration.Yearly && (
                   <div className="flex justify-between">
@@ -248,7 +249,7 @@ export default function SubscriptionScreen() {
 
               <div className="flex justify-between pt-3 mt-3 border-t border-white/5">
                 <span className="text-primary font-bold">Total Due Today</span>
-                <span className="text-2xl font-black text-green">${selectedPrice.toFixed(2)}</span>
+                <span className="text-2xl font-black text-green">{selectedPrice.toFixed(2)} GigCoin</span>
               </div>
             </div>
 

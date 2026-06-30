@@ -22,6 +22,7 @@ import {
   type JobDurationUnit,
 } from '../utils/jobDuration';
 import '../styles/edit-job-post-screen.css';
+import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
 
 interface FormErrors {
   title?: string;
@@ -132,7 +133,7 @@ export default function EditJobPostScreen() {
     categoryId: '',
     budgetMin: '',
     budgetMax: '',
-    currency: 'USD',
+    currency: GIGCOIN_CURRENCY_CODE,
     estimatedDurationValue: '',
     estimatedDurationUnit: DEFAULT_JOB_DURATION_UNIT,
     location: '',
@@ -237,7 +238,7 @@ export default function EditJobPostScreen() {
           categoryId: job.categoryId || '',
           budgetMin: job.budgetMin !== undefined && job.budgetMin !== null ? String(job.budgetMin) : '',
           budgetMax: job.budgetMax !== undefined && job.budgetMax !== null ? String(job.budgetMax) : '',
-          currency: job.currency || 'USD',
+          currency: job.currency || GIGCOIN_CURRENCY_CODE,
           estimatedDurationValue: duration.value,
           estimatedDurationUnit: duration.unit,
           location: job.location || '',
@@ -513,7 +514,7 @@ export default function EditJobPostScreen() {
     majorCategoryId: formData.majorCategoryId || null,
     budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
-    currency: formData.currency.trim() || 'USD',
+    currency: formData.currency.trim() || GIGCOIN_CURRENCY_CODE,
     estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
     location: formData.location.trim() || null,
     visibility: Number(formData.visibility),
@@ -528,7 +529,7 @@ export default function EditJobPostScreen() {
     majorCategoryId: formData.majorCategoryId || null,
     budgetMin: formData.budgetMin ? Number(formData.budgetMin) : null,
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
-    currency: formData.currency.trim() || 'USD',
+    currency: formData.currency.trim() || GIGCOIN_CURRENCY_CODE,
     estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
     location: formData.location.trim() || null,
     visibility: Number(formData.visibility),

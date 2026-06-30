@@ -100,6 +100,36 @@ export interface UpdateProposalStatusResponse {
   cheatingPenalty?: CheatingPenaltyResultDto | null;
 }
 
+export enum QuestionTimerLockedReason {
+  Completed = 0,
+  Timeout = 1,
+}
+
+export interface QuestionTimerStateDto {
+  proposalId: string;
+  jobPostQuestionId: string;
+  startedAt: string;
+  expiresAt: string;
+  remainingSeconds: number;
+  isLocked: boolean;
+  lockedReason?: QuestionTimerLockedReason | number | null;
+}
+
+export interface CompleteQuestionTimerRequest {
+  answerText?: string | null;
+  lockedReason: QuestionTimerLockedReason | number;
+}
+
+export interface InterviewReviewSessionDto {
+  proposalId: string;
+  startedAt: string;
+  expiresAt: string;
+  remainingSeconds: number;
+  isLocked: boolean;
+  reviewableQuestionCount: number;
+  reviewableQuestionIds: string[];
+}
+
 export type CheatingEventType = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface LogProposalCheatingEventRequest {

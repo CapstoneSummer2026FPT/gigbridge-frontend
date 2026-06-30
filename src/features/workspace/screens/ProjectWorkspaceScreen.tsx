@@ -9,6 +9,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractStatus } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 
 
 export default function ProjectWorkspaceScreen() {
@@ -221,7 +222,7 @@ export default function ProjectWorkspaceScreen() {
               </div>
               <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Paid Amount</span>
-                <span className="text-xl font-bold mt-1 text-green-500">${project.paidAmount || 0}</span>
+                <span className="text-xl font-bold mt-1 text-green-500"><GigCoinAmount amount={project.paidAmount || 0} /></span>
               </div>
             </div>
 
@@ -266,7 +267,7 @@ export default function ProjectWorkspaceScreen() {
                             
                             <div className="flex flex-wrap items-center gap-4 mt-3 text-[11px] text-muted-foreground">
                               <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">Amount:</span> ${milestone.amount}
+                                <span className="font-semibold text-foreground">Amount:</span> <GigCoinAmount amount={milestone.amount} />
                               </span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
