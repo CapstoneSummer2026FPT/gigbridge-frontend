@@ -8,6 +8,7 @@ import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { savedJobAPI } from '../../../api/savedJobAPI';
 import { userGetAPI } from '../../../api/userAPI/GET';
+import { profileGetAPI } from '../../../api/profileAPI/GET';
 import type { Job } from '../../../types/models/Job';
 import type { User } from '../../../types/models/User';
 import { UserRole } from '../../../types/models/User';
@@ -112,8 +113,45 @@ export function useJobDetail() {
 
       const data = await jobGetAPI.getJobById(activeJobPostId);
       setJob(data.job);
-      setClient(data.client ?? null);
-      setClientProfile(data.clientProfile ?? null);
+      
+      let fetchedClient: User | null = data.client ?? null;
+      let fetchedClientProfile: any = data.clientProfile ?? null;
+
+      if (!fetchedClient && data.job.clientId) {
+        try {
+          const profileRes = await profileGetAPI.getClientProfile(data.job.clientId);
+          if (profileRes.success && profileRes.data) {
+            const apiData = profileRes.data;
+            fetchedClient = {
+              id: apiData.userId,
+              full_name: apiData.userFullName || 'Client User',
+              avatar: apiData.userAvatar,
+              email: apiData.userEmail || '',
+              phone_number: '',
+              role: UserRole.Client,
+            } as any;
+            fetchedClientProfile = {
+              user_id: apiData.userId,
+              company_name: apiData.companyName || 'Company Name',
+              company_website: apiData.companyWebsite,
+              company_size: apiData.companySize,
+              industry: apiData.industry || 'Technology',
+              company_description: apiData.companyDescription || '',
+              location: apiData.location || 'San Francisco, CA',
+              rating: apiData.rating,
+              reviewCount: apiData.reviewCount,
+              totalSpent: apiData.totalSpent,
+              postedJobs: apiData.postedJobs,
+              isVerifiedClient: apiData.isVerifiedClient,
+            };
+          }
+        } catch (err) {
+          console.error('Failed to fetch client profile in useJobDetail:', err);
+        }
+      }
+
+      setClient(fetchedClient);
+      setClientProfile(fetchedClientProfile);
 
       const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
       setSimilarJobs(allJobs.filter(j => j.id !== activeJobPostId).slice(0, 3));

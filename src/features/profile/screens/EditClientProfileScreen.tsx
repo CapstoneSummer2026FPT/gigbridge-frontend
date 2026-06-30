@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Upload, Check } from 'lucide-react';
+import { ArrowLeft, Upload, Check, User, Phone, MapPin, Calendar, Building2, Globe, FileText, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { SEED_CLIENT_PROFILES } from '../../../mock_backend/database/seed';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 import '../styles/edit-client-profile-screen.css';
 
 interface ProfileFormData {
@@ -17,7 +19,6 @@ interface ProfileFormData {
   address: string;
   dateOfBirth: string;
   profileImage: string;
-  backgroundImage: string;
 }
 
 interface ValidationErrors {
@@ -54,13 +55,20 @@ export default function EditClientProfileScreen() {
     address: mockProfile?.location || '',
     dateOfBirth: '1985-05-15',
     profileImage: 'https://via.placeholder.com/200',
-    backgroundImage: '',
   });
 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -124,7 +132,7 @@ export default function EditClientProfileScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, imageType: 'profileImage' | 'backgroundImage') => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, imageType: 'profileImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -143,19 +151,19 @@ export default function EditClientProfileScreen() {
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        // Simple mock: just use the original
-        // In real app, this would resize via Canvas API
         const dataUrl = event.target?.result as string;
-        setFormData(prev => ({
-          ...prev,
-          [imageType]: dataUrl
-        }));
-        setPreviewImage(dataUrl);
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors[imageType];
-          return newErrors;
-        });
+        if (isMounted.current) {
+          setFormData(prev => ({
+            ...prev,
+            [imageType]: dataUrl
+          }));
+          setPreviewImage(dataUrl);
+          setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[imageType];
+            return newErrors;
+          });
+        }
       };
       img.src = event.target?.result as string;
     };
@@ -174,15 +182,21 @@ export default function EditClientProfileScreen() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setSuccessMessage('Operation completed successfully!');
-      setTimeout(() => {
-        setSuccessMessage('');
-        navigate(`/profile/client/${user?.id}`);
-      }, 2000);
+      if (isMounted.current) {
+        setSuccessMessage('Operation completed successfully!');
+        setTimeout(() => {
+          if (isMounted.current) {
+            setSuccessMessage('');
+            navigate(`/profile/client/${user?.id}`);
+          }
+        }, 2000);
+      }
     } catch (error) {
       console.error('Failed to save profile:', error);
     } finally {
-      setIsSaving(false);
+      if (isMounted.current) {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -206,48 +220,71 @@ export default function EditClientProfileScreen() {
     }
   };
 
+  // GSAP Entrance Animations
+  useGSAP(() => {
+    // Header transition
+    gsap.from('.edit-client-profile-header', {
+      opacity: 0,
+      y: -20,
+      duration: 0.6,
+      ease: 'power3.out',
+    });
+
+    // Staggered slide/fade for main layout blocks
+    gsap.from('.edit-client-card-animate', {
+      opacity: 0,
+      y: 30,
+      stagger: 0.1,
+      duration: 0.8,
+      ease: 'power3.out',
+    });
+  }, []);
+
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto py-6">
+      <div className="max-w-5xl mx-auto py-8 px-4">
         {/* Header */}
-        <div className="edit-client-profile-header">
+        <div className="edit-client-profile-header mb-8">
           <button
             onClick={handleCancel}
-            className="p-2 rounded-lg transition-all hover:bg-surface"
+            className="p-3 rounded-xl transition-all hover:bg-surface border border-transparent hover:border-border cursor-pointer flex items-center justify-center"
+            type="button"
           >
-            <ArrowLeft size={20} className="text-primary" />
+            <ArrowLeft size={18} className="text-primary" />
           </button>
-          <h1 className="edit-client-profile-header-title font-bold text-foreground">
-            Edit <span className="text-blue-600 black:text-blue-400 italic font-light">Client</span> Profile
-          </h1>
+          <div>
+            <h1 className="edit-client-profile-header-title text-2xl font-bold text-foreground leading-tight">
+              Edit <span className="text-blue-600 dark:text-cyan-400 italic font-light">Client</span> Profile
+            </h1>
+            <p className="text-sm text-secondary mt-1">Configure your personal and corporate details</p>
+          </div>
         </div>
 
         {/* Success Message */}
         {successMessage && (
-          <div className="edit-client-profile-success-message">
-            <Check size={18} className="text-green" />
-            <p className="text-sm text-green font-medium">{successMessage}</p>
+          <div className="edit-client-profile-success-message flex items-center gap-3 p-4 rounded-xl border mb-6">
+            <Check size={18} className="text-emerald-500" />
+            <p className="text-sm font-medium text-emerald-500">{successMessage}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="edit-client-profile-form">
-          {/* Profile & Background Images */}
-          <div className="glass-card edit-client-profile-section">
-            <h2 className="edit-client-profile-section-title">Profile Images</h2>
-            
-            <div className="edit-client-profile-images-grid">
-              {/* Profile Image */}
-              <div className="edit-client-profile-image-container">
-                <label className="edit-client-profile-image-label">Profile Picture</label>
-                <div className="edit-client-profile-image-preview group">
+        <form onSubmit={handleSubmit}>
+          <div className="edit-client-profile-container">
+            {/* Left Column: Avatar & Completeness Checklist */}
+            <div className="edit-client-profile-left edit-client-card-animate space-y-6">
+              {/* Profile Image Card */}
+              <div className="glass-card edit-client-profile-avatar-card p-6 flex flex-col items-center">
+                <h3 className="edit-client-profile-section-title text-left w-full border-b border-border pb-3 mb-6">Profile Photo</h3>
+                
+                <div className="edit-client-profile-avatar-wrapper group relative w-36 h-36 rounded-full overflow-hidden border-2 border-border shadow-inner">
                   <img
                     src={previewImage || formData.profileImage || 'https://via.placeholder.com/200'}
                     alt="Profile"
-                    className="edit-client-profile-image"
+                    className="edit-client-profile-avatar-img w-full h-full object-cover"
                   />
-                  <div className="edit-client-profile-image-overlay">
-                    <label className="cursor-pointer">
-                      <Upload size={20} className="text-white" />
+                  <div className="edit-client-profile-avatar-overlay absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                    <label className="cursor-pointer p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
+                      <Upload size={22} className="text-white" />
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/gif"
@@ -257,236 +294,286 @@ export default function EditClientProfileScreen() {
                     </label>
                   </div>
                 </div>
+                
+                <h4 className="edit-client-profile-name font-bold text-foreground text-lg mt-4 text-center">
+                  {formData.firstName || 'First'} {formData.lastName || 'Last'}
+                </h4>
+                <p className="edit-client-profile-role text-xs text-muted-foreground font-semibold mt-1">Client Representative</p>
+                
                 {errors.profileImage && (
-                  <p className="edit-client-profile-form-error">{errors.profileImage}</p>
+                  <p className="edit-client-profile-form-error text-xs text-red-500 mt-3 text-center">{errors.profileImage}</p>
                 )}
-                <p className="edit-client-profile-image-help">JPG, PNG, or GIF (max 4MB)</p>
+                
+                <div className="edit-client-profile-avatar-specs mt-6 w-full text-center space-y-1 py-3 px-4 rounded-xl bg-surface-muted/50 border border-border">
+                  <p className="text-[11px] text-secondary">Supported formats: JPG, PNG, GIF</p>
+                  <p className="text-[11px] text-secondary">Max file size limit: 4MB</p>
+                </div>
               </div>
 
-              {/* Background Image */}
-              <div className="edit-client-profile-image-container">
-                <label className="edit-client-profile-image-label">Background Image</label>
-                <div className="edit-client-profile-image-preview group">
-                  <div
-                    className="edit-client-profile-image"
-                    style={{
-                      background: formData.backgroundImage
-                        ? `url(${formData.backgroundImage}) center/cover`
-                        : 'linear-gradient(135deg, rgba(159,75,255,0.15), rgba(0,240,255,0.1))'
-                    }}
-                  />
-                  <div className="edit-client-profile-image-overlay">
-                    <label className="cursor-pointer">
-                      <Upload size={20} className="text-white" />
+              {/* Profile Completeness Checklist Card */}
+              <div className="glass-card edit-client-profile-tips-card p-6">
+                <h4 className="edit-client-profile-tips-title font-bold text-foreground text-sm border-b border-border pb-3 mb-4">Completeness</h4>
+                <p className="text-xs text-secondary leading-relaxed">
+                  Completing your client profile builds immediate trust and credibility with world-class freelancer talent.
+                </p>
+                <ul className="edit-client-profile-tips-list mt-6 space-y-3">
+                  <li className="flex items-center gap-2 text-xs">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500">✓</span>
+                    <span className="text-foreground">Profile photo uploaded</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs">
+                    <span className={`flex items-center justify-center w-5 h-5 rounded-full ${formData.companyName ? 'bg-emerald-500/10 text-emerald-500' : 'bg-surface-muted border border-border text-muted-foreground'}`}>
+                      {formData.companyName ? '✓' : '•'}
+                    </span>
+                    <span className={formData.companyName ? 'text-foreground' : 'text-muted-foreground'}>Company Name configured</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs">
+                    <span className={`flex items-center justify-center w-5 h-5 rounded-full ${formData.companyWebsite ? 'bg-emerald-500/10 text-emerald-500' : 'bg-surface-muted border border-border text-muted-foreground'}`}>
+                      {formData.companyWebsite ? '✓' : '•'}
+                    </span>
+                    <span className={formData.companyWebsite ? 'text-foreground' : 'text-muted-foreground'}>Website URL provided</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-xs">
+                    <span className={`flex items-center justify-center w-5 h-5 rounded-full ${formData.bio ? 'bg-emerald-500/10 text-emerald-500' : 'bg-surface-muted border border-border text-muted-foreground'}`}>
+                      {formData.bio ? '✓' : '•'}
+                    </span>
+                    <span className={formData.bio ? 'text-foreground' : 'text-muted-foreground'}>Biography section filled out</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Right Column: Personal & Company & Bio Details */}
+            <div className="edit-client-profile-right edit-client-card-animate space-y-6">
+              {/* Personal Information */}
+              <div className="glass-card edit-client-profile-section p-6">
+                <h2 className="edit-client-profile-section-title font-bold text-base border-b border-border pb-3 mb-6">Personal Information</h2>
+                
+                <div className="edit-client-profile-form-grid">
+                  {/* First Name */}
+                  <div className="edit-client-profile-form-group">
+                    <label className="edit-client-profile-form-label">First Name *</label>
+                    <div className="edit-client-profile-input-wrapper">
                       <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/gif"
-                        onChange={(e) => handleImageUpload(e, 'backgroundImage')}
-                        className="hidden"
+                        type="text"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        maxLength={255}
+                        className="edit-client-profile-form-input"
+                        placeholder="Enter first name"
+                        required
                       />
-                    </label>
+                      <User size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                    {errors.firstName && (
+                      <p className="edit-client-profile-form-error">{errors.firstName}</p>
+                    )}
+                  </div>
+
+                  {/* Last Name */}
+                  <div className="edit-client-profile-form-group">
+                    <label className="edit-client-profile-form-label">Last Name *</label>
+                    <div className="edit-client-profile-input-wrapper">
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleChange}
+                        maxLength={255}
+                        className="edit-client-profile-form-input"
+                        placeholder="Enter last name"
+                        required
+                      />
+                      <User size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                    {errors.lastName && (
+                      <p className="edit-client-profile-form-error">{errors.lastName}</p>
+                    )}
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div className="edit-client-profile-form-group">
+                    <label className="edit-client-profile-form-label">Date of Birth</label>
+                    <div className="edit-client-profile-input-wrapper">
+                      <input
+                        type="date"
+                        name="dateOfBirth"
+                        value={formData.dateOfBirth}
+                        onChange={handleChange}
+                        className="edit-client-profile-form-input"
+                      />
+                      <Calendar size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                    {errors.dateOfBirth && (
+                      <p className="edit-client-profile-form-error">{errors.dateOfBirth}</p>
+                    )}
+                  </div>
+
+                  {/* Phone */}
+                  <div className="edit-client-profile-form-group">
+                    <label className="edit-client-profile-form-label">Phone Number</label>
+                    <div className="edit-client-profile-input-wrapper">
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        className="edit-client-profile-form-input"
+                        placeholder="+1 (555) 123-4567"
+                      />
+                      <Phone size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                    {errors.phone && (
+                      <p className="edit-client-profile-form-error">{errors.phone}</p>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  <div className="edit-client-profile-form-group md:col-span-2">
+                    <label className="edit-client-profile-form-label">Address</label>
+                    <div className="edit-client-profile-input-wrapper">
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        maxLength={255}
+                        className="edit-client-profile-form-input"
+                        placeholder="Enter street address, city, state, ZIP code"
+                      />
+                      <MapPin size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                    {errors.address && (
+                      <p className="edit-client-profile-form-error">{errors.address}</p>
+                    )}
                   </div>
                 </div>
-                {errors.backgroundImage && (
-                  <p className="edit-client-profile-form-error">{errors.backgroundImage}</p>
-                )}
-                <p className="edit-client-profile-image-help">JPG, PNG, or GIF (max 4MB)</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Personal Information */}
-          <div className="glass-card edit-client-profile-section">
-            <h2 className="edit-client-profile-section-title">Personal Information</h2>
-            
-            <div className="edit-client-profile-form-grid">
-              {/* First Name */}
-              <div className="edit-client-profile-form-group">
-                <label className="edit-client-profile-form-label">First Name *</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  maxLength={255}
-                  className="edit-client-profile-form-input"
-                  placeholder="Enter first name"
-                />
-                {errors.firstName && (
-                  <p className="edit-client-profile-form-error">{errors.firstName}</p>
-                )}
               </div>
 
-              {/* Last Name */}
-              <div className="edit-client-profile-form-group">
-                <label className="edit-client-profile-form-label">Last Name *</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  maxLength={255}
-                  className="edit-client-profile-form-input"
-                  placeholder="Enter last name"
-                />
-                {errors.lastName && (
-                  <p className="edit-client-profile-form-error">{errors.lastName}</p>
-                )}
+              {/* Company Information */}
+              <div className="glass-card edit-client-profile-section p-6">
+                <h2 className="edit-client-profile-section-title font-bold text-base border-b border-border pb-3 mb-6">Company Details</h2>
+                
+                <div className="edit-client-profile-form-grid">
+                  {/* Company Name */}
+                  <div className="edit-client-profile-form-group">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="edit-client-profile-form-label !mb-0">Company Name</label>
+                      <span className="text-[10px] text-muted-foreground uppercase font-medium">Optional</span>
+                    </div>
+                    <div className="edit-client-profile-input-wrapper">
+                      <input
+                        type="text"
+                        name="companyName"
+                        value={formData.companyName}
+                        onChange={handleChange}
+                        className="edit-client-profile-form-input"
+                        placeholder="Enter company name"
+                      />
+                      <Building2 size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                  </div>
+
+                  {/* Company Website */}
+                  <div className="edit-client-profile-form-group">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="edit-client-profile-form-label !mb-0">Website URL</label>
+                      <span className="text-[10px] text-muted-foreground uppercase font-medium">Optional</span>
+                    </div>
+                    <div className="edit-client-profile-input-wrapper">
+                      <input
+                        type="url"
+                        name="companyWebsite"
+                        value={formData.companyWebsite}
+                        onChange={handleChange}
+                        className="edit-client-profile-form-input"
+                        placeholder="https://example.com"
+                      />
+                      <Globe size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                  </div>
+
+                  {/* Industry */}
+                  <div className="edit-client-profile-form-group md:col-span-2">
+                    <label className="edit-client-profile-form-label">Industry</label>
+                    <div className="edit-client-profile-input-wrapper">
+                      <select
+                        name="industry"
+                        value={formData.industry}
+                        onChange={handleChange}
+                        className="edit-client-profile-form-select w-full"
+                      >
+                        {INDUSTRIES.map(ind => (
+                          <option key={ind} value={ind}>{ind}</option>
+                        ))}
+                      </select>
+                      <Building2 size={16} className="edit-client-profile-input-icon" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Date of Birth */}
-              <div className="edit-client-profile-form-group">
-                <label className="edit-client-profile-form-label">Date of Birth</label>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                  className="edit-client-profile-form-input"
-                />
-                {errors.dateOfBirth && (
-                  <p className="edit-client-profile-form-error">{errors.dateOfBirth}</p>
-                )}
+              {/* Bio / Description */}
+              <div className="glass-card edit-client-profile-section p-6">
+                <h2 className="edit-client-profile-section-title font-bold text-base border-b border-border pb-3 mb-6">Biography / Company Summary</h2>
+                
+                <div className="edit-client-profile-biography-container relative">
+                  <div className="edit-client-profile-input-wrapper !items-start">
+                    <textarea
+                      name="bio"
+                      value={formData.bio}
+                      onChange={handleChange}
+                      maxLength={255}
+                      rows={5}
+                      className="edit-client-profile-form-textarea w-full"
+                      placeholder="Share a short bio or describe your company operations (Max 255 chars)..."
+                    />
+                    <FileText size={16} className="edit-client-profile-input-icon mt-3" />
+                  </div>
+                  <div className="edit-client-profile-form-counter mt-2 flex justify-between items-center px-1">
+                    <span className="text-[11px] text-muted-foreground">Explain briefly what your company does</span>
+                    <span className="edit-client-profile-char-count text-xs font-semibold">{formData.bio.length}/255</span>
+                  </div>
+                  {errors.bio && (
+                    <p className="edit-client-profile-form-error mt-2">{errors.bio}</p>
+                  )}
+                </div>
               </div>
 
-              {/* Phone */}
-              <div className="edit-client-profile-form-group">
-                <label className="edit-client-profile-form-label">Phone</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="edit-client-profile-form-input"
-                  placeholder="+1 (555) 123-4567"
-                />
-                {errors.phone && (
-                  <p className="edit-client-profile-form-error">{errors.phone}</p>
-                )}
-              </div>
-
-              {/* Address */}
-              <div className="edit-client-profile-form-group" style={{ gridColumn: 'span 2' }}>
-                <label className="edit-client-profile-form-label">Address</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  maxLength={255}
-                  className="edit-client-profile-form-input"
-                  placeholder="Enter your address"
-                />
-                {errors.address && (
-                  <p className="edit-client-profile-form-error">{errors.address}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Company Information */}
-          <div className="glass-card edit-client-profile-section">
-            <h2 className="edit-client-profile-section-title">Company Information</h2>
-            
-            <div className="edit-client-profile-form-grid">
-              {/* Company Name */}
-              <div className="edit-client-profile-form-group">
-                <label className="edit-client-profile-form-label">Company Name</label>
-                <input
-                  type="text"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleChange}
-                  className="edit-client-profile-form-input"
-                  placeholder="Your company name"
-                />
-                <p className="edit-client-profile-form-help">Optional</p>
-              </div>
-
-              {/* Company Website */}
-              <div className="edit-client-profile-form-group">
-                <label className="edit-client-profile-form-label">Website URL</label>
-                <input
-                  type="url"
-                  name="companyWebsite"
-                  value={formData.companyWebsite}
-                  onChange={handleChange}
-                  className="edit-client-profile-form-input"
-                  placeholder="https://example.com"
-                />
-                <p className="edit-client-profile-form-help">Optional</p>
-              </div>
-
-              {/* Industry */}
-              <div className="edit-client-profile-form-group" style={{ gridColumn: 'span 2' }}>
-                <label className="edit-client-profile-form-label">Industry</label>
-                <select
-                  name="industry"
-                  value={formData.industry}
-                  onChange={handleChange}
-                  className="edit-client-profile-form-select"
+              {/* Action Buttons */}
+              <div className="edit-client-profile-actions flex gap-3 justify-end items-center pt-4">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="edit-client-profile-button-cancel px-6 py-3 rounded-xl border border-border bg-transparent text-foreground hover:bg-surface transition-colors duration-200 cursor-pointer font-medium text-sm flex items-center justify-center min-h-[48px]"
                 >
-                  {INDUSTRIES.map(ind => (
-                    <option key={ind} value={ind}>{ind}</option>
-                  ))}
-                </select>
+                  <X size={16} className="mr-2" />
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="btn-cyan edit-client-profile-button-submit px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition-transform hover:-translate-y-0.5 duration-200 min-h-[48px]"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Saving changes...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      Save Changes
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-          </div>
-
-          {/* Bio */}
-          <div className="glass-card edit-client-profile-section">
-            <h2 className="edit-client-profile-section-title">Biography</h2>
-            
-            <div className="edit-client-profile-biography-container">
-              <textarea
-                name="bio"
-                value={formData.bio}
-                onChange={handleChange}
-                maxLength={255}
-                rows={4}
-                className="edit-client-profile-form-textarea"
-                placeholder="Tell us about your company"
-              />
-              <div className="edit-client-profile-form-counter">
-                <span>Max 255 characters</span>
-                <span className="edit-client-profile-char-count">{formData.bio.length}/255</span>
-              </div>
-              {errors.bio && (
-                <p className="edit-client-profile-form-error">{errors.bio}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="edit-client-profile-actions">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="edit-client-profile-button-cancel"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="btn-cyan edit-client-profile-button-submit"
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check size={16} />
-                  Save Changes
-                </>
-              )}
-            </button>
           </div>
         </form>
       </div>
     </AppLayout>
   );
 }
+

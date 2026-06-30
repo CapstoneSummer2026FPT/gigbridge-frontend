@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, BriefcaseBusiness, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, CheckCircle } from 'lucide-react';
+import { Star, MapPin, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, BriefcaseBusiness, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, CheckCircle, Edit3 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -146,24 +146,36 @@ export default function FreelancerProfileScreen() {
 
               {/* Action Buttons */}
               <div className="flex flex-row flex-nowrap gap-3 overflow-x-auto scrollbar-hide justify-start lg:justify-end items-center w-full lg:w-auto py-1">
-                {currentUser?.role === 0 && (
+                {currentUser?.id === user.id ? (
                   <button
-                    onClick={() => setShowJobInviteModal(true)}
+                    onClick={() => navigate(`/profile/freelancer/${user.id}/edit`)}
                     className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer border border-transparent flex-shrink-0"
                   >
-                    <BriefcaseBusiness size={18} />
-                    Invite to Job
+                    <Edit3 size={18} />
+                    Edit Profile
                   </button>
-                )}
+                ) : (
+                  <>
+                    {currentUser?.role === 0 && (
+                      <button
+                        onClick={() => setShowJobInviteModal(true)}
+                        className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer border border-transparent flex-shrink-0"
+                      >
+                        <BriefcaseBusiness size={18} />
+                        Invite to Job
+                      </button>
+                    )}
 
-                {currentUser?.role !== 1 && (
-                  <button
-                    onClick={handleSaveFreelancer}
-                    className={`glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0 ${isSaved ? 'text-[var(--gb-cyan)] border-[var(--gb-cyan)]/50' : 'text-on-surface-variant'}`}
-                  >
-                    <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
-                    {isSaved ? 'Saved' : 'Save'}
-                  </button>
+                    {currentUser?.role !== 1 && (
+                      <button
+                        onClick={handleSaveFreelancer}
+                        className={`glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0 ${isSaved ? 'text-[var(--gb-cyan)] border-[var(--gb-cyan)]/50' : 'text-on-surface-variant'}`}
+                      >
+                        <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
+                        {isSaved ? 'Saved' : 'Save'}
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {currentUser?.id !== user.id && (

@@ -526,9 +526,10 @@ export default function ScreenProposalAnswerQuestion() {
                   type="button"
                   onClick={() => void handleStartSecureMode()}
                   className="btn-cyan mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
                   <Maximize2 size={16} />
-                  Resume Secure Mode
+                  <span>Resume Secure Mode</span>
                 </button>
               ) : null}
             </div>
@@ -547,9 +548,10 @@ export default function ScreenProposalAnswerQuestion() {
                 type="button"
                 onClick={() => void handleStartSecureMode()}
                 className="btn-cyan mt-5 inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
                 <Maximize2 size={16} />
-                Start Secure Mode
+                <span>Start Secure Mode</span>
               </button>
             </div>
           </div>
