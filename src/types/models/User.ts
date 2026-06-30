@@ -18,6 +18,9 @@ export interface User {
   role: UserRole;
   is_email_verified: boolean;
   is_active: boolean;
+  suspended_until?: string | null;
+  suspended_at?: string | null;
+  suspension_reason?: string | null;
   is_setup: boolean;
   preferred_language: string;
   last_login_at: string | null;
@@ -43,6 +46,9 @@ export interface AdminUserDto {
   role: number;
   isEmailVerified: boolean;
   isActive: boolean;
+  suspendedUntil?: string | null;
+  suspendedAt?: string | null;
+  suspensionReason?: string | null;
   preferredLanguage: string | null;
   provider: string | null;
   openReportCount: number;

@@ -11,6 +11,7 @@ import { jobAPI } from '../../../api/jobAPI';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
 import { usePostJob } from '../hooks/usePostJob';
+import { JOB_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
 import { JobPostGuide } from '../components/JobPostGuide';
 import { PromptSectionModal } from '../components/PromptSectionModal';
 import { AIGenJobGuide } from '../components/AIGenJobGuide';
@@ -477,14 +478,28 @@ export default function PostJobScreen() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estimated Duration</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 2-4 weeks"
-                    value={form.estimatedDuration}
-                    onChange={event => setForm({ ...form, estimatedDuration: event.target.value })}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
-                  />
+                  <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-3">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="e.g. 3"
+                      value={form.estimatedDurationValue}
+                      onChange={event => setForm({ ...form, estimatedDurationValue: event.target.value })}
+                      disabled={isInstantJobMode && !isJobDetailsGenerated}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                    />
+                    <select
+                      value={form.estimatedDurationUnit}
+                      onChange={event => setForm({ ...form, estimatedDurationUnit: event.target.value as JobDurationUnit })}
+                      disabled={isInstantJobMode && !isJobDetailsGenerated}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                    >
+                      {JOB_DURATION_UNITS.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</label>
