@@ -9,8 +9,11 @@ import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { esignGetAPI } from '../../../api/esignAPI/GET';
+import { esignPostAPI } from '../../../api/esignAPI/POST';
 import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
 import { ContractStatus } from '../../../types/models/Contract';
+import { ESignDocumentStatus } from '../../../types/models/ESign';
 import {
   JobPostStatus,
   JobPostVisibility,
@@ -76,6 +79,16 @@ const canEditDraftMilestones = (status?: number | null): boolean =>
   status === ContractStatus.InNegotiation ||
   status === ContractStatus.PendingContractDetails;
 
+const getSetupProgressDocumentId = (job: GetMyJobPostDto): string | null =>
+  job.setupProgress?.esignDocumentId ||
+  job.setupProgress?.eSignDocumentId ||
+  null;
+
+const getSetupProgressESignStatus = (job: GetMyJobPostDto): number | null =>
+  job.setupProgress?.esignStatus ??
+  job.setupProgress?.eSignStatus ??
+  null;
+
 export default function MyJobsScreen() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
@@ -88,11 +101,72 @@ export default function MyJobsScreen() {
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
 
-  const handleSetupMilestone = async (jobPostId: string): Promise<void> => {
+  const navigateToESignStep = async (job: GetMyJobPostDto): Promise<void> => {
+    const existingDocumentId = getSetupProgressDocumentId(job);
+    const existingESignStatus = getSetupProgressESignStatus(job);
+
+    if (!existingDocumentId && existingESignStatus === null) {
+      const documentResponse = await esignPostAPI.createDocumentFromJob(job.jobPostsId);
+      if (!documentResponse.success || !documentResponse.data) {
+        throw new Error(documentResponse.message || 'Unable to prepare E-sign document.');
+      }
+    }
+
+    navigate('/jobs/post/contract/esign', {
+      state: {
+        jobPostId: job.jobPostsId,
+        jobData: {
+          title: job.title,
+          description: job.description,
+          budgetMin: job.budgetMin,
+          budgetMax: job.budgetMax,
+          deadline: job.endDate,
+        },
+      },
+    });
+  };
+
+  const handleSetupMilestone = async (job: GetMyJobPostDto): Promise<void> => {
+    const jobPostId = job.jobPostsId;
     setPendingJobId(jobPostId);
     try {
+      const progress = job.setupProgress;
+
+      if (progress?.nextIncompleteStep === 'Details') {
+        toast.info('Continue completing job details first.');
+        navigate('/jobs/post', { state: { jobPostId } });
+        return;
+      }
+
+      if (progress?.nextIncompleteStep === 'ESign') {
+        toast.info('Directing to E-sign signature first...');
+        await navigateToESignStep(job);
+        return;
+      }
+
+      if (
+        (progress?.nextIncompleteStep === 'Milestones' || progress?.nextIncompleteStep === 'ReadyToPublish') &&
+        progress.contractId
+      ) {
+        navigate(`/contracts/${progress.contractId}/milestones?mode=jobpost-setup`);
+        return;
+      }
+
       const response = await contractGetAPI.getContractByJobPost(jobPostId);
       if (response.success && response.data) {
+        if (job.status === JobPostStatus.Draft) {
+          const documentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
+          if (
+            !documentResponse.success ||
+            !documentResponse.data ||
+            documentResponse.data.status !== ESignDocumentStatus.FullySigned
+          ) {
+            toast.info('Directing to E-sign signature first...');
+            await navigateToESignStep(job);
+            return;
+          }
+        }
+
         if (!canEditDraftMilestones(response.data.status)) {
           toast.info('Milestones are locked for this contract stage.');
           navigate(`/contracts/${response.data.contractsId}`);
@@ -102,11 +176,15 @@ export default function MyJobsScreen() {
         navigate(`/contracts/${response.data.contractsId}/milestones?mode=jobpost-setup`);
       } else {
         toast.info('Directing to E-sign signature first...');
-        navigate('/jobs/post/esign', { state: { jobPostId } });
+        await navigateToESignStep(job);
       }
     } catch (err: unknown) {
-      toast.error('Unable to fetch contract details.');
-      navigate('/jobs/post/esign', { state: { jobPostId } });
+      toast.error(err instanceof Error ? err.message : 'Unable to continue job setup.');
+      try {
+        await navigateToESignStep(job);
+      } catch (fallbackErr: unknown) {
+        toast.error(fallbackErr instanceof Error ? fallbackErr.message : 'Unable to prepare E-sign document.');
+      }
     } finally {
       setPendingJobId(null);
     }
@@ -427,7 +505,7 @@ export default function MyJobsScreen() {
                       {(job.status === JobPostStatus.Draft || job.status === JobPostStatus.Open) && (
                         <>
                           <button
-                            onClick={() => handleSetupMilestone(job.jobPostsId)}
+                            onClick={() => handleSetupMilestone(job)}
                             disabled={isPending}
                             className="mj-action-btn mj-btn-primary"
                             style={{

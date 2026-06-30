@@ -4,6 +4,7 @@ import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
 import type { Review } from '../../../types/models/Job';
+import type { CheatingPenaltyLogDto } from '../../../types/models/Profile';
 
 type ReviewViewModel = {
   id: string;
@@ -47,7 +48,9 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     portfolio: [
       { title: 'E-Commerce Platform', tech: 'React, Node.js, MongoDB', image: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop' },
       { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
-    ]
+    ],
+    cheatingViolationCount: 0,
+    cheatingPenaltyLogs: [] as CheatingPenaltyLogDto[],
   });
 
   const [loading, setLoading] = useState(true);
@@ -118,7 +121,9 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
               : [
                   { title: 'E-Commerce Platform', tech: 'React, Node.js, MongoDB', image: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop' },
                   { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
-                ]
+                ],
+            cheatingViolationCount: apiData.cheatingViolationCount ?? 0,
+            cheatingPenaltyLogs: apiData.cheatingPenaltyLogs ?? [],
           });
         }
       } catch (err) {

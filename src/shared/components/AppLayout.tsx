@@ -12,6 +12,7 @@ interface AppLayoutProps {
   fullWidth?: boolean;
   excludeMeshGradient?: boolean;
   hideAIWidget?: boolean;
+  hideTopNav?: boolean;
   mainClassName?: string;
 }
 
@@ -21,6 +22,7 @@ export function AppLayout({
   fullWidth = false,
   excludeMeshGradient = false,
   hideAIWidget = false,
+  hideTopNav = false,
   mainClassName = '',
 }: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -35,7 +37,7 @@ export function AppLayout({
     user = null;
   }
   
-  const hasSidebar = showSidebar && !!user;
+  const hasSidebar = !hideTopNav && showSidebar && !!user;
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -47,9 +49,11 @@ export function AppLayout({
 
   return (
     <div className="app-layout">
-      <TopNav onMenuClick={toggleSidebar} showMenuButton={hasSidebar} />
+      {!hideTopNav ? (
+        <TopNav onMenuClick={toggleSidebar} showMenuButton={hasSidebar} />
+      ) : null}
 
-      <div className="app-layout-content">
+      <div className={`app-layout-content ${hideTopNav ? 'no-top-nav' : ''}`}>
         {hasSidebar && (
           <>
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
@@ -65,7 +69,7 @@ export function AppLayout({
         )}
 
         <main
-          className={`app-layout-main ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
+          className={`app-layout-main ${hideTopNav ? 'no-top-nav' : ''} ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
         >
           {excludeMeshGradient ? (
             children
@@ -77,7 +81,7 @@ export function AppLayout({
         </main>
       </div>
 
-      {user && !hideAIWidget && <AIAssistantWidget />}
+      {user && !hideTopNav && !hideAIWidget && <AIAssistantWidget />}
     </div>
   );
 }

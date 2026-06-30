@@ -57,7 +57,7 @@ export default function ManageMilestonesScreen() {
       contract.status === ContractStatus.InNegotiation ||
       contract.status === ContractStatus.PendingContractDetails
     : false;
-  const shouldEnforceBudgetTotal = mode === 'contract-edit';
+  const shouldEnforceBudgetTotal = mode === 'contract-edit' || mode === 'jobpost-setup';
   const isClient = role === UserRole.Client;
   const isFreelancer = role === UserRole.Freelancer;
   const baselineReleasePercentage = 0.8;
@@ -117,7 +117,29 @@ export default function ManageMilestonesScreen() {
   const calculateRemainingBudget = () => {
     if (!contract) return 0;
     const usedBudget = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-    return Math.max(0, contract.totalBudget - usedBudget);
+    return contract.totalBudget - usedBudget;
+  };
+
+  const getBudgetExceededMessage = () => {
+    const totalBudget = contract?.totalBudget || 0;
+    const allocatedBudget = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+    const exceededAmount = allocatedBudget - totalBudget;
+
+    return `Allocated Budget exceeds Total Budget by ${formatContractAmount(exceededAmount)}.`;
+  };
+
+  const validateAllocatedBudget = () => {
+    if (!contract) return true;
+
+    const allocatedBudget = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+    if (allocatedBudget <= contract.totalBudget) {
+      return true;
+    }
+
+    const message = getBudgetExceededMessage();
+    setError(message);
+    toast.error(message);
+    return false;
   };
 
   // Validate form
@@ -264,6 +286,10 @@ export default function ManageMilestonesScreen() {
       return;
     }
 
+    if (!validateAllocatedBudget()) {
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError(null);
@@ -301,6 +327,10 @@ export default function ManageMilestonesScreen() {
     if (milestones.length === 0) {
       setError('At least one milestone is required.');
       toast.error('At least one milestone is required.');
+      return;
+    }
+
+    if (!validateAllocatedBudget()) {
       return;
     }
 
@@ -342,6 +372,13 @@ export default function ManageMilestonesScreen() {
 
   const handleSubmitDetails = async () => {
     const remaining = calculateRemainingBudget();
+    if (remaining < 0) {
+      const message = getBudgetExceededMessage();
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     if (remaining !== 0) {
       setError('Allocated milestones sum must exactly match the total contract budget.');
       toast.error('Allocated milestones sum must exactly match the total contract budget.');
@@ -445,6 +482,7 @@ export default function ManageMilestonesScreen() {
   }
   const remainingBudget = calculateRemainingBudget();
   const totalMilestoneAmount = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
+  const isBudgetExceeded = remainingBudget < 0;
   const completedMilestones = milestones.filter(isMilestoneCompleteForReview).length;
 
   const getNodeGlowClass = (status: MilestoneStatus) => {
@@ -901,13 +939,13 @@ export default function ManageMilestonesScreen() {
                   </div>
 
                   {/* Allocated Budget */}
-                  <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-purple-500/20 transition-all">
+                  <div className={`flex items-center justify-between p-3 bg-secondary/30 rounded-xl border transition-all ${isBudgetExceeded ? 'border-red-500/50 hover:border-red-500/70' : 'border-border/20 hover:border-purple-500/20'}`}>
                     <div>
                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Allocated Budget</span>
-                      <span className="text-lg font-black text-foreground mt-0.5 block">{formatContractAmount(totalMilestoneAmount)}</span>
+                      <span className={`text-lg font-black mt-0.5 block ${isBudgetExceeded ? 'text-red-500' : 'text-foreground'}`}>{formatContractAmount(totalMilestoneAmount)}</span>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                      <Layers size={15} />
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isBudgetExceeded ? 'bg-red-500/10 text-red-500' : 'bg-purple-500/10 text-purple-500'}`}>
+                      {isBudgetExceeded ? <AlertCircle size={15} /> : <Layers size={15} />}
                     </div>
                   </div>
 
@@ -915,7 +953,7 @@ export default function ManageMilestonesScreen() {
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-emerald-500/20 transition-all">
                     <div>
                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Remaining Budget</span>
-                      <span className={`text-lg font-black mt-0.5 block ${remainingBudget === 0 ? 'text-amber-500' : 'text-foreground'}`}>
+                      <span className={`text-lg font-black mt-0.5 block ${isBudgetExceeded ? 'text-red-500' : remainingBudget === 0 ? 'text-amber-500' : 'text-foreground'}`}>
                         {formatContractAmount(remainingBudget)}
                       </span>
                     </div>
@@ -923,6 +961,13 @@ export default function ManageMilestonesScreen() {
                       <ShieldAlert size={15} />
                     </div>
                   </div>
+
+                  {isBudgetExceeded && (
+                    <div className="flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-500">
+                      <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                      <span>Allocated Budget cannot exceed Total Budget.</span>
+                    </div>
+                  )}
 
                   {/* Milestone Completion */}
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-amber-500/20 transition-all">
@@ -943,7 +988,7 @@ export default function ManageMilestonesScreen() {
               <div className="glass-card p-5 flex flex-col gap-2 text-left">
                 <button
                   onClick={handleSaveDraft}
-                  disabled={isSubmitting || milestones.length === 0 || !canEditMilestones}
+                  disabled={isSubmitting || milestones.length === 0 || !canEditMilestones || isBudgetExceeded}
                   className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <Save size={13} />
@@ -953,7 +998,7 @@ export default function ManageMilestonesScreen() {
                 {mode === 'jobpost-setup' && (
                   <button
                     onClick={handleCompleteSetup}
-                    disabled={isSubmitting || milestones.length === 0 || !canEditMilestones}
+                    disabled={isSubmitting || milestones.length === 0 || !canEditMilestones || isBudgetExceeded}
                     className="w-full py-2.5 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white border-none rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <CheckCircle2 size={13} />
@@ -964,7 +1009,7 @@ export default function ManageMilestonesScreen() {
                 {mode === 'contract-edit' && (
                   <button
                     onClick={handleSubmitDetails}
-                    disabled={isSubmitting || milestones.length === 0 || remainingBudget !== 0}
+                    disabled={isSubmitting || milestones.length === 0 || remainingBudget !== 0 || isBudgetExceeded}
                     className="w-full py-2.5 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white border-none rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <Send size={13} />

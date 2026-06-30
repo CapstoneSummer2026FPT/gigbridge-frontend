@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { CreateContractDto, ContractDto, GenerateContractPdfDto, Milestone, WithdrawMilestoneResponse } from '../../types/models/Contract';
+import type { ContractProductHandoffResponse, CreateContractDto, ContractDto, GenerateContractPdfDto, Milestone, WithdrawMilestoneResponse } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 const milestonesUrl = 'Milestones';
@@ -69,9 +69,10 @@ export const contractPostAPI = {
    */
   submitMilestone: async (
     contractId: string,
-    milestoneId: string
+    milestoneId: string,
+    formData: FormData
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/submit`);
+    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/submit`, formData);
   },
 
   /**
@@ -102,6 +103,32 @@ export const contractPostAPI = {
     milestoneId: string
   ): Promise<ApiResponse<WithdrawMilestoneResponse>> => {
     return apiService.post<WithdrawMilestoneResponse>(`contracts/${contractId}/milestones/${milestoneId}/withdraw`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/product-handoffs
+   * Client sends product/work materials to the freelancer.
+   */
+  submitProductHandoff: async (
+    contractId: string,
+    formData: FormData
+  ): Promise<ApiResponse<ContractProductHandoffResponse>> => {
+    return apiService.post<ContractProductHandoffResponse>(
+      `contracts/${contractId}/product-handoffs`,
+      formData
+    );
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/product-handoffs/{handoffId}/acknowledge
+   */
+  acknowledgeProductHandoff: async (
+    contractId: string,
+    handoffId: string
+  ): Promise<ApiResponse<ContractProductHandoffResponse>> => {
+    return apiService.post<ContractProductHandoffResponse>(
+      `contracts/${contractId}/product-handoffs/${handoffId}/acknowledge`
+    );
   },
 
   /**

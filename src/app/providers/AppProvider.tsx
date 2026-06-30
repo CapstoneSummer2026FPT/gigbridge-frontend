@@ -122,8 +122,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (savedUser) {
-          setUser(savedUser);
-          setRoleState(savedRole);
+          const normalizedRole = normalizeRole(savedRole ?? savedUser.role);
+          setUser({ ...savedUser, role: normalizedRole });
+          setRoleState(normalizedRole);
         }
       } catch (_e) {
         localStorage.removeItem('gigbridge_session');
