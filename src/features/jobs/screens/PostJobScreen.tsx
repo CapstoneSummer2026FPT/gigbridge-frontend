@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import {
   Sparkles, X, Plus, ChevronRight,
   Bold, Italic, Underline, List, ListOrdered, Check, Save,
@@ -17,10 +18,12 @@ import { PromptSectionModal } from '../components/PromptSectionModal';
 import { AIGenJobGuide } from '../components/AIGenJobGuide';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { LiquidLoading } from '../../../shared/components/LiquidLoading';
+import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import '../styles/PostJobScreen.css';
 
 export default function PostJobScreen() {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const [isGuideActive, setIsGuideActive] = useState(false);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
   const [isBudgetGuideOpen, setIsBudgetGuideOpen] = useState(false);
@@ -88,7 +91,7 @@ export default function PostJobScreen() {
 
     if (!response.success || !response.data) {
       setDrafts([]);
-      setDraftsError(response.message || 'Unable to load draft JobPosts.');
+      setDraftsError(response.message || t('postJob.noDrafts'));
       return;
     }
 
@@ -145,8 +148,8 @@ export default function PostJobScreen() {
 
         <div className="flex flex-col gap-6 items-center mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
-            
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>{t('postJob.createNewJobPost')}</h1>
+
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
               <button
                 type="button"
@@ -154,14 +157,12 @@ export default function PostJobScreen() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-sm cursor-pointer border border-border bg-background hover:bg-muted text-foreground"
               >
                 <FileText size={14} />
-                Continue Draft
+                {t('postJob.continueDraft')}
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  setIsInstantJobMode(!isInstantJobMode);
-                }}
+                onClick={() => { setIsInstantJobMode(!isInstantJobMode); }}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md cursor-pointer border-none ${
                   isInstantJobMode
                     ? 'bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white hover:opacity-95'
@@ -169,31 +170,28 @@ export default function PostJobScreen() {
                 }`}
               >
                 <Sparkles size={14} className={isInstantJobMode ? 'animate-pulse' : ''} />
-                Create instant Job Detail (Premium)
+                {t('postJob.createInstantJobDetail')}
               </button>
-              
+
               <div className="relative group">
                 <button
                   type="button"
                   onClick={() => {
-                    if (isInstantJobMode) {
-                      setIsGuideActive(true);
-                    } else {
-                      toast.info("Vui lòng kích hoạt 'Create instant Job Detail' trước khi xem hướng dẫn.");
-                    }
+                    if (isInstantJobMode) { setIsGuideActive(true); }
+                    else { toast.info(t('postJob.activateInstantFirst')); }
                   }}
                   className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-sm transition-all cursor-pointer ${
                     isInstantJobMode
                       ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] shadow-[0_0_15px_rgba(0,119,255,0.4)] animate-pulse scale-105 font-extrabold'
                       : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
-                  title="Xem hướng dẫn tính năng"
+                  title={t('postJob.instantGuideTitle')}
                 >
                   ?
                 </button>
                 <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl p-4 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-xs text-muted-foreground leading-relaxed text-left select-text">
-                  <p className="font-bold text-foreground mb-1">Instant Job Detail (Premium)</p>
-                  When enabled, a prompt input bar appears at the bottom. Describe your job requirements in the bar and click <strong>Generate Details</strong> to let AI automatically fill in the Job Title, Category, Description, and required Skills.
+                  <p className="font-bold text-foreground mb-1">{t('postJob.instantGuideTitle')}</p>
+                  <span dangerouslySetInnerHTML={{ __html: t('postJob.instantGuideDesc') }} />
                 </div>
               </div>
             </div>
@@ -203,32 +201,32 @@ export default function PostJobScreen() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm shrink-0">1</div>
               <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">Step 1</span>
-                <span className="text-xs text-foreground font-bold">Project Details</span>
+                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">{t('postJob.step1')}</span>
+                <span className="text-xs text-foreground font-bold">{t('postJob.step1Label')}</span>
               </div>
             </div>
             <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
             <div className="flex items-center gap-3 opacity-60">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">2</div>
               <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 2</span>
-                <span className="text-xs text-muted-foreground font-bold">Contract Setup</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('postJob.step2')}</span>
+                <span className="text-xs text-muted-foreground font-bold">{t('postJob.step2Label')}</span>
               </div>
             </div>
             <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
             <div className="flex items-center gap-3 opacity-60">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">3</div>
               <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 3</span>
-                <span className="text-xs text-muted-foreground font-bold">E-Sign Contract</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('postJob.step3')}</span>
+                <span className="text-xs text-muted-foreground font-bold">{t('postJob.step3Label')}</span>
               </div>
             </div>
             <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
             <div className="flex items-center gap-3 opacity-60">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">4</div>
               <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
-                <span className="text-xs text-muted-foreground font-bold">Setup Milestone</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('postJob.step4')}</span>
+                <span className="text-xs text-muted-foreground font-bold">{t('postJob.step4Label')}</span>
               </div>
             </div>
           </div>
@@ -248,7 +246,7 @@ export default function PostJobScreen() {
 
         {isDraftInitializing && (
           <div className="mb-6 bg-[var(--gb-cyan)]/10 border border-[var(--gb-cyan)]/20 text-[var(--gb-cyan)] rounded-xl px-4 py-3 text-sm font-semibold">
-            Loading draft...
+            {t('postJob.loadingDraft')}
           </div>
         )}
 
@@ -260,7 +258,7 @@ export default function PostJobScreen() {
               onClick={() => setDraftRequestAttempt(attempt => attempt + 1)}
               className="px-4 py-2 rounded-full font-bold text-xs bg-red-500 text-white hover:bg-red-600 transition-all cursor-pointer border-none"
             >
-              Retry
+              {t('postJob.retry')}
             </button>
           </div>
         )}
@@ -278,26 +276,27 @@ export default function PostJobScreen() {
           <div id="guide-job-details-panel" className={`lg:col-span-7 order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
             isJobDetailsGenerated ? 'panels-fade-in' : ''
           }`}>
-            <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">Job Details</h2>
+            <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">{t('postJob.step1Label')}</h2>
 
             {isInstantJobMode && !isJobDetailsGenerated && (
               <div className="bg-gradient-to-r from-[var(--gb-purple)]/10 to-[var(--gb-cyan)]/10 border border-[var(--gb-purple)]/20 rounded-xl p-4 flex gap-3 items-start">
                 <Sparkles className="text-[var(--gb-purple)] shrink-0 mt-0.5 animate-pulse" size={16} />
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-bold text-foreground">Premium Feature Active</span>
-                  <span className="text-[11px] text-muted-foreground leading-relaxed">
-                    Please describe the job role in the prompt input bar at the bottom, then click <strong>Generate Details</strong>. The fields below will be auto-filled based on your prompt.
-                  </span>
+                  <span className="text-xs font-bold text-foreground">{t('postJob.premiumFeatureActive')}</span>
+                  <span
+                    className="text-[11px] text-muted-foreground leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: t('postJob.premiumFeatureDesc') }}
+                  />
                 </div>
               </div>
             )}
 
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Title *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.jobTitle')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Senior Frontend Engineer"
+                  placeholder={t('postJob.jobTitlePlaceholder')}
                   value={form.title}
                   onChange={event => setForm({ ...form, title: event.target.value })}
                   disabled={isInstantJobMode && !isJobDetailsGenerated}
@@ -307,20 +306,20 @@ export default function PostJobScreen() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Major *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.major')}</label>
                   <select
                     value={form.majorId}
                     onChange={event => handleMajorChange(event.target.value)}
                     disabled={(isInstantJobMode && !isJobDetailsGenerated) || isMajorsLoading}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   >
-                    <option value="">{isMajorsLoading ? 'Loading majors...' : 'Select a major'}</option>
+                    <option value="">{isMajorsLoading ? t('postJob.loadingMajors') : t('postJob.selectMajor')}</option>
                     {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
                   </select>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.category')}</label>
                   <select
                     value={form.majorCategoryId}
                     onChange={event => handleCategoryChange(event.target.value)}
@@ -328,7 +327,7 @@ export default function PostJobScreen() {
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   >
                     <option value="">
-                      {!form.majorId ? 'Select a major first' : isCategoriesLoading ? 'Loading categories...' : 'Select a category'}
+                      {!form.majorId ? t('postJob.selectMajorFirst') : isCategoriesLoading ? t('postJob.loadingCategories') : t('postJob.selectCategory')}
                     </option>
                     {categories.map(category => (
                       <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
@@ -337,22 +336,22 @@ export default function PostJobScreen() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visibility</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.visibility')}</label>
                   <select
                     value={form.visibility}
                     onChange={event => setForm({ ...form, visibility: event.target.value })}
                     disabled={isInstantJobMode && !isJobDetailsGenerated}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   >
-                    <option value={JobPostVisibility.Public}>Public</option>
-                    <option value={JobPostVisibility.Private}>Private</option>
-                    <option value={JobPostVisibility.InviteOnly}>Invite Only</option>
+                    <option value={JobPostVisibility.Public}>{t('postJob.public')}</option>
+                    <option value={JobPostVisibility.Private}>{t('postJob.private')}</option>
+                    <option value={JobPostVisibility.InviteOnly}>{t('postJob.inviteOnly')}</option>
                   </select>
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.requiredSkills')}</label>
                 <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
                   {selectedOfficialSkills.map(skill => (
                     <span key={skill.skillId} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
@@ -383,7 +382,7 @@ export default function PostJobScreen() {
                   ))}
                   <input
                     type="text"
-                    placeholder={form.categoryId ? 'Add a skill...' : 'Select a category first'}
+                    placeholder={form.categoryId ? t('postJob.addSkillPlaceholder') : t('postJob.selectCategoryFirst')}
                     value={skillInput}
                     onChange={event => setSkillInput(event.target.value)}
                     onKeyDown={event => {
@@ -401,15 +400,15 @@ export default function PostJobScreen() {
                     disabled={(isInstantJobMode && !isJobDetailsGenerated) || !form.categoryId || !skillInput.trim()}
                     className="px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Add
+                    {t('postJob.addSkill')}
                   </button>
                 </div>
                 {isSkillsLoading && (
-                  <p className="text-[10px] text-muted-foreground mt-1">Loading skills for the selected category...</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t('postJob.loadingSkills')}</p>
                 )}
                 {remainingSkills.length > 0 && (
                   <div className="mt-1">
-                    <p className="text-[10px] text-muted-foreground mb-2">Available official skills:</p>
+                    <p className="text-[10px] text-muted-foreground mb-2">{t('postJob.availableSkills')}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {remainingSkills.slice(0, 5).map(skill => (
                         <button
@@ -429,7 +428,7 @@ export default function PostJobScreen() {
 
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Description *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.jobDescription')}</label>
                 </div>
                 <div className="border border-border rounded-xl overflow-hidden shadow-sm flex flex-col bg-background focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
                   <div className="bg-muted/30 border-b border-border px-3 py-2 flex items-center gap-1.5">
@@ -443,7 +442,7 @@ export default function PostJobScreen() {
                   <textarea
                     value={form.description}
                     onChange={event => setForm({ ...form, description: event.target.value })}
-                    placeholder="Describe the role, responsibilities, and ideal candidate..."
+                    placeholder={t('postJob.jobDescPlaceholder')}
                     rows={6}
                     disabled={isInstantJobMode && !isJobDetailsGenerated}
                     className="w-full bg-transparent border-none px-4 py-3 text-sm placeholder:text-muted-foreground focus:ring-0 resize-y min-h-[150px] outline-none leading-relaxed text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
@@ -453,11 +452,11 @@ export default function PostJobScreen() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Budget Min</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.budgetMin')}</label>
                   <input
                     type="number"
                     min="0"
-                    placeholder="Minimum budget"
+                    placeholder={t('postJob.budgetMinPlaceholder')}
                     value={form.budgetMin}
                     onChange={event => setForm({ ...form, budgetMin: event.target.value })}
                     disabled={isInstantJobMode && !isJobDetailsGenerated}
@@ -466,7 +465,7 @@ export default function PostJobScreen() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Budget Max</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.budgetMax')}</label>
                     <div className="relative">
                       <button
                         type="button"
@@ -483,11 +482,12 @@ export default function PostJobScreen() {
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)]" />
                             <h4 className="text-xs font-extrabold text-foreground mb-1.5 flex items-center gap-1.5">
                               <span className="w-4.5 h-4.5 rounded-full bg-[var(--gb-cyan)]/15 text-[var(--gb-cyan)] flex items-center justify-center text-[10px] font-black">?</span>
-                              Hướng dẫn Đơn vị Ngân sách
+                              {t('postJob.budgetGuideTitle')}
                             </h4>
-                            <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
-                              Đơn vị tiền tệ sử dụng cho ngân sách công việc trên hệ thống GigBridge là <strong className="text-foreground">G-coin</strong>.
-                            </p>
+                            <p
+                              className="text-[11px] text-muted-foreground leading-relaxed mb-3"
+                              dangerouslySetInnerHTML={{ __html: t('postJob.budgetGuideDesc') }}
+                            />
                             
                             <div className="bg-muted/40 rounded-xl p-2.5 border border-border/60 flex items-center justify-between mb-3">
                               <div className="flex items-center gap-1.5">
@@ -495,11 +495,11 @@ export default function PostJobScreen() {
                                 <span className="text-xs font-bold text-foreground">1 G-coin</span>
                               </div>
                               <span className="text-muted-foreground text-[10px] font-bold">⇄</span>
-                              <span className="text-xs font-black text-brand">1,000 VND</span>
+                              <span className="text-xs font-black text-brand">{t('postJob.budgetGuideRate')}</span>
                             </div>
 
                             <p className="text-[10px] text-muted-foreground leading-relaxed">
-                              Bạn có thể quy đổi và nạp G-coin qua cổng thanh toán PayOS (chuyển khoản ngân hàng hoặc QR Code) để thực hiện giao dịch bảo chứng (escrow).
+                              {t('postJob.budgetGuideNote')}
                             </p>
                           </div>
                         </>
@@ -509,7 +509,7 @@ export default function PostJobScreen() {
                   <input
                     type="number"
                     min="0"
-                    placeholder="Maximum budget"
+                    placeholder={t('postJob.budgetMaxPlaceholder')}
                     value={form.budgetMax}
                     onChange={event => setForm({ ...form, budgetMax: event.target.value })}
                     disabled={isInstantJobMode && !isJobDetailsGenerated}
@@ -520,13 +520,13 @@ export default function PostJobScreen() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estimated Duration</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.estimatedDuration')}</label>
                   <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-3">
                     <input
                       type="number"
                       min="1"
                       step="1"
-                      placeholder="e.g. 3"
+                      placeholder={t('postJob.estimatedDurationPlaceholder')}
                       value={form.estimatedDurationValue}
                       onChange={event => setForm({ ...form, estimatedDurationValue: event.target.value })}
                       disabled={isInstantJobMode && !isJobDetailsGenerated}
@@ -545,7 +545,7 @@ export default function PostJobScreen() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.endDate')}</label>
                   <input
                     type="date"
                     value={form.deadline}
@@ -568,7 +568,7 @@ export default function PostJobScreen() {
             <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
               <div className="flex items-center gap-2">
                 <MessageSquare className="text-[var(--gb-purple)]" size={20} />
-                <h2 className="text-lg font-bold text-foreground">Questions for Interview</h2>
+                <h2 className="text-lg font-bold text-foreground">{t('postJob.questionsForInterview')}</h2>
               </div>
             </div>
 
@@ -579,20 +579,16 @@ export default function PostJobScreen() {
                   <Lightbulb className="text-[var(--gb-purple)]" size={14} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground mb-1">Questions for Interview là gì?</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-2">
-                    Đây là các câu hỏi bạn muốn ứng viên <strong className="text-foreground">trả lời khi nộp đề xuất (proposal)</strong> cho công việc này.
-                    Thay vì phỏng vấn trực tiếp ngay từ đầu, bạn có thể lọc ứng viên phù hợp qua câu trả lời của họ.
-                  </p>
+                  <p className="text-sm font-bold text-foreground mb-1">{t('postJob.questionsGuideTitle')}</p>
+                  <p
+                    className="text-xs text-muted-foreground leading-relaxed mb-2"
+                    dangerouslySetInnerHTML={{ __html: t('postJob.questionsGuideDesc') }}
+                  />
                   <div className="flex flex-col gap-1">
-                    {[
-                      '"Hãy chia sẻ 1–2 dự án freelance bạn đã hoàn thành gần đây có liên quan đến yêu cầu này."',
-                      '"Bạn dự kiến hoàn thành công việc trong bao lâu và kế hoạch triển khai như thế nào?"',
-                      '"Nếu gặp vấn đề kỹ thuật không giải quyết được một mình, bạn xử lý như thế nào?"',
-                    ].map((example, i) => (
+                    {(['questionsExample1', 'questionsExample2', 'questionsExample3'] as const).map((key, i) => (
                       <div key={i} className="flex items-start gap-1.5">
                         <span className="text-[var(--gb-purple)] mt-0.5 shrink-0 font-black text-xs">›</span>
-                        <span className="text-[11px] text-muted-foreground italic">{example}</span>
+                        <span className="text-[11px] text-muted-foreground italic">{t(`postJob.${key}`)}</span>
                       </div>
                     ))}
                   </div>
@@ -620,7 +616,7 @@ export default function PostJobScreen() {
                         <GripVertical size={14} />
                       </div>
                       <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                        Question {index + 1}
+                        {t('postJob.question', { number: index + 1 })}
                       </span>
                     </div>
 
@@ -632,7 +628,7 @@ export default function PostJobScreen() {
                           onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
                           className="rounded border-border text-[var(--gb-cyan)] focus:ring-[var(--gb-cyan)]"
                         />
-                        Required
+                        {t('postJob.required')}
                       </label>
 
                       <button
@@ -642,7 +638,7 @@ export default function PostJobScreen() {
                           setQuestions(updated);
                         }}
                         className="text-muted-foreground hover:text-red-500 p-1 rounded hover:bg-muted transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
-                        title="Delete Question"
+                        title={t('postJob.deleteQuestion')}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -655,7 +651,7 @@ export default function PostJobScreen() {
                     onChange={event => updateQuestion(index, { questionText: event.target.value })}
                     className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
                     rows={3}
-                    placeholder="Enter a question applicants must answer..."
+                    placeholder={t('postJob.questionPlaceholder')}
                   />
                   <div className="text-right mt-1 text-[10px] text-muted-foreground">
                     {question.questionText.length}/{MAX_QUESTION_LENGTH}
@@ -665,7 +661,7 @@ export default function PostJobScreen() {
 
               {questions.length === 0 && (
                 <div className="text-center py-8 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
-                  No questions added. Click "Add Question" to add one.
+                  {t('postJob.noQuestions')}
                 </div>
               )}
             </div>
@@ -676,7 +672,7 @@ export default function PostJobScreen() {
                 onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
               >
-                <Plus size={14} /> Add Question
+                <Plus size={14} /> {t('postJob.addQuestion')}
               </button>
             </div>
           </div>
@@ -686,7 +682,7 @@ export default function PostJobScreen() {
         {!(isInstantJobMode && !isJobDetailsGenerated) && (
           <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm max-w-[1440px] mx-auto">
             <div className="hidden md:flex flex-col">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{t('postJob.jobPreviewLabel')}</span>
               <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -696,7 +692,7 @@ export default function PostJobScreen() {
                 disabled={isActionDisabled}
                 className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
               >
-                <Save size={16} /> {renderSubmitLabel('draft', 'Save as Draft')}
+                <Save size={16} /> {renderSubmitLabel('draft', t('postJob.saveAsDraft'))}
               </button>
               <button
                 type="button"
@@ -705,7 +701,7 @@ export default function PostJobScreen() {
                 className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
               >
                 <Check size={16} />
-                <span>{renderSubmitLabel('esign', 'Next: Contract Setup')}</span>
+                <span>{renderSubmitLabel('esign', t('postJob.nextContractSetup'))}</span>
                 <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
               </button>
             </div>
@@ -719,9 +715,9 @@ export default function PostJobScreen() {
           <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden" onClick={event => event.stopPropagation()}>
             <div className="px-6 py-5 border-b border-border flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-extrabold text-foreground">Continue Draft</h2>
+                <h2 className="text-lg font-extrabold text-foreground">{t('postJob.continueDraftTitle')}</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  You currently have {drafts.length} unfinished JobPost draft{drafts.length === 1 ? '' : 's'}.
+                  {t('postJob.continueDraftDesc', { count: drafts.length })}
                 </p>
               </div>
               <button
@@ -735,7 +731,7 @@ export default function PostJobScreen() {
 
             <div className="p-6 overflow-y-auto max-h-[52vh]">
               {isDraftsLoading && (
-                <div className="text-sm text-muted-foreground py-8 text-center">Checking draft JobPosts...</div>
+                <div className="text-sm text-muted-foreground py-8 text-center">{t('postJob.checkingDrafts')}</div>
               )}
 
               {draftsError && !isDraftsLoading && (
@@ -747,8 +743,8 @@ export default function PostJobScreen() {
               {!isDraftsLoading && !draftsError && drafts.length === 0 && (
                 <div className="border border-dashed border-border rounded-xl p-8 text-center">
                   <FileText className="mx-auto text-muted-foreground mb-3" size={28} />
-                  <p className="text-sm font-bold text-foreground">No unfinished drafts found.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Start a new JobPost when you are ready.</p>
+                  <p className="text-sm font-bold text-foreground">{t('postJob.noDrafts')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('postJob.noDraftsDesc')}</p>
                 </div>
               )}
 
@@ -758,16 +754,16 @@ export default function PostJobScreen() {
                     <div key={draft.jobPostsId} className="border border-border rounded-xl p-4 bg-background flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="min-w-0">
                         <h3 className="text-sm font-extrabold text-foreground truncate">
-                          {draft.title?.trim() && draft.title.trim() !== 'Untitled Job Post' ? draft.title : 'Untitled Draft'}
+                          {draft.title?.trim() && draft.title.trim() !== 'Untitled Job Post' ? draft.title : t('postJob.untitledDraft')}
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1">
                             <Clock size={12} />
-                            Updated {formatDraftDate(draft.updatedAt || draft.createdAt)}
+                            {t('postJob.updatedAt', { date: formatDraftDate(draft.updatedAt || draft.createdAt) })}
                           </span>
                           {draft.categoryName && <span>{draft.categoryName}</span>}
                           {(draft.skills?.length || 0) + (draft.customSkillNames?.length || 0) > 0 && (
-                            <span>{(draft.skills?.length || 0) + (draft.customSkillNames?.length || 0)} skill(s)</span>
+                            <span>{t('postJob.skills', { count: (draft.skills?.length || 0) + (draft.customSkillNames?.length || 0) })}</span>
                           )}
                         </div>
                         {draft.description?.trim() && (
@@ -780,7 +776,7 @@ export default function PostJobScreen() {
                         onClick={() => handleContinueDraft(draft)}
                         className="px-5 py-2.5 rounded-full font-bold text-xs bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 border-none cursor-pointer flex-shrink-0"
                       >
-                        Edit
+                        {t('postJob.editDraft')}
                       </button>
                     </div>
                   ))}
@@ -794,57 +790,27 @@ export default function PostJobScreen() {
                 onClick={() => setIsDraftModalOpen(false)}
                 className="px-5 py-2.5 rounded-full font-bold text-xs border border-border bg-background hover:bg-muted text-foreground cursor-pointer"
               >
-                Cancel
+                {t('postJob.cancel')}
               </button>
               <button
                 type="button"
                 onClick={handleCreateNewFromDraftModal}
                 className="px-5 py-2.5 rounded-full font-bold text-xs bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 border-none cursor-pointer"
               >
-                Create New JobPost
+                {t('postJob.createNewJobPost2')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {isLeavePromptOpen && (
-        <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="text-lg font-extrabold text-foreground">Do you want to save this JobPost draft?</h2>
-            <p className="text-sm text-muted-foreground mt-2">
-              Save keeps your current draft. Discard only removes it if the backend confirms it is still empty.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 mt-6">
-              <button
-                type="button"
-                onClick={handleLeaveSaveDraft}
-                disabled={leaveAction !== null}
-                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-xs bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50"
-              >
-                {leaveAction === 'save' ? 'Saving...' : 'Save Draft'}
-              </button>
-              <button
-                type="button"
-                onClick={handleLeaveDiscardDraft}
-                disabled={leaveAction !== null}
-                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-xs bg-red-500 text-white border-none cursor-pointer disabled:opacity-50"
-              >
-                {leaveAction === 'discard' ? 'Discarding...' : 'Discard Draft'}
-              </button>
-              <button
-                type="button"
-                onClick={cancelBlockedNavigation}
-                disabled={leaveAction !== null}
-                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-xs border border-border bg-background hover:bg-muted text-foreground cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PostJobLeavePrompt
+        isOpen={isLeavePromptOpen}
+        leaveAction={leaveAction}
+        onSaveDraft={handleLeaveSaveDraft}
+        onDiscardDraft={handleLeaveDiscardDraft}
+        onCancel={cancelBlockedNavigation}
+      />
       <PromptSectionModal
         isOpen={isInstantJobMode}
         onClose={() => setIsInstantJobMode(false)}
@@ -854,7 +820,7 @@ export default function PostJobScreen() {
       />
 
       {isGeneratingInstant && (
-        <LiquidLoading overlay message="AI đang tạo thông tin chi tiết công việc..." />
+        <LiquidLoading overlay message={t('postJob.aiGeneratingDetails')} />
       )}
     </AppLayout>
   );

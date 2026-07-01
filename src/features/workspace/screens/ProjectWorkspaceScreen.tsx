@@ -10,9 +10,11 @@ import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractStatus } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 
 export default function ProjectWorkspaceScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
   const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
@@ -61,7 +63,7 @@ export default function ProjectWorkspaceScreen() {
               className="flex items-center gap-2 text-muted-foreground hover:text-[var(--gb-cyan)] transition-colors group cursor-pointer"
             >
               <ArrowLeft size={18} />
-              <span className="font-semibold text-sm">Back</span>
+              <span className="font-semibold text-sm">{t('workspace.back')}</span>
             </button>
             <div className="flex flex-col">
               <h1 className="font-headline-md text-base font-bold text-foreground">{currentProjData.titleLong}</h1>
@@ -69,7 +71,7 @@ export default function ProjectWorkspaceScreen() {
                 onClick={() => navigate(`/jobs/${project.jobId}`)}
                 className="text-[10px] text-[var(--gb-cyan)] font-bold hover:underline uppercase tracking-widest text-left mt-0.5 cursor-pointer"
               >
-                View job post detail
+                {t('workspace.viewJobDetail')}
               </button>
             </div>
           </div>
@@ -78,7 +80,7 @@ export default function ProjectWorkspaceScreen() {
               onClick={() => navigate(`/contracts/${project.contractId || contractId || ''}`)}
               className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all uppercase tracking-widest cursor-pointer"
             >
-              View Contract
+              {t('workspace.viewContract')}
             </button>
           </div>
         </header>
@@ -86,7 +88,7 @@ export default function ProjectWorkspaceScreen() {
         {activeContract?.status === ContractStatus.PendingEscrow && (
           <div className="px-8 py-2 border-b border-amber-500/20 bg-amber-500/10 text-xs font-semibold text-amber-700 flex items-center gap-2">
             <CreditCard size={14} />
-            <span>Workspace is open. Waiting for client escrow funding before work starts.</span>
+            <span>{t('workspace.escrowPending')}</span>
           </div>
         )}
 
@@ -100,7 +102,7 @@ export default function ProjectWorkspaceScreen() {
                 : 'border-transparent text-muted-foreground'
             }`}
           >
-            Conversations
+            {t('workspace.conversations')}
           </button>
           <button
             onClick={() => setMobileTab('milestones')}
@@ -110,7 +112,7 @@ export default function ProjectWorkspaceScreen() {
                 : 'border-transparent text-muted-foreground'
             }`}
           >
-            Milestones
+            {t('workspace.milestones')}
           </button>
           <button
             onClick={() => setMobileTab('chat')}
@@ -120,7 +122,7 @@ export default function ProjectWorkspaceScreen() {
                 : 'border-transparent text-muted-foreground'
             }`}
           >
-            Chat & Files
+            {t('workspace.chatFiles')}
           </button>
         </div>
 
@@ -129,7 +131,7 @@ export default function ProjectWorkspaceScreen() {
           {/* Column 1: Conversations List (Left Pane) */}
           <section className={`w-80 border-r border-border flex flex-col bg-card flex-shrink-0 lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}>
             <div className="p-4 border-b border-border flex justify-between items-center">
-              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">Recent Workspace</span>
+              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">{t('workspace.recentWorkspace')}</span>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {workspaceProjects.map(proj => {
@@ -178,9 +180,9 @@ export default function ProjectWorkspaceScreen() {
                   <CreditCard size={20} />
                 </div>
                 <div>
-                  <h2 className="font-headline-sm text-sm font-semibold">Milestone Management</h2>
+                  <h2 className="font-headline-sm text-sm font-semibold">{t('workspace.milestoneManagement')}</h2>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                    Track deliverables and payments for {currentProjData.title}
+                    {t('workspace.trackDeliverables', { title: currentProjData.title })}
                   </p>
                 </div>
               </div>
@@ -189,16 +191,16 @@ export default function ProjectWorkspaceScreen() {
                   <button
                     onClick={handleCreateMockMilestone}
                     className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
-                    title="Create Milestone"
+                    title={t('workspace.proposeMilestone')}
                   >
                     <Plus size={16} />
-                    <span>Propose Milestone</span>
+                    <span>{t('workspace.proposeMilestone')}</span>
                   </button>
                 )}
                 <button
                   onClick={() => setShowInfo(!showInfo)}
                   className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-all cursor-pointer ${showInfo ? 'bg-[var(--gb-cyan)]/10 border-[var(--gb-cyan)]/30 text-[var(--gb-cyan)]' : 'text-muted-foreground'}`}
-                  title="Toggle Chat & Info Panel"
+                  title={t('workspace.toggleChatInfo')}
                 >
                   <Info size={18} />
                 </button>
@@ -208,11 +210,11 @@ export default function ProjectWorkspaceScreen() {
             {/* Dashboard stats */}
             <div className="p-6 bg-card/50 border-b border-border grid grid-cols-3 gap-4">
               <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Total Milestones</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.totalMilestones')}</span>
                 <span className="text-xl font-bold mt-1">{project.milestones.length}</span>
               </div>
               <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Project Progress</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.projectProgress')}</span>
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
                     <div className="bg-[var(--gb-cyan)] h-full rounded-full" style={{ width: `${project.progress}%` }}></div>
@@ -221,7 +223,7 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               </div>
               <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Paid Amount</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.paidAmount')}</span>
                 <span className="text-xl font-bold mt-1 text-green-500"><GigCoinAmount amount={project.paidAmount || 0} /></span>
               </div>
             </div>
@@ -230,7 +232,7 @@ export default function ProjectWorkspaceScreen() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {project.milestones.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                  <p className="text-sm">No milestones defined yet.</p>
+                  <p className="text-sm">{t('workspace.noMilestones')}</p>
                 </div>
               ) : (
                 project.milestones.map((milestone, idx) => {
@@ -263,21 +265,21 @@ export default function ProjectWorkspaceScreen() {
                           </div>
                           <div>
                             <h3 className="text-sm font-semibold text-foreground">{milestone.title}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">{milestone.description || 'No description provided.'}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{milestone.description || t('workspace.noDescription')}</p>
                             
                             <div className="flex flex-wrap items-center gap-4 mt-3 text-[11px] text-muted-foreground">
                               <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">Amount:</span> <GigCoinAmount amount={milestone.amount} />
+                                <span className="font-semibold text-foreground">{t('workspace.amount')}:</span> <GigCoinAmount amount={milestone.amount} />
                               </span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">Due Date:</span> {milestone.dueDate}
+                                <span className="font-semibold text-foreground">{t('workspace.dueDate')}:</span> {milestone.dueDate}
                               </span>
                               {milestone.completedAt && (
                                 <>
                                   <span>•</span>
                                   <span className="flex items-center gap-1">
-                                    <span className="font-semibold text-foreground">Completed:</span> {new Date(milestone.completedAt).toLocaleDateString()}
+                                    <span className="font-semibold text-foreground">{t('workspace.completed')}:</span> {new Date(milestone.completedAt).toLocaleDateString()}
                                   </span>
                                 </>
                               )}
@@ -302,7 +304,7 @@ export default function ProjectWorkspaceScreen() {
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                           <div className="flex-1 max-w-xs">
                             <div className="flex justify-between text-[10px] mb-1">
-                              <span className="text-muted-foreground">Progress</span>
+                              <span className="text-muted-foreground">{t('workspace.progress')}</span>
                               <span className="font-bold text-[var(--gb-cyan)]">65%</span>
                             </div>
                             <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
@@ -315,14 +317,14 @@ export default function ProjectWorkspaceScreen() {
                                 onClick={() => navigate(`/contracts/${workspaceContractId}/milestones/${milestone.id}/approve`)}
                                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                Review Milestone
+                                {t('workspace.reviewMilestone')}
                               </button>
                             ) : (
                               <button
                                 onClick={() => navigate(`/contracts/${workspaceContractId}/deliverables/${milestone.id}`)}
                                 className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                Submit Deliverable
+                                {t('workspace.submitDeliverable')}
                               </button>
                             )}
                           </div>
@@ -354,7 +356,7 @@ export default function ProjectWorkspaceScreen() {
                 }`}
               >
                 <MessageSquare size={14} />
-                <span>Nhắn tin</span>
+                <span>{t('nav.messages')}</span>
               </button>
               <button
                 onClick={() => setActiveTab('files')}
@@ -365,7 +367,7 @@ export default function ProjectWorkspaceScreen() {
                 }`}
               >
                 <FileText size={14} />
-                <span>Shared Files</span>
+                <span>{t('workspace.sharedFiles')}</span>
               </button>
             </div>
 
@@ -395,7 +397,7 @@ export default function ProjectWorkspaceScreen() {
                       <div>
                         <h2 className="text-xs font-semibold">{partnerName}</h2>
                         <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
-                          {isPartnerOnline ? 'Online' : 'Offline'} • {partnerTitle}
+                          {isPartnerOnline ? t('workspace.online') : t('workspace.offline')} • {partnerTitle}
                         </p>
                       </div>
 
@@ -422,7 +424,7 @@ export default function ProjectWorkspaceScreen() {
                                 }}
                                 className="text-[8px] font-bold px-3 py-1 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
                               >
-                                VIEW PROFILE
+                                {t('workspace.viewProfile')}
                               </button>
                               <button
                                 onClick={(e) => {
@@ -433,7 +435,7 @@ export default function ProjectWorkspaceScreen() {
                                   isFavorited ? 'bg-[var(--gb-cyan)] text-white' : 'bg-secondary text-foreground hover:bg-muted'
                                 }`}
                               >
-                                {isFavorited ? 'FAVORITED' : 'FAVORITE'}
+                                {isFavorited ? t('workspace.favorited') : t('workspace.favorite')}
                               </button>
                             </div>
                             <div className="border-t border-border pt-3">
@@ -441,14 +443,14 @@ export default function ProjectWorkspaceScreen() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setIsBlocked(!isBlocked);
-                                  alert(isBlocked ? 'Contact unblocked.' : 'Contact blocked.');
+                                  alert(isBlocked ? t('workspace.contactUnblocked') : t('workspace.contactBlocked'));
                                 }}
                                 className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border font-bold text-[9px] uppercase tracking-widest transition-all cursor-pointer ${
                                   isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
                                 }`}
                               >
                                 <Ban size={10} />
-                                {isBlocked ? 'Unblock Contact' : 'Block Contact'}
+                                {isBlocked ? t('workspace.unblockContact') : t('workspace.blockContact')}
                               </button>
                             </div>
                           </div>
@@ -461,7 +463,7 @@ export default function ProjectWorkspaceScreen() {
                   <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
                     <div className="flex justify-center mb-1">
                       <span className="bg-muted px-2.5 py-0.5 rounded-full text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
-                        Project Workspace Chat
+                        {t('workspace.chatHeader')}
                       </span>
                     </div>
 
@@ -486,7 +488,7 @@ export default function ProjectWorkspaceScreen() {
                                   )}
                                   <div className="bg-muted p-1.5 flex justify-between items-center text-[9px] text-muted-foreground">
                                     <span className="truncate max-w-[150px]">{msg.fileName}</span>
-                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(`Simulating download of ${msg.fileName}`)} />
+                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(t('workspace.downloadSim', { name: msg.fileName }))} />
                                   </div>
                                 </div>
                               </div>
@@ -515,7 +517,7 @@ export default function ProjectWorkspaceScreen() {
                     <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
                       <textarea
                         className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
-                        placeholder="Type your message here..."
+                        placeholder={t('workspace.typeMessagePlaceholder')}
                         rows={1}
                         value={messageInput}
                         onChange={e => setMessageInput(e.target.value)}
@@ -532,14 +534,14 @@ export default function ProjectWorkspaceScreen() {
                           <button
                             onClick={handleSimulateAttachment}
                             className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                            title="Attach File"
+                            title={t('workspace.attachFile')}
                           >
                             <Paperclip size={14} />
                           </button>
                           <button
                             onClick={() => setMessageInput(prev => prev + '😊')}
                             className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                            title="Add Emoji"
+                            title={t('workspace.addEmoji')}
                           >
                             <Smile size={14} />
                           </button>
@@ -548,7 +550,7 @@ export default function ProjectWorkspaceScreen() {
                           onClick={handleSendMessage}
                           className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-8 px-4 rounded-full flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 shadow-md shadow-blue-500/20 cursor-pointer"
                         >
-                          <span>Send</span>
+                          <span>{t('workspace.send')}</span>
                           <Send size={12} />
                         </button>
                       </div>
@@ -560,8 +562,8 @@ export default function ProjectWorkspaceScreen() {
               {activeTab === 'files' && (
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shared Files</h4>
-                    <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">See all</button>
+                    <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('workspace.sharedFiles')}</h4>
+                    <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">{t('workspace.seeAll')}</button>
                   </div>
                   <div className="space-y-3">
                     {[
@@ -571,7 +573,7 @@ export default function ProjectWorkspaceScreen() {
                     ].map(file => (
                       <div
                         key={file.name}
-                        onClick={() => alert(`Simulating download of ${file.name}`)}
+                        onClick={() => alert(t('workspace.downloadSim', { name: file.name }))}
                         className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
                       >
                         <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">

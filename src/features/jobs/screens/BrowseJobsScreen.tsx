@@ -11,6 +11,8 @@ import type { Job } from '../../../types/models/Job';
 import type { SavedJobDto } from '../../../types/savedJob';
 import '../styles/browse-jobs-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
+
 
 const PAGE_SIZE = 20;
 const WORK_TYPES = ['All', 'fixed'];
@@ -76,6 +78,7 @@ const getDatePostedDays = (value: string) => {
 const getSavedJobPostId = (job: SavedJobDto): string => job.jobPostId ?? job.jobPostsId ?? '';
 
 export default function BrowseJobsScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { user, role } = useApp();
@@ -259,14 +262,23 @@ export default function BrowseJobsScreen() {
     }
   };
 
+  const isEn = t('common.search') === 'Search';
+  const translateDatePosted = (item: string) => {
+    if (item === 'Any time') return isEn ? 'Any time' : 'Mọi lúc';
+    if (item === 'Last 24 hours') return isEn ? 'Last 24 hours' : '24 giờ qua';
+    if (item === 'Last 7 days') return isEn ? 'Last 7 days' : '7 ngày qua';
+    if (item === 'Last 30 days') return isEn ? 'Last 30 days' : '30 ngày qua';
+    return item;
+  };
+
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
-            Browse <span className="text-blue-600 black:text-blue-400 italic font-light">Jobs</span>
+            {t('jobs.browseJobs').split(' ')[0]} <span className="text-blue-600 black:text-blue-400 italic font-light">{t('jobs.browseJobs').split(' ').slice(1).join(' ')}</span>
           </h1>
-          <p className="browse-jobs-desc">Discover open opportunities with search, advanced filters, and saved jobs.</p>
+          <p className="browse-jobs-desc">{t('jobs.browseJobsDesc')}</p>
         </div>
 
         <div className="browse-jobs-layout-grid">
@@ -280,18 +292,18 @@ export default function BrowseJobsScreen() {
                     type="text"
                     value={search}
                     onChange={event => setSearch(sanitizeSearch(event.target.value))}
-                    placeholder="Search title or description..."
+                    placeholder={t('jobs.searchPlaceholder')}
                     className="input-gb w-full browse-jobs-search-input"
                   />
                 </div>
                 <button onClick={() => setShowFilters(!showFilters)}
                   className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm transition-all browse-jobs-filter-btn">
-                  <Filter size={16} /> Filters
+                  <Filter size={16} /> {t('jobs.filters')}
                 </button>
                 <button onClick={() => setAiOnly(!aiOnly)}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${aiOnly ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
                   <Bot size={16} />
-                  AI Recommended
+                  {t('jobs.aiRecommended')}
                 </button>
               </div>
 
@@ -299,37 +311,37 @@ export default function BrowseJobsScreen() {
                 <div className="mt-4 pt-4 border-t browse-jobs-divider">
                   <div className="browse-jobs-filter-grid">
                     <label>
-                      Category
+                      {t('jobs.category')}
                       <select value={category} onChange={event => setCategory(event.target.value)}>
-                        {categoryOptions.map(item => <option key={item}>{item}</option>)}
+                        {categoryOptions.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : item}</option>)}
                       </select>
                     </label>
                     <label>
-                      Skills
+                      {t('jobs.skills')}
                       <input value={skills} onChange={event => setSkills(sanitizeSearch(event.target.value))} placeholder="React, SQL" />
                     </label>
                     <label>
-                      Min Budget
+                      {t('jobs.minBudget')}
                       <input type="number" min="0" value={budgetMin} onChange={event => setBudgetMin(event.target.value)} />
                     </label>
                     <label>
-                      Max Budget
+                      {t('jobs.maxBudget')}
                       <input type="number" min="0" value={budgetMax} onChange={event => setBudgetMax(event.target.value)} />
                     </label>
                     <label>
-                      Work Type
+                      {t('jobs.workType')}
                       <select value={workType} onChange={event => setWorkType(event.target.value)}>
-                        {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? 'All' : 'Fixed Price'}</option>)}
+                        {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : t('jobs.fixedPrice')}</option>)}
                       </select>
                     </label>
                     <label>
-                      Date Posted
+                      {t('jobs.datePosted')}
                       <select value={datePosted} onChange={event => setDatePosted(event.target.value)}>
-                        {DATE_POSTED.map(item => <option key={item}>{item}</option>)}
+                        {DATE_POSTED.map(item => <option key={item} value={item}>{translateDatePosted(item)}</option>)}
                       </select>
                     </label>
                   </div>
-                  {budgetInvalid && <p className="browse-jobs-error">Budget range is invalid. Min must be less than or equal to Max.</p>}
+                  {budgetInvalid && <p className="browse-jobs-error">{t('jobs.budgetRangeInvalid')}</p>}
                 </div>
               )}
             </div>
@@ -338,7 +350,7 @@ export default function BrowseJobsScreen() {
               {categoryOptions.map(cat => (
                 <button key={cat} onClick={() => setCategory(cat)}
                   className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${category === cat ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
-                  {cat}
+                  {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
                 </button>
               ))}
             </div>
@@ -346,12 +358,12 @@ export default function BrowseJobsScreen() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm browse-jobs-desc">
-                  <span className="text-primary font-semibold">{jobs.length}</span> open jobs found
+                  <span className="text-primary font-semibold">{jobs.length}</span> {t('jobs.openJobsFound')}
                 </p>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs browse-jobs-desc">Sort by:</span>
+                  <span className="text-xs browse-jobs-desc">{t('jobs.sortBy')}:</span>
                   <button onClick={() => setSortBy(sortBy === 'relevance' ? 'date' : 'relevance')} className="flex items-center gap-1 text-sm text-primary">
-                    {sortBy === 'relevance' ? 'Most Relevant' : 'Date Posted'} <ChevronDown size={14} />
+                    {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')} <ChevronDown size={14} />
                   </button>
                 </div>
               </div>
@@ -366,16 +378,16 @@ export default function BrowseJobsScreen() {
                       <div className="flex-1">
                         <div className="flex items-start gap-2 flex-wrap mb-2">
                           <h2 className="text-primary font-semibold group-hover:text-[#0077FF] transition-colors">{job.title}</h2>
-                          {job.isFeatured && <span className="badge-purple text-xs flex-shrink-0">Featured</span>}
-                          {job.isAiRecommended && <span className="badge-cyan text-xs flex-shrink-0">AI Pick</span>}
+                          {job.isFeatured && <span className="badge-purple text-xs flex-shrink-0">{t('jobs.featured')}</span>}
+                          {job.isAiRecommended && <span className="badge-cyan text-xs flex-shrink-0">{t('jobs.aiPick')}</span>}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3 mb-3">
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                            <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> ? Fixed
+                            <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> • {t('jobs.fixedPrice')}
                           </div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> Remote</div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} proposals</div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> {t('jobs.remote')}</div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} {t('jobs.proposals').toLowerCase()}</div>
                           <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Clock size={12} /> {job.postedAt}</div>
                         </div>
 
@@ -396,13 +408,13 @@ export default function BrowseJobsScreen() {
                         {job.aiMatchScore && user && (
                           <div className={`match-score ${job.aiMatchScore >= 90 ? 'high' : job.aiMatchScore >= 70 ? 'medium' : 'low'} flex-shrink-0`}>
                             <Bot size={10} />
-                            {job.aiMatchScore}% Match
+                            {job.aiMatchScore}% {t('jobs.match')}
                           </div>
                         )}
                         <button
                           onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
                           disabled={!canSaveJob || isSaving}
-                          title={canSaveJob ? undefined : 'Only freelancers can save jobs'}
+                          title={canSaveJob ? undefined : t('jobs.onlyFreelancersCanSave')}
                           className={`p-2 rounded-lg transition-all ${isSaved ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : ''}`}>
                           <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
                         </button>
@@ -411,7 +423,7 @@ export default function BrowseJobsScreen() {
                         })()}
                         <button onClick={event => { event.stopPropagation(); navigate(`/jobs/${job.id}`, { state: { job } }); }}
                           className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
-                          View Job
+                          {t('jobs.viewJob')}
                         </button>
                       </div>
                     </div>
@@ -423,16 +435,16 @@ export default function BrowseJobsScreen() {
                 <div className="text-center py-20">
                   <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
                   <p className="text-primary font-semibold mb-2">
-                    {loadError || 'No jobs match your criteria. Try adjusting filters.'}
+                    {loadError || t('jobs.noJobsFound')}
                   </p>
                 </div>
               )}
 
               {jobs.length > PAGE_SIZE && (
                 <div className="browse-jobs-pagination">
-                  <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>Previous</button>
-                  <span>Page {page} of {totalPages}</span>
-                  <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)}>Next</button>
+                  <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>{t('jobs.previous')}</button>
+                  <span>{t('jobs.pageOf', { page, totalPages })}</span>
+                  <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)}>{t('jobs.next')}</button>
                 </div>
               )}
             </div>
@@ -444,13 +456,13 @@ export default function BrowseJobsScreen() {
             <div className="system-ad-card system-ad-card-premium">
               <div className="system-ad-title">
                 <Sparkles size={18} className="ad-icon-purple" />
-                <span>GigBridge Premium</span>
+                <span>{t('jobs.premiumTitle')}</span>
               </div>
               <p className="system-ad-subtitle">
-                Get priority matching, badge highlights, and double the proposal visibility. Stand out from the crowd!
+                {t('jobs.premiumDesc')}
               </p>
               <button className="system-ad-btn system-ad-btn-primary">
-                Upgrade Plan
+                {t('jobs.upgradePlan')}
               </button>
             </div>
 
@@ -458,13 +470,13 @@ export default function BrowseJobsScreen() {
             <div className="system-ad-card">
               <div className="system-ad-title">
                 <Zap size={18} className="ad-icon-cyan" />
-                <span>Verify Your Skills</span>
+                <span>{t('jobs.verifySkills')}</span>
               </div>
               <p className="system-ad-subtitle">
-                Complete a fast technical ELO test and add a verified Pro Certificate directly onto your profile.
+                {t('jobs.verifySkillsDesc')}
               </p>
               <button className="system-ad-btn system-ad-btn-secondary">
-                Start Challenge
+                {t('jobs.startChallenge')}
               </button>
             </div>
 
@@ -473,11 +485,11 @@ export default function BrowseJobsScreen() {
               <div className="freelancer-ranking-header">
                 <div className="freelancer-ranking-title">
                   <Trophy size={18} className="trophy-icon" />
-                  <span>Top Freelancers</span>
+                  <span>{t('jobs.topFreelancers')}</span>
                 </div>
                 <span className="freelancer-ranking-subtitle flex items-center gap-1">
                   <TrendingUp size={12} className="text-emerald-500" />
-                  Elo Ratings
+                  {t('jobs.eloRatings')}
                 </span>
               </div>
 
@@ -527,7 +539,7 @@ export default function BrowseJobsScreen() {
                       </div>
                       <div className="ranking-elo">
                         <span className="ranking-elo-value">{freelancer.elo}</span>
-                        <span className="ranking-elo-label">Elo</span>
+                        <span className="ranking-elo-label">{t('jobs.elo')}</span>
                       </div>
                     </div>
                   );

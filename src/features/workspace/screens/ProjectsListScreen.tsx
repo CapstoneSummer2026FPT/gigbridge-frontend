@@ -10,17 +10,17 @@ import { ContractStatus } from '../../../types/models/Contract';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 
-const getStatusLabel = (status: ContractStatus): string => {
+const getStatusLabel = (status: ContractStatus, t: any): string => {
   switch (status) {
     case ContractStatus.Active:
-      return 'active';
+      return t('projects.statusActive') || 'active';
     case ContractStatus.Completed:
-      return 'completed';
+      return t('projects.statusCompleted') || 'completed';
     case ContractStatus.PendingEscrow:
     case ContractStatus.PendingSignature:
-      return 'pending';
+      return t('projects.statusPending') || 'pending';
     default:
-      return 'in progress';
+      return t('projects.statusInProgress') || 'in progress';
   }
 };
 
@@ -49,13 +49,13 @@ export default function ProjectsListScreen() {
         if (response.success && response.data) {
           setProjects(response.data);
         } else {
-          setError(response.message || 'Failed to load active workspaces.');
+          setError(response.message || t('projects.unableToLoad'));
           setProjects([]);
         }
       } catch (err) {
         console.error('Failed to load workspaces:', err);
         if (current) {
-          setError('Failed to load active workspaces.');
+          setError(t('projects.unableToLoad'));
           setProjects([]);
         }
       } finally {
@@ -96,26 +96,34 @@ export default function ProjectsListScreen() {
           <div className="flex items-center gap-3 mb-2">
             <Flag className="w-8 h-8 text-cyan" />
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              My <span className="text-blue-600 black:text-blue-400 italic font-light">Projects</span>
+              {t('currentLanguage') === 'vi' ? (
+                <>
+                  <span className="text-blue-600 black:text-blue-400 italic font-light">Dự án</span> của tôi
+                </>
+              ) : (
+                <>
+                  My <span className="text-blue-600 black:text-blue-400 italic font-light">Projects</span>
+                </>
+              )}
             </h1>
           </div>
           <p className="text-secondary">
-            {role === 0 ? 'Manage your client projects' : 'View your active freelance projects'}
+            {role === 0 ? t('projects.subtitleClient') : t('projects.subtitleFreelancer')}
           </p>
         </div>
 
         {loading ? (
           <div className="glass-card p-12 text-center">
-            <Clock className="w-12 h-12 text-secondary mx-auto mb-4 opacity-40" />
-            <p className="text-secondary">Loading active workspaces...</p>
+            <Clock className="w-12 h-12 text-secondary mx-auto mb-4 opacity-40 animate-pulse" />
+            <p className="text-secondary">{t('projects.loadingWorkspaces')}</p>
           </div>
         ) : error ? (
           <div className="glass-card p-12 text-center">
             <Flag className="w-16 h-16 text-secondary mx-auto mb-4 opacity-30" />
-            <h2 className="text-xl font-bold text-primary mb-2">Unable to load projects</h2>
+            <h2 className="text-xl font-bold text-primary mb-2">{t('projects.unableToLoad')}</h2>
             <p className="text-secondary mb-6">{error}</p>
             <button className="btn-cyan px-6 py-3" onClick={() => window.location.reload()}>
-              Retry
+              {t('projects.retry')}
             </button>
           </div>
         ) : projects.length === 0 ? (
@@ -125,7 +133,7 @@ export default function ProjectsListScreen() {
             <p className="text-secondary mb-6">
               {role === 0
                 ? t('projects.startFirstProject')
-                : 'Browse jobs and submit proposals to get started'}
+                : t('projects.browseJobsProposals')}
             </p>
             <button
               className="btn-cyan px-6 py-3"
@@ -138,9 +146,9 @@ export default function ProjectsListScreen() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map(project => {
               const otherUserName = role === 0
-                ? project.freelancerName || project.freelancerEmail || 'Freelancer'
-                : project.clientName || project.clientEmail || 'Client';
-              const statusLabel = getStatusLabel(project.status);
+                ? project.freelancerName || project.freelancerEmail || t('projects.freelancer')
+                : project.clientName || project.clientEmail || t('projects.client');
+              const statusLabel = getStatusLabel(project.status, t);
 
               return (
                 <div
@@ -168,7 +176,6 @@ export default function ProjectsListScreen() {
 
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-secondary">
-                      <GCoinIcon size={16} />
                       <span className="text-primary font-semibold"><GigCoinAmount amount={project.totalBudget} /></span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-secondary">

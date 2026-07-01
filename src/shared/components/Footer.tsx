@@ -1,13 +1,10 @@
 import { useNavigate } from 'react-router';
 import { Github, Twitter, Linkedin, Mail, ArrowRight } from 'lucide-react';
-import { useTranslation } from '../../hooks/useTranslation';
 import { useScrollRestoration } from '../../hooks/useScrollRestoration';
-import { ImageWithFallback } from '../../app/components/figma/ImageWithFallback';
 import './styles/footer.css';
 
 export function Footer() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const { saveScrollPosition } = useScrollRestoration();
 
   const footerSections = [

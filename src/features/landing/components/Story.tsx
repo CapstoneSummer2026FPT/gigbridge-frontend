@@ -1,11 +1,13 @@
 import gsap from 'gsap';
 import { useRef, MouseEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import Button from './Button';
 import AnimatedTitle from './AnimatedTitle';
 
 export default function Story() {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const frameRef = useRef<HTMLImageElement>(null);
 
   const handleMouseMove = (e: MouseEvent<HTMLImageElement>) => {
@@ -50,12 +52,12 @@ export default function Story() {
     <div id="story" className="min-h-dvh w-screen bg-background text-foreground transition-colors duration-300">
       <div className="flex size-full flex-col items-center py-10 pb-24">
         <p className="font-general text-sm uppercase md:text-[10px] text-muted-foreground">
-          the secure connection bridge
+          {t('landing.story.label')}
         </p>
 
         <div className="relative size-full">
           <AnimatedTitle
-            title="the st<b>o</b>ry of <br /> trust in f<b>l</b>ow"
+            title={t('landing.story.animatedTitle')}
             containerClass="mt-5 pointer-events-none mix-blend-difference relative z-10"
           />
 
@@ -106,14 +108,12 @@ export default function Story() {
         <div className="-mt-80 flex w-full justify-center md:-mt-64 md:me-44 md:justify-end">
           <div className="flex h-full w-fit flex-col items-center md:items-start">
             <p className="mt-3 max-w-sm text-center font-circular-web text-muted-foreground md:text-start">
-              Where businesses and creators converge, lies Gigbridge. Discover the 
-              ease of secure milestone payments, legally-binding contracts, and 
-              smart matching, working together under one clear workflow.
+              {t('landing.story.desc')}
             </p>
 
             <Button
               id="realm-btn"
-              title="read user guides"
+              title={t('landing.story.cta')}
               onClick={() => navigate('/guide')}
               containerClass="mt-5"
             />

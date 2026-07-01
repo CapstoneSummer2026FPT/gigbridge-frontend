@@ -14,6 +14,8 @@ import { canApproveMilestone, getMilestoneStatusLabel, formatContractAmount, for
 import '../styles/approve-milestone-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
+import { useTranslation } from '../../../hooks/useTranslation';
+
 interface MilestoneWithAttachments extends Milestone {
   attachments?: MilestoneAttachment[];
   deliverableDescription?: string;
@@ -26,6 +28,7 @@ interface ApprovalData {
 }
 
 export default function ApproveMilestoneScreen() {
+  const { t } = useTranslation();
   const { contractId, milestoneId } = useParams<{ contractId: string; milestoneId: string }>();
   const navigate = useNavigate();
   const { user } = useApp();
@@ -50,7 +53,7 @@ export default function ApproveMilestoneScreen() {
   useEffect(() => {
     const loadData = async () => {
       if (!contractId || !milestoneId) {
-        setError('Missing contract or milestone ID');
+        setError(t('contracts.contractNotFound'));
         return;
       }
 
@@ -60,13 +63,13 @@ export default function ApproveMilestoneScreen() {
 
         const contractResponse = await contractGetAPI.getContractById(contractId);
         if (!contractResponse.success || !contractResponse.data) {
-          throw new Error(contractResponse.message || 'Failed to load contract');
+          throw new Error(contractResponse.message || t('contracts.loadingContract'));
         }
         setContract(contractResponse.data);
 
         const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
         if (!milestoneResponse.success || !milestoneResponse.data) {
-          throw new Error(milestoneResponse.message || 'Failed to load milestone');
+          throw new Error(milestoneResponse.message || t('contracts.loadingMilestone', { defaultValue: 'Failed to load milestone' }));
         }
         setMilestone(milestoneResponse.data);
 
@@ -76,7 +79,7 @@ export default function ApproveMilestoneScreen() {
           setAttachments(attachmentsResponse.data);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(err instanceof Error ? err.message : t('contracts.anErrorOccurred'));
       } finally {
         setLoading(false);
       }
@@ -98,15 +101,15 @@ export default function ApproveMilestoneScreen() {
         setMilestone({ ...milestone, status: MilestoneStatus.Approved });
         setApprovalAction('pending');
         setApprovalNotes('');
-        setSuccessMessage('Milestone approved successfully.');
+        setSuccessMessage(t('contracts.milestoneApproved'));
         setTimeout(() => {
           navigate(`/contracts/${contractId}`);
         }, 2000);
       } else {
-        setError(response.message || 'Failed to approve milestone.');
+        setError(response.message || t('contracts.signingFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('contracts.anErrorOccurred'));
     } finally {
       setIsSubmitting(false);
     }
@@ -124,12 +127,12 @@ export default function ApproveMilestoneScreen() {
         setMilestone({ ...milestone, status: MilestoneStatus.InProgress });
         setApprovalAction('pending');
         setApprovalNotes('');
-        setSuccessMessage('Revision requested. The freelancer can resubmit deliverables.');
+        setSuccessMessage(t('contracts.revisionRequested'));
       } else {
-        setError(response.message || 'Failed to request revisions.');
+        setError(response.message || t('contracts.signingFailed'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('contracts.anErrorOccurred'));
     } finally {
       setIsSubmitting(false);
     }
@@ -141,7 +144,7 @@ export default function ApproveMilestoneScreen() {
         <div className="approve-milestone-wrapper">
           <div className="loading-container">
             <div className="spinner"></div>
-            <p>Loading milestone details...</p>
+            <p>{t('contracts.loadingMilestone', { defaultValue: 'Loading milestone details...' })}</p>
           </div>
         </div>
       </AppLayout>
@@ -154,9 +157,9 @@ export default function ApproveMilestoneScreen() {
         <div className="approve-milestone-wrapper">
           <div className="error-container">
             <AlertCircle size={48} />
-            <p>Milestone or contract not found</p>
+            <p>{t('contracts.milestoneNotFound')}</p>
             <button onClick={() => navigate(-1)} className="back-link">
-              Go Back
+              {t('contracts.back')}
             </button>
           </div>
         </div>
@@ -176,12 +179,12 @@ export default function ApproveMilestoneScreen() {
           <button
             onClick={() => navigate(-1)}
             className="back-button"
-            title="Go back"
+            title={t('contracts.back')}
           >
             <ArrowLeft size={20} />
           </button>
           <div className="header-content">
-            <h1 className="page-title">Review Milestone Deliverable</h1>
+            <h1 className="page-title">{t('contracts.reviewMilestoneDeliverable')}</h1>
             <p className="page-subtitle">{contract.title}</p>
           </div>
         </div>
@@ -231,7 +234,7 @@ export default function ApproveMilestoneScreen() {
                     {milestone.status === MilestoneStatus.Approved && (
                       <>
                         <CheckCircle2 size={14} />
-                        Approved
+                        {t('contracts.milestoneStatus.Approved')}
                       </>
                     )}
                     {milestone.status === MilestoneStatus.PaymentConfirmed && (
@@ -253,18 +256,18 @@ export default function ApproveMilestoneScreen() {
             {/* Details Grid */}
             <div className="details-grid">
               <div className="detail-item">
-                <span className="detail-label">Due Date</span>
+                <span className="detail-label">{t('contracts.dueDate')}</span>
                 <span className="detail-value">{formatContractDate(milestone.due_date)}</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Status</span>
+                <span className="detail-label">{t('contracts.status')}</span>
                 <span className="detail-value">
                   {getMilestoneStatusLabel(milestone.status)}
                 </span>
               </div>
               {milestone.paid_at && (
                 <div className="detail-item">
-                  <span className="detail-label">Payment Released</span>
+                  <span className="detail-label">{t('contracts.paymentReleased')}</span>
                   <span className="detail-value">{formatContractDate(milestone.paid_at)}</span>
                 </div>
               )}
@@ -275,7 +278,7 @@ export default function ApproveMilestoneScreen() {
           {canApprove && (
             <div className="escrow-info glass-card">
               <div className="escrow-header">
-                <h3 className="escrow-title">Escrow Fund Information</h3>
+                <h3 className="escrow-title">{t('contracts.howEscrowWorks')}</h3>
                 <button
                   onClick={() => setShowEscrowInfo(!showEscrowInfo)}
                   className="escrow-toggle"
@@ -290,32 +293,31 @@ export default function ApproveMilestoneScreen() {
               {showEscrowInfo && (
                 <div className="escrow-content">
                   <div className="escrow-info-item">
-                    <span className="info-label">How Escrow Works</span>
+                    <span className="info-label">{t('contracts.howEscrowWorks')}</span>
                     <p className="info-text">
-                      When you approve this milestone, {formatContractAmount(milestone.amount)} will be released
-                      from escrow to the freelancer and logged in the contract audit trail.
+                      {t('contracts.howEscrowWorksDesc', { amount: formatContractAmount(milestone.amount) })}
                     </p>
                   </div>
                   <div className="escrow-timeline">
                     <div className="timeline-step">
                       <div className="timeline-marker">1</div>
                       <div className="timeline-info">
-                        <span className="timeline-label">Approval</span>
-                        <p>You approve the deliverable</p>
+                        <span className="timeline-label">{t('contracts.approval')}</span>
+                        <p>{t('contracts.approveDeliverable')}</p>
                       </div>
                     </div>
                     <div className="timeline-step">
                       <div className="timeline-marker">2</div>
                       <div className="timeline-info">
-                        <span className="timeline-label">Escrow Hold</span>
-                        <p>Funds held securely for 14 days</p>
+                        <span className="timeline-label">{t('contracts.escrowHold')}</span>
+                        <p>{t('contracts.escrowHoldDesc')}</p>
                       </div>
                     </div>
                     <div className="timeline-step">
                       <div className="timeline-marker">3</div>
                       <div className="timeline-info">
-                        <span className="timeline-label">Release</span>
-                        <p>Funds released to freelancer</p>
+                        <span className="timeline-label">{t('contracts.release')}</span>
+                        <p>{t('contracts.releaseDesc')}</p>
                       </div>
                     </div>
                   </div>
@@ -327,7 +329,7 @@ export default function ApproveMilestoneScreen() {
           {/* Deliverable Files */}
           {attachments.length > 0 && (
             <div className="deliverables-section glass-card">
-              <h3 className="section-title">Submitted Deliverables</h3>
+              <h3 className="section-title">{t('contracts.submittedDeliverables')}</h3>
               <div className="attachments-list">
                 {attachments.map((attachment, index) => (
                   <div
@@ -355,7 +357,7 @@ export default function ApproveMilestoneScreen() {
                         href={attachment.file_url}
                         download={attachment.file_name}
                         className="download-btn"
-                        title="Download file"
+                        title={t('contracts.download')}
                       >
                         <Download size={18} />
                       </a>
@@ -369,11 +371,11 @@ export default function ApproveMilestoneScreen() {
           {/* Approval Actions */}
           {canApprove && (
             <div className="approval-actions glass-card">
-              <h3 className="section-title">Approve or Reject</h3>
+              <h3 className="section-title">{t('contracts.approveOrReject')}</h3>
 
               <div className="approval-form">
                 <div className="form-group">
-                  <label className="form-label">Your Decision</label>
+                  <label className="form-label">{t('contracts.yourDecision')}</label>
                   <div className="approval-options">
                     <button
                       onClick={() => {
@@ -384,8 +386,8 @@ export default function ApproveMilestoneScreen() {
                     >
                       <CheckCircle2 size={20} />
                       <div className="option-text">
-                        <span className="option-title">Approve</span>
-                        <span className="option-desc">Accept the deliverables</span>
+                        <span className="option-title">{t('contracts.approve')}</span>
+                        <span className="option-desc">{t('contracts.acceptDeliverables')}</span>
                       </div>
                     </button>
 
@@ -398,8 +400,8 @@ export default function ApproveMilestoneScreen() {
                     >
                       <XCircle size={20} />
                       <div className="option-text">
-                        <span className="option-title">Reject</span>
-                        <span className="option-desc">Request revisions</span>
+                        <span className="option-title">{t('contracts.reject')}</span>
+                        <span className="option-desc">{t('contracts.requestRevisions')}</span>
                       </div>
                     </button>
                   </div>
@@ -408,18 +410,18 @@ export default function ApproveMilestoneScreen() {
                 {approvalAction !== 'pending' && (
                   <div className="form-group">
                     <label htmlFor="notes" className="form-label">
-                      {approvalAction === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason (Required)'}
+                      {approvalAction === 'approve' ? t('contracts.approvalNotes') : t('contracts.rejectionReason')}
                     </label>
                     <textarea
                       id="notes"
                       value={approvalNotes}
                       onChange={(e) => setApprovalNotes(e.target.value)}
-                      placeholder={approvalAction === 'approve' ? 'Add any notes...' : 'Please explain what needs to be improved...'}
+                      placeholder={approvalAction === 'approve' ? t('contracts.addNotesPlaceholder') : t('contracts.explainImprovementPlaceholder')}
                       className="form-textarea"
                       rows={4}
                     />
                     <div className="form-hint">
-                      Max 500 characters
+                      {t('contracts.max500Chars')}
                     </div>
                   </div>
                 )}
@@ -432,7 +434,7 @@ export default function ApproveMilestoneScreen() {
                       className="action-btn action-cancel"
                       disabled={isSubmitting}
                     >
-                      Back
+                      {t('contracts.back')}
                     </button>
                     <button
                       onClick={handleApprove}
@@ -442,12 +444,12 @@ export default function ApproveMilestoneScreen() {
                       {isSubmitting ? (
                         <>
                           <span className="spinner-small"></span>
-                          Approving...
+                          {t('contracts.approving')}
                         </>
                       ) : (
                         <>
                           <CheckCircle2 size={18} />
-                          Approve Milestone
+                          {t('contracts.approveMilestone')}
                         </>
                       )}
                     </button>
@@ -461,7 +463,7 @@ export default function ApproveMilestoneScreen() {
                       className="action-btn action-cancel"
                       disabled={isSubmitting}
                     >
-                      Back
+                      {t('contracts.back')}
                     </button>
                     <button
                       onClick={handleReject}
@@ -471,12 +473,12 @@ export default function ApproveMilestoneScreen() {
                       {isSubmitting ? (
                         <>
                           <span className="spinner-small"></span>
-                          Rejecting...
+                          {t('contracts.rejecting')}
                         </>
                       ) : (
                         <>
                           <XCircle size={18} />
-                          Reject Milestone
+                          {t('contracts.rejectMilestone')}
                         </>
                       )}
                     </button>
@@ -490,9 +492,9 @@ export default function ApproveMilestoneScreen() {
           {isApproved && (
             <div className="status-display glass-card success-status">
               <CheckCircle2 size={32} />
-              <h3 className="status-title">Milestone Approved</h3>
+              <h3 className="status-title">{t('contracts.milestoneApproved')}</h3>
               <p className="status-description">
-                This milestone has been approved. Escrow funds are being held and will be released to the freelancer.
+                {t('contracts.milestoneApprovedDesc')}
               </p>
             </div>
           )}
@@ -500,9 +502,9 @@ export default function ApproveMilestoneScreen() {
           {isPaid && (
             <div className="status-display glass-card paid-status">
               <CheckCircle2 size={32} />
-              <h3 className="status-title">Payment Released</h3>
+              <h3 className="status-title">{t('contracts.paymentReleased')}</h3>
               <p className="status-description">
-                Payment for this milestone has been released to the freelancer on {formatContractDate(milestone.paid_at || new Date().toISOString())}.
+                {t('contracts.paymentReleasedDesc', { date: formatContractDate(milestone.paid_at || new Date().toISOString()) })}
               </p>
             </div>
           )}
@@ -514,7 +516,7 @@ export default function ApproveMilestoneScreen() {
               className="action-btn action-back"
             >
               <Eye size={18} />
-              View Contract
+              {t('contracts.viewContract')}
             </button>
           </div>
         </div>

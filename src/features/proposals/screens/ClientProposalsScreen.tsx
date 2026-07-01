@@ -13,6 +13,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
@@ -54,6 +55,7 @@ const canClientUpdateStatus = (status: number | string | null | undefined) => {
 };
 
 export default function ClientProposalsScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const selectedJobFromQuery = useMemo(
@@ -485,7 +487,7 @@ export default function ClientProposalsScreen() {
                           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
                         >
                           <CheckCircle size={16} />
-                          {openingNegotiationId === proposalDetail.proposalId ? 'Opening...' : 'Vào đàm phán'}
+                          {openingNegotiationId === proposalDetail.proposalId ? t('negotiations.opening') : t('negotiations.enterNegotiation')}
                         </button>
                       ) : canClientUpdateStatus(proposalDetail.status) ? (
                         <>

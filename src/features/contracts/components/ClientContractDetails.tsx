@@ -22,6 +22,7 @@ import {
   getMilestoneStatusLabel,
   getMilestoneStatusClass
 } from '../../../shared/utils/contractUtils';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
@@ -51,6 +52,7 @@ export function ClientContractDetails({
   isAdminOverride = false
 }: ClientContractDetailsProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // States
   const [expandedMilestone, setExpandedMilestone] = useState<string | null>(null);
@@ -301,51 +303,51 @@ export function ClientContractDetails({
     <div className="glass-card p-8 md:p-10 space-y-6">
       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
         <FileText size={20} className="text-primary" />
-        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Contract Terms & Clauses</h2>
+        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.contractTerms')}</h2>
       </div>
 
       <div className="space-y-6">
         <div>
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Scope of Work</span>
+          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.scopeOfWork')}</span>
           <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-            {contract?.scopeOfWork || 'No scope of work defined yet.'}
+            {contract?.scopeOfWork || t('contracts.noScopeDefined')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Payment Terms</span>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.paymentTerms')}</span>
             <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.paymentTerms || 'No payment terms defined yet.'}
+              {contract?.paymentTerms || t('contracts.noPaymentTerms')}
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Intellectual Property</span>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.intellectualProperty')}</span>
             <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.intellectualPropertyTerms || 'No intellectual property terms defined yet.'}
+              {contract?.intellectualPropertyTerms || t('contracts.noIpTerms')}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Confidentiality (NDA)</span>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.confidentiality')}</span>
             <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.confidentialityTerms || 'No confidentiality clauses defined yet.'}
+              {contract?.confidentialityTerms || t('contracts.noNdaTerms')}
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Cancellation Policy</span>
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.cancellationPolicy')}</span>
             <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.cancellationTerms || 'No cancellation policy defined yet.'}
+              {contract?.cancellationTerms || t('contracts.noCancellationPolicy')}
             </p>
           </div>
         </div>
 
         <div>
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Dispute Resolution</span>
+          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.disputeResolution')}</span>
           <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-            {contract?.disputeTerms || 'No dispute resolution terms defined yet.'}
+            {contract?.disputeTerms || t('contracts.noDisputeTerms')}
           </p>
         </div>
       </div>
@@ -357,11 +359,11 @@ export function ClientContractDetails({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-5 mb-6">
         <div className="flex items-center gap-2.5">
           <ListChecks size={20} className="text-primary" />
-          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-black font-zentry">Milestones ({milestones.length})</h2>
+          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-black font-zentry">{t('contracts.milestoneBreakdown')} ({milestones.length})</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <span className="px-3 py-1 bg-primary/10 border border-primary/20 text-primary rounded-full text-xs font-bold">
-            Total: {formatContractAmount(milestonesTotal)}
+            {t('contracts.sum')}: {formatContractAmount(milestonesTotal)}
           </span>
         </div>
       </div>
@@ -376,7 +378,7 @@ export function ClientContractDetails({
                 <h3 className="text-sm font-bold text-foreground">{milestone.title}</h3>
                 <span className="text-xs text-muted-foreground mt-0.5 font-medium flex items-center gap-1.5">
                   <Calendar size={12} />
-                  Due: {formatContractDate(milestone.due_date)}
+                  {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
                 </span>
               </div>
             </div>
@@ -418,9 +420,9 @@ export function ClientContractDetails({
               <h1 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
                 <span className="font-bold text-primary truncate max-w-[150px] md:max-w-xl">{contract.title}</span>
                 <span className="text-text-subtle">/</span>
-                <span className="text-text-primary font-black uppercase tracking-wider text-xs">Contract Details (Client)</span>
+                <span className="text-text-primary font-black uppercase tracking-wider text-xs">{t('contracts.contractDetailsClient')}</span>
                 <span className={`status-badge ${getContractStatusClass(effectiveStatus)} ml-2 text-[9px] py-0.5 px-2`}>
-                  {getContractStatusLabel(effectiveStatus)}
+                  {t('contracts.status.' + effectiveStatus, { defaultValue: getContractStatusLabel(effectiveStatus) })}
                 </span>
               </h1>
             </div>
@@ -431,9 +433,9 @@ export function ClientContractDetails({
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20" />
             <div className="flex items-center gap-4 overflow-x-auto pb-1 no-scrollbar whitespace-nowrap">
               {[
-                { number: 1, label: 'Terms Setup', desc: 'Define milestones & terms' },
-                { number: 2, label: 'Review & Confirm', desc: 'Freelancer review' },
-                { number: 3, label: 'Escrow Funding', desc: 'Secure project escrow' },
+                { number: 1, label: t('contracts.defineMilestonesTerms') },
+                { number: 2, label: t('contracts.freelancerReview') },
+                { number: 3, label: t('contracts.secureProjectEscrow') },
               ].map((step, idx) => {
                 const isCompleted = currentStep > step.number;
                 const isActive = currentStep === step.number;
@@ -451,9 +453,6 @@ export function ClientContractDetails({
                       <div className="flex flex-col text-left">
                         <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-foreground font-extrabold' : 'text-muted-foreground font-semibold'}`}>
                           {step.label}
-                        </span>
-                        <span className="text-[9px] text-muted-foreground/75 font-semibold leading-none">
-                          {step.desc}
                         </span>
                       </div>
                     </div>
@@ -486,73 +485,73 @@ export function ClientContractDetails({
                     <div className="glass-card p-8 md:p-10 space-y-6">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
                         <FileText size={20} className="text-primary" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Setup Contract Terms & Clauses</h2>
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.defineMilestonesTerms')}</h2>
                       </div>
                       
                       <div className="bg-primary/10 text-primary border border-primary/20 p-4 rounded-2xl text-xs font-medium leading-relaxed">
-                        Specify contract scope and milestone timelines below. Once submitted, the freelancer must confirm the terms before escrow funding is initiated.
+                        {t('contracts.defineMilestonesTermsDesc')}
                       </div>
 
                       <div className="space-y-4">
                         <div>
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Scope of Work</label>
+                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.scopeOfWork')}</label>
                           <textarea
                             value={scopeOfWork}
                             onChange={(e) => setScopeOfWork(e.target.value)}
                             className="w-full h-32 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                            placeholder="Detailed scope of deliverables and work description..."
+                            placeholder={t('contracts.detailedScopePlaceholder')}
                           />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Payment Terms</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.paymentTerms')}</label>
                             <textarea
                               value={paymentTerms}
                               onChange={(e) => setPaymentTerms(e.target.value)}
                               className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder="e.g., payment release upon milestone approval..."
+                              placeholder={t('contracts.paymentTermsPlaceholder')}
                             />
                           </div>
                           <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Intellectual Property Clauses</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.intellectualProperty')}</label>
                             <textarea
                               value={intellectualPropertyTerms}
                               onChange={(e) => setIntellectualPropertyTerms(e.target.value)}
                               className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder="Ownership details of work products..."
+                              placeholder={t('contracts.ipTermsPlaceholder')}
                             />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Confidentiality (NDA)</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.confidentiality')}</label>
                             <textarea
                               value={confidentialityTerms}
                               onChange={(e) => setConfidentialityTerms(e.target.value)}
                               className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder="Non-disclosure terms..."
+                              placeholder={t('contracts.ndaTermsPlaceholder')}
                             />
                           </div>
                           <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Cancellation Policies</label>
+                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.cancellationPolicy')}</label>
                             <textarea
                               value={cancellationTerms}
                               onChange={(e) => setCancellationTerms(e.target.value)}
                               className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder="Termination policies..."
+                              placeholder={t('contracts.cancellationTermsPlaceholder')}
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">Dispute Resolution</label>
+                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.disputeResolution')}</label>
                           <textarea
                             value={disputeTerms}
                             onChange={(e) => setDisputeTerms(e.target.value)}
                             className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                            placeholder="Arbitration and mediation procedures..."
+                            placeholder={t('contracts.disputeTermsPlaceholder')}
                           />
                         </div>
                       </div>
@@ -563,7 +562,7 @@ export function ClientContractDetails({
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-4">
                         <div className="flex items-center gap-2.5">
                           <ListChecks size={20} className="text-primary" />
-                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Milestones Schedule</h2>
+                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.milestonesSchedule')}</h2>
                         </div>
                         
                         <div className="flex items-center gap-3">
@@ -573,14 +572,14 @@ export function ClientContractDetails({
                               : 'bg-destructive/10 border-destructive/25 text-destructive animate-pulse'
                             }`}
                           >
-                            Sum: {formatContractAmount(formMilestones.reduce((sum, m) => sum + Number(m.amount || 0), 0))} / {formatContractAmount(contract.totalBudget)}
+                            {t('contracts.sum')}: {formatContractAmount(formMilestones.reduce((sum, m) => sum + Number(m.amount || 0), 0))} / {formatContractAmount(contract.totalBudget)}
                           </span>
                           <button
                             onClick={handleAddMilestone}
                             type="button"
                             className="btn-primary-custom px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
                           >
-                            + Add Milestone
+                            {t('contracts.addMilestone')}
                           </button>
                         </div>
                       </div>
@@ -589,17 +588,17 @@ export function ClientContractDetails({
                         {formMilestones.map((milestone, idx) => (
                           <div key={idx} className="flex flex-col md:flex-row items-stretch gap-4 bg-secondary/15 border border-border/25 rounded-2xl p-4">
                             <div className="flex-1">
-                              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Title</label>
+                              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">{t('projects.title')}</label>
                               <input
                                 type="text"
                                 value={milestone.title}
                                 onChange={(e) => handleMilestoneChange(idx, 'title', e.target.value)}
                                 className="w-full px-3 py-2 bg-card border border-border/30 rounded-xl text-xs text-foreground outline-none focus:border-blue-500 transition-all font-semibold"
-                                placeholder="e.g. Initial Prototype, Final Delivery..."
+                                placeholder={t('contracts.milestoneTitlePlaceholder')}
                               />
                             </div>
                             <div className="w-full md:w-44">
-                              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Amount (Tokens)</label>
+                              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">{t('contracts.amountTokens')}</label>
                               <input
                                 type="number"
                                 value={milestone.amount}
@@ -607,11 +606,9 @@ export function ClientContractDetails({
                                 className="w-full px-3 py-2 bg-card border border-border/30 rounded-xl text-xs text-foreground outline-none focus:border-blue-500 transition-all font-semibold"
                                 placeholder="0"
                               />
-                              <span className="text-[10px] text-muted-foreground mt-1 block pl-1">
-                              </span>
                             </div>
                             <div className="w-full md:w-44">
-                              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Due Date</label>
+                              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">{t('contracts.dueDate')}</label>
                               <input
                                 type="date"
                                 value={milestone.dueDate}
@@ -625,14 +622,14 @@ export function ClientContractDetails({
                                 type="button"
                                 className="p-2.5 bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 rounded-xl transition-all cursor-pointer font-bold"
                               >
-                                Delete
+                                {t('contracts.delete')}
                               </button>
                             </div>
                           </div>
                         ))}
 
                         {formMilestones.length === 0 && (
-                          <p className="text-muted-foreground text-center py-6 text-sm italic">No milestones defined. Please add at least one milestone.</p>
+                          <p className="text-muted-foreground text-center py-6 text-sm italic">{t('contracts.noMilestonesDefined')}</p>
                         )}
                       </div>
 
@@ -642,14 +639,14 @@ export function ClientContractDetails({
                           onClick={() => handleSaveDetails(false)}
                           className="px-5 py-2.5 bg-secondary/50 hover:bg-secondary border border-border/60 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                         >
-                          Save Draft Details
+                          {t('contracts.saveDraftDetails')}
                         </button>
                         <button
                           disabled={actionLoading}
                           onClick={() => handleSaveDetails(true)}
                           className="btn-primary-custom px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
-                          Submit to Freelancer
+                          {t('contracts.submitToFreelancer')}
                         </button>
                       </div>
                     </div>
@@ -662,7 +659,7 @@ export function ClientContractDetails({
                     <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
                       <Clock size={20} className="shrink-0 animate-pulse" />
                       <div className="text-sm font-semibold">
-                        Waiting for the freelancer to review and confirm the contract terms & milestones schedule.
+                        {t('contracts.waitingFreelancerReview')}
                       </div>
                     </div>
                     {renderViewOnlyTerms()}
@@ -676,7 +673,7 @@ export function ClientContractDetails({
                     <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
                       <Clock size={20} className="shrink-0 animate-pulse" />
                       <div className="text-sm font-semibold">
-                        Waiting for the freelancer to digitally sign the contract. Once both signatures are collected, escrow funding will begin.
+                        {t('contracts.waitingFreelancerSign')}
                       </div>
                     </div>
                     {renderViewOnlyTerms()}
@@ -690,48 +687,40 @@ export function ClientContractDetails({
                     <div className="glass-card p-8 md:p-10 space-y-6">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
                         <Lock size={20} className="text-primary" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">Secure Contract Escrow</h2>
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.secureContractEscrow')}</h2>
                       </div>
 
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        Escrow funding secures the payment for milestones. We require funding <strong>100% of the total budget</strong> to proceed.
+                        {t('contracts.escrowFundingDesc')}
                       </p>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Contract Budget</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">{t('contracts.budget')}</span>
                           <span className="text-2xl font-bold text-foreground mt-1.5 block">
                             {formatContractAmount(contract.totalBudget)}
                           </span>
-                          <span className="text-xs text-muted-foreground block mt-1">
-                          </span>
                         </div>
                         <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Required Escrow (100%)</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">{t('contracts.requiredEscrow')}</span>
                           <span className="text-2xl font-bold text-primary mt-1.5 block">
                             {formatContractAmount(escrowFundingAmount)}
-                          </span>
-                          <span className="text-xs text-muted-foreground block mt-1">
                           </span>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between p-5 bg-secondary/10 border border-border/20 rounded-2xl">
                         <div>
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">Your Wallet Balance</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">{t('contracts.yourWalletBalance')}</span>
                           <span className="text-xl font-bold text-foreground mt-1 block">
-                            {walletBalance !== null ? `${walletBalance} Tokens` : 'Loading...'}
+                            {walletBalance !== null ? `${walletBalance} G-coin` : 'Loading...'}
                           </span>
-                          {walletBalance !== null && (
-                            <span className="text-xs text-muted-foreground block mt-1">
-                            </span>
-                          )}
                         </div>
                         
                         {walletBalance !== null && walletBalance < escrowFundingAmount && (
                           <div className="text-right shrink-0">
                             <span className="text-xs font-bold text-destructive block mb-1">
-                              Short of {escrowFundingAmount - walletBalance} Tokens
+                              {t('contracts.shortOf', { amount: escrowFundingAmount - walletBalance })}
                             </span>
                           </div>
                         )}
@@ -740,14 +729,14 @@ export function ClientContractDetails({
                       {walletBalance !== null && walletBalance < escrowFundingAmount ? (
                         <div className="space-y-4">
                           <div className="bg-destructive/10 text-destructive border border-destructive/20 p-4 rounded-2xl text-xs font-medium">
-                            You do not have enough GigCoin to fund this contract escrow. Please top up your wallet first.
+                            {t('contracts.insufficientTokensDesc')}
                           </div>
                           <button
                             onClick={() => navigate('/wallet/deposit')}
                             className="btn-primary-custom w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all flex items-center justify-center gap-2"
                           >
                             <GigCoinLogo size={17} />
-                            Top Up Wallet
+                            {t('contracts.topUpWallet')}
                           </button>
                         </div>
                       ) : (
@@ -757,7 +746,7 @@ export function ClientContractDetails({
                           className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold cursor-pointer transition-all shadow-md flex items-center justify-center gap-2 border-none"
                         >
                           <Lock size={17} />
-                          Fund Escrow Now
+                          {t('contracts.fundEscrowNow')}
                         </button>
                       )}
                     </div>
@@ -772,12 +761,12 @@ export function ClientContractDetails({
                     <section className="glass-card p-8 md:p-10 relative overflow-hidden">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4 mb-6">
                         <FileText size={20} className="text-primary" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">Contract Information</h2>
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">{t('contracts.contractInfo')}</h2>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-3 flex flex-col gap-2 bg-secondary/25 border border-border/30 rounded-2xl p-4">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Contract ID</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('contracts.contractId')}</span>
                           <div className="flex items-center justify-between gap-3">
                             <code className="font-mono text-sm text-foreground select-all bg-card border border-border/40 px-3 py-1.5 rounded-lg truncate flex-1">
                               {contract.contractsId}
@@ -795,12 +784,12 @@ export function ClientContractDetails({
                               {copySuccess ? (
                                 <>
                                   <Check size={13} />
-                                  Copied
+                                  {t('contracts.copied')}
                                 </>
                               ) : (
                                 <>
                                   <Copy size={13} />
-                                  Copy ID
+                                  {t('contracts.copyId')}
                                 </>
                               )}
                             </motion.button>
@@ -808,9 +797,9 @@ export function ClientContractDetails({
                         </div>
 
                         <div className="flex flex-col gap-1 bg-secondary/15 border border-border/20 rounded-2xl p-4">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Payment Type</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('contracts.paymentTypeLabel')}</span>
                           <span className="text-sm font-bold text-foreground mt-1">
-                            Fixed Price
+                            {t('contracts.fixedPrice')}
                           </span>
                         </div>
 
@@ -823,7 +812,7 @@ export function ClientContractDetails({
 
                         {contract.createdAt && (
                           <div className="flex flex-col gap-1 bg-secondary/15 border border-border/20 rounded-2xl p-4">
-                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Created At</span>
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('contracts.createdAt')}</span>
                             <span className="text-sm font-bold text-foreground mt-1">
                               {new Date(contract.createdAt).toLocaleDateString()}
                             </span>
@@ -833,7 +822,7 @@ export function ClientContractDetails({
 
                       {contract.description && (
                         <div className="flex flex-col gap-3 mt-6">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Contract Description</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('contracts.contractDescription')}</span>
                           <p className="description-text pl-4 border-l-4 border-primary/80 leading-relaxed text-sm bg-secondary/15 border-border/30 rounded-r-2xl py-4 pr-4 text-muted-foreground">
                             {contract.description}
                           </p>
@@ -847,7 +836,7 @@ export function ClientContractDetails({
                       <section className="glass-card p-8 md:p-10 relative overflow-hidden">
                         <div className="flex items-center gap-2.5 border-b border-border/50 pb-4 mb-5">
                           <FileCheck size={20} className="text-primary" />
-                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">E-Signature Contract Document</h2>
+                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">{t('contracts.esignContractDocument')}</h2>
                         </div>
 
                         <div className="flex flex-col md:flex-row items-center gap-4 bg-secondary/15 border border-border/25 rounded-2xl p-5">
@@ -859,7 +848,7 @@ export function ClientContractDetails({
                               {contract.title.replace(/\s+/g, '_')}_ESign_Document.pdf
                             </h4>
                             <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
-                              E-signature status: <span className="text-emerald-500 font-bold">Fully Signed & Secured</span>
+                              {t('contracts.esignStatusLabel')}: <span className="text-emerald-500 font-bold">{t('contracts.esignFullySigned')}</span>
                             </p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
@@ -868,7 +857,7 @@ export function ClientContractDetails({
                               className="px-4 py-2 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center gap-1.5"
                             >
                               <Download size={13} />
-                              Download Signed PDF
+                              {t('contracts.downloadSignedPdf')}
                             </button>
                           </div>
                         </div>
@@ -881,18 +870,18 @@ export function ClientContractDetails({
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-5 mb-6">
                           <div className="flex items-center gap-2.5">
                             <ListChecks size={20} className="text-primary" />
-                            <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">Milestones ({milestones.length})</h2>
+                            <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">{t('contracts.milestoneBreakdown')} ({milestones.length})</h2>
                           </div>
                           
                           <div className="flex flex-wrap gap-2">
                             <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-full text-xs font-bold">
-                              {milestonesPaid} Paid
+                              {t('contracts.milestonesPaidCount', { milestonesPaid })}
                             </span>
                             <span className="px-3 py-1 bg-primary/10 border border-primary/20 text-primary rounded-full text-xs font-bold">
-                              {milestonesApproved} Approved
+                              {t('contracts.milestonesApprovedCount', { milestonesApproved })}
                             </span>
                             <span className="px-3 py-1 bg-primary/10 border border-primary/20 text-primary rounded-full text-xs font-bold">
-                              Total: {formatContractAmount(milestonesTotal)}
+                              {t('contracts.sum')}: {formatContractAmount(milestonesTotal)}
                             </span>
                           </div>
                         </div>
@@ -928,7 +917,7 @@ export function ClientContractDetails({
                                       <h3 className="text-sm font-bold text-foreground truncate">{milestone.title}</h3>
                                       <span className="text-xs text-muted-foreground mt-0.5 font-medium flex items-center gap-1.5">
                                         <Calendar size={12} />
-                                        Due: {formatContractDate(milestone.due_date)}
+                                        {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
                                       </span>
                                     </div>
                                   </div>
@@ -939,7 +928,7 @@ export function ClientContractDetails({
                                       ${milestone.status === MilestoneStatus.PaymentConfirmed ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
                                         milestone.status === MilestoneStatus.Approved ? 'bg-primary/10 text-primary border border-primary/20' :
                                         'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
-                                      {getMilestoneStatusLabel(milestone.status)}
+                                      {t('contracts.milestoneStatus.' + milestone.status, { defaultValue: getMilestoneStatusLabel(milestone.status) })}
                                     </span>
                                     <ChevronDown 
                                       size={16} 
@@ -959,19 +948,19 @@ export function ClientContractDetails({
                                     >
                                       <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                                         <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Amount</span>
+                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('contracts.amountTokens')}</span>
                                           <span className="font-bold text-foreground text-sm">{formatContractAmount(milestone.amount)}</span>
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Due Date</span>
+                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('contracts.dueDate')}</span>
                                           <span className="font-bold text-foreground text-sm">{formatContractDate(milestone.due_date)}</span>
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Status</span>
-                                          <span className="font-bold text-foreground text-sm">{getMilestoneStatusLabel(milestone.status)}</span>
+                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('projects.status')}</span>
+                                          <span className="font-bold text-foreground text-sm">{t('contracts.milestoneStatus.' + milestone.status, { defaultValue: getMilestoneStatusLabel(milestone.status) })}</span>
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Paid Date</span>
+                                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('contracts.paidPrefix')}</span>
                                           <span className="font-bold text-foreground text-sm">
                                             {milestone.paid_at ? new Date(milestone.paid_at).toLocaleString() : 'N/A'}
                                           </span>
@@ -992,13 +981,13 @@ export function ClientContractDetails({
                       <div className="flex items-center justify-between border-b border-border/50 pb-4 mb-5 gap-4">
                         <div className="flex items-center gap-2.5">
                           <Clock size={20} className="text-primary" />
-                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">Audit Trail History</h2>
+                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">{t('contracts.auditTrailHistory')}</h2>
                         </div>
                         <button
                           onClick={() => setShowAuditTrail(!showAuditTrail)}
                           className="px-4 py-2 bg-secondary/40 hover:bg-secondary/70 border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer shadow-sm"
                         >
-                          {showAuditTrail ? 'Hide History' : 'Show History'}
+                          {showAuditTrail ? t('contracts.hideHistory') : t('contracts.showHistory')}
                         </button>
                       </div>
 
@@ -1036,7 +1025,7 @@ export function ClientContractDetails({
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-muted-foreground text-center py-6 text-sm">No audit history entries available.</p>
+                              <p className="text-muted-foreground text-center py-6 text-sm">{t('contracts.noAuditHistory')}</p>
                             )}
                           </motion.div>
                         )}
@@ -1057,13 +1046,13 @@ export function ClientContractDetails({
               {/* Summary Panel */}
               <div className="glass-card p-5 flex flex-col gap-4 text-left">
                 <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest border-b border-border/20 pb-2 font-zentry">
-                  Contract Summary
+                  {t('contracts.contractSummary')}
                 </h3>
 
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-blue-500/20 transition-all">
                     <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Total Budget</span>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.budget')}</span>
                       <span className="text-base font-black text-foreground mt-0.5 block">{formatContractAmount(contract.totalBudget)}</span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
@@ -1073,7 +1062,7 @@ export function ClientContractDetails({
 
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-purple-500/20 transition-all">
                     <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Start Date</span>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.startDate')}</span>
                       <span className="text-sm font-black text-foreground mt-0.5 block">{formatContractDate(contract.startDate)}</span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
@@ -1084,7 +1073,7 @@ export function ClientContractDetails({
                   {contract.endDate && (
                     <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-cyan-500/20 transition-all">
                       <div>
-                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">End Date</span>
+                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.endDate')}</span>
                         <span className="text-sm font-black text-foreground mt-0.5 block">{formatContractDate(contract.endDate)}</span>
                       </div>
                       <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center shrink-0">
@@ -1095,9 +1084,9 @@ export function ClientContractDetails({
 
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-emerald-500/20 transition-all">
                     <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Milestones Status</span>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.milestonesStatus')}</span>
                       <span className="text-sm font-black text-foreground mt-0.5 block">
-                        {milestonesPaid} Paid / {milestonesApproved} Approved
+                        {t('contracts.milestonesPaidCount', { milestonesPaid })} / {t('contracts.milestonesApprovedCount', { milestonesApproved })}
                       </span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
@@ -1109,7 +1098,7 @@ export function ClientContractDetails({
               
               {/* Quick Actions Panel */}
               <div className="glass-card p-6">
-                <h2 className="text-base font-bold text-foreground uppercase tracking-tight mb-5 font-zentry">Quick Actions</h2>
+                <h2 className="text-base font-bold text-foreground uppercase tracking-tight mb-5 font-zentry">{t('contracts.quickActions')}</h2>
                 <div className="flex flex-col gap-3">
                   <motion.button 
                     whileHover={{ y: -2 }}
@@ -1118,7 +1107,7 @@ export function ClientContractDetails({
                     className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-sm cursor-pointer shadow flex items-center justify-center gap-2 border-none"
                   >
                     <ListChecks size={18} />
-                    Manage Milestones
+                    {t('contracts.manageMilestones')}
                   </motion.button>
 
                   {contract.esignContractPdfUrl && (
@@ -1129,7 +1118,7 @@ export function ClientContractDetails({
                       className="w-full py-3 bg-secondary/50 hover:bg-secondary border border-border/60 rounded-xl font-bold text-sm text-foreground cursor-pointer transition-all flex items-center justify-center gap-2"
                     >
                       <Download size={17} />
-                      Download PDF
+                      {t('contracts.downloadPdf')}
                     </motion.button>
                   )}
 
@@ -1141,7 +1130,7 @@ export function ClientContractDetails({
                       className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
                     >
                       <Star size={17} />
-                      Leave Review
+                      {t('contracts.leaveReview')}
                     </motion.button>
                   )}
 
@@ -1153,7 +1142,7 @@ export function ClientContractDetails({
                       className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
                     >
                       <ShieldAlert size={17} />
-                      File Dispute Case
+                      {t('contracts.fileDispute')}
                     </motion.button>
                   )}
                 </div>
@@ -1164,7 +1153,7 @@ export function ClientContractDetails({
                 <div className="flex flex-col gap-6">
                   {contract.clientProfile && (
                     <div>
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">Client (You)</span>
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">{t('contracts.clientYou')}</span>
                       <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
                         <img
                           src={contract.clientProfile.profileImageUrl || '/img/avatar-fallback.png'}
@@ -1186,7 +1175,7 @@ export function ClientContractDetails({
 
                   {contract.freelancerProfile && (
                     <div>
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">Freelancer</span>
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">{t('contracts.freelancer')}</span>
                       <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
                         <img
                           src={contract.freelancerProfile.profileImageUrl || '/img/avatar-fallback.png'}

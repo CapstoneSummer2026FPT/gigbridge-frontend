@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { savedFreelancerAPI } from '../../../api/savedFreelancerAPI';
 import { InviteFreelancerToJobModal } from '../../profile/components/InviteFreelancerToJobModal';
@@ -120,6 +121,7 @@ const mapFreelancerProfileToTalent = (freelancer: FreelancerProfileDetailDto): A
 };
 
 export default function SmartTalentMatchingScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { role } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -296,12 +298,12 @@ export default function SmartTalentMatchingScreen() {
 
   const inviteTalent = (talent: ApiTalentMatch) => {
     if (!isClient) {
-      toast.error('Please log in as a client to invite freelancers.');
+      toast.error(t('talentMatching.logInAsClientToInvite'));
       return;
     }
 
     if (!talent.freelancerProfileId) {
-      toast.error('This freelancer profile cannot be invited yet.');
+      toast.error(t('talentMatching.profileNotInvitable'));
       return;
     }
 
@@ -311,12 +313,12 @@ export default function SmartTalentMatchingScreen() {
   const toggleFavorite = async (talent: ApiTalentMatch) => {
     const freelancerProfileId = talent.freelancerProfileId;
     if (!freelancerProfileId) {
-      toast.error('This freelancer profile cannot be saved yet.');
+      toast.error(t('talentMatching.profileNotSavable'));
       return;
     }
 
     if (!canSaveFreelancers) {
-      toast.error('Please log in as a client to save freelancers.');
+      toast.error(t('talentMatching.logInAsClientToSave'));
       return;
     }
 
@@ -330,11 +332,11 @@ export default function SmartTalentMatchingScreen() {
           next.delete(freelancerProfileId);
           return next;
         });
-        toast.success('Freelancer removed from saved talent.');
+        toast.success(t('talentMatching.removedSuccess'));
       } else {
         await savedFreelancerAPI.saveFreelancer(freelancerProfileId);
         setSavedFreelancerIds(prev => new Set(prev).add(freelancerProfileId));
-        toast.success('Freelancer saved.');
+        toast.success(t('talentMatching.savedSuccess'));
       }
     } catch (error) {
       console.error('Failed to update saved freelancer:', error);
@@ -368,11 +370,11 @@ export default function SmartTalentMatchingScreen() {
         {/* Header & Tabs Section */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8 relative z-50">
           <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-foreground">
-              Discover the world's <span className="text-blue-600 black:text-blue-400 italic font-light">top creative</span> talent.
-            </h1>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-foreground"
+              dangerouslySetInnerHTML={{ __html: t('talentMatching.title') }}
+            />
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Connecting enterprise teams with elite freelancers. Precision matched, verified, and ready to scale your next big idea.
+              {t('talentMatching.subtitle')}
             </p>
           </div>
           
@@ -385,7 +387,7 @@ export default function SmartTalentMatchingScreen() {
                     : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
                   }`}
               >
-                All Freelancers
+                {t('talentMatching.allFreelancers')}
               </button>
 
               <div className="relative group z-[100]">
@@ -397,7 +399,7 @@ export default function SmartTalentMatchingScreen() {
                     }`}
                 >
                   <Sparkles size={14} className="fill-current" />
-                  Best Matches: {selectedJob ? selectedJob.title : 'Select Job'}
+                  {t('talentMatching.bestMatches', { job: selectedJob ? selectedJob.title : t('talentMatching.selectJob') })}
                   <ChevronDown size={14} />
                 </button>
 
@@ -405,7 +407,7 @@ export default function SmartTalentMatchingScreen() {
                 <div className="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
                   <div className="glass-panel rounded-xl shadow-xl p-2">
                     <span className="block px-4 py-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                      Select Project Context
+                      {t('talentMatching.selectProjectContext')}
                     </span>
                     {openJobs.map(job => (
                       <button
@@ -433,7 +435,7 @@ export default function SmartTalentMatchingScreen() {
                     : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
                   }`}
               >
-                Saved Talent ({savedFreelancerIds.size})
+                {t('talentMatching.savedTalent', { count: savedFreelancerIds.size })}
               </button>
             </div>
           </div>
@@ -446,12 +448,12 @@ export default function SmartTalentMatchingScreen() {
           <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-24 space-y-8">
             <div className="glass-panel p-6 rounded-2xl shadow-sm">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-foreground">Filters</h3>
+                <h3 className="text-lg font-bold text-foreground">{t('talentMatching.filters')}</h3>
                 <button
                   onClick={clearAllFilters}
                   className="text-blue-600 hover:text-blue-700 black:text-blue-400 black:hover:text-blue-300 text-xs font-bold transition-all hover:underline"
                 >
-                  Clear all
+                  {t('talentMatching.clearAll')}
                 </button>
               </div>
 
@@ -459,7 +461,7 @@ export default function SmartTalentMatchingScreen() {
                 {/* Job Type Checkboxes */}
                 <div>
                   <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-3 block">
-                    Job Type
+                    {t('talentMatching.jobType')}
                   </label>
                   <div className="space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer group">
@@ -476,7 +478,7 @@ export default function SmartTalentMatchingScreen() {
                         className="w-5 h-5 rounded border-gray-300 black:border-gray-700 text-blue-600 focus:ring-blue-500/20"
                       />
                       <span className="text-sm text-gray-700 black:text-gray-300 group-hover:text-blue-600 transition-colors">
-                        Fixed Price
+                        {t('talentMatching.fixedPrice')}
                       </span>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer group">
@@ -493,7 +495,7 @@ export default function SmartTalentMatchingScreen() {
                         className="w-5 h-5 rounded border-gray-300 black:border-gray-700 text-blue-600 focus:ring-blue-500/20"
                       />
                       <span className="text-sm text-gray-700 black:text-gray-300 group-hover:text-blue-600 transition-colors">
-                        Hourly Contract
+                        {t('talentMatching.hourlyContract')}
                       </span>
                     </label>
                   </div>
@@ -503,10 +505,10 @@ export default function SmartTalentMatchingScreen() {
                 <div>
                   <div className="flex justify-between mb-3">
                     <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
-                      Max Hourly Rate
+                      {t('talentMatching.maxHourlyRate')}
                     </label>
                     <span className="text-xs font-bold text-blue-600 black:text-blue-400">
-                      ${hourlyRate}/hr
+                      {t('talentMatching.hourlyRateValue', { rate: hourlyRate })}
                     </span>
                   </div>
                   <input
@@ -527,7 +529,7 @@ export default function SmartTalentMatchingScreen() {
                 {/* Skills tags selection */}
                 <div>
                   <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-3 block">
-                    Industry Expertise
+                    {t('talentMatching.industryExpertise')}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {FILTER_SKILL_TAGS.map(skill => {
@@ -551,7 +553,7 @@ export default function SmartTalentMatchingScreen() {
                 {/* Min Success Rate buttons */}
                 <div>
                   <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-3 block">
-                    Min. Success Rate
+                    {t('talentMatching.minSuccessRate')}
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
@@ -579,7 +581,7 @@ export default function SmartTalentMatchingScreen() {
                           : 'border-gray-200 black:border-gray-800 hover:border-blue-600 black:hover:border-blue-400 text-gray-700 black:text-gray-300'
                         }`}
                     >
-                      Any
+                      {t('talentMatching.any')}
                     </button>
                   </div>
                 </div>
@@ -593,10 +595,10 @@ export default function SmartTalentMatchingScreen() {
               </div>
               <h4 className="text-lg font-bold mb-2 relative z-10 flex items-center gap-2">
                 <Bot size={20} />
-                Premium Access
+                {t('talentMatching.premiumAccess')}
               </h4>
               <p className="text-xs opacity-90 mb-4 relative z-10 leading-relaxed">
-                Get priority matching with the top 1% of vetted experts on our premium ecosystem network.
+                {t('talentMatching.premiumAccessDesc')}
               </p>
               <button
                 type="button"
@@ -606,7 +608,7 @@ export default function SmartTalentMatchingScreen() {
                     : 'bg-yellow-500 text-gray-900 hover:bg-yellow-400'
                   }`}
               >
-                {premiumEnabled ? 'Premium Enabled' : 'Upgrade Now'}
+                {premiumEnabled ? t('talentMatching.premiumEnabled') : t('talentMatching.upgradeNow')}
               </button>
             </div>
           </aside>
@@ -618,7 +620,7 @@ export default function SmartTalentMatchingScreen() {
             <div className="flex items-center justify-between glass-panel p-3 rounded-2xl shadow-sm relative z-30">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-                  Show per page
+                  {t('talentMatching.showPerPage')}
                 </span>
                 <div className="relative group">
                   <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 black:bg-gray-800 rounded-lg text-xs font-semibold hover:bg-gray-200 black:hover:bg-gray-700 transition-colors text-gray-700 black:text-gray-300">
@@ -649,7 +651,7 @@ export default function SmartTalentMatchingScreen() {
                 <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Quick search..."
+                  placeholder={t('talentMatching.quickSearch')}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   className="w-full bg-gray-100 black:bg-gray-800 text-xs text-gray-700 black:text-gray-300 rounded-lg pl-8 pr-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/30"
@@ -661,12 +663,12 @@ export default function SmartTalentMatchingScreen() {
                 <button
                   onClick={() => setIsCompact(false)}
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!isCompact
-                      ? 'bg-blue-600 text-white shadow-sm'
+                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-gray-600 black:text-gray-400 hover:bg-gray-200 black:hover:bg-gray-700'
                     }`}
                 >
                   <Grid size={14} />
-                  Default
+                  {t('talentMatching.layoutDefault')}
                 </button>
                 <button
                   onClick={() => setIsCompact(true)}
@@ -676,7 +678,7 @@ export default function SmartTalentMatchingScreen() {
                     }`}
                 >
                   <List size={14} />
-                  Compact
+                  {t('talentMatching.layoutCompact')}
                 </button>
               </div>
             </div>
@@ -685,21 +687,21 @@ export default function SmartTalentMatchingScreen() {
             {!isPremiumClient && activeTab === 'matches' && (
               <div className="bg-red-50 black:bg-red-950/20 text-red-700 black:text-red-300 border border-red-200 black:border-red-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
                 <AlertTriangle size={18} className="shrink-0" />
-                <span>Talent matching ranking requires a Premium subscription active.</span>
+                <span>{t('talentMatching.premiumAlert')}</span>
               </div>
             )}
 
             {openJobs.length === 0 && (
               <div className="bg-yellow-50 black:bg-yellow-950/20 text-yellow-700 black:text-yellow-300 border border-yellow-200 black:border-yellow-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
                 <AlertTriangle size={18} className="shrink-0" />
-                <span>Please create an Open job post first.</span>
+                <span>{t('talentMatching.createJobAlert')}</span>
               </div>
             )}
 
             {loadingTalents && (
               <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
-                <p className="text-primary font-semibold mb-2">Loading freelancer profiles...</p>
-                <p className="text-sm text-muted-foreground">Finding available talent from your backend data.</p>
+                <p className="text-primary font-semibold mb-2">{t('talentMatching.loadingProfiles')}</p>
+                <p className="text-sm text-muted-foreground">{t('talentMatching.loadingProfilesDesc')}</p>
               </div>
             )}
 
@@ -715,16 +717,16 @@ export default function SmartTalentMatchingScreen() {
               <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
                 <AlertTriangle size={36} className="text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-foreground mb-2">
-                  No matching freelancers found.
+                  {t('talentMatching.noMatchesFound')}
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  Try adjusting your filter settings, selecting another job context, or adding more keywords to your search.
+                  {t('talentMatching.noMatchesFoundDesc')}
                 </p>
                 <button
                   onClick={clearAllFilters}
                   className="mt-6 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-sm hover:shadow-md transition-all"
                 >
-                  Reset All Filters
+                  {t('talentMatching.resetAllFilters')}
                 </button>
               </div>
             )}
@@ -753,7 +755,6 @@ export default function SmartTalentMatchingScreen() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       src={avatar}
                       onError={e => {
-                        // fallback if avatar fails
                         (e.target as HTMLImageElement).src = `https://i.pravatar.cc/150?u=${talent.id}`;
                       }}
                     />
@@ -761,13 +762,13 @@ export default function SmartTalentMatchingScreen() {
                     {score >= 95 && (
                       <div className="verified-badge-top absolute top-3 left-3 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 shadow-sm">
                         <CheckCircle2 size={12} className="fill-current" />
-                        Top Rated
+                        {t('talentMatching.topRated')}
                       </div>
                     )}
                     {score >= 80 && score < 95 && (
                       <div className="verified-badge-top absolute top-3 left-3 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 shadow-sm">
                         <Award size={12} className="fill-current" />
-                        Rising Talent
+                        {t('talentMatching.risingTalent')}
                       </div>
                     )}
                   </div>
@@ -804,7 +805,7 @@ export default function SmartTalentMatchingScreen() {
                               : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md'
                             }`}
                         >
-                          {invited ? 'Invited' : 'Invite'}
+                          {invited ? t('talentMatching.invited') : t('talentMatching.invite')}
                         </button>
                       </div>
                     </div>
@@ -817,7 +818,7 @@ export default function SmartTalentMatchingScreen() {
                     <div className="grid grid-cols-3 gap-4 mb-6">
                       <div className="bg-gray-50 black:bg-gray-900/40 rounded-xl p-3 border border-gray-100 black:border-gray-800/30 text-center">
                         <span className="block text-muted-foreground text-[10px] uppercase font-bold tracking-tighter mb-1">
-                          Rate
+                          {t('talentMatching.rate')}
                         </span>
                         <span className="text-sm font-bold text-foreground">
                           ${meta.rate}/hr
@@ -825,7 +826,7 @@ export default function SmartTalentMatchingScreen() {
                       </div>
                       <div className="bg-gray-50 black:bg-gray-900/40 rounded-xl p-3 border border-gray-100 black:border-gray-800/30 text-center">
                         <span className="block text-muted-foreground text-[10px] uppercase font-bold tracking-tighter mb-1">
-                          Success
+                          {t('talentMatching.success')}
                         </span>
                         <span className={`text-sm font-bold ${meta.successClass}`}>
                           {meta.successRate}%
@@ -833,7 +834,7 @@ export default function SmartTalentMatchingScreen() {
                       </div>
                       <div className="bg-gray-50 black:bg-gray-900/40 rounded-xl p-3 border border-gray-100 black:border-gray-800/30 text-center">
                         <span className="block text-muted-foreground text-[10px] uppercase font-bold tracking-tighter mb-1">
-                          Earnings
+                          {t('talentMatching.earnings')}
                         </span>
                         <span className="text-sm font-bold text-foreground">
                           {meta.earnings}
@@ -860,7 +861,7 @@ export default function SmartTalentMatchingScreen() {
                 className="w-full py-4 border-2 border-dashed border-gray-300 black:border-gray-800 rounded-3xl text-gray-600 black:text-gray-400 font-bold hover:bg-gray-100 black:hover:bg-gray-900/40 hover:border-blue-500/40 transition-all flex items-center justify-center gap-2 group"
               >
                 <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
-                Explore More Experts
+                {t('talentMatching.exploreMore')}
               </button>
             )}
           </section>
@@ -873,18 +874,18 @@ export default function SmartTalentMatchingScreen() {
               <div className="relative z-10">
                 <div className="flex justify-between items-center mb-4">
                   <span className="px-2 py-0.5 bg-blue-100 black:bg-blue-900/30 text-blue-700 black:text-blue-300 rounded text-[10px] font-bold uppercase tracking-widest">
-                    Sponsored
+                    {t('talentMatching.sponsored')}
                   </span>
                   <Info size={14} className="text-gray-400 cursor-pointer hover:text-blue-600" />
                 </div>
                 <h3 className="text-lg font-bold mb-2 text-gray-900 black:text-white">
-                  Boost Your Reach
+                  {t('talentMatching.boostTitle')}
                 </h3>
                 <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
-                  Get featured at the top of search results and connect with premium clients 2x faster.
+                  {t('talentMatching.boostDesc')}
                 </p>
                 <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl hover:shadow-lg transition-shadow text-xs">
-                  Upgrade Now
+                  {t('talentMatching.upgradeNow')}
                 </button>
               </div>
               <div className="absolute -right-4 -top-4 opacity-[0.03] black:opacity-[0.05] group-hover:scale-105 transition-transform duration-500">
@@ -896,11 +897,11 @@ export default function SmartTalentMatchingScreen() {
             <div className="glass-panel rounded-3xl p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-bold text-foreground">
-                  Leaderboard
+                  {t('talentMatching.leaderboard')}
                 </h3>
                 <span className="text-[10px] text-blue-600 black:text-blue-400 font-bold uppercase tracking-widest flex items-center gap-1">
                   <Trophy size={12} />
-                  Global
+                  {t('talentMatching.global')}
                 </span>
               </div>
 
@@ -921,7 +922,7 @@ export default function SmartTalentMatchingScreen() {
                     <h4 className="text-sm font-bold text-foreground truncate">Sarah Chen</h4>
                     <div className="flex items-center gap-1 text-[10px] text-purple-600 black:text-purple-400 font-semibold uppercase">
                       <Star size={10} className="fill-current" />
-                      <span>982 pts</span>
+                      <span>{t('talentMatching.pts', { points: 982 })}</span>
                     </div>
                   </div>
                 </div>
@@ -942,7 +943,7 @@ export default function SmartTalentMatchingScreen() {
                     <h4 className="text-sm font-bold text-foreground truncate">James Wilson</h4>
                     <div className="flex items-center gap-1 text-[10px] text-purple-600 black:text-purple-400 font-semibold uppercase">
                       <Star size={10} className="fill-current" />
-                      <span>945 pts</span>
+                      <span>{t('talentMatching.pts', { points: 945 })}</span>
                     </div>
                   </div>
                 </div>
@@ -963,14 +964,14 @@ export default function SmartTalentMatchingScreen() {
                     <h4 className="text-sm font-bold text-foreground truncate">Elena Rodriguez</h4>
                     <div className="flex items-center gap-1 text-[10px] text-purple-600 black:text-purple-400 font-semibold uppercase">
                       <Star size={10} className="fill-current" />
-                      <span>912 pts</span>
+                      <span>{t('talentMatching.pts', { points: 912 })}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               <button className="w-full mt-6 text-center text-xs text-blue-600 black:text-blue-400 font-bold hover:underline transition-colors">
-                View All Rankings
+                {t('talentMatching.viewAllRankings')}
               </button>
             </div>
           </aside>
@@ -984,7 +985,7 @@ export default function SmartTalentMatchingScreen() {
             onClose={() => setInviteTalentTarget(null)}
             onInvited={() => {
               setInvitedIds(prev => prev.includes(inviteTalentTarget.id) ? prev : [...prev, inviteTalentTarget.id]);
-              toast.success('Invitation sent.');
+              toast.success(t('talentMatching.invitationSent'));
             }}
           />
         )}

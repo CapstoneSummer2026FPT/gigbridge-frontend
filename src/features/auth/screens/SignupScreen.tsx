@@ -9,10 +9,13 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
+import { useTranslation } from '../../../hooks/useTranslation';
+
 
 type SignupStep = 'role' | 'form';
 
 export default function SignupScreen() {
+  const { t } = useTranslation();
   const isMounted = useRef(true);
   useEffect(() => {
     isMounted.current = true;
@@ -340,26 +343,24 @@ export default function SignupScreen() {
 
         <div className="relative z-10 flex flex-col h-full justify-between">
           {/* Logo / Header */}
-          <div className="flex items-center gap-3 auth-left-content-animate">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center auth-logo-bg cursor-pointer" onClick={() => navigate('/')}>
-              <Zap size={22} className="auth-logo-icon" />
-            </div>
-            <span className="logo-text logo-text-white text-xl font-zentry font-black tracking-wider cursor-pointer">GigBridge</span>
+          <div className="flex items-center gap-3 auth-left-content-animate cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/img/logo.png" className="w-10 h-10 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text logo-text-white text-xl font-black tracking-wider select-none">{t('app.name')}</span>
           </div>
 
           {/* Big Title & Description (White Text) */}
           <div className="max-w-md my-auto text-left auth-left-content-animate">
             <h2 className="text-4xl xl:text-5xl font-zentry font-black tracking-wider text-white mb-6 uppercase leading-tight">
-              Your Career Partner
+              {t('auth.careerPartner')}
             </h2>
             <p className="text-lg text-white/80 leading-relaxed font-medium">
-              Join the professional marketplace that connects world-class talent with ambitious companies in a secure, e-signed workflow.
+              {t('auth.careerPartnerDesc')}
             </p>
           </div>
 
           {/* Footer */}
           <p className="text-xs text-white/50 auth-left-content-animate">
-            © 2026 GigBridge · Privacy · Terms
+            © 2026 {t('app.name')} · {t('footer.privacyPolicy')} · {t('footer.termsOfService')}
           </p>
         </div>
       </div>
@@ -367,19 +368,17 @@ export default function SignupScreen() {
       {/* Right Panel - Responsive Glassmorphic Signup Form */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 auth-right-panel">
         <div className="w-full max-w-md auth-form-card p-8 lg:p-10">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center auth-logo-bg cursor-pointer" onClick={() => navigate('/')}>
-              <Zap size={16} className="auth-logo-icon" />
-            </div>
-            <span className="logo-text font-zentry font-bold tracking-wider cursor-pointer" onClick={() => navigate('/')}>GigBridge</span>
+          <div className="flex items-center gap-2 mb-8 lg:hidden cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/img/logo.png" className="w-8 h-8 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text font-bold tracking-wider select-none">{t('app.name')}</span>
           </div>
 
           {step === 'role' ? (
             <>
               <h1 className="text-2xl lg:text-3xl font-zentry font-black tracking-wider text-primary mb-2 uppercase auth-role-animate animate-fade">
-                Get started today
+                {t('auth.getStartedToday')}
               </h1>
-              <p className="mb-6 auth-subtitle auth-role-animate">Choose how you want to get started</p>
+              <p className="mb-6 auth-subtitle auth-role-animate">{t('auth.chooseRole')}</p>
 
               <div className="space-y-4 mb-6">
                 {/* Client Card */}
@@ -396,8 +395,8 @@ export default function SignupScreen() {
                       <Briefcase size={26} className="text-cyan-500" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-primary text-base">I'm a Client</h3>
-                      <p className="text-sm text-secondary mt-0.5">Hire talented developers and manage milestone escrows</p>
+                      <h3 className="font-bold text-primary text-base">{t('auth.imClient')}</h3>
+                      <p className="text-sm text-secondary mt-0.5">{t('auth.imClientDesc')}</p>
                     </div>
                     <ChevronRight size={20} className={`mt-2 transition-transform duration-300 ${selectedRole === UserRole.Client ? 'translate-x-1 text-cyan-500' : 'text-secondary opacity-30'}`} />
                   </div>
@@ -417,8 +416,8 @@ export default function SignupScreen() {
                       <Code size={26} className="text-purple-500" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-primary text-base">I'm a Freelancer</h3>
-                      <p className="text-sm text-secondary mt-0.5">Find modern contracts, sign with e-signatures, get instant pay</p>
+                      <h3 className="font-bold text-primary text-base">{t('auth.imFreelancer')}</h3>
+                      <p className="text-sm text-secondary mt-0.5">{t('auth.imFreelancerDesc')}</p>
                     </div>
                     <ChevronRight size={20} className={`mt-2 transition-transform duration-300 ${selectedRole === UserRole.Freelancer ? 'translate-x-1 text-purple-500' : 'text-secondary opacity-30'}`} />
                   </div>
@@ -430,25 +429,25 @@ export default function SignupScreen() {
                 disabled={selectedRole === null}
                 className="btn-cyan w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed auth-role-animate hover:scale-[1.01] transition-transform"
               >
-                Continue
+                {t('common.continue')}
                 <ArrowRight size={18} />
               </button>
 
               <p className="text-center mt-6 text-sm auth-switch-text auth-role-animate">
-                Already have an account?{' '}
+                {t('auth.alreadyHaveAccount')}{' '}
                 <button className="font-semibold auth-link-cyan"
                   onClick={() => navigate('/auth/login')}>
-                  Log In
+                  {t('auth.login')}
                 </button>
               </p>
             </>
           ) : (
             <>
               <h1 className="text-2xl lg:text-3xl font-zentry font-black tracking-wider text-primary mb-2 uppercase auth-form-animate">
-                Create your account
+                {t('auth.createAccount')}
               </h1>
               <p className="mb-6 auth-subtitle auth-form-animate">
-                Registering as a {selectedRole === UserRole.Client ? 'Client' : 'Freelancer'}
+                {t('auth.registeringAs', { role: selectedRole === UserRole.Client ? t('projects.client') : t('projects.freelancer') })}
               </p>
               
               <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn auth-form-animate"
@@ -465,7 +464,7 @@ export default function SignupScreen() {
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
                 )}
-                {isGoogleLoading ? 'Connecting...' : 'Sign Up with Google'}
+                {isGoogleLoading ? t('auth.verifying') : t('auth.googleSignup')}
               </button>
 
               {googleError && (
@@ -479,7 +478,7 @@ export default function SignupScreen() {
 
               <div className="flex items-center gap-3 mb-6 auth-form-animate">
                 <div className="flex-1 auth-divider" />
-                <span className="auth-divider-text">or continue with email</span>
+                <span className="auth-divider-text">{t('auth.orContinueEmail')}</span>
                 <div className="flex-1 auth-divider" />
               </div>
               
@@ -497,7 +496,7 @@ export default function SignupScreen() {
                 
                 <div className="relative auth-form-animate">
                   <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                  <input type="text" placeholder="Full Name" value={formData.fullName}
+                  <input type="text" placeholder={t('auth.fullName')} value={formData.fullName}
                     onChange={e => setFormData({ ...formData, fullName: e.target.value })}
                     className="input-gb w-full py-3 auth-input-with-icon"
                     disabled={isLoading} required />
@@ -505,7 +504,7 @@ export default function SignupScreen() {
 
                 <div className="relative auth-form-animate">
                   <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                  <input type="email" placeholder="Email address" value={formData.email}
+                  <input type="email" placeholder={t('auth.email')} value={formData.email}
                     onChange={e => {
                       setFormData({ ...formData, email: e.target.value });
                       if (isOtpVerified) {
@@ -520,7 +519,7 @@ export default function SignupScreen() {
                 <div className="flex gap-2 auth-form-animate">
                   <div className="relative flex-1">
                     <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                    <input type="text" placeholder="OTP code" value={formData.otpCode}
+                    <input type="text" placeholder={t('auth.otpCode')} value={formData.otpCode}
                       onChange={e => {
                         setFormData({ ...formData, otpCode: e.target.value });
                         if (isOtpVerified) {
@@ -541,43 +540,43 @@ export default function SignupScreen() {
                     {isSendingOtp ? (
                       <>
                         <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
-                        Sending...
+                        {t('auth.sending')}
                       </>
                     ) : isVerifyingOtp ? (
                       <>
                         <div className="w-4 h-4 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
-                        Verifying...
+                        {t('auth.verifying')}
                       </>
                     ) : isOtpVerified ? (
                       <>
                         <CheckCircle size={16} />
-                        Verified
+                        {t('auth.verified')}
                       </>
                     ) : countdown > 0 ? (
-                      `Verify (${countdown}s)`
+                      `${t('auth.verifyOtp')} (${countdown}s)`
                     ) : (
-                      'Send OTP'
+                      t('auth.sendOtp')
                     )}
                   </button>
                 </div>
 
                 {countdown > 0 && !isOtpVerified && (
                   <div className="text-center text-sm auth-form-animate">
-                    <span className="text-secondary">Didn't receive the code? </span>
+                    <span className="text-secondary">{t('auth.didntReceiveOtp')} </span>
                     <button
                       type="button"
                       onClick={handleSendOtp}
                       disabled={isSendingOtp}
                       className="text-cyan-500 hover:text-cyan-400 font-semibold transition-colors"
                     >
-                      Resend OTP
+                      {t('auth.resendOtp')}
                     </button>
                   </div>
                 )}
                  
                 <div className="relative auth-form-animate">
                   <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-                  <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={formData.password}
+                  <input type={showPassword ? 'text' : 'password'} placeholder={t('auth.password')} value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
                     className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both"
                     disabled={isLoading} required />
@@ -594,7 +593,7 @@ export default function SignupScreen() {
                     <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
                   ) : (
                     <>
-                      Create Account
+                      {t('auth.createAccount')}
                       <ArrowRight size={18} />
                     </>
                   )}
@@ -609,14 +608,14 @@ export default function SignupScreen() {
                 }}
                 className="w-full mt-4 py-2 text-sm font-medium text-cyan-500 hover:text-cyan-400 transition-colors auth-form-animate"
               >
-                ← Back to role selection
+                {t('auth.backToRoleSelectionBtn')}
               </button>
 
               <p className="text-center mt-6 text-sm auth-switch-text auth-form-animate">
-                Already have an account?{' '}
+                {t('auth.alreadyHaveAccount')}{' '}
                 <button className="font-semibold auth-link-cyan"
                   onClick={() => navigate('/auth/login')}>
-                  Log In
+                  {t('auth.login')}
                 </button>
               </p>
             </>

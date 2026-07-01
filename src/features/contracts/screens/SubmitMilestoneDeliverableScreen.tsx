@@ -23,6 +23,7 @@ import {
   formatContractDate,
   canSubmitMilestoneDeliverable,
 } from '../../../shared/utils/contractUtils';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/submit-milestone-deliverable-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
@@ -99,7 +100,7 @@ export default function SubmitMilestoneDeliverableScreen() {
       if (!contractId || !milestoneId) {
         setState((prev) => ({
           ...prev,
-          error: 'Missing contract or milestone ID',
+          error: t('contracts.contractNotFound'),
           loading: false,
         }));
         return;
@@ -110,37 +111,37 @@ export default function SubmitMilestoneDeliverableScreen() {
 
         const contractResponse = await contractGetAPI.getContractById(contractId);
         if (!contractResponse.success || !contractResponse.data) {
-          throw new Error(contractResponse.message || 'Failed to load contract details');
+          throw new Error(contractResponse.message || t('contracts.loadingContract'));
         }
         const contract = contractResponse.data;
 
         // Verify freelancer ownership
         const userProfileId = (user as { profileId?: string } | null)?.profileId;
         if (userProfileId && contract.freelancerProfilesId !== userProfileId) {
-          throw new Error('Unauthorized: You can only submit deliverables for your own contracts');
+          throw new Error(t('contracts.unauthorizedSubmitContract', { defaultValue: 'Unauthorized: You can only submit deliverables for your own contracts' }));
         }
 
         // Verify contract status
         if (contract.status !== ContractStatus.Active) {
-          throw new Error('Contract must be active to submit deliverables');
+          throw new Error(t('contracts.activeContractRequired', { defaultValue: 'Contract must be active to submit deliverables' }));
         }
 
         // Load milestone
         const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
         if (!milestoneResponse.success || !milestoneResponse.data) {
-          throw new Error(milestoneResponse.message || 'Failed to load milestone details');
+          throw new Error(milestoneResponse.message || t('contracts.loadingMilestone', { defaultValue: 'Failed to load milestone details' }));
         }
         const milestone = milestoneResponse.data;
 
         // Verify milestone belongs to this contract
         if (milestone.contract_id !== contractId) {
-          throw new Error('Milestone does not belong to this contract');
+          throw new Error(t('contracts.milestoneWrongContract', { defaultValue: 'Milestone does not belong to this contract' }));
         }
 
         // Check milestone status - should be awaiting deliverable (Pending status)
         if (!canSubmitMilestoneDeliverable(milestone.status)) {
           throw new Error(
-            `Cannot submit deliverables for milestone in ${MilestoneStatus[milestone.status]} status`
+            t('contracts.milestoneStatusNotAllowed', { status: MilestoneStatus[milestone.status], defaultValue: `Cannot submit deliverables for milestone in ${MilestoneStatus[milestone.status]} status` })
           );
         }
 
@@ -153,7 +154,7 @@ export default function SubmitMilestoneDeliverableScreen() {
       } catch (err) {
         setState((prev) => ({
           ...prev,
-          error: err instanceof Error ? err.message : 'Failed to load data',
+          error: err instanceof Error ? err.message : t('contracts.loadingMilestone', { defaultValue: 'Failed to load data' }),
           loading: false,
         }));
       }
@@ -173,13 +174,13 @@ export default function SubmitMilestoneDeliverableScreen() {
     selectedFiles.forEach((file) => {
       // Check file size
       if (file.size > MAX_FILE_SIZE) {
-        validationErrors.push(`MSG49: ${file.name} must be under 100MB`);
+        validationErrors.push(t('contracts.fileSizeError', { name: file.name, defaultValue: `MSG49: ${file.name} must be under 100MB` }));
       }
 
       // Check file extension
       const ext = file.name.split('.').pop()?.toLowerCase();
       if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
-        validationErrors.push(`${file.name} has unsupported file type`);
+        validationErrors.push(t('contracts.fileTypeError', { name: file.name, defaultValue: `${file.name} has unsupported file type` }));
       }
     });
 
@@ -224,7 +225,7 @@ export default function SubmitMilestoneDeliverableScreen() {
     if (!state.description.trim()) {
       setState((prev) => ({
         ...prev,
-        error: 'MSG32: Summary must not be empty or only spaces',
+        error: t('contracts.summaryRequired', { defaultValue: 'Summary must not be empty' }),
       }));
       return;
     }
@@ -232,7 +233,7 @@ export default function SubmitMilestoneDeliverableScreen() {
     if (state.description.trim().length > 5000) {
       setState((prev) => ({
         ...prev,
-        error: 'Description must be 5000 characters or less (BR-56)',
+        error: t('contracts.descriptionMaxLength', { defaultValue: 'Description must be 5000 characters or less' }),
       }));
       return;
     }
@@ -240,7 +241,7 @@ export default function SubmitMilestoneDeliverableScreen() {
     if (state.files.length === 0) {
       setState((prev) => ({
         ...prev,
-        error: 'Please upload at least one file',
+        error: t('contracts.uploadAtLeastOne', { defaultValue: 'Please upload at least one file' }),
       }));
       return;
     }
@@ -249,7 +250,7 @@ export default function SubmitMilestoneDeliverableScreen() {
       setState((prev) => ({ ...prev, submitting: true }));
 
       if (!state.milestone) {
-        throw new Error('Milestone not loaded');
+        throw new Error(t('contracts.milestoneNotFound'));
       }
 
       // Prepare form data
@@ -286,14 +287,14 @@ export default function SubmitMilestoneDeliverableScreen() {
       } else {
         setState((prev) => ({
           ...prev,
-          error: response.message || 'Failed to submit deliverables',
+          error: response.message || t('contracts.signingFailed'),
           submitting: false,
         }));
       }
     } catch (err) {
       setState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : 'An error occurred while submitting deliverables',
+        error: err instanceof Error ? err.message : t('contracts.signingFailed'),
         submitting: false,
       }));
     }
@@ -305,7 +306,7 @@ export default function SubmitMilestoneDeliverableScreen() {
         <div className="submit-milestone-wrapper">
           <div className="loading-container">
             <div className="spinner"></div>
-            <p>Loading milestone details...</p>
+            <p>{t('contracts.loadingMilestone', { defaultValue: 'Loading milestone details...' })}</p>
           </div>
         </div>
       </AppLayout>
@@ -318,11 +319,11 @@ export default function SubmitMilestoneDeliverableScreen() {
         <div className="submit-milestone-wrapper">
           <div className="error-full-page">
             <AlertCircle size={48} />
-            <h2>Unable to Load Milestone</h2>
+            <h2>{t('contracts.unableToLoadMilestone')}</h2>
             <p>{state.error}</p>
             <button onClick={() => navigate(-1)} className="btn-back">
               <ArrowLeft size={18} />
-              Go Back
+              {t('contracts.back')}
             </button>
           </div>
         </div>
@@ -336,11 +337,11 @@ export default function SubmitMilestoneDeliverableScreen() {
         <div className="submit-milestone-wrapper">
           <div className="error-full-page">
             <AlertCircle size={48} />
-            <h2>Milestone Not Found</h2>
-            <p>The milestone you're looking for could not be found.</p>
+            <h2>{t('contracts.milestoneNotFound')}</h2>
+            <p>{t('contracts.milestoneNotFound')}</p>
             <button onClick={() => navigate(-1)} className="btn-back">
               <ArrowLeft size={18} />
-              Go Back
+              {t('contracts.back')}
             </button>
           </div>
         </div>
@@ -356,14 +357,14 @@ export default function SubmitMilestoneDeliverableScreen() {
           <button
             onClick={() => navigate(-1)}
             className="back-button"
-            title="Go back"
+            title={t('contracts.back')}
           >
             <ArrowLeft size={20} />
           </button>
           <div className="header-content">
-            <h1 className="page-title">Submit Milestone Deliverables</h1>
+            <h1 className="page-title">{t('contracts.submitMilestoneDeliverables')}</h1>
             <p className="page-subtitle">
-              Upload your work for <strong>{state.contract.title}</strong>
+              {t('contracts.uploadWorkFor')} <strong>{state.contract.title}</strong>
             </p>
           </div>
         </div>
@@ -374,11 +375,8 @@ export default function SubmitMilestoneDeliverableScreen() {
             <div className="success-banner">
               <CheckCircle2 size={24} />
               <div className="success-content">
-                <h3>Deliverables Submitted Successfully!</h3>
-                <p>
-                  Your deliverables have been submitted to the client for review. You will be
-                  notified when they respond.
-                </p>
+                <h3>{t('contracts.deliverablesSubmitted')}</h3>
+                <p>{t('contracts.deliverablesSubmittedDesc')}</p>
               </div>
             </div>
           )}
@@ -399,7 +397,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                   <div className="detail-item">
                     <GigCoinLogo size={18} />
                     <div className="detail-text">
-                      <span className="detail-label">Milestone Amount</span>
+                      <span className="detail-label">{t('contracts.milestoneAmount')}</span>
                       <span className="detail-value">
                         {formatContractAmount(state.milestone.amount)}
                       </span>
@@ -409,7 +407,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                   <div className="detail-item">
                     <Calendar size={18} className="detail-icon" />
                     <div className="detail-text">
-                      <span className="detail-label">Due Date</span>
+                      <span className="detail-label">{t('contracts.dueDate')}</span>
                       <span className="detail-value">
                         {formatContractDate(state.milestone.due_date)}
                       </span>
@@ -420,7 +418,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                     <div className="detail-item">
                       <CheckCircle2 size={18} className="detail-icon success" />
                       <div className="detail-text">
-                        <span className="detail-label">Paid On</span>
+                        <span className="detail-label">{t('contracts.paidOn')}</span>
                         <span className="detail-value">
                           {formatContractDate(state.milestone.paid_at)}
                         </span>
@@ -449,18 +447,18 @@ export default function SubmitMilestoneDeliverableScreen() {
                 <form onSubmit={handleSubmit} className="deliverable-form">
                   {/* Description Section */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Deliverable Details</h3>
+                    <h3 className="form-section-title">{t('contracts.deliverableDetails')}</h3>
 
                     <div className="form-group">
                       <label htmlFor="description" className="form-label">
-                        Deliverable Description
+                        {t('contracts.deliverableDesc')}
                         <span className="required">*</span>
                       </label>
                       <textarea
                         id="description"
                         value={state.description}
                         onChange={handleDescriptionChange}
-                        placeholder="Describe what you're submitting, including any important details, improvements, or notes for the client..."
+                        placeholder={t('contracts.deliverablePlaceholder')}
                         className="form-textarea"
                         maxLength={5000}
                         rows={6}
@@ -470,14 +468,14 @@ export default function SubmitMilestoneDeliverableScreen() {
                         <span className="char-count">
                           {state.description.length}/5000
                         </span>
-                        <span className="hint-text">Maximum 5000 characters (BR-56)</span>
+                        <span className="hint-text">{t('contracts.max5000Chars')}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* File Upload Section */}
                   <div className="form-section">
-                    <h3 className="form-section-title">Upload Files</h3>
+                    <h3 className="form-section-title">{t('contracts.uploadFiles')}</h3>
 
                     <div className="file-upload-area">
                       <input
@@ -498,13 +496,13 @@ export default function SubmitMilestoneDeliverableScreen() {
                         <Upload size={32} />
                         <span className="upload-text">
                           {state.files.length === 0
-                            ? 'Click to upload or drag & drop'
-                            : `${state.files.length} file${
-                                state.files.length !== 1 ? 's' : ''
-                              } selected`}
+                            ? t('contracts.clickOrDragUpload')
+                            : state.files.length === 1
+                            ? t('contracts.filesSelected', { count: state.files.length })
+                            : t('contracts.filesSelectedPlural', { count: state.files.length })}
                         </span>
                         <span className="upload-hint">
-                          Max 100MB per file (BR-55) • Supports documents, images, code, archives
+                          {t('contracts.max100Mb')}
                         </span>
                       </button>
                     </div>
@@ -514,14 +512,10 @@ export default function SubmitMilestoneDeliverableScreen() {
                       <div className="files-list">
                         <div className="files-header">
                           <h4 className="files-title">
-                            Attached Files ({state.files.length})
+                            {t('contracts.attachedFiles', { count: state.files.length })}
                           </h4>
                           <span className="files-info">
-                            {(
-                              state.files.reduce((sum, f) => sum + f.size, 0) /
-                              (1024 * 1024)
-                            ).toFixed(2)}{' '}
-                            MB total
+                            {t('contracts.totalMb', { count: (state.files.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024)).toFixed(2) })}
                           </span>
                         </div>
 
@@ -553,15 +547,15 @@ export default function SubmitMilestoneDeliverableScreen() {
                     )}
 
                     <div className="supported-formats">
-                      <p className="formats-label">Supported file types:</p>
+                      <p className="formats-label">{t('contracts.supportedFormats')}</p>
                       <div className="formats-list">
-                        <span className="format-badge">Documents</span>
-                        <span className="format-badge">Spreadsheets</span>
-                        <span className="format-badge">Presentations</span>
-                        <span className="format-badge">Images</span>
-                        <span className="format-badge">Videos</span>
-                        <span className="format-badge">Archives</span>
-                        <span className="format-badge">Source Code</span>
+                        <span className="format-badge">{t('contracts.documents')}</span>
+                        <span className="format-badge">{t('contracts.spreadsheets')}</span>
+                        <span className="format-badge">{t('contracts.presentations')}</span>
+                        <span className="format-badge">{t('contracts.images')}</span>
+                        <span className="format-badge">{t('contracts.videos')}</span>
+                        <span className="format-badge">{t('contracts.archives')}</span>
+                        <span className="format-badge">{t('contracts.sourceCode')}</span>
                       </div>
                     </div>
                   </div>
@@ -571,9 +565,9 @@ export default function SubmitMilestoneDeliverableScreen() {
                     <div className="info-box">
                       <Clock size={20} />
                       <div className="info-text">
-                        <p className="info-title">Delivery Date & Time</p>
+                        <p className="info-title">{t('contracts.deliveryDateTime')}</p>
                         <p className="info-detail">
-                          Submission will be timestamped for audit trail
+                          {t('contracts.deliveryDateTimeDesc')}
                         </p>
                       </div>
                     </div>
@@ -581,9 +575,9 @@ export default function SubmitMilestoneDeliverableScreen() {
                     <div className="info-box">
                       <FileUp size={20} />
                       <div className="info-text">
-                        <p className="info-title">Client Notification</p>
+                        <p className="info-title">{t('contracts.clientNotification')}</p>
                         <p className="info-detail">
-                          The client will be notified when you submit your deliverables
+                          {t('contracts.clientNotificationDesc')}
                         </p>
                       </div>
                     </div>
@@ -597,7 +591,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                       className="action-btn action-cancel"
                       disabled={state.submitting}
                     >
-                      Cancel
+                      {t('contracts.cancel')}
                     </button>
                     <button
                       type="submit"
@@ -611,12 +605,12 @@ export default function SubmitMilestoneDeliverableScreen() {
                       {state.submitting ? (
                         <>
                           <span className="spinner-small"></span>
-                          Submitting...
+                          {t('contracts.submitting')}
                         </>
                       ) : (
                         <>
                           <CheckCircle2 size={20} />
-                          Submit Deliverables
+                          {t('contracts.submitDeliverables')}
                         </>
                       )}
                     </button>
