@@ -98,6 +98,42 @@ export interface ESignDocumentDto {
   signatures: ESignSignatureDto[];
 }
 
+export interface ESignDocumentListItemDto {
+  documentId: string;
+  jobPostId: string;
+  contractId: string | null;
+  documentCode: string;
+  documentType: string;
+  title: string;
+  documentStatus: ESignDocumentStatus;
+  currentUserSignerRole: number;
+  currentUserSignedAt?: string | null;
+  hasClientSigned: boolean;
+  hasFreelancerSigned: boolean;
+  signatureCount: number;
+  finalizedAt?: string | null;
+  exportedPdfUrl?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface ESignDocumentListQueryParams {
+  page?: number;
+  pageSize?: number;
+  status?: number;
+  documentType?: 'job' | 'contract' | 'JobPost' | 'Contract';
+  q?: string;
+}
+
+export interface ESignDocumentListPageDto {
+  items: ESignDocumentListItemDto[];
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
 export interface CreateSignatureDto {
   documentId: string;
   signerId: string;

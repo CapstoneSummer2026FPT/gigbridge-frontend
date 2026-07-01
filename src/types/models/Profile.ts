@@ -80,6 +80,27 @@ export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
   skills: FreelancerSkillDto[];
   portfolioItems: PortfolioItemDto[];
   workExperiences: WorkExperienceDto[];
+  cheatingViolationCount?: number;
+  cheatingPenaltyLogs?: CheatingPenaltyLogDto[];
+}
+
+export interface CheatingPenaltyLogDto {
+  violationId: string;
+  proposalId: string;
+  jobPostId: string;
+  jobTitle: string;
+  violationNumber: number;
+  totalEventCount: number;
+  copyCount: number;
+  pasteCount: number;
+  tabSwitchCount: number;
+  screenshotAttemptCount: number;
+  focusLossCount: number;
+  fullscreenExitCount: number;
+  action: number;
+  eloDelta: number;
+  suspendedUntil?: string | null;
+  createdAt: string;
 }
 
 export interface UpdateClientProfileDto {

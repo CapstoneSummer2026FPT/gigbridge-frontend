@@ -665,6 +665,23 @@ export default function ScreenProposalAnswerQuestion() {
   }, [proposalId, logCheatingEvent, secureModeStarted, showCheatingWarning]);
 
   useEffect(() => {
+    if (!secureModeStarted) {
+      return undefined;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [secureModeStarted]);
+
+  useEffect(() => {
     return () => {
       if (warningTimerRef.current !== null) {
         window.clearTimeout(warningTimerRef.current);
@@ -747,15 +764,17 @@ export default function ScreenProposalAnswerQuestion() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="max-w-4xl mx-auto py-16 text-center text-muted-foreground">Loading questions...</div>
+      <AppLayout hideTopNav hideAIWidget excludeMeshGradient>
+        <div className="flex min-h-screen items-center justify-center px-4 text-center text-muted-foreground">
+          Loading questions...
+        </div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout>
-      <div ref={secureAreaRef} className="relative min-h-screen bg-background px-4 py-8">
+    <AppLayout hideTopNav hideAIWidget excludeMeshGradient>
+      <div ref={secureAreaRef} className="relative h-screen overflow-y-auto bg-background px-4 py-6 pb-28 sm:py-8">
         {secureModeStarted ? (
           <div className="pointer-events-none absolute inset-0 z-10 grid grid-cols-2 gap-10 overflow-hidden opacity-[0.055] sm:grid-cols-3 lg:grid-cols-4">
             {watermarkTiles.map(tile => (
@@ -883,7 +902,7 @@ export default function ScreenProposalAnswerQuestion() {
             </button>
           ) : null}
 
-          <div className="glass-card p-6">
+          <div className="glass-card overflow-visible p-6">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-primary">JobPost Questions</h1>
@@ -1012,7 +1031,7 @@ export default function ScreenProposalAnswerQuestion() {
               </div>
             )}
 
-            <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-border pt-4">
+            <div className="sticky bottom-0 z-30 -mx-6 mt-6 flex flex-wrap justify-end gap-3 border-t border-border bg-background/95 px-6 py-4 shadow-[0_-16px_32px_rgba(0,0,0,0.08)] backdrop-blur-md">
               {!secureModeStarted ? (
                 <button
                   type="button"

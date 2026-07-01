@@ -1,13 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Ban, Send, Plus,
   Paperclip, Smile, CheckCircle, Circle, Download,
-  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare
+  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
+  Upload, Link2, X, AlertCircle, Loader2
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
-import { ContractStatus } from '../../../types/models/Contract';
+import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -20,7 +21,23 @@ export default function ProjectWorkspaceScreen() {
   const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
   const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
   const [showProfilePopover, setShowProfilePopover] = useState(false);
+  const [submitModal, setSubmitModal] = useState<{ milestoneId: string; title: string } | null>(null);
+  const [submitMode, setSubmitMode] = useState<'file' | 'link'>('file');
+  const [submitDescription, setSubmitDescription] = useState('');
+  const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const [submitLink, setSubmitLink] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [productMode, setProductMode] = useState<'file' | 'link'>('file');
+  const [productNote, setProductNote] = useState('');
+  const [productFile, setProductFile] = useState<File | null>(null);
+  const [productLink, setProductLink] = useState('');
+  const [productError, setProductError] = useState<string | null>(null);
+  const [isSendingProduct, setIsSendingProduct] = useState(false);
   const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitFileInputRef = useRef<HTMLInputElement>(null);
+  const productFileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     user,
@@ -37,6 +54,7 @@ export default function ProjectWorkspaceScreen() {
     setIsBlocked,
     project,
     activeContract,
+    currentProductHandoff,
     workspaceProjects,
     currentProjData,
     partnerName,
@@ -48,9 +66,187 @@ export default function ProjectWorkspaceScreen() {
     handleSendMessage,
     handleSimulateAttachment,
     handleCreateMockMilestone,
+    handleSubmitMilestoneDeliverable,
+    handleSubmitProductHandoff,
     chatEndRef,
   } = useProjectWorkspace(contractId || '');
   const workspaceContractId = contractId || activeProjectId;
+
+  const resetSubmitModal = () => {
+    setSubmitModal(null);
+    setSubmitMode('file');
+    setSubmitDescription('');
+    setSubmitFile(null);
+    setSubmitLink('');
+    setSubmitError(null);
+    setIsSubmittingDeliverable(false);
+    if (submitFileInputRef.current) {
+      submitFileInputRef.current.value = '';
+    }
+  };
+
+  const openSubmitModal = (milestone: { id: string; title: string }) => {
+    setSubmitModal({ milestoneId: milestone.id, title: milestone.title });
+    setSubmitMode('file');
+    setSubmitDescription('');
+    setSubmitFile(null);
+    setSubmitLink('');
+    setSubmitError(null);
+  };
+
+  const handleSelectSubmitFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSubmitError(null);
+
+    if (!file) {
+      setSubmitFile(null);
+      return;
+    }
+
+    if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
+      setSubmitFile(null);
+      setSubmitError('File must be greater than 0 and no larger than 100MB.');
+      if (submitFileInputRef.current) {
+        submitFileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setSubmitFile(file);
+  };
+
+  const handleSubmitDeliverable = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!submitModal) return;
+
+    const trimmedDescription = submitDescription.trim();
+    const trimmedLink = submitLink.trim();
+
+    if (trimmedDescription.length > 5000) {
+      setSubmitError('Description must be 5000 characters or less.');
+      return;
+    }
+
+    if (submitMode === 'file' && !submitFile) {
+      setSubmitError('Choose one file before submitting.');
+      return;
+    }
+
+    if (submitMode === 'link') {
+      try {
+        const url = new URL(trimmedLink);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          throw new Error('Invalid URL protocol.');
+        }
+      } catch {
+        setSubmitError('Enter a valid HTTP or HTTPS link.');
+        return;
+      }
+    }
+
+    setIsSubmittingDeliverable(true);
+    setSubmitError(null);
+
+    const result = await handleSubmitMilestoneDeliverable(submitModal.milestoneId, {
+      description: trimmedDescription,
+      file: submitMode === 'file' ? submitFile : null,
+      externalUrl: submitMode === 'link' ? trimmedLink : undefined,
+    });
+
+    if (!result.success) {
+      setSubmitError(result.message || 'Failed to submit deliverable.');
+      setIsSubmittingDeliverable(false);
+      return;
+    }
+
+    resetSubmitModal();
+  };
+
+  const resetProductModal = () => {
+    setProductModalOpen(false);
+    setProductMode('file');
+    setProductNote('');
+    setProductFile(null);
+    setProductLink('');
+    setProductError(null);
+    setIsSendingProduct(false);
+    if (productFileInputRef.current) {
+      productFileInputRef.current.value = '';
+    }
+  };
+
+  const handleSelectProductFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setProductError(null);
+
+    if (!file) {
+      setProductFile(null);
+      return;
+    }
+
+    if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
+      setProductFile(null);
+      setProductError('File must be greater than 0 and no larger than 100MB.');
+      if (productFileInputRef.current) {
+        productFileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setProductFile(file);
+  };
+
+  const handleSendProductMaterials = async (event: FormEvent) => {
+    event.preventDefault();
+
+    const trimmedNote = productNote.trim();
+    const trimmedLink = productLink.trim();
+
+    if (trimmedNote.length > 2000) {
+      setProductError('Note must be 2000 characters or less.');
+      return;
+    }
+
+    if (productMode === 'file' && !productFile) {
+      setProductError('Choose one file before sending.');
+      return;
+    }
+
+    if (productMode === 'link') {
+      try {
+        const url = new URL(trimmedLink);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          throw new Error('Invalid URL protocol.');
+        }
+      } catch {
+        setProductError('Enter a valid HTTP or HTTPS link.');
+        return;
+      }
+    }
+
+    setIsSendingProduct(true);
+    setProductError(null);
+
+    const result = await handleSubmitProductHandoff({
+      note: trimmedNote,
+      file: productMode === 'file' ? productFile : null,
+      externalUrl: productMode === 'link' ? trimmedLink : undefined,
+    });
+
+    if (!result.success) {
+      setProductError(result.message || 'Failed to send work materials.');
+      setIsSendingProduct(false);
+      return;
+    }
+
+    resetProductModal();
+    setActiveTab('files');
+    setShowInfo(true);
+  };
+
+  const currentProductUrl = currentProductHandoff?.sourceType === ContractProductHandoffSourceType.Link
+    ? currentProductHandoff.externalUrl
+    : currentProductHandoff?.fileUrl;
 
   return (
     <AppLayout fullWidth hideAIWidget>
@@ -76,6 +272,16 @@ export default function ProjectWorkspaceScreen() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {isClient && activeContract?.status === ContractStatus.Active && (
+              <button
+                onClick={() => setProductModalOpen(true)}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-green-500/20 transition-all uppercase tracking-widest cursor-pointer flex items-center gap-2"
+                title="Send work materials to freelancer"
+              >
+                <Upload size={14} />
+                <span>Send Work Materials</span>
+              </button>
+            )}
             <button
               onClick={() => navigate(`/contracts/${project.contractId || contractId || ''}`)}
               className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all uppercase tracking-widest cursor-pointer"
@@ -238,6 +444,9 @@ export default function ProjectWorkspaceScreen() {
                 project.milestones.map((milestone, idx) => {
                   const isCompleted = milestone.status === 'paid' || milestone.status === 'approved';
                   const isInProgress = milestone.status === 'in_progress';
+                  const isSubmitted = milestone.status === 'submitted';
+                  const canFreelancerSubmit = !isClient && isInProgress;
+                  const canClientReview = isClient && isSubmitted;
 
                   return (
                     <div
@@ -300,32 +509,36 @@ export default function ProjectWorkspaceScreen() {
                         </div>
                       </div>
 
-                      {isInProgress && (
+                      {(isInProgress || isSubmitted) && (
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                           <div className="flex-1 max-w-xs">
                             <div className="flex justify-between text-[10px] mb-1">
                               <span className="text-muted-foreground">{t('workspace.progress')}</span>
-                              <span className="font-bold text-[var(--gb-cyan)]">65%</span>
+                              <span className="font-bold text-[var(--gb-cyan)]">{isSubmitted ? '90%' : '65%'}</span>
                             </div>
                             <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
-                              <div className="bg-[var(--gb-cyan)] h-full rounded-full w-[65%]"></div>
+                              <div className={`bg-[var(--gb-cyan)] h-full rounded-full ${isSubmitted ? 'w-[90%]' : 'w-[65%]'}`}></div>
                             </div>
                           </div>
                           <div>
-                            {isClient ? (
+                            {canClientReview ? (
                               <button
                                 onClick={() => navigate(`/contracts/${workspaceContractId}/milestones/${milestone.id}/approve`)}
                                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
                                 {t('workspace.reviewMilestone')}
                               </button>
-                            ) : (
+                            ) : canFreelancerSubmit ? (
                               <button
-                                onClick={() => navigate(`/contracts/${workspaceContractId}/deliverables/${milestone.id}`)}
+                                onClick={() => openSubmitModal(milestone)}
                                 className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
                                 {t('workspace.submitDeliverable')}
                               </button>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {isSubmitted ? 'Waiting for client review' : 'Waiting for freelancer'}
+                              </span>
                             )}
                           </div>
                         </div>
@@ -566,6 +779,28 @@ export default function ProjectWorkspaceScreen() {
                     <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">{t('workspace.seeAll')}</button>
                   </div>
                   <div className="space-y-3">
+                    {currentProductHandoff && currentProductUrl && (
+                      <div
+                        onClick={() => window.open(currentProductUrl, '_blank', 'noopener,noreferrer')}
+                        className="flex items-center gap-3 p-3 bg-[var(--gb-cyan)]/5 hover:bg-[var(--gb-cyan)]/10 rounded-lg cursor-pointer transition-all border border-[var(--gb-cyan)]/20"
+                      >
+                        <div className="w-9 h-9 rounded bg-[var(--gb-cyan)]/10 flex items-center justify-center flex-shrink-0 text-[var(--gb-cyan)]">
+                          {currentProductHandoff.sourceType === ContractProductHandoffSourceType.Link ? <Link2 size={18} /> : <FileText size={18} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold truncate text-foreground">
+                            {currentProductHandoff.sourceType === ContractProductHandoffSourceType.Link
+                              ? 'Work materials link'
+                              : currentProductHandoff.fileName || 'Work materials file'}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground truncate">
+                            Version {currentProductHandoff.version}
+                            {currentProductHandoff.note ? ` • ${currentProductHandoff.note}` : ''}
+                          </p>
+                        </div>
+                        <Download size={14} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
+                      </div>
+                    )}
                     {[
                       { name: 'Contract_Alex_J.pdf', size: '2.4 MB', date: 'Oct 14', icon: <FileText className="text-red-500" /> },
                       { name: 'UI_Moodboard_v1.zip', size: '18.5 MB', date: 'Oct 13', icon: <ImageIcon className="text-[var(--gb-cyan)]" /> },
@@ -593,6 +828,284 @@ export default function ProjectWorkspaceScreen() {
           </aside>
         </div>
       </div>
+
+      {submitModal && (
+        <div className="workspace-submit-modal-backdrop" role="presentation">
+          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title">
+            <div className="workspace-submit-modal-header">
+              <div>
+                <h3 id="workspace-submit-title">Submit Deliverable</h3>
+                <p>{submitModal.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={resetSubmitModal}
+                className="workspace-submit-icon-button"
+                title="Close"
+                disabled={isSubmittingDeliverable}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitDeliverable} className="workspace-submit-form">
+              {submitError && (
+                <div className="workspace-submit-error">
+                  <AlertCircle size={16} />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
+              <div className="workspace-submit-mode" role="tablist" aria-label="Submission source">
+                <button
+                  type="button"
+                  className={submitMode === 'file' ? 'active' : ''}
+                  onClick={() => {
+                    setSubmitMode('file');
+                    setSubmitLink('');
+                    setSubmitError(null);
+                  }}
+                >
+                  <Upload size={15} />
+                  File
+                </button>
+                <button
+                  type="button"
+                  className={submitMode === 'link' ? 'active' : ''}
+                  onClick={() => {
+                    setSubmitMode('link');
+                    setSubmitFile(null);
+                    setSubmitError(null);
+                    if (submitFileInputRef.current) {
+                      submitFileInputRef.current.value = '';
+                    }
+                  }}
+                >
+                  <Link2 size={15} />
+                  Link
+                </button>
+              </div>
+
+              {submitMode === 'file' ? (
+                <div className="workspace-submit-field">
+                  <label htmlFor="workspace-deliverable-file">File</label>
+                  <input
+                    ref={submitFileInputRef}
+                    id="workspace-deliverable-file"
+                    type="file"
+                    onChange={handleSelectSubmitFile}
+                    disabled={isSubmittingDeliverable}
+                  />
+                  {submitFile && (
+                    <div className="workspace-submit-file">
+                      <FileText size={15} />
+                      <span>{submitFile.name}</span>
+                      <strong>{(submitFile.size / (1024 * 1024)).toFixed(2)} MB</strong>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="workspace-submit-field">
+                  <label htmlFor="workspace-deliverable-link">Link</label>
+                  <input
+                    id="workspace-deliverable-link"
+                    type="url"
+                    value={submitLink}
+                    onChange={(event) => setSubmitLink(event.target.value)}
+                    placeholder="https://..."
+                    disabled={isSubmittingDeliverable}
+                  />
+                </div>
+              )}
+
+              <div className="workspace-submit-field">
+                <label htmlFor="workspace-deliverable-description">Description</label>
+                <textarea
+                  id="workspace-deliverable-description"
+                  value={submitDescription}
+                  onChange={(event) => setSubmitDescription(event.target.value)}
+                  maxLength={5000}
+                  rows={4}
+                  placeholder="Add notes for the client..."
+                  disabled={isSubmittingDeliverable}
+                />
+                <span className="workspace-submit-count">{submitDescription.length}/5000</span>
+              </div>
+
+              <div className="workspace-submit-actions">
+                <button
+                  type="button"
+                  className="workspace-submit-secondary"
+                  onClick={resetSubmitModal}
+                  disabled={isSubmittingDeliverable}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="workspace-submit-primary"
+                  disabled={
+                    isSubmittingDeliverable ||
+                    (submitMode === 'file' && !submitFile) ||
+                    (submitMode === 'link' && !submitLink.trim())
+                  }
+                >
+                  {isSubmittingDeliverable ? (
+                    <>
+                      <Loader2 size={15} className="workspace-submit-spin" />
+                      Submitting
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={15} />
+                      Submit
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {productModalOpen && (
+        <div className="workspace-submit-modal-backdrop" role="presentation">
+          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-product-title">
+            <div className="workspace-submit-modal-header">
+              <div>
+                <h3 id="workspace-product-title">Send Work Materials</h3>
+                <p>Share the file or link the freelancer needs before working.</p>
+              </div>
+              <button
+                type="button"
+                onClick={resetProductModal}
+                className="workspace-submit-icon-button"
+                title="Close"
+                disabled={isSendingProduct}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendProductMaterials} className="workspace-submit-form">
+              {productError && (
+                <div className="workspace-submit-error">
+                  <AlertCircle size={16} />
+                  <span>{productError}</span>
+                </div>
+              )}
+
+              <div className="workspace-submit-mode" role="tablist" aria-label="Work material source">
+                <button
+                  type="button"
+                  className={productMode === 'file' ? 'active' : ''}
+                  onClick={() => {
+                    setProductMode('file');
+                    setProductLink('');
+                    setProductError(null);
+                  }}
+                >
+                  <Upload size={15} />
+                  File
+                </button>
+                <button
+                  type="button"
+                  className={productMode === 'link' ? 'active' : ''}
+                  onClick={() => {
+                    setProductMode('link');
+                    setProductFile(null);
+                    setProductError(null);
+                    if (productFileInputRef.current) {
+                      productFileInputRef.current.value = '';
+                    }
+                  }}
+                >
+                  <Link2 size={15} />
+                  Link
+                </button>
+              </div>
+
+              {productMode === 'file' ? (
+                <div className="workspace-submit-field">
+                  <label htmlFor="workspace-product-file">Work material file</label>
+                  <input
+                    ref={productFileInputRef}
+                    id="workspace-product-file"
+                    type="file"
+                    onChange={handleSelectProductFile}
+                    disabled={isSendingProduct}
+                  />
+                  {productFile && (
+                    <div className="workspace-submit-file">
+                      <FileText size={15} />
+                      <span>{productFile.name}</span>
+                      <strong>{(productFile.size / (1024 * 1024)).toFixed(2)} MB</strong>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="workspace-submit-field">
+                  <label htmlFor="workspace-product-link">Work material link</label>
+                  <input
+                    id="workspace-product-link"
+                    type="url"
+                    value={productLink}
+                    onChange={(event) => setProductLink(event.target.value)}
+                    placeholder="https://..."
+                    disabled={isSendingProduct}
+                  />
+                </div>
+              )}
+
+              <div className="workspace-submit-field">
+                <label htmlFor="workspace-product-note">Note</label>
+                <textarea
+                  id="workspace-product-note"
+                  value={productNote}
+                  onChange={(event) => setProductNote(event.target.value)}
+                  maxLength={2000}
+                  rows={4}
+                  placeholder="Describe how the freelancer should use these materials..."
+                  disabled={isSendingProduct}
+                />
+                <span className="workspace-submit-count">{productNote.length}/2000</span>
+              </div>
+
+              <div className="workspace-submit-actions">
+                <button
+                  type="button"
+                  className="workspace-submit-secondary"
+                  onClick={resetProductModal}
+                  disabled={isSendingProduct}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="workspace-submit-primary"
+                  disabled={
+                    isSendingProduct ||
+                    (productMode === 'file' && !productFile) ||
+                    (productMode === 'link' && !productLink.trim())
+                  }
+                >
+                  {isSendingProduct ? (
+                    <>
+                      <Loader2 size={15} className="workspace-submit-spin" />
+                      Sending
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={15} />
+                      Send
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

@@ -20,6 +20,10 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor - attach token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -142,7 +146,7 @@ export const apiService = {
     }
   },
 
-  async post<T>(endpoint: string, data: Record<string, any> = {}): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data: any = {}): Promise<ApiResponse<T>> {
     try {
       const response = await apiClient.post<ApiResponse<T>>(endpoint, data);
       return handleResponse(response);

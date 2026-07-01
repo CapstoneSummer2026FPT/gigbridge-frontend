@@ -23,6 +23,7 @@ import {
 } from '../../../shared/utils/contractUtils';
 import '../styles/manage-contract-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { ContractAreaTabs } from '../components/ContractAreaTabs';
 
 interface MilestoneDisplay extends Milestone {
   percentageComplete: number;
@@ -280,6 +281,7 @@ export default function ManageContractScreen() {
   return (
     <AppLayout>
       <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-10 relative">
+        <ContractAreaTabs />
         
         {/* Glow decorative background elements */}
         <div className="absolute top-0 right-[10%] w-[350px] h-[350px] rounded-full bg-gradient-to-br from-blue-500/5 to-purple-500/5 blur-3xl -z-10 pointer-events-none" />

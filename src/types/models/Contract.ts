@@ -26,6 +26,11 @@ export enum MilestoneStatus {
   Disputed = 6,
 }
 
+export enum ContractProductHandoffSourceType {
+  File = 0,
+  Link = 1,
+}
+
 export interface Contract {
   id: string;
   job_post_id: string;
@@ -119,6 +124,24 @@ export interface WithdrawMilestoneResponse {
   milestoneReleasedAmountVnd: number;
   escrowReleasedAmountVnd: number;
   escrowStatus: number;
+}
+
+export interface ContractProductHandoffResponse {
+  contractProductHandoffId: string;
+  contractId: string;
+  submittedByUserId: string;
+  sourceType: ContractProductHandoffSourceType;
+  fileName?: string | null;
+  fileUrl?: string | null;
+  mimeType?: string | null;
+  fileSizeBytes?: number | null;
+  externalUrl?: string | null;
+  note?: string | null;
+  version: number;
+  isCurrent: boolean;
+  receivedByUserId?: string | null;
+  receivedAt?: string | null;
+  createdAt: string;
 }
 
 export interface MilestoneAttachment {

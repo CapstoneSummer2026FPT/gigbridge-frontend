@@ -8,10 +8,28 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
 import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
 import { ReportUserModal } from '../components/ReportUserModal';
+import type { CheatingPenaltyLogDto } from '../../../types/models/Profile';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 
+
+const TEMPORARY_SUSPENSION_ACTION = 2;
+
+const formatPenaltyDate = (value: string): string =>
+  new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+const getPenaltyActionLabel = (action: number): string =>
+  action === TEMPORARY_SUSPENSION_ACTION ? 'Temporary suspension' : 'Elo penalty';
+
+const renderPenaltyMeta = (log: CheatingPenaltyLogDto): string =>
+  `Events: ${log.totalEventCount} | C:${log.copyCount} P:${log.pasteCount} T:${log.tabSwitchCount} S:${log.screenshotAttemptCount} F:${log.focusLossCount} X:${log.fullscreenExitCount}`;
 
 export default function FreelancerProfileScreen() {
   const { t } = useTranslation();
@@ -72,6 +90,8 @@ export default function FreelancerProfileScreen() {
   const mockSkills = profileData.skills;
   const mockExperience = profileData.experience;
   const mockPortfolio = profileData.portfolio;
+  const cheatingPenaltyLogs = (profileData.cheatingPenaltyLogs ?? []) as CheatingPenaltyLogDto[];
+  const cheatingViolationCount = Number(profileData.cheatingViolationCount ?? cheatingPenaltyLogs.length);
 
   return (
     <AppLayout>
@@ -278,6 +298,59 @@ export default function FreelancerProfileScreen() {
                 <span className="font-label-md text-label-md uppercase tracking-wider">{t('profile.eloPoints')}</span>
               </div>
             </div>
+
+            {cheatingPenaltyLogs.length > 0 ? (
+              <div className="bento-card col-span-1 md:col-span-6 lg:col-span-8 h-full">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+                  <div>
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface mb-1">Anti-cheat Penalty History</h2>
+                    <p className="font-body-md text-body-md text-on-surface-variant">
+                      Violated JobPost interviews: {cheatingViolationCount}
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-lg bg-error-container/10 text-error px-3 py-2 font-label-md text-label-md w-fit">
+                    <AlertCircle size={16} />
+                    Private
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {cheatingPenaltyLogs.map(log => (
+                    <div
+                      key={log.violationId}
+                      className="rounded-lg border border-outline-variant bg-surface-container-lowest p-4"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <h3 className="font-label-md text-[15px] font-bold text-on-surface truncate" title={log.jobTitle}>
+                            {log.jobTitle}
+                          </h3>
+                          <p className="font-body-md text-[13px] text-on-surface-variant">
+                            {formatPenaltyDate(log.createdAt)}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-surface-container-high px-3 py-1 font-label-md text-[12px] text-on-surface-variant w-fit">
+                          Violation #{log.violationNumber}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 font-body-md text-[13px] text-on-surface-variant">
+                        <span>Action: {getPenaltyActionLabel(log.action)}</span>
+                        <span>Elo delta: {log.eloDelta}</span>
+                        {log.suspendedUntil ? (
+                          <span>Suspended until: {formatPenaltyDate(log.suspendedUntil)}</span>
+                        ) : (
+                          <span>No suspension</span>
+                        )}
+                      </div>
+                      <p className="font-body-md text-[12px] text-on-surface-variant mt-2">
+                        {renderPenaltyMeta(log)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {/* Profile Statistics */}
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col justify-between h-full">

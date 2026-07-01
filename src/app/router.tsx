@@ -73,6 +73,7 @@ import GoogleMeetOAuthCallbackScreen from '../features/integrations/screens/Goog
 import {
   ApproveMilestoneScreen,
   CreateEsignContractScreen,
+  ESignContractsScreen,
   EsignDocumentSigningScreen,
   FreelancerContractScreen,
   ManageContractScreen,
@@ -169,6 +170,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/post/guide', element: <ProtectedRoute requireAuth requireSetup><PostJobPreGuideScreen /></ProtectedRoute> },
       { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup><PostJobScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobContractScreen /></ProtectedRoute> },
+      { path: 'jobs/post/esign', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobEsignScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract/esign', element: <ProtectedRoute requireAuth requireSetup><CreatePostJobEsignScreen /></ProtectedRoute> },
       { path: 'jobs/browse', element: <ProtectedRoute requireAuth><BrowseJobsScreen /></ProtectedRoute> },
       { path: 'jobs/saved', element: <ProtectedRoute requireAuth><SavedJobsScreen /></ProtectedRoute> },
@@ -196,6 +198,7 @@ export const router = createBrowserRouter([
 
       // Contracts - requires authentication and setup
       { path: 'contracts', element: <ProtectedRoute requireAuth requireSetup><ContractListRoute /></ProtectedRoute> },
+      { path: 'contracts/esign', element: <ProtectedRoute requireAuth requireSetup><ESignContractsScreen /></ProtectedRoute> },
       { path: 'contracts/create/:proposalId', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/disputes/create', element: <ProtectedRoute requireAuth requireSetup><CreateDisputeScreen /></ProtectedRoute> },

@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractDto, ContractQueryParams, Milestone, MilestoneAttachment } from '../../types/models/Contract';
+import type { ContractDto, ContractProductHandoffResponse, ContractQueryParams, Milestone, MilestoneAttachment } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 const milestonesUrl = 'Milestones';
@@ -337,5 +337,29 @@ export const contractGetAPI = {
     milestoneId: string
   ): Promise<ApiResponse<MilestoneAttachment[]>> => {
     return apiService.get<MilestoneAttachment[]>(`${milestonesUrl}/${milestoneId}/attachments`);
+  },
+
+  /**
+   * GET /api/contracts/{contractId}/product-handoffs/current
+   * Get current client-provided product/work materials.
+   */
+  getCurrentProductHandoff: async (
+    contractId: string
+  ): Promise<ApiResponse<ContractProductHandoffResponse | null>> => {
+    return apiService.get<ContractProductHandoffResponse | null>(
+      `contracts/${contractId}/product-handoffs/current`
+    );
+  },
+
+  /**
+   * GET /api/contracts/{contractId}/product-handoffs
+   * Get client-provided product/work material history.
+   */
+  getProductHandoffs: async (
+    contractId: string
+  ): Promise<ApiResponse<ContractProductHandoffResponse[]>> => {
+    return apiService.get<ContractProductHandoffResponse[]>(
+      `contracts/${contractId}/product-handoffs`
+    );
   },
 };
