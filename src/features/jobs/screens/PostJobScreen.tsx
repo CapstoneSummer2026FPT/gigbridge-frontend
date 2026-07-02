@@ -850,7 +850,6 @@ export default function PostJobScreen() {
         onClose={() => setIsInstantJobMode(false)}
         onGenerate={handleGenerateInstantJob}
         isGenerating={isGeneratingInstant}
-        error={errorMessage}
         threshold={!isJobDetailsGenerated ? 700 : 150}
       />
 
