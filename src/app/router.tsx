@@ -43,6 +43,7 @@ import AdminCheatingManagementScreen from '../features/admin/screens/AdminCheati
 import AdminJobsScreen from '../features/admin/screens/AdminJobsScreen';
 import AdminSystemTrackingScreen from '../features/admin/screens/AdminSystemTrackingScreen';
 import AdminRevenueScreen from '../features/admin/screens/AdminRevenueScreen';
+import AdminWithdrawalsScreen from '../features/admin/screens/AdminWithdrawalsScreen';
 import AdminReportsScreen from '../features/admin/screens/AdminReportsScreen';
 import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
@@ -247,6 +248,7 @@ export const router = createBrowserRouter([
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/revenue', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
       { path: 'admin/system-finance', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
+      { path: 'admin/withdrawals', element: <AdminRoute><AdminWithdrawalsScreen /></AdminRoute> },
       { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
       { path: 'admin/cheating', element: <AdminRoute><AdminCheatingManagementScreen /></AdminRoute> },
 

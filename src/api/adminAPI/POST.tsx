@@ -2,6 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
+import type { WithdrawalResponse } from '../walletAPI/GET';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -54,5 +55,20 @@ export const adminPostAPI = {
     payload: { tokenAmount: number; note?: string; idempotencyKey?: string }
   ): Promise<ApiResponse<any>> => {
     return apiService.post<any>(`admin/wallets/${userId}/credit`, payload);
+  },
+
+  syncWithdrawal: async (withdrawalId: string): Promise<ApiResponse<WithdrawalResponse>> => {
+    return apiService.post<WithdrawalResponse>(`admin/withdrawals/${withdrawalId}/sync`);
+  },
+
+  retryWithdrawal: async (withdrawalId: string): Promise<ApiResponse<WithdrawalResponse>> => {
+    return apiService.post<WithdrawalResponse>(`admin/withdrawals/${withdrawalId}/retry`);
+  },
+
+  markWithdrawalFailed: async (
+    withdrawalId: string,
+    payload: { reason: string }
+  ): Promise<ApiResponse<WithdrawalResponse>> => {
+    return apiService.post<WithdrawalResponse>(`admin/withdrawals/${withdrawalId}/mark-failed`, payload);
   },
 };

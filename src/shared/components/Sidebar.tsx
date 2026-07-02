@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, ShieldAlert
+  ChevronDown, Wallet, ShieldAlert, Banknote
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -89,6 +89,7 @@ function getClientNavItems(t: any): NavItem[] {
       icon: <Wallet size={18} />,
       children: [
         { label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { label: 'Withdraw', icon: <Banknote size={18} />, path: '/wallet/early-payout' },
         { label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
     },
@@ -149,15 +150,16 @@ function getFreelancerNavItems(t: any): NavItem[] {
       icon: <Wallet size={18} />,
       children: [
         { label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { label: 'Withdraw', icon: <Banknote size={18} />, path: '/wallet/early-payout' },
         { label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
     },
     {
-      label: 'Early Payout',
-      icon: <Zap size={18} />,
+      label: 'Withdrawal',
+      icon: <Banknote size={18} />,
       path: '/wallet/early-payout',
-      badge: 'PRO',
-      badgeType: 'purple',
+      badge: 'NEW',
+      badgeType: 'cyan',
     },
   ];
 }
@@ -208,6 +210,7 @@ function getAdminNavSections(openReportCount: number | null): NavSection[] {
       items: [
         { label: 'Revenue', icon: <TrendingUp size={18} />, path: '/admin/revenue' },
         { label: 'System Finance', icon: <BarChart2 size={18} />, path: '/admin/system-finance' },
+        { label: 'Withdrawals', icon: <Banknote size={18} />, path: '/admin/withdrawals' },
       ],
     },
     {

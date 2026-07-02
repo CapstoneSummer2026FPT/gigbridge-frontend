@@ -9,6 +9,7 @@ import type {
 } from '../../types/models/Cheating';
 import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
+import type { WithdrawalResponse, WithdrawalStatus } from '../walletAPI/GET';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -61,5 +62,20 @@ export const adminGetAPI = {
     return apiService.get<AdminCheatingViolationDetailDto>(
       `${Admin_Api_Base_Url}/cheating/violations/${violationId}`
     );
+  },
+
+  getWithdrawals: async (
+    params: { status?: WithdrawalStatus | 'all'; limit?: number } = {}
+  ): Promise<ApiResponse<WithdrawalResponse[]>> => {
+    const query = {
+      ...(params.status !== undefined && params.status !== 'all' ? { status: params.status } : {}),
+      limit: params.limit ?? 100,
+    };
+
+    return apiService.get<WithdrawalResponse[]>(`${Admin_Api_Base_Url}/withdrawals`, query);
+  },
+
+  getWithdrawalDetail: async (withdrawalId: string): Promise<ApiResponse<WithdrawalResponse>> => {
+    return apiService.get<WithdrawalResponse>(`${Admin_Api_Base_Url}/withdrawals/${withdrawalId}`);
   },
 };

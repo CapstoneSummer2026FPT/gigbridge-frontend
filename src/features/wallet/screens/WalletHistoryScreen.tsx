@@ -92,6 +92,14 @@ export default function WalletHistoryScreen() {
         return `Hoàn trả ký quỹ hợp đồng`;
       case 5:
         return 'Điều chỉnh số dư từ hệ thống';
+      case 6:
+        return 'Khoa GigCoin cho yeu cau rut tien';
+      case 7:
+        return 'Rut tien thanh cong';
+      case 8:
+        return 'Hoan GigCoin do rut tien that bai';
+      case 9:
+        return 'Phi rut tien';
       default:
         return 'Giao dịch ví';
     }
@@ -101,13 +109,15 @@ export default function WalletHistoryScreen() {
     const succeeded = transactions.filter(t => t.status === 1);
     const totalDeposits = succeeded.filter(t => t.type === 1).reduce((sum, t) => sum + t.tokenAmount, 0);
     const totalHold = succeeded.filter(t => t.type === 2).reduce((sum, t) => sum + t.tokenAmount, 0);
-    const totalRefund = succeeded.filter(t => t.type === 4).reduce((sum, t) => sum + t.tokenAmount, 0);
+    const totalRefund = succeeded.filter(t => t.type === 4 || t.type === 8).reduce((sum, t) => sum + t.tokenAmount, 0);
+    const totalWithdrawn = succeeded.filter(t => t.type === 7).reduce((sum, t) => sum + t.tokenAmount, 0);
     const pending = transactions.filter(t => t.status === 0).length;
 
     return {
       totalDeposits,
       totalHold,
       totalRefund,
+      totalWithdrawn,
       pending,
       totalTransactions: transactions.length,
     };
@@ -161,6 +171,14 @@ export default function WalletHistoryScreen() {
         return <span className="badge-cyan text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Hoàn trả</span>;
       case 5:
         return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Điều chỉnh</span>;
+      case 6:
+        return <span className="badge-amber text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Khoa rut</span>;
+      case 7:
+        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Rut tien</span>;
+      case 8:
+        return <span className="badge-green text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Hoan rut</span>;
+      case 9:
+        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Phi rut</span>;
       default:
         return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Khác</span>;
     }
@@ -173,9 +191,13 @@ export default function WalletHistoryScreen() {
         return <RefreshCw size={16} className="text-muted" />;
       case 1:
       case 4:
+      case 8:
         return <ArrowUpRight size={16} className="text-green" />;
       case 2:
       case 3:
+      case 6:
+      case 7:
+      case 9:
         return <ArrowDownRight size={16} className="text-red" />;
       default:
         return <Wallet size={16} className="text-cyan" />;
@@ -183,7 +205,7 @@ export default function WalletHistoryScreen() {
   };
 
   const getAmountDisplay = (trans: WalletTransactionResponse) => {
-    const isPositive = trans.type === 0 || trans.type === 1 || trans.type === 4;
+    const isPositive = trans.type === 0 || trans.type === 1 || trans.type === 4 || trans.type === 8;
     const prefix = isPositive ? '+' : '-';
     const colorClass = isPositive ? 'text-green' : 'text-red';
 
@@ -192,7 +214,7 @@ export default function WalletHistoryScreen() {
         <div className={`text-lg sm:text-xl font-bold flex items-center justify-end gap-1 ${colorClass}`}>
           <GigCoinAmount amount={trans.tokenAmount} prefix={prefix} />
         </div>
-        {trans.type === 1 && trans.vndAmount > 0 && (
+        {[1, 6, 7, 8, 9].includes(trans.type) && trans.vndAmount > 0 && (
           <p className="text-xs text-secondary mt-0.5 font-semibold">
             {fmtNumber(trans.vndAmount)} đ
           </p>
@@ -236,11 +258,12 @@ export default function WalletHistoryScreen() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-8">
             {[
               { label: 'Tổng nạp tiền', value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} />, color: 'green' },
               { label: 'Ký quỹ dự án', value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} />, color: 'red' },
               { label: 'Tổng hoàn trả', value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} />, color: 'cyan' },
+              { label: 'Đã rút tiền', value: <GigCoinAmount amount={stats.totalWithdrawn} />, icon: <ArrowDownRight size={16} />, color: 'amber' },
               { label: 'Đang xử lý', value: stats.pending.toString(), icon: <Loader2 size={16} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber' },
               { label: 'Tổng số giao dịch', value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
             ].map(stat => (
@@ -280,6 +303,10 @@ export default function WalletHistoryScreen() {
                 <option value="4">Hoàn trả ký quỹ (Refund)</option>
                 <option value="0">Cấp từ Admin</option>
                 <option value="5">Điều chỉnh</option>
+                <option value="6">Khoa rut tien</option>
+                <option value="7">Rut tien thanh cong</option>
+                <option value="8">Hoan rut tien</option>
+                <option value="9">Phi rut tien</option>
               </select>
               <select
                 value={statusFilter}

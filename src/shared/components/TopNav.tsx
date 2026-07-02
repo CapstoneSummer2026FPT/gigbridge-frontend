@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, CreditCard, TrendingUp, History, Moon, Sun } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, CreditCard, TrendingUp, History, Moon, Sun, Banknote } from 'lucide-react';
 import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
@@ -333,6 +333,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   <GigCoinLogo size={14} />
                   <span>Deposit GigCoin</span>
                 </button>
+
+                {role === 1 && (
+                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                    onClick={() => { navigate('/wallet/early-payout'); setShowWalletMenu(false); }}>
+                    <Banknote size={14} />
+                    <span>Withdraw</span>
+                  </button>
+                )}
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/subscription'); setShowWalletMenu(false); }}>
