@@ -149,6 +149,11 @@ export interface MilestoneAttachment {
   milestone_id: string;
   file_name: string;
   file_url: string;
+  file_size?: number | null;
+  source_type?: number;
+  mime_type?: string | null;
+  uploaded_by_user_id?: string | null;
+  created_at?: string;
 }
 
 export interface ContractQueryParams {

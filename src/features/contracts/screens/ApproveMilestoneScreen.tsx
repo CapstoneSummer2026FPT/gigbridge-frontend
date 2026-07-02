@@ -100,7 +100,7 @@ export default function ApproveMilestoneScreen() {
         setApprovalNotes('');
         setSuccessMessage('Milestone approved successfully.');
         setTimeout(() => {
-          navigate(`/contracts/${contractId}`);
+          navigate(`/workspace/${contractId}`);
         }, 2000);
       } else {
         setError(response.message || 'Failed to approve milestone.');
@@ -329,39 +329,64 @@ export default function ApproveMilestoneScreen() {
             <div className="deliverables-section glass-card">
               <h3 className="section-title">Submitted Deliverables</h3>
               <div className="attachments-list">
-                {attachments.map((attachment, index) => (
-                  <div
-                    key={attachment.id}
-                    className="attachment-item"
-                  >
-                    <div className="attachment-header">
-                      <div className="attachment-info">
-                        <FileText size={20} className="file-icon" />
-                        <div className="file-details">
-                          <a
-                            href={attachment.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="file-name"
-                          >
-                            {attachment.file_name}
-                          </a>
-                          <span className="file-size">
-                            {attachment.file_name.split('.').pop()?.toUpperCase()}
-                          </span>
+                {attachments.map((attachment, index) => {
+                  const fileName = attachment.file_name?.trim() || `Attachment ${index + 1}`;
+                  const fileUrl = attachment.file_url?.trim();
+                  const fileExtension = fileName.includes('.')
+                    ? fileName.split('.').pop()?.toUpperCase()
+                    : attachment.mime_type?.split('/').pop()?.toUpperCase();
+
+                  return (
+                    <div
+                      key={attachment.id || `${attachment.milestone_id}-${index}`}
+                      className="attachment-item"
+                    >
+                      <div className="attachment-header">
+                        <div className="attachment-info">
+                          <FileText size={20} className="file-icon" />
+                          <div className="file-details">
+                            {fileUrl ? (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="file-name"
+                              >
+                                {fileName}
+                              </a>
+                            ) : (
+                              <span className="file-name">{fileName}</span>
+                            )}
+                            {fileExtension && (
+                              <span className="file-size">
+                                {fileExtension}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        {fileUrl ? (
+                          <a
+                            href={fileUrl}
+                            download={fileName}
+                            className="download-btn"
+                            title="Download file"
+                          >
+                            <Download size={18} />
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            className="download-btn"
+                            title="File unavailable"
+                            disabled
+                          >
+                            <Download size={18} />
+                          </button>
+                        )}
                       </div>
-                      <a
-                        href={attachment.file_url}
-                        download={attachment.file_name}
-                        className="download-btn"
-                        title="Download file"
-                      >
-                        <Download size={18} />
-                      </a>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -510,11 +535,11 @@ export default function ApproveMilestoneScreen() {
           {/* Navigation */}
           <div className="page-actions">
             <button
-              onClick={() => navigate(`/contracts/${contractId}`)}
+              onClick={() => navigate(`/workspace/${contractId}`)}
               className="action-btn action-back"
             >
               <Eye size={18} />
-              View Contract
+              Back to Workspace
             </button>
           </div>
         </div>

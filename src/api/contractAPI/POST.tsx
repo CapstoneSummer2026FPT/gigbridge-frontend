@@ -65,6 +65,16 @@ export const contractPostAPI = {
   },
 
   /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/request-unlock
+   */
+  requestMilestoneUnlock: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<Record<string, never>>> => {
+    return apiService.post<Record<string, never>>(`contracts/${contractId}/milestones/${milestoneId}/request-unlock`);
+  },
+
+  /**
    * POST /api/contracts/{contractId}/milestones/{milestoneId}/submit
    */
   submitMilestone: async (

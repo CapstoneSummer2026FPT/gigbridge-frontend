@@ -58,6 +58,11 @@ interface SubmitMilestoneDeliverableResult {
   message?: string;
 }
 
+interface WorkspaceActionResult {
+  success: boolean;
+  message?: string;
+}
+
 interface SubmitProductHandoffPayload {
   note?: string;
   file?: File | null;
@@ -180,6 +185,11 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
   };
 };
 
+const getCurrentProductHandoffFromList = (
+  handoffs: ContractProductHandoffResponse[]
+): ContractProductHandoffResponse | null =>
+  handoffs.find(handoff => handoff.isCurrent) ?? handoffs[0] ?? null;
+
 export function useProjectWorkspace(initialContractId: string) {
   const navigate = useNavigate();
   const { user, role } = useApp();
@@ -189,6 +199,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const [activeProjectId, setActiveProjectId] = useState(initialContractId);
   const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
   const [currentProductHandoff, setCurrentProductHandoff] = useState<ContractProductHandoffResponse | null>(null);
+  const [productHandoffs, setProductHandoffs] = useState<ContractProductHandoffResponse[]>([]);
   const [workspaceContracts, setWorkspaceContracts] = useState<ContractDto[]>([]);
   const [project, setProject] = useState<WorkspaceProject>(emptyProject);
   const [showInfo, setShowInfo] = useState(true);
@@ -214,10 +225,11 @@ export function useProjectWorkspace(initialContractId: string) {
       if (!activeProjectId) return;
 
       try {
-        const [contractResponse, milestonesResponse, contractsResponse] = await Promise.all([
+        const [contractResponse, milestonesResponse, contractsResponse, productHandoffsResponse] = await Promise.all([
           contractGetAPI.getContractById(activeProjectId),
           contractGetAPI.getMilestonesByContract(activeProjectId),
           contractGetAPI.getMyContracts(),
+          contractGetAPI.getProductHandoffs(activeProjectId),
         ]);
 
         if (!current) return;
@@ -235,16 +247,17 @@ export function useProjectWorkspace(initialContractId: string) {
           setProject(emptyProject);
           setActiveContract(null);
           setCurrentProductHandoff(null);
+          setProductHandoffs([]);
           return;
         }
 
         const nextContract = contractResponse.data;
         const nextProject = buildProject(nextContract, milestonesResponse.data ?? []);
+        const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
         setActiveContract(nextContract);
         setProject(nextProject);
-
-        const productHandoffResponse = await contractGetAPI.getCurrentProductHandoff(activeProjectId);
-        setCurrentProductHandoff(productHandoffResponse.success ? productHandoffResponse.data ?? null : null);
+        setProductHandoffs(nextProductHandoffs);
+        setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
 
         if (nextContract.conversationId) {
           const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
@@ -260,6 +273,7 @@ export function useProjectWorkspace(initialContractId: string) {
           setProject(emptyProject);
           setActiveContract(null);
           setCurrentProductHandoff(null);
+          setProductHandoffs([]);
           setProjectMessages([]);
         }
       }
@@ -383,17 +397,19 @@ export function useProjectWorkspace(initialContractId: string) {
   const reloadActiveWorkspace = async (): Promise<void> => {
     if (!activeProjectId) return;
 
-    const [contractResponse, milestonesResponse, productHandoffResponse] = await Promise.all([
+    const [contractResponse, milestonesResponse, productHandoffsResponse] = await Promise.all([
       contractGetAPI.getContractById(activeProjectId),
       contractGetAPI.getMilestonesByContract(activeProjectId),
-      contractGetAPI.getCurrentProductHandoff(activeProjectId),
+      contractGetAPI.getProductHandoffs(activeProjectId),
     ]);
 
     if (contractResponse.success && contractResponse.data) {
       const nextContract = contractResponse.data;
+      const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
       setActiveContract(nextContract);
       setProject(buildProject(nextContract, milestonesResponse.data ?? []));
-      setCurrentProductHandoff(productHandoffResponse.success ? productHandoffResponse.data ?? null : null);
+      setProductHandoffs(nextProductHandoffs);
+      setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
 
       if (nextContract.conversationId) {
         const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
@@ -438,6 +454,36 @@ export function useProjectWorkspace(initialContractId: string) {
     return { success: true, message: response.message };
   };
 
+  const handleStartMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.startMilestone(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to start milestone.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleRequestMilestoneUnlock = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.requestMilestoneUnlock(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to request milestone unlock.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
   const handleSubmitProductHandoff = async (
     payload: SubmitProductHandoffPayload
   ): Promise<SubmitMilestoneDeliverableResult> => {
@@ -467,7 +513,6 @@ export function useProjectWorkspace(initialContractId: string) {
       return { success: false, message: response.message || 'Failed to send work materials.' };
     }
 
-    setCurrentProductHandoff(response.data ?? null);
     await reloadActiveWorkspace();
     return { success: true, message: response.message };
   };
@@ -491,6 +536,7 @@ export function useProjectWorkspace(initialContractId: string) {
     project,
     activeContract,
     currentProductHandoff,
+    productHandoffs,
     workspaceProjects,
     currentProjData,
     partnerName,
@@ -503,6 +549,8 @@ export function useProjectWorkspace(initialContractId: string) {
     handleSendAiMessage,
     handleSimulateAttachment,
     handleCreateMockMilestone,
+    handleStartMilestone,
+    handleRequestMilestoneUnlock,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,
