@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import * as signalR from '@microsoft/signalr';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -9,6 +10,7 @@ import type { Message } from '../../../types';
 import type { ContractDto, ContractProductHandoffResponse, Milestone } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
+import { getChatHubUrl } from '../../../service/apiService';
 
 interface WorkspaceMilestone {
   id: string;
@@ -173,7 +175,9 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
 
   return {
     id: String(message.messageId ?? message.MessageId ?? message.id ?? crypto.randomUUID()),
-    clientMessageId: typeof message.clientMessageId === 'string' ? message.clientMessageId : null,
+    clientMessageId: typeof (message.clientMessageId ?? message.ClientMessageId) === 'string'
+      ? String(message.clientMessageId ?? message.ClientMessageId)
+      : null,
     conversationId: String(message.conversationId ?? message.ConversationId ?? ''),
     senderId: String(message.senderUserId ?? message.SenderUserId ?? message.senderId ?? ''),
     content: String(message.content ?? message.Content ?? ''),
@@ -209,6 +213,8 @@ export function useProjectWorkspace(initialContractId: string) {
   const [isBlocked, setIsBlocked] = useState(false);
   const [projectMessages, setProjectMessages] = useState<Message[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
 
   const [aiChat, setAiChat] = useState<{ role: string; content: string }[]>([
     { role: 'ai', content: 'Hello! I can help summarize this workspace, milestone progress, and recent chat activity.' },
@@ -288,6 +294,111 @@ export function useProjectWorkspace(initialContractId: string) {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [projectMessages]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.warn('[WorkspaceChatHub] skipped connection: no access token found');
+      return;
+    }
+
+    let disposed = false;
+    const connection = new signalR.HubConnectionBuilder()
+      .configureLogging(signalR.LogLevel.Warning)
+      .withUrl(getChatHubUrl(), {
+        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    const joinCurrentConversation = async (): Promise<void> => {
+      const conversationId = conversationIdRef.current;
+      if (!conversationId || connection.state !== signalR.HubConnectionState.Connected) return;
+
+      try {
+        await connection.invoke('JoinConversation', conversationId);
+      } catch (joinError) {
+        console.error(`[WorkspaceChatHub] failed to join conversation ${conversationId}`, joinError);
+      }
+    };
+
+    const handleReceiveMessage = (payload: Record<string, unknown>): void => {
+      const mappedMessage: Message = {
+        ...mapWorkspaceMessage(payload),
+        sendStatus: 'sent',
+      };
+
+      if (!mappedMessage.conversationId || mappedMessage.conversationId !== conversationIdRef.current) return;
+
+      setProjectMessages(previousMessages => {
+        const existingIndex = previousMessages.findIndex(existingMessage =>
+          existingMessage.id === mappedMessage.id ||
+          Boolean(mappedMessage.clientMessageId && (
+            existingMessage.id === mappedMessage.clientMessageId ||
+            existingMessage.clientMessageId === mappedMessage.clientMessageId
+          ))
+        );
+
+        if (existingIndex < 0) return [...previousMessages, mappedMessage];
+
+        const nextMessages = [...previousMessages];
+        nextMessages[existingIndex] = mappedMessage;
+        return nextMessages;
+      });
+    };
+
+    connection.on('ReceiveMessage', handleReceiveMessage);
+    connection.onreconnected(() => {
+      if (!disposed) void joinCurrentConversation();
+    });
+    connection.onclose(error => {
+      if (!disposed && error) console.warn('[WorkspaceChatHub] disconnected', error);
+    });
+
+    void connection.start()
+      .then(() => {
+        if (disposed) {
+          void connection.stop();
+          return;
+        }
+        chatConnectionRef.current = connection;
+        void joinCurrentConversation();
+      })
+      .catch(connectionError => {
+        if (!disposed) console.error('[WorkspaceChatHub] connection failed', connectionError);
+      });
+
+    return () => {
+      disposed = true;
+      connection.off('ReceiveMessage', handleReceiveMessage);
+      if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
+      void connection.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousConversationId = conversationIdRef.current;
+    const nextConversationId = project.conversationId ?? null;
+    conversationIdRef.current = nextConversationId;
+
+    const connection = chatConnectionRef.current;
+    if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
+
+    if (previousConversationId && previousConversationId !== nextConversationId) {
+      void connection.invoke('LeaveConversation', previousConversationId).catch(() => {});
+    }
+    if (nextConversationId && previousConversationId !== nextConversationId) {
+      void connection.invoke('JoinConversation', nextConversationId).catch(joinError => {
+        console.error(`[WorkspaceChatHub] failed to join conversation ${nextConversationId}`, joinError);
+      });
+    }
+
+    return () => {
+      if (nextConversationId && conversationIdRef.current === nextConversationId) {
+        void connection.invoke('LeaveConversation', nextConversationId).catch(() => {});
+      }
+    };
+  }, [project.conversationId]);
 
   const workspaceProjects = useMemo(() => {
     const projects = workspaceContracts.map(contract => mapContractListItem(contract, isClient));

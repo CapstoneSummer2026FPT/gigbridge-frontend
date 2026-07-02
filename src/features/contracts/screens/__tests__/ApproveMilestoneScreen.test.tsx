@@ -102,7 +102,7 @@ describe('ApproveMilestoneScreen', () => {
 
     render(<ApproveMilestoneScreen />);
 
-    expect(await screen.findByText('Submitted Deliverables')).toBeInTheDocument();
+    expect(await screen.findByText('Submitted deliverables')).toBeInTheDocument();
     expect(screen.getByText('Attachment 1')).toBeInTheDocument();
   });
 
@@ -115,6 +115,31 @@ describe('ApproveMilestoneScreen', () => {
     await user.click(workspaceButton);
 
     expect(navigateMock).toHaveBeenCalledWith('/workspace/contract-1');
+  });
+
+  it('renders a clear empty state when no deliverables are attached', async () => {
+    render(<ApproveMilestoneScreen />);
+
+    expect(await screen.findByText('Submitted deliverables')).toBeInTheDocument();
+    expect(screen.getByText('No attached files')).toBeInTheDocument();
+    expect(screen.getByText('0 files')).toBeInTheDocument();
+  });
+
+  it('requires a revision reason and enforces the 500 character limit', async () => {
+    const user = userEvent.setup();
+    render(<ApproveMilestoneScreen />);
+
+    await user.click(await screen.findByRole('button', { name: /request revision send it back/i }));
+    const submit = screen.getByRole('button', { name: /^request revision$/i });
+    expect(submit).toBeDisabled();
+
+    const reason = screen.getByLabelText(/what needs to be changed/i);
+    await user.type(reason, 'Please update the authentication flow.');
+    expect(submit).toBeEnabled();
+
+    fireEvent.change(reason, { target: { value: 'a'.repeat(501) } });
+    expect(screen.getByText('501/500')).toHaveClass('is-over');
+    expect(submit).toBeDisabled();
   });
 
   it('redirects to the workspace after approving a milestone', async () => {
@@ -135,7 +160,7 @@ describe('ApproveMilestoneScreen', () => {
 
     render(<ApproveMilestoneScreen />);
 
-    const approveOption = (await screen.findByText('Approve')).closest('button');
+    const approveOption = (await screen.findByText('Approve work')).closest('button');
     expect(approveOption).not.toBeNull();
     fireEvent.click(approveOption!);
     vi.useFakeTimers();
