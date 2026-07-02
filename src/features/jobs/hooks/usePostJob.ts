@@ -644,11 +644,15 @@ export function usePostJob() {
       return;
     }
 
+    setErrorMessage(null);
     setIsGeneratingInstant(true);
     try {
       const response = await jobAPI.generateAIDescription({ clientPrompt: promptText });
       if (!response.success || !response.data) {
-        toast.error(response.message || 'Job details could not be generated.');
+        const errorMsg = response.message || 'Job details could not be generated.';
+        toast.error(errorMsg);
+        setErrorMessage(errorMsg);
+        setIsInstantJobMode(false);
         return;
       }
 
@@ -716,7 +720,10 @@ export function usePostJob() {
       setIsJobDetailsGenerated(true);
       toast.success('Job details generated successfully based on your prompt.');
     } catch (error) {
-      toast.error('An error occurred during AI generation.');
+      const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
+      toast.error(errorMsg);
+      setErrorMessage(errorMsg);
+      setIsInstantJobMode(false);
     } finally {
       setIsGeneratingInstant(false);
     }
