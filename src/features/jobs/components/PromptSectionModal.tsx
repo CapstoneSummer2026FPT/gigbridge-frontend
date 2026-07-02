@@ -7,10 +7,11 @@ interface PromptSectionModalProps {
     onClose: () => void;
     onGenerate: (prompt: string) => Promise<void>;
     isGenerating: boolean;
+    error?: string | null;
     threshold?: number;
 }
 
-export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating, threshold = 150 }: PromptSectionModalProps) {
+export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating, error, threshold = 150 }: PromptSectionModalProps) {
     const [prompt, setPrompt] = useState('');
     const [isScrolledToBottom, setIsScrolledToBottom] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
@@ -119,6 +120,11 @@ export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating, 
                 onSubmit={handleSubmit}
                 className={`prompt-modal-container ${isVisible ? 'is-visible' : ''} ${isScrolledToBottom ? 'hidden-bottom' : ''} ${isAnimating ? 'animating' : ''}`}
             >
+                {error && (
+                    <div className="prompt-error-message">
+                        {error}
+                    </div>
+                )}
                 <textarea
                     id="guide-prompt-textarea"
                     className="prompt-textarea"

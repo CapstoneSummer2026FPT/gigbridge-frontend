@@ -299,6 +299,12 @@ export function usePostJob() {
   }, [shouldBlockNavigation]);
 
   useEffect(() => {
+    if (!isInstantJobMode) {
+      setErrorMessage(null);
+    }
+  }, [isInstantJobMode]);
+
+  useEffect(() => {
     let isMounted = true;
     setIsMajorsLoading(true);
     setTaxonomyError(null);
@@ -652,7 +658,6 @@ export function usePostJob() {
         const errorMsg = response.message || 'Job details could not be generated.';
         toast.error(errorMsg);
         setErrorMessage(errorMsg);
-        setIsInstantJobMode(false);
         return;
       }
 
@@ -723,7 +728,6 @@ export function usePostJob() {
       const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
       toast.error(errorMsg);
       setErrorMessage(errorMsg);
-      setIsInstantJobMode(false);
     } finally {
       setIsGeneratingInstant(false);
     }
