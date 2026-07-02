@@ -64,9 +64,9 @@ export default function ManageMilestonesScreen() {
   const getBaselineReleaseCap = (milestone: Milestone) => Number((milestone.amount * baselineReleasePercentage).toFixed(2));
   const isMilestoneReleasedToCap = (milestone: Milestone) => (milestone.releasedAmount ?? 0) >= getBaselineReleaseCap(milestone);
   const isMilestoneCompleteForReview = (milestone: Milestone) =>
-    milestone.status === MilestoneStatus.PaymentConfirmed || isMilestoneReleasedToCap(milestone);
+    milestone.status === MilestoneStatus.Approved && isMilestoneReleasedToCap(milestone);
   const getMilestoneDisplayLabel = (milestone: Milestone) =>
-    isMilestoneReleasedToCap(milestone) ? 'Paid' : getMilestoneStatusLabel(milestone.status);
+    isMilestoneReleasedToCap(milestone) ? 'Released' : getMilestoneStatusLabel(milestone.status);
 
   // Load contract and milestones
   const loadData = async () => {
@@ -487,8 +487,6 @@ export default function ManageMilestonesScreen() {
 
   const getNodeGlowClass = (status: MilestoneStatus) => {
     switch (status) {
-      case MilestoneStatus.PaymentConfirmed:
-        return 'bg-emerald-500 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)] text-white';
       case MilestoneStatus.Approved:
         return 'bg-emerald-500/10 border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.25)] text-emerald-500';
       case MilestoneStatus.Submitted:
@@ -503,8 +501,6 @@ export default function ManageMilestonesScreen() {
 
   const getNodeIcon = (status: MilestoneStatus) => {
     switch (status) {
-      case MilestoneStatus.PaymentConfirmed:
-        return <CheckCircle2 size={10} strokeWidth={3} className="text-white" />;
       case MilestoneStatus.Approved:
         return <CheckCircle2 size={10} strokeWidth={2.5} className="text-emerald-500" />;
       case MilestoneStatus.Submitted:

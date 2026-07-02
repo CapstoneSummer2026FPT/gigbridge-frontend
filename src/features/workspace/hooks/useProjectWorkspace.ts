@@ -17,8 +17,9 @@ interface WorkspaceMilestone {
   title: string;
   description?: string;
   amount: number;
+  releasedAmount: number;
   dueDate: string;
-  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'paid' | 'disputed';
+  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'disputed';
   completedAt?: string;
 }
 
@@ -103,11 +104,10 @@ const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status
       return 'in_progress';
     case MilestoneStatus.Submitted:
       return 'submitted';
-    case MilestoneStatus.Approved:
-      return 'approved';
     case MilestoneStatus.PaymentProofUploaded:
     case MilestoneStatus.PaymentConfirmed:
-      return 'paid';
+    case MilestoneStatus.Approved:
+      return 'approved';
     case MilestoneStatus.Disputed:
       return 'disputed';
     case MilestoneStatus.Pending:
@@ -116,13 +116,14 @@ const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status
   }
 };
 
-const isMilestonePaid = (milestone: WorkspaceMilestone): boolean =>
-  milestone.status === 'approved' || milestone.status === 'paid';
+const isMilestoneApproved = (milestone: WorkspaceMilestone): boolean =>
+  milestone.status === 'approved';
 
 const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
   id: milestone.id,
   title: milestone.title,
   amount: milestone.amount,
+  releasedAmount: Number(milestone.releasedAmount ?? 0),
   dueDate: milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : 'Not set',
   status: mapMilestoneStatus(milestone.status),
   completedAt: milestone.paid_at ?? undefined,
@@ -130,7 +131,7 @@ const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
 
 const buildProject = (contract: ContractDto, milestones: Milestone[]): WorkspaceProject => {
   const mappedMilestones = milestones.map(mapMilestone);
-  const completedCount = mappedMilestones.filter(isMilestonePaid).length;
+  const completedCount = mappedMilestones.filter(isMilestoneApproved).length;
   const progress = mappedMilestones.length > 0
     ? Math.round((completedCount / mappedMilestones.length) * 100)
     : 0;
@@ -142,7 +143,7 @@ const buildProject = (contract: ContractDto, milestones: Milestone[]): Workspace
     conversationId: contract.conversationId,
     title: contract.jobTitle || contract.title,
     progress,
-    paidAmount: mappedMilestones.filter(isMilestonePaid).reduce((sum, milestone) => sum + milestone.amount, 0),
+    paidAmount: mappedMilestones.reduce((sum, milestone) => sum + milestone.releasedAmount, 0),
     totalBudget: contract.totalBudget,
     startDate: contract.startDate,
     clientId: contract.clientProfilesId,
@@ -215,6 +216,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
   const conversationIdRef = useRef<string | null>(null);
+  const activeProjectIdRef = useRef(activeProjectId);
 
   const [aiChat, setAiChat] = useState<{ role: string; content: string }[]>([
     { role: 'ai', content: 'Hello! I can help summarize this workspace, milestone progress, and recent chat activity.' },
@@ -223,6 +225,10 @@ export function useProjectWorkspace(initialContractId: string) {
   useEffect(() => {
     setActiveProjectId(initialContractId);
   }, [initialContractId]);
+
+  useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
 
   useEffect(() => {
     let current = true;
@@ -347,7 +353,25 @@ export function useProjectWorkspace(initialContractId: string) {
       });
     };
 
+    const handleContractCompleted = (payload: Record<string, unknown>): void => {
+      const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
+      if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
+      void reloadActiveWorkspace().finally(() => {
+        window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+      });
+    };
+
+    const handleFinalPayoutClaimed = (payload: Record<string, unknown>): void => {
+      const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
+      if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
+      void reloadActiveWorkspace().finally(() => {
+        window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+      });
+    };
+
     connection.on('ReceiveMessage', handleReceiveMessage);
+    connection.on('ContractCompleted', handleContractCompleted);
+    connection.on('FinalPayoutClaimed', handleFinalPayoutClaimed);
     connection.onreconnected(() => {
       if (!disposed) void joinCurrentConversation();
     });
@@ -371,6 +395,8 @@ export function useProjectWorkspace(initialContractId: string) {
     return () => {
       disposed = true;
       connection.off('ReceiveMessage', handleReceiveMessage);
+      connection.off('ContractCompleted', handleContractCompleted);
+      connection.off('FinalPayoutClaimed', handleFinalPayoutClaimed);
       if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
       void connection.stop();
     };
@@ -427,7 +453,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const isPartnerOnline = currentProjData.online;
 
   const handleSendMessage = async (): Promise<void> => {
-    if (!messageInput.trim() || !project.conversationId) return;
+    if (activeContract?.status === ContractStatus.Completed || !messageInput.trim() || !project.conversationId) return;
 
     const clientMessageId = crypto.randomUUID();
     const newMessage: Message = {
@@ -535,7 +561,7 @@ export function useProjectWorkspace(initialContractId: string) {
     milestoneId: string,
     payload: SubmitMilestoneDeliverablePayload
   ): Promise<SubmitMilestoneDeliverableResult> => {
-    if (!activeProjectId) {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -566,7 +592,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleStartMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId) {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -581,7 +607,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleRequestMilestoneUnlock = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId) {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -592,6 +618,51 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleWithdrawMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.withdrawMilestone(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to withdraw milestone funds.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleEndProject = async (): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.endProject(activeProjectId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to end project.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleClaimFinalPayout = async (): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || isClient || activeContract?.status !== ContractStatus.Completed) {
+      return { success: false, message: 'Final payout is not available.' };
+    }
+
+    const response = await contractPostAPI.claimFinalPayout(activeProjectId);
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to claim final payout.' };
+    }
+
+    await reloadActiveWorkspace();
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     return { success: true, message: response.message };
   };
 
@@ -662,6 +733,9 @@ export function useProjectWorkspace(initialContractId: string) {
     handleCreateMockMilestone,
     handleStartMilestone,
     handleRequestMilestoneUnlock,
+    handleWithdrawMilestone,
+    handleEndProject,
+    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,

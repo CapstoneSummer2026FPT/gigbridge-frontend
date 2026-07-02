@@ -175,7 +175,7 @@ export function ClientContractDetails({
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
-  const milestonesPaid = milestones.filter(m => m.status === MilestoneStatus.PaymentConfirmed).length;
+  const milestonesPaid = milestones.filter(m => (m.releasedAmount ?? 0) >= m.amount).length;
 
   // Stepper: Terms Setup -> Review & Confirm -> Escrow Funding
   // (Client already e-signed during job post session — no separate signature step)
@@ -916,7 +916,7 @@ export function ClientContractDetails({
                                 >
                                   <div className="flex items-center gap-3.5 min-width-0 flex-1">
                                     <div className="w-9 h-9 rounded-full bg-secondary/60 flex items-center justify-center shrink-0 border border-border/40 text-primary">
-                                      {milestone.status === MilestoneStatus.PaymentConfirmed ? (
+                                      {(milestone.releasedAmount ?? 0) >= milestone.amount ? (
                                         <CheckCircle size={18} className="text-emerald-500" />
                                       ) : milestone.status === MilestoneStatus.Approved ? (
                                         <Clock size={18} className="text-primary" />
@@ -936,7 +936,7 @@ export function ClientContractDetails({
                                   <div className="flex items-center gap-4 shrink-0">
                                     <span className="text-sm font-bold text-foreground">{formatContractAmount(milestone.amount)}</span>
                                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${statusClass.replace('milestone-status ', '')} 
-                                      ${milestone.status === MilestoneStatus.PaymentConfirmed ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
+                                      ${(milestone.releasedAmount ?? 0) >= milestone.amount ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
                                         milestone.status === MilestoneStatus.Approved ? 'bg-primary/10 text-primary border border-primary/20' :
                                         'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
                                       {getMilestoneStatusLabel(milestone.status)}
@@ -1114,7 +1114,7 @@ export function ClientContractDetails({
                   <motion.button 
                     whileHover={{ y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate(`/contracts/${contract.contractsId}/milestones`)} 
+                    onClick={() => navigate(`/workspace/${contract.contractsId}`)} 
                     className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-sm cursor-pointer shadow flex items-center justify-center gap-2 border-none"
                   >
                     <ListChecks size={18} />

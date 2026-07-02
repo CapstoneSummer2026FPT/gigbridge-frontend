@@ -7,6 +7,9 @@ import { useProjectWorkspace } from '../../hooks/useProjectWorkspace';
 const navigateMock = vi.fn();
 const handleStartMilestoneMock = vi.fn();
 const handleRequestMilestoneUnlockMock = vi.fn();
+const handleWithdrawMilestoneMock = vi.fn();
+const handleEndProjectMock = vi.fn();
+const handleClaimFinalPayoutMock = vi.fn();
 
 vi.mock('../../hooks/useProjectWorkspace', () => ({
   useProjectWorkspace: vi.fn(),
@@ -30,11 +33,18 @@ const pendingMilestone = {
   id: 'milestone-2',
   title: 'Milestone 2',
   amount: 20,
+  releasedAmount: 0,
   dueDate: 'Not set',
   status: 'pending' as const,
 };
 
-const mockWorkspaceHook = (options: { isClient?: boolean; milestones?: typeof pendingMilestone[] } = {}): void => {
+const mockWorkspaceHook = (options: {
+  isClient?: boolean;
+  milestones?: typeof pendingMilestone[];
+  contractStatus?: ContractStatus;
+  paidAmount?: number;
+  totalBudget?: number;
+} = {}): void => {
   const isClient = options.isClient ?? true;
 
   vi.mocked(useProjectWorkspace).mockReturnValue({
@@ -60,8 +70,8 @@ const mockWorkspaceHook = (options: { isClient?: boolean; milestones?: typeof pe
       conversationId: null,
       title: 'Workspace',
       progress: 0,
-      paidAmount: 0,
-      totalBudget: 100,
+      paidAmount: options.paidAmount ?? 0,
+      totalBudget: options.totalBudget ?? 100,
       milestones: options.milestones ?? [],
     },
     activeContract: {
@@ -70,8 +80,8 @@ const mockWorkspaceHook = (options: { isClient?: boolean; milestones?: typeof pe
       clientProfilesId: 'client-profile-1',
       freelancerProfilesId: 'freelancer-profile-1',
       title: 'Workspace',
-      totalBudget: 100,
-      status: ContractStatus.Active,
+      totalBudget: options.totalBudget ?? 100,
+      status: options.contractStatus ?? ContractStatus.Active,
       createdAt: '2026-07-02T01:00:00.000Z',
     },
     currentProductHandoff: null,
@@ -135,6 +145,9 @@ const mockWorkspaceHook = (options: { isClient?: boolean; milestones?: typeof pe
     handleCreateMockMilestone: vi.fn(),
     handleStartMilestone: handleStartMilestoneMock,
     handleRequestMilestoneUnlock: handleRequestMilestoneUnlockMock,
+    handleWithdrawMilestone: handleWithdrawMilestoneMock,
+    handleEndProject: handleEndProjectMock,
+    handleClaimFinalPayout: handleClaimFinalPayoutMock,
     handleSubmitMilestoneDeliverable: vi.fn(),
     handleSubmitProductHandoff: vi.fn(),
     chatEndRef: { current: null },
@@ -146,6 +159,9 @@ describe('ProjectWorkspaceScreen', () => {
     vi.clearAllMocks();
     handleStartMilestoneMock.mockResolvedValue({ success: true });
     handleRequestMilestoneUnlockMock.mockResolvedValue({ success: true });
+    handleWithdrawMilestoneMock.mockResolvedValue({ success: true });
+    handleEndProjectMock.mockResolvedValue({ success: true });
+    handleClaimFinalPayoutMock.mockResolvedValue({ success: true });
     mockWorkspaceHook();
     vi.spyOn(window, 'open').mockImplementation(() => null);
   });
@@ -187,5 +203,121 @@ describe('ProjectWorkspaceScreen', () => {
     await waitFor(() => {
       expect(handleRequestMilestoneUnlockMock).toHaveBeenCalledWith('milestone-2');
     });
+  });
+
+  it('shows disabled End Project for clients when all milestones are submitted but not approved', () => {
+    mockWorkspaceHook({
+      isClient: true,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Submitted', status: 'submitted' },
+        { ...pendingMilestone, id: 'milestone-2', title: 'Approved', status: 'approved' },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    const endProjectButton = screen.getByRole('button', { name: /end project/i });
+    expect(endProjectButton).toBeDisabled();
+    expect(endProjectButton).toHaveAttribute('title', 'Approve all milestones to end project');
+  });
+
+  it('lets clients end project after all milestones are approved', async () => {
+    mockWorkspaceHook({
+      isClient: true,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 80, releasedAmount: 64 },
+        { ...pendingMilestone, id: 'milestone-2', title: 'Approved 2', status: 'approved', amount: 20, releasedAmount: 0 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    fireEvent.click(screen.getByRole('button', { name: /end project/i }));
+    expect(screen.getByText(/final payout available to freelancer/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /end project/i }).at(-1)!);
+
+    await waitFor(() => {
+      expect(handleEndProjectMock).toHaveBeenCalled();
+    });
+  });
+
+  it('shows freelancer Withdraw on approved milestones instead of End Project', async () => {
+    mockWorkspaceHook({
+      isClient: false,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 100, releasedAmount: 0 },
+        { ...pendingMilestone, id: 'milestone-2', title: 'Approved 2', status: 'approved', amount: 100, releasedAmount: 80 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    expect(screen.queryByRole('button', { name: /end project/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /withdraw/i }));
+
+    await waitFor(() => {
+      expect(handleWithdrawMilestoneMock).toHaveBeenCalledWith('milestone-1');
+    });
+  });
+
+  it('shows paid in full for freelancers after claim and opens wallet history', () => {
+    mockWorkspaceHook({
+      isClient: false,
+      contractStatus: ContractStatus.Completed,
+      paidAmount: 100,
+      totalBudget: 100,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 60, releasedAmount: 60 },
+        { ...pendingMilestone, id: 'milestone-2', title: 'Approved 2', status: 'approved', amount: 40, releasedAmount: 40 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    expect(screen.queryByRole('button', { name: /withdraw/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /end project/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/escrow has been fully released to your wallet/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /view wallet history/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/wallet/history');
+    expect(handleClaimFinalPayoutMock).not.toHaveBeenCalled();
+  });
+
+  it('does not show Receive Money for clients after project completion', () => {
+    mockWorkspaceHook({
+      isClient: true,
+      contractStatus: ContractStatus.Completed,
+      paidAmount: 100,
+      totalBudget: 100,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 100, releasedAmount: 100 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    expect(screen.queryByRole('button', { name: /nhận tiền/i })).not.toBeInTheDocument();
+  });
+
+  it('claims the remaining payout when a completed project still has escrow', async () => {
+    mockWorkspaceHook({
+      isClient: false,
+      contractStatus: ContractStatus.Completed,
+      paidAmount: 80,
+      totalBudget: 100,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 100, releasedAmount: 80 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    expect(screen.getByText(/final payout is ready/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /nhận tiền/i }));
+    await waitFor(() => expect(handleClaimFinalPayoutMock).toHaveBeenCalled());
+    expect(screen.queryByPlaceholderText(/type your message/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/workspace is view-only/i)).toBeInTheDocument();
   });
 });

@@ -56,7 +56,13 @@ vi.mock('../../../api/contractAPI/GET', () => ({
     getProductHandoffs: vi.fn(),
   },
 }));
-vi.mock('../../../api/contractAPI/POST', () => ({ contractPostAPI: {} }));
+vi.mock('../../../api/contractAPI/POST', () => ({
+  contractPostAPI: {
+    withdrawMilestone: vi.fn(),
+    endProject: vi.fn(),
+    claimFinalPayout: vi.fn(),
+  },
+}));
 vi.mock('../../../api/messageAPI/GET', () => ({
   messageGetAPI: { getConversationMessages: vi.fn() },
 }));
@@ -157,7 +163,49 @@ describe('useProjectWorkspace realtime chat', () => {
 
     unmount();
     expect(signalRMock.connection.off).toHaveBeenCalledWith('ReceiveMessage', expect.any(Function));
+    expect(signalRMock.connection.off).toHaveBeenCalledWith('ContractCompleted', expect.any(Function));
+    expect(signalRMock.connection.off).toHaveBeenCalledWith('FinalPayoutClaimed', expect.any(Function));
     expect(signalRMock.connection.stop).toHaveBeenCalled();
     expect(signalRMock.connection.invoke).toHaveBeenCalledWith('LeaveConversation', 'conversation-1');
+  });
+
+  it('reloads workspace data on matching ContractCompleted realtime event', async () => {
+    const walletUpdatedHandler = vi.fn();
+    window.addEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+    renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      signalRMock.handlers.get('ContractCompleted')?.({
+        contractId: 'contract-2',
+        status: 8,
+      });
+    });
+    expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(1);
+    expect(walletUpdatedHandler).not.toHaveBeenCalled();
+
+    act(() => {
+      signalRMock.handlers.get('ContractCompleted')?.({
+        contractId: 'contract-1',
+        status: 8,
+      });
+    });
+
+    await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(walletUpdatedHandler).toHaveBeenCalledTimes(1));
+    window.removeEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+  });
+
+  it('reloads workspace and wallet on matching FinalPayoutClaimed event', async () => {
+    const walletUpdatedHandler = vi.fn();
+    window.addEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+    renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(1));
+
+    act(() => signalRMock.handlers.get('FinalPayoutClaimed')?.({ contractId: 'contract-1' }));
+
+    await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(walletUpdatedHandler).toHaveBeenCalledTimes(1));
+    window.removeEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
   });
 });

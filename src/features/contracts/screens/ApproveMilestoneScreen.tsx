@@ -126,7 +126,7 @@ export default function ApproveMilestoneScreen() {
 
   const canApprove = canApproveMilestone(milestone.status);
   const isApproved = milestone.status === MilestoneStatus.Approved;
-  const isPaid = milestone.status === MilestoneStatus.PaymentConfirmed;
+  const isFullyReleased = (milestone.releasedAmount ?? 0) >= milestone.amount;
   const notesTooLong = approvalNotes.length > NOTES_LIMIT;
   const statusLabel = getMilestoneStatusLabel(milestone.status);
 
@@ -151,7 +151,7 @@ export default function ApproveMilestoneScreen() {
               <div className="approve-milestone-section-heading">
                 <div><span className="approve-milestone-kicker">Submitted milestone</span><h2 id="milestone-title">{milestone.title}</h2></div>
                 <span className={`approve-milestone-status approve-milestone-status--${milestone.status}`}>
-                  {isApproved || isPaid ? <CheckCircle2 size={16} /> : <Clock size={16} />}{statusLabel}
+                  {isApproved || isFullyReleased ? <CheckCircle2 size={16} /> : <Clock size={16} />}{statusLabel}
                 </span>
               </div>
               <div className="approve-milestone-facts">
@@ -227,9 +227,9 @@ export default function ApproveMilestoneScreen() {
                 </div>}
               </section>}
 
-              {(isApproved || isPaid) && <section className="approve-milestone-card approve-milestone-complete" role="status">
-                <span><CheckCircle2 size={24} /></span><h2>{isPaid ? 'Payment released' : 'Milestone approved'}</h2>
-                <p>{isPaid ? `Payment was released on ${formatContractDate(milestone.paid_at || new Date().toISOString())}.` : 'This milestone has been accepted and the escrow release process has started.'}</p>
+              {(isApproved || isFullyReleased) && <section className="approve-milestone-card approve-milestone-complete" role="status">
+                <span><CheckCircle2 size={24} /></span><h2>{isFullyReleased ? 'Escrow released' : 'Milestone approved'}</h2>
+                <p>{isFullyReleased ? 'Escrow has been fully released for this milestone.' : 'This milestone has been accepted. Payment release is tracked by escrow released amount.'}</p>
               </section>}
               <button type="button" onClick={() => navigate(`/workspace/${contractId}`)} className="approve-milestone-workspace-button"><ArrowLeft size={18} /> Back to workspace</button>
             </div>

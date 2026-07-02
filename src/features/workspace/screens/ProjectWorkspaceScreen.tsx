@@ -4,7 +4,7 @@ import {
   ArrowLeft, Ban, Send, Plus,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2
+  Upload, Link2, X, AlertCircle, Loader2, Wallet
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
@@ -41,6 +41,11 @@ export default function ProjectWorkspaceScreen() {
   const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
   const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
   const [milestoneActionError, setMilestoneActionError] = useState<{ milestoneId: string; message: string } | null>(null);
+  const [endProjectModalOpen, setEndProjectModalOpen] = useState(false);
+  const [isEndingProject, setIsEndingProject] = useState(false);
+  const [endProjectError, setEndProjectError] = useState<string | null>(null);
+  const [isClaimingPayout, setIsClaimingPayout] = useState(false);
+  const [claimPayoutError, setClaimPayoutError] = useState<string | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productMode, setProductMode] = useState<'file' | 'link'>('file');
   const [productNote, setProductNote] = useState('');
@@ -81,11 +86,37 @@ export default function ProjectWorkspaceScreen() {
     handleCreateMockMilestone,
     handleStartMilestone,
     handleRequestMilestoneUnlock,
+    handleWithdrawMilestone,
+    handleEndProject,
+    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,
   } = useProjectWorkspace(contractId || '');
   const workspaceContractId = contractId || activeProjectId;
+  const approvedMilestoneCount = project.milestones.filter(milestone => milestone.status === 'approved').length;
+  const requiredApprovedForWithdraw = Math.ceil(project.milestones.length * 0.5);
+  const hasEnoughApprovedForWithdraw = project.milestones.length > 0 && approvedMilestoneCount >= requiredApprovedForWithdraw;
+  const allMilestonesSubmittedOrApproved = project.milestones.length > 0 &&
+    project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved');
+  const allMilestonesApproved = project.milestones.length > 0 &&
+    project.milestones.every(milestone => milestone.status === 'approved');
+  const showEndProjectButton = isClient &&
+    activeContract?.status === ContractStatus.Active &&
+    allMilestonesSubmittedOrApproved;
+  const allMilestonesReleased = project.milestones.length > 0 &&
+    project.milestones.every(milestone => milestone.releasedAmount >= milestone.amount);
+  const projectReleasedInFull = project.totalBudget > 0
+    ? project.paidAmount >= project.totalBudget
+    : allMilestonesReleased;
+  const isWorkspaceViewOnly = activeContract?.status === ContractStatus.Completed;
+  const showFreelancerPayoutCard = !isClient &&
+    activeContract?.status === ContractStatus.Completed &&
+    allMilestonesApproved;
+  const remainingEscrowAmount = Math.max(
+    0,
+    project.milestones.reduce((sum, milestone) => sum + Math.max(0, milestone.amount - milestone.releasedAmount), 0)
+  );
 
   const resetSubmitModal = () => {
     setSubmitModal(null);
@@ -285,6 +316,43 @@ export default function ProjectWorkspaceScreen() {
     setMilestoneActionPendingId(null);
   };
 
+  const handleWithdrawApprovedMilestone = async (milestoneId: string) => {
+    setMilestoneActionPendingId(milestoneId);
+    setMilestoneActionError(null);
+    const result = await handleWithdrawMilestone(milestoneId);
+    if (!result.success) {
+      setMilestoneActionError({
+        milestoneId,
+        message: result.message || 'Failed to withdraw milestone funds.',
+      });
+    }
+    setMilestoneActionPendingId(null);
+  };
+
+  const handleConfirmEndProject = async () => {
+    setIsEndingProject(true);
+    setEndProjectError(null);
+    const result = await handleEndProject();
+    if (!result.success) {
+      setEndProjectError(result.message || 'Failed to end project.');
+      setIsEndingProject(false);
+      return;
+    }
+
+    setIsEndingProject(false);
+    setEndProjectModalOpen(false);
+  };
+
+  const handleClaimPayout = async () => {
+    setIsClaimingPayout(true);
+    setClaimPayoutError(null);
+    const result = await handleClaimFinalPayout();
+    if (!result.success) {
+      setClaimPayoutError(result.message || 'Failed to claim final payout.');
+    }
+    setIsClaimingPayout(false);
+  };
+
   return (
     <AppLayout fullWidth hideAIWidget>
       <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
@@ -430,6 +498,20 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                {showEndProjectButton && (
+                  <button
+                    onClick={() => {
+                      setEndProjectError(null);
+                      setEndProjectModalOpen(true);
+                    }}
+                    disabled={!allMilestonesApproved}
+                    className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
+                    title={allMilestonesApproved ? 'Release remaining escrow and complete project' : 'Approve all milestones to end project'}
+                  >
+                    <CheckCircle size={16} />
+                    <span>End Project</span>
+                  </button>
+                )}
                 {isClient && (
                   <button
                     onClick={handleCreateMockMilestone}
@@ -471,6 +553,36 @@ export default function ProjectWorkspaceScreen() {
               </div>
             </div>
 
+            {showFreelancerPayoutCard && (
+              <div className="workspace-receive-money-card" role="status" aria-live="polite">
+                <div className="workspace-receive-money-icon">
+                  <Wallet size={22} />
+                </div>
+                <div className="workspace-receive-money-copy">
+                  <span>{projectReleasedInFull ? 'Paid in full' : 'Final payout is ready'}</span>
+                  <h3>
+                    {projectReleasedInFull
+                      ? 'Escrow has been fully released to your wallet.'
+                      : 'Claim the remaining escrow into your GigBridge wallet.'}
+                  </h3>
+                  <p>
+                    {projectReleasedInFull ? 'You received ' : 'Available to claim '}
+                    <GigCoinAmount amount={projectReleasedInFull ? project.paidAmount : remainingEscrowAmount} />
+                    {projectReleasedInFull ? ' for this contract.' : '.'}
+                  </p>
+                  {claimPayoutError && <p className="text-red-600">{claimPayoutError}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={projectReleasedInFull ? () => navigate('/wallet/history') : handleClaimPayout}
+                  disabled={isClaimingPayout}
+                  className="workspace-receive-money-button"
+                >
+                  {projectReleasedInFull ? 'View wallet history' : isClaimingPayout ? 'Claiming...' : 'Nhận tiền'}
+                </button>
+              </div>
+            )}
+
             {/* Milestones timeline/list */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {project.milestones.length === 0 ? (
@@ -479,14 +591,20 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               ) : (
                 project.milestones.map((milestone, idx) => {
-                  const isCompleted = milestone.status === 'paid' || milestone.status === 'approved';
+                  const isCompleted = milestone.status === 'approved';
                   const isInProgress = milestone.status === 'in_progress';
                   const isSubmitted = milestone.status === 'submitted';
                   const isPending = milestone.status === 'pending';
-                  const canFreelancerSubmit = !isClient && isInProgress;
-                  const canClientReview = isClient && isSubmitted;
-                  const canClientStart = isClient && isPending;
-                  const canFreelancerRequestUnlock = !isClient && isPending;
+                  const withdrawableAmount = Math.max(0, milestone.amount * 0.8 - milestone.releasedAmount);
+                  const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
+                  const canFreelancerSubmit = !isWorkspaceViewOnly && !isClient && isInProgress;
+                  const canClientReview = !isWorkspaceViewOnly && isClient && isSubmitted;
+                  const canClientStart = !isWorkspaceViewOnly && isClient && isPending;
+                  const canFreelancerRequestUnlock = !isWorkspaceViewOnly && !isClient && isPending;
+                  const showFreelancerWithdraw = !isClient &&
+                    activeContract?.status === ContractStatus.Active &&
+                    isCompleted &&
+                    withdrawableAmount > 0;
                   const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
 
                   return (
@@ -523,6 +641,10 @@ export default function ProjectWorkspaceScreen() {
                               </span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
+                                <span className="font-semibold text-foreground">Released:</span> <GigCoinAmount amount={milestone.releasedAmount} />
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
                                 <span className="font-semibold text-foreground">Due Date:</span> {milestone.dueDate}
                               </span>
                               {milestone.completedAt && (
@@ -550,10 +672,18 @@ export default function ProjectWorkspaceScreen() {
                         </div>
                       </div>
 
-                      {(isInProgress || isSubmitted || canClientStart || canFreelancerRequestUnlock) && (
+                      {(isInProgress || isSubmitted || canClientStart || canFreelancerRequestUnlock || showFreelancerWithdraw || (!isClient && isCompleted && isReleasedInFull)) && (
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                           <div className="flex-1 max-w-xs">
-                            {(isInProgress || isSubmitted) ? (
+                            {showFreelancerWithdraw ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                Withdrawable before project end: <GigCoinAmount amount={withdrawableAmount} />
+                              </span>
+                            ) : !isClient && isCompleted && isReleasedInFull ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                Released in full
+                              </span>
+                            ) : (isInProgress || isSubmitted) ? (
                               <>
                                 <div className="flex justify-between text-[10px] mb-1">
                                   <span className="text-muted-foreground">Progress</span>
@@ -600,6 +730,19 @@ export default function ProjectWorkspaceScreen() {
                               >
                                 {isMilestoneActionPending ? 'Requesting...' : 'Request Unlock'}
                               </button>
+                            ) : showFreelancerWithdraw ? (
+                              <button
+                                onClick={() => handleWithdrawApprovedMilestone(milestone.id)}
+                                disabled={isMilestoneActionPending || !hasEnoughApprovedForWithdraw}
+                                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                                title={hasEnoughApprovedForWithdraw ? 'Withdraw up to 80% of this milestone' : 'At least 50% of milestones must be approved before withdrawal'}
+                              >
+                                {isMilestoneActionPending ? 'Withdrawing...' : 'Withdraw'}
+                              </button>
+                            ) : !isClient && isCompleted && isReleasedInFull ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                Paid in full
+                              </span>
                             ) : (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                 {isSubmitted ? 'Waiting for client review' : 'Waiting for freelancer'}
@@ -611,6 +754,11 @@ export default function ProjectWorkspaceScreen() {
                       {milestoneActionError?.milestoneId === milestone.id && (
                         <div className="mt-3 text-[11px] font-semibold text-red-500">
                           {milestoneActionError.message}
+                        </div>
+                      )}
+                      {showFreelancerWithdraw && !hasEnoughApprovedForWithdraw && (
+                        <div className="mt-3 text-[11px] font-semibold text-amber-600">
+                          At least 50% of milestones must be approved before withdrawal.
                         </div>
                       )}
                     </div>
@@ -796,6 +944,11 @@ export default function ProjectWorkspaceScreen() {
                   </div>
 
                   {/* Input area */}
+                  {isWorkspaceViewOnly ? (
+                    <div className="p-4 bg-muted/50 border-t border-border text-center text-xs font-semibold text-muted-foreground">
+                      Project completed · Workspace is view-only
+                    </div>
+                  ) : (
                   <div className="p-3 bg-card border-t border-border flex-shrink-0">
                     <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
                       <textarea
@@ -839,6 +992,7 @@ export default function ProjectWorkspaceScreen() {
                       </div>
                     </div>
                   </div>
+                  )}
                 </div>
               )}
 
@@ -909,6 +1063,74 @@ export default function ProjectWorkspaceScreen() {
           </aside>
         </div>
       </div>
+
+      {endProjectModalOpen && (
+        <div className="workspace-submit-modal-backdrop" role="presentation">
+          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-end-project-title">
+            <div className="workspace-submit-modal-header">
+              <div>
+                <h3 id="workspace-end-project-title">End Project</h3>
+                <p>Mark this contract completed and open the final payout for freelancer claim.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEndProjectModalOpen(false)}
+                className="workspace-submit-icon-button"
+                title="Close"
+                disabled={isEndingProject}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="workspace-submit-form">
+              {endProjectError && (
+                <div className="workspace-submit-error">
+                  <AlertCircle size={16} />
+                  <span>{endProjectError}</span>
+                </div>
+              )}
+
+              <div className="workspace-end-summary">
+                <span>Final payout available to freelancer</span>
+                <strong><GigCoinAmount amount={remainingEscrowAmount} /></strong>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This action closes the project workflow. The freelancer must claim the remaining escrow to receive it in their GigBridge wallet.
+              </p>
+
+              <div className="workspace-submit-actions">
+                <button
+                  type="button"
+                  className="workspace-submit-secondary"
+                  onClick={() => setEndProjectModalOpen(false)}
+                  disabled={isEndingProject}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="workspace-submit-primary"
+                  onClick={handleConfirmEndProject}
+                  disabled={isEndingProject || !allMilestonesApproved}
+                >
+                  {isEndingProject ? (
+                    <>
+                      <Loader2 size={15} className="workspace-submit-spin" />
+                      Ending
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={15} />
+                      End Project
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {submitModal && (
         <div className="workspace-submit-modal-backdrop" role="presentation">

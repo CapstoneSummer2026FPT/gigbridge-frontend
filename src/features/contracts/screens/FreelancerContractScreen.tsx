@@ -49,7 +49,7 @@ interface ContractWithMilestones extends ContractDto {
 
 const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
   const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
-  const isCompleted = milestone.status === MilestoneStatus.PaymentConfirmed || milestone.status === MilestoneStatus.Approved;
+  const isCompleted = milestone.status === MilestoneStatus.Approved;
 
   return {
     ...milestone,
@@ -165,7 +165,7 @@ export default function FreelancerContractScreen() {
 
   const calculateMilestoneProgress = (contract: ContractWithMilestones) => {
     if (!contract.milestones || contract.milestones.length === 0) return 0;
-    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.PaymentConfirmed || m.status === MilestoneStatus.Approved).length;
+    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.Approved).length;
     return Math.round((completed / contract.milestones.length) * 100);
   };
 
@@ -173,7 +173,7 @@ export default function FreelancerContractScreen() {
     if (!contract.milestones || contract.milestones.length === 0) {
       return { total: 0, completed: 0, pending: 0 };
     }
-    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.Approved || m.status === MilestoneStatus.PaymentConfirmed).length;
+    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.Approved).length;
     const total = contract.milestones.length;
     return { total, completed, pending: total - completed };
   };
