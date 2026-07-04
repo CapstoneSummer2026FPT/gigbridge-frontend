@@ -196,7 +196,7 @@ export function DeliverableSubmissionForm({
                 {files.map((file, index) => (
                   <div key={`${file.name}-${index}`} className="file-item">
                     <div className="file-info">
-                      <File size={16} className="file-icon" />
+                      <FileIcon size={16} className="file-icon" />
                       <span className="file-name">{file.name}</span>
                       <span className="file-size">
                         ({(file.size / (1024 * 1024)).toFixed(2)} MB)
