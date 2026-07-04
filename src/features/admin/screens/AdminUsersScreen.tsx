@@ -232,27 +232,27 @@ export default function AdminUsersScreen() {
     }
 
     const currentBalance = walletInfo?.availableTokens ?? 0;
-    const targetAmount = type === 'credit'
-      ? currentBalance + tokenAmount
-      : currentBalance - tokenAmount;
 
-    if (targetAmount < 0) {
-      alert('Resulting wallet balance cannot be negative.');
+    if (type === 'debit' && currentBalance < tokenAmount) {
+      alert('Insufficient wallet balance for debit.');
       return;
     }
 
     setWalletActionLoading(true);
     try {
       const payload = {
-        tokenAmount: targetAmount,
+        tokenAmount: tokenAmount,
         note: walletNote.trim() || `${type === 'credit' ? 'Credited' : 'Debited'} ${tokenAmount} G-coins via admin adjustment.`,
         idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)
       };
 
-      const response = await adminAPI.debitWallet(previewUser.id, payload);
+      const response = type === 'credit'
+        ? await adminAPI.creditWallet(previewUser.id, payload)
+        : await adminAPI.debitWallet(previewUser.id, payload);
 
       if (response.success) {
-        alert(`Wallet balance updated successfully! New balance: ${targetAmount} G-coins.`);
+        const newBalance = type === 'credit' ? currentBalance + tokenAmount : currentBalance - tokenAmount;
+        alert(`Wallet balance updated successfully! New balance: ${newBalance} G-coins.`);
         setAmount('');
         setWalletNote('');
         await loadUserWallet(previewUser.id);
