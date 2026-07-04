@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
-import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag } from 'lucide-react';
+import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag, Wallet, Folder, File as FileIcon, Image, Film, FileText } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
@@ -81,6 +81,191 @@ export default function AdminUsersScreen() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: 'ban' | 'unban' | 'clearSuspension' | 'role', user: User, newRole?: 0 | 1 | 2 } | null>(null);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '' });
+
+  // Wallet moderation states
+  const [activeTab, setActiveTab] = useState<'profile' | 'wallet' | 'assets'>('profile');
+  const [walletInfo, setWalletInfo] = useState<any>(null);
+  const [walletHistory, setWalletHistory] = useState<any[]>([]);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState<string | null>(null);
+
+  // User assets states
+  const [userAssets, setUserAssets] = useState<any[]>([]);
+  const [isLoadingUserAssets, setIsLoadingUserAssets] = useState(false);
+  const [userAssetSearch, setUserAssetSearch] = useState('');
+  const [userAssetTypeFilter, setUserAssetTypeFilter] = useState<'all' | 'Deliverable' | 'MilestoneAttachment'>('all');
+  const [userAssetJobFilter, setUserAssetJobFilter] = useState<string>('all');
+  const [amount, setAmount] = useState<string>('');
+  const [walletNote, setWalletNote] = useState<string>('');
+  const [walletActionLoading, setWalletActionLoading] = useState(false);
+
+  const loadUserWallet = async (userId: string) => {
+    setWalletLoading(true);
+    setWalletError(null);
+    try {
+      const balanceRes = await adminAPI.getWalletBalance(userId);
+      const historyRes = await adminAPI.getWalletHistory(userId);
+      if (balanceRes.success) {
+        setWalletInfo(balanceRes.data);
+      } else {
+        setWalletError(balanceRes.message || 'Failed to load wallet balance.');
+      }
+      if (historyRes.success) {
+        setWalletHistory(historyRes.data || []);
+      }
+    } catch (err) {
+      setWalletError('An unexpected error occurred while loading wallet info.');
+    } finally {
+      setWalletLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (previewUser && activeTab === 'wallet') {
+      loadUserWallet(previewUser.id);
+    } else {
+      setWalletInfo(null);
+      setWalletHistory([]);
+      setWalletError(null);
+      setAmount('');
+      setWalletNote('');
+    }
+  }, [previewUser, activeTab]);
+
+  useEffect(() => {
+    if (previewUser && activeTab === 'assets') {
+      const loadUserAssets = async () => {
+        setIsLoadingUserAssets(true);
+        try {
+          const res = await adminAPI.getAssets({ uploadedByUserId: previewUser.id });
+          if (res.success && res.data) {
+            setUserAssets(res.data);
+          } else {
+            setUserAssets([]);
+          }
+        } catch (err) {
+          console.error("Failed to load user assets:", err);
+          setUserAssets([]);
+        } finally {
+          setIsLoadingUserAssets(false);
+        }
+      };
+      loadUserAssets();
+    } else if (!previewUser) {
+      setUserAssets([]);
+      setUserAssetSearch('');
+      setUserAssetTypeFilter('all');
+      setUserAssetJobFilter('all');
+    }
+  }, [previewUser, activeTab]);
+
+  const uniqueJobsFromAssets = useMemo(() => {
+    const jobsMap = new Map<string, string>();
+    userAssets.forEach(a => {
+      if (a.contractId && a.contractTitle) {
+        jobsMap.set(a.contractId, a.contractTitle);
+      }
+    });
+    return Array.from(jobsMap.entries()).map(([id, title]) => ({ id, title }));
+  }, [userAssets]);
+
+  const filteredUserAssets = useMemo(() => {
+    return userAssets.filter(asset => {
+      const matchesSearch = userAssetSearch === '' ||
+        asset.fileName.toLowerCase().includes(userAssetSearch.toLowerCase()) ||
+        asset.contractTitle.toLowerCase().includes(userAssetSearch.toLowerCase());
+
+      const matchesType = userAssetTypeFilter === 'all' || asset.assetType === userAssetTypeFilter;
+
+      const matchesJob = userAssetJobFilter === 'all' || asset.contractId === userAssetJobFilter;
+
+      return matchesSearch && matchesType && matchesJob;
+    });
+  }, [userAssets, userAssetSearch, userAssetTypeFilter, userAssetJobFilter]);
+
+  const getFileIcon = (mimeType?: string, fileName?: string) => {
+    const name = fileName?.toLowerCase() || '';
+    const mime = mimeType?.toLowerCase() || '';
+
+    if (mime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(name)) {
+      return <Image size={14} className="text-cyan flex-shrink-0" />;
+    }
+    if (mime.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm)$/i.test(name)) {
+      return <Film size={14} className="text-purple flex-shrink-0" />;
+    }
+    if (mime === 'application/pdf' || name.endsWith('.pdf')) {
+      return <FileText size={14} className="text-red flex-shrink-0" />;
+    }
+    return <FileIcon size={14} className="text-secondary flex-shrink-0" />;
+  };
+
+  const formatBytes = (bytes?: number) => {
+    if (bytes === undefined || bytes === null || bytes === 0) return 'Unknown Size';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  useEffect(() => {
+    if (!showActionMenu) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.user-action-menu-container')) {
+        setShowActionMenu(null);
+      }
+    };
+
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [showActionMenu]);
+
+  const handleWalletAction = async (type: 'credit' | 'debit') => {
+    if (!previewUser) return;
+    const tokenAmount = parseFloat(amount);
+    if (isNaN(tokenAmount) || tokenAmount <= 0) {
+      alert('Please enter a valid amount greater than 0.');
+      return;
+    }
+
+    const currentBalance = walletInfo?.availableTokens ?? 0;
+
+    if (type === 'debit' && currentBalance < tokenAmount) {
+      alert('Insufficient wallet balance for debit.');
+      return;
+    }
+
+    setWalletActionLoading(true);
+    try {
+      const payload = {
+        tokenAmount: tokenAmount,
+        note: walletNote.trim() || `${type === 'credit' ? 'Credited' : 'Debited'} ${tokenAmount} G-coins via admin adjustment.`,
+        idempotencyKey: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)
+      };
+
+      const response = type === 'credit'
+        ? await adminAPI.creditWallet(previewUser.id, payload)
+        : await adminAPI.debitWallet(previewUser.id, payload);
+
+      if (response.success) {
+        const newBalance = type === 'credit' ? currentBalance + tokenAmount : currentBalance - tokenAmount;
+        alert(`Wallet balance updated successfully! New balance: ${newBalance} G-coins.`);
+        setAmount('');
+        setWalletNote('');
+        await loadUserWallet(previewUser.id);
+      } else {
+        alert(response.message || 'Failed to update wallet balance.');
+      }
+    } catch (err) {
+      alert('An error occurred while executing wallet action.');
+    } finally {
+      setWalletActionLoading(false);
+    }
+  };
+
 
   // Real API state
   const [users, setUsers] = useState<User[]>([]);
@@ -181,7 +366,7 @@ export default function AdminUsersScreen() {
   };
 
   const handleChangeRole = async (_userId: string, _newRole: 0 | 1 | 2) => {
-    alert('Role changes are not yet supported through the API.');
+    alert('Role changes are not yet supported through the API. This will be integrated in Step 2.');
     setShowActionMenu(null);
   };
 
@@ -471,7 +656,7 @@ export default function AdminUsersScreen() {
                             </button>
                           )}
 
-                          <div className="relative">
+                          <div className="relative user-action-menu-container">
                             <button
                               onClick={() => setShowActionMenu(showActionMenu === user.id ? null : user.id)}
                               className="p-2 rounded-lg glass-button hover:bg-amber/10 transition-colors"
@@ -484,38 +669,14 @@ export default function AdminUsersScreen() {
                               <div className="absolute right-0 top-full mt-2 w-48 dropdown-menu p-2 z-50">
                                 <button
                                   onClick={() => {
-                                    setConfirmAction({ type: 'role', user, newRole: 0 });
+                                    setPreviewUser(user);
+                                    setActiveTab('wallet');
                                     setShowActionMenu(null);
                                   }}
-                                  disabled={user.role === 0}
-                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
+                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-cyan/10 text-cyan"
                                 >
-                                  <Briefcase size={14} />
-                                  Set as Client
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    setConfirmAction({ type: 'role', user, newRole: 1 });
-                                    setShowActionMenu(null);
-                                  }}
-                                  disabled={user.role === 1}
-                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
-                                >
-                                  <UserCheck size={14} />
-                                  Set as Freelancer
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    setConfirmAction({ type: 'role', user, newRole: 2 });
-                                    setShowActionMenu(null);
-                                  }}
-                                  disabled={user.role === 2}
-                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary disabled:opacity-50"
-                                >
-                                  <Shield size={14} />
-                                  Set as Admin
+                                  <Wallet size={14} />
+                                  Add Fund
                                 </button>
 
                                 <div className="h-px my-1 dropdown-divider" />
@@ -745,83 +906,355 @@ export default function AdminUsersScreen() {
 
         {/* Preview Profile Modal */}
         {previewUser && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setPreviewUser(null)}>
-            <div className="glass-card max-w-2xl w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-6">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { setPreviewUser(null); setActiveTab('profile'); }}>
+            <div className="glass-card max-w-4xl w-full p-6 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-primary">Profile Preview</h2>
                 <button
-                  onClick={() => setPreviewUser(null)}
+                  onClick={() => { setPreviewUser(null); setActiveTab('profile'); }}
                   className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
                 >
                   <XCircle size={20} className="text-red" />
                 </button>
               </div>
 
-              <div className="space-y-6">
-                {/* User Info */}
-                <div className="flex items-center gap-4 p-4 glass-card">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-2xl font-bold text-white">
-                    {previewUser.first_name.charAt(0)}{previewUser.last_name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-primary">{previewUser.full_name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Mail size={14} className="text-muted" />
-                      <p className="text-sm text-secondary">{previewUser.email}</p>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      {getRoleBadge(previewUser.role)}
-                      {getStatusBadge(previewUser)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* User Details */}
-                <div className="glass-card p-4">
-                  <p className="text-sm font-semibold text-primary mb-4">User Information</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted mb-1">User ID</p>
-                      <p className="text-primary font-mono text-xs">{previewUser.id}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted mb-1">Joined Date</p>
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-cyan" />
-                        <p className="text-primary">{new Date(previewUser.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-muted mb-1">First Name</p>
-                      <p className="text-primary">{previewUser.first_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted mb-1">Last Name</p>
-                      <p className="text-primary">{previewUser.last_name}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-muted mb-1">Email Verification</p>
-                      <div className="flex items-center gap-2">
-                        {previewUser.is_email_verified ? (
-                          <>
-                            <CheckCircle size={16} className="text-green" />
-                            <span className="text-green text-sm">Verified</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle size={16} className="text-red" />
-                            <span className="text-red text-sm">Not Verified</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* Tabs */}
+              <div className="flex border-b border-white/10 mb-6">
+                <button
+                  className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all ${activeTab === 'profile'
+                      ? 'border-cyan text-cyan'
+                      : 'border-transparent text-secondary hover:text-primary'
+                    }`}
+                  onClick={() => setActiveTab('profile')}
+                >
+                  Profile Details
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'wallet'
+                      ? 'border-cyan text-cyan'
+                      : 'border-transparent text-secondary hover:text-primary'
+                    }`}
+                  onClick={() => setActiveTab('wallet')}
+                >
+                  <Wallet size={16} />
+                  Wallet & G-coins
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === 'assets'
+                      ? 'border-cyan text-cyan'
+                      : 'border-transparent text-secondary hover:text-primary'
+                    }`}
+                  onClick={() => setActiveTab('assets')}
+                >
+                  <Folder size={16} />
+                  User Assets ({userAssets.length})
+                </button>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="space-y-6 overflow-y-auto pr-1 flex-1">
+                {activeTab === 'profile' && (
+                  <>
+                    {/* User Info */}
+                    <div className="flex items-center gap-4 p-4 glass-card">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-2xl font-bold text-white">
+                        {previewUser.first_name.charAt(0)}{previewUser.last_name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold text-primary">{previewUser.full_name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Mail size={14} className="text-muted" />
+                          <p className="text-sm text-secondary">{previewUser.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          {getRoleBadge(previewUser.role)}
+                          {getStatusBadge(previewUser)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* User Details */}
+                    <div className="glass-card p-4">
+                      <p className="text-sm font-semibold text-primary mb-4">User Information</p>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted mb-1">User ID</p>
+                          <p className="text-primary font-mono text-xs">{previewUser.id}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted mb-1">Joined</p>
+                          <p className="text-primary">{new Date(previewUser.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted mb-1">Phone Number</p>
+                          <p className="text-primary flex items-center gap-1">
+                            <Phone size={12} className="text-cyan" />
+                            {previewUser.phone || 'Not provided'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted mb-1">Role Type</p>
+                          <p className="text-primary font-semibold">
+                            {previewUser.role === 0 ? 'Client / Employer' : previewUser.role === 1 ? 'Freelancer' : 'Platform Administrator'}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-muted mb-1">Email Verification</p>
+                          <div className="flex items-center gap-2">
+                            {previewUser.is_email_verified ? (
+                              <>
+                                <CheckCircle size={16} className="text-green" />
+                                <span className="text-green text-sm">Verified</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle size={16} className="text-red" />
+                                <span className="text-red text-sm">Not Verified</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'wallet' && (
+                  <div className="space-y-6">
+                    {walletLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-cyan"></div>
+                      </div>
+                    ) : walletError ? (
+                      <div className="p-4 glass-card text-center text-red text-sm">
+                        {walletError}
+                      </div>
+                    ) : (
+                      <>
+                        {/* Balance Overview */}
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="glass-card p-3 text-center">
+                            <p className="text-[10px] text-muted mb-0.5">Available Tokens</p>
+                            <p className="text-lg font-bold text-green">{walletInfo?.availableTokens ?? 0} G</p>
+                            <p className="text-[9px] text-muted">~{(walletInfo?.availableVnd ?? 0).toLocaleString('vi-VN')} VND</p>
+                          </div>
+                          <div className="glass-card p-3 text-center">
+                            <p className="text-[10px] text-muted mb-0.5">Held in Escrow</p>
+                            <p className="text-lg font-bold text-purple">{walletInfo?.heldTokens ?? 0} G</p>
+                            <p className="text-[9px] text-muted">~{(walletInfo?.heldVnd ?? 0).toLocaleString('vi-VN')} VND</p>
+                          </div>
+                          <div className="glass-card p-3 text-center">
+                            <p className="text-[10px] text-muted mb-0.5">Total Valuation</p>
+                            <p className="text-lg font-bold text-cyan">
+                              {((walletInfo?.availableTokens ?? 0) + (walletInfo?.heldTokens ?? 0))} G
+                            </p>
+                            <p className="text-[9px] text-muted">
+                              ~{((walletInfo?.availableVnd ?? 0) + (walletInfo?.heldVnd ?? 0)).toLocaleString('vi-VN')} VND
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Credit/Debit Form */}
+                        <div className="glass-card p-4 space-y-4">
+                          <p className="text-sm font-semibold text-primary">Manual Adjustment (G-coins)</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs text-muted block mb-1">Token Amount</label>
+                              <input
+                                type="number"
+                                min="0.01"
+                                step="any"
+                                value={amount}
+                                onChange={e => setAmount(e.target.value)}
+                                className="w-full text-sm glass-input p-2 rounded"
+                                placeholder="e.g. 50"
+                                disabled={walletActionLoading}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted block mb-1">Reference Note</label>
+                              <input
+                                type="text"
+                                value={walletNote}
+                                onChange={e => setWalletNote(e.target.value)}
+                                className="w-full text-sm glass-input p-2 rounded"
+                                placeholder="e.g. Test adjustment"
+                                disabled={walletActionLoading}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-3 justify-end pt-2">
+                            <button
+                              disabled={walletActionLoading}
+                              onClick={() => handleWalletAction('debit')}
+                              className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-pink-500 to-red-500 rounded hover:opacity-90 disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-md shadow-red-500/10"
+                            >
+                              Deduct / Debit
+                            </button>
+                            <button
+                              disabled={walletActionLoading}
+                              onClick={() => handleWalletAction('credit')}
+                              className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-cyan-400 to-blue-500 rounded hover:opacity-90 disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-md shadow-cyan-500/10"
+                            >
+                              Add / Credit
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Transaction History */}
+                        <div className="glass-card p-4 space-y-3">
+                          <p className="text-sm font-semibold text-primary">Transaction Ledger</p>
+                          <div className="max-h-[22vh] overflow-y-auto space-y-2 pr-1 text-xs">
+                            {walletHistory.length === 0 ? (
+                              <p className="text-center text-muted py-4">No transactions recorded</p>
+                            ) : (
+                              walletHistory.map((tx: any) => {
+                                const isDeduction = tx.type !== 0 && tx.type !== 1 && tx.type !== 3;
+                                return (
+                                  <div key={tx.walletTransactionsId} className="flex justify-between items-center p-2.5 glass-card">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${tx.type === 0 ? 'bg-green/10 text-green' :
+                                            tx.type === 5 ? 'bg-red/10 text-red' : 'bg-white/10 text-secondary'
+                                          }`}>
+                                          {tx.type === 0 ? 'Admin Credit' :
+                                            tx.type === 1 ? 'Top Up' :
+                                              tx.type === 2 ? 'Escrow Hold' :
+                                                tx.type === 3 ? 'Escrow Release' :
+                                                  tx.type === 4 ? 'Escrow Refund' : 'Adjustment'}
+                                        </span>
+                                        <span className="text-[10px] text-muted">
+                                          {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                      </div>
+                                      {tx.note && <p className="text-[10px] text-secondary mt-1">{tx.note}</p>}
+                                    </div>
+                                    <div className="text-right">
+                                      <p className={`font-semibold ${isDeduction ? 'text-red' : 'text-green'}`}>
+                                        {isDeduction ? '-' : '+'}{tx.tokenAmount} G
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'assets' && (
+                  <div className="space-y-4">
+                    {/* User Assets Search & Filters */}
+                    <div className="glass-card p-3 space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {/* Search */}
+                        <div className="relative flex-1">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                          <input
+                            type="text"
+                            placeholder="Search file name or job..."
+                            value={userAssetSearch}
+                            onChange={e => setUserAssetSearch(e.target.value)}
+                            style={{ paddingLeft: '2.25rem' }}
+                            className="w-full pr-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-primary placeholder-muted focus:outline-none focus:border-cyan text-xs"
+                          />
+                        </div>
+
+                        {/* Type filter */}
+                        <select
+                          value={userAssetTypeFilter}
+                          onChange={e => setUserAssetTypeFilter(e.target.value as any)}
+                          style={{ backgroundColor: '#111827', color: '#f3f4f6' }}
+                          className="px-2 py-1.5 rounded-lg border border-white/10 text-secondary focus:outline-none focus:border-cyan text-xs"
+                        >
+                          <option value="all" style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>All Types</option>
+                          <option value="Deliverable" style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Final Handoffs</option>
+                          <option value="MilestoneAttachment" style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Milestone Files</option>
+                        </select>
+
+                        {/* Job filter */}
+                        <select
+                          value={userAssetJobFilter}
+                          onChange={e => setUserAssetJobFilter(e.target.value)}
+                          style={{ backgroundColor: '#111827', color: '#f3f4f6' }}
+                          className="px-2 py-1.5 rounded-lg border border-white/10 text-secondary focus:outline-none focus:border-cyan text-xs max-w-[200px]"
+                        >
+                          <option value="all" style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>All Jobs</option>
+                          {uniqueJobsFromAssets.map(job => (
+                            <option key={job.id} value={job.id} style={{ backgroundColor: '#111827', color: '#f3f4f6' }} className="truncate">
+                              {job.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Assets list */}
+                    {isLoadingUserAssets ? (
+                      <div className="text-center py-12 glass-card">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan mx-auto mb-2" />
+                        <p className="text-xs text-secondary">Loading user assets...</p>
+                      </div>
+                    ) : filteredUserAssets.length === 0 ? (
+                      <div className="text-center py-12 glass-card border border-dashed border-white/10">
+                        <Folder size={32} className="mx-auto mb-2 text-muted" />
+                        <p className="text-sm text-primary font-medium">No assets found</p>
+                        <p className="text-xs text-secondary mt-0.5">This user hasn't uploaded any files matching these filters.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
+                        {filteredUserAssets.map(asset => (
+                          <div key={asset.assetId} className="p-3 rounded-lg glass-card text-xs flex flex-col sm:flex-row justify-between sm:items-center gap-3 hover:border-cyan/20 transition-all">
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <div className="p-2 rounded bg-white/5 flex-shrink-0">
+                                {getFileIcon(asset.mimeType, asset.fileName)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-primary truncate" title={asset.fileName}>{asset.fileName}</p>
+                                <p className="text-[10px] text-secondary mt-0.5 truncate">
+                                  Job: <span className="text-primary font-medium">{asset.contractTitle}</span>
+                                </p>
+                                <p className="text-[10px] text-muted mt-0.5 font-mono">
+                                  {formatBytes(asset.fileSize)} • Uploaded: {new Date(asset.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${asset.assetType === 'Deliverable'
+                                  ? 'bg-green/10 text-green border border-green/20'
+                                  : 'bg-purple/10 text-purple border border-purple/20'
+                                }`}>
+                                {asset.assetType === 'Deliverable' ? 'Final Handoff' : 'Milestone File'}
+                              </span>
+
+                              {asset.fileUrl ? (
+                                <a
+                                  href={asset.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-cyan hover:underline font-semibold"
+                                >
+                                  <Download size={12} />
+                                  Download
+                                </a>
+                              ) : (
+                                <span className="text-muted">No Link</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-white/10">
                 <button
-                  onClick={() => setPreviewUser(null)}
+                  onClick={() => { setPreviewUser(null); setActiveTab('profile'); }}
                   className="btn-ghost-cyan px-6 py-2"
                 >
                   Close
@@ -1109,7 +1542,7 @@ export default function AdminUsersScreen() {
                       ? 'bg-green/20 text-green border border-green hover:bg-green/30'
                       : confirmAction.type === 'clearSuspension'
                         ? 'bg-amber/20 text-amber border border-amber hover:bg-amber/30'
-                      : 'btn-cyan'
+                        : 'btn-cyan'
                     }`}
                 >
                   {confirmAction.type === 'ban' && 'Ban User'}
@@ -1122,10 +1555,7 @@ export default function AdminUsersScreen() {
           </div>
         )}
 
-        {/* Click outside to close action menu */}
-        {showActionMenu && (
-          <div className="fixed inset-0 z-40" onClick={() => setShowActionMenu(null)} />
-        )}
+        {/* Click outside handled via useEffect listener */}
       </div>
     </AppLayout>
   );

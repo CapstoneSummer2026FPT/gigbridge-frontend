@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import {
   Upload,
   X,
-  File,
+  File as FileIcon,
   AlertCircle,
   CheckCircle2,
   Calendar,
@@ -499,9 +499,8 @@ export default function SubmitMilestoneDeliverableScreen() {
                         <span className="upload-text">
                           {state.files.length === 0
                             ? 'Click to upload or drag & drop'
-                            : `${state.files.length} file${
-                                state.files.length !== 1 ? 's' : ''
-                              } selected`}
+                            : `${state.files.length} file${state.files.length !== 1 ? 's' : ''
+                            } selected`}
                         </span>
                         <span className="upload-hint">
                           Max 100MB per file (BR-55) • Supports documents, images, code, archives
@@ -529,7 +528,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                           {state.files.map((file, index) => (
                             <div key={`${file.name}-${index}`} className="file-item">
                               <div className="file-info">
-                                <File size={18} className="file-icon" />
+                                <FileIcon size={18} className="file-icon" />
                                 <div className="file-details">
                                   <span className="file-name">{file.name}</span>
                                   <span className="file-size">

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, ShieldAlert
+  ChevronDown, Wallet, ShieldAlert, Layers
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -182,6 +182,7 @@ function getAdminNavSections(openReportCount: number | null): NavSection[] {
       items: [
         { label: 'Job Posts', icon: <Briefcase size={18} />, path: '/admin/jobs' },
         { label: 'Contracts & Compliance', icon: <Shield size={18} />, path: '/admin/contracts' },
+        { label: 'Assets Library', icon: <Layers size={18} />, path: '/admin/assets' },
         { label: 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
         { label: 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
         { label: 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },

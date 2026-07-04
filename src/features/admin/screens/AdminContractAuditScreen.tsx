@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Search, Filter, Eye, Download, AlertCircle, CheckCircle2, Clock,
-  ChevronDown, FileText, MoreVertical, TrendingUp, AlertTriangle, BarChart3, Calendar
+  ChevronDown, FileText, MoreVertical, TrendingUp, AlertTriangle, BarChart3, Calendar, Edit, XCircle
 } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { adminAPI } from '../../../api/adminAPI';
 import type { ContractDto, ContractQueryParams } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { formatContractAmount, formatContractDate, getContractStatusLabel } from '../../../shared/utils/contractUtils';
-import { MOCK_CONTRACTS_FOR_SCREENS } from '../../contracts/mock/data-for-ContractScreens';
+import { ContractAreaTabs } from '../../contracts/components/ContractAreaTabs';
 import '../styles/admin-contract-audit-screen.css';
 
 interface ComplianceRequirement {
@@ -58,6 +58,20 @@ export default function AdminContractAuditScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Edit Contract States
+  const [editingContract, setEditingContract] = useState<ContractAuditData | null>(null);
+  const [contractForm, setContractForm] = useState({
+    title: '',
+    description: '',
+    totalBudget: 0,
+    status: 7, // Active
+    startDate: '',
+    endDate: '',
+    esignContractPdfUrl: ''
+  });
+  const [isContractActionLoading, setIsContractActionLoading] = useState(false);
+  const [contractActionError, setContractActionError] = useState<string | null>(null);
+
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<ContractStatus | 'All'>('All');
@@ -82,36 +96,79 @@ export default function AdminContractAuditScreen() {
       isAtRisk: isContractAtRisk(c),
     }));
 
+  const loadContractsList = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await adminAPI.getContracts();
+
+      if (response.success && response.data) {
+        const apiContracts = Array.isArray(response.data) ? response.data : [];
+        const mappedContracts = apiContracts.map(c => ({
+          contractsId: c.contractsId,
+          jobPostsId: c.jobPostsId,
+          clientProfilesId: c.clientProfilesId,
+          freelancerProfilesId: c.freelancerProfilesId || '',
+          proposalsId: c.proposalsId || '',
+          title: c.title,
+          description: c.description || '',
+          totalBudget: c.totalBudget,
+          status: c.status,
+          startDate: c.startDate || c.createdAt,
+          endDate: c.endDate || undefined,
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt,
+          esignContractPdfUrl: c.esignContractPdfUrl
+        }));
+
+        setContracts(buildAuditContracts(mappedContracts));
+      } else {
+        setContracts([]);
+        setError(response.message || 'Failed to load contracts.');
+      }
+    } catch (err) {
+      setContracts([]);
+      setError('An unexpected error occurred while fetching contracts.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateContract = async () => {
+    if (!editingContract) return;
+    if (!contractForm.title.trim()) {
+      setContractActionError('Title is required');
+      return;
+    }
+    setIsContractActionLoading(true);
+    setContractActionError(null);
+    try {
+      const res = await adminAPI.updateContract(editingContract.contractsId, {
+        title: contractForm.title,
+        description: contractForm.description,
+        totalBudget: contractForm.totalBudget,
+        status: contractForm.status,
+        startDate: contractForm.startDate || undefined,
+        endDate: contractForm.endDate || undefined,
+        esignContractPdfUrl: contractForm.esignContractPdfUrl || undefined
+      });
+      if (res.success) {
+        await loadContractsList();
+        setEditingContract(null);
+      } else {
+        setContractActionError(res.message || 'Failed to update contract');
+      }
+    } catch (err) {
+      setContractActionError('An error occurred while updating the contract');
+    } finally {
+      setIsContractActionLoading(false);
+    }
+  };
+
   // Load contracts
   useEffect(() => {
-    const loadContracts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params: ContractQueryParams = {
-          pageIndex,
-          pageSize,
-        };
-
-        const response = await contractGetAPI.getAllContracts(params);
-
-        if (response.success && response.data) {
-          const apiContracts = Array.isArray(response.data) ? response.data : [];
-          const contractsData = apiContracts.length > 0 ? apiContracts : MOCK_CONTRACTS_FOR_SCREENS;
-
-          setContracts(buildAuditContracts(contractsData));
-        } else {
-          setContracts(buildAuditContracts(MOCK_CONTRACTS_FOR_SCREENS));
-        }
-      } catch {
-        setContracts(buildAuditContracts(MOCK_CONTRACTS_FOR_SCREENS));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadContracts();
+    loadContractsList();
   }, [pageIndex]);
 
   // Get compliance status based on contract data
@@ -384,6 +441,10 @@ ${idx + 1}. ${c.title}
         <div className="audit-header">
           <h1 className="audit-title">Contracts & Compliance</h1>
           <p className="audit-subtitle">Manage all platform contracts, monitor risk, and review compliance evidence in one workspace</p>
+        </div>
+
+        <div className="mb-6">
+          <ContractAreaTabs />
         </div>
 
         {/* Stats Overview */}
@@ -733,11 +794,17 @@ ${idx + 1}. ${c.title}
                       <div className="details-grid">
                         <div className="detail-item">
                           <span className="detail-label">Client</span>
-                          <span className="detail-value">{contract.clientProfilesId}</span>
+                          <span className="detail-value text-primary font-semibold">{contract.clientName || 'Client'}</span>
+                          <span className="text-[10px] text-muted font-mono block mt-1 break-all">{contract.clientProfilesId}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-label">Freelancer</span>
-                          <span className="detail-value">{contract.freelancerProfilesId}</span>
+                          <span className={`detail-value ${!contract.freelancerProfilesId ? 'text-muted font-medium italic' : 'text-primary font-semibold'}`}>
+                            {contract.freelancerName || 'Pending Freelancer Selection'}
+                          </span>
+                          {contract.freelancerProfilesId && (
+                            <span className="text-[10px] text-muted font-mono block mt-1 break-all">{contract.freelancerProfilesId}</span>
+                          )}
                         </div>
                         <div className="detail-item">
                           <span className="detail-label">Budget</span>
@@ -750,10 +817,6 @@ ${idx + 1}. ${c.title}
                         <div className="detail-item">
                           <span className="detail-label">End Date</span>
                           <span className="detail-value">{formatContractDate(contract.endDate)}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Created</span>
-                          <span className="detail-value">{formatContractDate(contract.createdAt)}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-label">Contract PDF</span>
@@ -862,6 +925,26 @@ ${idx + 1}. ${c.title}
                           <Eye size={16} />
                           View Details
                         </button>
+                        <button
+                          onClick={() => {
+                            setEditingContract(contract);
+                            setContractForm({
+                              title: contract.title,
+                              description: contract.description || '',
+                              totalBudget: contract.totalBudget,
+                              status: contract.status,
+                              startDate: contract.startDate ? contract.startDate.split('T')[0] : '',
+                              endDate: contract.endDate ? contract.endDate.split('T')[0] : '',
+                              esignContractPdfUrl: contract.esignContractPdfUrl || ''
+                            });
+                            setContractActionError(null);
+                          }}
+                          style={{ border: '1px solid rgba(168, 85, 247, 0.4)', background: 'rgba(168, 85, 247, 0.1)' }}
+                          className="action-btn action-edit text-purple-400 hover:bg-purple-500/20 font-semibold flex items-center gap-1"
+                        >
+                          <Edit size={16} />
+                          Manage Contract
+                        </button>
                         {contract.esignContractPdfUrl && (
                           <a
                             href={contract.esignContractPdfUrl}
@@ -889,6 +972,145 @@ ${idx + 1}. ${c.title}
               Showing <strong>{filteredContracts.length}</strong> of{' '}
               <strong>{contracts.length}</strong> contracts
             </p>
+          </div>
+        )}
+        {/* Manage Contract Modal */}
+        {editingContract && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingContract(null)}>
+            <div className="glass-card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-primary">Manage Contract</h2>
+                  <p className="text-xs text-secondary mt-0.5">Contract ID: <span className="font-mono">{editingContract.contractsId}</span></p>
+                </div>
+                <button
+                  onClick={() => setEditingContract(null)}
+                  className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
+                >
+                  <XCircle size={20} className="text-red" />
+                </button>
+              </div>
+
+              {contractActionError && (
+                <div className="mb-4 p-3 rounded-lg bg-red/10 border border-red/20 text-red text-xs flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>{contractActionError}</span>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {/* Title */}
+                <div>
+                  <label className="block text-xs font-semibold text-muted uppercase mb-1">Contract Title</label>
+                  <input
+                    type="text"
+                    value={contractForm.title}
+                    onChange={e => setContractForm({ ...contractForm, title: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-xs font-semibold text-muted uppercase mb-1">Description</label>
+                  <textarea
+                    rows={4}
+                    value={contractForm.description}
+                    onChange={e => setContractForm({ ...contractForm, description: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                  />
+                </div>
+
+                {/* E-Sign PDF URL */}
+                <div>
+                  <label className="block text-xs font-semibold text-muted uppercase mb-1">E-Sign Contract PDF URL</label>
+                  <input
+                    type="text"
+                    value={contractForm.esignContractPdfUrl}
+                    onChange={e => setContractForm({ ...contractForm, esignContractPdfUrl: e.target.value })}
+                    placeholder="e.g. /contracts/esign_document_code.pdf"
+                    className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Budget */}
+                  <div>
+                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Total Budget</label>
+                    <input
+                      type="number"
+                      value={contractForm.totalBudget}
+                      onChange={e => setContractForm({ ...contractForm, totalBudget: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Contract Status</label>
+                    <select
+                      value={contractForm.status}
+                      onChange={e => setContractForm({ ...contractForm, status: parseInt(e.target.value) })}
+                      style={{ backgroundColor: '#111827', color: '#f3f4f6' }}
+                      className="w-full px-3 py-2 rounded-lg border border-white/10 text-secondary focus:outline-none focus:border-cyan text-sm"
+                    >
+                      <option value={0} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Draft</option>
+                      <option value={1} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Freelancer Selection</option>
+                      <option value={2} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>In Negotiation</option>
+                      <option value={3} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Details</option>
+                      <option value={4} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Confirmation</option>
+                      <option value={5} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Escrow</option>
+                      <option value={6} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Signature</option>
+                      <option value={7} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Active</option>
+                      <option value={8} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Completed</option>
+                      <option value={9} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Cancelled</option>
+                      <option value={10} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Disputed</option>
+                    </select>
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      value={contractForm.startDate}
+                      onChange={e => setContractForm({ ...contractForm, startDate: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                    />
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <label className="block text-xs font-semibold text-muted uppercase mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={contractForm.endDate}
+                      onChange={e => setContractForm({ ...contractForm, endDate: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
+                <button
+                  onClick={() => setEditingContract(null)}
+                  className="btn-ghost-cyan px-6 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateContract}
+                  disabled={isContractActionLoading}
+                  className="btn-cyan px-6 py-2 flex items-center gap-2"
+                >
+                  {isContractActionLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />}
+                  Save Changes
+                </button>
+              </div>
+
+            </div>
           </div>
         )}
       </div>
