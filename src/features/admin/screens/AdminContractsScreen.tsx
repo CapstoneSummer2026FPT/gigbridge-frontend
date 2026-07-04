@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, Filter, FileText, Eye, Edit, MoreVertical, Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, Download, FileSignature } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
-import { DB } from '../../../mock_backend';
+import { adminAPI } from '../../../api/adminAPI';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { getMilestoneStatusLabel } from '../../../shared/utils/contractUtils';
 import '../styles/admin-users-screen.css';
 
 type Contract = {
@@ -16,8 +18,11 @@ type Contract = {
   proposalId: string;
   totalBudget: number;
   status: 'active' | 'completed' | 'cancelled' | 'disputed';
+  statusNum: number;
   startDate: string;
   endDate?: string;
+  clientName?: string;
+  freelancerName?: string;
   eSign?: {
     id: string;
     clientName: string;
@@ -29,73 +34,6 @@ type Contract = {
 
 type ContractFilter = 'all' | 'active' | 'completed' | 'cancelled' | 'disputed';
 type ContractSort = 'startDate' | 'title' | 'budget';
-
-// Mock contract data
-const MOCK_CONTRACTS: Contract[] = [
-  {
-    id: 'cont_1',
-    title: 'Full-Stack Web Development Contract',
-    description: 'Development of e-commerce platform with React and Node.js',
-    clientId: 'user_client_1',
-    freelancerId: 'user_freelancer_1',
-    jobId: 'job_1',
-    proposalId: 'prop_1',
-    totalBudget: 5000,
-    status: 'active',
-    startDate: '2024-05-01',
-    eSign: {
-      id: 'esign_1',
-      clientName: 'TechCorp Inc.',
-      freelancerName: 'John Developer',
-      url: '/contracts/esign_1.pdf',
-      createdAt: '2024-05-01T10:00:00Z',
-    },
-  },
-  {
-    id: 'cont_2',
-    title: 'Mobile App UI/UX Design',
-    description: 'Design mobile app interface for iOS and Android',
-    clientId: 'user_client_2',
-    freelancerId: 'user_freelancer_2',
-    jobId: 'job_2',
-    proposalId: 'prop_2',
-    totalBudget: 3500,
-    status: 'completed',
-    startDate: '2024-04-15',
-    endDate: '2024-05-10',
-    eSign: {
-      id: 'esign_2',
-      clientName: 'StartupXYZ',
-      freelancerName: 'Sarah Designer',
-      url: '/contracts/esign_2.pdf',
-      createdAt: '2024-04-15T09:30:00Z',
-    },
-  },
-  {
-    id: 'cont_3',
-    title: 'Content Writing - Blog Articles',
-    description: '10 SEO-optimized blog articles for tech website',
-    clientId: 'user_client_3',
-    freelancerId: 'user_freelancer_3',
-    jobId: 'job_3',
-    proposalId: 'prop_3',
-    totalBudget: 1200,
-    status: 'active',
-    startDate: '2024-05-05',
-  },
-  {
-    id: 'cont_4',
-    title: 'Data Analysis Project',
-    description: 'Customer behavior analysis using Python and SQL',
-    clientId: 'user_client_4',
-    freelancerId: 'user_freelancer_4',
-    jobId: 'job_4',
-    proposalId: 'prop_4',
-    totalBudget: 2800,
-    status: 'disputed',
-    startDate: '2024-04-20',
-  },
-];
 
 export default function AdminContractsScreen() {
   const navigate = useNavigate();
@@ -139,7 +77,148 @@ Client Signature
 _________________________
 Freelancer Signature`);
 
-  const allContracts = MOCK_CONTRACTS;
+  const [allContracts, setAllContracts] = useState<Contract[]>([]);
+  const [isApiUnimplemented, setIsApiUnimplemented] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [contractMilestones, setContractMilestones] = useState<any[]>([]);
+  const [isLoadingMilestones, setIsLoadingMilestones] = useState(false);
+
+  // Edit Contract States
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [contractForm, setContractForm] = useState({
+    title: '',
+    description: '',
+    totalBudget: 0,
+    status: 7, // Active
+    startDate: '',
+    endDate: ''
+  });
+  const [isContractActionLoading, setIsContractActionLoading] = useState(false);
+  const [contractActionError, setContractActionError] = useState<string | null>(null);
+
+  const mapStatus = (statusNum: number): string => {
+    switch (statusNum) {
+      case 7: return 'active';
+      case 8: return 'completed';
+      case 9: return 'cancelled';
+      case 10: return 'disputed';
+      default: return 'active';
+    }
+  };
+
+  const mapContractResponseToContract = (c: any): Contract => ({
+    id: c.contractsId,
+    title: c.title,
+    description: c.description || '',
+    clientId: c.clientProfilesId,
+    freelancerId: c.freelancerProfilesId || '',
+    jobId: c.jobPostsId,
+    proposalId: c.proposalsId || '',
+    totalBudget: c.totalBudget,
+    status: mapStatus(c.status) as any,
+    statusNum: c.status,
+    startDate: c.startDate || c.createdAt,
+    endDate: c.endDate || undefined,
+    clientName: c.clientName,
+    freelancerName: c.freelancerName || 'Pending Assignment',
+    eSign: c.esignContractPdfUrl ? {
+      id: c.contractsId,
+      clientName: c.clientName,
+      freelancerName: c.freelancerName || 'Freelancer',
+      url: c.esignContractPdfUrl,
+      createdAt: c.createdAt,
+    } : undefined
+  });
+
+  const fetchContracts = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getContracts();
+      if (response.success && response.data) {
+        setAllContracts(response.data.map(mapContractResponseToContract));
+      } else {
+        setError(response.message || 'Failed to load contracts');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred while fetching contracts');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateContract = async () => {
+    if (!editingContract) return;
+    if (!contractForm.title.trim()) {
+      setContractActionError('Title is required');
+      return;
+    }
+    setIsContractActionLoading(true);
+    setContractActionError(null);
+    try {
+      const res = await adminAPI.updateContract(editingContract.id, {
+        title: contractForm.title,
+        description: contractForm.description,
+        totalBudget: contractForm.totalBudget,
+        status: contractForm.status,
+        startDate: contractForm.startDate || undefined,
+        endDate: contractForm.endDate || undefined
+      });
+      if (res.success) {
+        await fetchContracts();
+        // Sync detail modal view if open
+        if (viewContract && viewContract.id === editingContract.id) {
+          const updated = {
+            ...viewContract,
+            title: contractForm.title,
+            description: contractForm.description,
+            totalBudget: contractForm.totalBudget,
+            statusNum: contractForm.status,
+            status: mapStatus(contractForm.status) as any,
+            startDate: contractForm.startDate,
+            endDate: contractForm.endDate || undefined
+          };
+          setViewContract(updated);
+        }
+        setEditingContract(null);
+      } else {
+        setContractActionError(res.message || 'Failed to update contract');
+      }
+    } catch (err) {
+      setContractActionError('An error occurred while updating the contract');
+    } finally {
+      setIsContractActionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContracts();
+  }, []);
+
+  useEffect(() => {
+    if (viewContract) {
+      const loadMilestones = async () => {
+        setIsLoadingMilestones(true);
+        try {
+          const response = await contractGetAPI.getMilestonesByContract(viewContract.id);
+          if (response.success && response.data) {
+            setContractMilestones(response.data);
+          } else {
+            setContractMilestones([]);
+          }
+        } catch (err) {
+          setContractMilestones([]);
+        } finally {
+          setIsLoadingMilestones(false);
+        }
+      };
+      loadMilestones();
+    } else {
+      setContractMilestones([]);
+    }
+  }, [viewContract]);
+
 
   // Filter and sort contracts
   const filteredContracts = useMemo(() => {
@@ -185,13 +264,14 @@ Freelancer Signature`);
   };
 
   const getClientName = (clientId: string) => {
-    const user = DB.getUserById(clientId);
-    return user?.full_name || 'Unknown Client';
+    const contract = allContracts.find(c => c.clientId === clientId);
+    return contract?.clientName || 'Client';
   };
 
   const getFreelancerName = (freelancerId: string) => {
-    const user = DB.getUserById(freelancerId);
-    return user?.full_name || 'Unknown Freelancer';
+    if (!freelancerId) return 'Pending Assignment';
+    const contract = allContracts.find(c => c.freelancerId === freelancerId);
+    return contract?.freelancerName || 'Freelancer';
   };
 
   return (
@@ -381,6 +461,24 @@ Freelancer Signature`);
                       <Eye size={14} />
                       View Details
                     </button>
+                    <button
+                      onClick={() => {
+                        setEditingContract(contract);
+                        setContractForm({
+                          title: contract.title,
+                          description: contract.description,
+                          totalBudget: contract.totalBudget,
+                          status: contract.statusNum,
+                          startDate: contract.startDate ? contract.startDate.split('T')[0] : '',
+                          endDate: contract.endDate ? contract.endDate.split('T')[0] : ''
+                        });
+                        setContractActionError(null);
+                      }}
+                      className="flex-1 lg:flex-initial btn-ghost-purple px-4 py-2 text-xs flex items-center justify-center gap-2"
+                    >
+                      <Edit size={14} />
+                      Manage Contract
+                    </button>
                     {contract.eSign && (
                       <button
                         className="flex-1 lg:flex-initial btn-ghost-purple px-4 py-2 text-xs flex items-center justify-center gap-2"
@@ -398,7 +496,11 @@ Freelancer Signature`);
               <div className="glass-card text-center py-16">
                 <FileText size={48} className="mx-auto mb-4 text-muted" />
                 <p className="text-primary font-medium mb-2">No contracts found</p>
-                <p className="text-sm text-secondary">Try adjusting your search or filters</p>
+                <p className="text-sm text-secondary">
+                  {isApiUnimplemented
+                    ? "API endpoint not implemented yet. Contract supervision features will be integrated in Step 3."
+                    : "Try adjusting your search or filters"}
+                </p>
               </div>
             )}
           </div>
@@ -508,6 +610,87 @@ Freelancer Signature`);
                     </div>
                   </div>
 
+                  {/* Milestones Escrow Overrides */}
+                  <div className="glass-card p-5">
+                    <h4 className="text-sm font-semibold text-primary mb-3">Contract Milestones & Escrow Moderation</h4>
+                    {isLoadingMilestones ? (
+                      <p className="text-xs text-secondary">Loading milestones...</p>
+                    ) : contractMilestones.length === 0 ? (
+                      <p className="text-xs text-muted">No milestones defined for this contract.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {contractMilestones.map((m) => (
+                          <div key={m.milestonesId} className="flex flex-col md:flex-row md:items-center justify-between p-3 rounded-lg border border-white/5 bg-white/5 gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-primary">{m.title}</p>
+                              <p className="text-xs text-secondary">
+                                Status: <span className="font-semibold text-cyan">{getMilestoneStatusLabel(m.status)}</span>
+                              </p>
+                              <div className="flex gap-4 mt-1 text-xs text-muted">
+                                <span>Amount: {m.amount.toLocaleString()} VND</span>
+                                <span>Released: {m.releasedAmount.toLocaleString()} VND</span>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={async () => {
+                                  const note = prompt("Enter a reason/note for force-releasing this milestone escrow to the freelancer:") || undefined;
+                                  if (confirm(`Are you sure you want to force-release milestone "${m.title}" to the freelancer?`)) {
+                                    try {
+                                      const res = await adminAPI.overrideMilestone(m.milestonesId, { action: 'release', note });
+                                      if (res.success) {
+                                        alert("Milestone escrow successfully released.");
+                                        const refresh = await contractGetAPI.getMilestonesByContract(viewContract!.id);
+                                        if (refresh.success && refresh.data) {
+                                          setContractMilestones(refresh.data);
+                                        }
+                                        await fetchContracts();
+                                      } else {
+                                        alert(res.message || "Failed to release milestone.");
+                                      }
+                                    } catch (e) {
+                                      alert("Error releasing milestone.");
+                                    }
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 rounded bg-green/20 text-green border border-green/30 text-xs font-semibold hover:bg-green/30 transition-colors"
+                              >
+                                Force Release
+                              </button>
+
+                              <button
+                                onClick={async () => {
+                                  const note = prompt("Enter a reason/note for refunding this milestone escrow back to the client:") || undefined;
+                                  if (confirm(`Are you sure you want to refund milestone "${m.title}" escrow back to the client?`)) {
+                                    try {
+                                      const res = await adminAPI.overrideMilestone(m.milestonesId, { action: 'refund', note });
+                                      if (res.success) {
+                                        alert("Milestone escrow successfully refunded.");
+                                        const refresh = await contractGetAPI.getMilestonesByContract(viewContract!.id);
+                                        if (refresh.success && refresh.data) {
+                                          setContractMilestones(refresh.data);
+                                        }
+                                        await fetchContracts();
+                                      } else {
+                                        alert(res.message || "Failed to refund milestone.");
+                                      }
+                                    } catch (e) {
+                                      alert("Error refunding milestone.");
+                                    }
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 rounded bg-amber/20 text-amber border border-amber/30 text-xs font-semibold hover:bg-amber/30 transition-colors"
+                              >
+                                Refund to Client
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* E-Sign Info */}
                   {viewContract.eSign && (
                     <div className="glass-card p-5">
@@ -564,6 +747,24 @@ Freelancer Signature`);
                   >
                     Close
                   </button>
+                  <button
+                    onClick={() => {
+                      setEditingContract(viewContract);
+                      setContractForm({
+                        title: viewContract.title,
+                        description: viewContract.description,
+                        totalBudget: viewContract.totalBudget,
+                        status: viewContract.statusNum,
+                        startDate: viewContract.startDate ? viewContract.startDate.split('T')[0] : '',
+                        endDate: viewContract.endDate ? viewContract.endDate.split('T')[0] : ''
+                      });
+                      setContractActionError(null);
+                    }}
+                    className="btn-ghost-purple px-6 py-2 flex items-center gap-2"
+                  >
+                    <Edit size={16} />
+                    Manage Contract
+                  </button>
                   {viewContract.eSign && (
                     <button className="btn-cyan px-6 py-2 flex items-center gap-2">
                       <Download size={16} />
@@ -571,6 +772,134 @@ Freelancer Signature`);
                     </button>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Manage Contract Modal */}
+          {editingContract && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingContract(null)}>
+              <div className="glass-card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-primary">Manage Contract</h2>
+                    <p className="text-xs text-secondary mt-0.5">Contract ID: <span className="font-mono">{editingContract.id}</span></p>
+                  </div>
+                  <button
+                    onClick={() => setEditingContract(null)}
+                    className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
+                  >
+                    <XCircle size={20} className="text-red" />
+                  </button>
+                </div>
+
+                {contractActionError && (
+                  <div className="mb-4 p-3 rounded-lg bg-red/10 border border-red/20 text-red text-xs flex items-center gap-2">
+                    <AlertCircle size={14} />
+                    <span>{contractActionError}</span>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {/* Title */}
+                  <div>
+                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Contract Title</label>
+                    <input
+                      type="text"
+                      value={contractForm.title}
+                      onChange={e => setContractForm({ ...contractForm, title: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Description</label>
+                    <textarea
+                      rows={4}
+                      value={contractForm.description}
+                      onChange={e => setContractForm({ ...contractForm, description: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Budget */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted uppercase mb-1">Total Budget</label>
+                      <input
+                        type="number"
+                        value={contractForm.totalBudget}
+                        onChange={e => setContractForm({ ...contractForm, totalBudget: parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                      />
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted uppercase mb-1">Contract Status</label>
+                      <select
+                        value={contractForm.status}
+                        onChange={e => setContractForm({ ...contractForm, status: parseInt(e.target.value) })}
+                        style={{ backgroundColor: '#111827', color: '#f3f4f6' }}
+                        className="w-full px-3 py-2 rounded-lg border border-white/10 text-secondary focus:outline-none focus:border-cyan text-sm"
+                      >
+                        <option value={0} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Draft</option>
+                        <option value={1} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Freelancer Selection</option>
+                        <option value={2} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>In Negotiation</option>
+                        <option value={3} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Details</option>
+                        <option value={4} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Confirmation</option>
+                        <option value={5} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Escrow</option>
+                        <option value={6} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Signature</option>
+                        <option value={7} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Active</option>
+                        <option value={8} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Completed</option>
+                        <option value={9} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Cancelled</option>
+                        <option value={10} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Disputed</option>
+                      </select>
+                    </div>
+
+                    {/* Start Date */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted uppercase mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={contractForm.startDate}
+                        onChange={e => setContractForm({ ...contractForm, startDate: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                      />
+                    </div>
+
+                    {/* End Date */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted uppercase mb-1">End Date</label>
+                      <input
+                        type="date"
+                        value={contractForm.endDate}
+                        onChange={e => setContractForm({ ...contractForm, endDate: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
+                  <button
+                    onClick={() => setEditingContract(null)}
+                    className="btn-ghost-cyan px-6 py-2"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateContract}
+                    disabled={isContractActionLoading}
+                    className="btn-cyan px-6 py-2 flex items-center gap-2"
+                  >
+                    {isContractActionLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />}
+                    Save Changes
+                  </button>
+                </div>
+
               </div>
             </div>
           )}

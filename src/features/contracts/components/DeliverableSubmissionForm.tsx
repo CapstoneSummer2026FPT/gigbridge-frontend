@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, X, File, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, X, File as FileIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import '../styles/deliverable-submission-form.css';
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Users, Briefcase, TrendingUp, Shield, AlertCircle, CheckCircle, XCircle, BarChart2, Activity, Bot, Flag, FileText, Terminal, MessageSquare, HelpCircle } from 'lucide-react';
+import { Users, Briefcase, TrendingUp, Shield, AlertCircle, CheckCircle, XCircle, BarChart2, Activity, Bot, Flag, FileText, Terminal, MessageSquare, HelpCircle, FolderOpen, Zap, AlertOctagon } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { adminAPI } from '../../../api/adminAPI';
@@ -256,6 +256,60 @@ export default function AdminDashboardScreen() {
               </div>
               <div className="w-10 h-10 rounded-lg bg-green/20 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <GCoinIcon size={20} />
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/assets')}
+            className="glass-card p-6 hover:bg-white/5 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FolderOpen size={20} className="text-cyan" />
+                  <h3 className="text-lg font-bold text-primary">Assets Library</h3>
+                </div>
+                <p className="text-sm text-secondary">View and manage all files & digital assets</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-cyan/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FolderOpen size={20} className="text-cyan" />
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/ads-packages')}
+            className="glass-card p-6 hover:bg-white/5 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap size={20} className="text-amber" />
+                  <h3 className="text-lg font-bold text-primary">Ads & Packages</h3>
+                </div>
+                <p className="text-sm text-secondary">Configure promotion packages & advertising pricing</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-amber/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Zap size={20} className="text-amber" />
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/cheating')}
+            className="glass-card p-6 hover:bg-white/5 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertOctagon size={20} className="text-red-500" />
+                  <h3 className="text-lg font-bold text-primary">Cheating Management</h3>
+                </div>
+                <p className="text-sm text-secondary">Review system fraud detection, bans & reports</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <AlertOctagon size={20} className="text-red-500" />
               </div>
             </div>
           </button>

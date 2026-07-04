@@ -76,7 +76,9 @@ export interface Job {
   postedAt: string;
   isRemote: boolean;
   gigcoin_cost: number;
+  visibility?: number;
 }
+
 
 export interface JobPostQueryParams {
   PageIndex?: number;
@@ -100,6 +102,8 @@ export interface JobPostSummaryDto {
   createdAt: string;
   status?: JobPostStatus | number | null;
   visibility?: JobPostVisibility | number | null;
+  clientProfilesId?: string | null;
+  clientFullName?: string | null;
   skills: JobPostSkillDto[];
   customSkillNames: string[];
   skillNames: string[];
