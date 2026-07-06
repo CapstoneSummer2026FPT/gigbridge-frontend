@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, User, Zap, Menu, Wallet, CreditCard, TrendingUp, History, Moon, Sun } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History } from 'lucide-react';
 import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
@@ -12,6 +12,7 @@ import { useUserNotifications } from '../../features/notifications/hooks/useUser
 import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
 import { formatGigCoinNumber } from '../utils/gigcoin';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -26,6 +27,7 @@ const navItems = [
 ];
 
 export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -48,6 +50,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const setTheme = appContext?.setTheme || (() => { });
   const logout = appContext?.logout || (() => { });
   const isAuthenticated = appContext?.isAuthenticated || false;
+
+  const localizedNavItems = navItems.map(item => {
+    if (item.label === 'Browse Jobs') return { ...item, label: t('nav.browseJobs') };
+    if (item.label === 'About') return { ...item, label: t('nav.about') };
+    if (item.label === 'FAQ') return { ...item, label: t('nav.faq') };
+    if (item.label === 'Contact') return { ...item, label: t('nav.contact') };
+    return item;
+  });
 
   // Wallet and notification data
   const { notifications, unreadCount, markAsRead } = useUserNotifications(user, {
@@ -169,14 +179,14 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   alt="GigBridge Logo"
                   className="w-8 h-8 rounded-lg object-cover"
                 />
-                <span className="text-xl font-bold tracking-tight font-zentry logo-text hidden sm:block">
+                <span className="text-xl font-bold tracking-tight logo-text hidden sm:block">
                   GIGBRIDGE
                 </span>
               </div>
 
               <Button
                 id="auth-button"
-                title={isAuthenticated ? 'Dashboard' : 'Login'}
+                title={isAuthenticated ? t('nav.dashboard') : t('auth.login')}
                 rightIcon={<TiLocationArrow />}
                 onClick={handleCtaClick}
                 containerClass="bg-blue-50 flex items-center justify-center gap-1 !px-4 !py-2 sm:!px-7 sm:!py-3"
@@ -186,7 +196,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             {/* Navigation Links and Audio Button */}
             <div className="flex h-full items-center">
               <div className="hidden md:block">
-                {navItems.map((item, index) => {
+                {localizedNavItems.map((item, index) => {
                   if (item.path.startsWith('#')) {
                     return (
                       <a
@@ -321,9 +331,9 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             {showWalletMenu && (
               <div className="absolute right-0 top-12 w-56 rounded-2xl p-2 z-50 dropdown-menu">
                 <div className="px-3 py-2 mb-1">
-                  <p className="text-xs text-muted">GigCoin Balance</p>
+                  <p className="text-xs text-muted">{t('wallet.balance')}</p>
                   <div className="flex items-center gap-1">
-                    <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-brand" />
+                    <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-[var(--gb-amber)]" />
                   </div>
                 </div>
                 <div className="h-px mb-1 dropdown-divider" />
@@ -331,25 +341,25 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/wallet/deposit'); setShowWalletMenu(false); }}>
                   <GigCoinLogo size={14} />
-                  <span>Deposit GigCoin</span>
+                  <span>{t('wallet.deposit')}</span>
                 </button>
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/subscription'); setShowWalletMenu(false); }}>
                   <CreditCard size={14} />
-                  Subscription
+                  {t('nav.subscription')}
                 </button>
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/financial-overview'); setShowWalletMenu(false); }}>
                   <TrendingUp size={14} />
-                  Financial Overview
+                  {t('nav.financialOverview')}
                 </button>
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/wallet/history'); setShowWalletMenu(false); }}>
                   <History size={14} />
-                  History
+                  {t('wallet.history')}
                 </button>
               </div>
             )}
@@ -374,18 +384,18 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             {showNotifs && (
               <div className="absolute right-0 top-12 w-80 rounded-2xl p-3 z-50 dropdown-menu">
                 <div className="flex items-center justify-between mb-3 px-2">
-                  <p className="text-primary font-semibold text-sm">Notifications</p>
+                  <p className="text-primary font-semibold text-sm">{t('notifications.title')}</p>
                   <button
                     onClick={() => { setShowNotifs(false); navigate('/notifications'); }}
                     className="text-xs text-cyan"
                   >
-                    See all
+                    {t('notifications.seeAll')}
                   </button>
                 </div>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
                   {notifications.length > 0 ? (
                     notifications.slice(0, 5).map(n => (
-                      <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
+                       <div key={n.id} className={`p-3 rounded-xl cursor-pointer transition-all ${n.isRead ? '' : 'notification-unread'}`}
                         onClick={() => {
                           void markAsRead(n.id);
                           setShowNotifs(false);
@@ -401,8 +411,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                     ))
                   ) : (
                     <div className="p-4 text-center">
-                      <p className="text-primary text-sm font-medium">No notifications</p>
-                      <p className="text-xs text-secondary mt-1">You're all caught up.</p>
+                      <p className="text-primary text-sm font-medium">{t('notifications.noNotifications')}</p>
+                      <p className="text-xs text-secondary mt-1">{t('notifications.caughtUp')}</p>
                     </div>
                   )}
                 </div>
@@ -438,7 +448,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                   onClick={() => { navigate('/settings'); setShowUserMenu(false); }}>
                   <Settings size={14} />
-                  Settings
+                  {t('nav.settings')}
                 </button>
 
                 {/* Theme and Language Switcher Capsule inside Dropdown */}
@@ -457,7 +467,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 logout-button"
                   onClick={() => { logout('/'); setShowUserMenu(false); }}>
                   <LogOut size={14} />
-                  Sign Out
+                  {t('auth.signOut')}
                 </button>
               </div>
             )}
@@ -472,11 +482,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             />
             <button className="btn-ghost-cyan px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
               onClick={() => navigate('/auth/login')}>
-              Log In
+              {t('auth.login')}
             </button>
             <button className="btn-cyan px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm"
               onClick={() => navigate('/auth/signup')}>
-              Sign Up
+              {t('auth.signup')}
             </button>
           </div>
         )}

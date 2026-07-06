@@ -13,6 +13,7 @@ import { SignatureStatus } from '../../../types/models/ESign';
 import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
 
@@ -327,7 +328,7 @@ export default function SignatureWorkflowScreen() {
         <div className="signature-workflow-page">
           <div className="signature-loading">
             <Loader size={32} className="spinner" />
-            <p>Loading contract...</p>
+            <p>{t('contracts.loadingContract')}</p>
           </div>
         </div>
       </AppLayout>
@@ -340,8 +341,8 @@ export default function SignatureWorkflowScreen() {
         <div className="signature-workflow-page">
           <div className="signature-error">
             <AlertCircle size={32} />
-            <h2>{error || 'Contract not found'}</h2>
-            <button onClick={() => navigate('/contracts')}>Back to contracts</button>
+            <h2>{error || t('contracts.contractNotFound')}</h2>
+            <button onClick={() => navigate('/contracts')}>{t('contracts.backToContracts')}</button>
           </div>
         </div>
       </AppLayout>
@@ -353,10 +354,10 @@ export default function SignatureWorkflowScreen() {
       <div className="signature-workflow-page">
         <div className="signature-header">
           <button className="back-btn" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
-            Back to contract
+            {t('contracts.back')}
           </button>
-          <h1>E-Sign Contract</h1>
-          <p>Review the agreed job details, then add your electronic signature.</p>
+          <h1>{t('contracts.esignContract')}</h1>
+          <p>{t('contracts.esignSubtitle')}</p>
         </div>
 
         {error && (
@@ -389,77 +390,77 @@ export default function SignatureWorkflowScreen() {
         <div className="signature-steps">
           <div className={`step ${signatureStep === 'review' ? 'active' : 'completed'}`}>
             <span className="step-number">1</span>
-            <span className="step-label">Review</span>
+            <span className="step-label">{t('contracts.reviewProposal')}</span>
           </div>
           <div className="step-divider" />
           <div className={`step ${signatureStep === 'capture' ? 'active' : signatureStep === 'complete' ? 'completed' : ''}`}>
             <span className="step-number">2</span>
-            <span className="step-label">Sign</span>
+            <span className="step-label">{t('contracts.proceedToSign')}</span>
           </div>
           <div className="step-divider" />
           <div className={`step ${signatureStep === 'complete' ? 'active' : ''}`}>
             <span className="step-number">3</span>
-            <span className="step-label">Done</span>
+            <span className="step-label">{t('contracts.completed')}</span>
           </div>
         </div>
 
         {signatureStep === 'review' && (
           <div className="signature-step-content">
             <div className="signature-section">
-              <h2>Contract Details</h2>
+              <h2>{t('contracts.contractSummary')}</h2>
 
               <div className="signature-info-box">
                 <Clock size={20} />
                 <div>
-                  <h3>Review before signing</h3>
-                  <p>Please review final price, dates, job scope, and milestones before signing. Your signature confirms the finalized contract terms.</p>
+                  <h3>{t('contracts.reviewBeforeSigning')}</h3>
+                  <p>{t('contracts.reviewBeforeSigningDesc')}</p>
                 </div>
               </div>
 
               <div className="contract-details">
                 <div className="detail-row">
-                  <span>Job</span>
+                  <span>{t('contracts.document')}</span>
                   <strong>{contract.jobTitle || contract.title}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Final budget</span>
+                  <span>{t('contracts.budget')}</span>
                   <strong>{formatMoney(contract.totalBudget)}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Milestone total</span>
+                  <span>{t('contracts.milestoneTotal')}</span>
                   <strong>{formatMoney(milestonesTotal)}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Start date</span>
+                  <span>{t('contracts.startDate')}</span>
                   <strong>{formatDate(contract.startDate)}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>End date</span>
+                  <span>{t('contracts.endDate')}</span>
                   <strong>{formatDate(contract.endDate)}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Client</span>
-                  <strong>{contract.clientName || contract.clientEmail || 'Client'}</strong>
+                  <span>{t('contracts.client')}</span>
+                  <strong>{contract.clientName || contract.clientEmail || t('contracts.client')}</strong>
                 </div>
                 <div className="detail-row">
-                  <span>Freelancer</span>
-                  <strong>{contract.freelancerName || contract.freelancerEmail || 'Freelancer'}</strong>
+                  <span>{t('contracts.freelancer')}</span>
+                  <strong>{contract.freelancerName || contract.freelancerEmail || t('contracts.freelancer')}</strong>
                 </div>
               </div>
 
               <div className="contract-description">
-                <h3>Scope of work</h3>
-                <p>{contract.jobDescription || contract.description || 'No scope of work provided.'}</p>
+                <h3>{t('contracts.scope')}</h3>
+                <p>{contract.jobDescription || contract.description || t('contracts.noDescription')}</p>
               </div>
 
               <div className="contract-description">
                 <div className="signature-milestone-header">
-                  <h3>Milestones</h3>
+                  <h3>{t('contracts.milestones')}</h3>
                   <strong>{formatMoney(milestonesTotal)}</strong>
                 </div>
                 {milestoneTotalDiffers && (
                   <div className="signature-inline-warning">
-                    Milestone total differs from final budget. Review the schedule carefully before signing.
+                    {t('contracts.milestoneTotalDiffers')}
                   </div>
                 )}
                 {milestones.length > 0 ? (
@@ -469,22 +470,22 @@ export default function SignatureWorkflowScreen() {
                         <div>
                           <span className="signature-milestone-number">#{index + 1}</span>
                           <strong>{milestone.title}</strong>
-                          <p>Due: {formatDate(milestone.due_date)}</p>
+                          <p>{t('contracts.duePrefix')}: {formatDate(milestone.due_date)}</p>
                         </div>
                         <strong>{formatMoney(milestone.amount)}</strong>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p>No milestones are attached to this contract yet.</p>
+                  <p>{t('contracts.noMilestonesPlanned')}</p>
                 )}
               </div>
 
               {document?.renderedHtmlContent && (
                 <div className="contract-description">
-                  <h3>Generated contract document</h3>
+                  <h3>{t('contracts.generatedContractDoc')}</h3>
                   <iframe
-                    title="Generated E-sign contract document"
+                    title={t('contracts.generatedContractDoc')}
                     className="signature-document-frame"
                     sandbox=""
                     srcDoc={document.renderedHtmlContent}
@@ -495,21 +496,21 @@ export default function SignatureWorkflowScreen() {
               <div className="signature-info-box">
                 <Clock size={20} />
                 <div>
-                  <p>Your signature is recorded with timestamp and account identity. You can go back to the contract page or return to this review before submitting the signature.</p>
+                  <p>{t('contracts.signatureSavedDesc')}</p>
                 </div>
               </div>
             </div>
 
             <div className="signature-actions">
               <button className="btn-secondary" onClick={() => navigate(`/contracts/${contract.contractsId}`)}>
-                Back
+                {t('contracts.back')}
               </button>
               <button
                 className="btn-primary"
                 onClick={() => setSignatureStep(hasSigned ? 'complete' : 'capture')}
                 disabled={Boolean(error) && !hasSigned}
               >
-                {hasSigned ? 'View status' : 'Proceed to sign'} <PenTool size={16} />
+                {hasSigned ? t('contracts.viewStatus') : t('contracts.proceedToSign')} <PenTool size={16} />
               </button>
             </div>
           </div>
@@ -518,7 +519,7 @@ export default function SignatureWorkflowScreen() {
         {signatureStep === 'capture' && (
           <div className="signature-step-content">
             <div className="signature-section">
-              <h2>Draw Your Signature</h2>
+              <h2>{t('contracts.drawYourSignature')}</h2>
 
               <div className="signature-pad-wrapper">
                 <canvas
@@ -532,28 +533,28 @@ export default function SignatureWorkflowScreen() {
                   onMouseLeave={handleMouseUp}
                 />
                 <div className="signature-instructions">
-                  Draw your signature above, then submit it to the contract.
+                  {t('contracts.signatureInstructions')}
                 </div>
               </div>
 
               <div className="signature-buttons">
                 <button className="btn-outline" onClick={handleClearSignature}>
-                  Clear Signature
+                  {t('contracts.clearSignature')}
                 </button>
               </div>
 
               <div className="signature-info-box">
                 <FileText size={20} />
                 <div>
-                  <h3>Legal agreement</h3>
-                  <p>By signing this contract, you agree to the final job budget, dates, and terms shown on this page.</p>
+                  <h3>{t('contracts.legalAgreement')}</h3>
+                  <p>{t('contracts.legalAgreementDesc')}</p>
                 </div>
               </div>
             </div>
 
             <div className="signature-actions">
               <button className="btn-secondary" onClick={() => setSignatureStep('review')}>
-                Back to review
+                {t('contracts.backToReview')}
               </button>
               <button
                 className="btn-primary"
@@ -563,12 +564,12 @@ export default function SignatureWorkflowScreen() {
                 {signingInProgress ? (
                   <>
                     <Loader size={16} className="spinner-small" />
-                    Signing...
+                    {t('contracts.signing')}
                   </>
                 ) : (
                   <>
                     <PenTool size={16} />
-                    Sign contract
+                    {t('contracts.signContract')}
                   </>
                 )}
               </button>
@@ -581,34 +582,34 @@ export default function SignatureWorkflowScreen() {
             <div className="signature-section">
               <div className="signature-success">
                 <CheckCircle size={48} className="success-icon" />
-                <h2>{hasSigned ? 'Signature Recorded' : 'Contract Status'}</h2>
+                <h2>{hasSigned ? t('contracts.signatureRecorded') : t('contracts.status')}</h2>
                 <p>
                   {contract.status === ContractStatus.PendingEscrow
                     ? isClient
-                      ? 'Both parties have signed. Fund escrow to open the workspace.'
-                      : 'Both parties have signed. Waiting for the client to fund escrow.'
+                      ? t('contracts.bothSignedEscrow')
+                      : t('contracts.bothSignedWaitEscrow')
                     : contract.status === ContractStatus.Active
-                      ? 'The contract is active and the workspace is ready.'
-                      : 'Your signature is saved. Waiting for the other party to sign.'}
+                      ? t('contracts.contractActiveWorkspace')
+                      : t('contracts.signatureSavedWaitOther')}
                 </p>
 
                 <div className="signed-info">
                   <div className="info-item">
-                    <span>Contract</span>
+                    <span>{t('contracts.document')}</span>
                     <strong>{contract.jobTitle || contract.title}</strong>
                   </div>
                   <div className="info-item">
-                    <span>Status</span>
-                    <strong>{ContractStatus[contract.status] ?? 'PendingSignature'}</strong>
+                    <span>{t('contracts.status')}</span>
+                    <strong>{t('contracts.statusLabels.' + contract.status, { defaultValue: contract.status })}</strong>
                   </div>
                   <div className="info-item">
-                    <span>Next step</span>
+                    <span>{t('contracts.nextStep')}</span>
                     <strong>
                       {contract.status === ContractStatus.PendingEscrow && isClient
-                        ? 'Fund escrow'
+                        ? t('contracts.fundEscrow')
                         : contract.status === ContractStatus.Active
-                          ? 'Open workspace'
-                          : 'Wait for counterpart'}
+                          ? t('contracts.openWorkspace')
+                          : t('contracts.waitForCounterpart')}
                     </strong>
                   </div>
                 </div>
@@ -617,7 +618,7 @@ export default function SignatureWorkflowScreen() {
 
             <div className="signature-actions">
               <button className="btn-primary btn-large" onClick={handleCompleteNavigation}>
-                {contract.status === ContractStatus.Active ? 'Open workspace' : 'View contract details'} <FileText size={16} />
+                {contract.status === ContractStatus.Active ? t('contracts.openWorkspace') : t('contracts.viewContractDetails')} <FileText size={16} />
               </button>
             </div>
           </div>

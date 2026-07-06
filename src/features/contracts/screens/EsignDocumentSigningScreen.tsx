@@ -15,6 +15,8 @@ import type { ESignSignatureDto, ESignDocumentDto, SignatureAuditTrail } from '.
 import { ESignDocumentStatus, SignatureStatus, SignatureType } from '../../../types/models/ESign';
 import '../styles/esign-document-signing-screen.css';
 
+import { useTranslation } from '../../../hooks/useTranslation';
+
 type SigningStep = 'review' | 'capture' | 'confirm' | 'complete';
 type CaptureMethod = 'draw' | 'type' | 'initials';
 
@@ -28,6 +30,7 @@ interface AuditEntry {
 }
 
 export default function EsignDocumentSigningScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { contractId, documentId } = useParams<{ contractId: string; documentId: string }>();
   const { user } = useApp();
@@ -331,7 +334,7 @@ export default function EsignDocumentSigningScreen() {
       <AppLayout>
         <div className="esign-loading">
           <div className="spinner" />
-          <p>Loading document...</p>
+          <p>{t('contracts.loadingContract')}</p>
         </div>
       </AppLayout>
     );
@@ -342,10 +345,10 @@ export default function EsignDocumentSigningScreen() {
       <AppLayout>
         <div className="esign-error">
           <AlertCircle size={48} />
-          <h2>Unable to Load</h2>
+          <h2>{t('contracts.unableToLoad')}</h2>
           <p>{error}</p>
           <button onClick={() => navigate('/contracts')} className="btn-primary">
-            Back to Contracts
+            {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>
@@ -357,9 +360,9 @@ export default function EsignDocumentSigningScreen() {
       <AppLayout>
         <div className="esign-error">
           <AlertCircle size={48} />
-          <h2>Document Not Found</h2>
+          <h2>{t('contracts.documentNotFound')}</h2>
           <button onClick={() => navigate('/contracts')} className="btn-primary">
-            Back to Contracts
+            {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>
@@ -379,7 +382,7 @@ export default function EsignDocumentSigningScreen() {
               <ArrowLeft size={20} />
             </button>
             <div className="header-info">
-              <h1>Document Signing</h1>
+              <h1>{t('contracts.documentSigning')}</h1>
               <p className="subtitle">{document.title}</p>
             </div>
             {successMessage && (
@@ -394,22 +397,22 @@ export default function EsignDocumentSigningScreen() {
           <div className="signing-progress">
             <div className={`progress-step ${signingStep === 'review' || ['capture', 'confirm', 'complete'].includes(signingStep) ? 'active' : ''}`}>
               <div className="step-circle">1</div>
-              <span>Review</span>
+              <span>{t('contracts.reviewProposal')}</span>
             </div>
             <div className="progress-line" />
             <div className={`progress-step ${['capture', 'confirm', 'complete'].includes(signingStep) ? 'active' : ''}`}>
               <div className="step-circle">2</div>
-              <span>Capture</span>
+              <span>{t('contracts.proceedToSign')}</span>
             </div>
             <div className="progress-line" />
             <div className={`progress-step ${['confirm', 'complete'].includes(signingStep) ? 'active' : ''}`}>
               <div className="step-circle">3</div>
-              <span>Confirm</span>
+              <span>{t('contracts.confirmSignature')}</span>
             </div>
             <div className="progress-line" />
             <div className={`progress-step ${signingStep === 'complete' ? 'active' : ''}`}>
               <div className="step-circle">4</div>
-              <span>Complete</span>
+              <span>{t('contracts.completed')}</span>
             </div>
           </div>
 
@@ -417,7 +420,7 @@ export default function EsignDocumentSigningScreen() {
           <div className="signing-content">
             {signingStep === 'review' && (
               <div className="step-content">
-                <h2>Review Document</h2>
+                <h2>{t('contracts.reviewDocument')}</h2>
                 <div className="document-review">
                   <div className="document-info">
                     <FileText size={32} className="doc-icon" />
@@ -429,7 +432,7 @@ export default function EsignDocumentSigningScreen() {
 
                   <div className="document-meta">
                     <div className="meta-item">
-                      <label>Document ID</label>
+                      <label>{t('contracts.documentId')}</label>
                       <div className="meta-value-with-copy">
                         <code>{document.id}</code>
                         <button
@@ -442,16 +445,16 @@ export default function EsignDocumentSigningScreen() {
                       </div>
                     </div>
                     <div className="meta-item">
-                      <label>Contract</label>
+                      <label>{t('contracts.title')}</label>
                       <p>{contract.title}</p>
                     </div>
                     <div className="meta-item">
-                      <label>Created</label>
+                      <label>{t('contracts.created')}</label>
                       <p>{new Date(document.createdAt).toLocaleString()}</p>
                     </div>
                     {document.expiresAt && (
                       <div className="meta-item">
-                        <label>Expires</label>
+                        <label>{t('contracts.expires')}</label>
                         <p>{new Date(document.expiresAt).toLocaleString()}</p>
                       </div>
                     )}
@@ -466,7 +469,7 @@ export default function EsignDocumentSigningScreen() {
                         className="btn-view-document"
                       >
                         <Download size={18} />
-                        View Full Document
+                        {t('contracts.viewFullDocument')}
                       </a>
                     </div>
                   )}
@@ -475,12 +478,12 @@ export default function EsignDocumentSigningScreen() {
                 <div className="review-instructions">
                   <Zap size={20} />
                   <div>
-                    <h4>Instructions</h4>
+                    <h4>{t('contracts.instructions')}</h4>
                     <ol>
-                      <li>Review the contract document carefully</li>
-                      <li>Choose a signature method (draw, type, or initials)</li>
-                      <li>Capture your signature with timestamp and device info</li>
-                      <li>Confirm and submit</li>
+                      <li>{t('contracts.inst1')}</li>
+                      <li>{t('contracts.inst2')}</li>
+                      <li>{t('contracts.inst3')}</li>
+                      <li>{t('contracts.inst4')}</li>
                     </ol>
                   </div>
                 </div>
@@ -491,14 +494,14 @@ export default function EsignDocumentSigningScreen() {
                     className="btn-primary"
                     disabled={Boolean(signature) || error?.includes('You have already signed this document')}
                   >
-                    Proceed to Sign
+                    {t('contracts.proceedToSign')}
                     <ChevronRight size={18} />
                   </button>
                   <button
                     onClick={handleDeclineSignature}
                     className="btn-secondary"
                   >
-                    Decline
+                    {t('contracts.decline')}
                   </button>
                 </div>
               </div>
@@ -506,7 +509,7 @@ export default function EsignDocumentSigningScreen() {
 
             {signingStep === 'capture' && (
               <div className="step-content">
-                <h2>Capture Your Signature</h2>
+                <h2>{t('contracts.captureYourSignature')}</h2>
 
                 <div className="capture-method-selector">
                   <button
@@ -514,27 +517,27 @@ export default function EsignDocumentSigningScreen() {
                     onClick={() => setCaptureMethod('draw')}
                   >
                     <PenTool size={20} />
-                    <span>Draw</span>
+                    <span>{t('contracts.draw')}</span>
                   </button>
                   <button
                     className={`method-btn ${captureMethod === 'type' ? 'active' : ''}`}
                     onClick={() => setCaptureMethod('type')}
                   >
                     <Type size={20} />
-                    <span>Type</span>
+                    <span>{t('contracts.type')}</span>
                   </button>
                   <button
                     className={`method-btn ${captureMethod === 'initials' ? 'active' : ''}`}
                     onClick={() => setCaptureMethod('initials')}
                   >
                     <Signature size={20} />
-                    <span>Initials</span>
+                    <span>{t('contracts.initials')}</span>
                   </button>
                 </div>
 
                 {captureMethod === 'draw' && (
                   <div className="capture-area">
-                    <p className="capture-label">Draw your signature in the box below</p>
+                    <p className="capture-label">{t('contracts.drawInstructions')}</p>
                     <canvas
                       ref={canvasRef}
                       width={400}
@@ -546,20 +549,20 @@ export default function EsignDocumentSigningScreen() {
                       onMouseLeave={handleCanvasMouseLeave}
                     />
                     <button onClick={clearCanvas} className="btn-clear">
-                      Clear
+                      {t('contracts.clearSignature')}
                     </button>
                   </div>
                 )}
 
                 {captureMethod === 'type' && (
                   <div className="capture-area">
-                    <p className="capture-label">Type your full name</p>
+                    <p className="capture-label">{t('contracts.typeInstructions')}</p>
                     <input
                       ref={typedSignatureInputRef}
                       type="text"
                       value={typedSignatureName}
                       onChange={(e) => setTypedSignatureName(e.target.value)}
-                      placeholder="Enter your full name"
+                      placeholder={t('contracts.typePlaceholder')}
                       className="signature-input"
                     />
                   </div>
@@ -567,12 +570,12 @@ export default function EsignDocumentSigningScreen() {
 
                 {captureMethod === 'initials' && (
                   <div className="capture-area">
-                    <p className="capture-label">Enter your initials (2-3 characters)</p>
+                    <p className="capture-label">{t('contracts.initialsInstructions')}</p>
                     <input
                       type="text"
                       value={initialsInput}
                       onChange={(e) => setInitialsInput(e.target.value.toUpperCase().slice(0, 3))}
-                      placeholder="e.g., JDM"
+                      placeholder={t('contracts.initialsPlaceholder')}
                       className="signature-input"
                       maxLength={3}
                     />
@@ -582,7 +585,7 @@ export default function EsignDocumentSigningScreen() {
                 <div className="capture-info">
                   <Shield size={18} />
                   <div>
-                    <p><strong>Recording:</strong> Your IP address, device information, and timestamp will be recorded for security and audit trail purposes.</p>
+                    <p>{t('contracts.recordingWarning')}</p>
                   </div>
                 </div>
 
@@ -591,14 +594,14 @@ export default function EsignDocumentSigningScreen() {
                     onClick={() => setSigningStep('confirm')}
                     className="btn-primary"
                   >
-                    Confirm Signature
+                    {t('contracts.confirmSignature')}
                     <ChevronRight size={18} />
                   </button>
                   <button
                     onClick={() => setSigningStep('review')}
                     className="btn-secondary"
                   >
-                    Back
+                    {t('contracts.back')}
                   </button>
                 </div>
               </div>
@@ -606,10 +609,10 @@ export default function EsignDocumentSigningScreen() {
 
             {signingStep === 'confirm' && (
               <div className="step-content">
-                <h2>Confirm Signature</h2>
+                <h2>{t('contracts.confirmSignature')}</h2>
 
                 <div className="confirm-section">
-                  <h3>Signature Preview</h3>
+                  <h3>{t('contracts.signaturePreview')}</h3>
                   <div className="signature-preview">
                     {captureMethod === 'draw' && (
                       <canvas
@@ -630,26 +633,26 @@ export default function EsignDocumentSigningScreen() {
                 </div>
 
                 <div className="confirm-section">
-                  <h3>Audit Information</h3>
+                  <h3>{t('contracts.auditInformation')}</h3>
                   <div className="audit-info">
                     <div className="audit-item">
                       <Clock size={16} />
-                      <span>Timestamp: {new Date().toLocaleString()}</span>
+                      <span>{t('contracts.timestamp')}: {new Date().toLocaleString()}</span>
                     </div>
                     <div className="audit-item">
                       <Shield size={16} />
-                      <span>User: {user?.email}</span>
+                      <span>{t('contracts.user')}: {user?.email}</span>
                     </div>
                     <div className="audit-item">
                       <FileText size={16} />
-                      <span>Device: {navigator.platform}</span>
+                      <span>{t('contracts.device')}: {navigator.platform}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="confirm-notice">
                   <AlertCircle size={18} />
-                  <p>By clicking "Sign", you agree that this signature is legally binding and you have reviewed the complete document.</p>
+                  <p>{t('contracts.legallyBindingNotice')}</p>
                 </div>
 
                 {error && (
@@ -668,12 +671,12 @@ export default function EsignDocumentSigningScreen() {
                     {submitting ? (
                       <>
                         <Loader size={18} className="spinner-icon" />
-                        Signing...
+                        {t('contracts.signing')}
                       </>
                     ) : (
                       <>
                         <Signature size={18} />
-                        Sign & Submit
+                        {t('contracts.signAndSubmit')}
                       </>
                     )}
                   </button>
@@ -681,7 +684,7 @@ export default function EsignDocumentSigningScreen() {
                     onClick={() => setSigningStep('capture')}
                     className="btn-secondary"
                   >
-                    Back
+                    {t('contracts.back')}
                   </button>
                 </div>
               </div>
@@ -691,30 +694,30 @@ export default function EsignDocumentSigningScreen() {
               <div className="step-content">
                 <div className="completion-message">
                   <CheckCircle size={48} className="success-icon" />
-                  <h2>Signature Complete</h2>
-                  <p>Your signature has been successfully recorded and is now part of the contract audit trail.</p>
+                  <h2>{t('contracts.signatureRecorded')}</h2>
+                  <p>{t('contracts.signatureSavedDesc')}</p>
                 </div>
 
                 <div className="completion-details">
                   <div className="detail-box">
                     <Check size={20} />
                     <div>
-                      <h4>Signature Recorded</h4>
-                      <p>Your signature has been captured and digitally recorded.</p>
+                      <h4>{t('contracts.signatureRecorded')}</h4>
+                      <p>{t('contracts.signatureSavedDesc')}</p>
                     </div>
                   </div>
                   <div className="detail-box">
                     <Clock size={20} />
                     <div>
-                      <h4>Audit Trail Created</h4>
-                      <p>All signing details including timestamp and device info have been logged.</p>
+                      <h4>{t('contracts.auditTrail')}</h4>
+                      <p>{t('contracts.timestamp')}</p>
                     </div>
                   </div>
                   <div className="detail-box">
                     <Shield size={20} />
                     <div>
-                      <h4>Legally Binding</h4>
-                      <p>This signature is legally binding and encrypted for security.</p>
+                      <h4>{t('contracts.legalAgreement')}</h4>
+                      <p>{t('contracts.legallyBindingNotice')}</p>
                     </div>
                   </div>
                 </div>
@@ -724,7 +727,7 @@ export default function EsignDocumentSigningScreen() {
                     onClick={() => navigate(`/contracts/${contractId}`)}
                     className="btn-primary"
                   >
-                    Back to Contract
+                    {t('contracts.viewContract')}
                   </button>
                 </div>
               </div>
@@ -738,7 +741,7 @@ export default function EsignDocumentSigningScreen() {
               className="audit-toggle"
             >
               <Clock size={18} />
-              Audit Trail {auditTrail.length > 0 && `(${auditTrail.length})`}
+              {t('contracts.auditTrail')} {auditTrail.length > 0 && `(${auditTrail.length})`}
               <span className="toggle-arrow">{showAuditTrail ? '▼' : '▶'}</span>
             </button>
 
@@ -759,7 +762,7 @@ export default function EsignDocumentSigningScreen() {
                     ))}
                   </div>
                 ) : (
-                  <p className="no-audit">No audit entries yet</p>
+                  <p className="no-audit">{t('contracts.noAuditEntries')}</p>
                 )}
               </div>
             )}

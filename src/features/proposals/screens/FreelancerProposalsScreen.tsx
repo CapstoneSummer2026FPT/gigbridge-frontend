@@ -10,12 +10,14 @@ import type { ProposalStatusFilter } from '../types';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../utils/statusHelpers';
 import '../../workspace/styles/project-workspace-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 type ProposalItem = ProposalDto & {
   updatedAt?: string | null;
 };
 
 export default function FreelancerProposalsScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useApp();
 
@@ -264,7 +266,7 @@ export default function FreelancerProposalsScreen() {
                       className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
                     >
                       <MessageSquare size={16} />
-                      {openingNegotiationId === activeProposal.proposalsId ? 'Opening...' : 'Vào đàm phán'}
+                      {openingNegotiationId === activeProposal.proposalsId ? t('negotiations.opening') : t('negotiations.enterNegotiation')}
                     </button>
                   )}
                 </div>

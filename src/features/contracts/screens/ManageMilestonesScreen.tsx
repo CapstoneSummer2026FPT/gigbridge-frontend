@@ -13,6 +13,9 @@ import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import { MilestoneStatus, ContractStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
+
 import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
 import { toast } from 'sonner';
 import '../styles/manage-milestones-screen.css';
@@ -26,6 +29,7 @@ interface MilestoneFormData {
 }
 
 export default function ManageMilestonesScreen() {
+  const { t } = useTranslation();
   const { contractId } = useParams<{ contractId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -474,7 +478,7 @@ export default function ManageMilestonesScreen() {
         <div className="manage-milestones-wrapper">
           <div className="loading-container">
             <div className="spinner"></div>
-            <p>Loading milestones...</p>
+            <p>{t('contracts.loadingMilestones')}</p>
           </div>
         </div>
       </AppLayout>
@@ -544,7 +548,7 @@ export default function ManageMilestonesScreen() {
                 <h1 className="text-sm font-semibold text-text-secondary flex items-center">
                   <span className="font-bold text-primary truncate max-w-md md:max-w-xl">{contract.title}</span>
                   <span className="mx-2 text-text-subtle">/</span>
-                  <span className="text-text-primary font-black uppercase tracking-wider text-xs">Milestones</span>
+                  <span className="text-text-primary font-black uppercase tracking-wider text-xs">{t('contracts.milestones')}</span>
                 </h1>
               )}
             </div>
@@ -596,7 +600,7 @@ export default function ManageMilestonesScreen() {
                   <div className="glass-card p-5 relative">
                     <div className="form-header flex justify-between items-center pb-2 border-b border-border/20 mb-4">
                       <h3 className="form-title text-xs font-bold text-foreground font-zentry uppercase tracking-wider flex items-center gap-1.5">
-                        {editingId ? '✏️ Edit Milestone Details' : '➕ Create New Milestone'}
+                        {editingId ? t('contracts.editMilestoneDetails') : t('contracts.createNewMilestone')}
                       </h3>
                       <button
                         onClick={handleCancelForm}
@@ -609,26 +613,26 @@ export default function ManageMilestonesScreen() {
                     <form onSubmit={handleSubmitForm} className="flex flex-col gap-3">
                       <div className="flex flex-col gap-1 text-left">
                         <label htmlFor="title" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                          Milestone Title <span className="text-red-500">*</span>
+                          {t('contracts.milestoneTitle')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           id="title"
                           type="text"
                           value={formData.title}
                           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          placeholder="e.g. Prototype Design draft"
+                          placeholder={t('contracts.milestoneTitlePlaceholder')}
                           className="form-input-custom text-xs py-2 px-3"
                           maxLength={255}
                         />
                         <div className="text-[9px] text-muted-foreground mt-0.5 font-semibold text-right">
-                          {formData.title.length}/255 characters
+                          {formData.title.length}/255 {t('contracts.characters')}
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1 text-left">
                           <label htmlFor="amount" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                            Amount (GigCoin) <span className="text-red-500">*</span>
+                            {t('contracts.amountGigcoin')} <span className="text-red-500">*</span>
                           </label>
                           <input
                             id="amount"
@@ -643,7 +647,7 @@ export default function ManageMilestonesScreen() {
 
                         <div className="flex flex-col gap-1 text-left">
                           <label htmlFor="due_date" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                            Due Date <span className="text-red-500">*</span>
+                            {t('contracts.dueDate')} <span className="text-red-500">*</span>
                           </label>
                           <input
                             id="due_date"
@@ -662,7 +666,7 @@ export default function ManageMilestonesScreen() {
                           className="px-4 py-2 bg-secondary/60 hover:bg-secondary border border-border/50 text-foreground rounded-lg text-[10px] font-bold cursor-pointer"
                           disabled={isSubmitting}
                         >
-                          Cancel
+                          {t('contracts.cancel')}
                         </button>
                         <button
                           type="submit"
@@ -672,12 +676,12 @@ export default function ManageMilestonesScreen() {
                           {isSubmitting ? (
                             <>
                               <span className="spinner-small"></span>
-                              Saving...
+                              {t('contracts.saving')}
                             </>
                           ) : (
                             <>
                               <Save size={12} />
-                              {editingId ? 'Update' : 'Create'}
+                              {editingId ? t('contracts.update') : t('contracts.create')}
                             </>
                           )}
                         </button>
@@ -691,7 +695,7 @@ export default function ManageMilestonesScreen() {
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden text-left">
                 <div className="flex justify-between items-center mb-4 shrink-0">
                   <h2 className="text-sm font-bold text-foreground font-zentry uppercase tracking-wider">
-                    Milestones Timeline ({milestones.length})
+                    {t('contracts.milestonesTimeline', { count: milestones.length })}
                   </h2>
                   <button
                     onClick={handleCreateClick}
@@ -699,7 +703,7 @@ export default function ManageMilestonesScreen() {
                     disabled={showCreateForm || !canEditMilestones}
                   >
                     <Plus size={13} />
-                    New Milestone
+                    {t('contracts.newMilestone')}
                   </button>
                 </div>
 
@@ -710,9 +714,9 @@ export default function ManageMilestonesScreen() {
                       <div className="w-12 h-12 rounded-full bg-secondary/50 text-muted-foreground flex items-center justify-center mx-auto mb-3 border border-border/40">
                         <Clock size={20} />
                       </div>
-                      <h3 className="text-sm font-bold text-foreground">No milestones planned</h3>
+                      <h3 className="text-sm font-bold text-foreground">{t('contracts.noMilestonesPlanned')}</h3>
                       <p className="text-muted-foreground text-xs mt-1 max-w-xs mx-auto">
-                        Define structured payments & delivery items to track project achievements.
+                        {t('contracts.noMilestonesPlannedDesc')}
                       </p>
                     </div>
                   ) : (
@@ -789,7 +793,7 @@ export default function ManageMilestonesScreen() {
                               {/* Card Body - Collapsed (Due Date display only) */}
                               <div className="px-4 pl-6 pb-3 pt-0 border-t border-border/10 mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-semibold">
                                 <Calendar size={12} />
-                                <span>Due Date: {formatContractDate(milestone.due_date)}</span>
+                                <span>{t('contracts.dueDate')}: {formatContractDate(milestone.due_date)}</span>
                               </div>
  
                               {/* Card Body - Expanded Details & Workflows */}
@@ -797,22 +801,22 @@ export default function ManageMilestonesScreen() {
                                 <div className="px-4 pl-6 pb-4 pt-3 border-t border-border/30 bg-secondary/5 flex flex-col gap-3 text-xs">
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
                                     <div className="flex flex-col">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Amount</span>
+                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.amount')}</span>
                                       <span className="font-bold text-foreground mt-0.5">{formatContractAmount(milestone.amount)}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Deadline</span>
+                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.deadline')}</span>
                                       <span className="font-semibold text-foreground mt-0.5">{formatContractDate(milestone.due_date)}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Status</span>
+                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.status')}</span>
                                       <span className="font-semibold text-foreground mt-0.5">
                                         {getMilestoneDisplayLabel(milestone)}
                                       </span>
                                     </div>
                                     {milestone.paid_at && (
                                       <div className="flex flex-col">
-                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Paid At</span>
+                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.paidAt')}</span>
                                         <span className="font-semibold text-emerald-500 mt-0.5">{formatContractDate(milestone.paid_at)}</span>
                                       </div>
                                     )}
@@ -821,7 +825,7 @@ export default function ManageMilestonesScreen() {
                                   {/* Status Workflow Controls */}
                                   {contract && contract.status === ContractStatus.Active && !isMilestoneReleasedToCap(milestone) && (
                                     <div className="p-3 bg-secondary/10 border border-border/20 rounded-lg text-left flex flex-col gap-2">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">Workflow:</span>
+                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.workflow')}</span>
                                       <div className="flex flex-wrap gap-1.5">
                                         {isClient && milestone.status === MilestoneStatus.Pending && (
                                           <button
@@ -831,7 +835,7 @@ export default function ManageMilestonesScreen() {
                                             className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                           >
                                             <Clock size={10} />
-                                            Start Work
+                                            {t('contracts.startWork')}
                                           </button>
                                         )}
                                         {isFreelancer && milestone.status === MilestoneStatus.InProgress && (
@@ -841,7 +845,7 @@ export default function ManageMilestonesScreen() {
                                             className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                                           >
                                             <CheckCircle2 size={10} />
-                                            Submit Deliverables
+                                            {t('contracts.submitDeliverables')}
                                           </button>
                                         )}
                                         {isClient && milestone.status === MilestoneStatus.Submitted && (
@@ -853,7 +857,7 @@ export default function ManageMilestonesScreen() {
                                               className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                             >
                                               <CheckCircle2 size={10} />
-                                              Approve
+                                              {t('contracts.approve')}
                                             </button>
                                             <button
                                               type="button"
@@ -862,7 +866,7 @@ export default function ManageMilestonesScreen() {
                                               className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                             >
                                               <X size={10} />
-                                              Request Revision
+                                              {t('contracts.requestRevision')}
                                             </button>
                                           </>
                                         )}
@@ -874,7 +878,7 @@ export default function ManageMilestonesScreen() {
                                             className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                           >
                                             <GigCoinLogo size={10} />
-                                            Withdraw
+                                            {t('contracts.withdraw')}
                                           </button>
                                         )}
                                       </div>
@@ -889,7 +893,7 @@ export default function ManageMilestonesScreen() {
                                       disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
                                     >
                                       <Edit size={11} />
-                                      Edit
+                                      {t('common.edit')}
                                     </button>
                                     <button
                                       type="button"
@@ -898,7 +902,7 @@ export default function ManageMilestonesScreen() {
                                       disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
                                     >
                                       <Trash2 size={11} />
-                                      Delete
+                                      {t('common.delete')}
                                     </button>
                                   </div>
                                 </div>
@@ -919,14 +923,14 @@ export default function ManageMilestonesScreen() {
               {/* Stacked KPI list in side panel */}
               <div className="glass-card p-5 flex flex-col gap-4 text-left">
                 <h3 className="text-xs font-bold text-text-secondary uppercase tracking-widest border-b border-border/20 pb-2">
-                  Budget Summary
+                  {t('contracts.budgetSummary')}
                 </h3>
 
                 <div className="flex flex-col gap-3">
                   {/* Total Budget */}
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-blue-500/20 transition-all">
                     <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Total Budget</span>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.totalBudget')}</span>
                       <span className="text-lg font-black text-foreground mt-0.5 block">{formatContractAmount(contract?.totalBudget || 0)}</span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
@@ -937,7 +941,7 @@ export default function ManageMilestonesScreen() {
                   {/* Allocated Budget */}
                   <div className={`flex items-center justify-between p-3 bg-secondary/30 rounded-xl border transition-all ${isBudgetExceeded ? 'border-red-500/50 hover:border-red-500/70' : 'border-border/20 hover:border-purple-500/20'}`}>
                     <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Allocated Budget</span>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.allocatedBudget')}</span>
                       <span className={`text-lg font-black mt-0.5 block ${isBudgetExceeded ? 'text-red-500' : 'text-foreground'}`}>{formatContractAmount(totalMilestoneAmount)}</span>
                     </div>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isBudgetExceeded ? 'bg-red-500/10 text-red-500' : 'bg-purple-500/10 text-purple-500'}`}>
@@ -948,7 +952,7 @@ export default function ManageMilestonesScreen() {
                   {/* Remaining Budget */}
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-emerald-500/20 transition-all">
                     <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Remaining Budget</span>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.remainingBudget')}</span>
                       <span className={`text-lg font-black mt-0.5 block ${isBudgetExceeded ? 'text-red-500' : remainingBudget === 0 ? 'text-amber-500' : 'text-foreground'}`}>
                         {formatContractAmount(remainingBudget)}
                       </span>
@@ -968,9 +972,9 @@ export default function ManageMilestonesScreen() {
                   {/* Milestone Completion */}
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-amber-500/20 transition-all">
                     <div>
-                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">Milestones Completion</span>
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.milestonesCompletion')}</span>
                       <span className="text-lg font-black text-foreground mt-0.5 block">
-                        {completedMilestones} <span className="text-[10px] font-semibold text-muted-foreground">/ {milestones.length} paid</span>
+                        {completedMilestones} <span className="text-[10px] font-semibold text-muted-foreground">/ {milestones.length} {t('common.search') === 'Search' ? 'paid' : 'đã giải ngân'}</span>
                       </span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
@@ -988,7 +992,7 @@ export default function ManageMilestonesScreen() {
                   className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <Save size={13} />
-                  Save Draft Milestones
+                  {t('contracts.saveDraft')}
                 </button>
 
                 {mode === 'jobpost-setup' && (
@@ -998,7 +1002,7 @@ export default function ManageMilestonesScreen() {
                     className="w-full py-2.5 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white border-none rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <CheckCircle2 size={13} />
-                    Complete Draft Setup & Publish
+                    {t('contracts.completeSetup')}
                   </button>
                 )}
 
@@ -1009,7 +1013,7 @@ export default function ManageMilestonesScreen() {
                     className="w-full py-2.5 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white border-none rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <Send size={13} />
-                    Submit to Freelancer
+                    {t('contracts.submitToFreelancer')}
                   </button>
                 )}
 
@@ -1018,7 +1022,7 @@ export default function ManageMilestonesScreen() {
                   className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Eye size={13} />
-                  View Contract Details
+                  {t('contracts.viewContractDetails')}
                 </button>
               </div>
 

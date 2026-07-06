@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router';
 import { Star, MapPin, Globe, Mail, Phone, ArrowLeft, Crown, AlertCircle, Shield, FileText, Download, Bookmark, BriefcaseBusiness, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, CheckCircle, Edit3 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
@@ -10,6 +11,8 @@ import { ReportUserModal } from '../components/ReportUserModal';
 import type { CheatingPenaltyLogDto } from '../../../types/models/Profile';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
+import { useTranslation } from '../../../hooks/useTranslation';
+
 
 const TEMPORARY_SUSPENSION_ACTION = 2;
 
@@ -29,6 +32,7 @@ const renderPenaltyMeta = (log: CheatingPenaltyLogDto): string =>
   `Events: ${log.totalEventCount} | C:${log.copyCount} P:${log.pasteCount} T:${log.tabSwitchCount} S:${log.screenshotAttemptCount} F:${log.focusLossCount} X:${log.fullscreenExitCount}`;
 
 export default function FreelancerProfileScreen() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useApp();
@@ -103,7 +107,7 @@ export default function FreelancerProfileScreen() {
             >
               <ArrowLeft size={18} />
             </button>
-            <span className="text-body-md text-on-surface-variant font-medium">Back to search</span>
+            <span className="text-body-md text-on-surface-variant font-medium">{t('profile.backToSearch')}</span>
           </div>
 
           {/* Header Section */}
@@ -135,13 +139,13 @@ export default function FreelancerProfileScreen() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Globe size={18} className="text-[var(--gb-cyan)]" />
-                    <span className="font-label-md text-label-md">Available Worldwide</span>
+                    <span className="font-label-md text-label-md">{t('profile.availableWorldwide')}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-yellow-500">
                     <Star size={18} className="fill-current text-yellow-500" />
                     <span className="font-label-md text-label-md text-on-surface">
                       {averageRating > 0 ? averageRating.toFixed(1) : '0.0'}{' '}
-                      <span className="text-on-surface-variant font-normal">({reviewsList.length} reviews)</span>
+                      <span className="text-on-surface-variant font-normal">({t('profile.reviewsCount', { count: reviewsList.length })})</span>
                     </span>
                   </div>
                 </div>
@@ -151,15 +155,15 @@ export default function FreelancerProfileScreen() {
             <div className="flex flex-col gap-4 w-full lg:w-auto">
               <div className="flex flex-wrap gap-4 w-full lg:w-auto">
                 <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex flex-col items-center justify-center min-w-[120px]">
-                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Hourly Rate</p>
+                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">{t('profile.hourlyRate')}</p>
                   <p className="font-display-lg text-[32px] text-[var(--gb-cyan)] font-bold">${profile?.hourly_rate || 95}</p>
                 </div>
                 <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex flex-col items-center justify-center min-w-[120px]">
-                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Jobs Done</p>
+                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">{t('profile.jobsDone')}</p>
                   <p className="font-display-lg text-[32px] text-[var(--gb-cyan)] font-bold">45</p>
                 </div>
                 <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex flex-col items-center justify-center min-w-[120px]">
-                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Success Rate</p>
+                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">{t('profile.successRate')}</p>
                   <p className="font-display-lg text-[32px] text-[var(--gb-cyan)] font-bold">98%</p>
                 </div>
               </div>
@@ -172,7 +176,7 @@ export default function FreelancerProfileScreen() {
                     className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer border border-transparent flex-shrink-0"
                   >
                     <Edit3 size={18} />
-                    Edit Profile
+                    {t('profile.editProfile')}
                   </button>
                 ) : (
                   <>
@@ -182,7 +186,7 @@ export default function FreelancerProfileScreen() {
                         className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer border border-transparent flex-shrink-0"
                       >
                         <BriefcaseBusiness size={18} />
-                        Invite to Job
+                        {t('profile.inviteToJob')}
                       </button>
                     )}
 
@@ -192,7 +196,7 @@ export default function FreelancerProfileScreen() {
                         className={`glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0 ${isSaved ? 'text-[var(--gb-cyan)] border-[var(--gb-cyan)]/50' : 'text-on-surface-variant'}`}
                       >
                         <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
-                        {isSaved ? 'Saved' : 'Save'}
+                        {isSaved ? t('profile.saved') : t('profile.save')}
                       </button>
                     )}
                   </>
@@ -205,7 +209,7 @@ export default function FreelancerProfileScreen() {
                     className="glass-overlay text-error font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-error-container/10 transition-colors cursor-pointer flex-shrink-0 disabled:opacity-60"
                   >
                     <Flag size={18} />
-                    {reportSubmitted ? 'Report submitted' : 'Report User'}
+                    {reportSubmitted ? t('profile.reportSubmitted') : t('profile.reportUser')}
                   </button>
                 )}
                 
@@ -225,12 +229,12 @@ export default function FreelancerProfileScreen() {
                           onClick={() => {
                             setShowMoreMenu(false);
                             navigator.clipboard.writeText(window.location.href);
-                            alert('Link copied to clipboard!');
+                            toast.success(t('profile.linkCopied'));
                           }}
                           className="w-full text-left px-4 py-2 text-body-md text-on-surface-variant hover:bg-surface-container-low flex items-center gap-2 transition-colors border-b border-outline-variant cursor-pointer"
                         >
                           <Share2 size={16} />
-                          Share
+                          {t('profile.share')}
                         </button>
                       </div>
                     </>
@@ -245,7 +249,7 @@ export default function FreelancerProfileScreen() {
 
             {/* About */}
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-8 flex flex-col justify-center h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">About</h2>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">{t('profile.bio')}</h2>
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
                 {profile?.bio || 'I build blazing-fast, scalable web applications with React, Next.js, and Node.js. With 7+ years of experience, I specialize in e-commerce platforms, SaaS products, and AI-powered applications.'}
               </p>
@@ -253,7 +257,7 @@ export default function FreelancerProfileScreen() {
 
             {/* Skills */}
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">Skills</h2>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">{t('profile.skills')}</h2>
               <div className="flex flex-wrap gap-2">
                 {mockSkills.map((skill, idx) => (
                   <span
@@ -272,7 +276,7 @@ export default function FreelancerProfileScreen() {
 
             {/* ELO Points */}
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col items-center justify-center text-center h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface w-full text-left mb-6">ELO Points</h2>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface w-full text-left mb-6">{t('profile.eloPoints')}</h2>
               <div className="relative w-36 h-36 flex items-center justify-center mb-4">
                 <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                   <defs>
@@ -291,7 +295,7 @@ export default function FreelancerProfileScreen() {
               </div>
               <div className="flex items-center gap-1 mt-2 text-[var(--gb-cyan)] font-bold">
                 <CheckCircle size={16} className="text-[var(--gb-cyan)] fill-current" />
-                <span className="font-label-md text-label-md uppercase tracking-wider">ELO Points</span>
+                <span className="font-label-md text-label-md uppercase tracking-wider">{t('profile.eloPoints')}</span>
               </div>
             </div>
 
@@ -350,19 +354,19 @@ export default function FreelancerProfileScreen() {
 
             {/* Profile Statistics */}
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col justify-between h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">Profile Statistics</h2>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">{t('profile.profileStatistics')}</h2>
               <div className="flex flex-col gap-4 flex-1">
                 <div className="flex justify-between items-center pb-4 border-b border-outline-variant">
-                  <span className="font-body-md text-body-md text-on-surface-variant">Total Reviews</span>
+                  <span className="font-body-md text-body-md text-on-surface-variant">{t('profile.totalReviews')}</span>
                   <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">{reviewsList.length}</span>
                 </div>
                 <div className="flex justify-between items-center pb-4 border-b border-outline-variant">
-                  <span className="font-body-md text-body-md text-on-surface-variant">Member Since</span>
-                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">Jan 2021</span>
+                  <span className="font-body-md text-body-md text-on-surface-variant">{t('profile.memberSince')}</span>
+                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">{t('common.search') === 'Search' ? 'Jan 2021' : 'Tháng 1, 2021'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-body-md text-body-md text-on-surface-variant">Response Time</span>
-                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">1 hour</span>
+                  <span className="font-body-md text-body-md text-on-surface-variant">{t('profile.responseTime')}</span>
+                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">{t('common.search') === 'Search' ? '1 hour' : '1 giờ'}</span>
                 </div>
               </div>
             </div>
@@ -370,13 +374,13 @@ export default function FreelancerProfileScreen() {
             {/* Portfolio */}
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-4 flex flex-col h-full">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">Portfolio</h2>
+                <h2 className="font-headline-sm text-headline-sm text-on-surface">{t('profile.portfolio')}</h2>
                 {currentUser?.role === 1 && (
                   <button
                     onClick={() => navigate('/profile/manage-content?tab=portfolio')}
                     className="text-xs font-semibold text-primary hover:underline cursor-pointer font-label-md"
                   >
-                    Manage
+                    {t('profile.manage')}
                   </button>
                 )}
               </div>
@@ -404,7 +408,7 @@ export default function FreelancerProfileScreen() {
 
             {/* Resume / CV */}
             <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col justify-start w-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">Resume / CV</h2>
+              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">{t('profile.resumeCV')}</h2>
               <div className="flex flex-col gap-4">
                 <div className="h-48 w-full bg-surface-container-low rounded-lg border border-outline-variant overflow-hidden relative group">
                   <div className="absolute inset-0 bg-on-surface/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
@@ -430,7 +434,7 @@ export default function FreelancerProfileScreen() {
                       className="bg-primary text-on-primary font-label-md px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm flex-shrink-0 cursor-pointer"
                     >
                       <Download size={14} />
-                      Download
+                      {t('profile.download')}
                     </a>
                   )}
                 </div>
@@ -440,13 +444,13 @@ export default function FreelancerProfileScreen() {
             {/* Work Experience */}
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-8 p-8 w-full">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">Work Experience</h2>
+                <h2 className="font-headline-sm text-headline-sm text-on-surface">{t('profile.workExperience')}</h2>
                 {currentUser?.role === 1 && (
                   <button
                     onClick={() => navigate('/profile/manage-content?tab=experience')}
                     className="text-xs font-semibold text-primary hover:underline cursor-pointer font-label-md"
                   >
-                    Manage
+                    {t('profile.manage')}
                   </button>
                 )}
               </div>
@@ -468,13 +472,13 @@ export default function FreelancerProfileScreen() {
             {/* Client Reviews */}
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-12 p-8">
               <div className="flex justify-between items-center mb-8">
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">Client Reviews</h2>
+                <h2 className="font-headline-sm text-headline-sm text-on-surface">{t('profile.clientReviews')}</h2>
                 {currentUser?.role === 0 && (
                   <button
                     onClick={() => setShowReviewModal(true)}
                     className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer"
                   >
-                    Leave a Review
+                    {t('profile.leaveReview')}
                   </button>
                 )}
               </div>
@@ -491,13 +495,13 @@ export default function FreelancerProfileScreen() {
                     <div className="flex items-center gap-1 text-yellow-500 mb-2">
                       {[...Array(5)].map((_, i) => (
                         <Star
-                          key={i}
+                           key={i}
                           size={24}
                           className={i < Math.floor(averageRating) ? 'fill-current text-yellow-500' : 'text-outline-variant'}
                         />
                       ))}
                     </div>
-                    <p className="font-body-md text-body-md text-on-surface-variant mb-8">Based on {reviewsList.length} reviews</p>
+                    <p className="font-body-md text-body-md text-on-surface-variant mb-8">{t('profile.basedOnReviews', { count: reviewsList.length })}</p>
 
                     <div className="w-full flex flex-col gap-3">
                       {distribution.map(({ star, count, percentage }) => (
@@ -526,10 +530,10 @@ export default function FreelancerProfileScreen() {
                             </div>
                             <div>
                               <h4 className="font-label-md text-[16px] text-on-surface font-bold">
-                                {review.isAnonymous ? 'Anonymous Reviewer' : review.reviewerName}
+                                {review.isAnonymous ? (t('common.search') === 'Search' ? 'Anonymous Reviewer' : 'Người đánh giá ẩn danh') : review.reviewerName}
                               </h4>
                               <p className="font-body-md text-[13px] text-on-surface-variant mt-0.5">
-                                {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {new Date(review.createdAt).toLocaleDateString(t('common.search') === 'Search' ? 'en-US' : 'vi-VN', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
                             </div>
                           </div>
@@ -588,7 +592,7 @@ export default function FreelancerProfileScreen() {
               ) : (
                 <div className="py-12 text-center bg-surface-container-low rounded-2xl border border-outline-variant">
                   <Star size={32} className="mx-auto mb-3 opacity-50 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No reviews yet</p>
+                  <p className="text-sm text-muted-foreground">{t('common.search') === 'Search' ? 'No reviews yet' : 'Chưa có đánh giá nào'}</p>
                 </div>
               )}
             </div>
@@ -611,8 +615,8 @@ export default function FreelancerProfileScreen() {
                     <Star size={24} className="fill-current" />
                   </div>
                   <div>
-                    <h2>Write a Review</h2>
-                    <p>Share your experience with {user.full_name}</p>
+                    <h2>{t('profile.writeReview')}</h2>
+                    <p>{t('profile.shareExperience', { name: user.full_name })}</p>
                   </div>
                 </div>
               </div>
@@ -620,7 +624,7 @@ export default function FreelancerProfileScreen() {
               <form onSubmit={handleAddReview} className="invite-freelancer-content">
                 {/* Rating Input */}
                 <div className="invite-section">
-                  <h3 className="invite-section-title">Rating</h3>
+                  <h3 className="invite-section-title">{t('profile.rating')}</h3>
                   <div className="flex gap-2.5 py-1">
                     {[1, 2, 3, 4, 5].map(star => (
                       <button
@@ -640,11 +644,11 @@ export default function FreelancerProfileScreen() {
 
                 {/* Comment Input */}
                 <div className="invite-section">
-                  <h3 className="invite-section-title">Review Comment</h3>
+                  <h3 className="invite-section-title">{t('profile.reviewComment')}</h3>
                   <textarea
                     value={reviewComment}
                     onChange={event => setReviewComment(event.target.value)}
-                    placeholder="Write details of your experience working with this freelancer..."
+                    placeholder={t('profile.commentPlaceholder')}
                     required
                     rows={4}
                     className="invite-textarea"
@@ -661,7 +665,7 @@ export default function FreelancerProfileScreen() {
                     className="w-4 h-4 text-[var(--gb-cyan)] rounded border-outline-variant focus:ring-[var(--gb-cyan)] cursor-pointer"
                   />
                   <label htmlFor="anonymous-review" className="font-body-md text-on-surface-variant cursor-pointer select-none">
-                    Submit review anonymously
+                    {t('profile.submitAnonymously')}
                   </label>
                 </div>
 
@@ -672,13 +676,13 @@ export default function FreelancerProfileScreen() {
                     onClick={() => setShowReviewModal(false)}
                     className="invite-btn cancel-btn"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="invite-btn submit-btn"
                   >
-                    Submit Review
+                    {t('profile.submitReview')}
                   </button>
                 </div>
               </form>

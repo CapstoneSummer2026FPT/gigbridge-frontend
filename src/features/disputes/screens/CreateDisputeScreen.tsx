@@ -5,6 +5,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { ContractStatus } from '../../../types/models/Contract';
 import { MOCK_CONTRACTS_FOR_SCREENS } from '../../contracts/mock/data-for-ContractScreens';
 import type { DisputeCategory } from '../mock/data-for-DisputeScreens';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/create-dispute-screen.css';
 
 interface EvidenceDraft {
@@ -13,15 +14,8 @@ interface EvidenceDraft {
   fileSizeMb: number;
 }
 
-const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
-  { value: 'deliverable_quality', label: 'Deliverable Quality' },
-  { value: 'payment', label: 'Payment' },
-  { value: 'scope', label: 'Scope' },
-  { value: 'communication', label: 'Communication' },
-  { value: 'other', label: 'Other' },
-];
-
 export default function CreateDisputeScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
   const [category, setCategory] = useState<DisputeCategory>('deliverable_quality');
@@ -34,6 +28,14 @@ export default function CreateDisputeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
+  const DISPUTE_CATEGORIES = useMemo(() => [
+    { value: 'deliverable_quality' as DisputeCategory, label: t('contracts.deliverableQuality') },
+    { value: 'payment' as DisputeCategory, label: t('contracts.payment') },
+    { value: 'scope' as DisputeCategory, label: t('contracts.scope') },
+    { value: 'communication' as DisputeCategory, label: t('contracts.communication') },
+    { value: 'other' as DisputeCategory, label: t('contracts.other') },
+  ], [t]);
+
   const contract = useMemo(
     () => MOCK_CONTRACTS_FOR_SCREENS.find(item => item.contractsId === contractId),
     [contractId]
@@ -45,7 +47,7 @@ export default function CreateDisputeScreen() {
     const fileSizeMb = Number(manualFileSize || 0);
 
     if (fileSizeMb > 10) {
-      setError('File must be under 10MB');
+      setError(t('contracts.evidenceFilesDesc'));
       return;
     }
 
@@ -64,17 +66,17 @@ export default function CreateDisputeScreen() {
     setError(null);
 
     if (!contract || contract.status !== ContractStatus.Active) {
-      setError('Only active contracts can open a dispute.');
+      setError(t('contracts.disputeActiveOnly', { defaultValue: 'Only active contracts can open a dispute.' }));
       return;
     }
 
     if (!description.trim() || description.length > 2000) {
-      setError('Please describe your dispute reason (1-2000 characters)');
+      setError(t('contracts.disputeDescError', { defaultValue: 'Please describe your dispute reason (1-2000 characters)' }));
       return;
     }
 
     if (evidenceFiles.some(file => file.fileSizeMb > 10)) {
-      setError('File must be under 10MB');
+      setError(t('contracts.evidenceFilesDesc'));
       return;
     }
 
@@ -86,19 +88,19 @@ export default function CreateDisputeScreen() {
       <div className="create-dispute-wrapper">
         <button className="dispute-back-btn" onClick={() => navigate(`/contracts/${contractId}`)}>
           <ArrowLeft size={18} />
-          Back to Contract
+          {t('contracts.viewContract')}
         </button>
 
         <section className="create-dispute-hero">
           <div>
-            <p className="dispute-kicker">Formal Arbitration</p>
-            <h1>Open Dispute</h1>
-            <p>Submit the dispute reason and evidence. Escrow funds are frozen during dispute resolution.</p>
+            <p className="dispute-kicker">{t('contracts.formalArbitration')}</p>
+            <h1>{t('contracts.openDispute')}</h1>
+            <p>{t('contracts.disputeKicker')}</p>
           </div>
           {isPremiumClientDispute && (
             <div className="vip-dispute-chip">
               <Sparkles size={18} />
-              Premium client dispute enters VIP 24h arbitration queue with AI-assisted analysis.
+              {t('contracts.vipDisputeChip')}
             </div>
           )}
         </section>
@@ -114,33 +116,33 @@ export default function CreateDisputeScreen() {
         {submitted ? (
           <section className="dispute-success-card">
             <ShieldAlert size={42} />
-            <h2>Dispute Created</h2>
-            <p>Contract status is now Disputed. Admin and the other party have been notified. Escrow funds are frozen.</p>
-            <button onClick={() => navigate('/contracts')}>Back to Contracts</button>
+            <h2>{t('contracts.disputeCreated')}</h2>
+            <p>{t('contracts.disputeCreatedDesc')}</p>
+            <button onClick={() => navigate('/contracts')}>{t('contracts.backToContracts')}</button>
           </section>
         ) : (
           <section className="create-dispute-grid">
             <div className="dispute-form-card">
-              <label>Reason / Category</label>
+              <label>{t('contracts.reasonCategory')}</label>
               <select value={category} onChange={(event) => setCategory(event.target.value as DisputeCategory)}>
                 {DISPUTE_CATEGORIES.map(item => (
                   <option key={item.value} value={item.value}>{item.label}</option>
                 ))}
               </select>
 
-              <label>Description</label>
+              <label>{t('contracts.description')}</label>
               <textarea
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 maxLength={2000}
                 rows={10}
-                placeholder="Describe the conflict, affected milestone, expected outcome, and any payment or scope concern."
+                placeholder={t('contracts.disputeDescPlaceholder')}
               />
               <div className="dispute-count">{description.length}/2000</div>
 
               <button className="dispute-submit-btn" onClick={handleSubmit}>
                 <ShieldAlert size={18} />
-                Submit Dispute
+                {t('contracts.submitDispute')}
               </button>
             </div>
 
@@ -148,22 +150,22 @@ export default function CreateDisputeScreen() {
               <div className="evidence-header">
                 <FileUp size={22} />
                 <div>
-                  <h2>Evidence Files</h2>
-                  <p>Each evidence file must be 10MB or less.</p>
+                  <h2>{t('contracts.evidenceFiles')}</h2>
+                  <p>{t('contracts.evidenceFilesDesc')}</p>
                 </div>
               </div>
 
               <div className="evidence-add-row">
-                <input value={manualFileName} onChange={(event) => setManualFileName(event.target.value)} placeholder="file-name.pdf" />
-                <input type="number" value={manualFileSize} onChange={(event) => setManualFileSize(event.target.value)} placeholder="MB" />
-                <button onClick={handleAddEvidence}><Upload size={16} />Add</button>
+                <input value={manualFileName} onChange={(event) => setManualFileName(event.target.value)} placeholder={t('contracts.fileNamePlaceholder')} />
+                <input type="number" value={manualFileSize} onChange={(event) => setManualFileSize(event.target.value)} placeholder={t('contracts.mb')} />
+                <button onClick={handleAddEvidence}><Upload size={16} />{t('contracts.add')}</button>
               </div>
 
               <div className="evidence-list">
                 {evidenceFiles.map(file => (
                   <div key={file.id} className="evidence-item">
                     <span>{file.fileName}</span>
-                    <strong>{file.fileSizeMb} MB</strong>
+                    <strong>{file.fileSizeMb} {t('contracts.mb')}</strong>
                     <button onClick={() => setEvidenceFiles(current => current.filter(item => item.id !== file.id))}>
                       <X size={15} />
                     </button>

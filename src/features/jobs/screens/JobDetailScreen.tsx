@@ -9,8 +9,10 @@ import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatus
 import { useJobDetail } from '../hooks/useJobDetail';
 import '../styles/job-detail-screen.css';
 import { GigCoinAmount, GigCoinBudget } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 export default function JobDetailScreen() {
+  const { t } = useTranslation();
   const {
     navigate,
     role,
@@ -61,10 +63,10 @@ export default function JobDetailScreen() {
       <AppLayout>
         <div className="jd-page max-w-6xl mx-auto text-center py-24 space-y-5">
           <div className="text-7xl mb-4">🔍</div>
-          <h2 className="text-3xl font-black text-text-primary tracking-tight">Job Not Found</h2>
-          <p className="text-text-secondary text-sm max-w-md mx-auto">This position may have been removed or the link is no longer valid.</p>
+          <h2 className="text-3xl font-black text-text-primary tracking-tight">{t('jobDetail.jobNotFound')}</h2>
+          <p className="text-text-secondary text-sm max-w-md mx-auto">{t('jobDetail.jobNotFoundDesc')}</p>
           <button className="jd-btn-apply max-w-xs mx-auto mt-6" onClick={() => navigate(isClientMode ? '/jobs/my-jobs' : '/jobs/browse')}>
-            {isClientMode ? 'Back to My Jobs' : 'Browse Jobs'}
+            {isClientMode ? t('nav.myJobs') : t('nav.browseJobs')}
           </button>
         </div>
       </AppLayout>
@@ -82,7 +84,7 @@ export default function JobDetailScreen() {
         {/* ── Breadcrumb ── */}
         <nav className="jd-breadcrumb jd-stagger">
           <a href="#" onClick={e => { e.preventDefault(); navigate(isClientMode ? '/jobs/my-jobs' : '/jobs/browse'); }}>
-            {isClientMode ? 'My Jobs' : 'Browse Jobs'}
+            {isClientMode ? t('nav.myJobs') : t('nav.browseJobs')}
           </a>
           <ChevronRight size={12} />
           <span className="text-text-primary font-bold truncate max-w-[280px]">{job.title}</span>
@@ -98,7 +100,7 @@ export default function JobDetailScreen() {
             <div className="flex items-center justify-between gap-4 mb-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="badge-cyan text-[10px]">{job.category}</span>
-                {job.isAiRecommended && <span className="badge-purple text-[10px]">⚡ AI Match</span>}
+                {job.isAiRecommended && <span className="badge-purple text-[10px]">⚡ {t('jobDetail.aiMatch')}</span>}
                 <span className={`jd-status jd-status-${job.status}`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-current" />
                   {formatStatus(job.status)}
@@ -128,9 +130,9 @@ export default function JobDetailScreen() {
             {/* Row 3: Meta pills */}
             <div className="jd-meta-row mb-5">
               <span className="jd-meta-pill"><GigCoinBudget min={job.budgetMin} max={job.budgetMax} /></span>
-              <span className="jd-meta-pill"><Globe size={12} />{job.isRemote ? 'Remote' : 'On-site'}</span>
-              <span className="jd-meta-pill"><Users size={12} />{job.proposalCount} proposals</span>
-              <span className="jd-meta-pill"><Clock size={12} />Posted {job.postedAt || 'recently'}</span>
+              <span className="jd-meta-pill"><Globe size={12} />{job.isRemote ? t('jobDetail.remote') : t('jobDetail.onSite')}</span>
+              <span className="jd-meta-pill"><Users size={12} />{t('jobDetail.proposalsCount', { count: job.proposalCount })}</span>
+              <span className="jd-meta-pill"><Clock size={12} />{t('jobDetail.posted', { time: job.postedAt || t('jobDetail.recently') })}</span>
             </div>
 
             {/* Client owner actions */}
@@ -141,10 +143,10 @@ export default function JobDetailScreen() {
                     <Lock size={12} className="text-red-500" /> Locked by Admin
                   </span>
                 ) : (
-                  <button className="jd-btn-edit" onClick={() => navigate(`/jobs/${job.id}/edit`)}><Edit3 size={13} />Edit Post</button>
+                  <button className="jd-btn-edit" onClick={() => navigate(`/jobs/${job.id}/edit`)}><Edit3 size={13} />{t('jobDetail.editPost')}</button>
                 )}
                 <button className="jd-btn-manage" onClick={() => navigate(`/proposals?job=${job.id}`)}>
-                  <FileText size={13} />Proposals<span className="jd-count">{job.proposalCount}</span>
+                  <FileText size={13} />{t('jobDetail.proposals')}<span className="jd-count">{job.proposalCount}</span>
                 </button>
               </div>
             )}
@@ -152,10 +154,10 @@ export default function JobDetailScreen() {
             {/* Row 4: Stat tiles */}
             <div className="jd-stat-row">
               {[
-                { label: 'Budget Range', value: <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> },
-                { label: 'Work Type', value: 'Fixed Price' },
-                { label: 'Deadline', value: job.deadline || 'Flexible' },
-                { label: 'Proposals', value: `${job.proposalCount} received` },
+                { label: t('jobDetail.budgetRange'), value: <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> },
+                { label: t('jobDetail.workType'), value: t('jobDetail.fixedPrice') },
+                { label: t('jobDetail.deadline'), value: job.deadline || t('jobDetail.flexible') },
+                { label: t('jobDetail.proposals'), value: t('jobDetail.proposalsReceived', { count: job.proposalCount }) },
               ].map(s => (
                 <div key={s.label} className="jd-stat-item">
                   <div className="jd-stat-label">{s.label}</div>
@@ -177,10 +179,10 @@ export default function JobDetailScreen() {
                 <div className="flex-1">
                   <div className="flex items-center gap-1.5 mb-2">
                     <Bot size={13} className="text-brand" />
-                    <span className="text-xs font-black text-text-primary">AI Match Analysis</span>
+                    <span className="text-xs font-black text-text-primary">{t('jobDetail.aiMatchAnalysis')}</span>
                   </div>
                   <div className="jd-ai-factors">
-                    {[{ l: 'Skills', p: 92 }, { l: 'Profile', p: 88 }, { l: 'Budget', p: 95 }].map(f => (
+                    {[{ l: t('jobDetail.skills'), p: 92 }, { l: t('jobDetail.profile'), p: 88 }, { l: t('jobDetail.budget'), p: 95 }].map(f => (
                       <div key={f.l}>
                         <div className="flex justify-between text-[9px] font-bold text-text-muted mb-0.5">
                           <span>{f.l}</span><span>{f.p}%</span>
@@ -203,13 +205,13 @@ export default function JobDetailScreen() {
 
             {/* Description */}
             <div className="glass-card rounded-2xl p-6 md:p-8 jd-stagger jd-d2">
-              <h2 className="jd-section-title">Job Description</h2>
+              <h2 className="jd-section-title">{t('jobDetail.jobDescription')}</h2>
               <div className="jd-desc-text">{job.description}</div>
             </div>
 
             {/* Skills */}
             <div className="glass-card rounded-2xl p-6 md:p-8 jd-stagger jd-d3">
-              <h2 className="jd-section-title">Required Skills</h2>
+              <h2 className="jd-section-title">{t('jobDetail.requiredSkills')}</h2>
               <div className="flex flex-wrap gap-2">
                 {job.skills.map((skill: string) => (
                   <span key={skill} className="jd-skill-chip">{skill}</span>
@@ -221,9 +223,9 @@ export default function JobDetailScreen() {
             {!isClientMode && similarJobs.length > 0 && (
               <div className="glass-card rounded-2xl p-6 md:p-8 jd-stagger jd-d4">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="jd-section-title mb-0">Similar Positions</h2>
+                  <h2 className="jd-section-title mb-0">{t('jobDetail.similarPositions')}</h2>
                   <button className="flex items-center gap-1 text-[10px] font-black text-brand uppercase tracking-widest hover:underline" onClick={() => navigate('/jobs/browse')}>
-                    View All <ArrowUpRight size={11} />
+                    {t('jobDetail.viewAll')} <ArrowUpRight size={11} />
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -235,7 +237,7 @@ export default function JobDetailScreen() {
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-black text-text-primary truncate">{sj.title}</h4>
                         <p className="text-[11px] text-text-muted font-medium mt-0.5">
-                          {sj.budgetMin.toLocaleString()}-{sj.budgetMax.toLocaleString()} GigCoin ? Fixed ? Remote
+                          {sj.budgetMin.toLocaleString()}-{sj.budgetMax.toLocaleString()} GigCoin · {t('jobDetail.fixedPrice')} · {sj.isRemote ? t('jobDetail.remote') : t('jobDetail.onSite')}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -259,7 +261,7 @@ export default function JobDetailScreen() {
             {/* Apply Section */}
             {!isClientMode && role === UserRole.Freelancer && (
               <div className="glass-card rounded-2xl p-5 jd-stagger jd-d3">
-                <h3 className="jd-section-title">Apply to This Job</h3>
+                <h3 className="jd-section-title">{t('jobDetail.applyToThisJob')}</h3>
 
                 {proposalMessage && (
                   <div className="mb-3 p-2.5 rounded-lg text-xs font-semibold text-warning bg-warning/8 border border-warning/20">
@@ -270,43 +272,43 @@ export default function JobDetailScreen() {
                 <div className="jd-gigcoin-card">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="block text-[8px] font-black text-text-muted uppercase tracking-widest">Application Cost</span>
+                      <span className="block text-[8px] font-black text-text-muted uppercase tracking-widest">{t('jobDetail.applicationCost')}</span>
                       <div className="flex items-center gap-1 mt-0.5">
                         <Zap size={13} className="text-brand" />
                         <GigCoinAmount amount={applicationCost} className="text-sm font-black text-text-primary" />
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="block text-[8px] font-black text-text-muted uppercase tracking-widest">Your Balance</span>
+                      <span className="block text-[8px] font-black text-text-muted uppercase tracking-widest">{t('jobDetail.yourBalance')}</span>
                       <span className={`text-sm font-black mt-0.5 block ${canApplyWithGigcoins ? 'text-success' : 'text-destructive'}`}>
-                        {applicationCost === 0 && gigcoinBalance === null ? 'Free' : <GigCoinAmount amount={gigcoinBalance ?? 0} />} 
+                        {applicationCost === 0 && gigcoinBalance === null ? t('jobDetail.free') : <GigCoinAmount amount={gigcoinBalance ?? 0} />} 
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {proposalLoading ? (
-                  <div className="text-center py-4 text-xs text-text-muted animate-pulse">Checking status…</div>
+                  <div className="text-center py-4 text-xs text-text-muted animate-pulse">{t('jobDetail.checkingStatus')}</div>
                 ) : myProposal ? (
                   <div className="space-y-2.5">
-                    <div className="jd-proposal-banner"><CheckCircle size={14} />{getStatusLabel(myProposal.status)} proposal</div>
+                    <div className="jd-proposal-banner"><CheckCircle size={14} />{t('jobDetail.proposalStatus', { status: getStatusLabel(myProposal.status) })}</div>
                     {canEditProposal(myProposal.status) && (
-                      <button className="jd-btn-apply" onClick={() => navigate(`/proposals/${myProposal.proposalId}/edit`)}><Edit3 size={13} />Continue Editing</button>
+                      <button className="jd-btn-apply" onClick={() => navigate(`/proposals/${myProposal.proposalId}/edit`)}><Edit3 size={13} />{t('jobDetail.continueEditing')}</button>
                     )}
                     {canWithdrawProposal(myProposal.status) && (
-                      <button className="jd-btn-danger" onClick={handleWithdrawProposal} disabled={isApplying}>Withdraw</button>
+                      <button className="jd-btn-danger" onClick={handleWithdrawProposal} disabled={isApplying}>{t('jobDetail.withdraw')}</button>
                     )}
                     {canViewProposalAnswers(myProposal.status) && (
-                      <button className="jd-btn-secondary" onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}><FileText size={13} />View Answers</button>
+                      <button className="jd-btn-secondary" onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}><FileText size={13} />{t('jobDetail.viewAnswers')}</button>
                     )}
                   </div>
                 ) : canApplyWithGigcoins ? (
                   <button className="jd-btn-apply" onClick={handleApplyJob} disabled={isApplying}>
-                    {isApplying ? (<><div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />Applying…</>) : (<><Zap size={15} />Apply Now</>)}
+                    {isApplying ? (<><div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{t('jobDetail.applying')}</>) : (<><Zap size={15} />{t('jobDetail.applyNow')}</>)}
                   </button>
                 ) : (
                   <button className="jd-btn-apply" onClick={() => navigate('/wallet/deposit')} style={{ background: 'linear-gradient(135deg, #9f4bff, #7c3aed)' }}>
-                    <Zap size={15} />Buy GigCoins
+                    <Zap size={15} />{t('jobDetail.buyGigCoins')}
                   </button>
                 )}
               </div>
@@ -315,7 +317,7 @@ export default function JobDetailScreen() {
             {/* Client Info */}
             {!isClientMode && (
               <div className="glass-card rounded-2xl p-5 jd-stagger jd-d4">
-                <h3 className="jd-section-title">About the Client</h3>
+                <h3 className="jd-section-title">{t('jobDetail.aboutClient')}</h3>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="jd-avatar-ring">
                     <div className="jd-avatar-inner">{client?.full_name?.charAt(0) || '?'}</div>
@@ -327,7 +329,7 @@ export default function JobDetailScreen() {
                 </div>
                 <div className="space-y-0.5">
                   <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">Rating</span>
+                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.rating')}</span>
                     <div className="flex items-center gap-1">
                       <Star size={11} fill="#F59E0B" className="text-warning" />
                       <span className="text-xs font-black text-text-primary">{clientProfile?.rating ?? '—'}</span>
@@ -335,35 +337,35 @@ export default function JobDetailScreen() {
                     </div>
                   </div>
                   <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">Total Spent</span>
+                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.totalSpent')}</span>
                     <span className="text-xs font-black text-text-primary"><GigCoinAmount amount={clientProfile?.totalSpent || 0} /></span>
                   </div>
                   <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">Jobs Posted</span>
+                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.jobsPosted')}</span>
                     <span className="text-xs font-black text-text-primary">{clientProfile?.postedJobs ?? '—'}</span>
                   </div>
                   <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">Hire Rate</span>
+                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.hireRate')}</span>
                     <span className="text-xs font-black text-success">82%</span>
                   </div>
                 </div>
                 {clientProfile?.isVerifiedClient && (
-                  <div className="jd-verified"><CheckCircle size={12} />Payment Verified</div>
+                  <div className="jd-verified"><CheckCircle size={12} />{t('jobDetail.paymentVerified')}</div>
                 )}
-                <button className="jd-btn-secondary mt-3" onClick={() => navigate(`/profile/client/${client?.id || job.clientId}`)}>View Client Profile</button>
+                <button className="jd-btn-secondary mt-3" onClick={() => navigate(`/profile/client/${client?.id || job.clientId}`)}>{t('jobDetail.viewClientProfile')}</button>
               </div>
             )}
 
             {/* Quick Facts */}
             <div className="glass-card rounded-2xl p-5 jd-stagger jd-d5">
-              <h3 className="jd-section-title">Quick Facts</h3>
+              <h3 className="jd-section-title">{t('jobDetail.quickFacts')}</h3>
               <div className="space-y-0.5">
                 {[
-                  { label: 'Budget', val: <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> },
-                  { label: 'Type', val: 'Fixed Price' },
-                  { label: 'Location', val: job.isRemote ? 'Remote Worldwide' : 'On-site' },
-                  { label: 'Proposals', val: `${job.proposalCount} submitted` },
-                  { label: 'Deadline', val: job.deadline || 'Flexible' },
+                  { label: t('jobDetail.budget'), val: <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> },
+                  { label: t('jobDetail.type'), val: t('jobDetail.fixedPrice') },
+                  { label: t('jobDetail.location'), val: job.isRemote ? t('jobDetail.remoteWorldwide') : t('jobDetail.onSite') },
+                  { label: t('jobDetail.proposals'), val: t('jobDetail.submitted', { count: job.proposalCount }) },
+                  { label: t('jobDetail.deadline'), val: job.deadline || t('jobDetail.flexible') },
                 ].map(r => (
                   <div key={r.label} className="jd-client-row">
                     <span className="text-[11px] text-text-muted font-semibold">{r.label}</span>

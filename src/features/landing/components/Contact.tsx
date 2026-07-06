@@ -1,20 +1,23 @@
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import AnimatedTitle from './AnimatedTitle';
 import Button from './Button';
 
 interface ImageClipBoxProps {
   src: string;
   clipClass: string;
+  alt?: string;
 }
 
-const ImageClipBox = ({ src, clipClass }: ImageClipBoxProps) => (
+const ImageClipBox = ({ src, clipClass, alt = '' }: ImageClipBoxProps) => (
   <div className={clipClass}>
-    <img src={src} alt="collage asset" />
+    <img src={src} alt={alt} />
   </div>
 );
 
 export default function Contact() {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
 
   const handleGetStarted = () => {
     navigate('/auth/signup');
@@ -27,10 +30,12 @@ export default function Contact() {
           <ImageClipBox
             src="/img/contact-1.png"
             clipClass="contact-clip-path-1"
+            alt={t('landing.contact.imageAlt')}
           />
           <ImageClipBox
             src="/img/contact-2.png"
             clipClass="contact-clip-path-2 lg:translate-y-40 translate-y-60"
+            alt={t('landing.contact.imageAlt')}
           />
         </div>
 
@@ -38,25 +43,27 @@ export default function Contact() {
           <ImageClipBox
             src="/img/contact-1.png"
             clipClass="absolute md:scale-125"
+            alt={t('landing.contact.imageAlt')}
           />
           <ImageClipBox
             src="/img/contact-2.png"
             clipClass="sword-man-clip-path md:scale-125"
+            alt={t('landing.contact.imageAlt')}
           />
         </div>
 
         <div className="flex flex-col items-center text-center">
           <p className="mb-10 font-general text-[10px] uppercase">
-            Join Gigbridge
+            {t('landing.contact.label')}
           </p>
 
           <AnimatedTitle
-            title="let&#39;s b<b>u</b>ild the <br /> new era of <br /> co<b>l</b>laboration t<b>o</b>gether."
+            title={t('landing.contact.animatedTitle')}
             containerClass="special-font !md:text-[6.2rem] w-full font-zentry !text-5xl !font-black !leading-[.9]"
           />
 
           <Button
-            title="get started"
+            title={t('landing.contact.cta')}
             onClick={handleGetStarted}
             containerClass="mt-10 cursor-pointer"
           />

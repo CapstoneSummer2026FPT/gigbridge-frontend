@@ -24,12 +24,13 @@ const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string |
   return url?.trim() || null;
 };
 
-const getProductHandoffLabel = (handoff: ContractProductHandoffResponse): string =>
+const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: any): string =>
   handoff.sourceType === ContractProductHandoffSourceType.Link
-    ? 'Work materials link'
-    : handoff.fileName || 'Work materials file';
+    ? t('workspace.workMaterialsLink')
+    : handoff.fileName || t('workspace.workMaterialsFile');
 
 export default function ProjectWorkspaceScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
   const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
@@ -159,7 +160,7 @@ export default function ProjectWorkspaceScreen() {
 
     if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
       setSubmitFile(null);
-      setSubmitError('File must be greater than 0 and no larger than 100MB.');
+      setSubmitError(t('workspace.fileSizeValidationError'));
       if (submitFileInputRef.current) {
         submitFileInputRef.current.value = '';
       }
@@ -177,12 +178,12 @@ export default function ProjectWorkspaceScreen() {
     const trimmedLink = submitLink.trim();
 
     if (trimmedDescription.length > 5000) {
-      setSubmitError('Description must be 5000 characters or less.');
+      setSubmitError(t('workspace.descriptionMaxLengthError'));
       return;
     }
 
     if (submitMode === 'file' && !submitFile) {
-      setSubmitError('Choose one file before submitting.');
+      setSubmitError(t('workspace.chooseFileBeforeSubmitError'));
       return;
     }
 
@@ -190,10 +191,10 @@ export default function ProjectWorkspaceScreen() {
       try {
         const url = new URL(trimmedLink);
         if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-          throw new Error('Invalid URL protocol.');
+          throw new Error(t('workspace.invalidUrlProtocolError'));
         }
       } catch {
-        setSubmitError('Enter a valid HTTP or HTTPS link.');
+        setSubmitError(t('workspace.enterValidHttpLinkError'));
         return;
       }
     }
@@ -208,7 +209,7 @@ export default function ProjectWorkspaceScreen() {
     });
 
     if (!result.success) {
-      setSubmitError(result.message || 'Failed to submit deliverable.');
+      setSubmitError(result.message || t('workspace.failedSubmitDeliverableError'));
       setIsSubmittingDeliverable(false);
       return;
     }
@@ -240,7 +241,7 @@ export default function ProjectWorkspaceScreen() {
 
     if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
       setProductFile(null);
-      setProductError('File must be greater than 0 and no larger than 100MB.');
+      setProductError(t('workspace.fileSizeValidationError'));
       if (productFileInputRef.current) {
         productFileInputRef.current.value = '';
       }
@@ -257,12 +258,12 @@ export default function ProjectWorkspaceScreen() {
     const trimmedLink = productLink.trim();
 
     if (trimmedNote.length > 2000) {
-      setProductError('Note must be 2000 characters or less.');
+      setProductError(t('workspace.noteMaxLengthError'));
       return;
     }
 
     if (productMode === 'file' && !productFile) {
-      setProductError('Choose one file before sending.');
+      setProductError(t('workspace.chooseFileBeforeSendError'));
       return;
     }
 
@@ -270,10 +271,10 @@ export default function ProjectWorkspaceScreen() {
       try {
         const url = new URL(trimmedLink);
         if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-          throw new Error('Invalid URL protocol.');
+          throw new Error(t('workspace.invalidUrlProtocolError'));
         }
       } catch {
-        setProductError('Enter a valid HTTP or HTTPS link.');
+        setProductError(t('workspace.enterValidHttpLinkError'));
         return;
       }
     }
@@ -288,7 +289,7 @@ export default function ProjectWorkspaceScreen() {
     });
 
     if (!result.success) {
-      setProductError(result.message || 'Failed to send work materials.');
+      setProductError(result.message || t('workspace.failedSendMaterialsError'));
       setIsSendingProduct(false);
       return;
     }
@@ -305,7 +306,7 @@ export default function ProjectWorkspaceScreen() {
     if (!result.success) {
       setMilestoneActionError({
         milestoneId,
-        message: result.message || 'Failed to start milestone.',
+        message: result.message || t('workspace.failedStartMilestoneError'),
       });
     }
     setMilestoneActionPendingId(null);
@@ -318,7 +319,7 @@ export default function ProjectWorkspaceScreen() {
     if (!result.success) {
       setMilestoneActionError({
         milestoneId,
-        message: result.message || 'Failed to request milestone unlock.',
+        message: result.message || t('workspace.failedRequestUnlockError'),
       });
     }
     setMilestoneActionPendingId(null);
@@ -331,7 +332,7 @@ export default function ProjectWorkspaceScreen() {
     if (!result.success) {
       setMilestoneActionError({
         milestoneId,
-        message: result.message || 'Failed to withdraw milestone funds.',
+        message: result.message || t('workspace.failedWithdrawFundsError'),
       });
     }
     setMilestoneActionPendingId(null);
@@ -390,7 +391,7 @@ export default function ProjectWorkspaceScreen() {
     setClaimPayoutError(null);
     const result = await handleClaimFinalPayout();
     if (!result.success) {
-      setClaimPayoutError(result.message || 'Failed to claim final payout.');
+      setClaimPayoutError(result.message || t('workspace.failedClaimPayoutError'));
     }
     setIsClaimingPayout(false);
   };
@@ -406,7 +407,7 @@ export default function ProjectWorkspaceScreen() {
               className="flex items-center gap-2 text-muted-foreground hover:text-[var(--gb-cyan)] transition-colors group cursor-pointer"
             >
               <ArrowLeft size={18} />
-              <span className="font-semibold text-sm">Back</span>
+              <span className="font-semibold text-sm">{t('workspace.back')}</span>
             </button>
             <div className="flex flex-col">
               <h1 className="font-headline-md text-base font-bold text-foreground">{currentProjData.titleLong}</h1>
@@ -414,7 +415,7 @@ export default function ProjectWorkspaceScreen() {
                 onClick={() => navigate(`/jobs/${project.jobId}`)}
                 className="text-[10px] text-[var(--gb-cyan)] font-bold hover:underline uppercase tracking-widest text-left mt-0.5 cursor-pointer"
               >
-                View job post detail
+                {t('workspace.viewJobDetail')}
               </button>
             </div>
           </div>
@@ -423,17 +424,17 @@ export default function ProjectWorkspaceScreen() {
               <button
                 onClick={() => setProductModalOpen(true)}
                 className="bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-green-500/20 transition-all uppercase tracking-widest cursor-pointer flex items-center gap-2"
-                title="Send work materials to freelancer"
+                title={t('workspace.sendMaterialsTooltip')}
               >
                 <Upload size={14} />
-                <span>Send Work Materials</span>
+                <span>{t('workspace.sendMaterialsButton')}</span>
               </button>
             )}
             <button
               onClick={() => navigate(`/contracts/${project.contractId || contractId || ''}`)}
               className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all uppercase tracking-widest cursor-pointer"
             >
-              View Contract
+              {t('workspace.viewContract')}
             </button>
           </div>
         </header>
@@ -441,7 +442,7 @@ export default function ProjectWorkspaceScreen() {
         {activeContract?.status === ContractStatus.PendingEscrow && (
           <div className="px-8 py-2 border-b border-amber-500/20 bg-amber-500/10 text-xs font-semibold text-amber-700 flex items-center gap-2">
             <CreditCard size={14} />
-            <span>Workspace is open. Waiting for client escrow funding before work starts.</span>
+            <span>{t('workspace.escrowPending')}</span>
           </div>
         )}
 
@@ -455,7 +456,7 @@ export default function ProjectWorkspaceScreen() {
                 : 'border-transparent text-muted-foreground'
             }`}
           >
-            Conversations
+            {t('workspace.conversations')}
           </button>
           <button
             onClick={() => setMobileTab('milestones')}
@@ -465,7 +466,7 @@ export default function ProjectWorkspaceScreen() {
                 : 'border-transparent text-muted-foreground'
             }`}
           >
-            Milestones
+            {t('workspace.milestones')}
           </button>
           <button
             onClick={() => setMobileTab('chat')}
@@ -475,7 +476,7 @@ export default function ProjectWorkspaceScreen() {
                 : 'border-transparent text-muted-foreground'
             }`}
           >
-            Chat & Files
+            {t('workspace.chatFiles')}
           </button>
         </div>
 
@@ -484,7 +485,7 @@ export default function ProjectWorkspaceScreen() {
           {/* Column 1: Conversations List (Left Pane) */}
           <section className={`w-80 border-r border-border flex flex-col bg-card flex-shrink-0 lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}>
             <div className="p-4 border-b border-border flex justify-between items-center">
-              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">Recent Workspace</span>
+              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">{t('workspace.recentWorkspace')}</span>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {workspaceProjects.map(proj => {
@@ -533,9 +534,9 @@ export default function ProjectWorkspaceScreen() {
                   <CreditCard size={20} />
                 </div>
                 <div>
-                  <h2 className="font-headline-sm text-sm font-semibold">Milestone Management</h2>
+                  <h2 className="font-headline-sm text-sm font-semibold">{t('workspace.milestoneManagement')}</h2>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                    Track deliverables and payments for {currentProjData.title}
+                    {t('workspace.trackDeliverables', { title: currentProjData.title })}
                   </p>
                 </div>
               </div>
@@ -545,26 +546,26 @@ export default function ProjectWorkspaceScreen() {
                     onClick={openEndProjectDialog}
                     disabled={!allMilestonesApproved}
                     className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
-                    title={allMilestonesApproved ? 'Release remaining escrow and complete project' : 'Approve all milestones to end project'}
+                    title={allMilestonesApproved ? t('workspace.releaseEscrowTooltip') : t('workspace.approveAllTooltip')}
                   >
                     <CheckCircle size={16} />
-                    <span>End Project</span>
+                    <span>{t('workspace.endProject')}</span>
                   </button>
                 )}
                 {isClient && (
                   <button
                     onClick={handleCreateMockMilestone}
                     className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
-                    title="Create Milestone"
+                    title={t('workspace.proposeMilestone')}
                   >
                     <Plus size={16} />
-                    <span>Propose Milestone</span>
+                    <span>{t('workspace.proposeMilestone')}</span>
                   </button>
                 )}
                 <button
                   onClick={() => setShowInfo(!showInfo)}
                   className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-all cursor-pointer ${showInfo ? 'bg-[var(--gb-cyan)]/10 border-[var(--gb-cyan)]/30 text-[var(--gb-cyan)]' : 'text-muted-foreground'}`}
-                  title="Toggle Chat & Info Panel"
+                  title={t('workspace.toggleChatInfo')}
                 >
                   <Info size={18} />
                 </button>
@@ -574,11 +575,11 @@ export default function ProjectWorkspaceScreen() {
             {/* Dashboard stats */}
             <div className="p-6 bg-card/50 border-b border-border grid grid-cols-3 gap-4">
               <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Total Milestones</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.totalMilestones')}</span>
                 <span className="text-xl font-bold mt-1">{project.milestones.length}</span>
               </div>
               <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Project Progress</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.projectProgress')}</span>
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
                     <div className="bg-[var(--gb-cyan)] h-full rounded-full" style={{ width: `${project.progress}%` }}></div>
@@ -587,7 +588,7 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               </div>
               <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Paid Amount</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.paidAmount')}</span>
                 <span className="text-xl font-bold mt-1 text-green-500"><GigCoinAmount amount={project.paidAmount || 0} /></span>
               </div>
             </div>
@@ -598,16 +599,16 @@ export default function ProjectWorkspaceScreen() {
                   <Wallet size={22} />
                 </div>
                 <div className="workspace-receive-money-copy">
-                  <span>{projectReleasedInFull ? 'Paid in full' : 'Final payout is ready'}</span>
+                  <span>{projectReleasedInFull ? t('workspace.paidInFull') : t('workspace.finalPayoutReady')}</span>
                   <h3>
                     {projectReleasedInFull
-                      ? 'Escrow has been fully released to your wallet.'
-                      : 'Claim the remaining escrow into your GigBridge wallet.'}
+                      ? t('workspace.escrowReleasedFully')
+                      : t('workspace.claimRemainingEscrow')}
                   </h3>
                   <p>
-                    {projectReleasedInFull ? 'You received ' : 'Available to claim '}
+                    {projectReleasedInFull ? t('workspace.youReceived') : t('workspace.availableToClaim')}
                     <GigCoinAmount amount={projectReleasedInFull ? project.paidAmount : remainingEscrowAmount} />
-                    {projectReleasedInFull ? ' for this contract.' : '.'}
+                    {projectReleasedInFull ? t('workspace.forThisContract') : '.'}
                   </p>
                   {claimPayoutError && <p className="text-red-600">{claimPayoutError}</p>}
                 </div>
@@ -617,7 +618,7 @@ export default function ProjectWorkspaceScreen() {
                   disabled={isClaimingPayout}
                   className="workspace-receive-money-button"
                 >
-                  {projectReleasedInFull ? 'View wallet history' : isClaimingPayout ? 'Claiming...' : 'Nhận tiền'}
+                  {projectReleasedInFull ? t('workspace.viewWalletHistory') : isClaimingPayout ? t('workspace.claiming') : t('workspace.claimPayout')}
                 </button>
               </div>
             )}
@@ -626,7 +627,7 @@ export default function ProjectWorkspaceScreen() {
             <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
               {project.milestones.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                  <p className="text-sm">No milestones defined yet.</p>
+                  <p className="text-sm">{t('workspace.noMilestones')}</p>
                 </div>
               ) : (
                 project.milestones.map((milestone, idx) => {
@@ -672,25 +673,25 @@ export default function ProjectWorkspaceScreen() {
                           </div>
                           <div>
                             <h3 className="text-sm font-semibold text-foreground">{milestone.title}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">{milestone.description || 'No description provided.'}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{milestone.description || t('workspace.noDescription')}</p>
                             
                             <div className="flex flex-wrap items-center gap-4 mt-3 text-[11px] text-muted-foreground">
                               <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">Amount:</span> <GigCoinAmount amount={milestone.amount} />
+                                <span className="font-semibold text-foreground">{t('workspace.amount')}:</span> <GigCoinAmount amount={milestone.amount} />
                               </span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">Released:</span> <GigCoinAmount amount={milestone.releasedAmount} />
+                                <span className="font-semibold text-foreground">{t('workspace.released')}</span> <GigCoinAmount amount={milestone.releasedAmount} />
                               </span>
                               <span>•</span>
                               <span className="flex items-center gap-1">
-                                <span className="font-semibold text-foreground">Due Date:</span> {milestone.dueDate}
+                                <span className="font-semibold text-foreground">{t('workspace.dueDate')}:</span> {milestone.dueDate}
                               </span>
                               {milestone.completedAt && (
                                 <>
                                   <span>•</span>
                                   <span className="flex items-center gap-1">
-                                    <span className="font-semibold text-foreground">Completed:</span> {new Date(milestone.completedAt).toLocaleDateString()}
+                                    <span className="font-semibold text-foreground">{t('workspace.completed')}:</span> {new Date(milestone.completedAt).toLocaleDateString()}
                                   </span>
                                 </>
                               )}
@@ -716,16 +717,16 @@ export default function ProjectWorkspaceScreen() {
                           <div className="flex-1 max-w-xs">
                             {showFreelancerWithdraw ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                Withdrawable before project end: <GigCoinAmount amount={withdrawableAmount} />
+                                {t('workspace.withdrawableBeforeEnd')} <GigCoinAmount amount={withdrawableAmount} />
                               </span>
                             ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                Released in full
+                                {t('workspace.releasedInFull')}
                               </span>
                             ) : (isInProgress || isSubmitted) ? (
                               <>
                                 <div className="flex justify-between text-[10px] mb-1">
-                                  <span className="text-muted-foreground">Progress</span>
+                                  <span className="text-muted-foreground">{t('workspace.progress')}</span>
                                   <span className="font-bold text-[var(--gb-cyan)]">{isSubmitted ? '90%' : '65%'}</span>
                                 </div>
                                 <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
@@ -734,7 +735,7 @@ export default function ProjectWorkspaceScreen() {
                               </>
                             ) : (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                Waiting for client to unlock
+                                {t('workspace.waitingClientUnlock')}
                               </span>
                             )}
                           </div>
@@ -744,14 +745,14 @@ export default function ProjectWorkspaceScreen() {
                                 onClick={() => navigate(`/contracts/${workspaceContractId}/milestones/${milestone.id}/approve`)}
                                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                Review Milestone
+                                {t('workspace.reviewMilestone')}
                               </button>
                             ) : canFreelancerSubmit ? (
                               <button
                                 onClick={() => openSubmitModal(milestone)}
                                 className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                Submit Deliverable
+                                {t('workspace.submitDeliverable')}
                               </button>
                             ) : canClientStart ? (
                               <button
@@ -759,7 +760,7 @@ export default function ProjectWorkspaceScreen() {
                                 disabled={isMilestoneActionPending}
                                 className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 disabled:opacity-60 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                {isMilestoneActionPending ? 'Starting...' : 'Start Milestone'}
+                                {isMilestoneActionPending ? t('workspace.starting') : t('workspace.startMilestone')}
                               </button>
                             ) : canFreelancerRequestUnlock ? (
                               <button
@@ -767,24 +768,24 @@ export default function ProjectWorkspaceScreen() {
                                 disabled={isMilestoneActionPending}
                                 className="bg-card hover:bg-muted disabled:opacity-60 text-foreground border border-border px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                {isMilestoneActionPending ? 'Requesting...' : 'Request Unlock'}
+                                {isMilestoneActionPending ? t('workspace.requesting') : t('workspace.requestUnlock')}
                               </button>
                             ) : showFreelancerWithdraw ? (
                               <button
                                 onClick={() => handleWithdrawApprovedMilestone(milestone.id)}
                                 disabled={isMilestoneActionPending || !hasEnoughApprovedForWithdraw}
                                 className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                                title={hasEnoughApprovedForWithdraw ? 'Withdraw up to 80% of this milestone' : 'At least 50% of milestones must be approved before withdrawal'}
+                                title={hasEnoughApprovedForWithdraw ? t('workspace.withdrawTooltip') : t('workspace.withdrawNotAllowedTooltip')}
                               >
-                                {isMilestoneActionPending ? 'Withdrawing...' : 'Withdraw'}
+                                {isMilestoneActionPending ? t('workspace.withdrawing') : t('workspace.withdraw')}
                               </button>
                             ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
-                                Paid in full
+                                {t('workspace.releasedInFull')}
                               </span>
                             ) : (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                {isSubmitted ? 'Waiting for client review' : 'Waiting for freelancer'}
+                                {isSubmitted ? t('workspace.waitingClientReview') : t('workspace.waitingFreelancer')}
                               </span>
                             )}
                           </div>
@@ -797,7 +798,7 @@ export default function ProjectWorkspaceScreen() {
                       )}
                       {showFreelancerWithdraw && !hasEnoughApprovedForWithdraw && (
                         <div className="mt-3 text-[11px] font-semibold text-amber-600">
-                          At least 50% of milestones must be approved before withdrawal.
+                          {t('workspace.withdrawThresholdWarning')}
                         </div>
                       )}
                     </div>
@@ -826,7 +827,7 @@ export default function ProjectWorkspaceScreen() {
                 }`}
               >
                 <MessageSquare size={14} />
-                <span>Nhắn tin</span>
+                <span>{t('nav.messages')}</span>
               </button>
               <button
                 onClick={() => setActiveTab('files')}
@@ -837,7 +838,7 @@ export default function ProjectWorkspaceScreen() {
                 }`}
               >
                 <FileText size={14} />
-                <span>Shared Files</span>
+                <span>{t('workspace.sharedFiles')}</span>
               </button>
             </div>
 
@@ -867,7 +868,7 @@ export default function ProjectWorkspaceScreen() {
                       <div>
                         <h2 className="text-xs font-semibold">{partnerName}</h2>
                         <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
-                          {isPartnerOnline ? 'Online' : 'Offline'} • {partnerTitle}
+                          {isPartnerOnline ? t('workspace.online') : t('workspace.offline')} • {partnerTitle}
                         </p>
                       </div>
 
@@ -894,7 +895,7 @@ export default function ProjectWorkspaceScreen() {
                                 }}
                                 className="text-[8px] font-bold px-3 py-1 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
                               >
-                                VIEW PROFILE
+                                {t('workspace.viewProfile')}
                               </button>
                               <button
                                 onClick={(e) => {
@@ -905,7 +906,7 @@ export default function ProjectWorkspaceScreen() {
                                   isFavorited ? 'bg-[var(--gb-cyan)] text-white' : 'bg-secondary text-foreground hover:bg-muted'
                                 }`}
                               >
-                                {isFavorited ? 'FAVORITED' : 'FAVORITE'}
+                                {isFavorited ? t('workspace.favorited') : t('workspace.favorite')}
                               </button>
                             </div>
                             <div className="border-t border-border pt-3">
@@ -913,14 +914,14 @@ export default function ProjectWorkspaceScreen() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setIsBlocked(!isBlocked);
-                                  alert(isBlocked ? 'Contact unblocked.' : 'Contact blocked.');
+                                  alert(isBlocked ? t('workspace.contactUnblocked') : t('workspace.contactBlocked'));
                                 }}
                                 className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border font-bold text-[9px] uppercase tracking-widest transition-all cursor-pointer ${
                                   isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
                                 }`}
                               >
                                 <Ban size={10} />
-                                {isBlocked ? 'Unblock Contact' : 'Block Contact'}
+                                {isBlocked ? t('workspace.unblockContact') : t('workspace.blockContact')}
                               </button>
                             </div>
                           </div>
@@ -933,7 +934,7 @@ export default function ProjectWorkspaceScreen() {
                   <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
                     <div className="flex justify-center mb-1">
                       <span className="bg-muted px-2.5 py-0.5 rounded-full text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
-                        Project Workspace Chat
+                        {t('workspace.chatHeader')}
                       </span>
                     </div>
 
@@ -958,7 +959,7 @@ export default function ProjectWorkspaceScreen() {
                                   )}
                                   <div className="bg-muted p-1.5 flex justify-between items-center text-[9px] text-muted-foreground">
                                     <span className="truncate max-w-[150px]">{msg.fileName}</span>
-                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(`Simulating download of ${msg.fileName}`)} />
+                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(t('workspace.downloadSim', { name: msg.fileName }))} />
                                   </div>
                                 </div>
                               </div>
@@ -985,14 +986,14 @@ export default function ProjectWorkspaceScreen() {
                   {/* Input area */}
                   {isWorkspaceViewOnly ? (
                     <div className="p-4 bg-muted/50 border-t border-border text-center text-xs font-semibold text-muted-foreground">
-                      Project completed · Workspace is view-only
+                      {t('workspace.viewOnlyNotice')}
                     </div>
                   ) : (
                   <div className="p-3 bg-card border-t border-border flex-shrink-0">
                     <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
                       <textarea
                         className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
-                        placeholder="Type your message here..."
+                        placeholder={t('workspace.typeMessagePlaceholder')}
                         rows={1}
                         value={messageInput ?? ''}
                         onChange={e => setMessageInput(e.target.value)}
@@ -1009,14 +1010,14 @@ export default function ProjectWorkspaceScreen() {
                           <button
                             onClick={handleSimulateAttachment}
                             className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                            title="Attach File"
+                            title={t('workspace.attachFile')}
                           >
                             <Paperclip size={14} />
                           </button>
                           <button
                             onClick={() => setMessageInput(prev => `${prev ?? ''}😊`)}
                             className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
-                            title="Add Emoji"
+                            title={t('workspace.addEmoji')}
                           >
                             <Smile size={14} />
                           </button>
@@ -1025,7 +1026,7 @@ export default function ProjectWorkspaceScreen() {
                           onClick={handleSendMessage}
                           className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-8 px-4 rounded-full flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 shadow-md shadow-blue-500/20 cursor-pointer"
                         >
-                          <span>Send</span>
+                          <span>{t('workspace.send')}</span>
                           <Send size={12} />
                         </button>
                       </div>
@@ -1038,8 +1039,8 @@ export default function ProjectWorkspaceScreen() {
               {activeTab === 'files' && (
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">Shared Files</h4>
-                    <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">See all</button>
+                    <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('workspace.sharedFiles')}</h4>
+                    <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">{t('workspace.seeAll')}</button>
                   </div>
                   <div className="space-y-3">
                     {productHandoffs.map(handoff => {
@@ -1052,7 +1053,7 @@ export default function ProjectWorkspaceScreen() {
                           key={handoff.contractProductHandoffId}
                           onClick={productUrl ? () => window.open(productUrl, '_blank', 'noopener,noreferrer') : undefined}
                           disabled={!productUrl}
-                          aria-label={`Open ${getProductHandoffLabel(handoff)} version ${handoff.version}`}
+                          aria-label={t('workspace.openHandoffAria', { defaultValue: `Open ${getProductHandoffLabel(handoff, t)} version ${handoff.version}`, label: getProductHandoffLabel(handoff, t), version: handoff.version })}
                           className={`w-full text-left flex items-center gap-3 p-3 bg-[var(--gb-cyan)]/5 rounded-lg transition-all border border-[var(--gb-cyan)]/20 ${
                             productUrl ? 'cursor-pointer hover:bg-[var(--gb-cyan)]/10' : 'cursor-default opacity-70'
                           }`}
@@ -1062,10 +1063,10 @@ export default function ProjectWorkspaceScreen() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-bold truncate text-foreground">
-                              {getProductHandoffLabel(handoff)}
+                              {getProductHandoffLabel(handoff, t)}
                             </p>
                             <p className="text-[9px] text-muted-foreground truncate">
-                              Version {handoff.version}
+                              {t('workspace.version', { version: handoff.version })}
                               {handoff.note ? ` - ${handoff.note}` : ''}
                             </p>
                           </div>
@@ -1082,7 +1083,7 @@ export default function ProjectWorkspaceScreen() {
                     ].map(file => (
                       <div
                         key={file.name}
-                        onClick={() => alert(`Simulating download of ${file.name}`)}
+                        onClick={() => alert(t('workspace.downloadSim', { name: file.name }))}
                         className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
                       >
                         <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
@@ -1128,14 +1129,14 @@ export default function ProjectWorkspaceScreen() {
           <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title">
             <div className="workspace-submit-modal-header">
               <div>
-                <h3 id="workspace-submit-title">Submit Deliverable</h3>
+                <h3 id="workspace-submit-title">{t('workspace.submitDeliverableModalTitle')}</h3>
                 <p>{submitModal.title}</p>
               </div>
               <button
                 type="button"
                 onClick={resetSubmitModal}
                 className="workspace-submit-icon-button"
-                title="Close"
+                title={t('common.close')}
                 disabled={isSubmittingDeliverable}
               >
                 <X size={18} />
@@ -1161,7 +1162,7 @@ export default function ProjectWorkspaceScreen() {
                   }}
                 >
                   <Upload size={15} />
-                  File
+                  {t('workspace.fileSourceOption')}
                 </button>
                 <button
                   type="button"
@@ -1176,13 +1177,13 @@ export default function ProjectWorkspaceScreen() {
                   }}
                 >
                   <Link2 size={15} />
-                  Link
+                  {t('workspace.linkSourceOption')}
                 </button>
               </div>
 
               {submitMode === 'file' ? (
                 <div className="workspace-submit-field">
-                  <label htmlFor="workspace-deliverable-file">File</label>
+                  <label htmlFor="workspace-deliverable-file">{t('workspace.fileSourceOption')}</label>
                   <input
                     ref={submitFileInputRef}
                     id="workspace-deliverable-file"
@@ -1200,7 +1201,7 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               ) : (
                 <div className="workspace-submit-field">
-                  <label htmlFor="workspace-deliverable-link">Link</label>
+                  <label htmlFor="workspace-deliverable-link">{t('workspace.linkSourceOption')}</label>
                   <input
                     id="workspace-deliverable-link"
                     type="url"
@@ -1213,14 +1214,14 @@ export default function ProjectWorkspaceScreen() {
               )}
 
               <div className="workspace-submit-field">
-                <label htmlFor="workspace-deliverable-description">Description</label>
+                <label htmlFor="workspace-deliverable-description">{t('workspace.descriptionField')}</label>
                 <textarea
                   id="workspace-deliverable-description"
                   value={submitDescription ?? ''}
                   onChange={(event) => setSubmitDescription(event.target.value)}
                   maxLength={5000}
                   rows={4}
-                  placeholder="Add notes for the client..."
+                  placeholder={t('workspace.addNotesPlaceholder')}
                   disabled={isSubmittingDeliverable}
                 />
                 <span className="workspace-submit-count">{(submitDescription ?? '').length}/5000</span>
@@ -1233,7 +1234,7 @@ export default function ProjectWorkspaceScreen() {
                   onClick={resetSubmitModal}
                   disabled={isSubmittingDeliverable}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -1247,12 +1248,12 @@ export default function ProjectWorkspaceScreen() {
                   {isSubmittingDeliverable ? (
                     <>
                       <Loader2 size={15} className="workspace-submit-spin" />
-                      Submitting
+                      {t('workspace.submitting')}
                     </>
                   ) : (
                     <>
                       <Upload size={15} />
-                      Submit
+                      {t('common.submit')}
                     </>
                   )}
                 </button>
@@ -1267,14 +1268,14 @@ export default function ProjectWorkspaceScreen() {
           <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-product-title">
             <div className="workspace-submit-modal-header">
               <div>
-                <h3 id="workspace-product-title">Send Work Materials</h3>
-                <p>Share the file or link the freelancer needs before working.</p>
+                <h3 id="workspace-product-title">{t('workspace.sendMaterialsModalTitle')}</h3>
+                <p>{t('workspace.sendMaterialsModalDesc')}</p>
               </div>
               <button
                 type="button"
                 onClick={resetProductModal}
                 className="workspace-submit-icon-button"
-                title="Close"
+                title={t('common.close')}
                 disabled={isSendingProduct}
               >
                 <X size={18} />
@@ -1300,7 +1301,7 @@ export default function ProjectWorkspaceScreen() {
                   }}
                 >
                   <Upload size={15} />
-                  File
+                  {t('workspace.fileSourceOption')}
                 </button>
                 <button
                   type="button"
@@ -1315,13 +1316,13 @@ export default function ProjectWorkspaceScreen() {
                   }}
                 >
                   <Link2 size={15} />
-                  Link
+                  {t('workspace.linkSourceOption')}
                 </button>
               </div>
 
               {productMode === 'file' ? (
                 <div className="workspace-submit-field">
-                  <label htmlFor="workspace-product-file">Work material file</label>
+                  <label htmlFor="workspace-product-file">{t('workspace.workMaterialFileField')}</label>
                   <input
                     ref={productFileInputRef}
                     id="workspace-product-file"
@@ -1339,7 +1340,7 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               ) : (
                 <div className="workspace-submit-field">
-                  <label htmlFor="workspace-product-link">Work material link</label>
+                  <label htmlFor="workspace-product-link">{t('workspace.workMaterialLinkField')}</label>
                   <input
                     id="workspace-product-link"
                     type="url"
@@ -1352,14 +1353,14 @@ export default function ProjectWorkspaceScreen() {
               )}
 
               <div className="workspace-submit-field">
-                <label htmlFor="workspace-product-note">Note</label>
+                <label htmlFor="workspace-product-note">{t('workspace.noteField')}</label>
                 <textarea
                   id="workspace-product-note"
                   value={productNote ?? ''}
                   onChange={(event) => setProductNote(event.target.value)}
                   maxLength={2000}
                   rows={4}
-                  placeholder="Describe how the freelancer should use these materials..."
+                  placeholder={t('workspace.describeMaterialsPlaceholder')}
                   disabled={isSendingProduct}
                 />
                 <span className="workspace-submit-count">{(productNote ?? '').length}/2000</span>
@@ -1372,7 +1373,7 @@ export default function ProjectWorkspaceScreen() {
                   onClick={resetProductModal}
                   disabled={isSendingProduct}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -1386,12 +1387,12 @@ export default function ProjectWorkspaceScreen() {
                   {isSendingProduct ? (
                     <>
                       <Loader2 size={15} className="workspace-submit-spin" />
-                      Sending
+                      {t('workspace.sending')}
                     </>
                   ) : (
                     <>
                       <Upload size={15} />
-                      Send
+                      {t('workspace.sendButton')}
                     </>
                   )}
                 </button>

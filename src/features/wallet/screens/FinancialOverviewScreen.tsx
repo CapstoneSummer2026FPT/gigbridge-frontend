@@ -170,7 +170,7 @@ export default function FinancialOverviewScreen() {
             disabled={!overview || loading || isEmpty}
           >
             <Download size={16} />
-            Export
+            {t('financialOverview.export')}
           </button>
         </header>
 
