@@ -209,6 +209,121 @@
   font-weight: 600;
 }
 
+.workspace-end-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--foreground);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.workspace-end-summary strong {
+  color: #10b981;
+  font-size: 1rem;
+}
+
+.workspace-receive-money-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(0, 240, 255, 0.08));
+  box-shadow: 0 14px 32px rgba(16, 185, 129, 0.12);
+}
+
+.workspace-receive-money-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.workspace-receive-money-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-receive-money-copy span {
+  display: block;
+  color: #10b981;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.workspace-receive-money-copy h3 {
+  margin: 0.15rem 0;
+  color: var(--foreground);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.workspace-receive-money-copy p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.workspace-receive-money-button {
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #10b981;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.24);
+}
+
+.workspace-receive-money-button:hover {
+  background: #059669;
+}
+
+.workspace-release-sync-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1rem 1.5rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 12px;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.workspace-release-sync-warning button {
+  border: 0;
+  color: #92400e;
+  background: transparent;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .workspace-submit-mode {
   display: grid;
   grid-template-columns: 1fr 1fr;

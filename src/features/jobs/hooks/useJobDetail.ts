@@ -52,6 +52,7 @@ const toJobFromClientDetail = (dto: GetMyJobPostDetailDto): Job => ({
   postedAt: formatPostedAt(dto.createdAt),
   isRemote: !dto.location || dto.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
+  visibility: dto.visibility,
 });
 
 /**

@@ -10,7 +10,7 @@ export const getNotificationHubUrl = () => `${getApiRootUrl()}/hubs/notification
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 90000,
   headers: {
     'Content-Type': 'application/json',
   },

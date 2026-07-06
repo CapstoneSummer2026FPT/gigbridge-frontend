@@ -1,522 +1,239 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, CheckCircle2, XCircle, AlertCircle, Calendar,
-  Clock, FileText, User, Download, Eye, EyeOff, ChevronDown
+  AlertCircle, ArrowLeft, CheckCircle2, ChevronDown, Clock, Download,
+  ExternalLink, FileText, RotateCcw, ShieldCheck, Wallet,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
-import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto, Milestone, MilestoneAttachment } from '../../../types/models/Contract';
 import { MilestoneStatus } from '../../../types/models/Contract';
-import { canApproveMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
+import {
+  canApproveMilestone, formatContractAmount, formatContractDate, getMilestoneStatusLabel,
+} from '../../../shared/utils/contractUtils';
 import '../styles/approve-milestone-screen.css';
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 
 interface MilestoneWithAttachments extends Milestone {
   attachments?: MilestoneAttachment[];
   deliverableDescription?: string;
 }
 
-interface ApprovalData {
-  milestoneId: string;
-  approved: boolean;
-  notes?: string;
-}
+const NOTES_LIMIT = 500;
 
 export default function ApproveMilestoneScreen() {
   const { contractId, milestoneId } = useParams<{ contractId: string; milestoneId: string }>();
   const navigate = useNavigate();
-  const { user } = useApp();
-
-  // State
   const [contract, setContract] = useState<ContractDto | null>(null);
   const [milestone, setMilestone] = useState<MilestoneWithAttachments | null>(null);
   const [attachments, setAttachments] = useState<MilestoneAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Form state
   const [approvalAction, setApprovalAction] = useState<'pending' | 'approve' | 'reject'>('pending');
   const [approvalNotes, setApprovalNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDetails, setShowDetails] = useState(true);
-  const [expandedAttachment, setExpandedAttachment] = useState<string | null>(null);
   const [showEscrowInfo, setShowEscrowInfo] = useState(true);
 
-  // Load contract and milestone
   useEffect(() => {
     const loadData = async () => {
       if (!contractId || !milestoneId) {
         setError('Missing contract or milestone ID');
+        setLoading(false);
         return;
       }
-
       try {
         setLoading(true);
         setError(null);
-
         const contractResponse = await contractGetAPI.getContractById(contractId);
         if (!contractResponse.success || !contractResponse.data) {
           throw new Error(contractResponse.message || 'Failed to load contract');
         }
         setContract(contractResponse.data);
-
         const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
         if (!milestoneResponse.success || !milestoneResponse.data) {
           throw new Error(milestoneResponse.message || 'Failed to load milestone');
         }
         setMilestone(milestoneResponse.data);
-
-        // Fetch milestone attachments
         const attachmentsResponse = await contractGetAPI.getMilestoneAttachments(milestoneId);
-        if (attachmentsResponse.success && attachmentsResponse.data) {
-          setAttachments(attachmentsResponse.data);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        if (attachmentsResponse.success && attachmentsResponse.data) setAttachments(attachmentsResponse.data);
+      } catch (caughtError) {
+        setError(caughtError instanceof Error ? caughtError.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
     };
-
     loadData();
   }, [contractId, milestoneId]);
 
   const handleApprove = async () => {
-    if (!milestone) return;
-
+    if (!milestone || !contractId) return;
     try {
       setIsSubmitting(true);
       setError(null);
-
-      const response = await contractPostAPI.approveMilestone(contractId!, milestone.id);
-
-      if (response.success) {
-        setMilestone({ ...milestone, status: MilestoneStatus.Approved });
-        setApprovalAction('pending');
-        setApprovalNotes('');
-        setSuccessMessage('Milestone approved successfully.');
-        setTimeout(() => {
-          navigate(`/contracts/${contractId}`);
-        }, 2000);
-      } else {
-        setError(response.message || 'Failed to approve milestone.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const response = await contractPostAPI.approveMilestone(contractId, milestone.id);
+      if (!response.success) throw new Error(response.message || 'Failed to approve milestone.');
+      setMilestone({ ...milestone, status: MilestoneStatus.Approved });
+      setApprovalAction('pending');
+      setSuccessMessage('Milestone approved successfully. Returning to the workspace...');
+      setTimeout(() => navigate(`/workspace/${contractId}`), 2000);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleReject = async () => {
-    if (!milestone) return;
-
+    if (!milestone || !contractId) return;
     try {
       setIsSubmitting(true);
       setError(null);
-
-      const response = await contractPostAPI.requestMilestoneRevision(contractId!, milestone.id);
-      if (response.success) {
-        setMilestone({ ...milestone, status: MilestoneStatus.InProgress });
-        setApprovalAction('pending');
-        setApprovalNotes('');
-        setSuccessMessage('Revision requested. The freelancer can resubmit deliverables.');
-      } else {
-        setError(response.message || 'Failed to request revisions.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const response = await contractPostAPI.requestMilestoneRevision(contractId, milestone.id);
+      if (!response.success) throw new Error(response.message || 'Failed to request revisions.');
+      setMilestone({ ...milestone, status: MilestoneStatus.InProgress });
+      setApprovalAction('pending');
+      setApprovalNotes('');
+      setSuccessMessage('Revision requested. The freelancer can now update the deliverables.');
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="approve-milestone-wrapper">
-          <div className="loading-container">
-            <div className="spinner"></div>
-            <p>Loading milestone details...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  if (loading) return (
+    <AppLayout><div className="approve-milestone-wrapper">
+      <div className="approve-milestone-state" role="status" aria-live="polite">
+        <span className="approve-milestone-spinner" aria-hidden="true" />
+        <h1>Preparing your review</h1><p>Loading the milestone and submitted deliverables...</p>
+      </div>
+    </div></AppLayout>
+  );
 
-  if (!contract || !milestone) {
-    return (
-      <AppLayout>
-        <div className="approve-milestone-wrapper">
-          <div className="error-container">
-            <AlertCircle size={48} />
-            <p>Milestone or contract not found</p>
-            <button onClick={() => navigate(-1)} className="back-link">
-              Go Back
-            </button>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
+  if (!contract || !milestone) return (
+    <AppLayout><div className="approve-milestone-wrapper">
+      <div className="approve-milestone-state approve-milestone-state--error" role="alert">
+        <AlertCircle size={48} /><h1>Unable to open this milestone</h1>
+        <p>{error || 'The milestone or contract could not be found.'}</p>
+        <button onClick={() => navigate(-1)} className="approve-milestone-secondary-button">
+          <ArrowLeft size={18} /> Go back
+        </button>
+      </div>
+    </div></AppLayout>
+  );
 
   const canApprove = canApproveMilestone(milestone.status);
   const isApproved = milestone.status === MilestoneStatus.Approved;
-  const isPaid = milestone.status === MilestoneStatus.PaymentConfirmed;
+  const isFullyReleased = (milestone.releasedAmount ?? 0) >= milestone.amount;
+  const notesTooLong = approvalNotes.length > NOTES_LIMIT;
+  const statusLabel = getMilestoneStatusLabel(milestone.status);
 
   return (
     <AppLayout>
       <div className="approve-milestone-wrapper">
-        {/* Header */}
-        <div className="approve-milestone-header">
-          <button
-            onClick={() => navigate(-1)}
-            className="back-button"
-            title="Go back"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="header-content">
-            <h1 className="page-title">Review Milestone Deliverable</h1>
-            <p className="page-subtitle">{contract.title}</p>
-          </div>
-        </div>
+        <header className="approve-milestone-header">
+          <button onClick={() => navigate(-1)} className="approve-milestone-back" aria-label="Go back"><ArrowLeft size={20} /></button>
+          <div><span className="approve-milestone-eyebrow">Milestone review</span><h1>Review submitted work</h1><p>{contract.title}</p></div>
+        </header>
 
-        {/* Messages */}
-        {successMessage && (
-          <div className="success-message">
-            <CheckCircle2 size={20} />
-            <p>{successMessage}</p>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              className="message-close"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        {successMessage && <div className="approve-milestone-alert approve-milestone-alert--success" role="status" aria-live="polite">
+          <CheckCircle2 size={20} /><p>{successMessage}</p><button onClick={() => setSuccessMessage(null)} aria-label="Dismiss message">&times;</button>
+        </div>}
+        {error && <div className="approve-milestone-alert approve-milestone-alert--error" role="alert">
+          <AlertCircle size={20} /><p>{error}</p><button onClick={() => setError(null)} aria-label="Dismiss error">&times;</button>
+        </div>}
 
-        {error && (
-          <div className="error-message">
-            <AlertCircle size={20} />
-            <p>{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="message-close"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Main Content */}
-        <div className="approve-milestone-content">
-          {/* Milestone Overview */}
-          <div className="milestone-overview glass-card">
-            <div className="overview-header">
-              <div className="milestone-info">
-                <h2 className="milestone-title">{milestone.title}</h2>
-                <div className="milestone-meta">
-                  <span className={`status-badge status-${milestone.status}`}>
-                    {milestone.status === MilestoneStatus.Pending && (
-                      <>
-                        <Clock size={14} />
-                        {getMilestoneStatusLabel(milestone.status)}
-                      </>
-                    )}
-                    {milestone.status === MilestoneStatus.Approved && (
-                      <>
-                        <CheckCircle2 size={14} />
-                        Approved
-                      </>
-                    )}
-                    {milestone.status === MilestoneStatus.PaymentConfirmed && (
-                      <>
-                        <CheckCircle2 size={14} />
-                        {getMilestoneStatusLabel(milestone.status)}
-                      </>
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              <div className="milestone-amount-badge">
-                <GigCoinLogo size={24} />
-                <span className="amount">{formatContractAmount(milestone.amount)}</span>
-              </div>
-            </div>
-
-            {/* Details Grid */}
-            <div className="details-grid">
-              <div className="detail-item">
-                <span className="detail-label">Due Date</span>
-                <span className="detail-value">{formatContractDate(milestone.due_date)}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Status</span>
-                <span className="detail-value">
-                  {getMilestoneStatusLabel(milestone.status)}
+        <div className="approve-milestone-layout">
+          <main className="approve-milestone-main">
+            <section className="approve-milestone-card approve-milestone-overview" aria-labelledby="milestone-title">
+              <div className="approve-milestone-section-heading">
+                <div><span className="approve-milestone-kicker">Submitted milestone</span><h2 id="milestone-title">{milestone.title}</h2></div>
+                <span className={`approve-milestone-status approve-milestone-status--${milestone.status}`}>
+                  {isApproved || isFullyReleased ? <CheckCircle2 size={16} /> : <Clock size={16} />}{statusLabel}
                 </span>
               </div>
-              {milestone.paid_at && (
-                <div className="detail-item">
-                  <span className="detail-label">Payment Released</span>
-                  <span className="detail-value">{formatContractDate(milestone.paid_at)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Escrow Information */}
-          {canApprove && (
-            <div className="escrow-info glass-card">
-              <div className="escrow-header">
-                <h3 className="escrow-title">Escrow Fund Information</h3>
-                <button
-                  onClick={() => setShowEscrowInfo(!showEscrowInfo)}
-                  className="escrow-toggle"
-                >
-                  <ChevronDown size={20} style={{
-                    transform: showEscrowInfo ? 'rotate(0deg)' : 'rotate(-90deg)',
-                    transition: 'transform 0.2s ease'
-                  }} />
-                </button>
+              <div className="approve-milestone-facts">
+                <div><span>Due date</span><strong>{formatContractDate(milestone.due_date)}</strong></div>
+                <div><span>Current status</span><strong>{statusLabel}</strong></div>
+                {milestone.paid_at && <div><span>Payment released</span><strong>{formatContractDate(milestone.paid_at)}</strong></div>}
               </div>
+            </section>
 
-              {showEscrowInfo && (
-                <div className="escrow-content">
-                  <div className="escrow-info-item">
-                    <span className="info-label">How Escrow Works</span>
-                    <p className="info-text">
-                      When you approve this milestone, {formatContractAmount(milestone.amount)} will be released
-                      from escrow to the freelancer and logged in the contract audit trail.
-                    </p>
-                  </div>
-                  <div className="escrow-timeline">
-                    <div className="timeline-step">
-                      <div className="timeline-marker">1</div>
-                      <div className="timeline-info">
-                        <span className="timeline-label">Approval</span>
-                        <p>You approve the deliverable</p>
-                      </div>
-                    </div>
-                    <div className="timeline-step">
-                      <div className="timeline-marker">2</div>
-                      <div className="timeline-info">
-                        <span className="timeline-label">Escrow Hold</span>
-                        <p>Funds held securely for 14 days</p>
-                      </div>
-                    </div>
-                    <div className="timeline-step">
-                      <div className="timeline-marker">3</div>
-                      <div className="timeline-info">
-                        <span className="timeline-label">Release</span>
-                        <p>Funds released to freelancer</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            {canApprove && <section className="approve-milestone-card approve-milestone-escrow">
+              <button type="button" className="approve-milestone-escrow-toggle" onClick={() => setShowEscrowInfo(!showEscrowInfo)} aria-expanded={showEscrowInfo} aria-controls="escrow-explanation">
+                <span className="approve-milestone-icon"><ShieldCheck size={20} /></span>
+                <span><strong>Protected by escrow</strong><small>See what happens after approval</small></span>
+                <ChevronDown className={showEscrowInfo ? 'is-open' : ''} size={20} />
+              </button>
+              {showEscrowInfo && <div id="escrow-explanation" className="approve-milestone-escrow-copy">
+                Approval authorizes {formatContractAmount(milestone.amount)} to move through the contract's escrow release process. The action is recorded in the contract audit trail.
+              </div>}
+            </section>}
 
-          {/* Deliverable Files */}
-          {attachments.length > 0 && (
-            <div className="deliverables-section glass-card">
-              <h3 className="section-title">Submitted Deliverables</h3>
-              <div className="attachments-list">
-                {attachments.map((attachment, index) => (
-                  <div
-                    key={attachment.id}
-                    className="attachment-item"
-                  >
-                    <div className="attachment-header">
-                      <div className="attachment-info">
-                        <FileText size={20} className="file-icon" />
-                        <div className="file-details">
-                          <a
-                            href={attachment.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="file-name"
-                          >
-                            {attachment.file_name}
-                          </a>
-                          <span className="file-size">
-                            {attachment.file_name.split('.').pop()?.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                      <a
-                        href={attachment.file_url}
-                        download={attachment.file_name}
-                        className="download-btn"
-                        title="Download file"
-                      >
-                        <Download size={18} />
-                      </a>
-                    </div>
-                  </div>
-                ))}
+            <section className="approve-milestone-card" aria-labelledby="deliverables-title">
+              <div className="approve-milestone-section-heading">
+                <div><span className="approve-milestone-kicker">Review files</span><h2 id="deliverables-title">Submitted deliverables</h2></div>
+                <span className="approve-milestone-count">{attachments.length} {attachments.length === 1 ? 'file' : 'files'}</span>
               </div>
-            </div>
-          )}
-
-          {/* Approval Actions */}
-          {canApprove && (
-            <div className="approval-actions glass-card">
-              <h3 className="section-title">Approve or Reject</h3>
-
-              <div className="approval-form">
-                <div className="form-group">
-                  <label className="form-label">Your Decision</label>
-                  <div className="approval-options">
-                    <button
-                      onClick={() => {
-                        setApprovalAction('approve');
-                        setApprovalNotes('');
-                      }}
-                      className={`approval-option ${approvalAction === 'approve' ? 'selected' : ''}`}
-                    >
-                      <CheckCircle2 size={20} />
-                      <div className="option-text">
-                        <span className="option-title">Approve</span>
-                        <span className="option-desc">Accept the deliverables</span>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setApprovalAction('reject');
-                        setApprovalNotes('');
-                      }}
-                      className={`approval-option ${approvalAction === 'reject' ? 'selected' : ''}`}
-                    >
-                      <XCircle size={20} />
-                      <div className="option-text">
-                        <span className="option-title">Reject</span>
-                        <span className="option-desc">Request revisions</span>
-                      </div>
-                    </button>
+              {attachments.length ? <div className="approve-milestone-files">{attachments.map((attachment, index) => {
+                const fileName = attachment.file_name?.trim() || `Attachment ${index + 1}`;
+                const fileUrl = attachment.file_url?.trim();
+                const fileExtension = fileName.includes('.') ? fileName.split('.').pop()?.toUpperCase() : attachment.mime_type?.split('/').pop()?.toUpperCase();
+                return <div key={attachment.id || `${attachment.milestone_id}-${index}`} className="approve-milestone-file">
+                  <span className="approve-milestone-file-icon"><FileText size={20} /></span>
+                  <div className="approve-milestone-file-info"><strong>{fileName}</strong><span>{fileExtension || 'File'} · {fileUrl ? 'Ready to review' : 'Unavailable'}</span></div>
+                  <div className="approve-milestone-file-actions">
+                    {fileUrl && <a href={fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${fileName}`} title="Open file"><ExternalLink size={18} /></a>}
+                    {fileUrl ? <a href={fileUrl} download={fileName} aria-label={`Download ${fileName}`} title="Download file"><Download size={18} /></a>
+                      : <button type="button" aria-label={`${fileName} unavailable`} title="File unavailable" disabled><Download size={18} /></button>}
                   </div>
+                </div>;
+              })}</div> : <div className="approve-milestone-empty-files"><FileText size={26} /><div><strong>No attached files</strong><p>The freelancer did not attach a downloadable deliverable.</p></div></div>}
+            </section>
+          </main>
+
+          <aside className="approve-milestone-sidebar">
+            <div className="approve-milestone-sidebar-sticky">
+              <section className="approve-milestone-card approve-milestone-payment" aria-label="Milestone payment">
+                <span><Wallet size={18} /> Milestone value</span><div><GigCoinLogo size={28} /><strong>{formatContractAmount(milestone.amount)}</strong></div>
+                <small>{canApprove ? 'Secured in contract escrow' : statusLabel}</small>
+              </section>
+
+              {canApprove && <section className="approve-milestone-card approve-milestone-decision" aria-labelledby="decision-title">
+                <span className="approve-milestone-kicker">Final step</span><h2 id="decision-title">Make your decision</h2><p>Review the submitted work before choosing an action.</p>
+                <div className="approve-milestone-options" role="group" aria-label="Milestone decision">
+                  <button type="button" onClick={() => { setApprovalAction('approve'); setApprovalNotes(''); }} className={approvalAction === 'approve' ? 'is-selected is-approve' : ''} aria-pressed={approvalAction === 'approve'}>
+                    <CheckCircle2 size={20} /><span><strong>Approve work</strong><small>Accept this delivery</small></span>
+                  </button>
+                  <button type="button" onClick={() => { setApprovalAction('reject'); setApprovalNotes(''); }} className={approvalAction === 'reject' ? 'is-selected is-revision' : ''} aria-pressed={approvalAction === 'reject'}>
+                    <RotateCcw size={20} /><span><strong>Request revision</strong><small>Send it back for changes</small></span>
+                  </button>
                 </div>
-
-                {approvalAction !== 'pending' && (
-                  <div className="form-group">
-                    <label htmlFor="notes" className="form-label">
-                      {approvalAction === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason (Required)'}
-                    </label>
-                    <textarea
-                      id="notes"
-                      value={approvalNotes}
-                      onChange={(e) => setApprovalNotes(e.target.value)}
-                      placeholder={approvalAction === 'approve' ? 'Add any notes...' : 'Please explain what needs to be improved...'}
-                      className="form-textarea"
-                      rows={4}
-                    />
-                    <div className="form-hint">
-                      Max 500 characters
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                {approvalAction === 'approve' && (
-                  <div className="action-buttons">
-                    <button
-                      onClick={() => setApprovalAction('pending')}
-                      className="action-btn action-cancel"
-                      disabled={isSubmitting}
-                    >
-                      Back
-                    </button>
-                    <button
-                      onClick={handleApprove}
-                      className="action-btn action-approve"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <span className="spinner-small"></span>
-                          Approving...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 size={18} />
-                          Approve Milestone
-                        </>
-                      )}
+                {approvalAction !== 'pending' && <div className={`approve-milestone-confirmation approve-milestone-confirmation--${approvalAction}`}>
+                  {approvalAction === 'approve' ? <p><strong>Confirm approval</strong>This authorizes the escrow release process for {formatContractAmount(milestone.amount)}.</p> : <>
+                    <label htmlFor="revision-reason">What needs to be changed? <span>Required</span></label>
+                    <textarea id="revision-reason" value={approvalNotes} maxLength={NOTES_LIMIT + 1} onChange={(event) => setApprovalNotes(event.target.value)} placeholder="Describe the specific changes needed..." rows={4} aria-describedby="revision-note revision-count" aria-invalid={notesTooLong} />
+                    <div className="approve-milestone-textarea-meta"><small id="revision-note">This reason is used for validation only and is not saved by the current API.</small><span id="revision-count" className={notesTooLong ? 'is-over' : ''}>{approvalNotes.length}/{NOTES_LIMIT}</span></div>
+                  </>}
+                  <div className="approve-milestone-decision-actions">
+                    <button type="button" onClick={() => setApprovalAction('pending')} disabled={isSubmitting}>Cancel</button>
+                    <button type="button" className={approvalAction === 'approve' ? 'is-approve' : 'is-revision'} onClick={approvalAction === 'approve' ? handleApprove : handleReject} disabled={isSubmitting || notesTooLong || (approvalAction === 'reject' && !approvalNotes.trim())}>
+                      {isSubmitting ? <span className="approve-milestone-spinner approve-milestone-spinner--small" /> : approvalAction === 'approve' ? <CheckCircle2 size={18} /> : <RotateCcw size={18} />}
+                      {isSubmitting ? 'Submitting...' : approvalAction === 'approve' ? 'Approve milestone' : 'Request revision'}
                     </button>
                   </div>
-                )}
+                </div>}
+              </section>}
 
-                {approvalAction === 'reject' && (
-                  <div className="action-buttons">
-                    <button
-                      onClick={() => setApprovalAction('pending')}
-                      className="action-btn action-cancel"
-                      disabled={isSubmitting}
-                    >
-                      Back
-                    </button>
-                    <button
-                      onClick={handleReject}
-                      className="action-btn action-reject"
-                      disabled={isSubmitting || !approvalNotes.trim()}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <span className="spinner-small"></span>
-                          Rejecting...
-                        </>
-                      ) : (
-                        <>
-                          <XCircle size={18} />
-                          Reject Milestone
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
+              {(isApproved || isFullyReleased) && <section className="approve-milestone-card approve-milestone-complete" role="status">
+                <span><CheckCircle2 size={24} /></span><h2>{isFullyReleased ? 'Escrow released' : 'Milestone approved'}</h2>
+                <p>{isFullyReleased ? 'Escrow has been fully released for this milestone.' : 'This milestone has been accepted. Payment release is tracked by escrow released amount.'}</p>
+              </section>}
+              <button type="button" onClick={() => navigate(`/workspace/${contractId}`)} className="approve-milestone-workspace-button"><ArrowLeft size={18} /> Back to workspace</button>
             </div>
-          )}
-
-          {/* Status Display when Already Approved */}
-          {isApproved && (
-            <div className="status-display glass-card success-status">
-              <CheckCircle2 size={32} />
-              <h3 className="status-title">Milestone Approved</h3>
-              <p className="status-description">
-                This milestone has been approved. Escrow funds are being held and will be released to the freelancer.
-              </p>
-            </div>
-          )}
-
-          {isPaid && (
-            <div className="status-display glass-card paid-status">
-              <CheckCircle2 size={32} />
-              <h3 className="status-title">Payment Released</h3>
-              <p className="status-description">
-                Payment for this milestone has been released to the freelancer on {formatContractDate(milestone.paid_at || new Date().toISOString())}.
-              </p>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <div className="page-actions">
-            <button
-              onClick={() => navigate(`/contracts/${contractId}`)}
-              className="action-btn action-back"
-            >
-              <Eye size={18} />
-              View Contract
-            </button>
-          </div>
+          </aside>
         </div>
       </div>
     </AppLayout>

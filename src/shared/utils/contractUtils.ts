@@ -239,9 +239,9 @@ export const calculateMilestoneCompletion = (status: MilestoneStatus | number): 
     0: 0,    // Pending
     1: 25,   // In Progress
     2: 50,   // Submitted
-    3: 75,   // Approved
-    4: 90,   // PaymentProofUploaded
-    5: 100,  // PaymentConfirmed
+    3: 100,  // Approved
+    4: 100,  // Deprecated legacy payment state, normalized to Approved
+    5: 100,  // Deprecated legacy payment state, normalized to Approved
     6: 80,   // Disputed
   };
   return completionMap[status] || 0;

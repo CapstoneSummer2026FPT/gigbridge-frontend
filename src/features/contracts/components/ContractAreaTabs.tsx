@@ -1,28 +1,24 @@
 import { FileCheck, FileText } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 
-interface ContractAreaTab {
-  label: string;
-  path: string;
-  icon: JSX.Element;
-}
-
-const CONTRACT_AREA_TABS: ContractAreaTab[] = [
-  {
-    label: 'Contracts',
-    path: '/contracts',
-    icon: <FileText size={16} />,
-  },
-  {
-    label: 'E-sign Contracts',
-    path: '/contracts/esign',
-    icon: <FileCheck size={16} />,
-  },
-];
-
 export function ContractAreaTabs(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const isAdmin = location.pathname.startsWith('/admin');
+
+  const tabs = [
+    {
+      label: 'Contracts',
+      path: isAdmin ? '/admin/contracts' : '/contracts',
+      icon: <FileText size={16} />,
+    },
+    {
+      label: 'E-sign Contracts',
+      path: isAdmin ? '/admin/contracts/esign' : '/contracts/esign',
+      icon: <FileCheck size={16} />,
+    },
+  ];
 
   const handleNavigate = (path: string): void => {
     navigate(path);
@@ -30,7 +26,7 @@ export function ContractAreaTabs(): JSX.Element {
 
   return (
     <div className="contract-area-tabs" role="tablist" aria-label="Contract area">
-      {CONTRACT_AREA_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = location.pathname === tab.path;
 
         return (

@@ -57,6 +57,39 @@ export const adminPostAPI = {
     return apiService.post<any>(`admin/wallets/${userId}/credit`, payload);
   },
 
+  debitWallet: async (
+    userId: string,
+    payload: { tokenAmount: number; note?: string; idempotencyKey?: string }
+  ): Promise<ApiResponse<any>> => {
+    return apiService.post<any>(`admin/wallets/${userId}/debit`, payload);
+  },
+
+  createTemplate: async (payload: {
+    name: string;
+    templateCode: string;
+    htmlContent: string;
+    version: number;
+    placeholderSchema?: string;
+    description?: string;
+    isActive: boolean;
+  }): Promise<ApiResponse<string>> => {
+    return apiService.post<string>(`${Admin_Api_Base_Url}/templates`, payload);
+  },
+
+  overrideMilestone: async (
+    milestoneId: string,
+    payload: { action: string; note?: string }
+  ): Promise<ApiResponse<boolean>> => {
+    return apiService.post<boolean>(`${Admin_Api_Base_Url}/milestones/${milestoneId}/override`, payload);
+  },
+
+  createMilestone: async (
+    contractId: string,
+    payload: { title: string; amount: number; dueDate?: string; sortOrder?: number }
+  ): Promise<ApiResponse<any>> => {
+    return apiService.post<any>(`${Admin_Api_Base_Url}/milestones/contract/${contractId}`, payload);
+  },
+
   syncWithdrawal: async (withdrawalId: string): Promise<ApiResponse<WithdrawalResponse>> => {
     return apiService.post<WithdrawalResponse>(`admin/withdrawals/${withdrawalId}/sync`);
   },

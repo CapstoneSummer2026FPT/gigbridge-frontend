@@ -20,4 +20,21 @@ export const adminDeleteAPI = {
   deleteFAQCategory: async (id: number): Promise<ApiResponse<object>> => {
     return apiService.delete<object>(`${Admin_Api_Base_Url}/faq/categories/${id}`);
   },
+
+  deleteJobPost: async (jobPostId: string): Promise<ApiResponse<boolean>> => {
+    return apiService.delete<boolean>(`JobPosts/admin/${jobPostId}`);
+  },
+
+  deleteProposal: async (proposalId: string): Promise<ApiResponse<boolean>> => {
+    return apiService.delete<boolean>(`Proposals/admin/${proposalId}`);
+  },
+
+  deleteTemplate: async (templateId: string): Promise<ApiResponse<boolean>> => {
+    return apiService.delete<boolean>(`${Admin_Api_Base_Url}/templates/${templateId}`);
+  },
+
+  deleteMilestone: async (milestoneId: string): Promise<ApiResponse<boolean>> => {
+    return apiService.delete<boolean>(`${Admin_Api_Base_Url}/milestones/${milestoneId}`);
+  },
 };
+
