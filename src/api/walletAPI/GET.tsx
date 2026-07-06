@@ -88,7 +88,7 @@ export const walletGetAPI = {
 
   /**
    * GET /api/wallet/financial-overview
-   * Fetch persisted project finance statistics for the current calendar period.
+   * Fetch persisted project finance statistics for a rolling period ending now.
    */
   getFinancialOverview: async (
     period: FinancialOverviewPeriod

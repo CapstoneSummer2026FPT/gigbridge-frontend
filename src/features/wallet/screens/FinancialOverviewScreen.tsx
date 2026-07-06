@@ -23,6 +23,11 @@ import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import '../styles/financial-overview-screen.css';
 
 const PERIODS: FinancialOverviewPeriod[] = ['day', 'month', 'year'];
+const PERIOD_LABELS: Record<FinancialOverviewPeriod, string> = {
+  day: 'Last 24 hours',
+  month: 'Last month',
+  year: 'Last year',
+};
 
 const STATUS_COLORS: Record<FinancialTransactionCategory, string> = {
   escrow: '#F59E0B',
@@ -44,6 +49,7 @@ export default function FinancialOverviewScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const periodLabel = PERIOD_LABELS[period];
 
   useEffect(() => {
     let cancelled = false;
@@ -99,7 +105,7 @@ export default function FinancialOverviewScreen() {
 
     const rows: Array<Array<string | number>> = [
       ['Financial Overview', overview.role],
-      ['Period', overview.period],
+      ['Period', PERIOD_LABELS[overview.period]],
       ['Period Start UTC', overview.periodStartUtc],
       ['Period End UTC', overview.periodEndUtc],
       [isClient ? 'Total Spent' : 'Total Earnings', overview.totalAmount],
@@ -176,6 +182,7 @@ export default function FinancialOverviewScreen() {
               className={period === item ? 'active' : ''}
               onClick={() => setPeriod(item)}
               disabled={loading && period === item}
+              title={PERIOD_LABELS[item]}
             >
               {item}
             </button>
@@ -199,7 +206,7 @@ export default function FinancialOverviewScreen() {
         ) : overview && isEmpty ? (
           <section className="financial-overview-state">
             <Wallet size={26} />
-            <strong>No financial activity in this {period}</strong>
+            <strong>No financial activity in the {periodLabel.toLowerCase()}</strong>
             <p>Project payments and service fees will appear here when transactions are completed.</p>
           </section>
         ) : overview ? (
@@ -244,7 +251,7 @@ export default function FinancialOverviewScreen() {
                 <div className="financial-chart-head">
                   <div>
                     <h2>{isClient ? 'Payment Trends' : 'Earnings Trends'}</h2>
-                    <p>Persisted project transactions in the selected Vietnam calendar period.</p>
+                    <p>Persisted project transactions from the {periodLabel.toLowerCase()}.</p>
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
