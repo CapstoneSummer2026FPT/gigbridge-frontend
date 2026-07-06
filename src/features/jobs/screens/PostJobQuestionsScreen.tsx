@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, Bot, Check, ChevronRight, GripVertical, Plus, Save, Trash2 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { PostJobFlowStepper } from '../components/PostJobFlowStepper';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import '../styles/PostJobScreen.css';
@@ -47,20 +46,19 @@ export function PostJobQuestionsScreen() {
       <div className="max-w-5xl mx-auto px-6 py-8 relative">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(159,75,255,0.02),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(0,119,255,0.02),transparent_50%)] opacity-50 pointer-events-none" />
 
-        <div className="flex flex-col gap-6 items-center mb-8">
+        <div className="flex flex-col items-center mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
             <button
               type="button"
               onClick={navigateBackToDetails}
               className="inline-flex items-center gap-2 text-sm font-bold text-[var(--gb-cyan)] bg-transparent border-none cursor-pointer mr-auto"
             >
-              <ArrowLeft size={16} /> Back to Job Details
+              <ArrowLeft size={16} /> Back to Project Requirement
             </button>
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase text-center md:absolute md:left-1/2 md:-translate-x-1/2" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>
-              Interview Questions
+              Clarifying Questions
             </h1>
           </div>
-          <PostJobFlowStepper activeStep="questions" />
         </div>
 
         {errorMessage && (
@@ -92,7 +90,7 @@ export function PostJobQuestionsScreen() {
           <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
             <div className="flex items-center gap-2">
               <Bot className="text-[var(--gb-purple)]" size={20} />
-              <h2 className="text-lg font-bold text-foreground">JobPost Questions</h2>
+              <h2 className="text-lg font-bold text-foreground">Clarifying Questions</h2>
             </div>
           </div>
 
@@ -128,7 +126,7 @@ export function PostJobQuestionsScreen() {
                         onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
                         className="rounded border-border text-[var(--gb-cyan)] focus:ring-[var(--gb-cyan)]"
                       />
-                      Required
+                      Required answer
                     </label>
 
                     <button
@@ -151,7 +149,7 @@ export function PostJobQuestionsScreen() {
                   onChange={event => updateQuestion(index, { questionText: event.target.value })}
                   className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
                   rows={3}
-                  placeholder="Enter a question applicants must answer..."
+                  placeholder="Optional question freelancers may answer to clarify their proposal..."
                 />
                 <div className="text-right mt-1 text-[10px] text-muted-foreground">
                   {question.questionText.length}/{MAX_QUESTION_LENGTH}
@@ -161,23 +159,23 @@ export function PostJobQuestionsScreen() {
 
             {questions.length === 0 && (
               <div className="text-center py-8 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
-                No questions added. Click "Add Question" to add one.
+                No clarifying questions added. You can publish without questions.
               </div>
             )}
           </div>
 
           <button
             type="button"
-            onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
+            onClick={() => setQuestions([...questions, { questionText: '', isRequired: false }])}
             className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
           >
-            <Plus size={14} /> Add Question
+            <Plus size={14} /> Add Clarifying Question
           </button>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm">
           <div className="hidden md:flex flex-col">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Project Request Preview</span>
             <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -191,12 +189,12 @@ export function PostJobQuestionsScreen() {
             </button>
             <button
               type="button"
-              onClick={() => submitDraftFlow('contract')}
+              onClick={() => submitDraftFlow('publish')}
               disabled={isActionDisabled}
               className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
             >
               <Check size={16} />
-              <span>{renderSubmitLabel('contract', 'Next: Contract Setup')}</span>
+              <span>{renderSubmitLabel('publish', 'Publish Project Request')}</span>
               <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

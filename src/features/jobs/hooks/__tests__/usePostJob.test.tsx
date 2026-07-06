@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePostJob } from '../usePostJob';
 import { jobAPI } from '../../../../api/jobAPI';
+import { JobPostStatus } from '../../../../types/models/Job';
 
 let mockLocationState: any = null;
+const mockNavigate = vi.fn();
 
 vi.mock('react-router', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
   useLocation: () => ({ state: mockLocationState }),
   useBlocker: () => ({ state: 'unblocked', reset: vi.fn(), proceed: vi.fn() }),
 }));
@@ -27,13 +29,20 @@ vi.mock('../../../../api/jobAPI', () => ({
     getMyJobPostById: vi.fn(),
     getJobPostQuestions: vi.fn(),
     generateAIDescription: vi.fn(),
+    createDraftJobPost: vi.fn().mockResolvedValue({ success: true, data: { jobPostId: 'job-1' } }),
+    saveDraftJobPost: vi.fn().mockResolvedValue({ success: true }),
+    updateJobPostStatus: vi.fn().mockResolvedValue({ success: true, data: true }),
   },
 }));
 
 describe('usePostJob hook skills conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockClear();
     mockLocationState = null;
+    vi.mocked(jobAPI.createDraftJobPost).mockResolvedValue({ success: true, data: { jobPostId: 'job-1' } } as any);
+    vi.mocked(jobAPI.saveDraftJobPost).mockResolvedValue({ success: true } as any);
+    vi.mocked(jobAPI.updateJobPostStatus).mockResolvedValue({ success: true, data: true } as any);
   });
 
   it('keeps matching skills and converts mismatching skills to custom skills', async () => {
@@ -103,5 +112,36 @@ describe('usePostJob hook skills conversion', () => {
       expect(result.current.form.skillIds).toEqual(['skill-1']);
       expect(result.current.form.customSkillNames).toEqual(['Custom Skill 4', 'Skill Three']);
     });
+  });
+
+  it('publishes a project request without requiring clarifying questions', async () => {
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue({ success: true, data: [] });
+
+    const { result } = renderHook(() => usePostJob());
+
+    act(() => {
+      result.current.setForm(prev => ({
+        ...prev,
+        title: 'Build vendor onboarding portal',
+        majorId: 'major-1',
+        majorCategoryId: 'major-category-1',
+        categoryId: 'category-1',
+        description: 'We need a portal for vendors to submit documents and track approval status.',
+        estimatedDurationValue: '3',
+      }));
+      result.current.setQuestions([{ questionText: '', isRequired: false }]);
+    });
+
+    await act(async () => {
+      await result.current.submitDraftFlow('publish');
+    });
+
+    expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+      title: 'Build vendor onboarding portal',
+      questions: [],
+    }));
+    expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
+    expect(mockNavigate).toHaveBeenCalledWith('/jobs/my-jobs/job-1');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/jobs/post/contract', expect.anything());
   });
 });

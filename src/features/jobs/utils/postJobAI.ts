@@ -39,7 +39,7 @@ export const mapGeneratedJobDescriptionToJobData = (
     skillNameById,
     interviewQuestions: generatedData.questionRecruitment?.map(qText => ({
       questionText: qText,
-      isRequired: true,
+      isRequired: false,
     })) || [],
   };
 };

@@ -145,7 +145,7 @@ export default function PostJobScreen() {
 
         <div className="flex flex-col gap-6 items-center mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create New Job Post</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>Create Project Request</h1>
             
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 w-full sm:w-auto">
               <button
@@ -193,45 +193,12 @@ export default function PostJobScreen() {
                 </button>
                 <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl p-4 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-xs text-muted-foreground leading-relaxed text-left select-text">
                   <p className="font-bold text-foreground mb-1">Instant Job Detail (Premium)</p>
-                  When enabled, a prompt input bar appears at the bottom. Describe your job requirements in the bar and click <strong>Generate Details</strong> to let AI automatically fill in the Job Title, Category, Description, and required Skills.
+                  When enabled, a prompt input bar appears at the bottom. Describe your project request in the bar and click <strong>Generate Details</strong> to let AI automatically fill in the project title, category, requirement details, and helpful skills.
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm shrink-0">1</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">Step 1</span>
-                <span className="text-xs text-foreground font-bold">Project Details</span>
-              </div>
-            </div>
-            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
-            <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">2</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 2</span>
-                <span className="text-xs text-muted-foreground font-bold">Contract Setup</span>
-              </div>
-            </div>
-            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
-            <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">3</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 3</span>
-                <span className="text-xs text-muted-foreground font-bold">E-Sign Contract</span>
-              </div>
-            </div>
-            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
-            <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">4</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Step 4</span>
-                <span className="text-xs text-muted-foreground font-bold">Setup Milestone</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {errorMessage && (
@@ -274,11 +241,11 @@ export default function PostJobScreen() {
         <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start ${
           isInstantJobMode && !isJobDetailsGenerated ? 'hidden' : ''
         }`}>
-          {/* LEFT: Job Details (col-span-7) */}
+          {/* LEFT: Project Requirement (col-span-7) */}
           <div id="guide-job-details-panel" className={`lg:col-span-7 order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
             isJobDetailsGenerated ? 'panels-fade-in' : ''
           }`}>
-            <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">Job Details</h2>
+            <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">Project Requirement</h2>
 
             {isInstantJobMode && !isJobDetailsGenerated && (
               <div className="bg-gradient-to-r from-[var(--gb-purple)]/10 to-[var(--gb-cyan)]/10 border border-[var(--gb-purple)]/20 rounded-xl p-4 flex gap-3 items-start">
@@ -294,7 +261,7 @@ export default function PostJobScreen() {
 
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Title *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Project Title *</label>
                 <input
                   type="text"
                   placeholder="e.g. Senior Frontend Engineer"
@@ -352,7 +319,7 @@ export default function PostJobScreen() {
               </div>
 
               <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Helpful Skills</label>
                 <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
                   {selectedOfficialSkills.map(skill => (
                     <span key={skill.skillId} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
@@ -429,7 +396,7 @@ export default function PostJobScreen() {
 
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Description *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Requirement Details *</label>
                 </div>
                 <div className="border border-border rounded-xl overflow-hidden shadow-sm flex flex-col bg-background focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
                   <div className="bg-muted/30 border-b border-border px-3 py-2 flex items-center gap-1.5">
@@ -558,7 +525,7 @@ export default function PostJobScreen() {
             </div>
           </div>
 
-          {/* RIGHT: Questions for Interview (col-span-5) */}
+          {/* RIGHT: Clarifying Questions (col-span-5) */}
           <div
             className={`lg:col-span-5 order-2 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
               isJobDetailsGenerated ? 'panels-fade-in-delay' : ''
@@ -568,27 +535,26 @@ export default function PostJobScreen() {
             <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
               <div className="flex items-center gap-2">
                 <MessageSquare className="text-[var(--gb-purple)]" size={20} />
-                <h2 className="text-lg font-bold text-foreground">Questions for Interview</h2>
+                <h2 className="text-lg font-bold text-foreground">Clarifying Questions</h2>
               </div>
             </div>
 
-            {/* Interview Questions Guide */}
+            {/* Clarifying Questions Guide */}
             <div className="rounded-xl border border-[var(--gb-purple)]/20 bg-gradient-to-br from-[var(--gb-purple)]/6 to-transparent p-4 -mt-2 mb-1">
               <div className="flex items-start gap-3">
                 <div className="w-7 h-7 rounded-lg bg-[var(--gb-purple)]/15 flex items-center justify-center shrink-0 mt-0.5">
                   <Lightbulb className="text-[var(--gb-purple)]" size={14} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground mb-1">Questions for Interview là gì?</p>
+                  <p className="text-sm font-bold text-foreground mb-1">Clarifying Questions are optional</p>
                   <p className="text-xs text-muted-foreground leading-relaxed mb-2">
-                    Đây là các câu hỏi bạn muốn ứng viên <strong className="text-foreground">trả lời khi nộp đề xuất (proposal)</strong> cho công việc này.
-                    Thay vì phỏng vấn trực tiếp ngay từ đầu, bạn có thể lọc ứng viên phù hợp qua câu trả lời của họ.
+                    These questions help freelancers clarify their proposal. They are not a test; use them to ask about assumptions, constraints, or how the freelancer understands the requirement.
                   </p>
                   <div className="flex flex-col gap-1">
                     {[
-                      '"Hãy chia sẻ 1–2 dự án freelance bạn đã hoàn thành gần đây có liên quan đến yêu cầu này."',
-                      '"Bạn dự kiến hoàn thành công việc trong bao lâu và kế hoạch triển khai như thế nào?"',
-                      '"Nếu gặp vấn đề kỹ thuật không giải quyết được một mình, bạn xử lý như thế nào?"',
+                      '"Which assumptions are you making about this requirement?"',
+                      '"What information do you need from us before estimating the final scope?"',
+                      '"Which parts of the request may affect budget or timeline?"',
                     ].map((example, i) => (
                       <div key={i} className="flex items-start gap-1.5">
                         <span className="text-[var(--gb-purple)] mt-0.5 shrink-0 font-black text-xs">›</span>
@@ -632,7 +598,7 @@ export default function PostJobScreen() {
                           onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
                           className="rounded border-border text-[var(--gb-cyan)] focus:ring-[var(--gb-cyan)]"
                         />
-                        Required
+                        Required answer
                       </label>
 
                       <button
@@ -655,7 +621,7 @@ export default function PostJobScreen() {
                     onChange={event => updateQuestion(index, { questionText: event.target.value })}
                     className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
                     rows={3}
-                    placeholder="Enter a question applicants must answer..."
+                    placeholder="Optional question freelancers may answer to clarify their proposal..."
                   />
                   <div className="text-right mt-1 text-[10px] text-muted-foreground">
                     {question.questionText.length}/{MAX_QUESTION_LENGTH}
@@ -665,7 +631,7 @@ export default function PostJobScreen() {
 
               {questions.length === 0 && (
                 <div className="text-center py-8 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
-                  No questions added. Click "Add Question" to add one.
+                  No clarifying questions added. You can publish without questions.
                 </div>
               )}
             </div>
@@ -673,20 +639,20 @@ export default function PostJobScreen() {
             <div className="flex flex-col gap-3 mt-2">
               <button
                 type="button"
-                onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
+                onClick={() => setQuestions([...questions, { questionText: '', isRequired: false }])}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
               >
-                <Plus size={14} /> Add Question
+                <Plus size={14} /> Add Clarifying Question
               </button>
             </div>
           </div>
         </div>
 
-        {/* New Job Post Preview bar — hidden in instant job guide mode */}
+        {/* Project Request Preview bar - hidden in instant job guide mode */}
         {!(isInstantJobMode && !isJobDetailsGenerated) && (
           <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm max-w-[1440px] mx-auto">
             <div className="hidden md:flex flex-col">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Project Request Preview</span>
               <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -700,12 +666,12 @@ export default function PostJobScreen() {
               </button>
               <button
                 type="button"
-                onClick={() => submitDraftFlow('esign')}
+                onClick={() => submitDraftFlow('publish')}
                 disabled={isActionDisabled}
                 className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
               >
                 <Check size={16} />
-                <span>{renderSubmitLabel('esign', 'Next: Contract Setup')}</span>
+                <span>{renderSubmitLabel('publish', 'Publish Project Request')}</span>
                 <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
               </button>
             </div>
@@ -721,7 +687,7 @@ export default function PostJobScreen() {
               <div>
                 <h2 className="text-lg font-extrabold text-foreground">Continue Draft</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  You currently have {drafts.length} unfinished JobPost draft{drafts.length === 1 ? '' : 's'}.
+                  You currently have {drafts.length} unfinished project request draft{drafts.length === 1 ? '' : 's'}.
                 </p>
               </div>
               <button
@@ -735,7 +701,7 @@ export default function PostJobScreen() {
 
             <div className="p-6 overflow-y-auto max-h-[52vh]">
               {isDraftsLoading && (
-                <div className="text-sm text-muted-foreground py-8 text-center">Checking draft JobPosts...</div>
+                <div className="text-sm text-muted-foreground py-8 text-center">Checking project request drafts...</div>
               )}
 
               {draftsError && !isDraftsLoading && (
@@ -748,7 +714,7 @@ export default function PostJobScreen() {
                 <div className="border border-dashed border-border rounded-xl p-8 text-center">
                   <FileText className="mx-auto text-muted-foreground mb-3" size={28} />
                   <p className="text-sm font-bold text-foreground">No unfinished drafts found.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Start a new JobPost when you are ready.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Start a new project request when you are ready.</p>
                 </div>
               )}
 
@@ -801,7 +767,7 @@ export default function PostJobScreen() {
                 onClick={handleCreateNewFromDraftModal}
                 className="px-5 py-2.5 rounded-full font-bold text-xs bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 border-none cursor-pointer"
               >
-                Create New JobPost
+                Create New Project Request
               </button>
             </div>
           </div>
@@ -811,7 +777,7 @@ export default function PostJobScreen() {
       {isLeavePromptOpen && (
         <div className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="text-lg font-extrabold text-foreground">Do you want to save this JobPost draft?</h2>
+            <h2 className="text-lg font-extrabold text-foreground">Do you want to save this project request draft?</h2>
             <p className="text-sm text-muted-foreground mt-2">
               Save keeps your current draft. Discard only removes it if the backend confirms it is still empty.
             </p>

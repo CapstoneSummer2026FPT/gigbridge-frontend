@@ -7,7 +7,7 @@ import { jobAPI } from '../../../api/jobAPI';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
 
-const DRAFT_RULE_MESSAGE = 'Only draft job posts can update questions.';
+const DRAFT_RULE_MESSAGE = 'Only draft project requests can update clarifying questions.';
 
 type QuestionDraft = JobPostQuestionDto & {
   isNew?: boolean;
@@ -92,7 +92,7 @@ export default function ManageJobPostQuestionsScreen() {
           jobPostsId: jobPostId,
           questionText: '',
           orderIndex: prev.length,
-          isRequired: true,
+          isRequired: false,
           createdAt: new Date().toISOString(),
           updatedAt: null,
           isNew: true,
@@ -212,12 +212,12 @@ export default function ManageJobPostQuestionsScreen() {
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4 mb-6">
             <div>
-              <h1 className="text-2xl font-extrabold text-foreground">Manage Questions</h1>
-              <p className="text-sm text-muted-foreground mt-1">Questions are editable only while the JobPost is draft.</p>
+              <h1 className="text-2xl font-extrabold text-foreground">Manage Clarifying Questions</h1>
+              <p className="text-sm text-muted-foreground mt-1">Questions are optional and editable only while the project request is draft.</p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={handleAddQuestion} className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
-                <Plus size={16} /> Add Question
+                <Plus size={16} /> Add Clarifying Question
               </button>
               <button
                 type="button"
@@ -231,14 +231,14 @@ export default function ManageJobPostQuestionsScreen() {
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading questions...</p>
+            <p className="text-sm text-muted-foreground">Loading clarifying questions...</p>
           ) : error ? (
             <div className="text-sm text-red-500">{error}</div>
           ) : currentQuestions.length === 0 ? (
             <div className="text-center py-10 border border-dashed border-border rounded-xl">
-              <p className="text-sm text-muted-foreground mb-4">No questions yet.</p>
+              <p className="text-sm text-muted-foreground mb-4">No clarifying questions yet.</p>
               <button type="button" onClick={handleAddQuestion} className="btn-cyan px-4 py-2 text-sm">
-                Add First Question
+                Add First Clarifying Question
               </button>
             </div>
           ) : (
@@ -254,7 +254,7 @@ export default function ManageJobPostQuestionsScreen() {
                           checked={question.isRequired}
                           onChange={event => handleToggleRequired(question, event.target.checked)}
                         />
-                        Required
+                        Required answer
                       </label>
                       <button
                         type="button"
@@ -272,7 +272,7 @@ export default function ManageJobPostQuestionsScreen() {
                     rows={3}
                     maxLength={1000}
                     className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
-                    placeholder="Enter the screening question..."
+                    placeholder="Optional question freelancers may answer to clarify their proposal..."
                   />
                   <div className="flex justify-between mt-2 text-[11px] text-muted-foreground">
                     <span>Order index: {index}</span>
@@ -291,7 +291,7 @@ export default function ManageJobPostQuestionsScreen() {
                 disabled={isSaving}
                 className="btn-cyan px-5 py-3 text-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <Check size={16} /> {isSaving ? 'Saving...' : 'Save Questions'}
+                <Check size={16} /> {isSaving ? 'Saving...' : 'Save Clarifying Questions'}
               </button>
             </div>
           )}

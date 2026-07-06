@@ -3,17 +3,12 @@ import { useNavigate } from 'react-router';
 import {
   Briefcase, Search, Plus, Eye, Users, Calendar,
   CheckCircle, Ban, XCircle, LayoutGrid, AlignJustify, FileText,
-  HelpCircle, Send, Lock, Globe, UserRoundCheck, Sparkles, AlertCircle,
+  HelpCircle, Send, Lock, Globe, UserRoundCheck, AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { esignGetAPI } from '../../../api/esignAPI/GET';
-import { esignPostAPI } from '../../../api/esignAPI/POST';
 import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
-import { ContractStatus } from '../../../types/models/Contract';
-import { ESignDocumentStatus } from '../../../types/models/ESign';
 import {
   JobPostStatus,
   JobPostVisibility,
@@ -76,21 +71,6 @@ const visibilityIcon = (visibility?: number | null) => {
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-const canEditDraftMilestones = (status?: number | null): boolean =>
-  status === ContractStatus.PendingFreelancerSelection ||
-  status === ContractStatus.InNegotiation ||
-  status === ContractStatus.PendingContractDetails;
-
-const getSetupProgressDocumentId = (job: GetMyJobPostDto): string | null =>
-  job.setupProgress?.esignDocumentId ||
-  job.setupProgress?.eSignDocumentId ||
-  null;
-
-const getSetupProgressESignStatus = (job: GetMyJobPostDto): number | null =>
-  job.setupProgress?.esignStatus ??
-  job.setupProgress?.eSignStatus ??
-  null;
-
 export default function MyJobsScreen() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
@@ -102,95 +82,6 @@ export default function MyJobsScreen() {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
-
-  const navigateToESignStep = async (job: GetMyJobPostDto): Promise<void> => {
-    const existingDocumentId = getSetupProgressDocumentId(job);
-    const existingESignStatus = getSetupProgressESignStatus(job);
-
-    if (!existingDocumentId && existingESignStatus === null) {
-      const documentResponse = await esignPostAPI.createDocumentFromJob(job.jobPostsId);
-      if (!documentResponse.success || !documentResponse.data) {
-        throw new Error(documentResponse.message || 'Unable to prepare E-sign document.');
-      }
-    }
-
-    navigate('/jobs/post/contract/esign', {
-      state: {
-        jobPostId: job.jobPostsId,
-        jobData: {
-          title: job.title,
-          description: job.description,
-          budgetMin: job.budgetMin,
-          budgetMax: job.budgetMax,
-          deadline: job.endDate,
-        },
-      },
-    });
-  };
-
-  const handleSetupMilestone = async (job: GetMyJobPostDto): Promise<void> => {
-    const jobPostId = job.jobPostsId;
-    setPendingJobId(jobPostId);
-    try {
-      const progress = job.setupProgress;
-
-      if (progress?.nextIncompleteStep === 'Details') {
-        toast.info('Continue completing job details first.');
-        navigate('/jobs/post', { state: { jobPostId } });
-        return;
-      }
-
-      if (progress?.nextIncompleteStep === 'ESign') {
-        toast.info('Directing to E-sign signature first...');
-        await navigateToESignStep(job);
-        return;
-      }
-
-      if (
-        (progress?.nextIncompleteStep === 'Milestones' || progress?.nextIncompleteStep === 'ReadyToPublish') &&
-        progress.contractId
-      ) {
-        navigate(`/contracts/${progress.contractId}/milestones?mode=jobpost-setup`);
-        return;
-      }
-
-      const response = await contractGetAPI.getContractByJobPost(jobPostId);
-      if (response.success && response.data) {
-        if (job.status === JobPostStatus.Draft) {
-          const documentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
-          if (
-            !documentResponse.success ||
-            !documentResponse.data ||
-            documentResponse.data.status !== ESignDocumentStatus.FullySigned
-          ) {
-            toast.info('Directing to E-sign signature first...');
-            await navigateToESignStep(job);
-            return;
-          }
-        }
-
-        if (!canEditDraftMilestones(response.data.status)) {
-          toast.info('Milestones are locked for this contract stage.');
-          navigate(`/contracts/${response.data.contractsId}`);
-          return;
-        }
-
-        navigate(`/contracts/${response.data.contractsId}/milestones?mode=jobpost-setup`);
-      } else {
-        toast.info('Directing to E-sign signature first...');
-        await navigateToESignStep(job);
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Unable to continue job setup.');
-      try {
-        await navigateToESignStep(job);
-      } catch (fallbackErr: unknown) {
-        toast.error(fallbackErr instanceof Error ? fallbackErr.message : 'Unable to prepare E-sign document.');
-      }
-    } finally {
-      setPendingJobId(null);
-    }
-  };
 
   const loadJobs = async () => {
     setIsLoading(true);
@@ -298,10 +189,10 @@ export default function MyJobsScreen() {
                 </span>
               </div>
               <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: '#0f0f1a', margin: 0 }} className="black:text-white">
-                My Job Posts
+                My Project Requests
               </h1>
               <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4 }}>
-                Manage your created JobPosts using the current backend data.
+                Manage your project requests and proposals.
               </p>
             </div>
 
@@ -312,7 +203,7 @@ export default function MyJobsScreen() {
                 style={{ padding: '10px 22px', fontSize: 13 }}
               >
                 <Plus size={16} />
-                Post New Job
+                Create Project Request
               </button>
             </div>
           </header>
@@ -412,13 +303,13 @@ export default function MyJobsScreen() {
                 <Briefcase size={36} className="mj-cyan" />
               </div>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">
-                No jobs found
+                No project requests found
               </p>
               <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-                {searchQuery ? 'Try adjusting your search or filter.' : 'Start by posting your first job.'}
+                {searchQuery ? 'Try adjusting your search or filter.' : 'Start by creating your first project request.'}
               </p>
               <button onClick={() => navigate('/jobs/post')} className="mj-action-btn mj-btn-primary">
-                <Plus size={16} /> Post a Job
+                <Plus size={16} /> Create Project Request
               </button>
             </div>
           ) : (
@@ -445,7 +336,7 @@ export default function MyJobsScreen() {
                           <div className="mj-draft-warning" style={{ marginBottom: 12 }}>
                             <AlertCircle size={15} style={{ flexShrink: 0 }} />
                             <span>
-                              <strong>Chưa hoàn tất thiết lập:</strong> Vui lòng thiết lập milestone để đăng tuyển.
+                              <strong>Draft project request:</strong> Publish when the requirement details are ready.
                             </span>
                           </div>
                         )}
@@ -504,22 +395,6 @@ export default function MyJobsScreen() {
                       <button onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)} className="mj-action-btn mj-btn-cyan">
                         <HelpCircle size={14} /> Manage Questions
                       </button>
-                      {(job.status === JobPostStatus.Draft || job.status === JobPostStatus.Open) && (
-                        <>
-                          <button
-                            onClick={() => handleSetupMilestone(job)}
-                            disabled={isPending}
-                            className="mj-action-btn mj-btn-primary"
-                            style={{
-                              background: 'linear-gradient(135deg, var(--gb-purple,#9F4BFF) 0%, var(--gb-cyan,#1782FC) 100%)',
-                              borderColor: 'transparent',
-                              color: '#fff',
-                            }}
-                          >
-                            <Sparkles size={14} /> {job.status === JobPostStatus.Draft ? 'Setup Milestone' : 'Manage Milestones'}
-                          </button>
-                        </>
-                      )}
                       {job.status === JobPostStatus.Open && (
                         <>
                           <button
@@ -536,11 +411,11 @@ export default function MyJobsScreen() {
                       )}
                       {canPublish(job) && (
                         <button
-                          onClick={() => patchStatus(job, JobPostStatus.Open, 'JobPost published.')}
+                          onClick={() => patchStatus(job, JobPostStatus.Open, 'Project request published.')}
                           disabled={isPending}
                           className="mj-action-btn mj-btn-green"
                         >
-                          <Send size={14} /> Publish
+                          <Send size={14} /> Publish Request
                         </button>
                       )}
                       {canClose(job) && (

@@ -88,6 +88,7 @@ import {
 // Import router styles
 import './styles/router.css';
 import { UserRole } from '../types';
+import { getProposalCreatePath } from '../features/proposals/utils/proposalRoutes';
 
 function NotFound() {
   return (
@@ -143,7 +144,7 @@ function ContractListRoute() {
 
 function NavigateToProposalCreate() {
   const { jobPostId } = useParams<{ jobPostId: string }>();
-  return <Navigate to={`/proposals/create/${jobPostId || ''}`} replace />;
+  return <Navigate to={getProposalCreatePath(jobPostId || '')} replace />;
 }
 
 export const router = createBrowserRouter([

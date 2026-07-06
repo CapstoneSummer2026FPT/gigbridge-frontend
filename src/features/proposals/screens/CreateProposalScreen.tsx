@@ -4,6 +4,9 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   FileText,
   Plus,
   Save,
@@ -36,6 +39,13 @@ const parseDuration = (value?: string | null) => {
     : { amount: '1', unit: 'weeks' };
 };
 
+const parseOptionalDuration = (value?: string | null) => {
+  const match = value?.match(/^(\d+)\s+([a-zA-Z]+)$/);
+  return match
+    ? { amount: match[1], unit: durationUnits.includes(match[2].toLowerCase()) ? match[2].toLowerCase() : 'weeks' }
+    : { amount: '', unit: 'weeks' };
+};
+
 const emptyWorkItem = (orderIndex: number): ProposalWorkBreakdownItemDto => ({
   title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex,
 });
@@ -60,7 +70,10 @@ export default function CreateProposalScreen() {
   const [outOfScope, setOutOfScope] = useState('');
   const [workItems, setWorkItems] = useState<ProposalWorkBreakdownItemDto[]>([emptyWorkItem(0)]);
   const [milestones, setMilestones] = useState<ProposalMilestonePlanDto[]>([emptyMilestone(0)]);
-  const [proposedBudget, setProposedBudget] = useState('');
+  const [legacyBudget, setLegacyBudget] = useState<number | null>(null);
+  const [usesMilestoneBudget, setUsesMilestoneBudget] = useState(true);
+  const [expandedMilestone, setExpandedMilestone] = useState<number | null>(0);
+  const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
   const [durationAmount, setDurationAmount] = useState('1');
   const [durationUnit, setDurationUnit] = useState('weeks');
   const [loading, setLoading] = useState(true);
@@ -76,9 +89,8 @@ export default function CreateProposalScreen() {
     () => milestones.reduce((total, item) => total + (Number(item.amount) || 0), 0),
     [milestones]
   );
-  const parsedBudget = proposedBudget.trim() ? Number(proposedBudget) : null;
-  const budgetValue = parsedBudget ?? 0;
-  const totalsMatch = parsedBudget !== null && parsedBudget > 0 && Math.abs(milestoneTotal - parsedBudget) < 0.01;
+  const calculatedBudget = usesMilestoneBudget ? (milestoneTotal > 0 ? milestoneTotal : null) : legacyBudget;
+  const budgetValue = calculatedBudget ?? 0;
 
   const hydrateProposal = (loaded: ProposalDetailDto) => {
     setProposal(loaded);
@@ -89,8 +101,10 @@ export default function CreateProposalScreen() {
     setAssumptions(loaded.assumptions || '');
     setOutOfScope(loaded.outOfScope || '');
     setWorkItems(loaded.workBreakdownItems?.length ? normalizeOrder(loaded.workBreakdownItems) : [emptyWorkItem(0)]);
-    setMilestones(loaded.milestonePlans?.length ? normalizeOrder(loaded.milestonePlans) : [emptyMilestone(0)]);
-    setProposedBudget(String(loaded.proposedBudget ?? ''));
+    const hasMilestonePlan = Boolean(loaded.milestonePlans?.length);
+    setMilestones(hasMilestonePlan ? normalizeOrder(loaded.milestonePlans!) : [emptyMilestone(0)]);
+    setLegacyBudget(loaded.proposedBudget ?? null);
+    setUsesMilestoneBudget(hasMilestonePlan);
     const parsed = parseDuration(loaded.proposedDuration);
     setDurationAmount(parsed.amount);
     setDurationUnit(parsed.unit);
@@ -131,7 +145,7 @@ export default function CreateProposalScreen() {
 
   const proposalPayload = () => ({
     coverLetter: coverLetter.trim(),
-    proposedBudget: parsedBudget && parsedBudget > 0 ? parsedBudget : null,
+    proposedBudget: calculatedBudget,
     proposedDuration,
     analysisSummary: analysisSummary.trim(),
     solutionApproach: solutionApproach.trim(),
@@ -143,15 +157,32 @@ export default function CreateProposalScreen() {
   });
 
   const validateForSubmit = () => {
+    setMilestoneErrors({});
     if (coverLetter.trim().length < 50) return 'Introduction must be at least 50 characters.';
     if (analysisSummary.trim().length < 50) return 'Requirement analysis must be at least 50 characters.';
     if (solutionApproach.trim().length < 50) return 'Solution approach must be at least 50 characters.';
-    if (!parsedBudget || parsedBudget <= 0) return 'Proposed budget must be greater than 0.';
     if (!workItems.length || workItems.some(item => !item.title?.trim())) return 'Every work breakdown item needs a title.';
-    if (!milestones.length || milestones.some(item => !item.title?.trim() || Number(item.amount) <= 0 || !item.deliverables?.trim() || !item.acceptanceCriteria?.trim())) {
-      return 'Every milestone needs a title, amount, deliverables, and acceptance criteria.';
+    if (!milestones.length) return 'Add at least one milestone before submitting.';
+    const errors: Record<string, string> = {};
+    milestones.forEach((item, index) => {
+      if (!item.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
+      if (Number(item.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
+      if (!item.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
+      if (!item.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = 'Acceptance criteria are required.';
+    });
+    const firstErrorKey = Object.keys(errors)[0];
+    if (firstErrorKey) {
+      const [index, field] = firstErrorKey.split('.');
+      setMilestoneErrors(errors);
+      setExpandedMilestone(Number(index));
+      requestAnimationFrame(() => {
+        const target = document.querySelector<HTMLElement>(`[data-milestone-field="${index}.${field}"]`);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.focus();
+      });
+      return 'Complete the highlighted milestone fields before submitting.';
     }
-    if (!totalsMatch) return 'Milestone total must equal the proposed budget.';
+    if (!calculatedBudget || calculatedBudget <= 0) return 'Milestone total must be greater than 0.';
     return '';
   };
 
@@ -197,8 +228,27 @@ export default function CreateProposalScreen() {
 
   const updateWorkItem = (index: number, patch: Partial<ProposalWorkBreakdownItemDto>) =>
     setWorkItems(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
-  const updateMilestone = (index: number, patch: Partial<ProposalMilestonePlanDto>) =>
+  const updateMilestone = (index: number, patch: Partial<ProposalMilestonePlanDto>) => {
+    setUsesMilestoneBudget(true);
     setMilestones(items => items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+    setMilestoneErrors(current => {
+      const next = { ...current };
+      Object.keys(patch).forEach(field => delete next[`${index}.${field}`]);
+      return next;
+    });
+  };
+  const addMilestone = () => {
+    setUsesMilestoneBudget(true);
+    const nextIndex = milestones.length;
+    setMilestones(items => [...items, emptyMilestone(items.length)]);
+    setExpandedMilestone(nextIndex);
+  };
+  const removeMilestone = (index: number) => {
+    setUsesMilestoneBudget(true);
+    setMilestones(items => normalizeOrder(items.filter((_, itemIndex) => itemIndex !== index)));
+    setMilestoneErrors({});
+    setExpandedMilestone(current => current === index ? null : current !== null && current > index ? current - 1 : current);
+  };
   const moveItem = <T,>(items: T[], index: number, direction: -1 | 1, setter: (value: T[]) => void) => {
     const target = index + direction;
     if (target < 0 || target >= items.length) return;
@@ -258,20 +308,58 @@ export default function CreateProposalScreen() {
             </section>
 
             <section className="space-y-4 border-t border-border pt-7">
-              <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Milestone and payment plan</h2><p className={`mt-1 text-sm ${totalsMatch ? 'text-emerald-500' : 'text-amber-600'}`}>Total {formatGigCoin(milestoneTotal)} / Budget {formatGigCoin(budgetValue)}</p></div><button type="button" onClick={() => setMilestones(items => [...items, emptyMilestone(items.length)])} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold"><Plus size={16} /> Add milestone</button></div>
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full min-w-[1100px] text-left text-sm"><thead className="bg-muted/30 text-xs uppercase text-muted-foreground"><tr><th className="p-3">Milestone</th><th className="p-3">Description</th><th className="p-3">Amount</th><th className="p-3">Duration</th><th className="p-3">Deliverables</th><th className="p-3">Acceptance criteria</th><th className="w-28 p-3">Actions</th></tr></thead><tbody>
-                  {milestones.map((item, index) => <tr key={item.id || index} className="border-t border-border align-top"><td className="p-2"><input value={item.title || ''} onChange={e => updateMilestone(index, { title: e.target.value })} className={inputClass} placeholder="Title" /></td><td className="p-2"><textarea value={item.description || ''} onChange={e => updateMilestone(index, { description: e.target.value })} className={inputClass} rows={2} placeholder="Scope notes" /></td><td className="p-2"><input type="number" min="0" value={item.amount || ''} onChange={e => updateMilestone(index, { amount: Number(e.target.value) })} className={inputClass} /></td><td className="p-2"><input value={item.estimatedDuration || ''} onChange={e => updateMilestone(index, { estimatedDuration: e.target.value })} className={inputClass} /></td><td className="p-2"><textarea value={item.deliverables || ''} onChange={e => updateMilestone(index, { deliverables: e.target.value })} className={inputClass} rows={2} /></td><td className="p-2"><textarea value={item.acceptanceCriteria || ''} onChange={e => updateMilestone(index, { acceptanceCriteria: e.target.value })} className={inputClass} rows={2} /></td><td className="p-2"><div className="flex gap-1"><button title="Move up" onClick={() => moveItem(milestones, index, -1, setMilestones)}><ArrowUp size={15} /></button><button title="Move down" onClick={() => moveItem(milestones, index, 1, setMilestones)}><ArrowDown size={15} /></button><button title="Remove" onClick={() => setMilestones(items => normalizeOrder(items.filter((_, i) => i !== index)))}><Trash2 size={15} /></button></div></td></tr>)}
-                </tbody></table>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div><h2 className="text-lg font-bold">Milestone and payment plan</h2><p className="mt-1 text-sm text-muted-foreground">Break the project into reviewable, payable outcomes.</p></div>
+                <button type="button" onClick={addMilestone} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold hover:bg-muted"><Plus size={16} /> Add milestone</button>
               </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-border bg-muted/20 p-4"><p className="text-xs font-bold uppercase text-muted-foreground">Calculated proposal budget</p><p className="mt-1 text-2xl font-bold text-foreground">{formatGigCoin(budgetValue)}</p></div>
+                <div className="rounded-lg border border-border bg-muted/20 p-4"><p className="text-xs font-bold uppercase text-muted-foreground">Payment plan</p><p className="mt-1 text-sm font-semibold">{milestones.length} {milestones.length === 1 ? 'milestone' : 'milestones'}</p><p className={`mt-1 text-xs ${milestoneTotal > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>{milestoneTotal > 0 ? 'Budget is calculated automatically from milestone amounts.' : 'Enter an amount to calculate the proposal budget.'}</p></div>
+              </div>
+
+              {milestones.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-10 text-center"><p className="font-semibold">No milestones yet</p><p className="mt-1 text-sm text-muted-foreground">Add the first payable outcome for this proposal.</p><button type="button" onClick={addMilestone} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold"><Plus size={16} /> Add first milestone</button></div>
+              ) : milestones.map((item, index) => {
+                const isExpanded = expandedMilestone === index;
+                const duration = parseOptionalDuration(item.estimatedDuration);
+                const isComplete = Boolean(item.title?.trim() && Number(item.amount) > 0 && item.deliverables?.trim() && item.acceptanceCriteria?.trim());
+                const errorFor = (field: string) => milestoneErrors[`${index}.${field}`];
+                const fieldClass = (field: string) => `${inputClass} ${errorFor(field) ? 'border-red-500 focus:ring-red-500' : ''}`;
+                const updateDuration = (amount: string, unit: string) => updateMilestone(index, { estimatedDuration: amount ? `${amount} ${unit}` : '' });
+                return (
+                  <article key={item.id || index} className={`overflow-hidden rounded-lg border ${Object.keys(milestoneErrors).some(key => key.startsWith(`${index}.`)) ? 'border-red-500/60' : 'border-border'} bg-card`}>
+                    <div className="flex items-center gap-2 p-3 sm:p-4">
+                      <button type="button" onClick={() => setExpandedMilestone(isExpanded ? null : index)} aria-expanded={isExpanded} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{index + 1}</span>
+                        <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{item.title?.trim() || `Untitled milestone ${index + 1}`}</strong><span className="mt-0.5 block text-xs text-muted-foreground">{formatGigCoin(Number(item.amount) || 0)}{item.estimatedDuration ? ` · ${item.estimatedDuration}` : ''}</span></span>
+                        {isComplete && <span title="Milestone complete" className="hidden items-center gap-1 text-xs font-semibold text-emerald-600 sm:flex"><CheckCircle2 size={15} /> Ready</span>}
+                      </button>
+                      <div className="flex shrink-0 gap-1">
+                        <button type="button" title="Move up" disabled={index === 0} onClick={() => { setUsesMilestoneBudget(true); setMilestoneErrors({}); moveItem(milestones, index, -1, setMilestones); setExpandedMilestone(index - 1); }} className="rounded p-2 hover:bg-muted disabled:opacity-30"><ArrowUp size={16} /></button>
+                        <button type="button" title="Move down" disabled={index === milestones.length - 1} onClick={() => { setUsesMilestoneBudget(true); setMilestoneErrors({}); moveItem(milestones, index, 1, setMilestones); setExpandedMilestone(index + 1); }} className="rounded p-2 hover:bg-muted disabled:opacity-30"><ArrowDown size={16} /></button>
+                        <button type="button" title="Remove milestone" onClick={() => removeMilestone(index)} className="rounded p-2 text-red-500 hover:bg-red-500/10"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                    {isExpanded && <div className="grid gap-4 border-t border-border bg-background/50 p-4 md:grid-cols-2">
+                      <label className="text-sm font-semibold">Title *<input data-milestone-field={`${index}.title`} value={item.title || ''} onChange={e => updateMilestone(index, { title: e.target.value })} className={`${fieldClass('title')} mt-2`} placeholder="e.g. Discovery and technical design" />{errorFor('title') && <span className="mt-1 block text-xs text-red-500">{errorFor('title')}</span>}</label>
+                      <label className="text-sm font-semibold">Amount *<input data-milestone-field={`${index}.amount`} type="number" min="0" step="0.01" value={item.amount || ''} onChange={e => updateMilestone(index, { amount: Math.round((Number(e.target.value) || 0) * 100) / 100 })} className={`${fieldClass('amount')} mt-2`} placeholder="0.00" />{errorFor('amount') && <span className="mt-1 block text-xs text-red-500">{errorFor('amount')}</span>}</label>
+                      <label className="text-sm font-semibold md:col-span-2">Duration<div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2"><input type="number" min="1" value={duration.amount} onChange={e => updateDuration(e.target.value, duration.unit)} className={inputClass} placeholder="Estimated duration" /><select value={duration.unit} onChange={e => updateDuration(duration.amount, e.target.value)} className={inputClass}>{durationUnits.map(unit => <option key={unit}>{unit}</option>)}</select></div></label>
+                      <label className="text-sm font-semibold md:col-span-2">Description<textarea value={item.description || ''} onChange={e => updateMilestone(index, { description: e.target.value })} className={`${inputClass} mt-2 min-h-24 resize-y`} placeholder="Describe the scope and work included in this milestone." /></label>
+                      <label className="text-sm font-semibold">Deliverables *<textarea data-milestone-field={`${index}.deliverables`} value={item.deliverables || ''} onChange={e => updateMilestone(index, { deliverables: e.target.value })} className={`${fieldClass('deliverables')} mt-2 min-h-32 resize-y`} placeholder="List the concrete outputs the client will receive." />{errorFor('deliverables') && <span className="mt-1 block text-xs text-red-500">{errorFor('deliverables')}</span>}</label>
+                      <label className="text-sm font-semibold">Acceptance criteria *<textarea data-milestone-field={`${index}.acceptanceCriteria`} value={item.acceptanceCriteria || ''} onChange={e => updateMilestone(index, { acceptanceCriteria: e.target.value })} className={`${fieldClass('acceptanceCriteria')} mt-2 min-h-32 resize-y`} placeholder="Define the objective conditions for client approval." />{errorFor('acceptanceCriteria') && <span className="mt-1 block text-xs text-red-500">{errorFor('acceptanceCriteria')}</span>}</label>
+                    </div>}
+                  </article>
+                );
+              })}
             </section>
 
-            <section className="grid gap-4 border-t border-border pt-7 md:grid-cols-2">
-              <label className="text-sm font-semibold">Proposed budget<input type="number" min="1" value={proposedBudget} onChange={e => setProposedBudget(e.target.value)} className={`${inputClass} mt-2`} /></label>
-              <div><span className="text-sm font-semibold">Duration</span><div className="mt-2 grid grid-cols-[1fr_auto] gap-2"><input type="number" min="1" value={durationAmount} onChange={e => setDurationAmount(e.target.value)} className={inputClass} /><select value={durationUnit} onChange={e => setDurationUnit(e.target.value)} className={inputClass}>{durationUnits.map(unit => <option key={unit}>{unit}</option>)}</select></div></div>
+            <section className="border-t border-border pt-7">
+              <div className="max-w-xl"><span className="text-sm font-semibold">Overall proposal duration</span><div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2"><input type="number" min="1" value={durationAmount} onChange={e => setDurationAmount(e.target.value)} className={inputClass} /><select value={durationUnit} onChange={e => setDurationUnit(e.target.value)} className={inputClass}>{durationUnits.map(unit => <option key={unit}>{unit}</option>)}</select></div></div>
             </section>
 
-            <footer className="flex justify-end gap-3 border-t border-border pt-5"><button type="button" onClick={handleSaveDraft} disabled={submitting} className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-bold disabled:opacity-60"><Save size={16} /> Save draft</button><button type="button" onClick={handleSubmit} disabled={submitting} className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"><Send size={16} /> Submit proposal</button></footer>
+            <footer className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end"><button type="button" onClick={handleSaveDraft} disabled={submitting} className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-bold disabled:opacity-60"><Save size={16} /> Save draft</button><button type="button" onClick={handleSubmit} disabled={submitting} className="btn-cyan inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm"><Send size={16} /> Submit proposal</button></footer>
           </div>
         )}
       </main>

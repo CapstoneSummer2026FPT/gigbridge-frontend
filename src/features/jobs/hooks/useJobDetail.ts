@@ -14,6 +14,7 @@ import type { User } from '../../../types/models/User';
 import { UserRole } from '../../../types/models/User';
 import { JobPostStatus, type GetMyJobPostDetailDto } from '../../../types/models/Job';
 import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
+import { getProposalCreatePath } from '../../proposals/utils/proposalRoutes';
 
 // ── Local helpers ─────────────────────────────────────────────
 const formatPostedAt = (createdAt?: string): string => {
@@ -265,7 +266,7 @@ export function useJobDetail() {
     if (!job || !user) return;
     setIsApplying(true);
     try {
-      navigate(`/proposals/create/${job.id}`);
+      navigate(getProposalCreatePath(job.id));
     } finally {
       setIsApplying(false);
     }
