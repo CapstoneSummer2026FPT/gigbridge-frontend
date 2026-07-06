@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import * as signalR from '@microsoft/signalr';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -9,14 +10,16 @@ import type { Message } from '../../../types';
 import type { ContractDto, ContractProductHandoffResponse, Milestone } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
+import { getChatHubUrl } from '../../../service/apiService';
 
 interface WorkspaceMilestone {
   id: string;
   title: string;
   description?: string;
   amount: number;
+  releasedAmount: number;
   dueDate: string;
-  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'paid' | 'disputed';
+  status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'disputed';
   completedAt?: string;
 }
 
@@ -54,6 +57,11 @@ interface SubmitMilestoneDeliverablePayload {
 }
 
 interface SubmitMilestoneDeliverableResult {
+  success: boolean;
+  message?: string;
+}
+
+interface WorkspaceActionResult {
   success: boolean;
   message?: string;
 }
@@ -96,11 +104,10 @@ const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status
       return 'in_progress';
     case MilestoneStatus.Submitted:
       return 'submitted';
-    case MilestoneStatus.Approved:
-      return 'approved';
     case MilestoneStatus.PaymentProofUploaded:
     case MilestoneStatus.PaymentConfirmed:
-      return 'paid';
+    case MilestoneStatus.Approved:
+      return 'approved';
     case MilestoneStatus.Disputed:
       return 'disputed';
     case MilestoneStatus.Pending:
@@ -109,13 +116,14 @@ const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status
   }
 };
 
-const isMilestonePaid = (milestone: WorkspaceMilestone): boolean =>
-  milestone.status === 'approved' || milestone.status === 'paid';
+const isMilestoneApproved = (milestone: WorkspaceMilestone): boolean =>
+  milestone.status === 'approved';
 
 const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
   id: milestone.id,
   title: milestone.title,
   amount: milestone.amount,
+  releasedAmount: Number(milestone.releasedAmount ?? 0),
   dueDate: milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : 'Not set',
   status: mapMilestoneStatus(milestone.status),
   completedAt: milestone.paid_at ?? undefined,
@@ -123,7 +131,7 @@ const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
 
 const buildProject = (contract: ContractDto, milestones: Milestone[]): WorkspaceProject => {
   const mappedMilestones = milestones.map(mapMilestone);
-  const completedCount = mappedMilestones.filter(isMilestonePaid).length;
+  const completedCount = mappedMilestones.filter(isMilestoneApproved).length;
   const progress = mappedMilestones.length > 0
     ? Math.round((completedCount / mappedMilestones.length) * 100)
     : 0;
@@ -135,7 +143,7 @@ const buildProject = (contract: ContractDto, milestones: Milestone[]): Workspace
     conversationId: contract.conversationId,
     title: contract.jobTitle || contract.title,
     progress,
-    paidAmount: mappedMilestones.filter(isMilestonePaid).reduce((sum, milestone) => sum + milestone.amount, 0),
+    paidAmount: mappedMilestones.reduce((sum, milestone) => sum + milestone.releasedAmount, 0),
     totalBudget: contract.totalBudget,
     startDate: contract.startDate,
     clientId: contract.clientProfilesId,
@@ -168,7 +176,9 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
 
   return {
     id: String(message.messageId ?? message.MessageId ?? message.id ?? crypto.randomUUID()),
-    clientMessageId: typeof message.clientMessageId === 'string' ? message.clientMessageId : null,
+    clientMessageId: typeof (message.clientMessageId ?? message.ClientMessageId) === 'string'
+      ? String(message.clientMessageId ?? message.ClientMessageId)
+      : null,
     conversationId: String(message.conversationId ?? message.ConversationId ?? ''),
     senderId: String(message.senderUserId ?? message.SenderUserId ?? message.senderId ?? ''),
     content: String(message.content ?? message.Content ?? ''),
@@ -180,6 +190,11 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
   };
 };
 
+const getCurrentProductHandoffFromList = (
+  handoffs: ContractProductHandoffResponse[]
+): ContractProductHandoffResponse | null =>
+  handoffs.find(handoff => handoff.isCurrent) ?? handoffs[0] ?? null;
+
 export function useProjectWorkspace(initialContractId: string) {
   const navigate = useNavigate();
   const { user, role } = useApp();
@@ -189,6 +204,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const [activeProjectId, setActiveProjectId] = useState(initialContractId);
   const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
   const [currentProductHandoff, setCurrentProductHandoff] = useState<ContractProductHandoffResponse | null>(null);
+  const [productHandoffs, setProductHandoffs] = useState<ContractProductHandoffResponse[]>([]);
   const [workspaceContracts, setWorkspaceContracts] = useState<ContractDto[]>([]);
   const [project, setProject] = useState<WorkspaceProject>(emptyProject);
   const [showInfo, setShowInfo] = useState(true);
@@ -198,6 +214,9 @@ export function useProjectWorkspace(initialContractId: string) {
   const [isBlocked, setIsBlocked] = useState(false);
   const [projectMessages, setProjectMessages] = useState<Message[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const activeProjectIdRef = useRef(activeProjectId);
 
   const [aiChat, setAiChat] = useState<{ role: string; content: string }[]>([
     { role: 'ai', content: 'Hello! I can help summarize this workspace, milestone progress, and recent chat activity.' },
@@ -208,16 +227,21 @@ export function useProjectWorkspace(initialContractId: string) {
   }, [initialContractId]);
 
   useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
+
+  useEffect(() => {
     let current = true;
 
     const loadWorkspace = async (): Promise<void> => {
       if (!activeProjectId) return;
 
       try {
-        const [contractResponse, milestonesResponse, contractsResponse] = await Promise.all([
+        const [contractResponse, milestonesResponse, contractsResponse, productHandoffsResponse] = await Promise.all([
           contractGetAPI.getContractById(activeProjectId),
           contractGetAPI.getMilestonesByContract(activeProjectId),
           contractGetAPI.getMyContracts(),
+          contractGetAPI.getProductHandoffs(activeProjectId),
         ]);
 
         if (!current) return;
@@ -235,16 +259,17 @@ export function useProjectWorkspace(initialContractId: string) {
           setProject(emptyProject);
           setActiveContract(null);
           setCurrentProductHandoff(null);
+          setProductHandoffs([]);
           return;
         }
 
         const nextContract = contractResponse.data;
         const nextProject = buildProject(nextContract, milestonesResponse.data ?? []);
+        const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
         setActiveContract(nextContract);
         setProject(nextProject);
-
-        const productHandoffResponse = await contractGetAPI.getCurrentProductHandoff(activeProjectId);
-        setCurrentProductHandoff(productHandoffResponse.success ? productHandoffResponse.data ?? null : null);
+        setProductHandoffs(nextProductHandoffs);
+        setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
 
         if (nextContract.conversationId) {
           const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
@@ -260,6 +285,7 @@ export function useProjectWorkspace(initialContractId: string) {
           setProject(emptyProject);
           setActiveContract(null);
           setCurrentProductHandoff(null);
+          setProductHandoffs([]);
           setProjectMessages([]);
         }
       }
@@ -274,6 +300,131 @@ export function useProjectWorkspace(initialContractId: string) {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [projectMessages]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.warn('[WorkspaceChatHub] skipped connection: no access token found');
+      return;
+    }
+
+    let disposed = false;
+    const connection = new signalR.HubConnectionBuilder()
+      .configureLogging(signalR.LogLevel.Warning)
+      .withUrl(getChatHubUrl(), {
+        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    const joinCurrentConversation = async (): Promise<void> => {
+      const conversationId = conversationIdRef.current;
+      if (!conversationId || connection.state !== signalR.HubConnectionState.Connected) return;
+
+      try {
+        await connection.invoke('JoinConversation', conversationId);
+      } catch (joinError) {
+        console.error(`[WorkspaceChatHub] failed to join conversation ${conversationId}`, joinError);
+      }
+    };
+
+    const handleReceiveMessage = (payload: Record<string, unknown>): void => {
+      const mappedMessage: Message = {
+        ...mapWorkspaceMessage(payload),
+        sendStatus: 'sent',
+      };
+
+      if (!mappedMessage.conversationId || mappedMessage.conversationId !== conversationIdRef.current) return;
+
+      setProjectMessages(previousMessages => {
+        const existingIndex = previousMessages.findIndex(existingMessage =>
+          existingMessage.id === mappedMessage.id ||
+          Boolean(mappedMessage.clientMessageId && (
+            existingMessage.id === mappedMessage.clientMessageId ||
+            existingMessage.clientMessageId === mappedMessage.clientMessageId
+          ))
+        );
+
+        if (existingIndex < 0) return [...previousMessages, mappedMessage];
+
+        const nextMessages = [...previousMessages];
+        nextMessages[existingIndex] = mappedMessage;
+        return nextMessages;
+      });
+    };
+
+    const handleContractCompleted = (payload: Record<string, unknown>): void => {
+      const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
+      if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
+      void reloadActiveWorkspace().finally(() => {
+        window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+      });
+    };
+
+    const handleFinalPayoutClaimed = (payload: Record<string, unknown>): void => {
+      const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
+      if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
+      void reloadActiveWorkspace().finally(() => {
+        window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+      });
+    };
+
+    connection.on('ReceiveMessage', handleReceiveMessage);
+    connection.on('ContractCompleted', handleContractCompleted);
+    connection.on('FinalPayoutClaimed', handleFinalPayoutClaimed);
+    connection.onreconnected(() => {
+      if (!disposed) void joinCurrentConversation();
+    });
+    connection.onclose(error => {
+      if (!disposed && error) console.warn('[WorkspaceChatHub] disconnected', error);
+    });
+
+    void connection.start()
+      .then(() => {
+        if (disposed) {
+          void connection.stop();
+          return;
+        }
+        chatConnectionRef.current = connection;
+        void joinCurrentConversation();
+      })
+      .catch(connectionError => {
+        if (!disposed) console.error('[WorkspaceChatHub] connection failed', connectionError);
+      });
+
+    return () => {
+      disposed = true;
+      connection.off('ReceiveMessage', handleReceiveMessage);
+      connection.off('ContractCompleted', handleContractCompleted);
+      connection.off('FinalPayoutClaimed', handleFinalPayoutClaimed);
+      if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
+      void connection.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousConversationId = conversationIdRef.current;
+    const nextConversationId = project.conversationId ?? null;
+    conversationIdRef.current = nextConversationId;
+
+    const connection = chatConnectionRef.current;
+    if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
+
+    if (previousConversationId && previousConversationId !== nextConversationId) {
+      void connection.invoke('LeaveConversation', previousConversationId).catch(() => {});
+    }
+    if (nextConversationId && previousConversationId !== nextConversationId) {
+      void connection.invoke('JoinConversation', nextConversationId).catch(joinError => {
+        console.error(`[WorkspaceChatHub] failed to join conversation ${nextConversationId}`, joinError);
+      });
+    }
+
+    return () => {
+      if (nextConversationId && conversationIdRef.current === nextConversationId) {
+        void connection.invoke('LeaveConversation', nextConversationId).catch(() => {});
+      }
+    };
+  }, [project.conversationId]);
 
   const workspaceProjects = useMemo(() => {
     const projects = workspaceContracts.map(contract => mapContractListItem(contract, isClient));
@@ -302,7 +453,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const isPartnerOnline = currentProjData.online;
 
   const handleSendMessage = async (): Promise<void> => {
-    if (!messageInput.trim() || !project.conversationId) return;
+    if (activeContract?.status === ContractStatus.Completed || !messageInput.trim() || !project.conversationId) return;
 
     const clientMessageId = crypto.randomUUID();
     const newMessage: Message = {
@@ -383,17 +534,19 @@ export function useProjectWorkspace(initialContractId: string) {
   const reloadActiveWorkspace = async (): Promise<void> => {
     if (!activeProjectId) return;
 
-    const [contractResponse, milestonesResponse, productHandoffResponse] = await Promise.all([
+    const [contractResponse, milestonesResponse, productHandoffsResponse] = await Promise.all([
       contractGetAPI.getContractById(activeProjectId),
       contractGetAPI.getMilestonesByContract(activeProjectId),
-      contractGetAPI.getCurrentProductHandoff(activeProjectId),
+      contractGetAPI.getProductHandoffs(activeProjectId),
     ]);
 
     if (contractResponse.success && contractResponse.data) {
       const nextContract = contractResponse.data;
+      const nextProductHandoffs = productHandoffsResponse.success ? productHandoffsResponse.data ?? [] : [];
       setActiveContract(nextContract);
       setProject(buildProject(nextContract, milestonesResponse.data ?? []));
-      setCurrentProductHandoff(productHandoffResponse.success ? productHandoffResponse.data ?? null : null);
+      setProductHandoffs(nextProductHandoffs);
+      setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
 
       if (nextContract.conversationId) {
         const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
@@ -408,7 +561,7 @@ export function useProjectWorkspace(initialContractId: string) {
     milestoneId: string,
     payload: SubmitMilestoneDeliverablePayload
   ): Promise<SubmitMilestoneDeliverableResult> => {
-    if (!activeProjectId) {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -435,6 +588,81 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleStartMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.startMilestone(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to start milestone.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleRequestMilestoneUnlock = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.requestMilestoneUnlock(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to request milestone unlock.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleWithdrawMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.withdrawMilestone(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to withdraw milestone funds.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleEndProject = async (): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+
+    const response = await contractPostAPI.endProject(activeProjectId);
+
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to end project.' };
+    }
+
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleClaimFinalPayout = async (): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || isClient || activeContract?.status !== ContractStatus.Completed) {
+      return { success: false, message: 'Final payout is not available.' };
+    }
+
+    const response = await contractPostAPI.claimFinalPayout(activeProjectId);
+    if (!response.success) {
+      return { success: false, message: response.message || 'Failed to claim final payout.' };
+    }
+
+    await reloadActiveWorkspace();
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     return { success: true, message: response.message };
   };
 
@@ -467,7 +695,6 @@ export function useProjectWorkspace(initialContractId: string) {
       return { success: false, message: response.message || 'Failed to send work materials.' };
     }
 
-    setCurrentProductHandoff(response.data ?? null);
     await reloadActiveWorkspace();
     return { success: true, message: response.message };
   };
@@ -491,6 +718,7 @@ export function useProjectWorkspace(initialContractId: string) {
     project,
     activeContract,
     currentProductHandoff,
+    productHandoffs,
     workspaceProjects,
     currentProjData,
     partnerName,
@@ -503,6 +731,11 @@ export function useProjectWorkspace(initialContractId: string) {
     handleSendAiMessage,
     handleSimulateAttachment,
     handleCreateMockMilestone,
+    handleStartMilestone,
+    handleRequestMilestoneUnlock,
+    handleWithdrawMilestone,
+    handleEndProject,
+    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,

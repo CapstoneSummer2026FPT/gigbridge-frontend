@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import {
   Upload,
   X,
-  File,
+  File as FileIcon,
   AlertCircle,
   CheckCircle2,
   Calendar,
@@ -45,6 +45,7 @@ export default function SubmitMilestoneDeliverableScreen() {
     milestoneId: string;
   }>();
   const { user } = useApp();
+  const {t} = useTranslation();
 
   const [state, setState] = useState<SubmissionState>({
     milestone: null,
@@ -496,10 +497,9 @@ export default function SubmitMilestoneDeliverableScreen() {
                         <Upload size={32} />
                         <span className="upload-text">
                           {state.files.length === 0
-                            ? t('contracts.clickOrDragUpload')
-                            : state.files.length === 1
-                            ? t('contracts.filesSelected', { count: state.files.length })
-                            : t('contracts.filesSelectedPlural', { count: state.files.length })}
+                            ? 'Click to upload or drag & drop'
+                            : `${state.files.length} file${state.files.length !== 1 ? 's' : ''
+                            } selected`}
                         </span>
                         <span className="upload-hint">
                           {t('contracts.max100Mb')}
@@ -523,7 +523,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                           {state.files.map((file, index) => (
                             <div key={`${file.name}-${index}`} className="file-item">
                               <div className="file-info">
-                                <File size={18} className="file-icon" />
+                                <FileIcon size={18} className="file-icon" />
                                 <div className="file-details">
                                   <span className="file-name">{file.name}</span>
                                   <span className="file-size">

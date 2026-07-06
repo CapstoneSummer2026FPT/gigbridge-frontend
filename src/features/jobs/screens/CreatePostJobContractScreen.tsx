@@ -147,7 +147,9 @@ export default function CreatePostJobContractScreen() {
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="contract-budget">Total Budget *</label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">
+                      <img src="public/icons/G-coin.png" alt="G-Coin" className="w-5 h-5" />
+                    </span>
                     <input 
                       id="contract-budget"
                       type="number" 

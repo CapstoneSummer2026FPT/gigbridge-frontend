@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Plus,
   Edit,
@@ -18,6 +18,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { adminAPI } from '../../../api/adminAPI';
 import '../styles/admin-contract-templates-screen.css';
 
 interface ContractTemplate {
@@ -112,9 +113,25 @@ const getCoveragePercent = (content: string) => {
   return Math.round((coverage.filter(item => item.met).length / coverage.length) * 100);
 };
 
+const mapEsignTemplateToContractTemplate = (t: any): ContractTemplate => ({
+  id: t.esignTemplatesId,
+  name: t.name,
+  description: t.description || '',
+  content: t.htmlContent,
+  category: t.templateCode === 'CONTRACT_PREMIUM' ? 'premium' :
+            t.templateCode === 'CONTRACT_CUSTOM' ? 'custom' : 'standard',
+  version: t.version,
+  isDefault: t.isActive,
+  createdDate: t.createdAt ? t.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+  updatedDate: t.updatedAt ? t.updatedAt.split('T')[0] : (t.createdAt ? t.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
+  isActive: t.isActive,
+});
+
 export default function AdminContractTemplatesScreen() {
-  const [templates, setTemplates] = useState<ContractTemplate[]>(MOCK_TEMPLATES);
+  const [templates, setTemplates] = useState<ContractTemplate[]>([]);
+  const isApiUnimplemented = false;
   const [searchQuery, setSearchQuery] = useState('');
+
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'standard' | 'premium' | 'custom'>('all');
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>('tpl-01');
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -127,6 +144,24 @@ export default function AdminContractTemplatesScreen() {
     content: '',
     category: 'standard' as ContractTemplate['category'],
   });
+
+  const fetchTemplates = async () => {
+    setError(null);
+    try {
+      const response = await adminAPI.getTemplates();
+      if (response.success && response.data) {
+        setTemplates(response.data.map(mapEsignTemplateToContractTemplate));
+      } else {
+        setError(response.message || 'Failed to load templates');
+      }
+    } catch (err) {
+      setError('An error occurred while fetching templates');
+    }
+  };
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
 
   const filteredTemplates = useMemo(
     () => filterTemplates(templates, selectedCategory, searchQuery),
@@ -182,22 +217,27 @@ export default function AdminContractTemplatesScreen() {
       return;
     }
 
-    const newTemplate: ContractTemplate = {
-      id: `tpl-${Date.now()}`,
-      name: formData.name,
-      description: formData.description,
-      content: formData.content,
-      category: formData.category,
-      version: 1,
-      isDefault: false,
-      createdDate: new Date().toISOString().split('T')[0],
-      updatedDate: new Date().toISOString().split('T')[0],
-      isActive: true,
-    };
+    try {
+      const response = await adminAPI.createTemplate({
+        name: formData.name,
+        templateCode: formData.category === 'premium' ? 'CONTRACT_PREMIUM' :
+                      formData.category === 'custom' ? 'CONTRACT_CUSTOM' : 'CONTRACT_FIXED_PRICE',
+        htmlContent: formData.content,
+        version: 1,
+        description: formData.description,
+        isActive: true,
+      });
 
-    setTemplates(current => [...current, newTemplate]);
-    resetForm();
-    setSuccessMessage('Template created successfully');
+      if (response.success) {
+        setSuccessMessage('Template created successfully');
+        resetForm();
+        await fetchTemplates();
+      } else {
+        setError(response.message || 'Failed to create template');
+      }
+    } catch (err) {
+      setError('An error occurred while creating template.');
+    }
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
@@ -223,31 +263,44 @@ export default function AdminContractTemplatesScreen() {
       return;
     }
 
-    setTemplates(current =>
-      current.map(template =>
-        template.id === editingTemplateId
-          ? {
-              ...template,
-              name: formData.name,
-              description: formData.description,
-              content: formData.content,
-              category: formData.category,
-              version: template.version + 1,
-              updatedDate: new Date().toISOString().split('T')[0],
-            }
-          : template
-      )
-    );
-    resetForm();
-    setSuccessMessage('Template updated successfully');
+    try {
+      const response = await adminAPI.updateTemplate(editingTemplateId, {
+        name: formData.name,
+        templateCode: formData.category === 'premium' ? 'CONTRACT_PREMIUM' :
+                      formData.category === 'custom' ? 'CONTRACT_CUSTOM' : 'CONTRACT_FIXED_PRICE',
+        htmlContent: formData.content,
+        version: 1,
+        description: formData.description,
+        isActive: true,
+      });
+
+      if (response.success) {
+        setSuccessMessage('Template updated successfully');
+        resetForm();
+        await fetchTemplates();
+      } else {
+        setError(response.message || 'Failed to update template');
+      }
+    } catch (err) {
+      setError('An error occurred while updating template.');
+    }
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this template?')) return;
 
-    setTemplates(current => current.filter(template => template.id !== id));
-    setSuccessMessage('Template deleted successfully');
+    try {
+      const response = await adminAPI.deleteTemplate(id);
+      if (response.success) {
+        setSuccessMessage('Template deleted successfully');
+        await fetchTemplates();
+      } else {
+        setError(response.message || 'Failed to delete template');
+      }
+    } catch (err) {
+      setError('An error occurred while deleting template.');
+    }
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
@@ -500,7 +553,11 @@ export default function AdminContractTemplatesScreen() {
             <div className="empty-state">
               <AlertCircle size={48} />
               <p className="empty-title">No templates found</p>
-              <p className="empty-subtitle">Try another category or create a new baseline template.</p>
+              <p className="empty-subtitle">
+                {isApiUnimplemented
+                  ? "API endpoint not implemented yet. Contract template features will be integrated in Step 3."
+                  : "Try another category or create a new baseline template."}
+              </p>
             </div>
           ) : (
             filteredTemplates.map(template => {

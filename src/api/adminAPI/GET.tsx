@@ -62,4 +62,46 @@ export const adminGetAPI = {
       `${Admin_Api_Base_Url}/cheating/violations/${violationId}`
     );
   },
+
+  getWalletBalance: async (userId: string): Promise<ApiResponse<any>> => {
+    return apiService.get<any>(`${Admin_Api_Base_Url}/wallets/${userId}/balance`);
+  },
+
+  getWalletHistory: async (userId: string, limit: number = 50): Promise<ApiResponse<any[]>> => {
+    return apiService.get<any[]>(`${Admin_Api_Base_Url}/wallets/${userId}/history`, { limit });
+  },
+
+  getJobPostDetail: async (jobPostId: string): Promise<ApiResponse<any>> => {
+    return apiService.get<any>(`JobPosts/admin/${jobPostId}`);
+  },
+
+  getProposalDetail: async (proposalId: string): Promise<ApiResponse<any>> => {
+    return apiService.get<any>(`Proposals/admin/${proposalId}`);
+  },
+
+  getContracts: async (params?: { status?: number; jobPostId?: string }): Promise<ApiResponse<any[]>> => {
+    return apiService.get<any[]>(`${Admin_Api_Base_Url}/contracts`, params || {});
+  },
+
+  getTemplates: async (): Promise<ApiResponse<any[]>> => {
+    return apiService.get<any[]>(`${Admin_Api_Base_Url}/templates`);
+  },
+
+  getTemplateById: async (templateId: string): Promise<ApiResponse<any>> => {
+    return apiService.get<any>(`${Admin_Api_Base_Url}/templates/${templateId}`);
+  },
+
+  getAssets: async (params?: {
+    search?: string;
+    jobPostId?: string;
+    uploadedByUserId?: string;
+  }): Promise<ApiResponse<any[]>> => {
+    return apiService.get<any[]>(`${Admin_Api_Base_Url}/assets`, params || {});
+  },
+
+  getContractMilestones: async (contractId: string): Promise<ApiResponse<any[]>> => {
+    return apiService.get<any[]>(`${Admin_Api_Base_Url}/milestones/contract/${contractId}`);
+  },
 };
+
+

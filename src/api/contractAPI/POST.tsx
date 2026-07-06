@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractProductHandoffResponse, CreateContractDto, ContractDto, GenerateContractPdfDto, Milestone, WithdrawMilestoneResponse } from '../../types/models/Contract';
+import type { ClaimFinalPayoutResponse, ContractProductHandoffResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, WithdrawMilestoneResponse } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 const milestonesUrl = 'Milestones';
@@ -65,6 +65,16 @@ export const contractPostAPI = {
   },
 
   /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/request-unlock
+   */
+  requestMilestoneUnlock: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<Record<string, never>>> => {
+    return apiService.post<Record<string, never>>(`contracts/${contractId}/milestones/${milestoneId}/request-unlock`);
+  },
+
+  /**
    * POST /api/contracts/{contractId}/milestones/{milestoneId}/submit
    */
   submitMilestone: async (
@@ -103,6 +113,22 @@ export const contractPostAPI = {
     milestoneId: string
   ): Promise<ApiResponse<WithdrawMilestoneResponse>> => {
     return apiService.post<WithdrawMilestoneResponse>(`contracts/${contractId}/milestones/${milestoneId}/withdraw`);
+  },
+
+  /**
+   * POST /api/contracts/{contractId}/end-project
+   */
+  endProject: async (
+    contractId: string
+  ): Promise<ApiResponse<EndProjectResponse>> => {
+    return apiService.post<EndProjectResponse>(`contracts/${contractId}/end-project`);
+  },
+
+  /** POST /api/contracts/{contractId}/claim-final-payout */
+  claimFinalPayout: async (
+    contractId: string
+  ): Promise<ApiResponse<ClaimFinalPayoutResponse>> => {
+    return apiService.post<ClaimFinalPayoutResponse>(`contracts/${contractId}/claim-final-payout`);
   },
 
   /**

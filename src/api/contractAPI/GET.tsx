@@ -93,6 +93,41 @@ interface BackendMilestoneResponse {
   ReleasedAmount?: number;
 }
 
+interface BackendMilestoneAttachmentResponse {
+  id?: string;
+  Id?: string;
+  milestoneAttachmentId?: string;
+  MilestoneAttachmentId?: string;
+  milestoneAttachmentsId?: string;
+  MilestoneAttachmentsId?: string;
+  milestone_id?: string;
+  milestoneId?: string;
+  MilestoneId?: string;
+  milestonesId?: string;
+  MilestonesId?: string;
+  file_name?: string | null;
+  fileName?: string | null;
+  FileName?: string | null;
+  file_url?: string | null;
+  fileUrl?: string | null;
+  FileUrl?: string | null;
+  file_size?: number | null;
+  fileSize?: number | null;
+  FileSize?: number | null;
+  source_type?: number;
+  sourceType?: number;
+  SourceType?: number;
+  mime_type?: string | null;
+  mimeType?: string | null;
+  MimeType?: string | null;
+  uploaded_by_user_id?: string | null;
+  uploadedByUserId?: string | null;
+  UploadedByUserId?: string | null;
+  created_at?: string;
+  createdAt?: string;
+  CreatedAt?: string;
+}
+
 const getValue = <T,>(source: Record<string, unknown>, ...keys: string[]): T | undefined => {
   for (const key of keys) {
     const value = source[key];
@@ -131,6 +166,24 @@ const normalizeContract = (contract: BackendContractResponse): ContractDto => {
     conversationId: getValue<string | null>(source, 'conversationId', 'ConversationId') ?? null,
     canReview: Boolean(getValue<boolean>(source, 'canReview', 'CanReview') ?? false),
     hasReviewedByCurrentUser: Boolean(getValue<boolean>(source, 'hasReviewedByCurrentUser', 'HasReviewedByCurrentUser') ?? false),
+  };
+};
+
+export const normalizeMilestoneAttachment = (
+  attachment: BackendMilestoneAttachmentResponse
+): MilestoneAttachment => {
+  const source = attachment as Record<string, unknown>;
+
+  return {
+    id: String(getValue(source, 'id', 'Id', 'milestoneAttachmentId', 'MilestoneAttachmentId', 'milestoneAttachmentsId', 'MilestoneAttachmentsId') ?? ''),
+    milestone_id: String(getValue(source, 'milestone_id', 'milestoneId', 'MilestoneId', 'milestonesId', 'MilestonesId') ?? ''),
+    file_name: String(getValue(source, 'file_name', 'fileName', 'FileName') ?? ''),
+    file_url: String(getValue(source, 'file_url', 'fileUrl', 'FileUrl') ?? ''),
+    file_size: getValue<number | null>(source, 'file_size', 'fileSize', 'FileSize') ?? null,
+    source_type: Number(getValue(source, 'source_type', 'sourceType', 'SourceType') ?? 0),
+    mime_type: getValue<string | null>(source, 'mime_type', 'mimeType', 'MimeType') ?? null,
+    uploaded_by_user_id: getValue<string | null>(source, 'uploaded_by_user_id', 'uploadedByUserId', 'UploadedByUserId') ?? null,
+    created_at: getValue<string | undefined>(source, 'created_at', 'createdAt', 'CreatedAt'),
   };
 };
 
@@ -336,7 +389,11 @@ export const contractGetAPI = {
   getMilestoneAttachments: async (
     milestoneId: string
   ): Promise<ApiResponse<MilestoneAttachment[]>> => {
-    return apiService.get<MilestoneAttachment[]>(`${milestonesUrl}/${milestoneId}/attachments`);
+    const response = await apiService.get<BackendMilestoneAttachmentResponse[]>(`${milestonesUrl}/${milestoneId}/attachments`);
+    return {
+      ...response,
+      data: response.data ? response.data.map(normalizeMilestoneAttachment) : [],
+    };
   },
 
   /**

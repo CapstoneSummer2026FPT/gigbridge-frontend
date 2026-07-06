@@ -45,4 +45,38 @@ export const adminPutAPI = {
   updateFAQCategory: async (id: number, payload: UpdateFAQCategoryPayload): Promise<ApiResponse<FAQCategoryDto>> => {
     return apiService.put<FAQCategoryDto>(`${Admin_Api_Base_Url}/faq/categories/${id}`, payload);
   },
+
+  lockJobPost: async (jobPostId: string): Promise<ApiResponse<boolean>> => {
+    return apiService.put<boolean>(`JobPosts/admin/${jobPostId}/lock`);
+  },
+
+  updateTemplate: async (
+    templateId: string,
+    payload: {
+      name: string;
+      templateCode: string;
+      htmlContent: string;
+      version: number;
+      placeholderSchema?: string;
+      description?: string;
+      isActive: boolean;
+    }
+  ): Promise<ApiResponse<boolean>> => {
+    return apiService.put<boolean>(`${Admin_Api_Base_Url}/templates/${templateId}`, payload);
+  },
+
+  updateMilestone: async (
+    milestoneId: string,
+    payload: { title: string; amount: number; dueDate?: string; status: number; sortOrder?: number }
+  ): Promise<ApiResponse<any>> => {
+    return apiService.put<any>(`${Admin_Api_Base_Url}/milestones/${milestoneId}`, payload);
+  },
+
+  updateContract: async (
+    contractId: string,
+    payload: { title: string; description: string; totalBudget: number; status: number; startDate?: string; endDate?: string; esignContractPdfUrl?: string }
+  ): Promise<ApiResponse<any>> => {
+    return apiService.put<any>(`${Admin_Api_Base_Url}/contracts/${contractId}`, payload);
+  },
 };
+

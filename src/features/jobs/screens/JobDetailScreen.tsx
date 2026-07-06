@@ -1,7 +1,7 @@
 import {
   Clock, Users, Globe, Star, CheckCircle,
   Bot, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText,
-  Briefcase, ArrowUpRight,
+  Briefcase, ArrowUpRight, Lock,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserRole } from '../../../types/models/User';
@@ -138,7 +138,13 @@ export default function JobDetailScreen() {
             {/* Client owner actions */}
             {isClientMode && role === UserRole.Client && (
               <div className="flex flex-wrap gap-2.5 mb-5">
-                <button className="jd-btn-edit" onClick={() => navigate(`/jobs/${job.id}/edit`)}><Edit3 size={13} />{t('jobDetail.editPost')}</button>
+                {job.visibility === 3 ? (
+                  <span className="badge-red text-xs py-2 px-3 inline-flex items-center gap-1.5 font-bold rounded-xl border border-red-500/35 bg-red-500/10">
+                    <Lock size={12} className="text-red-500" /> Locked by Admin
+                  </span>
+                ) : (
+                  <button className="jd-btn-edit" onClick={() => navigate(`/jobs/${job.id}/edit`)}><Edit3 size={13} />{t('jobDetail.editPost')}</button>
+                )}
                 <button className="jd-btn-manage" onClick={() => navigate(`/proposals?job=${job.id}`)}>
                   <FileText size={13} />{t('jobDetail.proposals')}<span className="jd-count">{job.proposalCount}</span>
                 </button>

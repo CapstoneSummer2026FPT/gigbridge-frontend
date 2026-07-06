@@ -62,6 +62,7 @@ const visibilityLabel = (visibility: number | null | undefined, t: any) => {
   if (visibility === JobPostVisibility.Public) return t('myJobs.visibility.public');
   if (visibility === JobPostVisibility.Private) return t('myJobs.visibility.private');
   if (visibility === JobPostVisibility.InviteOnly) return t('myJobs.visibility.inviteOnly');
+  if (visibility === 3) return 'Locked by Admin';
   return t('myJobs.visibility.unknown');
 };
 
@@ -69,6 +70,7 @@ const visibilityIcon = (visibility?: number | null) => {
   if (visibility === JobPostVisibility.Public) return <Globe size={13} />;
   if (visibility === JobPostVisibility.Private) return <Lock size={13} />;
   if (visibility === JobPostVisibility.InviteOnly) return <UserRoundCheck size={13} />;
+  if (visibility === 3) return <Lock size={13} className="text-red-500" />;
   return <HelpCircle size={13} />;
 };
 
@@ -567,13 +569,14 @@ export default function MyJobsScreen() {
                         <select
                           value={job.visibility ?? ''}
                           onChange={event => patchVisibility(job, Number(event.target.value) as JobPostVisibility)}
-                          disabled={isPending}
+                          disabled={isPending || job.visibility === 3}
                           className="mj-action-btn"
                           style={{ border: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.04)', color: '#374151' }}
                         >
                           <option value={JobPostVisibility.Public}>{t('myJobs.visibility.public')}</option>
                           <option value={JobPostVisibility.Private}>{t('myJobs.visibility.private')}</option>
                           <option value={JobPostVisibility.InviteOnly}>{t('myJobs.visibility.inviteOnly')}</option>
+                          {job.visibility === 3 && <option value={3}>Locked by Admin</option>}
                         </select>
                       ) : (
                         <span className="text-xs text-muted-foreground">{t('myJobs.visibilityActionsUnavailable')}</span>

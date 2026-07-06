@@ -48,6 +48,7 @@ import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
 import AdminContractAuditScreen from '../features/admin/screens/AdminContractAuditScreen';
 import AdminContractTemplatesScreen from '../features/admin/screens/AdminContractTemplatesScreen';
+import AdminAssetsScreen from '../features/admin/screens/AdminAssetsScreen';
 import AdminFAQManagementScreen from '../features/admin/screens/AdminFAQManagementScreen';
 import AdminAdsPackagesScreen from '../features/admin/screens/AdminAdsPackagesScreen';
 import AdminDisputeManagementScreen from '../features/admin/screens/AdminDisputeManagementScreen';
@@ -237,6 +238,8 @@ export const router = createBrowserRouter([
       { path: 'admin/users', element: <AdminRoute><AdminUsersScreen /></AdminRoute> },
       { path: 'admin/jobs', element: <AdminRoute><AdminJobsScreen /></AdminRoute> },
       { path: 'admin/contracts', element: <AdminRoute><AdminContractAuditScreen /></AdminRoute> },
+      { path: 'admin/contracts/esign', element: <AdminRoute><ESignContractsScreen /></AdminRoute> },
+      { path: 'admin/assets', element: <AdminRoute><AdminAssetsScreen /></AdminRoute> },
       { path: 'admin/contract-audit', element: <AdminRoute><Navigate to="/admin/contracts" replace /></AdminRoute> },
       { path: 'admin/contract-templates', element: <AdminRoute><AdminContractTemplatesScreen /></AdminRoute> },
       { path: 'admin/faq-management', element: <AdminRoute><AdminFAQManagementScreen /></AdminRoute> },

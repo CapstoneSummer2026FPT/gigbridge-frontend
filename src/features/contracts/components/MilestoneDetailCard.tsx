@@ -24,7 +24,8 @@ export function MilestoneDetailCard({
   isSubmittingFor = false,
 }: MilestoneDetailCardProps) {
   const { t } = useTranslation();
-  const isCompleted = milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.PaymentConfirmed;
+  const isCompleted = milestone.status === MilestoneStatus.Approved;
+  const isFullyReleased = (milestone.releasedAmount ?? 0) >= milestone.amount;
   const canSubmit = canSubmitMilestoneDeliverable(milestone.status);
   const isOverdue = !isCompleted && new Date(milestone.due_date) < new Date();
 
@@ -74,7 +75,7 @@ export function MilestoneDetailCard({
           <Calendar size={14} />
           {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
         </span>
-        {milestone.paid_at && (
+        {isFullyReleased && (
           <span className="paid-date">
             <CheckCircle2 size={14} />
             {t('contracts.paidPrefix')}: {formatContractDate(milestone.paid_at)}
@@ -96,7 +97,7 @@ export function MilestoneDetailCard({
         </div>
       )}
 
-      {isCompleted && milestone.paid_at && (
+      {isCompleted && isFullyReleased && (
         <div className="milestone-completed-badge">
           <CheckCircle2 size={16} />
           <span>{t('contracts.milestoneCompletedPaid')}</span>

@@ -181,6 +181,8 @@ export default function EditJobPostScreen() {
     )
   );
 
+  const isLocked = formData.visibility === '3';
+
   useEffect(() => {
     if (blocker.state === 'blocked') {
       setIsLeavePromptOpen(true);
@@ -658,6 +660,18 @@ export default function EditJobPostScreen() {
         </div>
 
         <form onSubmit={handleSubmit} className="edit-job-form">
+          {isLocked && (
+            <div className="mb-5 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 flex items-start gap-3">
+              <AlertCircle size={20} className="mt-0.5 flex-shrink-0 text-red-500" />
+              <div>
+                <p className="font-bold text-sm text-red-500">This job post is locked by an admin.</p>
+                <p className="text-xs text-red-500/80 mt-1">
+                  Updates, status changes, and visibility adjustments are disabled. Please contact support if you believe this is an error.
+                </p>
+              </div>
+            </div>
+          )}
+
           {errors.server && (
             <div className="form-error edit-job-server-error" role="alert">
               <AlertCircle size={16} />
@@ -936,7 +950,7 @@ export default function EditJobPostScreen() {
 
           <div className="form-actions">
             <button type="button" onClick={() => navigate(-1)} className="btn-cancel">Cancel</button>
-            <button type="submit" disabled={isSubmitting || successMessage} className="btn-save">
+            <button type="submit" disabled={isSubmitting || successMessage || isLocked} className="btn-save">
               {successMessage ? (
                 <>
                   <Check size={18} />

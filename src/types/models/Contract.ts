@@ -21,7 +21,9 @@ export enum MilestoneStatus {
   InProgress = 1,
   Submitted = 2,
   Approved = 3,
+  /** @deprecated Payment state is derived from releasedAmount and escrow status. */
   PaymentProofUploaded = 4,
+  /** @deprecated Payment state is derived from releasedAmount and escrow status. */
   PaymentConfirmed = 5,
   Disputed = 6,
 }
@@ -126,6 +128,25 @@ export interface WithdrawMilestoneResponse {
   escrowStatus: number;
 }
 
+export interface EndProjectResponse {
+  contractId: string;
+  contractStatus: ContractStatus;
+  releasedAmountVnd: number;
+  releasedTokens: number;
+  escrowReleasedAmountVnd: number;
+  completedAt?: string | null;
+}
+
+export interface ClaimFinalPayoutResponse {
+  contractId: string;
+  releasedAmountVnd: number;
+  releasedTokens: number;
+  escrowReleasedAmountVnd: number;
+  escrowStatus: number;
+  alreadyClaimed: boolean;
+  claimedAt?: string | null;
+}
+
 export interface ContractProductHandoffResponse {
   contractProductHandoffId: string;
   contractId: string;
@@ -149,6 +170,11 @@ export interface MilestoneAttachment {
   milestone_id: string;
   file_name: string;
   file_url: string;
+  file_size?: number | null;
+  source_type?: number;
+  mime_type?: string | null;
+  uploaded_by_user_id?: string | null;
+  created_at?: string;
 }
 
 export interface ContractQueryParams {
