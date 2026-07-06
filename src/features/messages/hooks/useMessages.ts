@@ -10,12 +10,14 @@ import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { messagePutAPI } from '../../../api/messageAPI/PUT';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { getChatHubUrl } from '../../../service/apiService';
 import { scheduleAPI, type ScheduleEvent, type ScheduleMeetingResponse, type ScheduleResponse } from '../../../api/scheduleAPI';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { googleMeetAPI, type GoogleMeetConnectionStatus } from '../../../api/googleMeetAPI';
+import type { NegotiationMilestoneDto } from '../../../types/models/Message';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -253,6 +255,9 @@ export function useMessages() {
   const [showInfo, setShowInfo] = useState(true);
   const [showDealPrice, setShowDealPrice] = useState(false);
   const [dealPriceInput, setDealPriceInput] = useState('');
+  const [dealMilestones, setDealMilestones] = useState<NegotiationMilestoneDto[]>([]);
+  const [dealMilestonesLoading, setDealMilestonesLoading] = useState(false);
+  const [dealMilestonesSaving, setDealMilestonesSaving] = useState(false);
   const [messageInput, setMessageInput] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -291,6 +296,35 @@ export function useMessages() {
   const [loading, setLoading] = useState(true);
 
   const negStatus = activeConv?.roomId === 'room_negotiation' ? 'accepted' : 'idle';
+  const dealMilestoneTotal = useMemo(
+    () => dealMilestones.reduce((total, item) => total + (Number(item.amount) || 0), 0),
+    [dealMilestones]
+  );
+
+  const normalizeDealMilestones = useCallback((items: NegotiationMilestoneDto[]) =>
+    items.map((item, orderIndex) => ({ ...item, amount: Number(item.amount) || 0, orderIndex })),
+  []);
+
+  const updateDealMilestone = useCallback((index: number, patch: Partial<NegotiationMilestoneDto>) => {
+    setDealMilestones(items => normalizeDealMilestones(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item)));
+  }, [normalizeDealMilestones]);
+
+  const addDealMilestone = useCallback(() => {
+    setDealMilestones(items => normalizeDealMilestones([...items, {
+      title: '',
+      description: '',
+      amount: 0,
+      estimatedDuration: '',
+      dueDate: null,
+      deliverables: '',
+      acceptanceCriteria: '',
+      orderIndex: items.length,
+    }]));
+  }, [normalizeDealMilestones]);
+
+  const removeDealMilestone = useCallback((index: number) => {
+    setDealMilestones(items => normalizeDealMilestones(items.filter((_, itemIndex) => itemIndex !== index)));
+  }, [normalizeDealMilestones]);
 
   const refreshGoogleMeetStatus = useCallback(async () => {
     setGoogleMeetStatusLoading(true);
@@ -353,6 +387,53 @@ export function useMessages() {
   useEffect(() => {
     activeConvIdRef.current = activeConvId;
   }, [activeConvId]);
+
+  useEffect(() => {
+    const offerIds = activeMessages
+      .filter(message => message.type === 'deal' && message.negotiationOfferId && !message.offerDetail)
+      .map(message => message.negotiationOfferId!)
+      .filter((value, index, values) => values.indexOf(value) === index);
+    if (!activeConvId || offerIds.length === 0) return;
+
+    let active = true;
+    Promise.all(offerIds.map(async offerId => {
+      const response = await messageGetAPI.getNegotiationOfferDetail(offerId);
+      return response.success && response.data ? response.data : null;
+    })).then(details => {
+      if (!active) return;
+      const byId = new Map(details.filter(Boolean).map(detail => [detail!.negotiationOfferId, detail!]));
+      if (byId.size === 0) return;
+      setMessagesMap(prev => ({
+        ...prev,
+        [activeConvId]: (prev[activeConvId] ?? []).map(message =>
+          message.negotiationOfferId && byId.has(message.negotiationOfferId)
+            ? { ...message, offerDetail: byId.get(message.negotiationOfferId) ?? null }
+            : message
+        ),
+      }));
+    }).catch(() => undefined);
+
+    return () => { active = false; };
+  }, [activeConvId, activeMessages]);
+
+  useEffect(() => {
+    if (!activeConvId || activeConv?.roomType !== 'negotiation') {
+      setDealMilestones([]);
+      return;
+    }
+
+    let active = true;
+    setDealMilestonesLoading(true);
+    messageGetAPI.getNegotiationMilestonePlan(activeConvId).then(response => {
+      if (!active) return;
+      setDealMilestones(normalizeDealMilestones(response.data || []));
+      setDealMilestonesLoading(false);
+    }).catch(() => {
+      if (active) setDealMilestonesLoading(false);
+    });
+
+    return () => { active = false; };
+  }, [activeConv?.roomType, activeConvId, normalizeDealMilestones]);
 
   // Fetch conversations on mount
   const loadConversations = useCallback(async () => {
@@ -978,13 +1059,29 @@ export function useMessages() {
     if (!dealPriceInput.trim() || !activeConvId) return;
     const price = parseFloat(dealPriceInput);
     if (isNaN(price)) return;
+    const normalizedMilestones = normalizeDealMilestones(dealMilestones);
+    if (normalizedMilestones.length === 0) {
+      setAnchorNotice('Add at least one milestone before sending a final offer.');
+      return;
+    }
+    if (normalizedMilestones.some(item => !item.title?.trim() || !item.deliverables?.trim() || !item.acceptanceCriteria?.trim() || Number(item.amount) <= 0)) {
+      setAnchorNotice('Each milestone needs title, amount, deliverables, and acceptance criteria.');
+      return;
+    }
+    if (Math.abs(normalizedMilestones.reduce((sum, item) => sum + item.amount, 0) - price) >= 0.01) {
+      setAnchorNotice('Milestone total must match the final offer price.');
+      return;
+    }
 
     try {
+      setDealMilestonesSaving(true);
       const res = await messagePostAPI.createFinalOffer({
         conversationId: activeConvId,
         finalPrice: price,
         scopeSummary: 'Proposed price',
+        milestones: normalizedMilestones,
       });
+      setDealMilestonesSaving(false);
       if (!res.success || !res.data) {
         throw new Error(res.message || 'Failed to create final offer.');
       }
@@ -1011,10 +1108,25 @@ export function useMessages() {
       setShowDealPrice(false);
       loadConversations();
     } catch (err) {
+      setDealMilestonesSaving(false);
       const message = err instanceof Error ? err.message : 'Failed to propose deal.';
       setAnchorNotice(message);
       console.error('Failed to propose deal:', err);
     }
+  };
+
+  const handleSaveDealMilestones = async () => {
+    if (!activeConvId) return;
+    setDealMilestonesSaving(true);
+    const normalized = normalizeDealMilestones(dealMilestones);
+    const response = await messagePutAPI.updateNegotiationMilestonePlan(activeConvId, { milestones: normalized });
+    setDealMilestonesSaving(false);
+    if (!response.success) {
+      setAnchorNotice(response.message || 'Could not save milestone plan.');
+      return;
+    }
+    setDealMilestones(normalizeDealMilestones(response.data || normalized));
+    setAnchorNotice('Milestone plan saved.');
   };
 
   const handleAcceptDeal = async (negotiationOfferId?: string | null) => {
@@ -1289,6 +1401,14 @@ export function useMessages() {
     setShowDealPrice,
     dealPriceInput,
     setDealPriceInput,
+    dealMilestones,
+    dealMilestonesLoading,
+    dealMilestonesSaving,
+    dealMilestoneTotal,
+    updateDealMilestone,
+    addDealMilestone,
+    removeDealMilestone,
+    handleSaveDealMilestones,
     messageInput,
     setMessageInput,
     isFavorited,

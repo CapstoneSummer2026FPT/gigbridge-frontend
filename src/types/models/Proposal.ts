@@ -50,6 +50,31 @@ export interface ProposalDto {
   status: ProposalStatus | number;
   submittedAt: string;
   reviewedAt?: string | null;
+  analysisSummaryPreview?: string;
+  workItemCount?: number;
+  milestoneCount?: number;
+  milestoneTotal?: number;
+  firstMilestoneAmount?: number | null;
+}
+
+export interface ProposalWorkBreakdownItemDto {
+  id?: string | null;
+  title?: string | null;
+  description?: string | null;
+  deliverables?: string | null;
+  estimatedDuration?: string | null;
+  orderIndex: number;
+}
+
+export interface ProposalMilestonePlanDto {
+  id?: string | null;
+  title?: string | null;
+  description?: string | null;
+  amount: number;
+  estimatedDuration?: string | null;
+  deliverables?: string | null;
+  acceptanceCriteria?: string | null;
+  orderIndex: number;
 }
 
 export interface ProposalDetailDto {
@@ -65,19 +90,40 @@ export interface ProposalDetailDto {
   submittedAt?: string | null;
   updatedAt?: string | null;
   isAigenerated?: boolean | null;
+  analysisSummary?: string | null;
+  solutionApproach?: string | null;
+  deliverables?: string | null;
+  assumptions?: string | null;
+  outOfScope?: string | null;
+  workBreakdownItems?: ProposalWorkBreakdownItemDto[];
+  milestonePlans?: ProposalMilestonePlanDto[];
 }
 
 export interface CreateProposalRequest {
   jobPostsId: string;
   coverLetter: string;
-  proposedBudget: number;
+  proposedBudget: number | null;
   proposedDuration?: string | null;
+  analysisSummary?: string | null;
+  solutionApproach?: string | null;
+  deliverables?: string | null;
+  assumptions?: string | null;
+  outOfScope?: string | null;
+  workBreakdownItems?: ProposalWorkBreakdownItemDto[];
+  milestonePlans?: ProposalMilestonePlanDto[];
 }
 
 export interface UpdateProposalRequest {
   coverLetter?: string | null;
-  proposedBudget: number;
+  proposedBudget: number | null;
   proposedDuration?: string | null;
+  analysisSummary?: string | null;
+  solutionApproach?: string | null;
+  deliverables?: string | null;
+  assumptions?: string | null;
+  outOfScope?: string | null;
+  workBreakdownItems?: ProposalWorkBreakdownItemDto[];
+  milestonePlans?: ProposalMilestonePlanDto[];
 }
 
 export interface UpdateProposalStatusRequest {

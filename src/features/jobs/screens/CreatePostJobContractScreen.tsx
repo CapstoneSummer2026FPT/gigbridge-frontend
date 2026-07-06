@@ -149,7 +149,7 @@ export default function CreatePostJobContractScreen() {
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">$</span>
                     <input 
-                      id="contract-budget"
+                      id="contract-budget"                                                                                                                                                 
                       type="number" 
                       placeholder="5000" 
                       value={contractForm.budget}

@@ -2,6 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { MessageResponse } from './GET';
 import type { ContractStatus } from '../../types/models/Contract';
+import type { NegotiationMilestoneDto } from '../../types/models/Message';
 
 export interface SendMessageRequest {
   conversationId: string;
@@ -18,6 +19,7 @@ export interface CreateFinalOfferRequest {
   startDate?: string;
   endDate?: string;
   clientNote?: string;
+  milestones?: NegotiationMilestoneDto[];
 }
 
 export interface RespondFinalOfferRequest {
