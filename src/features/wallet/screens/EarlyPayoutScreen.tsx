@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, Banknote, CheckCircle2, Clock, Crown, Send, Wallet } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { MOCK_EARLY_PAYOUT } from '../mock/data-for-EarlyPayoutScreen';
-import { formatVnd } from '../mock/data-for-FinancialOverviewScreen';
+import { formatGigCoin as formatVnd } from '../../../shared/utils/gigcoin';
 import '../styles/early-payout-screen.css';
 
 export default function EarlyPayoutScreen() {

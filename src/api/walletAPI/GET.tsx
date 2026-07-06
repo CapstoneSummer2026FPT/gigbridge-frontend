@@ -31,6 +31,44 @@ export interface WalletTransactionResponse {
   completedAt?: string | null;
 }
 
+export type FinancialOverviewPeriod = 'day' | 'month' | 'year';
+export type FinancialOverviewRole = 'Client' | 'Freelancer';
+export type FinancialTransactionCategory = 'escrow' | 'released' | 'refund' | 'serviceFee';
+
+export interface FinancialTrendPoint {
+  period: string;
+  periodStartUtc: string;
+  paidOrReceivedAmount: number;
+  escrowFundedAmount: number;
+  serviceFeeAmount: number;
+}
+
+export interface FinancialTransactionItem {
+  walletTransactionId: string;
+  contractId: string;
+  project: string;
+  category: FinancialTransactionCategory;
+  amount: number;
+  signedAmount: number;
+  occurredAt: string;
+}
+
+export interface FinancialOverviewResponse {
+  role: FinancialOverviewRole;
+  period: FinancialOverviewPeriod;
+  periodStartUtc: string;
+  periodEndUtc: string;
+  totalAmount: number;
+  averageAmount: number;
+  progressAmount: number;
+  totalContractValue: number;
+  progressPercentage: number;
+  totalServiceFeePaid: number;
+  averageDivisorJobCount: number;
+  trendPoints: FinancialTrendPoint[];
+  recentTransactions: FinancialTransactionItem[];
+}
+
 export const walletGetAPI = {
   /**
    * GET /api/wallet
@@ -46,5 +84,15 @@ export const walletGetAPI = {
    */
   getTransactions: async (limit = 50): Promise<ApiResponse<WalletTransactionResponse[]>> => {
     return apiService.get<WalletTransactionResponse[]>(`${walletUrl}/transactions`, { limit });
+  },
+
+  /**
+   * GET /api/wallet/financial-overview
+   * Fetch persisted project finance statistics for the current calendar period.
+   */
+  getFinancialOverview: async (
+    period: FinancialOverviewPeriod
+  ): Promise<ApiResponse<FinancialOverviewResponse>> => {
+    return apiService.get<FinancialOverviewResponse>(`${walletUrl}/financial-overview`, { period });
   },
 };

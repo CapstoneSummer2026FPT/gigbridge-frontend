@@ -12,6 +12,9 @@ import { ContractProductHandoffSourceType, ContractStatus } from '../../../types
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
 
 const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
   const url = handoff.sourceType === ContractProductHandoffSourceType.Link
@@ -42,6 +45,9 @@ export default function ProjectWorkspaceScreen() {
   const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
   const [milestoneActionError, setMilestoneActionError] = useState<{ milestoneId: string; message: string } | null>(null);
   const [endProjectModalOpen, setEndProjectModalOpen] = useState(false);
+  const [endProjectFeeMode, setEndProjectFeeMode] = useState<'confirmation' | 'insufficient'>('confirmation');
+  const [endProjectBalance, setEndProjectBalance] = useState<number | null>(null);
+  const [isLoadingEndProjectBalance, setIsLoadingEndProjectBalance] = useState(false);
   const [isEndingProject, setIsEndingProject] = useState(false);
   const [endProjectError, setEndProjectError] = useState<string | null>(null);
   const [isClaimingPayout, setIsClaimingPayout] = useState(false);
@@ -117,6 +123,8 @@ export default function ProjectWorkspaceScreen() {
     0,
     project.milestones.reduce((sum, milestone) => sum + Math.max(0, milestone.amount - milestone.releasedAmount), 0)
   );
+  const completedJobAmount = project.milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
+  const endProjectServiceFee = calculateServiceFee(completedJobAmount);
 
   const resetSubmitModal = () => {
     setSubmitModal(null);
@@ -329,11 +337,44 @@ export default function ProjectWorkspaceScreen() {
     setMilestoneActionPendingId(null);
   };
 
+  const openEndProjectDialog = async () => {
+    setEndProjectError(null);
+    setEndProjectFeeMode('confirmation');
+    setEndProjectBalance(null);
+    setEndProjectModalOpen(true);
+    setIsLoadingEndProjectBalance(true);
+
+    const response = await walletGetAPI.getMyWallet();
+    if (response.success && response.data) {
+      setEndProjectBalance(response.data.availableTokens);
+    } else {
+      setEndProjectError(response.message || 'Unable to load your GigCoin balance.');
+    }
+    setIsLoadingEndProjectBalance(false);
+  };
+
+  const closeEndProjectDialog = () => {
+    if (isEndingProject) return;
+    setEndProjectModalOpen(false);
+  };
+
   const handleConfirmEndProject = async () => {
+    if (endProjectBalance === null) return;
+    if (endProjectBalance < endProjectServiceFee) {
+      setEndProjectFeeMode('insufficient');
+      return;
+    }
+
     setIsEndingProject(true);
     setEndProjectError(null);
     const result = await handleEndProject();
     if (!result.success) {
+      if (isInsufficientServiceFeeError(result.message)) {
+        setEndProjectFeeMode('insufficient');
+        setIsEndingProject(false);
+        return;
+      }
+
       setEndProjectError(result.message || 'Failed to end project.');
       setIsEndingProject(false);
       return;
@@ -341,6 +382,7 @@ export default function ProjectWorkspaceScreen() {
 
     setIsEndingProject(false);
     setEndProjectModalOpen(false);
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
   };
 
   const handleClaimPayout = async () => {
@@ -500,10 +542,7 @@ export default function ProjectWorkspaceScreen() {
               <div className="flex items-center gap-3">
                 {showEndProjectButton && (
                   <button
-                    onClick={() => {
-                      setEndProjectError(null);
-                      setEndProjectModalOpen(true);
-                    }}
+                    onClick={openEndProjectDialog}
                     disabled={!allMilestonesApproved}
                     className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
                     title={allMilestonesApproved ? 'Release remaining escrow and complete project' : 'Approve all milestones to end project'}
@@ -1064,73 +1103,25 @@ export default function ProjectWorkspaceScreen() {
         </div>
       </div>
 
-      {endProjectModalOpen && (
-        <div className="workspace-submit-modal-backdrop" role="presentation">
-          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-end-project-title">
-            <div className="workspace-submit-modal-header">
-              <div>
-                <h3 id="workspace-end-project-title">End Project</h3>
-                <p>Mark this contract completed and open the final payout for freelancer claim.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEndProjectModalOpen(false)}
-                className="workspace-submit-icon-button"
-                title="Close"
-                disabled={isEndingProject}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="workspace-submit-form">
-              {endProjectError && (
-                <div className="workspace-submit-error">
-                  <AlertCircle size={16} />
-                  <span>{endProjectError}</span>
-                </div>
-              )}
-
-              <div className="workspace-end-summary">
-                <span>Final payout available to freelancer</span>
-                <strong><GigCoinAmount amount={remainingEscrowAmount} /></strong>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                This action closes the project workflow. The freelancer must claim the remaining escrow to receive it in their GigBridge wallet.
-              </p>
-
-              <div className="workspace-submit-actions">
-                <button
-                  type="button"
-                  className="workspace-submit-secondary"
-                  onClick={() => setEndProjectModalOpen(false)}
-                  disabled={isEndingProject}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="workspace-submit-primary"
-                  onClick={handleConfirmEndProject}
-                  disabled={isEndingProject || !allMilestonesApproved}
-                >
-                  {isEndingProject ? (
-                    <>
-                      <Loader2 size={15} className="workspace-submit-spin" />
-                      Ending
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={15} />
-                      End Project
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ServiceFeeDialog
+        open={endProjectModalOpen}
+        mode={endProjectFeeMode}
+        actionDescription="Ending this project"
+        insufficientDescription="ending this project"
+        amountLabel="Completed Job Amount"
+        jobAmount={completedJobAmount}
+        serviceFee={endProjectServiceFee}
+        balance={endProjectBalance}
+        loadingBalance={isLoadingEndProjectBalance}
+        submitting={isEndingProject}
+        error={endProjectError}
+        onConfirm={handleConfirmEndProject}
+        onCancel={closeEndProjectDialog}
+        onTopUp={() => {
+          setEndProjectModalOpen(false);
+          navigate('/wallet/deposit');
+        }}
+      />
 
       {submitModal && (
         <div className="workspace-submit-modal-backdrop" role="presentation">
