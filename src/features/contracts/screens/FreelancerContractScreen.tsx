@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
+import { useTranslation } from '../../../hooks/useTranslation';
 import type { ContractDto, ContractQueryParams, Milestone } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import {
@@ -61,6 +62,7 @@ const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
 export default function FreelancerContractScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
+  const { t } = useTranslation();
   const [contracts, setContracts] = useState<ContractWithMilestones[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<ContractWithMilestones[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,7 +189,7 @@ export default function FreelancerContractScreen() {
             transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
             className="spinner"
           />
-          <p>Loading your contracts...</p>
+          <p>{t('contracts.loading')}</p>
         </div>
       </AppLayout>
     );
@@ -210,29 +212,29 @@ export default function FreelancerContractScreen() {
         >
           <div className="header-content">
             <div className="header-title-group">
-              <h1>My Contracts</h1>
-              <p>Manage projects, track milestones, submit deliverables</p>
+              <h1>{t('contracts.myContracts')}</h1>
+              <p>{t('contracts.manageSubtitle')}</p>
             </div>
 
             <div className="header-stats">
               <div className="stat">
                 <span className="stat-icon"><Clock size={16} /></span>
                 <div>
-                  <span className="stat-label">Active</span>
+                  <span className="stat-label">{t('contracts.active')}</span>
                   <span className="stat-number">{contracts.filter(c => c.status === ContractStatus.Active).length}</span>
                 </div>
               </div>
               <div className="stat">
                 <span className="stat-icon"><TrendingUp size={16} /></span>
                 <div>
-                  <span className="stat-label">Total Value</span>
+                  <span className="stat-label">{t('contracts.totalValue')}</span>
                   <span className="stat-number">{formatContractAmount(contracts.reduce((s, c) => s + (c.totalBudget || 0), 0))}</span>
                 </div>
               </div>
               <div className="stat">
                 <span className="stat-icon"><Award size={16} /></span>
                 <div>
-                  <span className="stat-label">Completed</span>
+                  <span className="stat-label">{t('contracts.completed')}</span>
                   <span className="stat-number">{contracts.filter(c => c.status === ContractStatus.Completed).length}</span>
                 </div>
               </div>
@@ -272,9 +274,9 @@ export default function FreelancerContractScreen() {
                   {tab === 'pending' && <AlertTriangle size={16} />}
                   {tab === 'completed' && <CheckCircle2 size={16} />}
                   <span className="tab-label">
-                    {tab === 'active' && 'Active'}
-                    {tab === 'pending' && 'Pending'}
-                    {tab === 'completed' && 'Completed'}
+                    {tab === 'active' && t('contracts.tabActive')}
+                    {tab === 'pending' && t('contracts.tabPending')}
+                    {tab === 'completed' && t('contracts.tabCompleted')}
                   </span>
                   <span className="tab-count">{tabCount}</span>
                 </button>
@@ -289,7 +291,7 @@ export default function FreelancerContractScreen() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search contracts..."
+                placeholder={t('contracts.searchPlaceholder')}
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="clear-btn">✕</button>
@@ -301,7 +303,7 @@ export default function FreelancerContractScreen() {
               onClick={() => setSortBy(sortBy === 'date' ? 'value' : 'date')}
             >
               <ArrowUpDown size={14} />
-              {sortBy === 'date' ? 'By Date' : 'By Value'}
+              {sortBy === 'date' ? t('contracts.sortByDate') : t('contracts.sortByValue')}
             </button>
           </div>
         </motion.div>
@@ -317,8 +319,8 @@ export default function FreelancerContractScreen() {
                 exit={{ opacity: 0 }}
               >
                 <Zap size={48} />
-                <h3>{searchQuery ? 'No contracts found' : 'No contracts in this category'}</h3>
-                <p>{searchQuery ? 'Try a different search' : 'Contracts you accept will appear here'}</p>
+                <h3>{searchQuery ? t('contracts.noContractsFound') : t('contracts.noContractsCategory')}</h3>
+                <p>{searchQuery ? t('contracts.tryDifferentSearch') : t('contracts.contractsAppearHere')}</p>
               </motion.div>
             ) : (
               <div className="flex flex-col gap-4">
@@ -326,7 +328,7 @@ export default function FreelancerContractScreen() {
                   const progress = calculateMilestoneProgress(contract);
                   const milestoneStats = getMilestoneStats(contract);
                   const isExpanded = expandedContractIds.has(contract.contractsId);
-                  const name = contract.clientName || contract.clientProfilesId || 'Unknown Client';
+                  const name = contract.clientName || contract.clientProfilesId || t('projects.unknownClient');
                   const initials = name
                     .split(' ')
                     .map((n) => n[0])
@@ -396,7 +398,7 @@ export default function FreelancerContractScreen() {
                         <div className="flex flex-wrap items-center gap-6 lg:gap-10 shrink-0">
                           {/* Budget */}
                           <div className="flex flex-col min-w-[90px]">
-                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Budget</span>
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.budget')}</span>
                             <span className="text-sm font-black text-foreground mt-0.5">
                               {formatContractAmount(contract.totalBudget)}
                             </span>
@@ -406,8 +408,8 @@ export default function FreelancerContractScreen() {
                           {milestoneStats.total > 0 && (
                             <div className="flex flex-col min-w-[150px] w-full sm:w-auto">
                               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider mb-1">
-                                <span className="text-muted-foreground">Milestones ({progress}%)</span>
-                                <span className="text-blue-500 font-bold">{milestoneStats.completed}/{milestoneStats.total} Paid</span>
+                                <span className="text-muted-foreground">{t('contracts.milestones', { progress })}</span>
+                                <span className="text-blue-500 font-bold">{t('contracts.milestonesPaid', { completed: milestoneStats.completed, total: milestoneStats.total })}</span>
                               </div>
                               <div className="h-1.5 bg-secondary border border-border/40 rounded-full overflow-hidden w-full">
                                 <div 
@@ -422,14 +424,14 @@ export default function FreelancerContractScreen() {
                         {/* Right Section: Status & Actions */}
                         <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0 border-t border-border/20 pt-3 lg:border-t-0 lg:pt-0">
                           <span className={`status-badge ${getContractStatusClass(contract.status)}`}>
-                            {getContractStatusLabel(contract.status)}
+                            {t(`contracts.status.${contract.status}`, { defaultValue: getContractStatusLabel(contract.status) })}
                           </span>
 
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => navigate(`/contracts/${contract.contractsId}`)}
                               className="p-2 bg-secondary/50 hover:bg-blue-500/10 border border-border/50 hover:border-blue-500/30 rounded-xl flex items-center justify-center text-muted-foreground hover:text-blue-500 transition-all duration-200 cursor-pointer"
-                              title="View details"
+                              title={t('contracts.viewDetails')}
                             >
                               <Eye size={16} />
                             </button>
@@ -449,7 +451,7 @@ export default function FreelancerContractScreen() {
                                 }}
                                 className={`p-2 bg-secondary/50 border border-border/50 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer
                                   ${isExpanded ? 'bg-secondary border-foreground/30 rotate-180' : ''}`}
-                                title={isExpanded ? 'Collapse' : 'Expand'}
+                                title={isExpanded ? t('contracts.collapse') : t('contracts.expand')}
                               >
                                 <ChevronDown size={16} />
                               </button>
@@ -459,7 +461,7 @@ export default function FreelancerContractScreen() {
                               <button
                                 onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
                                 className="p-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-xl flex items-center justify-center text-amber-500 transition-all duration-200 cursor-pointer"
-                                title="Leave review"
+                                title={t('contracts.leaveReview')}
                               >
                                 <Star size={16} />
                               </button>
@@ -480,7 +482,7 @@ export default function FreelancerContractScreen() {
                           >
                             <div className="p-5 pl-7 flex flex-col gap-4">
                               <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                                Milestone Breakdown
+                                {t('contracts.milestoneBreakdown')}
                               </span>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                 {contract.milestones.map((milestone, i) => (
@@ -500,7 +502,7 @@ export default function FreelancerContractScreen() {
                                   onClick={() => navigate(`/contracts/${contract.contractsId}`)}
                                   className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-md shadow-blue-500/10 flex items-center gap-1.5"
                                 >
-                                  View Portal
+                                  {t('contracts.viewPortal')}
                                   <ChevronRight size={14} />
                                 </button>
                                 
@@ -510,7 +512,7 @@ export default function FreelancerContractScreen() {
                                     className="px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 text-purple-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
                                   >
                                     <PenTool size={13} />
-                                    Sign Contract
+                                    {t('contracts.signContract')}
                                   </button>
                                 )}
                               </div>
@@ -531,9 +533,11 @@ export default function FreelancerContractScreen() {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-card border border-border/50 rounded-2xl p-4 shadow-sm">
             {/* Left side: showing items text */}
             <div className="text-xs text-muted-foreground font-semibold">
-              Showing <span className="text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-              <span className="text-foreground">{Math.min(currentPage * itemsPerPage, filteredContracts.length)}</span> of{' '}
-              <span className="text-foreground">{filteredContracts.length}</span> contracts
+              {t('contracts.showingContracts', {
+                start: (currentPage - 1) * itemsPerPage + 1,
+                end: Math.min(currentPage * itemsPerPage, filteredContracts.length),
+                total: filteredContracts.length
+              })}
             </div>
 
             {/* Center side: Page buttons */}
@@ -551,7 +555,7 @@ export default function FreelancerContractScreen() {
                 disabled={currentPage === 1}
                 className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
               >
-                Prev
+                {t('contracts.prev')}
               </button>
 
               {/* Dynamic Page Numbers */}
@@ -581,7 +585,7 @@ export default function FreelancerContractScreen() {
                 disabled={currentPage === totalPages}
                 className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
               >
-                Next
+                {t('contracts.next')}
               </button>
               <button
                 onClick={() => setCurrentPage(totalPages)}
@@ -595,7 +599,7 @@ export default function FreelancerContractScreen() {
 
             {/* Right side: Items per page dropdown */}
             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-              <span>Show</span>
+              <span>{t('contracts.show')}</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -606,7 +610,7 @@ export default function FreelancerContractScreen() {
               >
                 {[5, 10, 20, 50].map((size) => (
                   <option key={size} value={size}>
-                    {size} rows
+                    {size} {t('contracts.rows')}
                   </option>
                 ))}
               </select>

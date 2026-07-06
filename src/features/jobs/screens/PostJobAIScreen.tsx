@@ -7,10 +7,12 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import type { PostJobRouteState } from '../hooks/usePostJob';
 import { buildAIJobGenerateRequest, mapGeneratedJobDescriptionToJobData } from '../utils/postJobAI';
 import '../styles/PostJobScreen.css';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 const MAX_AI_PROMPT_LENGTH = 1000;
 
 export function PostJobAIScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -19,7 +21,7 @@ export function PostJobAIScreen() {
   const handleGenerate = async (): Promise<void> => {
     const trimmedPrompt = prompt.trim();
     if (!trimmedPrompt) {
-      setError('Please enter what you want to hire for.');
+      setError(t('postJobAI.enterRequirement'));
       return;
     }
 
@@ -29,7 +31,7 @@ export function PostJobAIScreen() {
     try {
       const response = await jobAPI.generateAIDescription(buildAIJobGenerateRequest(trimmedPrompt));
       if (!response.success || !response.data) {
-        const message = response.message || 'Job details could not be generated.';
+        const message = response.message || t('postJobAI.generationFailed');
         setError(message);
         toast.error(message);
         return;
@@ -39,10 +41,10 @@ export function PostJobAIScreen() {
         jobData: mapGeneratedJobDescriptionToJobData(response.data),
       } satisfies PostJobRouteState;
 
-      toast.success('Job details generated. Please review before continuing.');
+      toast.success(t('postJobAI.generationSuccess'));
       navigate('/jobs/post/details', { state });
     } catch (generationError) {
-      const message = generationError instanceof Error ? generationError.message : 'An error occurred during AI generation.';
+      const message = generationError instanceof Error ? generationError.message : t('postJobAI.generationError');
       setError(message);
       toast.error(message);
     } finally {
@@ -60,7 +62,7 @@ export function PostJobAIScreen() {
           onClick={() => navigate('/jobs/post')}
           className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[var(--gb-cyan)] bg-transparent border-none cursor-pointer"
         >
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={16} /> {t('postJobAI.back')}
         </button>
 
         <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
@@ -70,8 +72,8 @@ export function PostJobAIScreen() {
               <Sparkles size={12} className="absolute right-2 top-2 text-[var(--gb-cyan)]" />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-foreground">Create JobPost with AI</h1>
-              <p className="text-sm text-muted-foreground mt-1">Describe the work you need done.</p>
+              <h1 className="text-2xl font-extrabold text-foreground">{t('postJobAI.title')}</h1>
+              <p className="text-sm text-muted-foreground mt-1">{t('postJobAI.subtitle')}</p>
             </div>
           </div>
 
@@ -82,13 +84,13 @@ export function PostJobAIScreen() {
           )}
 
           <div className="flex flex-col gap-3">
-            <label htmlFor="ai-job-requirement" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Requirement</label>
+            <label htmlFor="ai-job-requirement" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJobAI.requirementLabel')}</label>
             <textarea
               id="ai-job-requirement"
               value={prompt}
               maxLength={MAX_AI_PROMPT_LENGTH}
               onChange={event => setPrompt(event.target.value)}
-              placeholder="Tôi muốn thuê 1 người để cải thiện loadbalancer..."
+              placeholder={t('postJobAI.placeholder')}
               rows={7}
               className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all text-foreground resize-y leading-relaxed"
             />
@@ -103,7 +105,7 @@ export function PostJobAIScreen() {
               onClick={() => navigate('/jobs/post/details', { state: null })}
               className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all cursor-pointer"
             >
-              Switch to Manual
+              {t('postJobAI.switchToManual')}
             </button>
             <button
               type="button"
@@ -114,11 +116,11 @@ export function PostJobAIScreen() {
               {isGenerating ? (
                 <>
                   <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Generating...
+                  {t('postJobAI.generating')}
                 </>
               ) : (
                 <>
-                  Generate Job Details
+                  {t('postJobAI.generateButton')}
                   <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </>
               )}

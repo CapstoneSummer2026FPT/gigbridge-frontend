@@ -8,8 +8,11 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import '../styles/auth-screen.css';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
+import { useTranslation } from '../../../hooks/useTranslation';
+
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
@@ -255,23 +258,23 @@ export default function LoginScreen() {
         <div className="relative z-10 flex flex-col h-full justify-between">
           {/* Logo / Header */}
           <div className="flex items-center gap-3 auth-left-content-animate cursor-pointer" onClick={() => navigate('/')}>
-            <img src="/img/logo.png" className="w-10 h-10 object-contain" alt="GigBridge Logo" />
-            <span className="logo-text logo-text-white text-xl font-zentry font-black tracking-wider select-none">GigBridge</span>
+            <img src="/img/logo.png" className="w-10 h-10 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text logo-text-white text-xl font-black tracking-wider select-none">{t('app.name')}</span>
           </div>
 
           {/* Big Title & Description (White Text) */}
           <div className="max-w-md my-auto text-left auth-left-content-animate">
             <h2 className="text-4xl xl:text-5xl font-zentry font-black tracking-wider text-white mb-6 uppercase leading-tight">
-              Your Career Partner
+              {t('auth.careerPartner')}
             </h2>
             <p className="text-lg text-white/80 leading-relaxed font-medium">
-              Join the professional marketplace that connects world-class talent with ambitious companies in a secure, e-signed workflow.
+              {t('auth.careerPartnerDesc')}
             </p>
           </div>
 
           {/* Footer */}
           <p className="text-xs text-white/50 auth-left-content-animate">
-            © 2026 GigBridge · Privacy · Terms
+            © 2026 {t('app.name')} · {t('footer.privacyPolicy')} · {t('footer.termsOfService')}
           </p>
         </div>
       </div>
@@ -280,14 +283,14 @@ export default function LoginScreen() {
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 auth-right-panel">
         <div className="w-full max-w-md auth-form-card p-8 lg:p-10">
           <div className="flex items-center gap-2 mb-8 lg:hidden cursor-pointer" onClick={() => navigate('/')}>
-            <img src="/img/logo.png" className="w-8 h-8 object-contain" alt="GigBridge Logo" />
-            <span className="logo-text font-zentry font-bold tracking-wider select-none">GigBridge</span>
+            <img src="/img/logo.png" className="w-8 h-8 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text font-bold tracking-wider select-none">{t('app.name')}</span>
           </div>
 
           <h1 className="text-2xl lg:text-3xl font-zentry font-black tracking-wider text-primary mb-2 uppercase auth-form-animate">
-            Welcome back
+            {t('auth.welcomeBack')}
           </h1>
-          <p className="mb-6 auth-subtitle auth-form-animate">Sign in to your GigBridge account</p>
+          <p className="mb-6 auth-subtitle auth-form-animate">{t('auth.signInDesc')}</p>
 
           <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn auth-form-animate"
             onClick={() => {
@@ -306,7 +309,7 @@ export default function LoginScreen() {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
             )}
-            {isGoogleLoading ? 'Connecting...' : 'Continue with Google'}
+            {isGoogleLoading ? t('auth.verifying') : t('auth.googleLogin')}
           </button>
 
           {googleError && (
@@ -320,7 +323,7 @@ export default function LoginScreen() {
 
           <div className="flex items-center gap-3 mb-6 auth-form-animate">
             <div className="flex-1 auth-divider" />
-            <span className="auth-divider-text">or continue with email</span>
+            <span className="auth-divider-text">{t('auth.orContinueEmail')}</span>
             <div className="flex-1 auth-divider" />
           </div>
 
@@ -333,13 +336,13 @@ export default function LoginScreen() {
             
             <div className="relative auth-form-animate">
               <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-              <input type="email" placeholder="Email address" value={formData.email}
+              <input type="email" placeholder={t('auth.email')} value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 className="input-gb w-full py-3 auth-input-with-icon" required />
             </div>
             <div className="relative auth-form-animate">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon pointer-events-none" />
-              <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={formData.password}
+              <input type={showPassword ? 'text' : 'password'} placeholder={t('auth.password')} value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
                 className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both" required />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -349,7 +352,7 @@ export default function LoginScreen() {
             </div>
 
             <div className="flex justify-end auth-form-animate">
-              <button type="button" className="text-sm auth-link-cyan" onClick={() => navigate('/auth/forgot-password')}>Forgot password?</button>
+              <button type="button" className="text-sm auth-link-cyan" onClick={() => navigate('/auth/forgot-password')}>{t('auth.forgotPassword')}</button>
             </div>
 
             <button type="submit" disabled={isLoading || !formData.email || !formData.password}
@@ -358,7 +361,7 @@ export default function LoginScreen() {
                 <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
               ) : (
                 <>
-                  Sign In
+                  {t('auth.login')}
                   <ArrowRight size={18} />
                 </>
               )}
@@ -366,10 +369,10 @@ export default function LoginScreen() {
           </form>
 
           <p className="text-center mt-6 text-sm auth-switch-text auth-form-animate">
-            Don't have an account?{' '}
+            {t('auth.dontHaveAccount')}{' '}
             <button className="font-semibold auth-link-cyan"
               onClick={() => navigate('/auth/signup')}>
-              Sign Up
+              {t('auth.signup')}
             </button>
           </p>
         </div>

@@ -10,6 +10,7 @@ import type { CreateContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import '../styles/create-esign-contract-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 interface ContractMilestoneDraft {
   title: string;
@@ -21,6 +22,7 @@ export default function CreateEsignContractScreen() {
   const navigate = useNavigate();
   const { proposalId } = useParams<{ proposalId: string }>();
   const { user } = useApp();
+  const { t } = useTranslation();
 
   const [proposal, setProposal] = useState<ProposalDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -283,7 +285,7 @@ export default function CreateEsignContractScreen() {
         <div className="create-contract-page">
           <div className="create-contract-loading">
             <div className="spinner" />
-            <p>Loading proposal details...</p>
+            <p>{t('contracts.loadingProposal')}</p>
           </div>
         </div>
       </AppLayout>
@@ -296,8 +298,8 @@ export default function CreateEsignContractScreen() {
         <div className="create-contract-page">
           <div className="create-contract-error">
             <AlertCircle size={32} />
-            <h2>{error || 'Proposal not found'}</h2>
-            <button onClick={() => navigate(-1)}>Go back</button>
+            <h2>{error || t('contracts.proposalNotFound')}</h2>
+            <button onClick={() => navigate(-1)}>{t('contracts.back')}</button>
           </div>
         </div>
       </AppLayout>
@@ -309,10 +311,10 @@ export default function CreateEsignContractScreen() {
       <div className="create-contract-page">
         <div className="create-contract-header">
           <button className="back-btn" onClick={() => navigate(-1)}>
-            ← Back
+            ← {t('contracts.back')}
           </button>
-          <h1>Create E-sign Contract</h1>
-          <p>Generate and manage contract from proposal</p>
+          <h1>{t('contracts.createEsignContract')}</h1>
+          <p>{t('contracts.generateAndManage')}</p>
         </div>
 
         {error && (
@@ -339,22 +341,22 @@ export default function CreateEsignContractScreen() {
         <div className="contract-steps">
           <div className={`step ${step === 'review' ? 'active' : contractCreated ? 'completed' : ''}`}>
             <span className="step-number">1</span>
-            <span className="step-label">Review Proposal</span>
+            <span className="step-label">{t('contracts.reviewProposal')}</span>
           </div>
           <div className="step-divider" />
           <div className={`step ${step === 'terms' ? 'active' : step === 'preview' || step === 'confirm' ? 'completed' : ''}`}>
             <span className="step-number">2</span>
-            <span className="step-label">Set Terms</span>
+            <span className="step-label">{t('contracts.setTerms')}</span>
           </div>
           <div className="step-divider" />
           <div className={`step ${step === 'preview' ? 'active' : step === 'confirm' ? 'completed' : ''}`}>
             <span className="step-number">3</span>
-            <span className="step-label">Preview PDF</span>
+            <span className="step-label">{t('contracts.previewPdf')}</span>
           </div>
           <div className="step-divider" />
           <div className={`step ${step === 'confirm' ? 'active' : ''}`}>
             <span className="step-number">4</span>
-            <span className="step-label">Send for Signing</span>
+            <span className="step-label">{t('contracts.sendForSigning')}</span>
           </div>
         </div>
 
@@ -362,7 +364,7 @@ export default function CreateEsignContractScreen() {
         {step === 'review' && (
           <div className="contract-step-content">
             <div className="contract-section">
-              <h2>Proposal Overview</h2>
+              <h2>{t('contracts.proposalOverview')}</h2>
 
               <div className="proposal-summary-card">
                 <div className="summary-header">
@@ -373,28 +375,28 @@ export default function CreateEsignContractScreen() {
                       className="freelancer-avatar"
                     />
                     <div>
-                      <h3>{proposal.freelancerName || 'Unknown Freelancer'}</h3>
+                      <h3>{proposal.freelancerName || t('contracts.unknown')}</h3>
                       <p>{proposal.jobTitle}</p>
                     </div>
                   </div>
-                  <span className="proposal-status">Accepted</span>
+                  <span className="proposal-status">{t('contracts.milestoneStatus.Approved')}</span>
                 </div>
 
                 <div className="summary-details">
                   <div className="detail-item">
                     <GigCoinLogo size={16} />
-                    <span>Proposed Budget</span>
+                    <span>{t('contracts.proposedBudget')}</span>
                     <strong>${(proposal.proposedBudget || 0).toLocaleString()}</strong>
                   </div>
                   <div className="detail-item">
                     <Calendar size={16} />
-                    <span>Duration</span>
-                    <strong>{proposal.proposedDuration || 'Flexible'}</strong>
+                    <span>{t('contracts.duration')}</span>
+                    <strong>{proposal.proposedDuration || t('contracts.other')}</strong>
                   </div>
                   <div className="detail-item">
                     <FileText size={16} />
-                    <span>Cover Letter</span>
-                    <p className="cover-letter-preview">{proposal.coverLetter || 'No cover letter'}</p>
+                    <span>{t('contracts.coverLetter')}</span>
+                    <p className="cover-letter-preview">{proposal.coverLetter || t('contracts.noCoverLetter')}</p>
                   </div>
                 </div>
               </div>
@@ -402,7 +404,7 @@ export default function CreateEsignContractScreen() {
 
             <div className="contract-actions">
               <button className="btn-primary" onClick={() => setStep('terms')}>
-                Proceed to Terms <ArrowRight size={16} />
+                {t('contracts.proceedToTerms')} <ArrowRight size={16} />
               </button>
             </div>
           </div>
@@ -412,11 +414,11 @@ export default function CreateEsignContractScreen() {
         {step === 'terms' && (
           <div className="contract-step-content">
             <div className="contract-section">
-              <h2>Contract Terms</h2>
+              <h2>{t('contracts.contractTerms')}</h2>
 
               <form className="contract-form">
                 <div className="form-group">
-                  <label>Contract Title</label>
+                  <label>{t('contracts.contractTitle')}</label>
                   <input
                     type="text"
                     value={formData.title}
@@ -425,11 +427,11 @@ export default function CreateEsignContractScreen() {
                     maxLength={255}
                   />
                   {validationErrors.title && <span className="form-error">{validationErrors.title}</span>}
-                  <span className="form-hint">{formData.title.length}/255 characters</span>
+                  <span className="form-hint">{formData.title.length}/255 {t('contracts.characters')}</span>
                 </div>
 
                 <div className="form-group">
-                  <label>Scope</label>
+                  <label>{t('contracts.scope')}</label>
                   <textarea
                     value={formData.description}
                     onChange={e => handleInputChange('description', e.target.value)}
@@ -441,7 +443,7 @@ export default function CreateEsignContractScreen() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Total Budget</label>
+                    <label>{t('contracts.totalBudget')}</label>
                     <div className="input-with-prefix">
                       <span>$</span>
                       <input
@@ -459,7 +461,7 @@ export default function CreateEsignContractScreen() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Start Date</label>
+                    <label>{t('contracts.startDate')}</label>
                     <input
                       type="date"
                       value={formData.startDate}
@@ -469,7 +471,7 @@ export default function CreateEsignContractScreen() {
                   </div>
 
                   <div className="form-group">
-                    <label>End Date (Optional)</label>
+                    <label>{t('contracts.endDateOptional')}</label>
                     <input
                       type="date"
                       value={formData.endDate}
@@ -480,7 +482,7 @@ export default function CreateEsignContractScreen() {
                 </div>
 
                 <div className="form-group">
-                  <label>Payment Terms</label>
+                  <label>{t('contracts.paymentTerms')}</label>
                   <textarea
                     value={paymentTerms}
                     onChange={e => setPaymentTerms(e.target.value)}
@@ -493,7 +495,7 @@ export default function CreateEsignContractScreen() {
                 <div className="contract-milestone-editor">
                   <div className="milestone-editor-header">
                     <div>
-                      <h3>Milestones</h3>
+                      <h3>{t('contracts.milestones')}</h3>
                       <p>Total allocation must stay within contract budget.</p>
                     </div>
                     <button
@@ -504,7 +506,7 @@ export default function CreateEsignContractScreen() {
                         { title: '', amount: 0, dueDate: '' },
                       ])}
                     >
-                      Add Milestone
+                      {t('contracts.addMilestone')}
                     </button>
                   </div>
 
@@ -517,14 +519,14 @@ export default function CreateEsignContractScreen() {
                           type="text"
                           value={milestone.title}
                           onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, title: e.target.value } : item))}
-                          placeholder="Milestone title"
+                          placeholder={t('contracts.milestoneTitle')}
                         />
                         <input
                           type="number"
                           value={milestone.amount}
                           onChange={e => setMilestoneDrafts(prev => prev.map((item, i) => i === index ? { ...item, amount: parseFloat(e.target.value) || 0 } : item))}
                           min="0"
-                          placeholder="Amount"
+                          placeholder={t('contracts.amount')}
                         />
                         <input
                           type="date"
@@ -537,7 +539,7 @@ export default function CreateEsignContractScreen() {
                           onClick={() => setMilestoneDrafts(prev => prev.filter((_, i) => i !== index))}
                           disabled={milestoneDrafts.length === 1}
                         >
-                          Remove
+                          {t('contracts.remove')}
                         </button>
                       </div>
                     ))}
@@ -548,25 +550,25 @@ export default function CreateEsignContractScreen() {
                   <div className="premium-legal-box">
                     <Zap size={18} />
                     <div>
-                      <h3>Premium Legal Automation</h3>
-                      <p>NDA, IP ownership, and payment watermark clauses will be embedded automatically until payment is released.</p>
+                      <h3>{t('contracts.premiumLegalAutomation')}</h3>
+                      <p>{t('contracts.premiumLegalDesc')}</p>
                     </div>
                   </div>
                 )}
 
                 <div className="terms-checkbox">
                   <input type="checkbox" id="terms-agree" defaultChecked />
-                  <label htmlFor="terms-agree">I agree to include standard contract terms and conditions</label>
+                  <label htmlFor="terms-agree">{t('contracts.standardTermsAgree')}</label>
                 </div>
               </form>
             </div>
 
             <div className="contract-actions">
               <button className="btn-secondary" onClick={() => setStep('review')}>
-                ← Back
+                ← {t('contracts.back')}
               </button>
               <button className="btn-primary" onClick={handleCreateContract}>
-                Create Contract <FileText size={16} />
+                {t('contracts.createContract')} <FileText size={16} />
               </button>
             </div>
           </div>
@@ -576,22 +578,22 @@ export default function CreateEsignContractScreen() {
         {step === 'preview' && contractCreated && (
           <div className="contract-step-content">
             <div className="contract-section">
-              <h2>Preview Contract PDF</h2>
+              <h2>{t('contracts.previewContractPdf')}</h2>
 
               <div className="pdf-preview-container">
                 {pdfUrl ? (
                   <>
                     <div className="pdf-viewer">
-                      <iframe src={pdfUrl} title="Contract PDF Preview" />
+                      <iframe src={pdfUrl} title={t('contracts.pdfViewerTitle')} />
                     </div>
                     <a href={pdfUrl} download="contract.pdf" className="btn-secondary">
                       <Download size={16} />
-                      Download PDF
+                      {t('contracts.downloadPdf')}
                     </a>
                   </>
                 ) : (
                   <div className="pdf-generation">
-                    <p>Generate contract PDF to preview before sending for signature</p>
+                    <p>{t('contracts.pdfGenerationDesc')}</p>
                     <button
                       className="btn-primary"
                       onClick={handleGeneratePdf}
@@ -600,12 +602,12 @@ export default function CreateEsignContractScreen() {
                       {generatingPdf ? (
                         <>
                           <span className="spinner small" />
-                          Generating PDF...
+                          {t('contracts.generatingPdf')}
                         </>
                       ) : (
                         <>
                           <Download size={16} />
-                          Generate PDF
+                          {t('contracts.generatePdf')}
                         </>
                       )}
                     </button>
@@ -614,30 +616,30 @@ export default function CreateEsignContractScreen() {
               </div>
 
               <div className="contract-summary">
-                <h3>Contract Summary</h3>
+                <h3>{t('contracts.contractSummary')}</h3>
                 <div className="summary-grid">
                   <div>
-                    <span>Client</span>
-                    <strong>{user?.fullName || 'You'}</strong>
+                    <span>{t('contracts.client')}</span>
+                    <strong>{user?.fullName || t('contracts.clientYou')}</strong>
                   </div>
                   <div>
-                    <span>Freelancer</span>
+                    <span>{t('contracts.freelancer')}</span>
                     <strong>{proposal.freelancerName}</strong>
                   </div>
                   <div>
-                    <span>Title</span>
+                    <span>{t('contracts.contractTitle')}</span>
                     <strong>{formData.title}</strong>
                   </div>
                   <div>
-                    <span>Budget</span>
+                    <span>{t('contracts.budget')}</span>
                     <strong>${(formData.totalBudget || 0).toLocaleString()}</strong>
                   </div>
                   <div>
-                    <span>Start Date</span>
+                    <span>{t('contracts.startDate')}</span>
                     <strong>{new Date(formData.startDate).toLocaleDateString()}</strong>
                   </div>
                   <div>
-                    <span>End Date</span>
+                    <span>{t('contracts.endDate')}</span>
                     <strong>{formData.endDate ? new Date(formData.endDate).toLocaleDateString() : 'N/A'}</strong>
                   </div>
                 </div>
@@ -646,10 +648,10 @@ export default function CreateEsignContractScreen() {
 
             <div className="contract-actions">
               <button className="btn-secondary" onClick={() => setStep('terms')}>
-                ← Back
+                ← {t('contracts.back')}
               </button>
               <button className="btn-primary" onClick={() => setStep('confirm')}>
-                Proceed to Signing <Send size={16} />
+                {t('contracts.proceedToSigning')} <Send size={16} />
               </button>
             </div>
           </div>
@@ -659,18 +661,18 @@ export default function CreateEsignContractScreen() {
         {step === 'confirm' && contractCreated && (
           <div className="contract-step-content">
             <div className="contract-section">
-              <h2>Send for E-Signature</h2>
+              <h2>{t('contracts.sendForEsign')}</h2>
 
               <div className="signature-info">
                 <CheckCircle size={48} className="success-icon" />
-                <h3>Contract Created Successfully</h3>
-                <p>Your contract is ready to be sent for electronic signature</p>
+                <h3>{t('contracts.contractCreatedSuccess')}</h3>
+                <p>{t('contracts.readyToSendEsign')}</p>
 
                 <div className="signature-details">
                   <div className="detail-box">
                     <Users size={20} />
                     <div>
-                      <h4>Freelancer</h4>
+                      <h4>{t('contracts.freelancer')}</h4>
                       <p>{proposal.freelancerName}</p>
                     </div>
                   </div>
@@ -678,7 +680,7 @@ export default function CreateEsignContractScreen() {
                   <div className="detail-box">
                     <FileText size={20} />
                     <div>
-                      <h4>Document</h4>
+                      <h4>{t('contracts.document')}</h4>
                       <p>{formData.title}</p>
                     </div>
                   </div>
@@ -686,20 +688,20 @@ export default function CreateEsignContractScreen() {
                   <div className="detail-box">
                     <GigCoinLogo size={20} />
                     <div>
-                      <h4>Amount</h4>
+                      <h4>{t('contracts.amount')}</h4>
                       <p>${(formData.totalBudget || 0).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="signature-process">
-                  <h4>What happens next:</h4>
+                  <h4>{t('contracts.whatHappensNext')}</h4>
                   <ol>
-                    <li>Contract is sent to freelancer for e-signature</li>
-                    <li>Freelancer receives email with signing link</li>
-                    <li>Freelancer signs contract electronically</li>
-                    <li>Contract becomes active after both signatures</li>
-                    <li>Milestone tracking begins</li>
+                    <li>{t('contracts.step1')}</li>
+                    <li>{t('contracts.step2')}</li>
+                    <li>{t('contracts.step3')}</li>
+                    <li>{t('contracts.step4')}</li>
+                    <li>{t('contracts.step5')}</li>
                   </ol>
                 </div>
               </div>
@@ -707,7 +709,7 @@ export default function CreateEsignContractScreen() {
 
             <div className="contract-actions">
               <button className="btn-secondary" onClick={() => setStep('preview')}>
-                ← Back to Preview
+                ← {t('contracts.backToPreview')}
               </button>
               <button
                 className="btn-primary btn-large"
@@ -717,12 +719,12 @@ export default function CreateEsignContractScreen() {
                 {sendingForSignature ? (
                   <>
                     <span className="spinner small" />
-                    Sending for Signature...
+                    {t('contracts.sendingForSignature')}
                   </>
                 ) : (
                   <>
                     <Send size={16} />
-                    Send Contract for E-Signature
+                    {t('contracts.sendContractForEsign')}
                   </>
                 )}
               </button>

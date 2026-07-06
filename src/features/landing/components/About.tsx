@@ -1,11 +1,14 @@
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { ScrollTrigger } from 'gsap/all';
+import { useTranslation } from 'react-i18next';
 import AnimatedTitle from './AnimatedTitle';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function About() {
+  const { t } = useTranslation('common');
+
   useGSAP(() => {
     const clipAnimation = gsap.timeline({
       scrollTrigger: {
@@ -29,20 +32,18 @@ export default function About() {
     <div id="about" className="min-h-screen w-screen">
       <div className="relative mb-8 mt-36 flex flex-col items-center gap-5">
         <p className="font-general text-sm uppercase md:text-[10px]">
-          Welcome to Gigbridge
+          {t('landing.about.welcome')}
         </p>
 
         <AnimatedTitle
-          title="Connect skilled t<b>a</b>lent <br /> with modern pr<b>o</b>jects"
+          title={t('landing.about.animatedTitle')}
           containerClass="mt-5 text-center"
         />
 
         <div className="about-subtext">
-          <p>Not another basic freelancing board — a trusted connection engine.</p>
+          <p>{t('landing.about.subtext1')}</p>
           <p className="text-gray-500">
-            Gigbridge bridges the gap between expert talent and businesses looking 
-            to build high-quality solutions, combining contract protection, secure 
-            milestones, and smart matching.
+            {t('landing.about.subtext2')}
           </p>
         </div>
       </div>

@@ -5,8 +5,10 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import type { ProposalAnswerDto, ProposalDetailDto } from '../../../types/models/Proposal';
 import { canEditProposal, getStatusLabel } from '../utils/statusHelpers';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 export default function ViewProposalAnswersScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { proposalId } = useParams<{ proposalId: string }>();
   const [proposal, setProposal] = useState<ProposalDetailDto | null>(null);
@@ -22,7 +24,7 @@ export default function ViewProposalAnswersScreen() {
   useEffect(() => {
     const load = async () => {
       if (!proposalId) {
-        setError('Proposal id is missing.');
+        setError(t('proposalAnswers.proposalIdMissing'));
         setLoading(false);
         return;
       }
@@ -36,14 +38,14 @@ export default function ViewProposalAnswersScreen() {
         ]);
 
         if (!proposalResponse.success || !proposalResponse.data) {
-          setError(proposalResponse.message || 'Proposal could not be loaded.');
+          setError(proposalResponse.message || t('proposalAnswers.proposalLoadFailed'));
           return;
         }
 
         setProposal(proposalResponse.data);
 
         if (!answersResponse.success) {
-          setError(answersResponse.message || 'Proposal answers could not be loaded.');
+          setError(answersResponse.message || t('proposalAnswers.answersLoadFailed'));
           return;
         }
 
@@ -59,7 +61,7 @@ export default function ViewProposalAnswersScreen() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="max-w-4xl mx-auto py-16 text-center text-muted-foreground">Loading answers...</div>
+        <div className="max-w-4xl mx-auto py-16 text-center text-muted-foreground">{t('proposalAnswers.loadingAnswers')}</div>
       </AppLayout>
     );
   }
@@ -72,15 +74,15 @@ export default function ViewProposalAnswersScreen() {
           className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer"
         >
           <ArrowLeft size={16} />
-          Back
+          {t('proposalAnswers.back')}
         </button>
 
         <div className="glass-card p-6">
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-primary">Proposal Answers</h1>
+              <h1 className="text-2xl font-bold text-primary">{t('proposalAnswers.title')}</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                {proposal?.jobPostTitle || 'Proposal'} · {proposal ? getStatusLabel(proposal.status) : 'Unknown'}
+                {proposal?.jobPostTitle || t('proposalAnswers.proposal')} · {proposal ? getStatusLabel(proposal.status) : t('proposalAnswers.unknown')}
               </p>
             </div>
 
@@ -93,7 +95,7 @@ export default function ViewProposalAnswersScreen() {
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-bold text-foreground hover:bg-muted/20"
               >
                 <Edit3 size={15} />
-                Edit Answers
+                {t('proposalAnswers.editAnswers')}
               </button>
             )}
           </div>
@@ -107,7 +109,7 @@ export default function ViewProposalAnswersScreen() {
           {sortedAnswers.length === 0 ? (
             <div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
               <FileQuestion size={30} className="mx-auto mb-2 opacity-40" />
-              No proposal answers are available.
+              {t('proposalAnswers.noAnswers')}
             </div>
           ) : (
             <div className="space-y-4">
@@ -119,12 +121,12 @@ export default function ViewProposalAnswersScreen() {
                     </h2>
                     {answer.isRequired && (
                       <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                        Required
+                        {t('proposalAnswers.required')}
                       </span>
                     )}
                   </div>
                   <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                    {answer.answerText?.trim() || 'No answer provided.'}
+                    {answer.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
                   </p>
                 </div>
               ))}

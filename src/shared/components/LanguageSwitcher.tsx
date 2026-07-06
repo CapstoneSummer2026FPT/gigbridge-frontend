@@ -124,18 +124,18 @@ export function LanguageSwitcher({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 glass-card p-2 z-50 shadow-xl">
+        <div className="absolute right-0 mt-2 w-48 bg-background/70 backdrop-blur-xl border border-border/50 rounded-xl p-2 z-50 shadow-xl">
           {availableLanguages.map((lng) => (
             <button
               key={lng}
               onClick={() => handleLanguageChange(lng)}
               className={`
                 w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm
-                transition-colors
+                transition-colors cursor-pointer
                 ${
                   isLanguageActive(lng)
-                    ? 'bg-cyan/10 text-cyan'
-                    : 'text-primary hover:bg-surface'
+                    ? 'bg-brand/10 text-brand'
+                    : 'text-primary hover:bg-brand/10 hover:text-brand'
                 }
               `}
             >
@@ -263,7 +263,7 @@ export function CombinedThemeLanguageSwitcher({
 
         {/* Language Dropdown Menu */}
         {showLangDropdown && otherLanguages.length > 0 && (
-          <div className="absolute right-0 top-full mt-2 w-32 rounded-xl bg-card border border-border shadow-lg p-1 z-50 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="absolute right-0 top-full mt-2 w-32 rounded-xl bg-background/70 backdrop-blur-xl border border-border/50 shadow-lg p-1 z-50 animate-in fade-in slide-in-from-top-1 duration-200">
             {availableLanguages.map((lng) => (
               <button
                 key={lng}
@@ -273,8 +273,8 @@ export function CombinedThemeLanguageSwitcher({
                 }}
                 className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer ${
                   currentLanguage === lng
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-foreground/5'
+                    ? 'bg-brand text-white'
+                    : 'text-muted-foreground hover:bg-brand/10 hover:text-brand'
                 }`}
               >
                 <span>{lng === 'en' ? 'English' : 'Tiếng Việt'}</span>

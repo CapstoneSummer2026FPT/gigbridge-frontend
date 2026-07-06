@@ -231,6 +231,13 @@ select.form-select option {
   transition: all 0.2s ease;
 }
 
+.black .skill-tag,
+[data-theme="dark"] .skill-tag {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
 .skill-tag button {
   cursor: pointer;
 }
@@ -238,6 +245,12 @@ select.form-select option {
 .skill-tag:hover {
   background: rgba(0, 119, 255, 0.15);
   border-color: rgba(0, 119, 255, 0.35);
+}
+
+.black .skill-tag:hover,
+[data-theme="dark"] .skill-tag:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.35);
 }
 
 .skill-remove {
@@ -269,6 +282,12 @@ select.form-select option {
   border-color: rgba(0, 119, 255, 0.18);
 }
 
+.black .edit-job-info-box,
+[data-theme="dark"] .edit-job-info-box {
+  background: rgba(56, 189, 248, 0.05);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
 .info-box-content {
   display: flex;
   gap: 0.875rem;
@@ -291,6 +310,13 @@ select.form-select option {
   color: #0056cc;
 }
 
+.black .info-title,
+.black .info-icon,
+[data-theme="dark"] .info-title,
+[data-theme="dark"] .info-icon {
+  color: #38bdf8;
+}
+
 .info-list {
   margin: 0;
   padding-left: 1.25rem;
@@ -300,6 +326,11 @@ select.form-select option {
 
 .white .info-list {
   color: #1e3a8a;
+}
+
+.black .info-list,
+[data-theme="dark"] .info-list {
+  color: #93c5fd;
 }
 
 .info-list li {

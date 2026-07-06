@@ -10,6 +10,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { useApp } from '../../../app/providers/AppProvider';
+import { useTranslation } from '../../../hooks/useTranslation';
 import type { ContractDto, ContractQueryParams, Milestone } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { 
@@ -57,6 +58,7 @@ const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
 export default function ManageContractScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
+  const { t } = useTranslation();
   const [contracts, setContracts] = useState<ContractWithMilestones[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<ContractWithMilestones[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,13 +154,13 @@ export default function ManageContractScreen() {
               : c
           )
         );
-        setSuccessMessage('Contract status updated successfully');
+        setSuccessMessage(t('contracts.statusUpdatedSuccess'));
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(response.message || 'Failed to update contract status');
+        setError(response.message || t('contracts.statusUpdatedError'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('contracts.anErrorOccurred'));
     }
   };
 
@@ -223,6 +225,7 @@ export default function ManageContractScreen() {
     return (
       <AppLayout>
         <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-10 animate-pulse">
+          <div className="text-center py-10 text-muted-foreground font-semibold">{t('contracts.loading')}</div>
           {/* Header Shimmer */}
           <div className="space-y-3 mb-10">
             <div className="h-12 bg-muted/65 rounded-2xl w-1/4" />
@@ -293,13 +296,13 @@ export default function ManageContractScreen() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
             <Layers size={12} />
-            Contract Portal
+            {t('contracts.contractPortal')}
           </div>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-muted-foreground bg-clip-text text-transparent uppercase">
-            Contract Management
+            {t('contracts.contractManagement')}
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl text-base md:text-lg font-medium">
-            Monitor active engagements, track payment milestones, and coordinate sign-offs in real time.
+            {t('contracts.monitorSubtitle')}
           </p>
         </motion.div>
 
@@ -322,10 +325,10 @@ export default function ManageContractScreen() {
               <TrendingUp size={24} />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Contracts</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('contracts.active')}</span>
               <span className="text-3xl font-black text-foreground mt-1">
                 {dashboardStats.activeCount}{' '}
-                <span className="text-sm text-muted-foreground font-semibold">/ {dashboardStats.totalCount} total</span>
+                <span className="text-sm text-muted-foreground font-semibold">/ {dashboardStats.totalCount} {t('projects.title').toLowerCase()}</span>
               </span>
             </div>
           </motion.div>
@@ -342,7 +345,7 @@ export default function ManageContractScreen() {
               <GigCoinLogo size={24} />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Committed Value</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('contracts.totalCommittedValue')}</span>
               <span className="text-3xl font-black text-foreground mt-1">
                 {formatContractAmount(dashboardStats.totalBudget)}
               </span>
@@ -366,7 +369,7 @@ export default function ManageContractScreen() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Milestone Completion</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('contracts.milestoneCompletion')}</span>
               <span className="text-3xl font-black text-foreground mt-1">
                 {dashboardStats.milestoneRate}%
               </span>
@@ -431,7 +434,7 @@ export default function ManageContractScreen() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by contract title or freelancer..."
+              placeholder={t('contracts.searchPlaceholder')}
               className="w-full pl-11 pr-12 py-3 bg-secondary/30 hover:bg-secondary/40 focus:bg-card border border-border/50 focus:border-blue-500/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 text-sm font-semibold text-foreground placeholder:text-muted-foreground transition-all duration-300"
             />
             {searchQuery && (
@@ -456,7 +459,7 @@ export default function ManageContractScreen() {
               }`}
           >
             <Filter size={16} />
-            Filter Status
+            {t('contracts.filterStatus')}
           </motion.button>
         </motion.div>
 
@@ -472,7 +475,7 @@ export default function ManageContractScreen() {
             >
               <div className="p-6">
                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-4">
-                  Filter by Contract Status
+                  {t('contracts.filterStatus')}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -483,7 +486,7 @@ export default function ManageContractScreen() {
                         : 'bg-secondary/35 border-border/40 text-muted-foreground hover:text-foreground hover:border-border-hover'
                       }`}
                   >
-                    All Contracts
+                    {t('contracts.allContracts')}
                   </button>
                   {CONTRACT_STATUSES.map(status => (
                     <button
@@ -495,7 +498,7 @@ export default function ManageContractScreen() {
                           : 'bg-secondary/35 border-border/40 text-muted-foreground hover:text-foreground hover:border-border-hover'
                         }`}
                     >
-                      {status.label}
+                      {t('contracts.status.' + status.value, { defaultValue: status.label })}
                     </button>
                   ))}
                 </div>
@@ -516,19 +519,19 @@ export default function ManageContractScreen() {
                 <Search size={24} />
               </div>
               <h3 className="text-xl font-bold text-foreground">
-                {searchQuery ? 'No contracts matched search' : 'No contracts found'}
+                {searchQuery ? t('contracts.noContractsMatched') : t('contracts.noContractsFound')}
               </h3>
               <p className="text-muted-foreground text-sm mt-1 max-w-sm">
                 {searchQuery 
-                  ? 'Try modifying your search term or select another status filter above.' 
-                  : 'Contracts resulting from approved proposals will appear here.'}
+                  ? t('contracts.tryModifyingSearch') 
+                  : t('contracts.contractsFromProposals')}
               </p>
               {searchQuery && (
                 <button
                   onClick={() => { setSearchQuery(''); setSelectedStatus('All'); }}
                   className="mt-5 px-5 py-2.5 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-600 transition-all cursor-pointer shadow-md shadow-blue-500/10"
                 >
-                  Clear all filters
+                  {t('contracts.clearAllFilters')}
                 </button>
               )}
             </motion.div>
@@ -598,7 +601,7 @@ export default function ManageContractScreen() {
                       <div className="flex flex-wrap items-center gap-6 lg:gap-10 shrink-0">
                         {/* Budget */}
                         <div className="flex flex-col min-w-[90px]">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">Budget</span>
+                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.budget')}</span>
                           <span className="text-sm font-black text-foreground mt-0.5">
                             {formatContractAmount(contract.totalBudget)}
                           </span>
@@ -608,8 +611,8 @@ export default function ManageContractScreen() {
                         {milestoneStats.total > 0 && (
                           <div className="flex flex-col min-w-[150px] w-full sm:w-auto">
                             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider mb-1">
-                              <span className="text-muted-foreground">Milestones ({milestoneStats.progress}%)</span>
-                              <span className="text-blue-500 font-bold">{milestoneStats.completed}/{milestoneStats.total} Paid</span>
+                              <span className="text-muted-foreground">{t('contracts.milestones', { progress: milestoneStats.progress })}</span>
+                              <span className="text-blue-500 font-bold">{t('contracts.milestonesPaid', { completed: milestoneStats.completed, total: milestoneStats.total })}</span>
                             </div>
                             <div className="h-1.5 bg-secondary border border-border/40 rounded-full overflow-hidden w-full">
                               <div 
@@ -624,14 +627,14 @@ export default function ManageContractScreen() {
                       {/* Right Block: Status & Expand Action */}
                       <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0 border-t border-border/20 pt-3 lg:border-t-0 lg:pt-0">
                         <span className={getStatusBadgeClass(contract.status)}>
-                          {getContractStatusLabel(contract.status)}
+                          {t('contracts.status.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}
                         </span>
 
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleViewDetails(contract.contractsId)}
                             className="p-2 bg-secondary/50 hover:bg-blue-500/10 border border-border/50 hover:border-blue-500/30 rounded-xl flex items-center justify-center text-muted-foreground hover:text-blue-500 transition-all duration-200 cursor-pointer"
-                            title="View contract details"
+                            title={t('contracts.viewDetails')}
                           >
                             <Eye size={16} />
                           </button>
@@ -640,7 +643,7 @@ export default function ManageContractScreen() {
                             onClick={() => setExpandedContractId(isExpanded ? null : contract.contractsId)}
                             className={`p-2 bg-secondary/50 border border-border/50 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer
                               ${isExpanded ? 'bg-secondary border-foreground/30 rotate-180' : ''}`}
-                            title={isExpanded ? 'Collapse' : 'Expand'}
+                            title={isExpanded ? t('contracts.collapse') : t('contracts.expand')}
                           >
                             <ChevronDown size={16} />
                           </button>
@@ -663,7 +666,7 @@ export default function ManageContractScreen() {
                             {contract.milestones && contract.milestones.length > 0 && (
                               <div className="flex flex-col gap-2">
                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                                  Milestone Breakdown
+                                  {t('contracts.milestoneBreakdown')}
                                 </span>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                   {contract.milestones.map((milestone, idx) => (
@@ -678,7 +681,7 @@ export default function ManageContractScreen() {
                                         <div className="flex flex-col min-width-0 flex-1">
                                           <h5 className="font-bold text-foreground truncate">{milestone.title}</h5>
                                           <span className="text-[10px] text-muted-foreground mt-0.5 font-medium">
-                                            Due: {formatContractDate(milestone.due_date)}
+                                            {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
                                           </span>
                                         </div>
                                       </div>
@@ -689,12 +692,12 @@ export default function ManageContractScreen() {
                                           {milestone.status === MilestoneStatus.Approved ? (
                                             <>
                                               <CheckCircle2 size={12} className="text-emerald-500" />
-                                              <span className="text-emerald-500">{getMilestoneStatusLabel(milestone.status)}</span>
+                                              <span className="text-emerald-500">{t('contracts.milestoneStatus.' + milestone.status, { defaultValue: getMilestoneStatusLabel(milestone.status) })}</span>
                                             </>
                                           ) : (
                                             <>
                                               <Clock size={12} className="text-amber-500 animate-pulse" />
-                                              <span className="text-amber-500">{getMilestoneStatusLabel(milestone.status)}</span>
+                                              <span className="text-amber-500">{t('contracts.milestoneStatus.' + milestone.status, { defaultValue: getMilestoneStatusLabel(milestone.status) })}</span>
                                             </>
                                           )}
                                         </div>
@@ -709,7 +712,7 @@ export default function ManageContractScreen() {
                             {contract.description && (
                               <div className="flex flex-col gap-1.5">
                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                                  Scope Summary
+                                  {t('contracts.scopeSummary')}
                                 </span>
                                 <p className="text-xs text-muted-foreground leading-relaxed p-3 bg-card border border-border/30 rounded-xl italic">
                                   {contract.description}
@@ -723,7 +726,7 @@ export default function ManageContractScreen() {
                                 onClick={() => handleViewDetails(contract.contractsId)}
                                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-md shadow-blue-500/10 flex items-center gap-1.5"
                               >
-                                View Portal
+                                {t('contracts.viewPortal')}
                                 <ChevronRight size={14} />
                               </button>
                               
@@ -733,7 +736,7 @@ export default function ManageContractScreen() {
                                   className="px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 text-purple-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <PenTool size={13} />
-                                  Sign Contract
+                                  {t('contracts.signContract')}
                                 </button>
                               )}
                               
@@ -743,7 +746,7 @@ export default function ManageContractScreen() {
                                   className="px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/25 text-cyan-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <ListChecks size={13} />
-                                  Milestones
+                                  {t('contracts.milestonesSchedule')}
                                 </button>
                               )}
                               
@@ -753,7 +756,7 @@ export default function ManageContractScreen() {
                                   className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <Star size={13} />
-                                  Leave Review
+                                  {t('contracts.leaveReview')}
                                 </button>
                               )}
                               
@@ -763,7 +766,7 @@ export default function ManageContractScreen() {
                                   className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <ShieldAlert size={13} />
-                                  Dispute Hub
+                                  {t('contracts.disputeTerms')}
                                 </button>
                               )}
                             </div>
@@ -783,9 +786,11 @@ export default function ManageContractScreen() {
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-card border border-border/50 rounded-2xl p-4 shadow-sm">
             {/* Left side: showing items text */}
             <div className="text-xs text-muted-foreground font-semibold">
-              Showing <span className="text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-              <span className="text-foreground">{Math.min(currentPage * itemsPerPage, filteredContracts.length)}</span> of{' '}
-              <span className="text-foreground">{filteredContracts.length}</span> contracts
+              {t('contracts.showingContracts', {
+                start: (currentPage - 1) * itemsPerPage + 1,
+                end: Math.min(currentPage * itemsPerPage, filteredContracts.length),
+                total: filteredContracts.length
+              })}
             </div>
 
             {/* Center side: Page buttons */}
@@ -803,7 +808,7 @@ export default function ManageContractScreen() {
                 disabled={currentPage === 1}
                 className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
               >
-                Prev
+                {t('contracts.prev')}
               </button>
 
               {/* Dynamic Page Numbers */}
@@ -833,7 +838,7 @@ export default function ManageContractScreen() {
                 disabled={currentPage === totalPages}
                 className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
               >
-                Next
+                {t('contracts.next')}
               </button>
               <button
                 onClick={() => setCurrentPage(totalPages)}
@@ -847,7 +852,7 @@ export default function ManageContractScreen() {
 
             {/* Right side: Items per page dropdown */}
             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-              <span>Show</span>
+              <span>{t('contracts.show')}</span>
               <select
                 value={itemsPerPage}
                 onChange={(e) => {
@@ -858,7 +863,7 @@ export default function ManageContractScreen() {
               >
                 {[5, 10, 20, 50].map((size) => (
                   <option key={size} value={size}>
-                    {size} rows
+                    {size} {t('contracts.rows')}
                   </option>
                 ))}
               </select>

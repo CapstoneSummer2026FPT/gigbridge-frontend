@@ -20,3 +20,19 @@
   --color-yellow-300: #edff66;
 }
 
+/* Override fonts when the document language is set to Vietnamese */
+html[lang="vi"] {
+  --font-zentry: "Montserrat", "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
+  --font-general: "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
+  --font-circular-web: "Inter", sans-serif;
+  --font-robert-medium: "Plus Jakarta Sans", "Outfit", sans-serif;
+  --font-robert-regular: "Inter", sans-serif;
+}
+
+/* Globally force logo text to Montserrat geometric sans-serif */
+.logo-text {
+  font-family: "Montserrat", "Plus Jakarta Sans", sans-serif !important;
+}
+
+
+

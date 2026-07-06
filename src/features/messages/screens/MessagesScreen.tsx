@@ -154,7 +154,7 @@ export default function MessagesScreen() {
     return (
       <AppLayout fullWidth>
         <div className="flex items-center justify-center h-[calc(100vh-5rem)]">
-          <p className="text-muted-foreground animate-pulse font-semibold">Loading conversations...</p>
+          <p className="text-muted-foreground animate-pulse font-semibold">{t('messages.loadingConvos')}</p>
         </div>
       </AppLayout>
     );
@@ -163,46 +163,33 @@ export default function MessagesScreen() {
   return (
     <AppLayout fullWidth>
       <div className="messages-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
-        {/* Top Header */}
-        <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm">
-          <div className="flex items-center gap-3">
-            <MessageSquare size={20} className="text-[var(--gb-cyan)]" />
-            <div>
-              <h1 className="font-headline-md text-base font-bold text-foreground">Messages</h1>
-              <p className="text-[10px] text-muted-foreground">
-                {totalUnread > 0 ? `${totalUnread} unread message${totalUnread > 1 ? 's' : ''}` : 'All caught up!'}
-              </p>
-            </div>
-          </div>
-          <span
-            title={`Chat realtime: ${signalRStatus}`}
-            aria-label={`Chat realtime: ${signalRStatus}`}
-            className={`w-8 h-8 rounded-full border flex items-center justify-center ${
-              signalRStatus === 'connected'
-                ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/10'
-                : signalRStatus === 'connecting' || signalRStatus === 'reconnecting'
-                ? 'text-amber-600 border-amber-500/20 bg-amber-500/10'
-                : 'text-red-600 border-red-500/20 bg-red-500/10'
-            }`}
-          >
-            {signalRStatus === 'connected' ? (
-              <Wifi size={15} />
-            ) : signalRStatus === 'connecting' || signalRStatus === 'reconnecting' ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <WifiOff size={15} />
-            )}
-          </span>
-        </header>
-
         {/* 3-Column Layout */}
         <div className="flex flex-1 overflow-hidden">
 
           {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
           <section className="w-80 border-r border-border flex flex-col bg-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
-                Conversations
+                {t('messages.conversations')}
+              </span>
+              <span
+                title={`Chat realtime: ${signalRStatus}`}
+                aria-label={`Chat realtime: ${signalRStatus}`}
+                className={`w-6 h-6 rounded-full border flex items-center justify-center ${
+                  signalRStatus === 'connected'
+                    ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/10'
+                    : signalRStatus === 'connecting' || signalRStatus === 'reconnecting'
+                    ? 'text-amber-600 border-amber-500/20 bg-amber-500/10'
+                    : 'text-red-600 border-red-500/20 bg-red-500/10'
+                }`}
+              >
+                {signalRStatus === 'connected' ? (
+                  <Wifi size={12} />
+                ) : signalRStatus === 'connecting' || signalRStatus === 'reconnecting' ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <WifiOff size={12} />
+                )}
               </span>
             </div>
 
@@ -228,8 +215,12 @@ export default function MessagesScreen() {
                         <RoomIcon size={14} />
                       </div>
                       <div className="flex-1 text-left">
-                        <span className="text-sm font-semibold text-foreground">{room.label}</span>
-                        <p className="text-[10px] text-muted-foreground leading-tight">{room.description}</p>
+                        <span className="text-sm font-semibold text-foreground">
+                          {room.type === 'invited' ? t('messages.roomInvitedLabel') : room.type === 'negotiation' ? t('messages.roomNegotiationLabel') : t('messages.roomWorkspaceLabel')}
+                        </span>
+                        <p className="text-[10px] text-muted-foreground leading-tight">
+                          {room.type === 'invited' ? t('messages.roomInvitedDesc') : room.type === 'negotiation' ? t('messages.roomNegotiationDesc') : t('messages.roomWorkspaceDesc')}
+                        </p>
                       </div>
                       {roomUnread > 0 && (
                         <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-[var(--gb-cyan)] text-white rounded-full">
@@ -276,7 +267,7 @@ export default function MessagesScreen() {
                           </div>
                         ))}
                         {convos.length === 0 && (
-                          <p className="text-xs text-muted-foreground p-4 text-center">Empty room</p>
+                          <p className="text-xs text-muted-foreground p-4 text-center">{t('messages.emptyRoom')}</p>
                         )}
                       </div>
                     )}
@@ -296,7 +287,7 @@ export default function MessagesScreen() {
                 }}
                 className="w-full flex items-center justify-center gap-2 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all cursor-pointer border-none"
               >
-                <span>Go to Workspace</span>
+                <span>{t('messages.goToWorkspace')}</span>
                 <span>-&gt;</span>
               </button>
             </div>
@@ -328,7 +319,7 @@ export default function MessagesScreen() {
                   <div 
                     onClick={() => navigate(`/jobs/${activeConv.job.id}`)}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--gb-cyan)]/5 border border-[var(--gb-cyan)]/15 text-[10px] font-bold text-[var(--gb-cyan)] mt-1.5 max-w-[280px] md:max-w-md truncate cursor-pointer hover:bg-[var(--gb-cyan)]/10 active:scale-95 transition-all shadow-[0_1px_2px_rgba(0,119,255,0.02)]"
-                    title="Click to view job post"
+                    title={t('messages.clickViewJobPost')}
                   >
                     <Briefcase size={11} className="flex-shrink-0" />
                     <span className="truncate font-bold tracking-wide uppercase">{activeConv.job.title}</span>
@@ -342,8 +333,8 @@ export default function MessagesScreen() {
                 <button
                   onClick={() => window.open('https://meet.google.com/new', '_blank', 'noopener,noreferrer')}
                   className="w-9 h-9 rounded-full flex items-center justify-center border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 transition-all cursor-pointer"
-                  title="Create a Google Meet room"
-                  aria-label="Create a Google Meet room"
+                  title={t('messages.createGoogleMeet')}
+                  aria-label={t('messages.createGoogleMeet')}
                 >
                   <Video size={18} />
                 </button>
@@ -354,7 +345,7 @@ export default function MessagesScreen() {
                       ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
-                  title="Toggle Project Info"
+                  title={t('messages.toggleProjectInfo')}
                 >
                   <Info size={18} />
                 </button>
@@ -368,16 +359,16 @@ export default function MessagesScreen() {
                   <CheckCircle size={18} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-foreground">Contract flow is ready</h4>
+                  <h4 className="text-sm font-bold text-foreground">{t('messages.contractFlowReady')}</h4>
                   <p className="text-xs text-muted-foreground">
-                    {isClient ? 'Open the milestone and contract steps for this agreement.' : 'Review milestones, sign, or open the workspace when ready.'}
+                    {isClient ? t('messages.contractFlowClientDesc') : t('messages.contractFlowFreelancerDesc')}
                   </p>
                 </div>
                 <button
                   onClick={handleOpenAcceptedContract}
                   className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
-                  <span>Open contract</span>
+                  <span>{t('messages.openContract')}</span>
                   <span>-&gt;</span>
                 </button>
               </div>
@@ -387,9 +378,10 @@ export default function MessagesScreen() {
             {negStatus === 'accepted' && activeConv.roomType !== 'workspace' && (
               <div className="bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 px-6 py-2.5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <ArrowRightLeft size={14} className="text-[var(--gb-cyan)] flex-shrink-0" />
-                <p className="text-xs font-semibold text-[var(--gb-cyan)]">
-                  Cuộc trò chuyện đã được chuyển sang <strong>vòng đàm phán</strong>
-                </p>
+                <p
+                  className="text-xs font-semibold text-[var(--gb-cyan)]"
+                  dangerouslySetInnerHTML={{ __html: t('messages.chatMovedToNegotiation') }}
+                />
               </div>
             )}
 
@@ -399,10 +391,10 @@ export default function MessagesScreen() {
               <div className="flex justify-center">
                 <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
                   {activeConv.roomType === 'invited'
-                    ? 'Invited Job Chat'
+                    ? t('messages.invitedJobChat')
                     : activeConv.roomType === 'workspace'
-                      ? 'Workspace Chat'
-                      : 'Negotiation Chat'}
+                      ? t('messages.workspaceChat')
+                      : t('messages.negotiationChat')}
                 </span>
               </div>
 
@@ -607,11 +599,11 @@ export default function MessagesScreen() {
                         )}
                         {mine && msg.sendStatus === 'failed' && (
                           <span
-                            title={msg.sendError || 'Message was not saved.'}
+                            title={msg.sendError || t('messages.msgNotSaved')}
                             className="text-[10px] text-red-600 font-semibold flex items-center gap-1"
                           >
                             <AlertCircle size={11} />
-                            <span>Failed</span>
+                            <span>{t('messages.failedToSend')}</span>
                           </span>
                         )}
                         {mine && (!msg.sendStatus || msg.sendStatus === 'sent') && (
@@ -634,7 +626,7 @@ export default function MessagesScreen() {
                   <div className="p-4 border-b border-border bg-muted/50 rounded-t-2xl animate-in fade-in slide-in-from-bottom-2">
                     <div className="flex flex-col gap-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Propose Deal Price</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('messages.proposeDealPrice')}</span>
                         <button onClick={() => setShowDealPrice(false)} className="text-muted-foreground hover:text-foreground cursor-pointer border-none bg-transparent p-0">
                           <X size={14} />
                         </button>
@@ -642,20 +634,20 @@ export default function MessagesScreen() {
                       <input
                         type="number"
                         id="input-deal-price"
-                        placeholder="Enter proposed price (G-coin)"
+                        placeholder={t('messages.enterProposedPrice')}
                         value={dealPriceInput}
                         onChange={e => setDealPriceInput(e.target.value)}
                         className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
                       />
                       <p className="text-[11px] leading-5 text-muted-foreground">
-                        Final budget can be negotiated here. Before the freelancer accepts, update milestones so their total matches this price.
+                        {t('messages.proposeDealNote')}
                       </p>
                       <div className="flex justify-between gap-2">
                         <button
                           onClick={() => setShowDealPrice(false)}
                           className="flex-1 py-2 text-xs font-bold text-muted-foreground hover:bg-muted rounded-lg transition-colors uppercase tracking-widest cursor-pointer border-none bg-transparent"
                         >
-                          Cancel
+                          {t('messages.cancel')}
                         </button>
                         <button
                           onClick={handleProposeDeal}
@@ -663,7 +655,7 @@ export default function MessagesScreen() {
                           disabled={!dealPriceInput.trim()}
                           className="flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none"
                         >
-                          Send
+                          {t('messages.send')}
                         </button>
                       </div>
                     </div>
@@ -673,7 +665,7 @@ export default function MessagesScreen() {
                 <textarea
                   id="msg-input"
                   className="w-full bg-transparent border-none focus:outline-none p-4 resize-none min-h-[52px] text-sm focus:ring-0"
-                  placeholder="Type your message here..."
+                  placeholder={t('messages.typeMessage')}
                   rows={1}
                   value={messageInput}
                   onChange={e => setMessageInput(e.target.value)}
@@ -690,14 +682,14 @@ export default function MessagesScreen() {
                     {/* Attach File */}
                     <button
                       className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
-                      title="Attach File"
+                      title={t('messages.attachFile')}
                     >
                       <Paperclip size={16} />
                     </button>
 
                     {isClient && <button onClick={() => openCreateSchedule(false)} disabled={hasOngoingSchedule || checkingOngoingSchedule}
                       className={`w-8 h-8 flex items-center justify-center rounded-full transition-all border-none bg-transparent ${hasOngoingSchedule || checkingOngoingSchedule ? 'text-gray-400 bg-gray-200/40 cursor-not-allowed opacity-60' : 'text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted cursor-pointer'}`}
-                      title={hasOngoingSchedule ? 'An ongoing schedule already exists' : checkingOngoingSchedule ? 'Checking ongoing schedule…' : 'Create schedule'}>
+                      title={hasOngoingSchedule ? t('messages.ongoingScheduleExists') : checkingOngoingSchedule ? t('messages.checkingOngoingSchedule') : t('messages.createSchedule')}>
                       <CalendarPlus size={16} />
                     </button>}
 
@@ -705,7 +697,7 @@ export default function MessagesScreen() {
                     <button
                       onClick={() => setMessageInput(prev => prev + '😊')}
                       className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer border-none bg-transparent"
-                      title="Add Emoji"
+                      title={t('messages.addEmoji')}
                     >
                       <Smile size={16} />
                     </button>

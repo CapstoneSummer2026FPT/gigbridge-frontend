@@ -40,7 +40,7 @@ body {
 .nav-hover-btn {
   position: relative;
   margin-left: 2.5rem;
-  font-family: "general", sans-serif;
+  font-family: "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
   font-size: 0.75rem;
   text-transform: uppercase;
   color: var(--foreground);
@@ -76,9 +76,15 @@ body {
 
 /* Logo text styling */
 .logo-text {
-  font-family: "Zentry", sans-serif;
+  font-family: "Montserrat", "Plus Jakarta Sans", sans-serif !important;
   color: var(--foreground);
   transition: color 0.3s ease;
+}
+
+/* Auth button styling */
+#auth-button,
+#auth-button span {
+  font-family: "Plus Jakarta Sans", "Outfit", "Inter", sans-serif !important;
 }
 
 /* Dark theme transparent header (default at Y=0) */
@@ -140,13 +146,13 @@ body {
 }
 
 .special-font b {
-  font-family: "Zentry";
+  font-family: var(--font-zentry);
   font-feature-settings: "ss01" on;
 }
 
 .hero-heading {
   text-transform: uppercase;
-  font-family: "Zentry";
+  font-family: var(--font-zentry);
   font-weight: 900;
   font-size: 3rem;
 }
@@ -175,7 +181,7 @@ body {
   max-width: 24rem;
   transform: translateX(-50%);
   text-align: center;
-  font-family: "circular-web", sans-serif;
+  font-family: var(--font-circular-web), sans-serif;
   font-size: 1.125rem;
 }
 @media (min-width: 768px) {
@@ -225,7 +231,7 @@ body {
 
 .animated-word {
   display: inline-block;
-  font-family: "Zentry";
+  font-family: var(--font-zentry);
   font-weight: 900;
   opacity: 0;
   transform: translate3d(10px, 51px, -60px) rotateY(60deg) rotateX(-40deg);
@@ -252,7 +258,7 @@ body {
   text-transform: uppercase;
   font-size: 2.25rem;
   font-weight: 900;
-  font-family: "Zentry";
+  font-family: var(--font-zentry);
 }
 @media (min-width: 768px) {
   .bento-title {

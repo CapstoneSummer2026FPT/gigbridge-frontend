@@ -14,6 +14,7 @@ import { esignPostAPI } from '../../../api/esignAPI/POST';
 import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
 import { ContractStatus } from '../../../types/models/Contract';
 import { ESignDocumentStatus } from '../../../types/models/ESign';
+import { useTranslation } from '../../../hooks/useTranslation';
 import {
   JobPostStatus,
   JobPostVisibility,
@@ -24,13 +25,13 @@ import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
-const STATUS_FILTERS: { key: StatusFilter; label: string; activeClass: string }[] = [
-  { key: 'all', label: 'All Jobs', activeClass: 'active-cyan' },
-  { key: 'draft', label: 'Draft', activeClass: 'active-gray' },
-  { key: 'open', label: 'Open', activeClass: 'active-green' },
-  { key: 'closed', label: 'Closed', activeClass: 'active-gray' },
-  { key: 'cancelled', label: 'Cancelled', activeClass: 'active-red' },
-  { key: 'unknown', label: 'Unknown', activeClass: 'active-amber' },
+const STATUS_FILTERS: { key: StatusFilter; labelKey: string; activeClass: string }[] = [
+  { key: 'all', labelKey: 'myJobs.filter.all', activeClass: 'active-cyan' },
+  { key: 'draft', labelKey: 'myJobs.filter.draft', activeClass: 'active-gray' },
+  { key: 'open', labelKey: 'myJobs.filter.open', activeClass: 'active-green' },
+  { key: 'closed', labelKey: 'myJobs.filter.closed', activeClass: 'active-gray' },
+  { key: 'cancelled', labelKey: 'myJobs.filter.cancelled', activeClass: 'active-red' },
+  { key: 'unknown', labelKey: 'myJobs.filter.unknown', activeClass: 'active-amber' },
 ];
 
 const statusToFilter = (status?: number | null): StatusFilter => {
@@ -41,12 +42,12 @@ const statusToFilter = (status?: number | null): StatusFilter => {
   return 'unknown';
 };
 
-const statusLabel = (status?: number | null) => {
-  if (status === JobPostStatus.Draft) return 'Draft';
-  if (status === JobPostStatus.Open) return 'Open';
-  if (status === JobPostStatus.Closed) return 'Closed';
-  if (status === JobPostStatus.Cancelled) return 'Cancelled';
-  return 'Unknown';
+const statusLabel = (status: number | null | undefined, t: any) => {
+  if (status === JobPostStatus.Draft) return t('myJobs.status.draft');
+  if (status === JobPostStatus.Open) return t('myJobs.status.open');
+  if (status === JobPostStatus.Closed) return t('myJobs.status.closed');
+  if (status === JobPostStatus.Cancelled) return t('myJobs.status.cancelled');
+  return t('myJobs.status.unknown');
 };
 
 const statusBadgeClass = (status?: number | null) => {
@@ -57,12 +58,12 @@ const statusBadgeClass = (status?: number | null) => {
   return 'mj-badge-progress';
 };
 
-const visibilityLabel = (visibility?: number | null) => {
-  if (visibility === JobPostVisibility.Public) return 'Public';
-  if (visibility === JobPostVisibility.Private) return 'Private';
-  if (visibility === JobPostVisibility.InviteOnly) return 'Invite Only';
-  if (visibility === 3) return 'Locked by Admin';
-  return 'Unknown';
+const visibilityLabel = (visibility: number | null | undefined, t: any) => {
+  if (visibility === JobPostVisibility.Public) return t('myJobs.visibility.public');
+  if (visibility === JobPostVisibility.Private) return t('myJobs.visibility.private');
+  if (visibility === JobPostVisibility.InviteOnly) return t('myJobs.visibility.inviteOnly');
+  if (visibility === 3) return t('myJobs.visibility.lockedByAdmin');
+  return t('myJobs.visibility.unknown');
 };
 
 const visibilityIcon = (visibility?: number | null) => {
@@ -92,6 +93,7 @@ const getSetupProgressESignStatus = (job: GetMyJobPostDto): number | null =>
   null;
 
 export default function MyJobsScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +112,7 @@ export default function MyJobsScreen() {
     if (!existingDocumentId && existingESignStatus === null) {
       const documentResponse = await esignPostAPI.createDocumentFromJob(job.jobPostsId);
       if (!documentResponse.success || !documentResponse.data) {
-        throw new Error(documentResponse.message || 'Unable to prepare E-sign document.');
+        throw new Error(documentResponse.message || t('myJobs.unablePrepareEsignDoc'));
       }
     }
 
@@ -135,13 +137,13 @@ export default function MyJobsScreen() {
       const progress = job.setupProgress;
 
       if (progress?.nextIncompleteStep === 'Details') {
-        toast.info('Continue completing job details first.');
+        toast.info(t('myJobs.continueJobDetailsFirst'));
         navigate('/jobs/post', { state: { jobPostId } });
         return;
       }
 
       if (progress?.nextIncompleteStep === 'ESign') {
-        toast.info('Directing to E-sign signature first...');
+        toast.info(t('myJobs.directingEsign'));
         await navigateToESignStep(job);
         return;
       }
@@ -163,29 +165,29 @@ export default function MyJobsScreen() {
             !documentResponse.data ||
             documentResponse.data.status !== ESignDocumentStatus.FullySigned
           ) {
-            toast.info('Directing to E-sign signature first...');
+            toast.info(t('myJobs.directingEsign'));
             await navigateToESignStep(job);
             return;
           }
         }
 
         if (!canEditDraftMilestones(response.data.status)) {
-          toast.info('Milestones are locked for this contract stage.');
+          toast.info(t('myJobs.milestonesLocked'));
           navigate(`/contracts/${response.data.contractsId}`);
           return;
         }
 
         navigate(`/contracts/${response.data.contractsId}/milestones?mode=jobpost-setup`);
       } else {
-        toast.info('Directing to E-sign signature first...');
+        toast.info(t('myJobs.directingEsign'));
         await navigateToESignStep(job);
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Unable to continue job setup.');
+      toast.error(err instanceof Error ? err.message : t('myJobs.unableFetchContract'));
       try {
         await navigateToESignStep(job);
       } catch (fallbackErr: unknown) {
-        toast.error(fallbackErr instanceof Error ? fallbackErr.message : 'Unable to prepare E-sign document.');
+        toast.error(fallbackErr instanceof Error ? fallbackErr.message : t('myJobs.unablePrepareEsign'));
       }
     } finally {
       setPendingJobId(null);
@@ -198,7 +200,7 @@ export default function MyJobsScreen() {
 
     const response = await jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 });
     if (!response.success || !response.data) {
-      setError(response.message || 'Unable to load your job posts.');
+      setError(response.message || t('myJobs.unableToLoad'));
       setJobs([]);
       setIsLoading(false);
       return;
@@ -258,7 +260,7 @@ export default function MyJobsScreen() {
     setPendingJobId(null);
 
     if (!response.success) {
-      toast.error(response.message || 'Unable to update JobPost status.');
+      toast.error(response.message || t('myJobs.unableUpdateStatus'));
       return;
     }
 
@@ -272,12 +274,12 @@ export default function MyJobsScreen() {
     setPendingJobId(null);
 
     if (!response.success) {
-      toast.error(response.message || 'Unable to update JobPost visibility.');
+      toast.error(response.message || t('myJobs.unableUpdateVisibility'));
       return;
     }
 
     updateLocalJob(job.jobPostsId, { visibility });
-    toast.success('Visibility updated.');
+    toast.success(t('myJobs.visibilityUpdated'));
   };
 
   const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
@@ -294,14 +296,14 @@ export default function MyJobsScreen() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Briefcase size={18} className="mj-cyan" />
                 <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gb-cyan,#1782FC)' }}>
-                  Job Management
+                  {t('myJobs.management')}
                 </span>
               </div>
               <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: '#0f0f1a', margin: 0 }} className="black:text-white">
-                My Job Posts
+                {t('myJobs.title')}
               </h1>
               <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4 }}>
-                Manage your created JobPosts using the current backend data.
+                {t('myJobs.subtitle')}
               </p>
             </div>
 
@@ -312,18 +314,18 @@ export default function MyJobsScreen() {
                 style={{ padding: '10px 22px', fontSize: 13 }}
               >
                 <Plus size={16} />
-                Post New Job
+                {t('myJobs.postNewJob')}
               </button>
             </div>
           </header>
 
           <div className="mj-stat-grid" style={{ marginBottom: 32 }}>
             {[
-              { label: 'Total Jobs', value: counts.all, icon: <Briefcase size={18} />, bg: 'mj-bg-cyan', color: 'mj-cyan' },
-              { label: 'Open', value: counts.open, icon: <CheckCircle size={18} />, bg: 'mj-bg-green', color: 'mj-green' },
-              { label: 'Draft', value: counts.draft, icon: <FileText size={18} />, bg: 'mj-bg-amber', color: 'mj-amber' },
-              { label: 'Closed', value: counts.closed, icon: <Ban size={18} />, bg: 'mj-bg-gray', color: 'mj-gray' },
-              { label: 'Unknown', value: counts.unknown, icon: <HelpCircle size={18} />, bg: 'mj-bg-purple', color: 'mj-purple' },
+              { label: t('myJobs.totalJobs'), value: counts.all, icon: <Briefcase size={18} />, bg: 'mj-bg-cyan', color: 'mj-cyan' },
+              { label: t('myJobs.status.open'), value: counts.open, icon: <CheckCircle size={18} />, bg: 'mj-bg-green', color: 'mj-green' },
+              { label: t('myJobs.status.draft'), value: counts.draft, icon: <FileText size={18} />, bg: 'mj-bg-amber', color: 'mj-amber' },
+              { label: t('myJobs.status.closed'), value: counts.closed, icon: <Ban size={18} />, bg: 'mj-bg-gray', color: 'mj-gray' },
+              { label: t('myJobs.status.unknown'), value: counts.unknown, icon: <HelpCircle size={18} />, bg: 'mj-bg-purple', color: 'mj-purple' },
             ].map(stat => (
               <div key={stat.label} className="mj-stat-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -347,7 +349,7 @@ export default function MyJobsScreen() {
                   type="text"
                   value={searchQuery}
                   onChange={event => setSearchQuery(event.target.value)}
-                  placeholder="Search jobs, skills..."
+                  placeholder={t('myJobs.searchPlaceholder')}
                   className="mj-input"
                 />
               </div>
@@ -359,7 +361,7 @@ export default function MyJobsScreen() {
                     onClick={() => setStatusFilter(tab.key)}
                     className={`mj-tab-pill ${statusFilter === tab.key ? tab.activeClass : 'inactive'}`}
                   >
-                    {tab.label}
+                    {t(tab.labelKey)}
                     {tab.key !== 'all' && (
                       <span style={{
                         background: statusFilter === tab.key ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.08)',
@@ -390,21 +392,22 @@ export default function MyJobsScreen() {
               </div>
             </div>
 
-            <div style={{ marginTop: 10, fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
-              Showing <strong style={{ color: '#374151' }}>{filteredJobs.length}</strong> of {jobs.length} jobs
-            </div>
+            <div 
+              style={{ marginTop: 10, fontSize: 12, color: '#9ca3af', fontWeight: 500 }}
+              dangerouslySetInnerHTML={{ __html: t('myJobs.showingJobs', { count: filteredJobs.length, total: jobs.length }) }}
+            />
           </div>
 
           {isLoading ? (
             <div className="mj-card mj-empty">
-              <p style={{ fontSize: 14, color: '#6b7280' }}>Loading your job posts...</p>
+              <p style={{ fontSize: 14, color: '#6b7280' }}>{t('myJobs.loading')}</p>
             </div>
           ) : error ? (
             <div className="mj-card mj-empty">
               <XCircle size={36} className="mj-red" />
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">Unable to load jobs</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">{t('myJobs.unableToLoad')}</p>
               <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>{error}</p>
-              <button onClick={loadJobs} className="mj-action-btn mj-btn-primary">Retry</button>
+              <button onClick={loadJobs} className="mj-action-btn mj-btn-primary">{t('myJobs.retry')}</button>
             </div>
           ) : filteredJobs.length === 0 ? (
             <div className="mj-card mj-empty">
@@ -412,13 +415,13 @@ export default function MyJobsScreen() {
                 <Briefcase size={36} className="mj-cyan" />
               </div>
               <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">
-                No jobs found
+                {t('myJobs.noJobs')}
               </p>
               <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-                {searchQuery ? 'Try adjusting your search or filter.' : 'Start by posting your first job.'}
+                {searchQuery ? t('myJobs.noJobsDesc') : t('myJobs.noJobsPostFirst')}
               </p>
               <button onClick={() => navigate('/jobs/post')} className="mj-action-btn mj-btn-primary">
-                <Plus size={16} /> Post a Job
+                <Plus size={16} /> {t('myJobs.postNewJob')}
               </button>
             </div>
           ) : (
@@ -433,9 +436,9 @@ export default function MyJobsScreen() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
                           <h3 className="mj-job-title">{job.title}</h3>
-                          <span className={`mj-badge ${statusBadgeClass(job.status)}`}>{statusLabel(job.status)}</span>
+                          <span className={`mj-badge ${statusBadgeClass(job.status)}`}>{statusLabel(job.status, t)}</span>
                           <span className="mj-badge mj-badge-progress" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility)}
+                            {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility, t)}
                           </span>
                         </div>
                         {!isCompact && (
@@ -444,9 +447,7 @@ export default function MyJobsScreen() {
                         {job.status === JobPostStatus.Draft && (
                           <div className="mj-draft-warning" style={{ marginBottom: 12 }}>
                             <AlertCircle size={15} style={{ flexShrink: 0 }} />
-                            <span>
-                              <strong>Chưa hoàn tất thiết lập:</strong> Vui lòng thiết lập milestone để đăng tuyển.
-                            </span>
+                            <span dangerouslySetInnerHTML={{ __html: t('myJobs.draftWarning') }} />
                           </div>
                         )}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -456,7 +457,7 @@ export default function MyJobsScreen() {
                             <span key={skill.skillId} className="mj-skill-tag">{skill.name}</span>
                           ))}
                           {(job.customSkillNames || []).slice(0, 5).map(skill => (
-                            <span key={skill} className="mj-skill-tag">{skill} (custom)</span>
+                            <span key={skill} className="mj-skill-tag">{skill}{t('myJobs.customSkillSuffix')}</span>
                           ))}
                           {job.location && <span className="mj-skill-tag">{job.location}</span>}
                           {job.estimatedDuration && <span className="mj-skill-tag">{job.estimatedDuration}</span>}
@@ -464,34 +465,34 @@ export default function MyJobsScreen() {
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div className="mj-budget-value"><GigCoinBudget min={job.budgetMin} max={job.budgetMax} /></div>
-                        <div className="mj-budget-label">Budget</div>
+                        <div className="mj-budget-label">{t('myJobs.budget')}</div>
                       </div>
                     </div>
 
                     {!isCompact && <hr className="mj-divider" style={{ marginBottom: 16 }} />}
                     <div className="mj-meta-grid" style={isCompact ? { marginTop: 10 } : {}}>
                       <div>
-                        <div className="mj-meta-label">Proposals</div>
+                        <div className="mj-meta-label">{t('myJobs.proposals')}</div>
                         <div className="mj-meta-value mj-purple">
                           <Users size={13} /> {job.proposalCount}
                         </div>
                       </div>
                       <div>
-                        <div className="mj-meta-label">Status</div>
+                        <div className="mj-meta-label">{t('myJobs.status')}</div>
                         <div className="mj-meta-value">
-                          <CheckCircle size={13} /> {statusLabel(job.status)}
+                          <CheckCircle size={13} /> {statusLabel(job.status, t)}
                         </div>
                       </div>
                       <div>
-                        <div className="mj-meta-label">Posted</div>
+                        <div className="mj-meta-label">{t('myJobs.posted')}</div>
                         <div className="mj-meta-value">
                           <Calendar size={13} /> {formatDate(job.createdAt)}
                         </div>
                       </div>
                       <div>
-                        <div className="mj-meta-label">Visibility</div>
+                        <div className="mj-meta-label">{t('myJobs.visibility')}</div>
                         <div className="mj-meta-value">
-                          {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility)}
+                          {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility, t)}
                         </div>
                       </div>
                     </div>
@@ -499,10 +500,10 @@ export default function MyJobsScreen() {
                     <hr className="mj-divider" style={{ margin: '16px 0' }} />
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                       <button onClick={() => navigate(`/jobs/my-jobs/${job.jobPostsId}`)} className="mj-action-btn mj-btn-cyan">
-                        <Eye size={14} /> View Detail
+                        <Eye size={14} /> {t('myJobs.viewDetail')}
                       </button>
                       <button onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)} className="mj-action-btn mj-btn-cyan">
-                        <HelpCircle size={14} /> Manage Questions
+                        <HelpCircle size={14} /> {t('myJobs.manageQuestions')}
                       </button>
                       {(job.status === JobPostStatus.Draft || job.status === JobPostStatus.Open) && (
                         <>
@@ -516,7 +517,7 @@ export default function MyJobsScreen() {
                               color: '#fff',
                             }}
                           >
-                            <Sparkles size={14} /> {job.status === JobPostStatus.Draft ? 'Setup Milestone' : 'Manage Milestones'}
+                            <Sparkles size={14} /> {job.status === JobPostStatus.Draft ? t('myJobs.setupMilestone') : t('myJobs.manageMilestones')}
                           </button>
                         </>
                       )}
@@ -530,39 +531,39 @@ export default function MyJobsScreen() {
                             disabled={isPending}
                             className="mj-action-btn mj-btn-cyan"
                           >
-                            <Users size={14} /> Invite Freelancers
+                            <Users size={14} /> {t('myJobs.inviteFreelancers')}
                           </button>
                         </>
                       )}
                       {canPublish(job) && (
                         <button
-                          onClick={() => patchStatus(job, JobPostStatus.Open, 'JobPost published.')}
+                          onClick={() => patchStatus(job, JobPostStatus.Open, t('myJobs.publishSuccess'))}
                           disabled={isPending}
                           className="mj-action-btn mj-btn-green"
                         >
-                          <Send size={14} /> Publish
+                          <Send size={14} /> {t('myJobs.publish')}
                         </button>
                       )}
                       {canClose(job) && (
                         <button
-                          onClick={() => patchStatus(job, JobPostStatus.Closed, 'JobPost closed.')}
+                          onClick={() => patchStatus(job, JobPostStatus.Closed, t('myJobs.closeSuccess'))}
                           disabled={isPending}
                           className="mj-action-btn mj-btn-green"
                         >
-                          <Ban size={14} /> Close
+                          <Ban size={14} /> {t('myJobs.close')}
                         </button>
                       )}
                       {canCancel(job) && (
                         <button
-                          onClick={() => patchStatus(job, JobPostStatus.Cancelled, 'JobPost cancelled.')}
+                          onClick={() => patchStatus(job, JobPostStatus.Cancelled, t('myJobs.cancelSuccess'))}
                           disabled={isPending}
                           className="mj-action-btn mj-btn-red"
                         >
-                          <XCircle size={14} /> Cancel
+                          <XCircle size={14} /> {t('myJobs.cancel')}
                         </button>
                       )}
                       {!statusKnown && (
-                        <span className="text-xs text-muted-foreground">Status-specific actions are unavailable until the backend returns status.</span>
+                        <span className="text-xs text-muted-foreground">{t('myJobs.statusActionsUnavailable')}</span>
                       )}
                       {canChangeVisibility(job) ? (
                         <select
@@ -572,13 +573,13 @@ export default function MyJobsScreen() {
                           className="mj-action-btn"
                           style={{ border: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.04)', color: '#374151' }}
                         >
-                          <option value={JobPostVisibility.Public}>Public</option>
-                          <option value={JobPostVisibility.Private}>Private</option>
-                          <option value={JobPostVisibility.InviteOnly}>Invite Only</option>
-                          {job.visibility === 3 && <option value={3}>Locked by Admin</option>}
+                          <option value={JobPostVisibility.Public}>{t('myJobs.visibility.public')}</option>
+                          <option value={JobPostVisibility.Private}>{t('myJobs.visibility.private')}</option>
+                          <option value={JobPostVisibility.InviteOnly}>{t('myJobs.visibility.inviteOnly')}</option>
+                          {job.visibility === 3 && <option value={3}>{t('myJobs.visibility.lockedByAdmin')}</option>}
                         </select>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Visibility update unavailable until the backend returns visibility.</span>
+                        <span className="text-xs text-muted-foreground">{t('myJobs.visibilityActionsUnavailable')}</span>
                       )}
                     </div>
                   </div>

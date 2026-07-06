@@ -2,8 +2,8 @@ import { FC } from 'react';
 import { motion } from 'motion/react';
 import { Clock, Sparkles, Eye, CheckCircle, XCircle, FileSignature, Briefcase } from 'lucide-react';
 import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
-import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { GigCoinAmount, GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 interface ProposalCardProps {
   proposal: ProposalViewModel;
@@ -26,17 +26,17 @@ export const ProposalCard: FC<ProposalCardProps> = ({
   onBoost,
   onGoToWorkspace,
 }) => {
-  
+  const { t } = useTranslation();
   const statusLabel =
     proposal.status === 0
-      ? 'Pending'
+      ? t('proposals.pending')
       : proposal.status === 1
-        ? 'Shortlisted'
+        ? (t('common.search') === 'Search' ? 'Shortlisted' : 'Được chọn')
         : proposal.status === 2
-          ? 'Accepted'
+          ? t('proposals.accepted')
           : proposal.status === 3
-            ? 'Rejected'
-            : 'Withdrawn';
+            ? t('proposals.rejected')
+            : (t('common.search') === 'Search' ? 'Withdrawn' : 'Đã rút');
 
   const getStatusColor = (status: number | undefined) => {
     if (status === 0) return 'proposal-status-pending';
@@ -62,15 +62,15 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             alt={proposal.freelancerName || 'Freelancer'}
           />
           <div>
-            <strong>{proposal.freelancerName || 'Unknown freelancer'}</strong>
-            <span>{proposal.submittedAt ? new Date(proposal.submittedAt).toLocaleDateString() : 'Recently'}</span>
+            <strong>{proposal.freelancerName || t('proposals.unknownFreelancer')}</strong>
+            <span>{proposal.submittedAt ? new Date(proposal.submittedAt).toLocaleDateString(t('common.search') === 'Search' ? 'en-US' : 'vi-VN') : t('proposals.recently')}</span>
           </div>
         </div>
         <div className="proposal-card-side">
           <span className={`proposal-status ${getStatusColor(proposal.status)}`}>{statusLabel}</span>
           {proposal.interviewScore && (
             <span className="proposal-score-pill">
-              <span style={{ fontSize: '0.65rem' }}>Score</span>
+              <span style={{ fontSize: '0.65rem' }}>{t('proposals.score')}</span>
               {proposal.interviewScore}
             </span>
           )}
@@ -78,27 +78,27 @@ export const ProposalCard: FC<ProposalCardProps> = ({
       </div>
 
       {/* Cover Letter */}
-      <p className="proposal-cover-letter">{proposal.coverLetter || 'No cover letter provided.'}</p>
+      <p className="proposal-cover-letter">{proposal.coverLetter || t('proposals.noCoverLetter')}</p>
 
       {/* Metadata: Budget, Duration, AI Flag */}
       <div className="proposal-review-meta">
         <div>
           <GigCoinLogo size={14} />
-          <span><GigCoinAmount amount={proposal.proposedBudget || 0} suffix="/project" /></span>
+          <span><GigCoinAmount amount={proposal.proposedBudget || 0} suffix={"/" + t('proposals.project')} /></span>
         </div>
         <div>
           <Clock size={14} />
-          <span>{proposal.proposedDuration || 'Flexible'} days</span>
+          <span>{proposal.proposedDuration || t('proposals.flexible')} {t('proposals.days')}</span>
         </div>
         {proposal.isAIGenerated && (
           <div>
             <Sparkles size={14} />
-            <span>AI Generated</span>
+            <span>{t('proposals.aiGenerated')}</span>
           </div>
         )}
         {(proposal.boostedTokenAmount || 0) > 0 && (
           <div style={{ background: 'rgba(159, 75, 255, 0.12)', color: '#7c3aed' }}>
-            <span>Boosted {proposal.boostedTokenAmount}x</span>
+            <span>{t('proposals.boosted', { count: proposal.boostedTokenAmount })}</span>
           </div>
         )}
       </div>
@@ -106,16 +106,16 @@ export const ProposalCard: FC<ProposalCardProps> = ({
       {/* Interface Grid: IDs and dates */}
       <div className="proposal-interface-grid">
         <div>
-          <span>Freelancer ID</span>
+          <span>{t('proposals.freelancerId')}</span>
           <strong>{proposal.freelancerProfilesId?.substring(0, 8)}...</strong>
         </div>
         <div>
-          <span>Proposal ID</span>
+          <span>{t('proposals.proposalId')}</span>
           <strong>{proposal.proposalsId?.substring(0, 8)}...</strong>
         </div>
         <div>
-          <span>Submitted</span>
-          <strong>{proposal.submittedAt ? new Date(proposal.submittedAt).toLocaleDateString() : '-'}</strong>
+          <span>{t('proposals.submitted')}</span>
+          <strong>{proposal.submittedAt ? new Date(proposal.submittedAt).toLocaleDateString(t('common.search') === 'Search' ? 'en-US' : 'vi-VN') : '-'}</strong>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
               style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white' }}
             >
               <Briefcase size={15} />
-              Go to Workspace
+              {t('proposals.goToWorkspace')}
             </motion.button>
           )}
 
@@ -144,7 +144,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
               whileTap={{ scale: 0.98 }}
             >
               <CheckCircle size={15} />
-              Shortlist
+              {t('proposals.shortlist')}
             </motion.button>
           )}
 
@@ -156,7 +156,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
               whileTap={{ scale: 0.98 }}
             >
               <XCircle size={15} />
-              Reject
+              {t('proposals.reject')}
             </motion.button>
           )}
 
@@ -168,7 +168,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
               whileTap={{ scale: 0.98 }}
             >
               <CheckCircle size={15} />
-              Reconsider (Shortlist)
+              {t('proposals.reconsiderShortlist')}
             </motion.button>
           )}
 
@@ -179,7 +179,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             whileTap={{ scale: 0.98 }}
           >
             <Eye size={15} />
-            Details
+            {t('proposals.details')}
           </motion.button>
         </div>
       ) : (
@@ -192,7 +192,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
             whileTap={{ scale: 0.98 }}
           >
             <Eye size={15} />
-            Details
+            {t('proposals.details')}
           </motion.button>
           {proposal.status === 0 && onBoost && (
             <motion.button
@@ -202,7 +202,7 @@ export const ProposalCard: FC<ProposalCardProps> = ({
               whileTap={{ scale: 0.98 }}
             >
               <Sparkles size={15} />
-              Boost
+              {t('proposals.boost')}
             </motion.button>
           )}
         </div>

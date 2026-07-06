@@ -7,6 +7,7 @@ import {
   getMilestoneStatusLabel,
   canSubmitMilestoneDeliverable,
 } from '../../../shared/utils/contractUtils';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/milestone-detail-card.css';
 
 interface MilestoneDetailCardProps {
@@ -22,6 +23,7 @@ export function MilestoneDetailCard({
   onSubmitDeliverable,
   isSubmittingFor = false,
 }: MilestoneDetailCardProps) {
+  const { t } = useTranslation();
   const isCompleted = milestone.status === MilestoneStatus.Approved;
   const isFullyReleased = (milestone.releasedAmount ?? 0) >= milestone.amount;
   const canSubmit = canSubmitMilestoneDeliverable(milestone.status);
@@ -47,22 +49,22 @@ export function MilestoneDetailCard({
           {isCompleted ? (
             <span className="status-badge status-approved">
               <CheckCircle2 size={16} />
-              Approved
+              {t('contracts.approved')}
             </span>
           ) : milestone.status === MilestoneStatus.Submitted ? (
             <span className="status-badge status-submitted">
               <Clock size={16} />
-              Submitted
+              {t('contracts.submitted')}
             </span>
           ) : isOverdue ? (
             <span className="status-badge status-overdue">
               <AlertCircle size={16} />
-              Overdue
+              {t('contracts.overdue')}
             </span>
           ) : (
             <span className="status-badge status-pending">
               <Clock size={16} />
-              {getMilestoneStatusLabel(milestone.status)}
+              {t('contracts.milestoneStatus.' + milestone.status, { defaultValue: getMilestoneStatusLabel(milestone.status) })}
             </span>
           )}
         </div>
@@ -71,12 +73,12 @@ export function MilestoneDetailCard({
       <div className="milestone-detail-dates">
         <span className="due-date">
           <Calendar size={14} />
-          Due: {formatContractDate(milestone.due_date)}
+          {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
         </span>
         {isFullyReleased && (
           <span className="paid-date">
             <CheckCircle2 size={14} />
-            Escrow released
+            {t('contracts.paidPrefix')}: {formatContractDate(milestone.paid_at)}
           </span>
         )}
       </div>
@@ -84,13 +86,13 @@ export function MilestoneDetailCard({
       {/* Deliverable Submission Section */}
       {canSubmit && (
         <div className="milestone-deliverable-section">
-          <p className="deliverable-label">Ready to submit your deliverables?</p>
+          <p className="deliverable-label">{t('contracts.readyToSubmitDeliverables')}</p>
           <button
             onClick={onSubmitDeliverable}
             className={`deliverable-submit-btn ${isSubmittingFor ? 'active' : ''}`}
           >
             <Upload size={16} />
-            {isSubmittingFor ? 'Submitting...' : 'Submit Deliverables'}
+            {isSubmittingFor ? t('contracts.submitting') : t('contracts.submitDeliverables')}
           </button>
         </div>
       )}
@@ -98,7 +100,7 @@ export function MilestoneDetailCard({
       {isCompleted && isFullyReleased && (
         <div className="milestone-completed-badge">
           <CheckCircle2 size={16} />
-          <span>Milestone approved and escrow released</span>
+          <span>{t('contracts.milestoneCompletedPaid')}</span>
         </div>
       )}
     </div>
