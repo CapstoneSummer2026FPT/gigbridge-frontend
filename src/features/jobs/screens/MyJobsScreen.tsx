@@ -62,7 +62,7 @@ const visibilityLabel = (visibility: number | null | undefined, t: any) => {
   if (visibility === JobPostVisibility.Public) return t('myJobs.visibility.public');
   if (visibility === JobPostVisibility.Private) return t('myJobs.visibility.private');
   if (visibility === JobPostVisibility.InviteOnly) return t('myJobs.visibility.inviteOnly');
-  if (visibility === 3) return 'Locked by Admin';
+  if (visibility === 3) return t('myJobs.visibility.lockedByAdmin');
   return t('myJobs.visibility.unknown');
 };
 
@@ -112,7 +112,7 @@ export default function MyJobsScreen() {
     if (!existingDocumentId && existingESignStatus === null) {
       const documentResponse = await esignPostAPI.createDocumentFromJob(job.jobPostsId);
       if (!documentResponse.success || !documentResponse.data) {
-        throw new Error(documentResponse.message || 'Unable to prepare E-sign document.');
+        throw new Error(documentResponse.message || t('myJobs.unablePrepareEsignDoc'));
       }
     }
 
@@ -137,13 +137,13 @@ export default function MyJobsScreen() {
       const progress = job.setupProgress;
 
       if (progress?.nextIncompleteStep === 'Details') {
-        toast.info('Continue completing job details first.');
+        toast.info(t('myJobs.continueJobDetailsFirst'));
         navigate('/jobs/post', { state: { jobPostId } });
         return;
       }
 
       if (progress?.nextIncompleteStep === 'ESign') {
-        toast.info('Directing to E-sign signature first...');
+        toast.info(t('myJobs.directingEsign'));
         await navigateToESignStep(job);
         return;
       }
@@ -165,7 +165,7 @@ export default function MyJobsScreen() {
             !documentResponse.data ||
             documentResponse.data.status !== ESignDocumentStatus.FullySigned
           ) {
-            toast.info('Directing to E-sign signature first...');
+            toast.info(t('myJobs.directingEsign'));
             await navigateToESignStep(job);
             return;
           }
@@ -183,11 +183,11 @@ export default function MyJobsScreen() {
         await navigateToESignStep(job);
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'myJobs.unableFetchContract');
+      toast.error(err instanceof Error ? err.message : t('myJobs.unableFetchContract'));
       try {
         await navigateToESignStep(job);
       } catch (fallbackErr: unknown) {
-        toast.error(fallbackErr instanceof Error ? fallbackErr.message : 'myJobs.unablePrepareEsign');
+        toast.error(fallbackErr instanceof Error ? fallbackErr.message : t('myJobs.unablePrepareEsign'));
       }
     } finally {
       setPendingJobId(null);
@@ -457,7 +457,7 @@ export default function MyJobsScreen() {
                             <span key={skill.skillId} className="mj-skill-tag">{skill.name}</span>
                           ))}
                           {(job.customSkillNames || []).slice(0, 5).map(skill => (
-                            <span key={skill} className="mj-skill-tag">{skill} (custom)</span>
+                            <span key={skill} className="mj-skill-tag">{skill}{t('myJobs.customSkillSuffix')}</span>
                           ))}
                           {job.location && <span className="mj-skill-tag">{job.location}</span>}
                           {job.estimatedDuration && <span className="mj-skill-tag">{job.estimatedDuration}</span>}
@@ -576,7 +576,7 @@ export default function MyJobsScreen() {
                           <option value={JobPostVisibility.Public}>{t('myJobs.visibility.public')}</option>
                           <option value={JobPostVisibility.Private}>{t('myJobs.visibility.private')}</option>
                           <option value={JobPostVisibility.InviteOnly}>{t('myJobs.visibility.inviteOnly')}</option>
-                          {job.visibility === 3 && <option value={3}>Locked by Admin</option>}
+                          {job.visibility === 3 && <option value={3}>{t('myJobs.visibility.lockedByAdmin')}</option>}
                         </select>
                       ) : (
                         <span className="text-xs text-muted-foreground">{t('myJobs.visibilityActionsUnavailable')}</span>
