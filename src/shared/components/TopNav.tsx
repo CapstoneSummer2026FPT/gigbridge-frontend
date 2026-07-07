@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote } from 'lucide-react';
 import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
@@ -348,7 +348,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                   <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
                     onClick={() => { navigate('/wallet/early-payout'); setShowWalletMenu(false); }}>
                     <Banknote size={14} />
-                    <span>Withdraw</span>
+                    <span>{t('wallet.withdraw')}</span>
                   </button>
                 )}
 

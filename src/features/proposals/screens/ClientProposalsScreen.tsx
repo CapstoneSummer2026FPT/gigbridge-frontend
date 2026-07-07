@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, Check, Eye, FileText, MessageSquare, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { useTranslation } from '../../../hooks/useTranslation';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
@@ -13,18 +12,30 @@ import { ProposalStatus, type ProposalDetailDto, type ProposalDto } from '../../
 import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
 import { getStatusLabel } from '../utils/statusHelpers';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { MarkdownPreview } from '../../../shared/components/MarkdownEditor';
 
 type SortBy = 'submittedAt' | 'status' | 'budget' | 'duration' | 'milestoneTotal';
+type BusyAction = 'shortlist' | 'reject' | 'accept' | 'open';
+
+const actionKey = (id: string, action: BusyAction) => `${id}:${action}`;
 
 const badgeClass = (status: number) => {
   if (status === ProposalStatus.Accepted) return 'bg-emerald-500/10 text-emerald-500';
   if (status === ProposalStatus.Rejected || status === ProposalStatus.Withdrawn) return 'bg-red-500/10 text-red-500';
   if (status === ProposalStatus.Shortlisted) return 'bg-cyan-500/10 text-cyan-500';
+  if (status === ProposalStatus.Draft) return 'bg-slate-500/10 text-slate-500';
   return 'bg-amber-500/10 text-amber-500';
 };
 
 const formatDate = (value?: string | null) => value ? new Date(value).toLocaleDateString() : 'N/A';
+
+const previewText = (value?: string | null, max = 96) => {
+  const text = (value || '').replace(/[*_`>#-]/g, '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  const sentence = text.match(/.+?[.!?](\s|$)/)?.[0]?.trim() || text;
+  const preview = sentence.length > max ? sentence.slice(0, max).trimEnd() : sentence;
+  return preview.length < text.length ? `${preview}...` : preview;
+};
+
 const durationScore = (value?: string) => {
   const amount = Number(value?.match(/\d+/)?.[0] || 0);
   if (value?.toLowerCase().includes('month')) return amount * 30;
@@ -33,7 +44,6 @@ const durationScore = (value?: string) => {
 };
 
 export default function ClientProposalsScreen() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const queryJobId = useMemo(() => new URLSearchParams(location.search).get('job'), [location.search]);
@@ -45,7 +55,7 @@ export default function ClientProposalsScreen() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ProposalStatusFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('submittedAt');
   const [budgetMin, setBudgetMin] = useState('');
@@ -57,31 +67,60 @@ export default function ClientProposalsScreen() {
   const [submittedTo, setSubmittedTo] = useState('');
 
   useEffect(() => {
-    jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 }).then(response => {
-      const items = response.data || [];
-      setJobs(items);
-      setSelectedJobId(current => current || items[0]?.jobPostsId || null);
-    });
+    let alive = true;
+    jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 })
+      .then(response => {
+        if (!alive) return;
+        const items = response.data || [];
+        setJobs(items);
+        setSelectedJobId(current => current || items[0]?.jobPostsId || null);
+        if (!response.success) setMessage(response.message || 'Could not load project requests.');
+      })
+      .catch(() => alive && setMessage('Could not load project requests.'));
+    return () => { alive = false; };
   }, []);
 
   useEffect(() => {
-    if (!selectedJobId) { setProposals([]); setLoading(false); return; }
-    setLoading(true); setMessage(''); setDetail(null);
-    proposalGetAPI.getProposalsByJobPost(selectedJobId, { pageIndex: 1, pageSize: 100 }).then(response => {
-      const items = response.data || [];
-      setProposals(items);
-      setActiveId(items[0]?.proposalsId || null);
+    if (!selectedJobId) {
+      setProposals([]);
       setLoading(false);
-    });
+      return;
+    }
+
+    let alive = true;
+    setLoading(true);
+    setMessage('');
+    setDetail(null);
+    proposalGetAPI.getProposalsByJobPost(selectedJobId, { pageIndex: 1, pageSize: 100 })
+      .then(response => {
+        if (!alive) return;
+        const items = response.data || [];
+        setProposals(items);
+        setActiveId(items[0]?.proposalsId || null);
+        if (!response.success) setMessage(response.message || 'Could not load proposals.');
+      })
+      .catch(() => alive && setMessage('Could not load proposals.'))
+      .finally(() => alive && setLoading(false));
+    return () => { alive = false; };
   }, [selectedJobId]);
 
   useEffect(() => {
-    if (!activeId) { setDetail(null); return; }
+    if (!activeId) {
+      setDetail(null);
+      return;
+    }
+
+    let alive = true;
     setDetailLoading(true);
-    proposalGetAPI.getProposalDetail(activeId).then(response => {
-      setDetail(response.data || null);
-      setDetailLoading(false);
-    });
+    proposalGetAPI.getProposalDetail(activeId)
+      .then(response => {
+        if (!alive) return;
+        setDetail(response.data || null);
+        if (!response.success) setMessage(response.message || 'Could not load proposal details.');
+      })
+      .catch(() => alive && setMessage('Could not load proposal details.'))
+      .finally(() => alive && setDetailLoading(false));
+    return () => { alive = false; };
   }, [activeId]);
 
   const visible = useMemo(() => {
@@ -92,6 +131,7 @@ export default function ClientProposalsScreen() {
     const maxMilestone = milestoneMax ? Number(milestoneMax) : null;
     const from = submittedFrom ? new Date(`${submittedFrom}T00:00:00`).getTime() : null;
     const to = submittedTo ? new Date(`${submittedTo}T23:59:59`).getTime() : null;
+
     const filtered = proposals.filter(item => {
       if (statusFilter !== 'all' && String(item.status) !== statusFilter) return false;
       if (minBudget !== null && (item.proposedBudget || 0) < minBudget) return false;
@@ -104,6 +144,7 @@ export default function ClientProposalsScreen() {
       if (to !== null && submitted > to) return false;
       return true;
     });
+
     return [...filtered].sort((a, b) => {
       if (sortBy === 'status') return Number(a.status) - Number(b.status);
       if (sortBy === 'budget') return (a.proposedBudget || 0) - (b.proposedBudget || 0);
@@ -114,8 +155,14 @@ export default function ClientProposalsScreen() {
   }, [budgetMax, budgetMin, durationMax, milestoneMax, milestoneMin, proposals, sortBy, statusFilter, submittedFrom, submittedTo]);
 
   const resetFilters = () => {
-    setStatusFilter('all'); setBudgetMin(''); setBudgetMax(''); setDurationMax('');
-    setMilestoneMin(''); setMilestoneMax(''); setSubmittedFrom(''); setSubmittedTo('');
+    setStatusFilter('all');
+    setBudgetMin('');
+    setBudgetMax('');
+    setDurationMax('');
+    setMilestoneMin('');
+    setMilestoneMax('');
+    setSubmittedFrom('');
+    setSubmittedTo('');
   };
 
   const selectJob = (id: string) => {
@@ -123,52 +170,126 @@ export default function ClientProposalsScreen() {
     navigate(`/proposals?job=${id}`, { replace: true });
   };
 
-  const updateStatus = async (id: string, status: ProposalStatusValue) => {
-    setBusy(true); setMessage('');
+  const updateStatus = async (id: string, status: ProposalStatusValue, action: BusyAction) => {
+    setBusyAction(actionKey(id, action));
+    setMessage('');
     const response = await proposalPatchAPI.updateProposalStatus(id, { status });
-    setBusy(false);
-    if (!response.success) return setMessage(response.message || 'Could not update proposal status.');
+    setBusyAction(null);
+
+    if (!response.success) {
+      setMessage(response.message || 'Could not update proposal status.');
+      return;
+    }
+
     setProposals(items => items.map(item => item.proposalsId === id ? { ...item, status } : item));
     setDetail(current => current?.proposalId === id ? { ...current, status } : current);
+    setMessage(status === ProposalStatus.Shortlisted ? 'Proposal shortlisted.' : 'Proposal rejected.');
   };
 
   const acceptForNegotiation = async (id: string) => {
-    setBusy(true); setMessage('');
+    setBusyAction(actionKey(id, 'accept'));
+    setMessage('');
     const response = await proposalPostAPI.acceptForNegotiation(id);
-    setBusy(false);
-    if (!response.success || !response.data) return setMessage(response.message || 'Could not start negotiation.');
+    setBusyAction(null);
+
+    if (!response.success || !response.data) {
+      setMessage(response.message || 'Could not start negotiation.');
+      return;
+    }
+
     navigate('/messages', { state: { activeConvId: response.data } });
   };
 
   const openNegotiation = async (id: string) => {
-    setBusy(true);
+    setBusyAction(actionKey(id, 'open'));
+    setMessage('');
     const response = await messagePostAPI.startNegotiationFromProposal(id);
-    setBusy(false);
-    if (!response.success || !response.data) return setMessage(response.message || 'Could not open negotiation.');
+    setBusyAction(null);
+
+    if (!response.success || !response.data) {
+      setMessage(response.message || 'Could not open negotiation.');
+      return;
+    }
+
     navigate('/messages', { state: { activeConvId: response.data } });
   };
 
   const selectedJob = jobs.find(item => item.jobPostsId === selectedJobId);
+  const isBusy = (id: string, action: BusyAction) => busyAction === actionKey(id, action);
+  const canClientAct = (status: number) => [ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(status);
+
   const section = (title: string, value?: string | null) => value ? (
-    <section><h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">{title}</h3><MarkdownPreview value={value} className="text-sm leading-6" /></section>
+    <section className="rounded-lg border border-border bg-background p-4">
+      <h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">{title}</h3>
+      <p className="m-0 text-sm leading-6 text-foreground" title={value}>{previewText(value, 110)}</p>
+    </section>
   ) : null;
 
   return (
     <AppLayout fullWidth>
       <div className="flex h-[calc(100vh-5rem)] flex-col overflow-hidden bg-background text-foreground">
-        <header className="flex items-center justify-between border-b border-border px-6 py-3">
-          <div className="flex items-center gap-5"><button onClick={() => navigate('/client/dashboard')} title="Back to dashboard"><ArrowLeft size={18} /></button><div><h1 className="text-base font-bold">Proposal Comparison</h1><p className="text-xs text-muted-foreground">Compare scope, price, and payment plans</p></div></div>
-          <div className="flex gap-2"><select value={statusFilter} onChange={e => setStatusFilter(e.target.value as ProposalStatusFilter)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="all">All statuses</option><option value="1">Pending</option><option value="2">Shortlisted</option><option value="3">Accepted</option><option value="4">Rejected</option><option value="5">Withdrawn</option></select><select value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs"><option value="submittedAt">Newest</option><option value="budget">Budget</option><option value="duration">Duration</option><option value="status">Status</option><option value="milestoneTotal">Milestone total</option></select><button onClick={resetFilters} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Reset filters</button></div>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 lg:px-6">
+          <div className="flex min-w-0 items-center gap-4">
+            <button
+              onClick={() => navigate('/client/dashboard')}
+              title="Back to dashboard"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-bold">Proposal Comparison</h1>
+              <p className="text-xs text-muted-foreground">Compare scope, price, and payment plans</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as ProposalStatusFilter)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs">
+              <option value="all">All statuses</option>
+              <option value="0">Draft</option>
+              <option value="1">Pending</option>
+              <option value="2">Shortlisted</option>
+              <option value="3">Accepted</option>
+              <option value="4">Rejected</option>
+              <option value="5">Withdrawn</option>
+            </select>
+            <select value={sortBy} onChange={e => setSortBy(e.target.value as SortBy)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs">
+              <option value="submittedAt">Newest</option>
+              <option value="budget">Budget</option>
+              <option value="duration">Duration</option>
+              <option value="status">Status</option>
+              <option value="milestoneTotal">Milestone total</option>
+            </select>
+            <button onClick={resetFilters} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted/20">Reset filters</button>
+          </div>
         </header>
-        <div className="flex min-h-0 flex-1">
-          <aside className="w-64 shrink-0 overflow-y-auto border-r border-border">
-            <div className="border-b border-border p-4 text-xs font-bold uppercase text-muted-foreground">Project Requests</div>
-            {jobs.map(job => <button key={job.jobPostsId} onClick={() => selectJob(job.jobPostsId)} className={`block w-full border-b border-border/50 p-4 text-left ${job.jobPostsId === selectedJobId ? 'border-l-4 border-l-cyan-500 bg-cyan-500/5' : 'hover:bg-muted/20'}`}><strong className="block truncate text-sm">{job.title}</strong><span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">{job.description}</span></button>)}
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_320px] 2xl:grid-cols-[260px_minmax(0,1fr)_360px]">
+          <aside className="max-h-52 min-w-0 overflow-y-auto border-b border-border bg-background lg:max-h-none lg:border-b-0 lg:border-r">
+            <div className="sticky top-0 z-10 border-b border-border bg-background px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Project Requests</div>
+            {jobs.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">No project requests found.</div>
+            ) : jobs.map(job => (
+              <button
+                key={job.jobPostsId}
+                onClick={() => selectJob(job.jobPostsId)}
+                className={`block w-full border-b border-border/50 px-4 py-3 text-left transition ${job.jobPostsId === selectedJobId ? 'border-l-4 border-l-cyan-500 bg-cyan-500/5' : 'hover:bg-muted/20'}`}
+              >
+                <strong className="block truncate text-sm leading-5">{job.title}</strong>
+                <span className="mt-1 block truncate text-xs leading-5 text-muted-foreground" title={job.description || ''}>{previewText(job.description, 72) || 'No description provided.'}</span>
+              </button>
+            ))}
           </aside>
 
-          <main className="min-w-0 flex-1 overflow-auto p-4">
-            <div className="mb-3"><h2 className="font-bold">{selectedJob?.title || 'Select a project request'}</h2><p className="text-xs text-muted-foreground">{visible.length} proposals</p></div>
-            <div className="mb-3 grid gap-2 rounded-lg border border-border bg-card p-3 text-xs md:grid-cols-4">
+          <main className="min-w-0 overflow-auto p-3 lg:p-4">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="truncate font-bold">{selectedJob?.title || 'Select a project request'}</h2>
+                <p className="text-xs text-muted-foreground">{visible.length} of {proposals.length} proposals shown</p>
+              </div>
+            </div>
+
+            <div className="mb-3 grid gap-2 rounded-xl border border-border bg-muted/20 p-3 text-xs sm:grid-cols-2 2xl:grid-cols-4">
               <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" placeholder="Budget min" className="rounded border border-border bg-background px-2 py-2" />
               <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max" className="rounded border border-border bg-background px-2 py-2" />
               <input value={durationMax} onChange={e => setDurationMax(e.target.value)} type="number" placeholder="Max duration days" className="rounded border border-border bg-background px-2 py-2" />
@@ -177,246 +298,160 @@ export default function ClientProposalsScreen() {
               <input value={submittedFrom} onChange={e => setSubmittedFrom(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
               <input value={submittedTo} onChange={e => setSubmittedTo(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
             </div>
-            {message && <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-600">{message}</div>}
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[1120px] text-left text-xs">
-                <thead className="sticky top-0 bg-muted text-muted-foreground"><tr><th className="p-3">Freelancer</th><th className="p-3">Status</th><th className="p-3">Budget</th><th className="p-3">Duration</th><th className="min-w-64 p-3">Analysis summary</th><th className="p-3">Work items</th><th className="p-3">Milestones</th><th className="p-3">Milestone total</th><th className="p-3">Submitted</th><th className="p-3">Actions</th></tr></thead>
-                <tbody>{loading ? <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr> : visible.length === 0 ? <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr> : visible.map(item => (
-                  <tr key={item.proposalsId} onClick={() => setActiveId(item.proposalsId)} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5' : ''}`}>
-                    <td className="p-3 font-semibold">{item.freelancerName || 'Freelancer'}</td><td className="p-3"><span className={`rounded px-2 py-1 font-bold ${badgeClass(Number(item.status))}`}>{getStatusLabel(item.status)}</span></td><td className="p-3 font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td><td className="p-3">{item.proposedDuration || 'N/A'}</td><td className="p-3 text-muted-foreground"><span className="line-clamp-2">{item.analysisSummaryPreview || item.coverLetter || 'Legacy proposal'}</span></td><td className="p-3 text-center">{item.workItemCount ?? 0}</td><td className="p-3 text-center">{item.milestoneCount ?? 0}</td><td className="p-3">{formatGigCoin(item.milestoneTotal || 0)}</td><td className="p-3">{formatDate(item.submittedAt)}</td><td className="p-3"><div className="flex gap-1"><button title="View details" onClick={e => { e.stopPropagation(); setActiveId(item.proposalsId); }} className="rounded p-2 hover:bg-muted"><Eye size={15} /></button>{Number(item.status) === ProposalStatus.Pending && <button title="Shortlist" disabled={busy} onClick={e => { e.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Shortlisted); }} className="rounded p-2 text-cyan-500 hover:bg-cyan-500/10"><Check size={15} /></button>}{[ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(Number(item.status)) && <><button title="Start negotiation" disabled={busy} onClick={e => { e.stopPropagation(); acceptForNegotiation(item.proposalsId); }} className="rounded p-2 text-emerald-500 hover:bg-emerald-500/10"><MessageSquare size={15} /></button><button title="Reject" disabled={busy} onClick={e => { e.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Rejected); }} className="rounded p-2 text-red-500 hover:bg-red-500/10"><X size={15} /></button></>}</div></td>
+
+            {message && <div role="status" className="mb-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
+
+            <div className="overflow-x-auto rounded-xl border border-border bg-card">
+              <table className="w-full min-w-[980px] text-left text-xs">
+                <thead className="sticky top-0 bg-muted text-muted-foreground">
+                  <tr>
+                    <th className="w-36 p-3">Freelancer</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Budget</th>
+                    <th className="p-3">Duration</th>
+                    <th className="min-w-64 p-3">Analysis summary</th>
+                    <th className="p-3 text-center">Work items</th>
+                    <th className="p-3 text-center">Milestones</th>
+                    <th className="p-3">Milestone total</th>
+                    <th className="p-3">Submitted</th>
+                    <th className="w-44 p-3">Actions</th>
                   </tr>
-                ))}</tbody>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
+                  ) : visible.length === 0 ? (
+                    <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
+                  ) : visible.map(item => {
+                    const status = Number(item.status);
+                    return (
+                      <tr key={item.proposalsId} onClick={() => setActiveId(item.proposalsId)} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
+                        <td className="p-3 align-top font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
+                        <td className="p-3 align-top"><span className={`rounded px-2 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
+                        <td className="p-3 align-top font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
+                        <td className="p-3 align-top">{item.proposedDuration || 'N/A'}</td>
+                        <td className="p-3 align-top text-muted-foreground"><span className="block truncate leading-5" title={item.analysisSummaryPreview || item.coverLetter || ''}>{previewText(item.analysisSummaryPreview || item.coverLetter, 88) || 'Legacy proposal'}</span></td>
+                        <td className="p-3 text-center align-top">{item.workItemCount ?? 0}</td>
+                        <td className="p-3 text-center align-top">{item.milestoneCount ?? 0}</td>
+                        <td className="p-3 align-top font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
+                        <td className="p-3 align-top">{formatDate(item.submittedAt)}</td>
+                        <td className="p-3 align-top">
+                          <div className="grid grid-cols-2 gap-1">
+                            <button title="View details" onClick={event => { event.stopPropagation(); setActiveId(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
+                              <Eye size={14} /> Details
+                            </button>
+                            {status === ProposalStatus.Pending && (
+                              <button title="Shortlist" disabled={isBusy(item.proposalsId, 'shortlist')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Shortlisted, 'shortlist'); }} className="inline-flex items-center justify-center gap-1 rounded border border-cyan-500/30 px-2 py-1.5 font-semibold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
+                                <Check size={14} /> {isBusy(item.proposalsId, 'shortlist') ? 'Saving' : 'Shortlist'}
+                              </button>
+                            )}
+                            {canClientAct(status) && (
+                              <>
+                                <button title="Start negotiation" disabled={isBusy(item.proposalsId, 'accept')} onClick={event => { event.stopPropagation(); acceptForNegotiation(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500/30 px-2 py-1.5 font-semibold text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50">
+                                  <MessageSquare size={14} /> {isBusy(item.proposalsId, 'accept') ? 'Opening' : 'Negotiate'}
+                                </button>
+                                <button title="Reject" disabled={isBusy(item.proposalsId, 'reject')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Rejected, 'reject'); }} className="inline-flex items-center justify-center gap-1 rounded border border-red-500/30 px-2 py-1.5 font-semibold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
+                                  <X size={14} /> {isBusy(item.proposalsId, 'reject') ? 'Saving' : 'Reject'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
             </div>
           </main>
 
-          <section className="flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm">
-            <div className="glass-header px-6 py-3.5 border-b border-border flex justify-between items-center flex-wrap gap-4">
-              <div className="min-w-0">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Selected JobPost</p>
-                <h2 className="text-sm font-bold text-foreground truncate max-w-[360px]">{displayJobTitle}</h2>
-              </div>
-
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
-                  <Filter size={13} />
-                  Status
-                </span>
-                <select
-                  value={statusFilter}
-                  onChange={event => setStatusFilter(event.target.value as ProposalStatusFilter)}
-                  className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
-                >
-                  <option value="all">All</option>
-                  <option value="1">Pending</option>
-                  <option value="2">Shortlisted</option>
-                  <option value="3">Accepted</option>
-                  <option value="4">Rejected</option>
-                  <option value="5">Withdrawn</option>
-                </select>
-
-                <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
-                  <ArrowUpDown size={13} />
-                  Sort
-                </span>
-                <select
-                  value={sortBy}
-                  onChange={event => setSortBy(event.target.value as SortBy)}
-                  className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
-                >
-                  <option value="submittedAt">Submission Date</option>
-                  <option value="status">Status</option>
-                  <option value="rate">Proposed Budget</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex flex-1 overflow-hidden">
-              <div className="w-80 border-r border-border flex flex-col bg-card/40 overflow-y-auto custom-scrollbar">
-                {!selectedJobId ? (
-                  <div className="p-8 text-center text-xs text-muted-foreground">Select a JobPost to view proposals.</div>
-                ) : proposalsLoading ? (
-                  <div className="p-8 text-center text-xs text-muted-foreground">Loading proposals...</div>
-                ) : proposalsError ? (
-                  <div className="p-8 text-center text-xs text-red-500">{proposalsError}</div>
-                ) : filteredProposals.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-muted-foreground">No proposals found for this JobPost.</div>
-                ) : (
-                  filteredProposals.map(proposal => {
-                    const isActive = proposal.proposalsId === activeProposalId;
-                    return (
-                      <div
-                        key={proposal.proposalsId}
-                        onClick={() => setActiveProposalId(proposal.proposalsId)}
-                        className={`p-4 border-b border-border/50 cursor-pointer transition-all hover:bg-muted/40 flex flex-col gap-1.5 ${
-                          isActive ? 'bg-[var(--gb-cyan)]/5 border-r-2 border-r-[var(--gb-cyan)]' : ''
-                        }`}
-                      >
-                        <div className="flex justify-between items-center gap-2">
-                          <span className="text-xs font-bold text-foreground truncate max-w-[140px]">
-                            {proposal.freelancerName || 'Applicant'}
-                          </span>
-                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${statusBadgeClass(proposal.status)}`}>
-                            {getStatusLabel(proposal.status)}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                          {proposal.coverLetter || 'No cover letter.'}
-                        </p>
-                        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-semibold mt-1">
-                          <span>{formatCurrency(proposal.proposedBudget)}</span>
-                          <span>{proposal.proposedDuration || 'No duration'}</span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="flex-1 flex flex-col bg-card/20 overflow-y-auto custom-scrollbar p-6">
-                {detailLoading ? (
-                  <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading proposal detail...</div>
-                ) : detailError ? (
-                  <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">{detailError}</div>
-                ) : activeProposal && proposalDetail ? (
-                  <div className="flex flex-col gap-6">
-                    <div className="flex justify-between items-start border-b border-border pb-4 gap-4">
-                      <div>
-                        <h2 className="text-lg font-bold text-foreground">{proposalDetail.freelancerName || activeProposal.freelancerName || 'Freelancer Proposal'}</h2>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Submitted {formatDateTime(proposalDetail.submittedAt || activeProposal.submittedAt)}
-                        </p>
-                      </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(proposalDetail.status)}`}>
-                        {getStatusLabel(proposalDetail.status)}
-                      </span>
-                    </div>
-
-                    {statusMessage && (
-                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-600">
-                        {statusMessage}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="rounded-xl border border-border bg-background p-4">
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Proposed Budget</span>
-                        <p className="text-base font-bold text-foreground mt-1">{formatCurrency(proposalDetail.proposedBudget)}</p>
-                      </div>
-                      <div className="rounded-xl border border-border bg-background p-4">
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Duration</span>
-                        <p className="text-base font-bold text-foreground mt-1">{proposalDetail.proposedDuration || 'Not specified'}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Cover Letter</h4>
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-background p-4 rounded-xl border border-border">
-                        {proposalDetail.coverLetter || 'No cover letter provided.'}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3 mt-4 border-t border-border pt-6 flex-wrap">
-                      <button
-                        onClick={() => navigate(`/proposals/${proposalDetail.proposalId}/answers`)}
-                        className="bg-background border border-border text-foreground hover:bg-muted/20 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
-                      >
-                        <FileText size={16} />
-                        View Answers
-                      </button>
-
-                      {Number(proposalDetail.status) === ProposalStatus.Accepted ? (
-                        <button
-                          onClick={() => openNegotiation(proposalDetail.proposalId)}
-                          disabled={openingNegotiationId === proposalDetail.proposalId}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
-                        >
-                          <CheckCircle size={16} />
-                          {openingNegotiationId === proposalDetail.proposalId ? t('negotiations.opening') : t('negotiations.enterNegotiation')}
-                        </button>
-                      ) : canClientUpdateStatus(proposalDetail.status) ? (
-                        <>
-                          {Number(proposalDetail.status) === ProposalStatus.Pending && (
-                            <button
-                              onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Shortlisted)}
-                              disabled={updatingStatus !== null}
-                              className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
-                            >
-                              <Users size={16} />
-                              {updatingStatus === ProposalStatus.Shortlisted ? 'Shortlisting...' : 'Shortlist'}
-                            </button>
-                          )}
-                          <button
-                            onClick={() => acceptProposalForNegotiation(proposalDetail.proposalId)}
-                            disabled={updatingStatus !== null}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
-                          >
-                            <CheckCircle size={16} />
-                            {updatingStatus === ProposalStatus.Accepted ? 'Accepting...' : 'Accept'}
-                          </button>
-                          <button
-                            onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Rejected)}
-                            disabled={updatingStatus !== null}
-                            className="bg-transparent border border-border text-muted-foreground hover:text-red-500 hover:border-red-500/30 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
-                          >
-                            <XCircle size={16} />
-                            {updatingStatus === ProposalStatus.Rejected ? 'Rejecting...' : 'Reject'}
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Status actions are unavailable for {getStatusLabel(proposalDetail.status)} proposals.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center py-20 text-muted-foreground">
-                    <FileText size={40} className="opacity-30 mb-3" />
-                    <p className="text-sm">Select a proposal to view detailed information.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <section className="w-80 border-l border-border flex flex-col bg-card p-6 overflow-y-auto custom-scrollbar">
-            {proposalDetail ? (
-              <div className="flex flex-col gap-5">
-                <div className="pb-4 border-b border-border">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider text-muted-foreground mb-1">Proposal Summary</h3>
-                  <h2 className="text-base font-bold text-foreground leading-snug">{proposalDetail.jobPostTitle || displayJobTitle}</h2>
-                  <div className={`inline-flex mt-3 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(proposalDetail.status)}`}>
-                    {getStatusLabel(proposalDetail.status)}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 text-xs">
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Freelancer</span>
-                    <strong className="text-foreground text-right">{proposalDetail.freelancerName || 'Unknown'}</strong>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Budget</span>
-                    <strong className="text-foreground">{formatCurrency(proposalDetail.proposedBudget)}</strong>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Submitted</span>
-                    <strong className="text-foreground text-right">{formatDateTime(proposalDetail.submittedAt)}</strong>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
-                    <span className="text-muted-foreground">Reviewed</span>
-                    <strong className="text-foreground text-right">{formatDateTime(proposalDetail.updatedAt || activeProposal?.reviewedAt)}</strong>
-                  </div>
-                </div>
+          <aside className="min-w-0 overflow-y-auto border-t border-border bg-muted/20 p-4 lg:border-l lg:border-t-0 2xl:p-5">
+            {detailLoading ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">Loading details...</div>
+            ) : !detail ? (
+              <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
+                <FileText size={32} className="mb-2 opacity-40" />
+                <p className="text-sm">Select a proposal to inspect its plan.</p>
               </div>
             ) : (
-              <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground">
-                <Info size={30} className="opacity-25 mb-2" />
-                <p className="text-xs">No proposal selected.</p>
+              <div className="space-y-6">
+                <div className="border-b border-border pb-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate font-bold">{detail.freelancerName || 'Freelancer proposal'}</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatGigCoin(detail.proposedBudget || 0)} - {detail.proposedDuration || 'Duration not specified'}</p>
+                    </div>
+                    <span className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${badgeClass(Number(detail.status))}`}>{getStatusLabel(detail.status)}</span>
+                  </div>
+                </div>
+
+                {section('Introduction', detail.coverLetter)}
+                {section('Requirement analysis', detail.analysisSummary)}
+                {section('Solution approach', detail.solutionApproach)}
+                {section('Overall deliverables', detail.deliverables)}
+                {section('Assumptions', detail.assumptions)}
+                {section('Out of scope', detail.outOfScope)}
+
+                <section>
+                  <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Work breakdown</h3>
+                  <div className="space-y-2">
+                    {detail.workBreakdownItems?.length ? detail.workBreakdownItems.map((item, index) => (
+                      <div key={item.id || index} className="rounded-lg border border-border bg-background p-3">
+                        <div className="flex justify-between gap-3">
+                          <strong className="text-sm">{index + 1}. {item.title || 'Untitled work item'}</strong>
+                          <span className="text-xs text-muted-foreground">{item.estimatedDuration}</span>
+                        </div>
+                        {item.description && <p className="mt-2 truncate text-xs leading-5 text-muted-foreground" title={item.description}>{previewText(item.description, 88)}</p>}
+                        {item.deliverables && <p className="mt-2 truncate text-xs" title={item.deliverables}><strong>Deliverables:</strong> {previewText(item.deliverables, 72)}</p>}
+                      </div>
+                    )) : <p className="text-sm text-muted-foreground">Legacy proposal: no work breakdown.</p>}
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Milestone plan</h3>
+                  <div className="space-y-2">
+                    {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (
+                      <div key={item.id || index} className="rounded-lg border border-border bg-background p-3 text-xs">
+                        <div className="flex justify-between gap-3">
+                          <strong>{index + 1}. {item.title || 'Untitled milestone'}</strong>
+                          <span className="font-semibold">{formatGigCoin(item.amount)}</span>
+                        </div>
+                        {item.estimatedDuration && <p className="mt-1 text-muted-foreground">Duration: {item.estimatedDuration}</p>}
+                        {item.description && <p className="mt-2 truncate text-muted-foreground" title={item.description}>{previewText(item.description, 88)}</p>}
+                        {item.deliverables && <p className="mt-2 truncate" title={item.deliverables}><strong>Deliverables:</strong> {previewText(item.deliverables, 72)}</p>}
+                        {item.acceptanceCriteria && <p className="mt-2 truncate" title={item.acceptanceCriteria}><strong>Acceptance:</strong> {previewText(item.acceptanceCriteria, 72)}</p>}
+                      </div>
+                    )) : <p className="text-sm text-muted-foreground">Legacy proposal: no milestone plan.</p>}
+                  </div>
+                </section>
+
+                <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+                  <button onClick={() => navigate(`/proposals/${detail.proposalId}/answers`)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted/20">Clarifying answers</button>
+                  {Number(detail.status) === ProposalStatus.Pending && (
+                    <button disabled={isBusy(detail.proposalId, 'shortlist')} onClick={() => updateStatus(detail.proposalId, ProposalStatus.Shortlisted, 'shortlist')} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs font-bold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
+                      <Check size={14} /> Shortlist
+                    </button>
+                  )}
+                  {canClientAct(Number(detail.status)) && (
+                    <>
+                      <button disabled={isBusy(detail.proposalId, 'accept')} onClick={() => acceptForNegotiation(detail.proposalId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                        <MessageSquare size={14} /> Start negotiation
+                      </button>
+                      <button disabled={isBusy(detail.proposalId, 'reject')} onClick={() => updateStatus(detail.proposalId, ProposalStatus.Rejected, 'reject')} className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
+                        <X size={14} /> Reject
+                      </button>
+                    </>
+                  )}
+                  {Number(detail.status) === ProposalStatus.Accepted && (
+                    <button disabled={isBusy(detail.proposalId, 'open')} onClick={() => openNegotiation(detail.proposalId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                      <MessageSquare size={14} /> Open negotiation
+                    </button>
+                  )}
+                </div>
               </div>
             )}
-          </section>
+          </aside>
         </div>
       </div>
     </AppLayout>

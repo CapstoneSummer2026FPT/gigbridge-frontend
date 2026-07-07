@@ -9,8 +9,6 @@ import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
-import { ContractStatus } from '../../../types/models/Contract';
-import { ESignDocumentStatus } from '../../../types/models/ESign';
 import { useTranslation } from '../../../hooks/useTranslation';
 import {
   JobPostStatus,
@@ -86,95 +84,6 @@ export default function MyJobsScreen() {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
-
-  const navigateToESignStep = async (job: GetMyJobPostDto): Promise<void> => {
-    const existingDocumentId = getSetupProgressDocumentId(job);
-    const existingESignStatus = getSetupProgressESignStatus(job);
-
-    if (!existingDocumentId && existingESignStatus === null) {
-      const documentResponse = await esignPostAPI.createDocumentFromJob(job.jobPostsId);
-      if (!documentResponse.success || !documentResponse.data) {
-        throw new Error(documentResponse.message || t('myJobs.unablePrepareEsignDoc'));
-      }
-    }
-
-    navigate('/jobs/post/contract/esign', {
-      state: {
-        jobPostId: job.jobPostsId,
-        jobData: {
-          title: job.title,
-          description: job.description,
-          budgetMin: job.budgetMin,
-          budgetMax: job.budgetMax,
-          deadline: job.endDate,
-        },
-      },
-    });
-  };
-
-  const handleSetupMilestone = async (job: GetMyJobPostDto): Promise<void> => {
-    const jobPostId = job.jobPostsId;
-    setPendingJobId(jobPostId);
-    try {
-      const progress = job.setupProgress;
-
-      if (progress?.nextIncompleteStep === 'Details') {
-        toast.info(t('myJobs.continueJobDetailsFirst'));
-        navigate('/jobs/post', { state: { jobPostId } });
-        return;
-      }
-
-      if (progress?.nextIncompleteStep === 'ESign') {
-        toast.info(t('myJobs.directingEsign'));
-        await navigateToESignStep(job);
-        return;
-      }
-
-      if (
-        (progress?.nextIncompleteStep === 'Milestones' || progress?.nextIncompleteStep === 'ReadyToPublish') &&
-        progress.contractId
-      ) {
-        navigate(`/contracts/${progress.contractId}/milestones?mode=jobpost-setup`);
-        return;
-      }
-
-      const response = await contractGetAPI.getContractByJobPost(jobPostId);
-      if (response.success && response.data) {
-        if (job.status === JobPostStatus.Draft) {
-          const documentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
-          if (
-            !documentResponse.success ||
-            !documentResponse.data ||
-            documentResponse.data.status !== ESignDocumentStatus.FullySigned
-          ) {
-            toast.info(t('myJobs.directingEsign'));
-            await navigateToESignStep(job);
-            return;
-          }
-        }
-
-        if (!canEditDraftMilestones(response.data.status)) {
-          toast.info(t('myJobs.milestonesLocked'));
-          navigate(`/contracts/${response.data.contractsId}`);
-          return;
-        }
-
-        navigate(`/contracts/${response.data.contractsId}/milestones?mode=jobpost-setup`);
-      } else {
-        toast.info(t('myJobs.directingEsign'));
-        await navigateToESignStep(job);
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t('myJobs.unableFetchContract'));
-      try {
-        await navigateToESignStep(job);
-      } catch (fallbackErr: unknown) {
-        toast.error(fallbackErr instanceof Error ? fallbackErr.message : t('myJobs.unablePrepareEsign'));
-      }
-    } finally {
-      setPendingJobId(null);
-    }
-  };
 
   const loadJobs = async () => {
     setIsLoading(true);
@@ -487,22 +396,6 @@ export default function MyJobsScreen() {
                       <button onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)} className="mj-action-btn mj-btn-cyan">
                         <HelpCircle size={14} /> {t('myJobs.manageQuestions')}
                       </button>
-                      {(job.status === JobPostStatus.Draft || job.status === JobPostStatus.Open) && (
-                        <>
-                          <button
-                            onClick={() => handleSetupMilestone(job)}
-                            disabled={isPending}
-                            className="mj-action-btn mj-btn-primary"
-                            style={{
-                              background: 'linear-gradient(135deg, var(--gb-purple,#9F4BFF) 0%, var(--gb-cyan,#1782FC) 100%)',
-                              borderColor: 'transparent',
-                              color: '#fff',
-                            }}
-                          >
-                            <Sparkles size={14} /> {job.status === JobPostStatus.Draft ? t('myJobs.setupMilestone') : t('myJobs.manageMilestones')}
-                          </button>
-                        </>
-                      )}
                       {job.status === JobPostStatus.Open && (
                         <>
                           <button

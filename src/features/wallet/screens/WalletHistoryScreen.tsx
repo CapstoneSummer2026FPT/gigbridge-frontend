@@ -94,6 +94,14 @@ export default function WalletHistoryScreen() {
         return t('walletHistory.descRefund');
       case 5:
         return t('walletHistory.descAdjustment');
+      case 6:
+        return t('walletHistory.descWithdrawalLock');
+      case 7:
+        return t('walletHistory.descWithdrawalSuccess');
+      case 8:
+        return t('walletHistory.descWithdrawalRefund');
+      case 9:
+        return t('walletHistory.descWithdrawalFee');
       default:
         return t('walletHistory.descDefault');
     }
@@ -165,6 +173,14 @@ export default function WalletHistoryScreen() {
         return <span className="badge-cyan text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeRefund')}</span>;
       case 5:
         return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeAdjustment')}</span>;
+      case 6:
+        return <span className="badge-amber text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalLock')}</span>;
+      case 7:
+        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalSuccess')}</span>;
+      case 8:
+        return <span className="badge-green text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalRefund')}</span>;
+      case 9:
+        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalFee')}</span>;
       default:
         return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeOther')}</span>;
     }
@@ -249,6 +265,7 @@ export default function WalletHistoryScreen() {
               { label: t('walletHistory.statTotalDeposits'), value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} />, color: 'green' },
               { label: t('walletHistory.statTotalHold'), value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} />, color: 'red' },
               { label: t('walletHistory.statTotalRefund'), value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} />, color: 'cyan' },
+              { label: t('walletHistory.statTotalWithdrawn'), value: <GigCoinAmount amount={stats.totalWithdrawn} />, icon: <ArrowDownRight size={16} />, color: 'amber' },
               { label: t('walletHistory.statPending'), value: stats.pending.toString(), icon: <Loader2 size={16} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber' },
               { label: t('walletHistory.statTotalTransactions'), value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
             ].map(stat => (
@@ -288,6 +305,10 @@ export default function WalletHistoryScreen() {
                 <option value="4">{t('walletHistory.filterRefund')}</option>
                 <option value="0">{t('walletHistory.filterAdmin')}</option>
                 <option value="5">{t('walletHistory.filterAdjustment')}</option>
+                <option value="6">{t('walletHistory.filterWithdrawalLock')}</option>
+                <option value="7">{t('walletHistory.filterWithdrawalSuccess')}</option>
+                <option value="8">{t('walletHistory.filterWithdrawalRefund')}</option>
+                <option value="9">{t('walletHistory.filterWithdrawalFee')}</option>
               </select>
               <select
                 value={statusFilter}
