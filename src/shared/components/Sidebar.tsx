@@ -13,6 +13,7 @@ import { reportAPI } from '../../api/reportAPI';
 import '../styles/Sidebar.css';
 
 interface NavItem {
+  id?: string;
   label: string;
   icon: React.ReactNode;
   path?: string;
@@ -35,68 +36,70 @@ interface SidebarProps {
 function getClientNavItems(t: any): NavItem[] {
   return [
     {
+      id: 'dashboard',
       label: t('nav.dashboard'),
       icon: <LayoutDashboard size={18} />,
       path: '/client/dashboard',
     },
     {
-      label: 'Jobs',
+      id: 'jobs',
+      label: t('nav.jobs'),
       icon: <Briefcase size={18} />,
       children: [
-        { label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post/guide', badge: 'AI', badgeType: 'cyan' },
-        { label: 'My Jobs', icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
+        { id: 'post-job', label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post/guide', badge: 'AI', badgeType: 'cyan' },
+        { id: 'my-jobs', label: t('nav.myJobs'), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
       ],
     },
     {
-      label: 'Freelancers',
-      icon: <Search size={18} />,
-      children: [
-        { label: 'Smart Matching', icon: <Zap size={18} />, path: '/talent-matching', badge: 'PRO', badgeType: 'purple' },
-        { label: 'Saved Freelancers', icon: <Bookmark size={18} />, path: '/talent-matching?tab=saved' },
-      ],
-    },
-    {
-      label: 'Work',
+      id: 'work',
+      label: t('nav.work'),
       icon: <Flag size={18} />,
       children: [
-        { label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals', badge: '5', badgeType: 'purple' },
-        { label: 'Contracts', icon: <FileText size={18} />, path: '/contracts' },
-        { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'proposals', label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals', badge: '5', badgeType: 'purple' },
+        { id: 'contracts', label: t('nav.contracts'), icon: <FileText size={18} />, path: '/contracts' },
+        { id: 'projects', label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
       ],
     },
     {
-      label: 'Messages',
+      id: 'freelancers',
+      label: t('nav.freelancers'),
+      icon: <Search size={18} />,
+      children: [
+        { id: 'smart-matching', label: t('nav.smartMatching'), icon: <Zap size={18} />, path: '/talent-matching', badge: 'PRO', badgeType: 'purple' },
+        { id: 'saved-freelancers', label: t('nav.savedFreelancers'), icon: <Bookmark size={18} />, path: '/talent-matching?tab=saved' },
+      ],
+    },
+    {
+      id: 'messages',
+      label: t('nav.messages'),
       icon: <MessageSquare size={18} />,
       path: '/messages',
       badge: '3',
       badgeType: 'cyan',
     },
     {
+      id: 'ai-assistant',
       label: t('nav.aiAssistant'),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
       badge: 'NEW',
       badgeType: 'cyan',
     },
-
     {
-      label: t('nav.marketInsights'),
-      icon: <TrendingUp size={18} />,
-      path: '/market-insights',
-    },
-    {
+      id: 'wallet',
       label: t('nav.wallet'),
       icon: <Wallet size={18} />,
       children: [
-        { label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
-        { label: 'Withdraw', icon: <Banknote size={18} />, path: '/wallet/early-payout' },
-        { label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+        { id: 'deposit', label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+        { id: 'financial-overview', label: t('nav.financialOverview'), icon: <BarChart2 size={18} />, path: '/financial-overview' },
       ],
     },
     {
-      label: 'Financial Overview',
-      icon: <BarChart2 size={18} />,
-      path: '/financial-overview',
+      id: 'market-insights',
+      label: t('nav.marketInsights'),
+      icon: <TrendingUp size={18} />,
+      path: '/market-insights',
     },
   ];
 }
@@ -104,36 +107,41 @@ function getClientNavItems(t: any): NavItem[] {
 function getFreelancerNavItems(t: any): NavItem[] {
   return [
     {
+      id: 'dashboard',
       label: t('nav.dashboard'),
       icon: <LayoutDashboard size={18} />,
       path: '/freelancer/dashboard',
     },
     {
-      label: 'Jobs',
+      id: 'jobs',
+      label: t('nav.jobs'),
       icon: <Search size={18} />,
       children: [
-        { label: t('nav.browseJobs'), icon: <Search size={18} />, path: '/jobs/browse' },
-        { label: 'Saved Jobs', icon: <Bookmark size={18} />, path: '/jobs/saved' },
-        { label: 'Job Invitations', icon: <Bell size={18} />, path: '/jobs/invitations' },
+        { id: 'browse-jobs', label: t('nav.browseJobs'), icon: <Search size={18} />, path: '/jobs/browse' },
+        { id: 'saved-jobs', label: t('nav.savedJobs'), icon: <Bookmark size={18} />, path: '/jobs/saved' },
+        { id: 'job-invitations', label: t('nav.jobInvitations'), icon: <Bell size={18} />, path: '/jobs/invitations' },
       ],
     },
     {
-      label: 'Work',
+      id: 'work',
+      label: t('nav.work'),
       icon: <Flag size={18} />,
       children: [
-        { label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
-        { label: 'Contracts', icon: <FileText size={18} />, path: '/contracts' },
-        { label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'my-proposals', label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
+        { id: 'contracts', label: t('nav.contracts'), icon: <FileText size={18} />, path: '/contracts' },
+        { id: 'projects', label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
       ],
     },
     {
-      label: 'Messages',
+      id: 'messages',
+      label: t('nav.messages'),
       icon: <MessageSquare size={18} />,
       path: '/messages',
       badge: '1',
       badgeType: 'cyan',
     },
     {
+      id: 'ai-assistant',
       label: t('nav.aiAssistant'),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
@@ -141,57 +149,59 @@ function getFreelancerNavItems(t: any): NavItem[] {
       badgeType: 'cyan',
     },
     {
+      id: 'wallet',
+      label: t('nav.wallet'),
+      icon: <Wallet size={18} />,
+      children: [
+        { id: 'deposit', label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+      ],
+    },
+    {
+      id: 'early-payout',
+      label: t('nav.earlyPayout'),
+      icon: <Zap size={18} />,
+      path: '/wallet/early-payout',
+      badge: 'PRO',
+      badgeType: 'purple',
+    },
+    {
+      id: 'market-insights',
       label: t('nav.marketInsights'),
       icon: <TrendingUp size={18} />,
       path: '/market-insights',
     },
-    {
-      label: t('nav.wallet'),
-      icon: <Wallet size={18} />,
-      children: [
-        { label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
-        { label: 'Withdraw', icon: <Banknote size={18} />, path: '/wallet/early-payout' },
-        { label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
-      ],
-    },
-    {
-      label: 'Withdrawal',
-      icon: <Banknote size={18} />,
-      path: '/wallet/early-payout',
-      badge: 'NEW',
-      badgeType: 'cyan',
-    },
   ];
 }
 
-function getAdminNavSections(openReportCount: number | null): NavSection[] {
+function getAdminNavSections(t: any, openReportCount: number | null): NavSection[] {
   return [
     {
-      title: 'Overview',
+      title: t('dashboard.overview') || 'Overview',
       items: [
-        { label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/admin' },
-        { label: 'Analytics', icon: <BarChart2 size={18} />, path: '/admin/analytics' },
+        { label: t('nav.dashboard'), icon: <LayoutDashboard size={18} />, path: '/admin' },
+        { label: t('nav.analytics') || 'Analytics', icon: <BarChart2 size={18} />, path: '/admin/analytics' },
       ],
     },
     {
-      title: 'User Management',
+      title: t('nav.userManagement') || 'User Management',
       items: [
-        { label: 'All Users', icon: <Users size={18} />, path: '/admin/users' },
+        { label: t('nav.allUsers') || 'All Users', icon: <Users size={18} />, path: '/admin/users' },
       ],
     },
     {
-      title: 'Content Management',
+      title: t('nav.contentManagement') || 'Content Management',
       items: [
-        { label: 'Job Posts', icon: <Briefcase size={18} />, path: '/admin/jobs' },
-        { label: 'Contracts & Compliance', icon: <Shield size={18} />, path: '/admin/contracts' },
+        { label: t('nav.jobPosts') || 'Job Posts', icon: <Briefcase size={18} />, path: '/admin/jobs' },
+        { label: t('nav.contractsCompliance') || 'Contracts & Compliance', icon: <Shield size={18} />, path: '/admin/contracts' },
         { label: 'Assets Library', icon: <Layers size={18} />, path: '/admin/assets' },
-        { label: 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
-        { label: 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
-        { label: 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },
-        { label: 'User Feedback', icon: <MessageSquare size={18} />, path: '/admin/feedback' },
-        { label: 'Cheating Management', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
+        { label: t('nav.disputeManagement') || 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
+        { label: t('nav.faqManagement') || 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
+        { label: t('nav.adsPackages') || 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },
+        { label: t('nav.userFeedback') || 'User Feedback', icon: <MessageSquare size={18} />, path: '/admin/feedback' },
+        { label: t('nav.cheatingManagement') || 'Cheating Management', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
         {
-          label: 'Reports',
+          label: t('nav.reports') || 'Reports',
           icon: <Flag size={18} />,
           path: '/admin/reports',
           badge: openReportCount === null ? undefined : openReportCount.toString(),
@@ -201,30 +211,29 @@ function getAdminNavSections(openReportCount: number | null): NavSection[] {
       ],
     },
     {
-      title: 'Configuration',
+      title: t('nav.configuration') || 'Configuration',
       items: [
-        { label: 'Contract Templates', icon: <Settings size={18} />, path: '/admin/contract-templates' },
+        { label: t('nav.contractTemplates') || 'Contract Templates', icon: <Settings size={18} />, path: '/admin/contract-templates' },
       ],
     },
     {
-      title: 'Financial',
+      title: t('nav.financial') || 'Financial',
       items: [
-        { label: 'Revenue', icon: <TrendingUp size={18} />, path: '/admin/revenue' },
-        { label: 'System Finance', icon: <BarChart2 size={18} />, path: '/admin/system-finance' },
-        { label: 'Withdrawals', icon: <Banknote size={18} />, path: '/admin/withdrawals' },
+        { label: t('nav.revenue') || 'Revenue', icon: <TrendingUp size={18} />, path: '/admin/revenue' },
+        { label: t('nav.systemFinance') || 'System Finance', icon: <BarChart2 size={18} />, path: '/admin/system-finance' },
       ],
     },
     {
-      title: 'System & Monitoring',
+      title: t('nav.systemMonitoring') || 'System & Monitoring',
       items: [
-        { label: 'System Tracking', icon: <Activity size={18} />, path: '/admin/system-tracking', badge: 'LIVE', badgeType: 'green' },
-        { label: 'Notifications', icon: <Bell size={18} />, path: '/admin/notifications' },
+        { label: t('nav.systemTracking') || 'System Tracking', icon: <Activity size={18} />, path: '/admin/system-tracking', badge: 'LIVE', badgeType: 'green' },
+        { label: t('nav.notifications'), icon: <Bell size={18} />, path: '/admin/notifications' },
       ],
     },
     {
-      title: 'Insights',
+      title: t('nav.insights') || 'Insights',
       items: [
-        { label: 'Market Insights', icon: <TrendingUp size={18} />, path: '/market-insights' },
+        { label: t('nav.marketInsights'), icon: <TrendingUp size={18} />, path: '/market-insights' },
       ],
     },
   ];
@@ -238,7 +247,7 @@ function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, pa
       <button
         onClick={() => {
           if (hasChildren) {
-            onToggle(item.label);
+            onToggle(item.id || item.label);
           } else if (item.path) {
             onNavigate(item.path);
           }
@@ -268,7 +277,7 @@ function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, pa
         <div className="sidebar-children">
           {item.children?.map((child: NavItem) => (
             <button
-              key={child.path || child.label}
+              key={child.id || child.path || child.label}
               onClick={() => {
                 if (child.path) {
                   onNavigate(child.path);
@@ -303,7 +312,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
 
   const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
-  const adminSections = role === 2 ? getAdminNavSections(openReportCount) : [];
+  const adminSections = role === 2 ? getAdminNavSections(t, openReportCount) : [];
 
   useEffect(() => {
     if (role !== 2) return;
@@ -318,11 +327,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return () => { active = false; };
   }, [role, location.pathname]);
 
-  const handleToggleMenu = (label: string) => {
+  const handleToggleMenu = (id: string) => {
     setExpandedMenus(prev =>
-      prev.includes(label)
-        ? prev.filter(m => m !== label)
-        : [...prev, label]
+      prev.includes(id)
+        ? prev.filter(m => m !== id)
+        : [...prev, id]
     );
   };
 
@@ -362,7 +371,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
           <div className="sidebar-profile-info">
             <p className="sidebar-profile-name">{user.first_name}</p>
-            <p className="sidebar-profile-role">{role === 0 ? 'Client' : role === 1 ? 'Freelancer' : 'Admin'}</p>
+            <p className="sidebar-profile-role">{role === 0 ? t('projects.client') : role === 1 ? t('projects.freelancer') : t('nav.admin')}</p>
           </div>
           <ChevronRight size={14} className="sidebar-profile-chevron" />
         </div>
@@ -420,10 +429,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Client/Freelancer hierarchical navigation */}
         {role !== 2 && navItems.map(item => (
           <NavItemComponent
-            key={item.label}
+            key={item.id || item.label}
             item={item}
             isActive={isMenuActive(item)}
-            isExpanded={expandedMenus.includes(item.label)}
+            isExpanded={expandedMenus.includes(item.id || item.label)}
             onToggle={handleToggleMenu}
             onNavigate={handleNavigate}
             path={location.pathname}
@@ -436,7 +445,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="sidebar-bottom">
           <button onClick={() => navigate('/admin')} className="sidebar-item w-full">
             <Shield size={18} />
-            <span>Admin Panel</span>
+            <span>{t('nav.adminPanel')}</span>
           </button>
         </div>
       )}
@@ -448,8 +457,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Zap size={14} className="sidebar-pro-icon" />
             <span className="sidebar-pro-title">GigBridge Pro</span>
           </div>
-          <p className="sidebar-pro-desc">Unlock AI features, priority matching & more</p>
-          <button className="btn-cyan sidebar-pro-button">Upgrade</button>
+          <p className="sidebar-pro-desc">{t('nav.proBadgeDesc')}</p>
+          <button className="btn-cyan sidebar-pro-button">{t('nav.upgrade')}</button>
         </div>
       )}
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, Check, Eye, FileText, MessageSquare, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
@@ -32,6 +33,7 @@ const durationScore = (value?: string) => {
 };
 
 export default function ClientProposalsScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const queryJobId = useMemo(() => new URLSearchParams(location.search).get('job'), [location.search]);
@@ -188,15 +190,233 @@ export default function ClientProposalsScreen() {
             </div>
           </main>
 
-          <aside className="w-[420px] shrink-0 overflow-y-auto border-l border-border bg-card p-5">
-            {detailLoading ? <div className="py-10 text-center text-sm text-muted-foreground">Loading details...</div> : !detail ? <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground"><FileText size={32} className="mb-2 opacity-40" /><p className="text-sm">Select a proposal to inspect its plan.</p></div> : <div className="space-y-6">
-              <div className="border-b border-border pb-4"><div className="flex items-start justify-between gap-3"><div><h2 className="font-bold">{detail.freelancerName || 'Freelancer proposal'}</h2><p className="mt-1 text-xs text-muted-foreground">{formatGigCoin(detail.proposedBudget || 0)} · {detail.proposedDuration || 'Duration not specified'}</p></div><span className={`rounded px-2 py-1 text-xs font-bold ${badgeClass(Number(detail.status))}`}>{getStatusLabel(detail.status)}</span></div></div>
-              {section('Introduction', detail.coverLetter)}{section('Requirement analysis', detail.analysisSummary)}{section('Solution approach', detail.solutionApproach)}{section('Overall deliverables', detail.deliverables)}{section('Assumptions', detail.assumptions)}{section('Out of scope', detail.outOfScope)}
-              <section><h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Work breakdown</h3><div className="space-y-2">{detail.workBreakdownItems?.length ? detail.workBreakdownItems.map((item, index) => <div key={item.id || index} className="rounded-lg border border-border p-3"><div className="flex justify-between gap-3"><strong className="text-sm">{index + 1}. {item.title}</strong><span className="text-xs text-muted-foreground">{item.estimatedDuration}</span></div>{item.description && <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{item.description}</p>}{item.deliverables && <p className="mt-2 text-xs"><strong>Deliverables:</strong> {item.deliverables}</p>}</div>) : <p className="text-sm text-muted-foreground">Legacy proposal: no work breakdown.</p>}</div></section>
-              <section><h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Milestone plan</h3><div className="space-y-2">{detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => <div key={item.id || index} className="rounded-lg border border-border p-3 text-xs"><div className="flex justify-between gap-3"><strong>{index + 1}. {item.title}</strong><span className="font-semibold">{formatGigCoin(item.amount)}</span></div>{item.estimatedDuration && <p className="mt-1 text-muted-foreground">Duration: {item.estimatedDuration}</p>}{item.description && <p className="mt-2 whitespace-pre-wrap text-muted-foreground">{item.description}</p>}{item.deliverables && <p className="mt-2"><strong>Deliverables:</strong> {item.deliverables}</p>}{item.acceptanceCriteria && <p className="mt-2"><strong>Acceptance:</strong> {item.acceptanceCriteria}</p>}</div>) : <p className="text-sm text-muted-foreground">Legacy proposal: no milestone plan.</p>}</div></section>
-              <div className="flex flex-wrap gap-2 border-t border-border pt-4"><button onClick={() => navigate(`/proposals/${detail.proposalId}/answers`)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Clarifying answers</button>{Number(detail.status) === ProposalStatus.Accepted && <button disabled={busy} onClick={() => openNegotiation(detail.proposalId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white"><MessageSquare size={14} /> Open negotiation</button>}</div>
-            </div>}
-          </aside>
+          <section className="flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm">
+            <div className="glass-header px-6 py-3.5 border-b border-border flex justify-between items-center flex-wrap gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Selected JobPost</p>
+                <h2 className="text-sm font-bold text-foreground truncate max-w-[360px]">{displayJobTitle}</h2>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
+                  <Filter size={13} />
+                  Status
+                </span>
+                <select
+                  value={statusFilter}
+                  onChange={event => setStatusFilter(event.target.value as ProposalStatusFilter)}
+                  className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
+                >
+                  <option value="all">All</option>
+                  <option value="1">Pending</option>
+                  <option value="2">Shortlisted</option>
+                  <option value="3">Accepted</option>
+                  <option value="4">Rejected</option>
+                  <option value="5">Withdrawn</option>
+                </select>
+
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider text-muted-foreground">
+                  <ArrowUpDown size={13} />
+                  Sort
+                </span>
+                <select
+                  value={sortBy}
+                  onChange={event => setSortBy(event.target.value as SortBy)}
+                  className="bg-background border border-border rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] cursor-pointer text-foreground font-semibold"
+                >
+                  <option value="submittedAt">Submission Date</option>
+                  <option value="status">Status</option>
+                  <option value="rate">Proposed Budget</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-1 overflow-hidden">
+              <div className="w-80 border-r border-border flex flex-col bg-card/40 overflow-y-auto custom-scrollbar">
+                {!selectedJobId ? (
+                  <div className="p-8 text-center text-xs text-muted-foreground">Select a JobPost to view proposals.</div>
+                ) : proposalsLoading ? (
+                  <div className="p-8 text-center text-xs text-muted-foreground">Loading proposals...</div>
+                ) : proposalsError ? (
+                  <div className="p-8 text-center text-xs text-red-500">{proposalsError}</div>
+                ) : filteredProposals.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-muted-foreground">No proposals found for this JobPost.</div>
+                ) : (
+                  filteredProposals.map(proposal => {
+                    const isActive = proposal.proposalsId === activeProposalId;
+                    return (
+                      <div
+                        key={proposal.proposalsId}
+                        onClick={() => setActiveProposalId(proposal.proposalsId)}
+                        className={`p-4 border-b border-border/50 cursor-pointer transition-all hover:bg-muted/40 flex flex-col gap-1.5 ${
+                          isActive ? 'bg-[var(--gb-cyan)]/5 border-r-2 border-r-[var(--gb-cyan)]' : ''
+                        }`}
+                      >
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="text-xs font-bold text-foreground truncate max-w-[140px]">
+                            {proposal.freelancerName || 'Applicant'}
+                          </span>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${statusBadgeClass(proposal.status)}`}>
+                            {getStatusLabel(proposal.status)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                          {proposal.coverLetter || 'No cover letter.'}
+                        </p>
+                        <div className="flex justify-between items-center text-[10px] text-muted-foreground font-semibold mt-1">
+                          <span>{formatCurrency(proposal.proposedBudget)}</span>
+                          <span>{proposal.proposedDuration || 'No duration'}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="flex-1 flex flex-col bg-card/20 overflow-y-auto custom-scrollbar p-6">
+                {detailLoading ? (
+                  <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">Loading proposal detail...</div>
+                ) : detailError ? (
+                  <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">{detailError}</div>
+                ) : activeProposal && proposalDetail ? (
+                  <div className="flex flex-col gap-6">
+                    <div className="flex justify-between items-start border-b border-border pb-4 gap-4">
+                      <div>
+                        <h2 className="text-lg font-bold text-foreground">{proposalDetail.freelancerName || activeProposal.freelancerName || 'Freelancer Proposal'}</h2>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Submitted {formatDateTime(proposalDetail.submittedAt || activeProposal.submittedAt)}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(proposalDetail.status)}`}>
+                        {getStatusLabel(proposalDetail.status)}
+                      </span>
+                    </div>
+
+                    {statusMessage && (
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-600">
+                        {statusMessage}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-border bg-background p-4">
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Proposed Budget</span>
+                        <p className="text-base font-bold text-foreground mt-1">{formatCurrency(proposalDetail.proposedBudget)}</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background p-4">
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Duration</span>
+                        <p className="text-base font-bold text-foreground mt-1">{proposalDetail.proposedDuration || 'Not specified'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Cover Letter</h4>
+                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-background p-4 rounded-xl border border-border">
+                        {proposalDetail.coverLetter || 'No cover letter provided.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-4 border-t border-border pt-6 flex-wrap">
+                      <button
+                        onClick={() => navigate(`/proposals/${proposalDetail.proposalId}/answers`)}
+                        className="bg-background border border-border text-foreground hover:bg-muted/20 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+                      >
+                        <FileText size={16} />
+                        View Answers
+                      </button>
+
+                      {Number(proposalDetail.status) === ProposalStatus.Accepted ? (
+                        <button
+                          onClick={() => openNegotiation(proposalDetail.proposalId)}
+                          disabled={openingNegotiationId === proposalDetail.proposalId}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
+                        >
+                          <CheckCircle size={16} />
+                          {openingNegotiationId === proposalDetail.proposalId ? t('negotiations.opening') : t('negotiations.enterNegotiation')}
+                        </button>
+                      ) : canClientUpdateStatus(proposalDetail.status) ? (
+                        <>
+                          {Number(proposalDetail.status) === ProposalStatus.Pending && (
+                            <button
+                              onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Shortlisted)}
+                              disabled={updatingStatus !== null}
+                              className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
+                            >
+                              <Users size={16} />
+                              {updatingStatus === ProposalStatus.Shortlisted ? 'Shortlisting...' : 'Shortlist'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => acceptProposalForNegotiation(proposalDetail.proposalId)}
+                            disabled={updatingStatus !== null}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shadow-sm"
+                          >
+                            <CheckCircle size={16} />
+                            {updatingStatus === ProposalStatus.Accepted ? 'Accepting...' : 'Accept'}
+                          </button>
+                          <button
+                            onClick={() => updateProposalStatus(proposalDetail.proposalId, ProposalStatus.Rejected)}
+                            disabled={updatingStatus !== null}
+                            className="bg-transparent border border-border text-muted-foreground hover:text-red-500 hover:border-red-500/30 font-bold text-sm px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+                          >
+                            <XCircle size={16} />
+                            {updatingStatus === ProposalStatus.Rejected ? 'Rejecting...' : 'Reject'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Status actions are unavailable for {getStatusLabel(proposalDetail.status)} proposals.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center py-20 text-muted-foreground">
+                    <FileText size={40} className="opacity-30 mb-3" />
+                    <p className="text-sm">Select a proposal to view detailed information.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="w-80 border-l border-border flex flex-col bg-card p-6 overflow-y-auto custom-scrollbar">
+            {proposalDetail ? (
+              <div className="flex flex-col gap-5">
+                <div className="pb-4 border-b border-border">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider text-muted-foreground mb-1">Proposal Summary</h3>
+                  <h2 className="text-base font-bold text-foreground leading-snug">{proposalDetail.jobPostTitle || displayJobTitle}</h2>
+                  <div className={`inline-flex mt-3 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(proposalDetail.status)}`}>
+                    {getStatusLabel(proposalDetail.status)}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 text-xs">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                    <span className="text-muted-foreground">Freelancer</span>
+                    <strong className="text-foreground text-right">{proposalDetail.freelancerName || 'Unknown'}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                    <span className="text-muted-foreground">Budget</span>
+                    <strong className="text-foreground">{formatCurrency(proposalDetail.proposedBudget)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                    <span className="text-muted-foreground">Submitted</span>
+                    <strong className="text-foreground text-right">{formatDateTime(proposalDetail.submittedAt)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
+                    <span className="text-muted-foreground">Reviewed</span>
+                    <strong className="text-foreground text-right">{formatDateTime(proposalDetail.updatedAt || activeProposal?.reviewedAt)}</strong>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground">
+                <Info size={30} className="opacity-25 mb-2" />
+                <p className="text-xs">No proposal selected.</p>
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </AppLayout>

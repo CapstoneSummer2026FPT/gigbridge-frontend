@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 interface JobPostGuideProps {
   isActive: boolean;
@@ -12,30 +13,8 @@ interface SpotlightStep {
   description: string;
 }
 
-const STEPS: SpotlightStep[] = [
-  {
-    targetId: 'guide-prompt-textarea',
-    title: 'Nhập mô tả công việc (Prompt)',
-    description: 'Mô tả chi tiết vị trí công việc, yêu cầu tuyển dụng và quyền lợi tại đây. AI sẽ phân tích thông tin này để điền tự động các chi tiết công việc.',
-  },
-  {
-    targetId: 'guide-prompt-suggestions',
-    title: 'Mẫu gợi ý nhanh',
-    description: 'Sử dụng các thẻ gợi ý sẵn có (Web Dev, UI/UX Design, Copywriting) để điền nhanh một bản prompt mẫu chi tiết và đầy đủ.',
-  },
-  {
-    targetId: 'guide-prompt-generate-btn',
-    title: 'Tự động điền chi tiết công việc',
-    description: 'Bấm nút "Generate Job" để AI phân tích prompt của bạn và tự động điền đầy đủ Tiêu đề, Kỹ năng, Mô tả và Ngân sách.',
-  },
-  {
-    targetId: 'guide-job-details-panel',
-    title: 'Kiểm tra & Hoàn tất',
-    description: 'Toàn bộ thông tin chi tiết công việc đã được tự động điền đầy đủ! Bạn có thể rà soát lại và chỉnh sửa thủ công nếu cần thiết trước khi tiếp tục.',
-  },
-];
-
 export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [spotlight, setSpotlight] = useState({
     x: 0,
@@ -44,6 +23,29 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
     height: 0,
   });
 
+  const steps: SpotlightStep[] = useMemo(() => [
+    {
+      targetId: 'guide-prompt-textarea',
+      title: t('postJobTour.step1Title'),
+      description: t('postJobTour.step1Desc'),
+    },
+    {
+      targetId: 'guide-prompt-suggestions',
+      title: t('postJobTour.step2Title'),
+      description: t('postJobTour.step2Desc'),
+    },
+    {
+      targetId: 'guide-prompt-generate-btn',
+      title: t('postJobTour.step3Title'),
+      description: t('postJobTour.step3Desc'),
+    },
+    {
+      targetId: 'guide-job-details-panel',
+      title: t('postJobTour.step4Title'),
+      description: t('postJobTour.step4Desc'),
+    },
+  ], [t]);
+
   useEffect(() => {
     if (!isActive) {
       setCurrentStep(0);
@@ -51,7 +53,8 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
     }
 
     const updateCoordinates = () => {
-      const step = STEPS[currentStep];
+      const step = steps[currentStep];
+      if (!step) return;
       const element = document.getElementById(step.targetId);
       if (element) {
         const rect = element.getBoundingClientRect();
@@ -66,10 +69,12 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
     };
 
     // Scroll element into view smoothly on step change
-    const step = STEPS[currentStep];
-    const element = document.getElementById(step.targetId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const step = steps[currentStep];
+    if (step) {
+      const element = document.getElementById(step.targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
 
     // Query positions regularly to handle smooth scrolling, layout adjustments, and resizing
@@ -84,12 +89,12 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
       window.removeEventListener('resize', updateCoordinates);
       window.removeEventListener('scroll', updateCoordinates);
     };
-  }, [isActive, currentStep]);
+  }, [isActive, currentStep, steps]);
 
   if (!isActive) return null;
 
   const handleNext = () => {
-    if (currentStep < STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
       onClose();
@@ -102,9 +107,12 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
     }
   };
 
+  const activeStepItem = steps[currentStep];
+  if (!activeStepItem) return null;
+
   // Determine ideal position for the onboarding card (fixed viewport relative)
   const isDesktop = window.innerWidth >= 1024;
-  const isDetailsStep = STEPS[currentStep].targetId === 'guide-job-details-panel';
+  const isDetailsStep = activeStepItem.targetId === 'guide-job-details-panel';
   const bubbleWidth = Math.min(320, window.innerWidth - 32);
 
   let bubbleX = Math.max(16, Math.min(window.innerWidth - bubbleWidth - 16, spotlight.x + spotlight.width / 2 - bubbleWidth / 2));
@@ -180,15 +188,15 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
 
         <div className="flex flex-col gap-1 pr-6">
           <span className="text-[10px] text-[var(--gb-cyan)] font-extrabold uppercase tracking-widest">
-            Step {currentStep + 1} of {STEPS.length}
+            {t('postJobTour.step', { current: currentStep + 1, total: steps.length })}
           </span>
           <h4 className="text-sm font-bold text-foreground leading-tight">
-            {STEPS[currentStep].title}
+            {activeStepItem.title}
           </h4>
         </div>
 
         <p className="text-xs text-muted-foreground leading-relaxed">
-          {STEPS[currentStep].description}
+          {activeStepItem.description}
         </p>
 
         <div className="flex items-center justify-between border-t border-border pt-4 mt-1">
@@ -199,7 +207,7 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer border-none bg-transparent"
           >
             <ChevronLeft size={14} />
-            <span>Previous</span>
+            <span>{t('postJobTour.previous')}</span>
           </button>
 
           <button
@@ -207,8 +215,8 @@ export function JobPostGuide({ isActive, onClose }: JobPostGuideProps) {
             onClick={handleNext}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white hover:opacity-90 shadow-md transition-all cursor-pointer border-none"
           >
-            <span>{currentStep === STEPS.length - 1 ? 'Finish' : 'Next'}</span>
-            {currentStep === STEPS.length - 1 ? <Check size={14} /> : <ChevronRight size={14} />}
+            <span>{currentStep === steps.length - 1 ? t('postJobTour.finish') : t('postJobTour.next')}</span>
+            {currentStep === steps.length - 1 ? <Check size={14} /> : <ChevronRight size={14} />}
           </button>
         </div>
       </div>

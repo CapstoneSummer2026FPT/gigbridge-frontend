@@ -4,6 +4,7 @@ import { Lock, AlertCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { ContractStatus, type ContractDto, type Milestone } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import { ClientContractDetails } from '../components/ClientContractDetails';
@@ -58,6 +59,7 @@ export default function ViewContractDetailsScreen() {
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
   const { user } = useApp();
+  const { t } = useTranslation();
 
   // State
   const [contract, setContract] = useState<ContractDetailsData | null>(null);
@@ -100,7 +102,7 @@ export default function ViewContractDetailsScreen() {
   // Load contract details from API
   const loadContractDetails = useCallback(async () => {
     if (!contractId) {
-      setError('No contract ID provided');
+      setError(t('contracts.noContractIdParam'));
       return;
     }
 
@@ -123,16 +125,16 @@ export default function ViewContractDetailsScreen() {
         setMilestones(milestonesList);
         generateAuditTrail(contractData);
       } else {
-        setError(apiResponse.message || 'Failed to retrieve contract details');
+        setError(apiResponse.message || t('contracts.unableToLoadContract'));
       }
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+      const errorMsg = err instanceof Error ? err.message : t('contracts.anErrorOccurred');
       setError(errorMsg);
       console.error('Failed to load contract details:', err);
     } finally {
       setLoading(false);
     }
-  }, [contractId]);
+  }, [contractId, t]);
 
   useEffect(() => {
     loadContractDetails();
@@ -194,13 +196,13 @@ export default function ViewContractDetailsScreen() {
           <div className="w-16 h-16 bg-destructive/10 text-destructive border border-destructive/20 rounded-full flex items-center justify-center mx-auto mb-5">
             <AlertCircle size={28} />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">Invalid Contract</h2>
-          <p className="text-muted-foreground text-sm mt-2">No contract ID provided in parameters.</p>
+          <h2 className="text-2xl font-bold text-foreground">{t('contracts.invalidContract')}</h2>
+          <p className="text-muted-foreground text-sm mt-2">{t('contracts.noContractIdParam')}</p>
           <button 
             onClick={() => navigate('/contracts')} 
             className="btn-primary-custom mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
           >
-            Back to Contracts
+            {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>
@@ -211,6 +213,7 @@ export default function ViewContractDetailsScreen() {
     return (
       <AppLayout>
         <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-10 animate-pulse space-y-8">
+          <div className="text-center py-10 text-muted-foreground font-semibold">{t('contracts.loading')}</div>
           <div className="bg-card border border-border/50 rounded-3xl p-8 h-48 w-full" />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 space-y-8">
@@ -234,13 +237,13 @@ export default function ViewContractDetailsScreen() {
           <div className="w-16 h-16 bg-destructive/10 text-destructive border border-destructive/20 rounded-full flex items-center justify-center mx-auto mb-5">
             <AlertCircle size={28} />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">Unable to Load Contract</h2>
-          <p className="text-muted-foreground text-sm mt-2">{error || 'The requested contract was not found.'}</p>
+          <h2 className="text-2xl font-bold text-foreground">{t('contracts.unableToLoadContract')}</h2>
+          <p className="text-muted-foreground text-sm mt-2">{error || t('contracts.contractNotFound')}</p>
           <button 
             onClick={() => navigate('/contracts')} 
             className="btn-primary-custom mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
           >
-            Back to Contracts
+            {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>
@@ -254,13 +257,13 @@ export default function ViewContractDetailsScreen() {
           <div className="w-16 h-16 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-5">
             <Lock size={28} />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">Access Denied</h2>
-          <p className="text-muted-foreground text-sm mt-2">MSG57: You do not have permission to access this resource.</p>
+          <h2 className="text-2xl font-bold text-foreground">{t('contracts.accessDenied')}</h2>
+          <p className="text-muted-foreground text-sm mt-2">{t('contracts.noPermissionResource')}</p>
           <button 
             onClick={() => navigate('/contracts')} 
             className="btn-primary-custom mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
           >
-            Back to Contracts
+            {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>

@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/all';
 import { TiLocationArrow } from 'react-icons/ti';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import Button from './Button';
 import VideoPreview from './VideoPreview';
 
@@ -11,6 +12,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function Hero() {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const [currentIndex, setCurrentIndex] = useState(1);
   const [hasClicked, setHasClicked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -172,20 +174,20 @@ export default function Hero() {
             </h1>
 
             <p className="mb-5 max-w-64 font-robert-regular text-blue-100">
-              Discover Skilled Freelancers <br /> Connect Through Smart Matching
+              {t('landing.hero.tagline')} <br /> {t('landing.hero.tagline2')}
             </p>
 
             <div className="flex gap-3">
               <Button
                 id="find-work-btn"
-                title="Find Work"
+                title={t('landing.hero.findWork')}
                 leftIcon={<TiLocationArrow />}
                 onClick={handleFindWork}
                 containerClass="bg-yellow-300 flex-center gap-1"
               />
               <Button
                 id="hire-talent-btn"
-                title="Hire Talent"
+                title={t('landing.hero.hireTalent')}
                 onClick={handleHireTalent}
                 containerClass="bg-blue-50 flex-center gap-1 border border-white/10"
               />

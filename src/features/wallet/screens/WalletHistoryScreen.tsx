@@ -17,8 +17,10 @@ import { walletGetAPI, WalletTransactionResponse } from '../../../api/walletAPI/
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 export default function WalletHistoryScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState<WalletTransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,11 +65,11 @@ export default function WalletHistoryScreen() {
           });
         }
       } else {
-        setErrorText(res.message || 'Không thể tải lịch sử giao dịch.');
+        setErrorText(res.message || t('walletHistory.errorLoadHistory'));
       }
     } catch (err) {
       console.error('Failed to load transaction history:', err);
-      setErrorText(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi kết nối máy chủ.');
+      setErrorText(err instanceof Error ? err.message : t('walletHistory.errorServer'));
     } finally {
       setLoading(false);
     }
@@ -81,27 +83,19 @@ export default function WalletHistoryScreen() {
     if (trans.note) return trans.note;
     switch (trans.type) {
       case 0:
-        return 'Cấp số dư từ hệ thống (Admin)';
+        return t('walletHistory.descAdmin');
       case 1:
-        return `Nạp tiền vào ví qua ${trans.gatewayProvider || 'PayOS'}`;
+        return t('walletHistory.descTopUp', { provider: trans.gatewayProvider || 'PayOS' });
       case 2:
-        return `Ký quỹ hợp đồng dự án`;
+        return t('walletHistory.descHold');
       case 3:
-        return `Giải ngân hợp đồng dự án`;
+        return t('walletHistory.descRelease');
       case 4:
-        return `Hoàn trả ký quỹ hợp đồng`;
+        return t('walletHistory.descRefund');
       case 5:
-        return 'Điều chỉnh số dư từ hệ thống';
-      case 6:
-        return 'Khoa GigCoin cho yeu cau rut tien';
-      case 7:
-        return 'Rut tien thanh cong';
-      case 8:
-        return 'Hoan GigCoin do rut tien that bai';
-      case 9:
-        return 'Phi rut tien';
+        return t('walletHistory.descAdjustment');
       default:
-        return 'Giao dịch ví';
+        return t('walletHistory.descDefault');
     }
   };
 
@@ -145,42 +139,34 @@ export default function WalletHistoryScreen() {
   const getStatusBadge = (status: number) => {
     switch (status) {
       case 0:
-        return <span className="badge-amber text-[11px] px-2 py-0.5 font-semibold">Chờ xử lý</span>;
+        return <span className="badge-amber text-[11px] px-2 py-0.5 font-semibold">{t('walletHistory.statusPending')}</span>;
       case 1:
-        return <span className="badge-green text-[11px] px-2 py-0.5 font-semibold">Thành công</span>;
+        return <span className="badge-green text-[11px] px-2 py-0.5 font-semibold">{t('walletHistory.statusSuccess')}</span>;
       case 2:
-        return <span className="badge-red text-[11px] px-2 py-0.5 font-semibold">Thất bại</span>;
+        return <span className="badge-red text-[11px] px-2 py-0.5 font-semibold">{t('walletHistory.statusFailed')}</span>;
       case 3:
-        return <span className="badge-gray text-[11px] px-2 py-0.5 font-semibold">Đã hủy</span>;
+        return <span className="badge-gray text-[11px] px-2 py-0.5 font-semibold">{t('walletHistory.statusCancelled')}</span>;
       default:
-        return <span className="badge-gray text-[11px] px-2 py-0.5 font-semibold">Không rõ</span>;
+        return <span className="badge-gray text-[11px] px-2 py-0.5 font-semibold">{t('walletHistory.statusUnknown')}</span>;
     }
   };
 
   const getTypeBadge = (type: number) => {
     switch (type) {
       case 0:
-        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Admin</span>;
+        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeAdmin')}</span>;
       case 1:
-        return <span className="badge-green text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Nạp tiền</span>;
+        return <span className="badge-green text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeTopUp')}</span>;
       case 2:
-        return <span className="badge-amber text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Ký quỹ</span>;
+        return <span className="badge-amber text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeHold')}</span>;
       case 3:
-        return <span className="badge-purple text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Giải ngân</span>;
+        return <span className="badge-purple text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeRelease')}</span>;
       case 4:
-        return <span className="badge-cyan text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Hoàn trả</span>;
+        return <span className="badge-cyan text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeRefund')}</span>;
       case 5:
-        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Điều chỉnh</span>;
-      case 6:
-        return <span className="badge-amber text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Khoa rut</span>;
-      case 7:
-        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Rut tien</span>;
-      case 8:
-        return <span className="badge-green text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Hoan rut</span>;
-      case 9:
-        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Phi rut</span>;
+        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeAdjustment')}</span>;
       default:
-        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">Khác</span>;
+        return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeOther')}</span>;
     }
   };
 
@@ -242,10 +228,10 @@ export default function WalletHistoryScreen() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <History size={20} className="text-cyan" />
-                <span className="badge-cyan text-xs">Giao Dịch</span>
+                <span className="badge-cyan text-xs">{t('walletHistory.badgeLabel')}</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">Lịch Sử Giao Dịch</h1>
-              <p className="text-sm text-secondary mt-1">Xem toàn bộ lịch sử biến động số dư ví của bạn</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-primary">{t('walletHistory.title')}</h1>
+              <p className="text-sm text-secondary mt-1">{t('walletHistory.subtitle')}</p>
             </div>
             <button
               onClick={() => void fetchTransactions()}
@@ -253,19 +239,18 @@ export default function WalletHistoryScreen() {
               disabled={loading}
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              Làm mới
+              {t('walletHistory.refresh')}
             </button>
           </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-8">
             {[
-              { label: 'Tổng nạp tiền', value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} />, color: 'green' },
-              { label: 'Ký quỹ dự án', value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} />, color: 'red' },
-              { label: 'Tổng hoàn trả', value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} />, color: 'cyan' },
-              { label: 'Đã rút tiền', value: <GigCoinAmount amount={stats.totalWithdrawn} />, icon: <ArrowDownRight size={16} />, color: 'amber' },
-              { label: 'Đang xử lý', value: stats.pending.toString(), icon: <Loader2 size={16} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber' },
-              { label: 'Tổng số giao dịch', value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
+              { label: t('walletHistory.statTotalDeposits'), value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} />, color: 'green' },
+              { label: t('walletHistory.statTotalHold'), value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} />, color: 'red' },
+              { label: t('walletHistory.statTotalRefund'), value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} />, color: 'cyan' },
+              { label: t('walletHistory.statPending'), value: stats.pending.toString(), icon: <Loader2 size={16} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber' },
+              { label: t('walletHistory.statTotalTransactions'), value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
             ].map(stat => (
               <div key={stat.label} className="stat-card">
                 <div className="flex items-center justify-between mb-2">
@@ -286,7 +271,7 @@ export default function WalletHistoryScreen() {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Tìm kiếm giao dịch..."
+                  placeholder={t('walletHistory.searchPlaceholder')}
                   className="input-gb w-full py-2.5 text-sm"
                   style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
                 />
@@ -296,28 +281,24 @@ export default function WalletHistoryScreen() {
                 onChange={e => setTypeFilter(e.target.value)}
                 className="input-gb px-4 py-2.5 text-sm cursor-pointer"
               >
-                <option value="all">Tất cả phân loại</option>
-                <option value="1">Nạp tiền (TopUp)</option>
-                <option value="2">Ký quỹ (Hold)</option>
-                <option value="3">Giải ngân (Release)</option>
-                <option value="4">Hoàn trả ký quỹ (Refund)</option>
-                <option value="0">Cấp từ Admin</option>
-                <option value="5">Điều chỉnh</option>
-                <option value="6">Khoa rut tien</option>
-                <option value="7">Rut tien thanh cong</option>
-                <option value="8">Hoan rut tien</option>
-                <option value="9">Phi rut tien</option>
+                <option value="all">{t('walletHistory.filterAllTypes')}</option>
+                <option value="1">{t('walletHistory.filterTopUp')}</option>
+                <option value="2">{t('walletHistory.filterHold')}</option>
+                <option value="3">{t('walletHistory.filterRelease')}</option>
+                <option value="4">{t('walletHistory.filterRefund')}</option>
+                <option value="0">{t('walletHistory.filterAdmin')}</option>
+                <option value="5">{t('walletHistory.filterAdjustment')}</option>
               </select>
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
                 className="input-gb px-4 py-2.5 text-sm cursor-pointer"
               >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="1">Thành công</option>
-                <option value="0">Đang xử lý</option>
-                <option value="2">Thất bại</option>
-                <option value="3">Đã hủy</option>
+                <option value="all">{t('walletHistory.filterAllStatuses')}</option>
+                <option value="1">{t('walletHistory.statusSuccess')}</option>
+                <option value="0">{t('walletHistory.statusPending')}</option>
+                <option value="2">{t('walletHistory.statusFailed')}</option>
+                <option value="3">{t('walletHistory.statusCancelled')}</option>
               </select>
             </div>
           </div>
@@ -326,13 +307,13 @@ export default function WalletHistoryScreen() {
           {loading ? (
             <div className="glass-card p-12 text-center flex flex-col items-center justify-center">
               <Loader2 size={40} className="text-cyan animate-spin mb-4" />
-              <p className="text-secondary text-sm">Đang tải lịch sử giao dịch...</p>
+              <p className="text-secondary text-sm">{t('walletHistory.loadingText')}</p>
             </div>
           ) : errorText ? (
             <div className="glass-card p-8 border border-red-500/25 bg-red-500/5 text-center">
               <p className="text-red-500 font-semibold mb-2">{errorText}</p>
               <button onClick={() => void fetchTransactions()} className="btn-cyan px-4 py-2 text-xs">
-                Thử lại
+                {t('walletHistory.retry')}
               </button>
             </div>
           ) : (
@@ -362,10 +343,10 @@ export default function WalletHistoryScreen() {
                   <div className="flex items-center justify-between pt-3 mt-3 border-t border-white/5 text-xs text-muted">
                     <div className="flex items-center gap-4 flex-wrap">
                       {trans.completedAt && (
-                        <span>Hoàn thành: {formatDate(trans.completedAt)}</span>
+                        <span>{t('walletHistory.completedAtLabel', { date: formatDate(trans.completedAt) })}</span>
                       )}
                       {trans.contractId && (
-                        <span className="truncate max-w-[150px]">Hợp đồng: {trans.contractId}</span>
+                        <span className="truncate max-w-[150px]">{t('walletHistory.contractIdLabel', { id: trans.contractId })}</span>
                       )}
                     </div>
                     <button
@@ -373,7 +354,7 @@ export default function WalletHistoryScreen() {
                       className="text-xs text-cyan hover:underline flex items-center gap-1 font-semibold"
                     >
                       <Eye size={12} />
-                      Chi tiết
+                      {t('walletHistory.detailBtn')}
                     </button>
                   </div>
                 </div>
@@ -382,8 +363,8 @@ export default function WalletHistoryScreen() {
               {filteredTransactions.length === 0 && (
                 <div className="glass-card p-12 text-center">
                   <History size={48} className="mx-auto mb-4 text-muted" />
-                  <p className="text-lg font-semibold text-primary mb-2">Không tìm thấy giao dịch nào</p>
-                  <p className="text-sm text-secondary">Thử điều chỉnh bộ lọc tìm kiếm của bạn</p>
+                  <p className="text-lg font-semibold text-primary mb-2">{t('walletHistory.noTransactions')}</p>
+                  <p className="text-sm text-secondary">{t('walletHistory.noTransactionsDesc')}</p>
                 </div>
               )}
             </div>
@@ -399,7 +380,7 @@ export default function WalletHistoryScreen() {
         >
           <div className="glass-card max-w-2xl w-full p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-primary">Chi Tiết Giao Dịch</h2>
+              <h2 className="text-2xl font-bold text-primary">{t('walletHistory.detailTitle')}</h2>
               <button
                 onClick={() => setViewTransaction(null)}
                 className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
@@ -423,34 +404,34 @@ export default function WalletHistoryScreen() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-sm">
                   <div>
-                    <p className="text-muted text-xs mb-1">Mã giao dịch (ID)</p>
+                    <p className="text-muted text-xs mb-1">{t('walletHistory.detailId')}</p>
                     <p className="text-primary font-mono text-xs break-all">{viewTransaction.walletTransactionId}</p>
                   </div>
                   <div>
-                    <p className="text-muted text-xs mb-1">Mã ví người dùng</p>
+                    <p className="text-muted text-xs mb-1">{t('walletHistory.detailWalletId')}</p>
                     <p className="text-primary font-mono text-xs break-all">{viewTransaction.walletId}</p>
                   </div>
                   {viewTransaction.gatewayOrderCode && (
                     <div>
-                      <p className="text-muted text-xs mb-1">Mã đơn hàng PayOS</p>
+                      <p className="text-muted text-xs mb-1">{t('walletHistory.detailPayosOrder')}</p>
                       <p className="text-primary font-mono text-xs">{viewTransaction.gatewayOrderCode}</p>
                     </div>
                   )}
                   {viewTransaction.gatewayTransactionCode && (
                     <div>
-                      <p className="text-muted text-xs mb-1">Mã tham chiếu PayOS</p>
+                      <p className="text-muted text-xs mb-1">{t('walletHistory.detailPayosRef')}</p>
                       <p className="text-primary font-mono text-xs">{viewTransaction.gatewayTransactionCode}</p>
                     </div>
                   )}
                   {viewTransaction.contractId && (
                     <div>
-                      <p className="text-muted text-xs mb-1">Mã hợp đồng liên kết</p>
+                      <p className="text-muted text-xs mb-1">{t('walletHistory.detailContract')}</p>
                       <p className="text-primary font-mono text-xs break-all">{viewTransaction.contractId}</p>
                     </div>
                   )}
                   {viewTransaction.contractEscrowId && (
                     <div>
-                      <p className="text-muted text-xs mb-1">Mã ký quỹ hợp đồng</p>
+                      <p className="text-muted text-xs mb-1">{t('walletHistory.detailEscrow')}</p>
                       <p className="text-primary font-mono text-xs break-all">{viewTransaction.contractEscrowId}</p>
                     </div>
                   )}
@@ -461,18 +442,18 @@ export default function WalletHistoryScreen() {
                     </div>
                   )}
                   <div>
-                    <p className="text-muted text-xs mb-1">Thời gian khởi tạo</p>
+                    <p className="text-muted text-xs mb-1">{t('walletHistory.detailCreated')}</p>
                     <p className="text-primary">{formatDate(viewTransaction.createdAt)}</p>
                   </div>
                   {viewTransaction.completedAt && (
                     <div>
-                      <p className="text-muted text-xs mb-1">Thời gian hoàn thành</p>
+                      <p className="text-muted text-xs mb-1">{t('walletHistory.detailCompleted')}</p>
                       <p className="text-primary">{formatDate(viewTransaction.completedAt)}</p>
                     </div>
                   )}
                   {viewTransaction.note && (
                     <div className="col-span-1 sm:col-span-2">
-                      <p className="text-muted text-xs mb-1">Ghi chú</p>
+                      <p className="text-muted text-xs mb-1">{t('walletHistory.detailNote')}</p>
                       <p className="text-primary bg-white/5 p-2 rounded-lg text-xs">{viewTransaction.note}</p>
                     </div>
                   )}
@@ -485,7 +466,7 @@ export default function WalletHistoryScreen() {
                 onClick={() => setViewTransaction(null)}
                 className="btn-cyan px-6 py-2.5 font-semibold text-sm"
               >
-                Đóng
+                {t('walletHistory.closeBtn')}
               </button>
             </div>
           </div>

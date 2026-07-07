@@ -6,6 +6,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 const DRAFT_RULE_MESSAGE = 'Only draft project requests can update clarifying questions.';
 
@@ -22,7 +23,9 @@ const isDraftRuleFailure = (message?: string) =>
   (message || '').toLowerCase().includes('questions can only be modified');
 
 export default function ManageJobPostQuestionsScreen() {
+  const { t } = useTranslation();
   const { jobPostId = '' } = useParams();
+  const DRAFT_RULE_MESSAGE = t('manageQuestions.draftRuleMessage');
   const navigate = useNavigate();
   const [originalQuestions, setOriginalQuestions] = useState<JobPostQuestionDto[]>([]);
   const [currentQuestions, setCurrentQuestions] = useState<QuestionDraft[]>([]);
@@ -39,7 +42,7 @@ export default function ManageJobPostQuestionsScreen() {
     const response = await jobAPI.getJobPostQuestions(jobPostId);
 
     if (!response.success || !response.data) {
-      setError(response.message || 'Unable to load questions.');
+      setError(response.message || t('manageQuestions.unableToLoad'));
       setIsLoading(false);
       return;
     }
@@ -102,7 +105,7 @@ export default function ManageJobPostQuestionsScreen() {
   };
 
   const handleDeleteQuestion = async (question: QuestionDraft) => {
-    if (!window.confirm('Delete this question?')) return;
+    if (!window.confirm(t('manageQuestions.deleteQuestion'))) return;
 
     if (question.isNew) {
       setCurrentQuestions(prev =>
@@ -113,11 +116,11 @@ export default function ManageJobPostQuestionsScreen() {
 
     const response = await jobAPI.deleteJobPostQuestion(jobPostId, question.jobPostQuestionsId);
     if (!response.success) {
-      toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || 'Unable to delete question.');
+      toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.unableToDelete'));
       return;
     }
 
-    toast.success('Question deleted.');
+    toast.success(t('manageQuestions.questionDeleted'));
     await loadQuestions();
   };
 
@@ -129,7 +132,7 @@ export default function ManageJobPostQuestionsScreen() {
     const response = await jobAPI.updateJobPostQuestionRequired(jobPostId, question.jobPostQuestionsId, { isRequired });
     if (!response.success || !response.data) {
       updateQuestion(question.jobPostQuestionsId, { isRequired: question.isRequired });
-      toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || 'Unable to update required flag.');
+      toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.unableToUpdateRequired'));
       return;
     }
 
@@ -140,9 +143,9 @@ export default function ManageJobPostQuestionsScreen() {
   };
 
   const validateQuestion = (question: QuestionDraft) => {
-    if (!question.questionText.trim()) return 'Question text is required.';
-    if (question.questionText.length > 1000) return 'Question text must not exceed 1000 characters.';
-    if (question.orderIndex < 0) return 'Order index must be valid.';
+    if (!question.questionText.trim()) return t('manageQuestions.textRequired');
+    if (question.questionText.length > 1000) return t('manageQuestions.textMaxLength');
+    if (question.orderIndex < 0) return t('manageQuestions.invalidOrder');
     return null;
   };
 
@@ -166,7 +169,7 @@ export default function ManageJobPostQuestionsScreen() {
 
       if (!response.success) {
         setIsSaving(false);
-        toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || 'Unable to add question.');
+        toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.unableToUpdateRequired'));
         return;
       }
     }
@@ -182,18 +185,18 @@ export default function ManageJobPostQuestionsScreen() {
       const response = await jobAPI.updateBulkJobPostQuestions(jobPostId, { questions: changed });
       if (!response.success) {
         setIsSaving(false);
-        toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || 'Unable to save questions.');
+        toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.bulkUpdateFailed'));
         return;
       }
     }
 
     if (newQuestions.length === 0 && changed.length === 0) {
-      toast.info('No changes to save.');
+      toast.info(t('manageQuestions.noChanges'));
       setIsSaving(false);
       return;
     }
 
-    toast.success('Questions saved.');
+    toast.success(t('manageQuestions.savedSuccess'));
     await loadQuestions();
     setIsSaving(false);
   };
@@ -206,18 +209,18 @@ export default function ManageJobPostQuestionsScreen() {
           onClick={() => navigate('/jobs/my-jobs')}
           className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[var(--gb-cyan)] bg-transparent border-none cursor-pointer"
         >
-          <ArrowLeft size={16} /> Back to My Jobs
+          <ArrowLeft size={16} /> {t('manageQuestions.backToMyJobs')}
         </button>
 
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4 mb-6">
             <div>
-              <h1 className="text-2xl font-extrabold text-foreground">Manage Clarifying Questions</h1>
-              <p className="text-sm text-muted-foreground mt-1">Questions are optional and editable only while the project request is draft.</p>
+              <h1 className="text-2xl font-extrabold text-foreground">{t('manageQuestions.title')}</h1>
+              <p className="text-sm text-muted-foreground mt-1">{t('manageQuestions.subtitle')}</p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={handleAddQuestion} className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
-                <Plus size={16} /> Add Clarifying Question
+                <Plus size={16} /> {t('manageQuestions.addQuestion')}
               </button>
               <button
                 type="button"
@@ -225,20 +228,20 @@ export default function ManageJobPostQuestionsScreen() {
                 disabled={isSaving || isLoading}
                 className="btn-cyan px-4 py-2 text-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <Save size={16} /> {isSaving ? 'Saving...' : 'Save Changes'}
+                <Save size={16} /> {isSaving ? t('manageQuestions.saving') : t('manageQuestions.saveChanges')}
               </button>
             </div>
           </div>
 
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading clarifying questions...</p>
+            <p className="text-sm text-muted-foreground">{t('manageQuestions.loadingQuestions')}</p>
           ) : error ? (
             <div className="text-sm text-red-500">{error}</div>
           ) : currentQuestions.length === 0 ? (
             <div className="text-center py-10 border border-dashed border-border rounded-xl">
-              <p className="text-sm text-muted-foreground mb-4">No clarifying questions yet.</p>
+              <p className="text-sm text-muted-foreground mb-4">{t('manageQuestions.noQuestions')}</p>
               <button type="button" onClick={handleAddQuestion} className="btn-cyan px-4 py-2 text-sm">
-                Add First Clarifying Question
+                {t('manageQuestions.addFirstQuestion')}
               </button>
             </div>
           ) : (
@@ -246,15 +249,15 @@ export default function ManageJobPostQuestionsScreen() {
               {normalizeDraftOrder(currentQuestions).map((question, index) => (
                 <div key={question.jobPostQuestionsId} className="bg-background border border-border rounded-xl p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Question {index + 1}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('manageQuestions.questionNum', { num: index + 1 })}</span>
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
                         <input
-                          type="checkbox"
+                           type="checkbox"
                           checked={question.isRequired}
                           onChange={event => handleToggleRequired(question, event.target.checked)}
                         />
-                        Required answer
+                        {t('manageQuestions.required')}
                       </label>
                       <button
                         type="button"
@@ -272,11 +275,11 @@ export default function ManageJobPostQuestionsScreen() {
                     rows={3}
                     maxLength={1000}
                     className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
-                    placeholder="Optional question freelancers may answer to clarify their proposal..."
+                    placeholder={t('manageQuestions.placeholder')}
                   />
                   <div className="flex justify-between mt-2 text-[11px] text-muted-foreground">
-                    <span>Order index: {index}</span>
-                    <span>{question.questionText.length}/1000</span>
+                    <span>{t('manageQuestions.orderIndex', { index })}</span>
+                    <span>{t('manageQuestions.charCount', { count: question.questionText.length })}</span>
                   </div>
                 </div>
               ))}
@@ -291,7 +294,7 @@ export default function ManageJobPostQuestionsScreen() {
                 disabled={isSaving}
                 className="btn-cyan px-5 py-3 text-sm flex items-center gap-2 disabled:opacity-50"
               >
-                <Check size={16} /> {isSaving ? 'Saving...' : 'Save Clarifying Questions'}
+                <Check size={16} /> {isSaving ? t('manageQuestions.saving') : t('manageQuestions.saveQuestions')}
               </button>
             </div>
           )}

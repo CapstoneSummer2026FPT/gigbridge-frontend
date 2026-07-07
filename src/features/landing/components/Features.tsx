@@ -1,5 +1,6 @@
 import { useState, useRef, ReactNode, MouseEvent } from 'react';
 import { TiLocationArrow } from 'react-icons/ti';
+import { useTranslation } from 'react-i18next';
 
 interface BentoTiltProps {
   children: ReactNode;
@@ -47,9 +48,10 @@ interface BentoCardProps {
   title: ReactNode;
   description?: string;
   isComingSoon?: boolean;
+  exploreLabel?: string;
 }
 
-export function BentoCard({ src, title, description, isComingSoon }: BentoCardProps) {
+export function BentoCard({ src, title, description, isComingSoon, exploreLabel = 'explore' }: BentoCardProps) {
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [hoverOpacity, setHoverOpacity] = useState(0);
   const hoverButtonRef = useRef<HTMLDivElement>(null);
@@ -89,7 +91,7 @@ export function BentoCard({ src, title, description, isComingSoon }: BentoCardPr
       )}
       {/* Dark overlay for contrast enhancement on media backgrounds */}
       <div className="absolute inset-0 bg-black/40 z-0 pointer-events-none" />
-      
+
       <div className="relative z-10 flex size-full flex-col justify-between p-5 text-blue-50">
         <div>
           <h1 className="bento-title special-font">{title}</h1>
@@ -114,7 +116,7 @@ export function BentoCard({ src, title, description, isComingSoon }: BentoCardPr
               }}
             />
             <TiLocationArrow className="relative z-20" />
-            <p className="relative z-20">explore</p>
+            <p className="relative z-20">{exploreLabel}</p>
           </div>
         )}
       </div>
@@ -123,29 +125,27 @@ export function BentoCard({ src, title, description, isComingSoon }: BentoCardPr
 }
 
 export default function Features() {
+  const { t } = useTranslation('common');
+
   return (
     <section className="bg-background text-foreground pb-52 transition-colors duration-300">
       <div className="container mx-auto px-3 md:px-10">
         <div className="px-5 py-32">
           <p className="font-circular-web text-lg text-foreground">
-            Into the Matchmaking Layer
+            {t('landing.features.sectionLabel')}
           </p>
           <p className="max-w-md font-circular-web text-lg text-muted-foreground">
-            Immerse yourself in a unified ecosystem where freelancers build 
-            reputations and clients find elite talent without friction.
+            {t('landing.features.sectionDesc')}
           </p>
         </div>
 
         <BentoTilt className="border-hsla relative mb-7 h-96 w-full overflow-hidden rounded-md md:h-[65vh]">
           <BentoCard
             src="/videos/finding_work_landing.webm"
-            title={
-              <>
-                match<b>m</b>aking
-              </>
-            }
-            description="Our smart matchmaking engine connects freelancer profiles with appropriate project demands based on skills and history."
+            title={<span dangerouslySetInnerHTML={{ __html: t('landing.features.matchmakingTitle') }} />}
+            description={t('landing.features.matchmakingDesc')}
             isComingSoon
+            exploreLabel={t('landing.features.explore')}
           />
         </BentoTilt>
 
@@ -153,48 +153,39 @@ export default function Features() {
           <BentoTilt className="bento-tilt_1 col-span-2 row-span-1 md:col-span-1 md:row-span-2">
             <BentoCard
               src="/img/feature-2.png"
-              title={
-                <>
-                  sec<b>u</b>re escrow
-                </>
-              }
-              description="Milestone-based escrows and secure wallets ensure developers get paid for approved work and clients receive quality delivery."
+              title={<span dangerouslySetInnerHTML={{ __html: t('landing.features.escrowTitle') }} />}
+              description={t('landing.features.escrowDesc')}
               isComingSoon
+              exploreLabel={t('landing.features.explore')}
             />
           </BentoTilt>
 
           <BentoTilt className="bento-tilt_1 col-span-2 row-span-1 ms-32 md:col-span-1 md:ms-0">
             <BentoCard
               src="/img/feature-3.png"
-              title={
-                <>
-                  cont<b>r</b>acts
-                </>
-              }
-              description="Protect your collaboration with legally-binding, digital e-signed contract templates built directly into the workflow."
+              title={<span dangerouslySetInnerHTML={{ __html: t('landing.features.contractsTitle') }} />}
+              description={t('landing.features.contractsDesc')}
               isComingSoon
+              exploreLabel={t('landing.features.explore')}
             />
           </BentoTilt>
 
           <BentoTilt className="bento-tilt_1 col-span-2 row-span-1 me-14 md:col-span-1 md:me-0">
             <BentoCard
               src="/img/feature-4.png"
-              title={
-                <>
-                  ai cop<b>i</b>lot
-                </>
-              }
-              description="AI interview screening tools and assistants help screen candidates and draft detailed project scopes quickly."
+              title={<span dangerouslySetInnerHTML={{ __html: t('landing.features.aiPilotTitle') }} />}
+              description={t('landing.features.aiPilotDesc')}
               isComingSoon
+              exploreLabel={t('landing.features.explore')}
             />
           </BentoTilt>
 
           <BentoTilt className="bento-tilt_2 col-span-1 row-span-1">
             <div className="flex size-full flex-col justify-between bg-secondary p-5 text-secondary-foreground">
-              <h1 className="bento-title special-font max-w-64">
-                Expa<b>n</b>ding the ec<b>o</b>system s<b>o</b>on.
-              </h1>
-
+              <h1
+                className="bento-title special-font max-w-64"
+                dangerouslySetInnerHTML={{ __html: t('landing.features.expandingTitle') }}
+              />
               <TiLocationArrow className="m-5 scale-[5] self-end text-secondary-foreground" />
             </div>
           </BentoTilt>
@@ -202,7 +193,7 @@ export default function Features() {
           <BentoTilt className="bento-tilt_2 col-span-1 row-span-1">
             <img
               src="/img/feature-5.png"
-              alt="Workspace Illustration"
+              alt={t('landing.features.workspaceAlt')}
               className="size-full object-cover object-center"
             />
           </BentoTilt>

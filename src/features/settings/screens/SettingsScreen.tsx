@@ -138,7 +138,7 @@ export default function SettingsScreen() {
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
         } else {
-          setErrorMessage(res.message || 'Failed to update freelancer profile');
+          setErrorMessage(res.message || t('profile.errors.charLimit'));
         }
       } else if (role === UserRole.Client) {
         const res = await profilePutAPI.updateClientProfile({
@@ -154,12 +154,12 @@ export default function SettingsScreen() {
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
         } else {
-          setErrorMessage(res.message || 'Failed to update client profile');
+          setErrorMessage(res.message || t('profile.errors.charLimit'));
         }
       }
     } catch (err: any) {
       console.error('Error saving profile:', err);
-      setErrorMessage(err.message || 'An error occurred while saving.');
+      setErrorMessage(err.message || t('common.error'));
     }
   };
 
@@ -181,12 +181,12 @@ export default function SettingsScreen() {
     setPasswordSuccess(false);
 
     if (!currentPassword || !newPassword || !confirmNewPassword) {
-      setPasswordError('All fields are required');
+      setPasswordError(t('settings.passwordErrorRequired'));
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setPasswordError('New passwords do not match');
+      setPasswordError(t('settings.passwordErrorMatch'));
       return;
     }
 
@@ -205,13 +205,13 @@ export default function SettingsScreen() {
       } else {
         if (res.errors && typeof res.errors === 'object') {
           const errorMsgs = Object.values(res.errors).flat().join(', ');
-          setPasswordError(errorMsgs || res.message || 'Failed to update password');
+          setPasswordError(errorMsgs || res.message || t('settings.passwordErrorUpdate'));
         } else {
-          setPasswordError(res.message || 'Failed to update password');
+          setPasswordError(res.message || t('settings.passwordErrorUpdate'));
         }
       }
     } catch (err: any) {
-      setPasswordError(err.message || 'An error occurred while updating your password');
+      setPasswordError(err.message || t('settings.passwordErrorUpdate'));
     } finally {
       setPasswordLoading(false);
     }
@@ -232,7 +232,7 @@ export default function SettingsScreen() {
       && billingConfig.billingAddress.trim().length <= 255;
 
     if (!validBank || !validAddress) {
-      setBillingError('Please enter valid bank information');
+      setBillingError(t('settings.billingError'));
       setBillingSaved(false);
       return;
     }
@@ -246,11 +246,11 @@ export default function SettingsScreen() {
   const TABS = [
     { id: 'profile', label: t('settings.general'), icon: <User size={16} /> },
     { id: 'security', label: t('settings.security'), icon: <Lock size={16} /> },
-    { id: 'payment', label: 'Payment', icon: <CreditCard size={16} /> },
-    { id: 'billing', label: 'Billings & Earnings', icon: <Landmark size={16} /> },
+    { id: 'payment', label: t('settings.payment'), icon: <CreditCard size={16} /> },
+    { id: 'billing', label: t('settings.billing'), icon: <Landmark size={16} /> },
     { id: 'notifications', label: t('settings.notifications'), icon: <Bell size={16} /> },
-    { id: 'preferences', label: 'Preferences', icon: <Globe size={16} /> },
-    { id: 'ai', label: 'AI Settings', icon: <Bot size={16} /> },
+    { id: 'preferences', label: t('settings.preferences'), icon: <Globe size={16} /> },
+    { id: 'ai', label: t('settings.ai'), icon: <Bot size={16} /> },
   ];
 
   return (
@@ -258,9 +258,9 @@ export default function SettingsScreen() {
       <div className="settings-screen max-w-5xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">
-            Account <span className="text-blue-600 black:text-blue-400 italic font-light">Settings</span>
+            {t('nav.settings')}
           </h1>
-          <p className="text-secondary">Manage your account preferences and profile</p>
+          <p className="text-secondary">{t('settings.manageSubtitle', { defaultValue: 'Manage your account preferences and profile' })}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -283,7 +283,7 @@ export default function SettingsScreen() {
               <>
                 {/* Avatar */}
                 <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-5">Profile Photo</h2>
+                  <h2 className="text-primary font-semibold mb-5">{t('settings.profilePhoto', { defaultValue: 'Profile Photo' })}</h2>
                   <div className="flex items-center gap-5">
                     <div className="relative">
                       <img src={user?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'} alt={user?.full_name} className="w-20 h-20 rounded-2xl avatar-glow" />
@@ -294,9 +294,9 @@ export default function SettingsScreen() {
                     </div>
                     <div>
                       <p className="text-primary font-medium">{user?.full_name}</p>
-                      <p className="text-sm mt-0.5 capitalize text-secondary">{role === UserRole.Client ? 'Client' : 'Freelancer'} · {user?.email}</p>
+                      <p className="text-sm mt-0.5 capitalize text-secondary">{role === UserRole.Client ? t('marketInsights.clients') : t('marketInsights.freelancers')} · {user?.email}</p>
                       {user?.is_email_verified && (
-                        <span className="badge-green text-xs mt-2 inline-block">✓ Verified</span>
+                        <span className="badge-green text-xs mt-2 inline-block">✓ {t('settings.verified', { defaultValue: 'Verified' })}</span>
                       )}
                     </div>
                   </div>
@@ -305,7 +305,7 @@ export default function SettingsScreen() {
                 {loading ? (
                   <div className="glass-card p-6 flex flex-col items-center justify-center min-h-[200px]">
                     <div className="w-8 h-8 rounded-full border-2 border-cyan border-t-transparent animate-spin mb-2" />
-                    <p className="text-sm text-secondary">Loading settings...</p>
+                    <p className="text-sm text-secondary">{t('settings.loadingSettings')}</p>
                   </div>
                 ) : (
                   <>
@@ -317,20 +317,20 @@ export default function SettingsScreen() {
 
                     {/* Basic Info */}
                     <div className="glass-card p-6">
-                      <h2 className="text-primary font-semibold mb-5">Basic Information</h2>
+                      <h2 className="text-primary font-semibold mb-5">{t('settings.basicInfo')}</h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs font-medium text-primary mb-2 block">Full Name</label>
+                          <label className="text-xs font-medium text-primary mb-2 block">{t('settings.fullName')}</label>
                           <input type="text" value={formData.name} readOnly disabled
                             className="input-gb w-full px-4 py-3 text-sm opacity-60 cursor-not-allowed" />
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-primary mb-2 block">Email Address</label>
+                          <label className="text-xs font-medium text-primary mb-2 block">{t('settings.emailAddress')}</label>
                           <input type="email" value={formData.email} readOnly disabled
                             className="input-gb w-full px-4 py-3 text-sm opacity-60 cursor-not-allowed" />
                         </div>
                         <div>
-                          <label className="text-xs font-medium text-primary mb-2 block">Location</label>
+                          <label className="text-xs font-medium text-primary mb-2 block">{t('settings.location')}</label>
                           <input type="text" value={formData.location}
                             onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
                             className="input-gb w-full px-4 py-3 text-sm" />
@@ -339,13 +339,13 @@ export default function SettingsScreen() {
                         {role === UserRole.Freelancer && (
                           <>
                             <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Professional Title</label>
+                              <label className="text-xs font-medium text-primary mb-2 block">{t('settings.professionalTitle')}</label>
                               <input type="text" value={formData.title}
                                 onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
                                 className="input-gb w-full px-4 py-3 text-sm" />
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Availability</label>
+                              <label className="text-xs font-medium text-primary mb-2 block">{t('settings.availability')}</label>
                               <select value={formData.availability}
                                 onChange={e => setFormData(prev => ({ ...prev, availability: parseInt(e.target.value) || 0 }))}
                                 className="input-gb w-full px-4 py-3 text-sm bg-black"
@@ -361,19 +361,19 @@ export default function SettingsScreen() {
                         {role === UserRole.Client && (
                           <>
                             <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Company Name</label>
+                              <label className="text-xs font-medium text-primary mb-2 block">{t('profile.companyName')}</label>
                               <input type="text" value={formData.companyName}
                                 onChange={e => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
                                 className="input-gb w-full px-4 py-3 text-sm" />
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Company Website</label>
+                              <label className="text-xs font-medium text-primary mb-2 block">{t('profile.websiteUrl')}</label>
                               <input type="url" value={formData.companyWebsite}
                                 onChange={e => setFormData(prev => ({ ...prev, companyWebsite: e.target.value }))}
                                 className="input-gb w-full px-4 py-3 text-sm" />
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Industry</label>
+                              <label className="text-xs font-medium text-primary mb-2 block">{t('profile.industry')}</label>
                               <select value={formData.industry}
                                 onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))}
                                 className="input-gb w-full px-4 py-3 text-sm bg-black"
@@ -385,7 +385,7 @@ export default function SettingsScreen() {
                               </select>
                             </div>
                             <div>
-                              <label className="text-xs font-medium text-primary mb-2 block">Company Size</label>
+                              <label className="text-xs font-medium text-primary mb-2 block">{t('settings.companySize', { defaultValue: 'Company Size' })}</label>
                               <select value={formData.companySize}
                                 onChange={e => setFormData(prev => ({ ...prev, companySize: parseInt(e.target.value) || 0 }))}
                                 className="input-gb w-full px-4 py-3 text-sm bg-black"
@@ -404,16 +404,16 @@ export default function SettingsScreen() {
                     {role === UserRole.Freelancer && (
                       <div className="glass-card p-6">
                         <div className="flex items-center justify-between mb-4">
-                          <h2 className="text-primary font-semibold">Professional Bio</h2>
+                          <h2 className="text-primary font-semibold">{t('settings.professionalBio')}</h2>
                           <button onClick={handleAIOptimize} disabled={isOptimizing}
                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all disabled:opacity-50"
                             style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.15), rgba(159,75,255,0.15))', border: '1px solid rgba(0,240,255,0.3)', color: '#0077FF' }}>
                             {isOptimizing ? (
-                              <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />Optimizing...</>
+                              <><div className="w-3 h-3 rounded-full border border-[#0077FF] border-t-transparent animate-spin" />{t('settings.aiOptimizeRunning')}</>
                             ) : optimizeSuccess ? (
-                              '✓ Bio Optimized!'
+                              t('settings.aiOptimizeSuccess')
                             ) : (
-                              <><Bot size={14} />AI Optimize Bio</>
+                              <><Bot size={14} />{t('settings.aiOptimize')}</>
                             )}
                           </button>
                         </div>
@@ -421,26 +421,26 @@ export default function SettingsScreen() {
                           onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                           rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
                         <p className="text-xs mt-2 text-secondary">
-                          {formData.bio.length} / 1000 characters · AI-optimized bios get 67% more profile views
+                          {t('settings.charCountDesc', { count: formData.bio.length })}
                         </p>
                       </div>
                     )}
 
                     {role === UserRole.Client && (
                       <div className="glass-card p-6">
-                        <h2 className="text-primary font-semibold mb-4">Company Description</h2>
+                        <h2 className="text-primary font-semibold mb-4">{t('settings.companyDescription')}</h2>
                         <textarea value={formData.companyDescription}
                           onChange={e => setFormData(prev => ({ ...prev, companyDescription: e.target.value }))}
                           rows={5} className="input-gb w-full px-4 py-3 resize-none text-sm leading-relaxed" />
                         <p className="text-xs mt-2 text-secondary">
-                          {formData.companyDescription.length} / 1000 characters
+                          {t('settings.charCountDescClient', { count: formData.companyDescription.length })}
                         </p>
                       </div>
                     )}
 
                     <button onClick={handleSave}
                       className={`btn-cyan px-8 py-3 text-sm transition-all ${saved ? 'bg-green-500!' : ''}`}>
-                      {saved ? '✓ Saved!' : 'Save Changes'}
+                      {saved ? t('settings.saved') : t('settings.saveChanges')}
                     </button>
                   </>
                 )}
@@ -450,7 +450,7 @@ export default function SettingsScreen() {
             {/* Security Tab */}
             {tab === 'security' && (
               <div className="glass-card p-6">
-                <h2 className="text-primary font-semibold mb-6">Password & Security</h2>
+                <h2 className="text-primary font-semibold mb-6">{t('settings.securityDesc')}</h2>
                 <form onSubmit={handlePasswordUpdate} className="space-y-4">
                   {passwordError && (
                     <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
@@ -460,12 +460,13 @@ export default function SettingsScreen() {
 
                   {passwordSuccess && (
                     <div className="p-4 rounded-xl text-sm" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981' }}>
-                      Password updated successfully!
+                      {t('settings.passwordSuccess')}
                     </div>
                   )}
 
+                  {/* Current Password */}
                   <div>
-                    <label className="text-xs font-medium text-primary mb-2 block">Current Password</label>
+                    <label className="text-xs font-medium text-primary mb-2 block">{t('settings.currentPassword')}</label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -485,8 +486,9 @@ export default function SettingsScreen() {
                     </div>
                   </div>
 
+                  {/* New Password */}
                   <div>
-                    <label className="text-xs font-medium text-primary mb-2 block">New Password</label>
+                    <label className="text-xs font-medium text-primary mb-2 block">{t('settings.newPassword')}</label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -506,8 +508,9 @@ export default function SettingsScreen() {
                     </div>
                   </div>
 
+                  {/* Confirm Password */}
                   <div>
-                    <label className="text-xs font-medium text-primary mb-2 block">Confirm New Password</label>
+                    <label className="text-xs font-medium text-primary mb-2 block">{t('settings.confirmNewPassword')}</label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -535,10 +538,10 @@ export default function SettingsScreen() {
                     {passwordLoading ? (
                       <>
                         <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                        Updating...
+                        {t('settings.updating')}
                       </>
                     ) : (
-                      'Update Password'
+                      t('settings.updatePassword')
                     )}
                   </button>
                 </form>
@@ -549,7 +552,7 @@ export default function SettingsScreen() {
             {tab === 'payment' && (
               <div className="space-y-5">
                 <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-5">Payment Methods</h2>
+                  <h2 className="text-primary font-semibold mb-5">{t('settings.payment')}</h2>
                   <div className="space-y-3 mb-4">
                     {[
                       { type: 'Visa', last4: '4242', expiry: '12/27', isDefault: true },
@@ -568,20 +571,20 @@ export default function SettingsScreen() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {card.isDefault && <span className="badge-cyan text-xs">Default</span>}
-                          <button className="text-xs text-red">Remove</button>
+                          {card.isDefault && <span className="badge-cyan text-xs">{t('settings.default')}</span>}
+                          <button className="text-xs text-red">{t('settings.remove')}</button>
                         </div>
                       </div>
                     ))}
                   </div>
                   <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all"
                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#8892A4' }}>
-                    <Plus size={14} /> Add Payment Method
+                    <Plus size={14} /> {t('settings.addPaymentMethod')}
                   </button>
                 </div>
 
                 <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-5">Withdrawal Settings</h2>
+                  <h2 className="text-primary font-semibold mb-5">{t('settings.withdrawalSettings')}</h2>
                   <div className="space-y-4">
                     {[
                       { label: 'Bank Account', value: '•••• •••• 1234', status: 'Verified' },
@@ -593,7 +596,9 @@ export default function SettingsScreen() {
                           <p className="text-primary text-sm font-medium">{method.label}</p>
                           <p className="text-xs text-secondary">{method.value}</p>
                         </div>
-                        <span className="badge-green text-xs">{method.status}</span>
+                        <span className="badge-green text-xs">
+                          {method.status === 'Verified' ? t('settings.verified', { defaultValue: 'Verified' }) : method.status}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -608,52 +613,52 @@ export default function SettingsScreen() {
                   <div className="alert-red text-sm font-semibold">{billingError}</div>
                 )}
                 {billingSaved && (
-                  <div className="alert-green text-sm font-semibold">Billing information saved for future invoices and withdrawals.</div>
+                  <div className="alert-green text-sm font-semibold">{t('settings.billingSaved')}</div>
                 )}
 
                 <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-5">Bank Account Details</h2>
+                  <h2 className="text-primary font-semibold mb-5">{t('settings.bankDetails')}</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Bank Name</label>
+                      <label className="text-xs font-medium text-primary mb-2 block">{t('settings.bankName')}</label>
                       <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.bankName}
                         onChange={e => handleBillingChange('bankName', e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Account Holder Name</label>
+                      <label className="text-xs font-medium text-primary mb-2 block">{t('settings.bankAccountName')}</label>
                       <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.bankAccountName}
                         onChange={e => handleBillingChange('bankAccountName', e.target.value)} />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-xs font-medium text-primary mb-2 block">Bank Account Number</label>
+                      <label className="text-xs font-medium text-primary mb-2 block">{t('settings.bankAccountNumber')}</label>
                       <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.bankAccountNumber}
                         onChange={e => handleBillingChange('bankAccountNumber', e.target.value)}
-                        placeholder="6-34 letters or digits" />
+                        placeholder={t('settings.bankAccountPlaceholder')} />
                     </div>
                   </div>
                 </div>
 
                 <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-5">Billing Address & VAT</h2>
+                  <h2 className="text-primary font-semibold mb-5">{t('settings.vat')}</h2>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Billing Address</label>
+                      <label className="text-xs font-medium text-primary mb-2 block">{t('settings.billingAddress')}</label>
                       <textarea className="input-gb w-full px-4 py-3 text-sm resize-none" rows={3}
                         maxLength={255}
                         value={billingConfig.billingAddress}
                         onChange={e => handleBillingChange('billingAddress', e.target.value)} />
-                      <p className="text-xs text-secondary mt-1">{billingConfig.billingAddress.length}/255 characters</p>
+                      <p className="text-xs text-secondary mt-1">{t('settings.billingAddressCharCount', { count: billingConfig.billingAddress.length })}</p>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-primary mb-2 block">Company Tax ID (optional)</label>
+                      <label className="text-xs font-medium text-primary mb-2 block">{t('settings.taxId')}</label>
                       <input className="input-gb w-full px-4 py-3 text-sm" value={billingConfig.companyTaxId}
                         onChange={e => handleBillingChange('companyTaxId', e.target.value)}
-                        placeholder="Required only for VAT invoices" />
+                        placeholder={t('settings.taxIdPlaceholder')} />
                     </div>
                     <label className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary bg-secondary cursor-pointer">
                       <div>
-                        <p className="text-sm font-semibold text-primary">Enable VAT invoice settings</p>
-                        <p className="text-xs text-secondary mt-1">Tax ID is required when VAT invoices are enabled.</p>
+                        <p className="text-sm font-semibold text-primary">{t('settings.vatInvoiceEnabled')}</p>
+                        <p className="text-xs text-secondary mt-1">{t('settings.vatInvoiceDesc')}</p>
                       </div>
                       <input type="checkbox" checked={billingConfig.vatInvoiceEnabled}
                         onChange={e => handleBillingChange('vatInvoiceEnabled', e.target.checked)} />
@@ -662,7 +667,7 @@ export default function SettingsScreen() {
                 </div>
 
                 <button onClick={handleBillingSave} className="btn-cyan px-8 py-3 text-sm">
-                  Save Billings & Earnings
+                  {t('settings.saveBilling')}
                 </button>
               </div>
             )}
@@ -670,15 +675,15 @@ export default function SettingsScreen() {
             {/* Notifications Tab */}
             {tab === 'notifications' && (
               <div className="glass-card p-6">
-                <h2 className="text-primary font-semibold mb-5">Notification Preferences</h2>
+                <h2 className="text-primary font-semibold mb-5">{t('settings.notifications')}</h2>
                 <div className="space-y-4">
                   {[
-                    { label: 'New proposal received', desc: 'When a freelancer submits a proposal', enabled: true },
-                    { label: 'AI job matches', desc: 'High-match job opportunities found by AI', enabled: true },
-                    { label: 'Milestone updates', desc: 'When a milestone is submitted or approved', enabled: true },
-                    { label: 'Payment confirmations', desc: 'When payments are sent or received', enabled: true },
-                    { label: 'New messages', desc: 'When you receive a message', enabled: false },
-                    { label: 'Marketing emails', desc: 'Tips, updates, and platform news', enabled: false },
+                    { label: t('settings.notifProposalTitle', { defaultValue: 'New proposal received' }), desc: t('settings.notifProposalDesc', { defaultValue: 'When a freelancer submits a proposal' }), enabled: true },
+                    { label: t('settings.notifAiTitle', { defaultValue: 'AI job matches' }), desc: t('settings.notifAiDesc', { defaultValue: 'High-match job opportunities found by AI' }), enabled: true },
+                    { label: t('settings.notifMilestoneTitle', { defaultValue: 'Milestone updates' }), desc: t('settings.notifMilestoneDesc', { defaultValue: 'When a milestone is submitted or approved' }), enabled: true },
+                    { label: t('settings.notifPaymentTitle', { defaultValue: 'Payment confirmations' }), desc: t('settings.notifPaymentDesc', { defaultValue: 'When payments are sent or received' }), enabled: true },
+                    { label: t('settings.notifMsgTitle', { defaultValue: 'New messages' }), desc: t('settings.notifMsgDesc', { defaultValue: 'When you receive a message' }), enabled: false },
+                    { label: t('settings.notifPromoTitle', { defaultValue: 'Marketing emails' }), desc: t('settings.notifPromoDesc', { defaultValue: 'Tips, updates, and platform news' }), enabled: false },
                   ].map(notif => (
                     <div key={notif.label} className="flex items-center justify-between py-3 border-b"
                       style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -711,7 +716,7 @@ export default function SettingsScreen() {
                       <LanguageSwitcher variant="select" />
                     </div>
                     <p className="text-xs text-secondary">
-                      Changes will be applied immediately across the application.
+                      {t('settings.languageHelpDesc', { defaultValue: 'Changes will be applied immediately across the application.' })}
                     </p>
                   </div>
                 </div>
@@ -731,7 +736,7 @@ export default function SettingsScreen() {
                           </div>
                           <div className="text-left">
                             <p className="text-primary font-medium text-sm">{t('settings.darkMode')}</p>
-                            <p className="text-xs text-secondary">Default theme</p>
+                            <p className="text-xs text-secondary">{t('settings.defaultTheme', { defaultValue: 'Default theme' })}</p>
                           </div>
                         </button>
                         <button className="flex items-center gap-3 p-4 rounded-xl border-2 border-border hover:border-cyan transition-colors">
@@ -740,7 +745,7 @@ export default function SettingsScreen() {
                           </div>
                           <div className="text-left">
                             <p className="text-primary font-medium text-sm">{t('settings.lightMode')}</p>
-                            <p className="text-xs text-secondary">Light theme</p>
+                            <p className="text-xs text-secondary">{t('settings.lightTheme', { defaultValue: 'Light theme' })}</p>
                           </div>
                         </button>
                       </div>
@@ -757,15 +762,15 @@ export default function SettingsScreen() {
                   style={{ background: 'linear-gradient(135deg, rgba(159,75,255,0.06), rgba(0,240,255,0.04))', border: '1px solid rgba(159,75,255,0.2)' }}>
                   <div className="flex items-center gap-2 mb-4">
                     <Bot size={18} className="text-purple" />
-                    <h2 className="text-primary font-semibold">AI Preferences</h2>
-                    <span className="badge-purple text-xs ml-auto">Pro Feature</span>
+                    <h2 className="text-primary font-semibold">{t('settings.ai', { defaultValue: 'AI Preferences' })}</h2>
+                    <span className="badge-purple text-xs ml-auto">{t('settings.proFeature', { defaultValue: 'Pro Feature' })}</span>
                   </div>
                   <div className="space-y-4">
                     {[
-                      { label: 'AI Job Matching', desc: 'Let AI find and rank jobs based on your profile', enabled: true },
-                      { label: 'AI Proposal Suggestions', desc: 'Get AI-powered cover letter assistance', enabled: true },
-                      { label: 'Smart Budget Recommendations', desc: 'AI-based fixed-price budget guidance', enabled: true },
-                      { label: 'Auto-apply to high matches', desc: 'Automatically apply to 90%+ match jobs', enabled: false },
+                      { label: t('settings.aiMatchingTitle', { defaultValue: 'AI Job Matching' }), desc: t('settings.aiMatchingDesc', { defaultValue: 'Let AI find and rank jobs based on your profile' }), enabled: true },
+                      { label: t('settings.aiProposalTitle', { defaultValue: 'AI Proposal Suggestions' }), desc: t('settings.aiProposalDesc', { defaultValue: 'Get AI-powered cover letter assistance' }), enabled: true },
+                      { label: t('settings.aiBudgetTitle', { defaultValue: 'Smart Budget Recommendations' }), desc: t('settings.aiBudgetDesc', { defaultValue: 'AI-based fixed-price budget guidance' }), enabled: true },
+                      { label: t('settings.aiAutoApplyTitle', { defaultValue: 'Auto-apply to high matches' }), desc: t('settings.aiAutoApplyDesc', { defaultValue: 'Automatically apply to 90%+ match jobs' }), enabled: false },
                     ].map(setting => (
                       <div key={setting.label} className="flex items-center justify-between py-3 border-b"
                         style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -784,20 +789,20 @@ export default function SettingsScreen() {
                 </div>
 
                 <div className="glass-card p-6">
-                  <h2 className="text-primary font-semibold mb-4">AI Profile Optimizer</h2>
+                  <h2 className="text-primary font-semibold mb-4">{t('settings.aiProfileOptimizer')}</h2>
                   <p className="text-sm mb-4 text-secondary">
-                    Our AI analyzes top-performing profiles in your category and suggests improvements.
+                    {t('settings.aiOptimizerDesc')}
                   </p>
                   <button onClick={handleAIOptimize} disabled={isOptimizing}
                     className="btn-purple px-6 py-3 text-sm flex items-center gap-2">
                     {isOptimizing ? (
-                      <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Analyzing...</>
+                      <><div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />{t('settings.aiOptimizerAnalyzing')}</>
                     ) : (
-                      <><Bot size={16} />Run AI Profile Analysis</>
+                      <><Bot size={16} />{t('settings.aiOptimizerRun')}</>
                     )}
                   </button>
                   {optimizeSuccess && (
-                    <p className="text-sm mt-3 text-green">✓ Profile optimized! Your bio has been updated.</p>
+                    <p className="text-sm mt-3 text-green">{t('settings.aiOptimizerSuccessMessage')}</p>
                   )}
                 </div>
               </div>

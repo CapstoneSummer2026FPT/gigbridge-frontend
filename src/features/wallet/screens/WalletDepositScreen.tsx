@@ -14,6 +14,7 @@ import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 const VND_PER_GIGCOIN = 1000;
 const MIN_VND = 10_000;
@@ -35,6 +36,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 export default function WalletDepositScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const syncAttemptedRef = useRef<number | null>(null);
 
@@ -59,11 +61,11 @@ export default function WalletDepositScreen() {
       if (res.success && res.data) {
         setCurrentBalance(res.data.availableTokens);
       } else {
-        setErrorText(res.message || 'Không thể tải số dư ví.');
+        setErrorText(res.message || t('walletDeposit.errorLoadBalance'));
       }
     } catch (error) {
       console.error('Failed to load wallet balance:', error);
-      setErrorText(getErrorMessage(error, 'Không thể kết nối tới máy chủ.'));
+      setErrorText(getErrorMessage(error, t('walletDeposit.errorServer')));
     } finally {
       setLoadingBalance(false);
     }
@@ -87,7 +89,7 @@ export default function WalletDepositScreen() {
     }
 
     if (isCancelled) {
-      setErrorText('Thanh toán đã bị hủy bởi người dùng.');
+      setErrorText(t('walletDeposit.errorCancelled'));
       window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
       if (Number.isSafeInteger(orderCode) && orderCode > 0) {
         walletPostAPI.syncPayOsTopUp({ orderCode }).catch(err => {
@@ -119,7 +121,7 @@ export default function WalletDepositScreen() {
         for (let attempt = 0; attempt < 5; attempt += 1) {
           const syncRes = await walletPostAPI.syncPayOsTopUp({ orderCode: returnOrderCode });
           if (!syncRes.success) {
-            setErrorText(syncRes.message || 'Không thể đồng bộ giao dịch PayOS.');
+            setErrorText(syncRes.message || t('walletDeposit.errorSyncPayos'));
             break;
           }
 
@@ -138,11 +140,11 @@ export default function WalletDepositScreen() {
         window.dispatchEvent(new Event('gigbridge-wallet-updated'));
 
         if (!synced) {
-          setErrorText('PayOS đã trả về thành công. Hệ thống đang chờ xác nhận giao dịch, vui lòng tải lại số dư sau ít phút.');
+          setErrorText(t('walletDeposit.syncWarning'));
         }
       } catch (error) {
         console.error('PayOS sync error:', error);
-        setErrorText(getErrorMessage(error, 'Không thể đồng bộ trạng thái thanh toán PayOS.'));
+        setErrorText(getErrorMessage(error, t('walletDeposit.errorSyncPayosStatus')));
       } finally {
         setSyncingReturn(false);
       }
@@ -178,11 +180,11 @@ export default function WalletDepositScreen() {
         return;
       }
 
-      setErrorText(res.message || 'Không thể khởi tạo giao dịch nạp tiền.');
+      setErrorText(res.message || t('walletDeposit.errorInitDeposit'));
       setProcessing(false);
     } catch (error) {
       console.error('Top-up error:', error);
-      setErrorText(getErrorMessage(error, 'Đã xảy ra lỗi trong quá trình khởi tạo thanh toán.'));
+      setErrorText(getErrorMessage(error, t('walletDeposit.errorInitDepositUnknown')));
       setProcessing(false);
     }
   };
@@ -196,9 +198,9 @@ export default function WalletDepositScreen() {
               <div className="w-20 h-20 rounded-full bg-amber-400/20 flex items-center justify-center mx-auto mb-6 animate-pulse">
                 <Loader2 size={48} className="text-amber-400 animate-spin" />
               </div>
-              <h2 className="text-2xl font-bold text-primary mb-2">Đang Xác Nhận Giao Dịch</h2>
+              <h2 className="text-2xl font-bold text-primary mb-2">{t('walletDeposit.syncTitle')}</h2>
               <p className="text-sm text-secondary mb-6">
-                Thanh toán của bạn đang được xử lý. Số dư sẽ được cập nhật sau khi PayOS xác nhận.
+                {t('walletDeposit.syncDesc')}
               </p>
               {errorText && (
                 <div className="bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl p-3 mb-4 text-sm font-semibold">
@@ -206,8 +208,7 @@ export default function WalletDepositScreen() {
                 </div>
               )}
               <div className="glass-card p-4 mb-6">
-                <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
-                <p className="text-xs text-muted mb-1">Số Dư Hiện Tại</p>
+                <p className="text-xs text-muted mb-1">{t('walletDeposit.currentBalance')}</p>
                 <div className="flex items-center justify-center gap-2">
                   <GigCoinLogo size={20} />
                   <p className="text-2xl font-bold text-green">
@@ -227,13 +228,13 @@ export default function WalletDepositScreen() {
                   disabled={syncingReturn}
                 >
                   <Loader2 size={16} className={syncingReturn ? 'animate-spin' : ''} />
-                  Tải lại số dư
+                  {t('walletDeposit.reloadBalance')}
                 </button>
                 <button
                   onClick={() => navigate('/wallet/history')}
                   className="btn-cyan w-full px-6 py-3 font-semibold"
                 >
-                  Xem Lịch Sử Giao Dịch
+                  {t('walletDeposit.viewHistory')}
                 </button>
               </div>
             </div>
@@ -250,14 +251,10 @@ export default function WalletDepositScreen() {
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-2">
               <GigCoinLogo size={20} />
-              <span className="badge-green text-xs">Nạp Tiền</span>
+              <span className="badge-green text-xs">{t('walletDeposit.badgeLabel')}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-primary">Nạp GigCoin</h1>
-            <p className="text-sm text-secondary mt-1">Thanh toán qua PayOS - Chuyển khoản ngân hàng / QR Code</p>
-            <div className="flex items-center gap-2 mt-3 p-3 glass-card inline-flex">
-              <GigCoinLogo size={16} />
-              <span className="text-xs text-secondary font-semibold">1 {fmtVnd(VND_PER_GIGCOIN)} VND</span>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-primary">{t('walletDeposit.title')}</h1>
+            <p className="text-sm text-secondary mt-1">{t('walletDeposit.subtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -270,7 +267,7 @@ export default function WalletDepositScreen() {
               )}
 
               <div className="glass-card p-6">
-                <p className="text-xs text-muted mb-2">Số Dư Hiện Tại</p>
+                <p className="text-xs text-muted mb-2">{t('walletDeposit.currentBalance')}</p>
                 <div className="flex items-center gap-2">
                   <GigCoinLogo size={32} />
                   <p className="text-3xl font-bold text-green">
@@ -285,7 +282,7 @@ export default function WalletDepositScreen() {
               </div>
 
               <div className="glass-card p-6">
-                <h3 className="text-lg font-bold text-primary mb-4">Chọn Số Tiền</h3>
+                <h3 className="text-lg font-bold text-primary mb-4">{t('walletDeposit.selectAmount')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                   {QUICK_AMOUNTS_VND.map(amount => (
                     <button
@@ -300,32 +297,32 @@ export default function WalletDepositScreen() {
                       <div>{fmtVnd(amount)} đ</div>
                       <div className="text-xs opacity-60 mt-1">
                         <GigCoinLogo className="inline mr-1" size={12} />
-                        {fmtVnd(amount / VND_PER_GIGCOIN)} 
+                        {fmtVnd(amount / VND_PER_GIGCOIN)}
                       </div>
                     </button>
                   ))}
                 </div>
 
-                <label className="block text-sm font-semibold text-primary mb-2">Số Tiền Tùy Chỉnh (VND)</label>
+                <label className="block text-sm font-semibold text-primary mb-2">{t('walletDeposit.customAmount')}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-semibold">đ</span>
                   <input
                     type="number"
                     value={customVnd}
                     onChange={event => setCustomVnd(event.target.value)}
-                    placeholder="Nhập số tiền VND"
+                    placeholder={t('walletDeposit.customAmountPlaceholder')}
                     className="input-gb w-full pl-10 py-3 text-sm"
                     min={MIN_VND}
                     max={MAX_VND}
                   />
                 </div>
                 <p className="text-xs text-muted mt-2">
-                  Tối thiểu: {fmtVnd(MIN_VND)} VND - Tối đa: {fmtVnd(MAX_VND)} VND
+                  {t('walletDeposit.minAmount', { amount: fmtVnd(MIN_VND) })} - {t('walletDeposit.maxAmount', { amount: fmtVnd(MAX_VND) })}
                 </p>
                 {customVnd && parseInt(customVnd, 10) > 0 && (
                   <div className="mt-2 p-2 bg-amber-400/10 rounded-lg">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-secondary">GigCoin nhận được:</span>
+                      <span className="text-secondary">{t('walletDeposit.gigcoinReceived')}</span>
                       <span className="text-amber-400 font-bold flex items-center gap-1">
                         <GigCoinLogo size={14} />
                         {fmtVnd((parseInt(customVnd, 10) || 0) / VND_PER_GIGCOIN)}
@@ -336,28 +333,28 @@ export default function WalletDepositScreen() {
               </div>
 
               <div className="glass-card p-6">
-                <h3 className="text-lg font-bold text-primary mb-4">Phương Thức Thanh Toán</h3>
+                <h3 className="text-lg font-bold text-primary mb-4">{t('walletDeposit.paymentMethod')}</h3>
                 <div className="bg-cyan/10 border-2 border-cyan rounded-xl p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-cyan/20 flex items-center justify-center">
                       <QrCode size={24} className="text-cyan" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-primary">Thanh Toán Trực Tuyến</p>
-                      <p className="text-xs text-secondary mt-0.5">QR Code - Chuyển khoản ngân hàng - Ví điện tử</p>
+                      <p className="text-sm font-bold text-primary">{t('walletDeposit.onlinePayment')}</p>
+                      <p className="text-xs text-secondary mt-0.5">{t('walletDeposit.onlinePaymentDesc')}</p>
                     </div>
                     <CheckCircle size={20} className="text-cyan" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-cyan/10 borderthì  border-cyan/20 rounded-lg p-4">
+              <div className="bg-cyan/10 border border-cyan/20 rounded-lg p-4">
                 <div className="flex gap-3">
                   <AlertCircle size={20} className="text-cyan flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-primary mb-1">Thanh Toán Bảo Mật</p>
+                    <p className="text-sm font-semibold text-primary mb-1">{t('walletDeposit.securePayment')}</p>
                     <p className="text-xs text-secondary">
-                      Giao dịch được xử lý qua cổng thanh toán PayOS. GigBridge không lưu trữ thông tin thanh toán của bạn.
+                      {t('walletDeposit.securePaymentDesc')}
                     </p>
                   </div>
                 </div>
@@ -365,75 +362,82 @@ export default function WalletDepositScreen() {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="glass-card p-6 sticky top-24">
-                <h3 className="text-lg font-bold text-primary mb-4">Tóm Tắt</h3>
+              <div className="sticky top-24 space-y-4">
+                <div className="glass-card p-6">
+                  <h3 className="text-lg font-bold text-primary mb-4">{t('walletDeposit.summary')}</h3>
 
-                <div className="space-y-3 mb-4 pb-4 border-b border-white/5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-secondary">Số Tiền Nạp</span>
-                    <span className="text-primary font-semibold">{fmtVnd(finalVnd)} đ</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-secondary">Phí Xử Lý</span>
-                    <span className="text-green font-semibold">0 đ</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-secondary">GigCoin Nhận</span>
-                    <div className="flex items-center gap-1">
-                      <GigCoinLogo size={14} />
-                      <span className="text-amber-400 font-bold">{fmtVnd(gigcoinAmount)}</span>
+                  <div className="space-y-3 mb-4 pb-4 border-b border-white/5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-secondary">{t('walletDeposit.depositAmount')}</span>
+                      <span className="text-primary font-semibold">{fmtVnd(finalVnd)} đ</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-secondary">{t('walletDeposit.processingFee')}</span>
+                      <span className="text-green font-semibold">0 đ</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-secondary">{t('walletDeposit.gigcoinEarned')}</span>
+                      <div className="flex items-center gap-1">
+                        <GigCoinLogo size={14} />
+                        <span className="text-amber-400 font-bold">{fmtVnd(gigcoinAmount)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-2 mb-4 pb-4 border-b border-white/5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-secondary">Số Dư Hiện Tại</span>
-                    <div className="flex items-center gap-1">
-                      <GigCoinLogo size={14} />
-                      <span className="text-primary font-semibold">
-                        {loadingBalance ? '...' : fmtVnd(currentBalance)}
+                  <div className="space-y-2 mb-4 pb-4 border-b border-white/5">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-secondary">{t('walletDeposit.currentBalance')}</span>
+                      <div className="flex items-center gap-1">
+                        <GigCoinLogo size={14} />
+                        <span className="text-primary font-semibold">
+                          {loadingBalance ? '...' : fmtVnd(currentBalance)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-6 p-4 bg-green/10 rounded-lg">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-semibold text-primary">{t('walletDeposit.newBalanceExpected')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                      <GigCoinLogo size={24} />
+                      <span className="text-2xl font-bold text-green">
+                        {loadingBalance ? '...' : fmtVnd(currentBalance + gigcoinAmount)}
                       </span>
                     </div>
                   </div>
+
+                  <button
+                    onClick={handleDeposit}
+                    disabled={processing || !isAmountValid}
+                    className="btn-green w-full px-6 py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        {t('walletDeposit.processing')}
+                      </>
+                    ) : (
+                      <>
+                        {t('walletDeposit.confirmDeposit')}
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => navigate(-1)}
+                    className="btn-ghost-cyan w-full px-6 py-2 mt-3 cursor-pointer"
+                  >
+                    {t('walletDeposit.cancel')}
+                  </button>
                 </div>
 
-                <div className="mb-6 p-4 bg-green/10 rounded-lg">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-semibold text-primary">Số Dư Mới (dự kiến)</span>
-                  </div>
-                  <div className="flex items-center gap-2 justify-end">
-                    <GigCoinLogo size={24} />
-                    <span className="text-2xl font-bold text-green">
-                      {loadingBalance ? '...' : fmtVnd(currentBalance + gigcoinAmount)}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-center gap-2 p-3 glass-card">
+                  <GigCoinLogo size={16} />
+                  <span className="text-xs text-secondary font-semibold">1 G-coin = {fmtVnd(VND_PER_GIGCOIN)} VND</span>
                 </div>
-
-                <button
-                  onClick={handleDeposit}
-                  disabled={processing || !isAmountValid}
-                  className="btn-green w-full px-6 py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {processing ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Đang Xử Lý...
-                    </>
-                  ) : (
-                    <>
-                      Xác Nhận Nạp Tiền
-                      <ArrowRight size={16} />
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => navigate(-1)}
-                  className="btn-ghost-cyan w-full px-6 py-2 mt-3"
-                >
-                  Hủy
-                </button>
               </div>
             </div>
           </div>

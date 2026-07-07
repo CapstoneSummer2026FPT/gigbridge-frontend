@@ -7,8 +7,11 @@ import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
+import { useTranslation } from '../../../hooks/useTranslation';
+
 
 export default function ResetPasswordScreen() {
+  const { t } = useTranslation();
   const isMounted = useRef(true);
   useEffect(() => {
     isMounted.current = true;
@@ -153,23 +156,23 @@ export default function ResetPasswordScreen() {
         <div className="relative z-10 flex flex-col h-full justify-between">
           {/* Logo / Header */}
           <div className="flex items-center gap-3 auth-left-content-animate cursor-pointer" onClick={() => navigate('/')}>
-            <img src="/img/logo.png" className="w-10 h-10 object-contain" alt="GigBridge Logo" />
-            <span className="logo-text logo-text-white text-xl font-zentry font-black tracking-wider select-none">GigBridge</span>
+            <img src="/img/logo.png" className="w-10 h-10 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text logo-text-white text-xl font-black tracking-wider select-none">{t('app.name')}</span>
           </div>
 
           {/* Big Title & Description (White Text) */}
           <div className="max-w-md my-auto text-left auth-left-content-animate">
             <h2 className="text-4xl xl:text-5xl font-zentry font-black tracking-wider text-white mb-6 uppercase leading-tight">
-              Your Career Partner
+              {t('auth.careerPartner')}
             </h2>
             <p className="text-lg text-white/80 leading-relaxed font-medium">
-              Join the professional marketplace that connects world-class talent with ambitious companies in a secure, e-signed workflow.
+              {t('auth.careerPartnerDesc')}
             </p>
           </div>
 
           {/* Footer */}
           <p className="text-xs text-white/50 auth-left-content-animate">
-            © 2026 GigBridge · Privacy · Terms
+            © 2026 {t('app.name')} · {t('footer.privacyPolicy')} · {t('footer.termsOfService')}
           </p>
         </div>
       </div>
@@ -178,31 +181,31 @@ export default function ResetPasswordScreen() {
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 auth-right-panel">
         <div className="w-full max-w-md auth-form-card p-8 lg:p-10">
           <div className="flex items-center gap-2 mb-8 lg:hidden cursor-pointer" onClick={() => navigate('/')}>
-            <img src="/img/logo.png" className="w-8 h-8 object-contain" alt="GigBridge Logo" />
-            <span className="logo-text font-zentry font-bold tracking-wider select-none">GigBridge</span>
+            <img src="/img/logo.png" className="w-8 h-8 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text font-bold tracking-wider select-none">{t('app.name')}</span>
           </div>
 
           <h1 className="text-2xl lg:text-3xl font-zentry font-black tracking-wider text-primary mb-2 uppercase auth-form-animate">
-            Reset password
+            {t('auth.resetPassword')}
           </h1>
-          <p className="mb-8 auth-subtitle auth-form-animate">Choose your new secure password</p>
+          <p className="mb-8 auth-subtitle auth-form-animate">{t('auth.resetPasswordSubtitle')}</p>
 
           {isOtpValid === null ? (
             <div className="flex flex-col items-center justify-center py-10 space-y-4 auth-form-animate">
               <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-              <p className="text-sm text-secondary">Verifying request state...</p>
+              <p className="text-sm text-secondary">{t('auth.verifyingRequestState')}</p>
             </div>
           ) : isOtpValid === false ? (
             <div className="space-y-6 auth-form-animate">
               <div className="p-4 rounded-xl text-sm flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
                 <AlertCircle size={18} className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Verification Required</p>
+                  <p className="font-semibold">{t('auth.verificationRequired')}</p>
                   <p className="mt-1 text-xs opacity-90" style={{ whiteSpace: 'pre-line' }}>{error}</p>
                 </div>
               </div>
               <button onClick={() => navigate('/auth/forgot-password')} className="btn-cyan w-full py-3">
-                Go to Forgot Password
+                {t('auth.forgotPasswordTitle')}
               </button>
             </div>
           ) : success ? (
@@ -210,12 +213,12 @@ export default function ResetPasswordScreen() {
               <div className="p-4 rounded-xl text-sm flex items-start gap-3" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#22C55E' }}>
                 <CheckCircle size={18} className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Password Reset Successful</p>
-                  <p className="mt-1 text-xs opacity-90">Your password has been successfully updated. You can now sign in using your new credentials.</p>
+                  <p className="font-semibold">{t('auth.passwordResetSuccess')}</p>
+                  <p className="mt-1 text-xs opacity-90">{t('auth.passwordResetSuccessDesc')}</p>
                 </div>
               </div>
               <button onClick={() => navigate('/auth/login')} className="btn-cyan w-full py-3">
-                Sign In
+                {t('auth.login')}
               </button>
             </div>
           ) : (
@@ -232,7 +235,7 @@ export default function ResetPasswordScreen() {
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type="email"
-                  placeholder="Email address"
+                  placeholder={t('auth.email')}
                   value={email}
                   className="input-gb w-full py-3 auth-input-with-icon"
                   disabled={true}
@@ -245,7 +248,7 @@ export default function ResetPasswordScreen() {
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type="text"
-                  placeholder="Verified OTP code"
+                  placeholder={t('auth.verified') + ' ' + t('auth.otpCode')}
                   value={otp}
                   className="input-gb w-full py-3 auth-input-with-icon"
                   disabled={true}
@@ -257,7 +260,7 @@ export default function ResetPasswordScreen() {
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="New password"
+                  placeholder={t('auth.newPassword')}
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both"
@@ -273,7 +276,7 @@ export default function ResetPasswordScreen() {
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm new password"
+                  placeholder={t('auth.confirmNewPassword')}
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both"
@@ -290,7 +293,7 @@ export default function ResetPasswordScreen() {
                   <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
                 ) : (
                   <>
-                    Reset Password
+                    {t('auth.resetPassword')}
                     <ArrowRight size={18} />
                   </>
                 )}

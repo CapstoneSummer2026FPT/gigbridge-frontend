@@ -18,7 +18,7 @@ body {
 
 /* Avant-Garde Redesign Styles from Client Dashboard */
 .avant-garde-heading {
-  font-family: "zentry", "Outfit", sans-serif !important;
+  font-family: var(--font-zentry) !important;
   letter-spacing: -0.05em;
   line-height: 0.85;
 }

@@ -15,6 +15,8 @@ import {
 } from '../../../shared/utils/contractUtils';
 import '../styles/approve-milestone-screen.css';
 
+import { useTranslation } from '../../../hooks/useTranslation';
+
 interface MilestoneWithAttachments extends Milestone {
   attachments?: MilestoneAttachment[];
   deliverableDescription?: string;
@@ -23,6 +25,7 @@ interface MilestoneWithAttachments extends Milestone {
 const NOTES_LIMIT = 500;
 
 export default function ApproveMilestoneScreen() {
+  const { t } = useTranslation();
   const { contractId, milestoneId } = useParams<{ contractId: string; milestoneId: string }>();
   const navigate = useNavigate();
   const [contract, setContract] = useState<ContractDto | null>(null);
@@ -39,7 +42,7 @@ export default function ApproveMilestoneScreen() {
   useEffect(() => {
     const loadData = async () => {
       if (!contractId || !milestoneId) {
-        setError('Missing contract or milestone ID');
+        setError(t('contracts.contractNotFound'));
         setLoading(false);
         return;
       }
@@ -48,18 +51,18 @@ export default function ApproveMilestoneScreen() {
         setError(null);
         const contractResponse = await contractGetAPI.getContractById(contractId);
         if (!contractResponse.success || !contractResponse.data) {
-          throw new Error(contractResponse.message || 'Failed to load contract');
+          throw new Error(contractResponse.message || t('contracts.loadingContract'));
         }
         setContract(contractResponse.data);
         const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
         if (!milestoneResponse.success || !milestoneResponse.data) {
-          throw new Error(milestoneResponse.message || 'Failed to load milestone');
+          throw new Error(milestoneResponse.message || t('contracts.loadingMilestone', { defaultValue: 'Failed to load milestone' }));
         }
         setMilestone(milestoneResponse.data);
         const attachmentsResponse = await contractGetAPI.getMilestoneAttachments(milestoneId);
         if (attachmentsResponse.success && attachmentsResponse.data) setAttachments(attachmentsResponse.data);
       } catch (caughtError) {
-        setError(caughtError instanceof Error ? caughtError.message : 'An error occurred');
+        setError(caughtError instanceof Error ? caughtError.message : t('contracts.anErrorOccurred'));
       } finally {
         setLoading(false);
       }
@@ -76,10 +79,10 @@ export default function ApproveMilestoneScreen() {
       if (!response.success) throw new Error(response.message || 'Failed to approve milestone.');
       setMilestone({ ...milestone, status: MilestoneStatus.Approved });
       setApprovalAction('pending');
-      setSuccessMessage('Milestone approved successfully. Returning to the workspace...');
+      setSuccessMessage(t('contracts.milestoneApproved'));
       setTimeout(() => navigate(`/workspace/${contractId}`), 2000);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'An error occurred');
+      setError(caughtError instanceof Error ? caughtError.message : t('contracts.anErrorOccurred'));
     } finally {
       setIsSubmitting(false);
     }
@@ -95,9 +98,9 @@ export default function ApproveMilestoneScreen() {
       setMilestone({ ...milestone, status: MilestoneStatus.InProgress });
       setApprovalAction('pending');
       setApprovalNotes('');
-      setSuccessMessage('Revision requested. The freelancer can now update the deliverables.');
+      setSuccessMessage(t('contracts.revisionRequested'));
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'An error occurred');
+      setError(caughtError instanceof Error ? caughtError.message : t('contracts.anErrorOccurred'));
     } finally {
       setIsSubmitting(false);
     }
@@ -107,7 +110,7 @@ export default function ApproveMilestoneScreen() {
     <AppLayout><div className="approve-milestone-wrapper">
       <div className="approve-milestone-state" role="status" aria-live="polite">
         <span className="approve-milestone-spinner" aria-hidden="true" />
-        <h1>Preparing your review</h1><p>Loading the milestone and submitted deliverables...</p>
+        <h1>{t('contracts.preparingReview')}</h1><p>{t('contracts.loadingMilestone', { defaultValue: 'Loading the milestone and submitted deliverables...' })}</p>
       </div>
     </div></AppLayout>
   );
@@ -115,10 +118,10 @@ export default function ApproveMilestoneScreen() {
   if (!contract || !milestone) return (
     <AppLayout><div className="approve-milestone-wrapper">
       <div className="approve-milestone-state approve-milestone-state--error" role="alert">
-        <AlertCircle size={48} /><h1>Unable to open this milestone</h1>
-        <p>{error || 'The milestone or contract could not be found.'}</p>
+        <AlertCircle size={48} /><h1>{t('contracts.unableOpenMilestone')}</h1>
+        <p>{error || t('contracts.milestoneNotFound')}</p>
         <button onClick={() => navigate(-1)} className="approve-milestone-secondary-button">
-          <ArrowLeft size={18} /> Go back
+          <ArrowLeft size={18} /> {t('contracts.back')}
         </button>
       </div>
     </div></AppLayout>
@@ -134,8 +137,8 @@ export default function ApproveMilestoneScreen() {
     <AppLayout>
       <div className="approve-milestone-wrapper">
         <header className="approve-milestone-header">
-          <button onClick={() => navigate(-1)} className="approve-milestone-back" aria-label="Go back"><ArrowLeft size={20} /></button>
-          <div><span className="approve-milestone-eyebrow">Milestone review</span><h1>Review submitted work</h1><p>{contract.title}</p></div>
+          <button onClick={() => navigate(-1)} className="approve-milestone-back" aria-label={t('contracts.back')}><ArrowLeft size={20} /></button>
+          <div><span className="approve-milestone-eyebrow">{t('contracts.milestoneReviewEyebrow')}</span><h1>{t('contracts.reviewSubmittedWork')}</h1><p>{contract.title}</p></div>
         </header>
 
         {successMessage && <div className="approve-milestone-alert approve-milestone-alert--success" role="status" aria-live="polite">
@@ -149,33 +152,33 @@ export default function ApproveMilestoneScreen() {
           <main className="approve-milestone-main">
             <section className="approve-milestone-card approve-milestone-overview" aria-labelledby="milestone-title">
               <div className="approve-milestone-section-heading">
-                <div><span className="approve-milestone-kicker">Submitted milestone</span><h2 id="milestone-title">{milestone.title}</h2></div>
+                <div><span className="approve-milestone-kicker">{t('contracts.submittedMilestone')}</span><h2 id="milestone-title">{milestone.title}</h2></div>
                 <span className={`approve-milestone-status approve-milestone-status--${milestone.status}`}>
                   {isApproved || isFullyReleased ? <CheckCircle2 size={16} /> : <Clock size={16} />}{statusLabel}
                 </span>
               </div>
               <div className="approve-milestone-facts">
-                <div><span>Due date</span><strong>{formatContractDate(milestone.due_date)}</strong></div>
-                <div><span>Current status</span><strong>{statusLabel}</strong></div>
-                {milestone.paid_at && <div><span>Payment released</span><strong>{formatContractDate(milestone.paid_at)}</strong></div>}
+                <div><span>{t('contracts.dueDateLabel')}</span><strong>{formatContractDate(milestone.due_date)}</strong></div>
+                <div><span>{t('contracts.currentStatusLabel')}</span><strong>{statusLabel}</strong></div>
+                {milestone.paid_at && <div><span>{t('contracts.paymentReleasedLabel')}</span><strong>{formatContractDate(milestone.paid_at)}</strong></div>}
               </div>
             </section>
 
             {canApprove && <section className="approve-milestone-card approve-milestone-escrow">
               <button type="button" className="approve-milestone-escrow-toggle" onClick={() => setShowEscrowInfo(!showEscrowInfo)} aria-expanded={showEscrowInfo} aria-controls="escrow-explanation">
                 <span className="approve-milestone-icon"><ShieldCheck size={20} /></span>
-                <span><strong>Protected by escrow</strong><small>See what happens after approval</small></span>
+                <span><strong>{t('contracts.protectedByEscrow')}</strong><small>{t('contracts.seeWhatHappensAfterApproval')}</small></span>
                 <ChevronDown className={showEscrowInfo ? 'is-open' : ''} size={20} />
               </button>
               {showEscrowInfo && <div id="escrow-explanation" className="approve-milestone-escrow-copy">
-                Approval authorizes {formatContractAmount(milestone.amount)} to move through the contract's escrow release process. The action is recorded in the contract audit trail.
+                {t('contracts.escrowProtectionDescription', { amount: formatContractAmount(milestone.amount) })}
               </div>}
             </section>}
 
             <section className="approve-milestone-card" aria-labelledby="deliverables-title">
               <div className="approve-milestone-section-heading">
-                <div><span className="approve-milestone-kicker">Review files</span><h2 id="deliverables-title">Submitted deliverables</h2></div>
-                <span className="approve-milestone-count">{attachments.length} {attachments.length === 1 ? 'file' : 'files'}</span>
+                <div><span className="approve-milestone-kicker">{t('contracts.reviewFiles')}</span><h2 id="deliverables-title">{t('contracts.submittedDeliverablesTitle')}</h2></div>
+                <span className="approve-milestone-count">{attachments.length === 1 ? t('contracts.filesCount', { count: 1 }) : t('contracts.filesCountPlural', { count: attachments.length })}</span>
               </div>
               {attachments.length ? <div className="approve-milestone-files">{attachments.map((attachment, index) => {
                 const fileName = attachment.file_name?.trim() || `Attachment ${index + 1}`;
@@ -183,55 +186,55 @@ export default function ApproveMilestoneScreen() {
                 const fileExtension = fileName.includes('.') ? fileName.split('.').pop()?.toUpperCase() : attachment.mime_type?.split('/').pop()?.toUpperCase();
                 return <div key={attachment.id || `${attachment.milestone_id}-${index}`} className="approve-milestone-file">
                   <span className="approve-milestone-file-icon"><FileText size={20} /></span>
-                  <div className="approve-milestone-file-info"><strong>{fileName}</strong><span>{fileExtension || 'File'} · {fileUrl ? 'Ready to review' : 'Unavailable'}</span></div>
+                  <div className="approve-milestone-file-info"><strong>{fileName}</strong><span>{fileExtension || t('contracts.fileDefaultName')} · {fileUrl ? t('contracts.readyToReview') : t('contracts.unavailable')}</span></div>
                   <div className="approve-milestone-file-actions">
-                    {fileUrl && <a href={fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${fileName}`} title="Open file"><ExternalLink size={18} /></a>}
-                    {fileUrl ? <a href={fileUrl} download={fileName} aria-label={`Download ${fileName}`} title="Download file"><Download size={18} /></a>
-                      : <button type="button" aria-label={`${fileName} unavailable`} title="File unavailable" disabled><Download size={18} /></button>}
+                    {fileUrl && <a href={fileUrl} target="_blank" rel="noopener noreferrer" aria-label={t('contracts.openFileAria', { fileName })} title={t('contracts.openFileTitle')}><ExternalLink size={18} /></a>}
+                    {fileUrl ? <a href={fileUrl} download={fileName} aria-label={t('contracts.downloadFileAria', { fileName })} title={t('contracts.downloadFileTitle')}><Download size={18} /></a>
+                      : <button type="button" aria-label={t('contracts.fileUnavailableAria', { fileName })} title={t('contracts.fileUnavailableTitle')} disabled><Download size={18} /></button>}
                   </div>
                 </div>;
-              })}</div> : <div className="approve-milestone-empty-files"><FileText size={26} /><div><strong>No attached files</strong><p>The freelancer did not attach a downloadable deliverable.</p></div></div>}
+              })}</div> : <div className="approve-milestone-empty-files"><FileText size={26} /><div><strong>{t('contracts.noAttachedFiles')}</strong><p>{t('contracts.noAttachedFilesDesc')}</p></div></div>}
             </section>
           </main>
 
           <aside className="approve-milestone-sidebar">
             <div className="approve-milestone-sidebar-sticky">
-              <section className="approve-milestone-card approve-milestone-payment" aria-label="Milestone payment">
-                <span><Wallet size={18} /> Milestone value</span><div><GigCoinLogo size={28} /><strong>{formatContractAmount(milestone.amount)}</strong></div>
-                <small>{canApprove ? 'Secured in contract escrow' : statusLabel}</small>
+              <section className="approve-milestone-card approve-milestone-payment" aria-label={t('contracts.milestoneValueLabel')}>
+                <span><Wallet size={18} /> {t('contracts.milestoneValueLabel')}</span><div><GigCoinLogo size={28} /><strong>{formatContractAmount(milestone.amount)}</strong></div>
+                <small>{canApprove ? t('contracts.securedInContractEscrow') : statusLabel}</small>
               </section>
 
               {canApprove && <section className="approve-milestone-card approve-milestone-decision" aria-labelledby="decision-title">
-                <span className="approve-milestone-kicker">Final step</span><h2 id="decision-title">Make your decision</h2><p>Review the submitted work before choosing an action.</p>
-                <div className="approve-milestone-options" role="group" aria-label="Milestone decision">
+                <span className="approve-milestone-kicker">{t('contracts.finalStepKicker')}</span><h2 id="decision-title">{t('contracts.makeYourDecision')}</h2><p>{t('contracts.reviewBeforeActionDesc')}</p>
+                <div className="approve-milestone-options" role="group" aria-label={t('contracts.makeYourDecision')}>
                   <button type="button" onClick={() => { setApprovalAction('approve'); setApprovalNotes(''); }} className={approvalAction === 'approve' ? 'is-selected is-approve' : ''} aria-pressed={approvalAction === 'approve'}>
-                    <CheckCircle2 size={20} /><span><strong>Approve work</strong><small>Accept this delivery</small></span>
+                    <CheckCircle2 size={20} /><span><strong>{t('contracts.approveWork')}</strong><small>{t('contracts.acceptThisDelivery')}</small></span>
                   </button>
                   <button type="button" onClick={() => { setApprovalAction('reject'); setApprovalNotes(''); }} className={approvalAction === 'reject' ? 'is-selected is-revision' : ''} aria-pressed={approvalAction === 'reject'}>
-                    <RotateCcw size={20} /><span><strong>Request revision</strong><small>Send it back for changes</small></span>
+                    <RotateCcw size={20} /><span><strong>{t('contracts.requestRevisionOpt')}</strong><small>{t('contracts.sendBackForChanges')}</small></span>
                   </button>
                 </div>
                 {approvalAction !== 'pending' && <div className={`approve-milestone-confirmation approve-milestone-confirmation--${approvalAction}`}>
-                  {approvalAction === 'approve' ? <p><strong>Confirm approval</strong>This authorizes the escrow release process for {formatContractAmount(milestone.amount)}.</p> : <>
-                    <label htmlFor="revision-reason">What needs to be changed? <span>Required</span></label>
-                    <textarea id="revision-reason" value={approvalNotes} maxLength={NOTES_LIMIT + 1} onChange={(event) => setApprovalNotes(event.target.value)} placeholder="Describe the specific changes needed..." rows={4} aria-describedby="revision-note revision-count" aria-invalid={notesTooLong} />
-                    <div className="approve-milestone-textarea-meta"><small id="revision-note">This reason is used for validation only and is not saved by the current API.</small><span id="revision-count" className={notesTooLong ? 'is-over' : ''}>{approvalNotes.length}/{NOTES_LIMIT}</span></div>
+                  {approvalAction === 'approve' ? <p><strong>{t('contracts.confirmApprovalTitle')}</strong>{t('contracts.confirmApprovalDesc', { amount: formatContractAmount(milestone.amount) })}</p> : <>
+                    <label htmlFor="revision-reason">{t('contracts.whatNeedsToBeChanged')} <span>{t('contracts.requiredFieldLabel')}</span></label>
+                    <textarea id="revision-reason" value={approvalNotes} maxLength={NOTES_LIMIT + 1} onChange={(event) => setApprovalNotes(event.target.value)} placeholder={t('contracts.describeChangesPlaceholder')} rows={4} aria-describedby="revision-note revision-count" aria-invalid={notesTooLong} />
+                    <div className="approve-milestone-textarea-meta"><small id="revision-note">{t('contracts.validationOnlyNotice')}</small><span id="revision-count" className={notesTooLong ? 'is-over' : ''}>{approvalNotes.length}/{NOTES_LIMIT}</span></div>
                   </>}
                   <div className="approve-milestone-decision-actions">
-                    <button type="button" onClick={() => setApprovalAction('pending')} disabled={isSubmitting}>Cancel</button>
+                    <button type="button" onClick={() => setApprovalAction('pending')} disabled={isSubmitting}>{t('contracts.cancelDecision')}</button>
                     <button type="button" className={approvalAction === 'approve' ? 'is-approve' : 'is-revision'} onClick={approvalAction === 'approve' ? handleApprove : handleReject} disabled={isSubmitting || notesTooLong || (approvalAction === 'reject' && !approvalNotes.trim())}>
                       {isSubmitting ? <span className="approve-milestone-spinner approve-milestone-spinner--small" /> : approvalAction === 'approve' ? <CheckCircle2 size={18} /> : <RotateCcw size={18} />}
-                      {isSubmitting ? 'Submitting...' : approvalAction === 'approve' ? 'Approve milestone' : 'Request revision'}
+                      {isSubmitting ? t('contracts.submittingDecision') : approvalAction === 'approve' ? t('contracts.approveMilestoneBtn') : t('contracts.requestRevisionBtn')}
                     </button>
                   </div>
                 </div>}
               </section>}
 
               {(isApproved || isFullyReleased) && <section className="approve-milestone-card approve-milestone-complete" role="status">
-                <span><CheckCircle2 size={24} /></span><h2>{isFullyReleased ? 'Escrow released' : 'Milestone approved'}</h2>
-                <p>{isFullyReleased ? 'Escrow has been fully released for this milestone.' : 'This milestone has been accepted. Payment release is tracked by escrow released amount.'}</p>
+                <span><CheckCircle2 size={24} /></span><h2>{isFullyReleased ? t('contracts.escrowReleasedTitle') : t('contracts.milestoneApprovedTitle')}</h2>
+                <p>{isFullyReleased ? t('contracts.escrowReleasedDesc') : t('contracts.milestoneApprovedDescText')}</p>
               </section>}
-              <button type="button" onClick={() => navigate(`/workspace/${contractId}`)} className="approve-milestone-workspace-button"><ArrowLeft size={18} /> Back to workspace</button>
+              <button type="button" onClick={() => navigate(`/workspace/${contractId}`)} className="approve-milestone-workspace-button"><ArrowLeft size={18} /> {t('contracts.backToWorkspace')}</button>
             </div>
           </aside>
         </div>

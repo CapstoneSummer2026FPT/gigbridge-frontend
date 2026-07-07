@@ -16,7 +16,7 @@
 }
 
 .font-zentry {
-  font-family: "zentry", "Outfit", sans-serif !important;
+  font-family: var(--font-zentry) !important;
 }
 
 .premium-gradient-text {
