@@ -1,28 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { WalletTransactionResponse } from './GET';
-
-export interface CreateWalletTopUpRequest {
-  tokenAmount: number;
-  returnUrl?: string;
-  cancelUrl?: string;
-  idempotencyKey?: string;
-}
-
-export interface CreateWalletTopUpResponse {
-  walletTransactionId: string;
-  tokenAmount: number;
-  amountVnd: number;
-  gatewayProvider: string;
-  gatewayOrderCode: string;
-  gatewayTransactionCode?: string | null;
-  checkoutUrl?: string | null;
-  status: number;
-}
-
-export interface SyncPayOsTopUpRequest {
-  orderCode: number;
-}
+import type {
+  CreateWalletTopUpRequest,
+  CreateWalletTopUpResponse,
+  SyncPayOsTopUpRequest,
+  WalletTransactionResponse,
+} from '../../types/models/Financial';
 
 export const walletPostAPI = {
   /**

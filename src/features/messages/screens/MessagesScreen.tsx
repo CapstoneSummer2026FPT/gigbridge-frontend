@@ -11,6 +11,8 @@ import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
+import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
+import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { useMessages } from '../hooks/useMessages';
 import { MOCK_ROOMS } from '../mock/data-for-MessagesScreen';
 import '../styles/messages-screen.css';
@@ -122,6 +124,11 @@ export default function MessagesScreen() {
     handleSendMessage,
     handleProposeDeal,
     handleAcceptDeal,
+    acceptFeeDialog,
+    isAcceptingDeal,
+    confirmAcceptDeal,
+    closeAcceptFeeDialog,
+    openWalletTopUp,
     handleDeclineDeal,
     handleOpenAcceptedContract,
     handleSendNegotiationRequest,
@@ -539,7 +546,10 @@ export default function MessagesScreen() {
                             !mine ? (
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => handleAcceptDeal(msg.negotiationOfferId)}
+                                  onClick={() => handleAcceptDeal(
+                                    msg.negotiationOfferId,
+                                    Number(msg.content.replace(/,/g, ''))
+                                  )}
                                   className="flex-1 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
                                 >
                                   Đồng ý
@@ -951,6 +961,21 @@ export default function MessagesScreen() {
           )}
         </div>
       </div>
+
+      <ServiceFeeDialog
+        open={acceptFeeDialog !== null}
+        mode={acceptFeeDialog?.mode ?? 'confirmation'}
+        action="acceptJob"
+        jobAmount={acceptFeeDialog?.jobAmount ?? 0}
+        serviceFee={calculateServiceFee(acceptFeeDialog?.jobAmount ?? 0)}
+        balance={acceptFeeDialog?.balance ?? null}
+        loadingBalance={acceptFeeDialog?.loadingBalance}
+        submitting={isAcceptingDeal}
+        error={acceptFeeDialog?.error}
+        onConfirm={confirmAcceptDeal}
+        onCancel={closeAcceptFeeDialog}
+        onTopUp={openWalletTopUp}
+      />
 
       {showNegModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">

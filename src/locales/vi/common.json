@@ -1542,6 +1542,7 @@
     "failedRequestUnlockError": "Không thể yêu cầu mở khóa cột mốc.",
     "failedWithdrawFundsError": "Không thể giải ngân tiền cột mốc.",
     "failedEndProjectError": "Không thể kết thúc dự án.",
+    "unableLoadGigCoinBalance": "Không thể tải số dư GigCoin của bạn.",
     "failedClaimPayoutError": "Không thể nhận tiền thanh toán cuối cùng.",
     "sendMaterialsTooltip": "Gửi tài liệu công việc cho freelancer",
     "sendMaterialsButton": "Gửi tài liệu công việc",
@@ -1631,7 +1632,89 @@
     "recentTransactions": "Giao Dịch Gần Đây",
     "transactionsSubtitle": "Bản ghi chỉ đọc được sử dụng cho các thẻ tóm tắt và biểu đồ.",
     "subscription": "Gói Thành Viên",
-    "enUS": "vi-VN"
+    "enUS": "vi-VN",
+    "freelancerFinance": "Tài Chính Freelancer",
+    "accountFinance": "Tài Chính Tài Khoản",
+    "periods": {
+      "day": "24 giờ qua",
+      "month": "tháng qua",
+      "year": "năm qua"
+    },
+    "tabs": {
+      "day": "Ngày",
+      "month": "Tháng",
+      "year": "Năm"
+    },
+    "status": {
+      "inEscrow": "Đang ký quỹ",
+      "paid": "Đã thanh toán",
+      "received": "Đã nhận",
+      "refunded": "Đã hoàn tiền",
+      "serviceFee": "Phí dịch vụ",
+      "remaining": "Còn lại",
+      "escrowFunded": "Đã nạp ký quỹ"
+    },
+    "csv": {
+      "period": "Khoảng thời gian",
+      "periodStartUtc": "Bắt đầu kỳ (UTC)",
+      "periodEndUtc": "Kết thúc kỳ (UTC)",
+      "progressPercentage": "Phần trăm tiến độ",
+      "trend": "Xu hướng",
+      "date": "Ngày",
+      "project": "Dự án",
+      "category": "Loại giao dịch",
+      "amount": "Số tiền"
+    },
+    "loadError": "Không thể tải tổng quan tài chính.",
+    "loadingDescription": "Đang tải các khoản thanh toán dự án và phí dịch vụ đã được lưu.",
+    "clientDescription": "Chi tiêu, tiến độ thanh toán, hoạt động ký quỹ và phí dịch vụ thực tế.",
+    "freelancerDescription": "Thu nhập, tiến độ nhận tiền và phí dịch vụ thực tế từ các công việc đã nhận.",
+    "amountsInGigCoin": "Tất cả số tiền được hiển thị bằng GigCoin.",
+    "periodAriaLabel": "Khoảng thời gian tài chính",
+    "loading": "Đang tải dữ liệu tài chính...",
+    "loadErrorTitle": "Không thể tải dữ liệu tài chính",
+    "retry": "Thử lại",
+    "emptyTitle": "Không có hoạt động tài chính trong {{period}}",
+    "emptyDescription": "Các khoản thanh toán dự án và phí dịch vụ sẽ xuất hiện tại đây khi giao dịch hoàn tất.",
+    "totalEarnings": "Tổng Thu Nhập",
+    "averageSpending": "Chi Tiêu Trung Bình",
+    "averageEarnings": "Thu Nhập Trung Bình",
+    "paymentProgress": "Tiến Độ Thanh Toán",
+    "earningsProgress": "Tiến Độ Thu Nhập",
+    "totalContractValue": "Tổng Giá Trị Hợp Đồng",
+    "serviceFeePaid": "Phí Dịch Vụ Đã Trả",
+    "paymentTrends": "Xu Hướng Thanh Toán",
+    "earningsTrends": "Xu Hướng Thu Nhập",
+    "trendsDescription": "Các giao dịch dự án đã được lưu trong {{period}}.",
+    "progressOf": "{{current}} trên {{total}}",
+    "noProgress": "Không có tiến độ hợp đồng trong khoảng thời gian này.",
+    "transactionsDescription": "Các giao dịch ví dự án thành công trong khoảng thời gian đã chọn.",
+    "noTransactions": "Không có giao dịch dự án trong khoảng thời gian này."
+  },
+  "serviceFee": {
+    "confirmationTitle": "Xác Nhận Phí Dịch Vụ",
+    "insufficientTitle": "Không Đủ GigCoin",
+    "acceptJob": {
+      "confirmationDescription": "Bạn cần trả phí dịch vụ để nhận công việc này.",
+      "insufficientDescription": "Bạn không có đủ GigCoin để trả phí dịch vụ. Vui lòng nạp thêm vào ví trước khi nhận công việc này."
+    },
+    "endProject": {
+      "confirmationDescription": "Bạn cần trả phí dịch vụ để kết thúc dự án này.",
+      "insufficientDescription": "Bạn không có đủ GigCoin để trả phí dịch vụ. Vui lòng nạp thêm vào ví trước khi kết thúc dự án này."
+    },
+    "jobAmount": "Giá Trị Công Việc",
+    "completedJobAmount": "Giá Trị Công Việc Hoàn Thành",
+    "feeLabel": "Phí Dịch Vụ (1%)",
+    "currentBalance": "Số Dư GigCoin Hiện Tại",
+    "unavailable": "Không khả dụng",
+    "cancel": "Hủy",
+    "topUp": "Nạp thêm",
+    "confirm": "Xác nhận",
+    "confirmAriaLabel": "Xác nhận phí dịch vụ",
+    "processing": "Đang xử lý",
+    "unableDetermineJobAmount": "Không thể xác định giá trị công việc cuối cùng.",
+    "unableLoadBalance": "Không thể tải số dư GigCoin của bạn.",
+    "failedAcceptJob": "Không thể nhận công việc."
   },
   "marketInsights": {
     "title": "Thông Tin Thị Trường",

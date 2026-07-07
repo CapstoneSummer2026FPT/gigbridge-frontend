@@ -1,35 +1,13 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type {
+  FinancialOverviewPeriod,
+  FinancialOverviewResponse,
+  WalletResponse,
+  WalletTransactionResponse,
+} from '../../types/models/Financial';
 
 const walletUrl = 'wallet';
-
-export interface WalletResponse {
-  walletId: string;
-  userId: string;
-  availableTokens: number;
-  heldTokens: number;
-  availableVnd: number;
-  heldVnd: number;
-}
-
-export interface WalletTransactionResponse {
-  walletTransactionId: string;
-  walletId: string;
-  userId: string;
-  tokenAmount: number;
-  vndAmount: number;
-  type: number;
-  status: number;
-  idempotencyKey?: string | null;
-  gatewayProvider?: string | null;
-  gatewayOrderCode?: string | null;
-  gatewayTransactionCode?: string | null;
-  contractId?: string | null;
-  contractEscrowId?: string | null;
-  note?: string | null;
-  createdAt: string;
-  completedAt?: string | null;
-}
 
 export const walletGetAPI = {
   /**
@@ -46,5 +24,15 @@ export const walletGetAPI = {
    */
   getTransactions: async (limit = 50): Promise<ApiResponse<WalletTransactionResponse[]>> => {
     return apiService.get<WalletTransactionResponse[]>(`${walletUrl}/transactions`, { limit });
+  },
+
+  /**
+   * GET /api/wallet/financial-overview
+   * Fetch persisted project finance statistics for a rolling period ending now.
+   */
+  getFinancialOverview: async (
+    period: FinancialOverviewPeriod
+  ): Promise<ApiResponse<FinancialOverviewResponse>> => {
+    return apiService.get<FinancialOverviewResponse>(`${walletUrl}/financial-overview`, { period });
   },
 };
