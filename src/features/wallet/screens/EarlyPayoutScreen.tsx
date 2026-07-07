@@ -17,8 +17,6 @@ import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import { BankAccountStatus, WithdrawalStatus } from '../../../types';
 import type { BankAccountResponse, WalletResponse, WithdrawalResponse } from '../../../types';
-import { MOCK_EARLY_PAYOUT } from '../mock/data-for-EarlyPayoutScreen';
-import { formatGigCoin as formatVnd } from '../../../shared/utils/gigcoin';
 import '../styles/early-payout-screen.css';
 
 const VND_PER_GIGCOIN = 1000;
