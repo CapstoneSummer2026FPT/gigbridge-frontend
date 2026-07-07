@@ -2,7 +2,7 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
-import type { WithdrawalResponse } from '../walletAPI/GET';
+import type { WithdrawalResponse } from '../../types/models/Financial';
 
 const Admin_Api_Base_Url = '/admin';
 

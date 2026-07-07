@@ -16,7 +16,8 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
-import { WithdrawalStatus, type WithdrawalResponse } from '../../../api/walletAPI/GET';
+import { WithdrawalStatus } from '../../../types';
+import type { WithdrawalResponse } from '../../../types';
 import '../styles/admin-users-screen.css';
 
 type StatusFilter = WithdrawalStatus | 'all';

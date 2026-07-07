@@ -1,97 +1,19 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import {
+  BankAccountStatus,
+  WithdrawalStatus,
+} from '../../types/models/Financial';
 import type {
+  BankAccountResponse,
   FinancialOverviewPeriod,
   FinancialOverviewResponse,
   WalletResponse,
   WalletTransactionResponse,
+  WithdrawalResponse,
 } from '../../types/models/Financial';
 
 const walletUrl = 'wallet';
-
-export interface WalletResponse {
-  walletId: string;
-  userId: string;
-  availableTokens: number;
-  heldTokens: number;
-  pendingWithdrawalTokens: number;
-  availableVnd: number;
-  heldVnd: number;
-  pendingWithdrawalVnd: number;
-}
-
-export interface WalletTransactionResponse {
-  walletTransactionId: string;
-  walletId: string;
-  userId: string;
-  tokenAmount: number;
-  vndAmount: number;
-  type: number;
-  status: number;
-  idempotencyKey?: string | null;
-  gatewayProvider?: string | null;
-  gatewayOrderCode?: string | null;
-  gatewayTransactionCode?: string | null;
-  contractId?: string | null;
-  contractEscrowId?: string | null;
-  note?: string | null;
-  createdAt: string;
-  completedAt?: string | null;
-}
-
-export enum WithdrawalStatus {
-  Pending = 0,
-  Processing = 1,
-  SyncRequired = 2,
-  Success = 3,
-  Failed = 4,
-  Cancelled = 5,
-}
-
-export enum BankAccountStatus {
-  Active = 0,
-  Disabled = 1,
-}
-
-export interface BankAccountResponse {
-  bankAccountId: string;
-  userId: string;
-  bankCode: string;
-  bankName: string;
-  accountNumberMasked: string;
-  accountName: string;
-  status: BankAccountStatus;
-  isDefault: boolean;
-  createdAt: string;
-  updatedAt?: string | null;
-}
-
-export interface WithdrawalResponse {
-  withdrawalId: string;
-  userId: string;
-  walletId: string;
-  bankAccountId?: string | null;
-  bankCode: string;
-  bankName: string;
-  bankAccountNumberMasked: string;
-  bankAccountName: string;
-  tokenAmount: number;
-  vndAmount: number;
-  feeVnd: number;
-  netVndAmount: number;
-  status: WithdrawalStatus;
-  provider: string;
-  providerOrderCode: string;
-  providerPayoutId?: string | null;
-  providerTransactionCode?: string | null;
-  providerRawStatus?: string | null;
-  failureReason?: string | null;
-  lastSyncError?: string | null;
-  createdAt: string;
-  processingStartedAt?: string | null;
-  lastSyncedAt?: string | null;
-  completedAt?: string | null;
-}
 
 export const walletGetAPI = {
   /**

@@ -1,56 +1,16 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
+  BankAccountResponse,
+  CreateBankAccountRequest,
   CreateWalletTopUpRequest,
   CreateWalletTopUpResponse,
+  CreateWithdrawalRequest,
   SyncPayOsTopUpRequest,
+  UpdateBankAccountRequest,
   WalletTransactionResponse,
+  WithdrawalResponse,
 } from '../../types/models/Financial';
-import type { BankAccountResponse, WalletTransactionResponse, WithdrawalResponse } from './GET';
-
-export interface CreateWalletTopUpRequest {
-  tokenAmount: number;
-  returnUrl?: string;
-  cancelUrl?: string;
-  idempotencyKey?: string;
-}
-
-export interface CreateWalletTopUpResponse {
-  walletTransactionId: string;
-  tokenAmount: number;
-  amountVnd: number;
-  gatewayProvider: string;
-  gatewayOrderCode: string;
-  gatewayTransactionCode?: string | null;
-  checkoutUrl?: string | null;
-  status: number;
-}
-
-export interface SyncPayOsTopUpRequest {
-  orderCode: number;
-}
-
-export interface CreateBankAccountRequest {
-  bankCode: string;
-  bankName: string;
-  accountNumber: string;
-  accountName: string;
-  isDefault?: boolean;
-}
-
-export interface UpdateBankAccountRequest {
-  bankCode?: string;
-  bankName?: string;
-  accountNumber?: string;
-  accountName?: string;
-  isDefault?: boolean;
-}
-
-export interface CreateWithdrawalRequest {
-  tokenAmount: number;
-  bankAccountId?: string | null;
-  idempotencyKey?: string;
-}
 
 export const walletPostAPI = {
   /**

@@ -71,8 +71,10 @@ export interface WalletResponse {
   userId: string;
   availableTokens: number;
   heldTokens: number;
+  pendingWithdrawalTokens: number;
   availableVnd: number;
   heldVnd: number;
+  pendingWithdrawalVnd: number;
 }
 
 export interface WalletTransactionResponse {
@@ -114,6 +116,82 @@ export interface CreateWalletTopUpResponse {
 
 export interface SyncPayOsTopUpRequest {
   orderCode: number;
+}
+
+export enum WithdrawalStatus {
+  Pending = 0,
+  Processing = 1,
+  SyncRequired = 2,
+  Success = 3,
+  Failed = 4,
+  Cancelled = 5,
+}
+
+export enum BankAccountStatus {
+  Active = 0,
+  Disabled = 1,
+}
+
+export interface BankAccountResponse {
+  bankAccountId: string;
+  userId: string;
+  bankCode: string;
+  bankName: string;
+  accountNumberMasked: string;
+  accountName: string;
+  status: BankAccountStatus;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface WithdrawalResponse {
+  withdrawalId: string;
+  userId: string;
+  walletId: string;
+  bankAccountId?: string | null;
+  bankCode: string;
+  bankName: string;
+  bankAccountNumberMasked: string;
+  bankAccountName: string;
+  tokenAmount: number;
+  vndAmount: number;
+  feeVnd: number;
+  netVndAmount: number;
+  status: WithdrawalStatus;
+  provider: string;
+  providerOrderCode: string;
+  providerPayoutId?: string | null;
+  providerTransactionCode?: string | null;
+  providerRawStatus?: string | null;
+  failureReason?: string | null;
+  lastSyncError?: string | null;
+  createdAt: string;
+  processingStartedAt?: string | null;
+  lastSyncedAt?: string | null;
+  completedAt?: string | null;
+}
+
+export interface CreateBankAccountRequest {
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  isDefault?: boolean;
+}
+
+export interface UpdateBankAccountRequest {
+  bankCode?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  isDefault?: boolean;
+}
+
+export interface CreateWithdrawalRequest {
+  tokenAmount: number;
+  bankAccountId?: string | null;
+  idempotencyKey?: string;
 }
 
 export type FinancialOverviewPeriod = 'day' | 'month' | 'year';
