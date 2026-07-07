@@ -13,7 +13,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { walletGetAPI, WalletTransactionResponse } from '../../../api/walletAPI/GET';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import type { WalletTransactionResponse } from '../../../types/models/Financial';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';

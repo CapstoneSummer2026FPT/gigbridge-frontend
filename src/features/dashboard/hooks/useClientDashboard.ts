@@ -4,7 +4,8 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { projectGetAPI } from '../../../api/projectAPI/GET';
-import { walletGetAPI, type WalletResponse } from '../../../api/walletAPI/GET';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import type { WalletResponse } from '../../../types/models/Financial';
 import type { Job } from '../../../types/models/Job';
 import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
 

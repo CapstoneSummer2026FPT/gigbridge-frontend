@@ -1,5 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type {
+  CreateWalletTopUpRequest,
+  CreateWalletTopUpResponse,
+  SyncPayOsTopUpRequest,
+  WalletTransactionResponse,
+} from '../../types/models/Financial';
 import type { BankAccountResponse, WalletTransactionResponse, WithdrawalResponse } from './GET';
 
 export interface CreateWalletTopUpRequest {

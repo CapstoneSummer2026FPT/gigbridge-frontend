@@ -41,3 +41,6 @@ export * from './models/Report';
 
 // Projects (legacy compatibility)
 export * from './models/Project';
+
+// Wallets & Financial Overview
+export * from './models/Financial';

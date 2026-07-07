@@ -1558,6 +1558,7 @@
     "failedRequestUnlockError": "Failed to request milestone unlock.",
     "failedWithdrawFundsError": "Failed to withdraw milestone funds.",
     "failedEndProjectError": "Failed to end project.",
+    "unableLoadGigCoinBalance": "Unable to load your GigCoin balance.",
     "failedClaimPayoutError": "Failed to claim final payout.",
     "sendMaterialsTooltip": "Send work materials to freelancer",
     "sendMaterialsButton": "Send Work Materials",
@@ -1647,7 +1648,89 @@
     "recentTransactions": "Recent Transactions",
     "transactionsSubtitle": "Read-only records used for the summary cards and charts.",
     "subscription": "Subscription",
-    "enUS": "en-US"
+    "enUS": "en-US",
+    "freelancerFinance": "Freelancer Finance",
+    "accountFinance": "Account Finance",
+    "periods": {
+      "day": "Last 24 hours",
+      "month": "Last month",
+      "year": "Last year"
+    },
+    "tabs": {
+      "day": "Day",
+      "month": "Month",
+      "year": "Year"
+    },
+    "status": {
+      "inEscrow": "In Escrow",
+      "paid": "Paid",
+      "received": "Received",
+      "refunded": "Refunded",
+      "serviceFee": "Service Fee",
+      "remaining": "Remaining",
+      "escrowFunded": "Escrow Funded"
+    },
+    "csv": {
+      "period": "Period",
+      "periodStartUtc": "Period Start UTC",
+      "periodEndUtc": "Period End UTC",
+      "progressPercentage": "Progress Percentage",
+      "trend": "Trend",
+      "date": "Date",
+      "project": "Project",
+      "category": "Category",
+      "amount": "Amount"
+    },
+    "loadError": "Unable to load your financial overview.",
+    "loadingDescription": "Loading persisted project payments and service fees.",
+    "clientDescription": "Actual spending, payment progress, escrow activity, and service fees.",
+    "freelancerDescription": "Actual earnings, payout progress, and service fees from accepted jobs.",
+    "amountsInGigCoin": "All amounts are shown in GigCoin.",
+    "periodAriaLabel": "Financial period",
+    "loading": "Loading financial data...",
+    "loadErrorTitle": "Financial data could not be loaded",
+    "retry": "Retry",
+    "emptyTitle": "No financial activity in the {{period}}",
+    "emptyDescription": "Project payments and service fees will appear here when transactions are completed.",
+    "totalEarnings": "Total Earnings",
+    "averageSpending": "Average Spending",
+    "averageEarnings": "Average Earnings",
+    "paymentProgress": "Payment Progress",
+    "earningsProgress": "Earnings Progress",
+    "totalContractValue": "Total Contract Value",
+    "serviceFeePaid": "Service Fee Paid",
+    "paymentTrends": "Payment Trends",
+    "earningsTrends": "Earnings Trends",
+    "trendsDescription": "Persisted project transactions from the {{period}}.",
+    "progressOf": "{{current}} of {{total}}",
+    "noProgress": "No contract progress is available for this period.",
+    "transactionsDescription": "Successful project wallet records from the selected period.",
+    "noTransactions": "No project transactions in this period."
+  },
+  "serviceFee": {
+    "confirmationTitle": "Service Fee Confirmation",
+    "insufficientTitle": "Insufficient GigCoin",
+    "acceptJob": {
+      "confirmationDescription": "Accepting this job requires a service fee.",
+      "insufficientDescription": "You do not have enough GigCoin to pay the service fee. Please top up your wallet before accepting this job."
+    },
+    "endProject": {
+      "confirmationDescription": "Ending this project requires a service fee.",
+      "insufficientDescription": "You do not have enough GigCoin to pay the service fee. Please top up your wallet before ending this project."
+    },
+    "jobAmount": "Job Amount",
+    "completedJobAmount": "Completed Job Amount",
+    "feeLabel": "Service Fee (1%)",
+    "currentBalance": "Current GigCoin Balance",
+    "unavailable": "Unavailable",
+    "cancel": "Cancel",
+    "topUp": "Top Up",
+    "confirm": "Confirm",
+    "confirmAriaLabel": "Confirm service fee",
+    "processing": "Processing",
+    "unableDetermineJobAmount": "Unable to determine the final job amount.",
+    "unableLoadBalance": "Unable to load your GigCoin balance.",
+    "failedAcceptJob": "Failed to accept the job."
   },
   "marketInsights": {
     "title": "Market Insights",

@@ -13,15 +13,12 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
-import {
-  BankAccountStatus,
-  WithdrawalStatus,
-  type BankAccountResponse,
-  type WalletResponse,
-  type WithdrawalResponse,
-  walletGetAPI,
-} from '../../../api/walletAPI/GET';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
+import { BankAccountStatus, WithdrawalStatus } from '../../../types';
+import type { BankAccountResponse, WalletResponse, WithdrawalResponse } from '../../../types';
+import { MOCK_EARLY_PAYOUT } from '../mock/data-for-EarlyPayoutScreen';
+import { formatGigCoin as formatVnd } from '../../../shared/utils/gigcoin';
 import '../styles/early-payout-screen.css';
 
 const VND_PER_GIGCOIN = 1000;

@@ -18,6 +18,9 @@ import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { googleMeetAPI, type GoogleMeetConnectionStatus } from '../../../api/googleMeetAPI';
 import type { NegotiationMilestoneDto } from '../../../types/models/Message';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -216,6 +219,7 @@ function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { p
 }
 
 export function useMessages() {
+  const { t } = useTranslation();
   const { user, role } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
@@ -285,6 +289,15 @@ export function useMessages() {
   const [googleMeetConnecting, setGoogleMeetConnecting] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [anchorNotice, setAnchorNotice] = useState('');
+  const [acceptFeeDialog, setAcceptFeeDialog] = useState<{
+    offerId: string;
+    jobAmount: number;
+    balance: number | null;
+    mode: 'confirmation' | 'insufficient';
+    loadingBalance: boolean;
+    error: string | null;
+  } | null>(null);
+  const [isAcceptingDeal, setIsAcceptingDeal] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
   const secondModeRef = useRef(false);
   const [hasOngoingSchedule, setHasOngoingSchedule] = useState(false);
@@ -1129,20 +1142,84 @@ export function useMessages() {
     setAnchorNotice('Milestone plan saved.');
   };
 
-  const handleAcceptDeal = async (negotiationOfferId?: string | null) => {
+  const handleAcceptDeal = async (negotiationOfferId?: string | null, offeredAmount?: number) => {
     const offerId = negotiationOfferId ?? activeConv?.lastOfferId;
     if (!offerId || !activeConvId) return;
+
+    const jobAmount = offeredAmount ?? Number(activeConv?.proposedPrice);
+    if (!Number.isFinite(jobAmount) || jobAmount <= 0) {
+      setAnchorNotice(t('serviceFee.unableDetermineJobAmount'));
+      return;
+    }
+
+    setAcceptFeeDialog({
+      offerId,
+      jobAmount,
+      balance: null,
+      mode: 'confirmation',
+      loadingBalance: true,
+      error: null,
+    });
+
+    const walletResponse = await walletGetAPI.getMyWallet();
+    setAcceptFeeDialog(current => {
+      if (!current || current.offerId !== offerId) return current;
+      return {
+        ...current,
+        balance: walletResponse.success && walletResponse.data
+          ? walletResponse.data.availableTokens
+          : null,
+        loadingBalance: false,
+        error: walletResponse.success
+          ? null
+          : walletResponse.message || t('serviceFee.unableLoadBalance'),
+      };
+    });
+  };
+
+  const closeAcceptFeeDialog = () => {
+    if (isAcceptingDeal) return;
+    setAcceptFeeDialog(null);
+  };
+
+  const openWalletTopUp = () => {
+    setAcceptFeeDialog(null);
+    navigate('/wallet/deposit');
+  };
+
+  const confirmAcceptDeal = async () => {
+    if (!acceptFeeDialog || !activeConvId || isAcceptingDeal) return;
+
+    const serviceFee = calculateServiceFee(acceptFeeDialog.jobAmount);
+    if (acceptFeeDialog.balance === null) return;
+    if (acceptFeeDialog.balance < serviceFee) {
+      setAcceptFeeDialog(current => current ? { ...current, mode: 'insufficient', error: null } : current);
+      return;
+    }
+
+    setIsAcceptingDeal(true);
+    setAcceptFeeDialog(current => current ? { ...current, error: null } : current);
     try {
       const res = await messagePostAPI.respondFinalOffer({
-        negotiationOfferId: offerId,
+        negotiationOfferId: acceptFeeDialog.offerId,
         response: 0, // Accept
       });
       if (!res.success) {
-        throw new Error(res.message || 'Failed to accept deal.');
+        if (isInsufficientServiceFeeError(res.message)) {
+          setAcceptFeeDialog(current => current ? { ...current, mode: 'insufficient', error: null } : current);
+          return;
+        }
+
+        setAcceptFeeDialog(current => current
+          ? { ...current, error: res.message || t('serviceFee.failedAcceptJob') }
+          : current);
+        return;
       }
 
       const responseMessage = res.data?.message ?? res.message ?? null;
       const acceptedContractId = res.data?.contractId ?? activeConv?.contractId ?? null;
+      setAcceptFeeDialog(null);
+      window.dispatchEvent(new Event('gigbridge-wallet-updated'));
       setConversationsState(prev =>
         prev.map(c =>
           c.id === activeConvId
@@ -1172,7 +1249,9 @@ export function useMessages() {
     } catch (err) {
       console.error('Failed to accept deal:', err);
       const message = err instanceof Error ? err.message : 'Failed to accept deal.';
-      setAnchorNotice(message);
+      setAcceptFeeDialog(current => current ? { ...current, error: message } : current);
+    } finally {
+      setIsAcceptingDeal(false);
     }
   };
 
@@ -1428,6 +1507,11 @@ export function useMessages() {
     handleSendMessage,
     handleProposeDeal,
     handleAcceptDeal,
+    acceptFeeDialog,
+    isAcceptingDeal,
+    confirmAcceptDeal,
+    closeAcceptFeeDialog,
+    openWalletTopUp,
     handleDeclineDeal,
     handleOpenAcceptedContract,
     handleSendNegotiationRequest,

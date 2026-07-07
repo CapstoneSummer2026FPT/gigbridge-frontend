@@ -1,5 +1,11 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type {
+  FinancialOverviewPeriod,
+  FinancialOverviewResponse,
+  WalletResponse,
+  WalletTransactionResponse,
+} from '../../types/models/Financial';
 
 const walletUrl = 'wallet';
 
@@ -126,5 +132,15 @@ export const walletGetAPI = {
    */
   getWithdrawalDetail: async (withdrawalId: string): Promise<ApiResponse<WithdrawalResponse>> => {
     return apiService.get<WithdrawalResponse>(`${walletUrl}/withdrawals/${withdrawalId}`);
+  },
+
+  /**
+   * GET /api/wallet/financial-overview
+   * Fetch persisted project finance statistics for a rolling period ending now.
+   */
+  getFinancialOverview: async (
+    period: FinancialOverviewPeriod
+  ): Promise<ApiResponse<FinancialOverviewResponse>> => {
+    return apiService.get<FinancialOverviewResponse>(`${walletUrl}/financial-overview`, { period });
   },
 };
