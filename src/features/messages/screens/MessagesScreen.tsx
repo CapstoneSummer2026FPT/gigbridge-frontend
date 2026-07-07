@@ -965,9 +965,7 @@ export default function MessagesScreen() {
       <ServiceFeeDialog
         open={acceptFeeDialog !== null}
         mode={acceptFeeDialog?.mode ?? 'confirmation'}
-        actionDescription="Accepting this job"
-        insufficientDescription="accepting this job"
-        amountLabel="Job Amount"
+        action="acceptJob"
         jobAmount={acceptFeeDialog?.jobAmount ?? 0}
         serviceFee={calculateServiceFee(acceptFeeDialog?.jobAmount ?? 0)}
         balance={acceptFeeDialog?.balance ?? null}

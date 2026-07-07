@@ -10,13 +10,14 @@ import {
   AlertDialogTitle,
 } from '../../app/components/ui/alert-dialog';
 import { GigCoinAmount } from './GigCoinAmount';
+import { useTranslation } from '../../hooks/useTranslation';
+
+export type ServiceFeeAction = 'acceptJob' | 'endProject';
 
 interface ServiceFeeDialogProps {
   open: boolean;
   mode: 'confirmation' | 'insufficient';
-  actionDescription: string;
-  insufficientDescription: string;
-  amountLabel: string;
+  action: ServiceFeeAction;
   jobAmount: number;
   serviceFee: number;
   balance: number | null;
@@ -31,9 +32,7 @@ interface ServiceFeeDialogProps {
 export function ServiceFeeDialog({
   open,
   mode,
-  actionDescription,
-  insufficientDescription,
-  amountLabel,
+  action,
   jobAmount,
   serviceFee,
   balance,
@@ -44,17 +43,21 @@ export function ServiceFeeDialog({
   onCancel,
   onTopUp,
 }: ServiceFeeDialogProps) {
+  const { t } = useTranslation();
   const insufficient = mode === 'insufficient';
+  const amountLabel = action === 'acceptJob'
+    ? t('serviceFee.jobAmount')
+    : t('serviceFee.completedJobAmount');
 
   return (
     <AlertDialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{insufficient ? 'Insufficient GigCoin' : 'Service Fee Confirmation'}</AlertDialogTitle>
+          <AlertDialogTitle>{insufficient ? t('serviceFee.insufficientTitle') : t('serviceFee.confirmationTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
             {insufficient
-              ? `You do not have enough GigCoin to pay the service fee. Please top up your wallet before ${insufficientDescription}.`
-              : `${actionDescription} requires a service fee.`}
+              ? t(`serviceFee.${action}.insufficientDescription`)
+              : t(`serviceFee.${action}.confirmationDescription`)}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -65,16 +68,16 @@ export function ServiceFeeDialog({
               <strong><GigCoinAmount amount={jobAmount} /></strong>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground">Service Fee (1%)</span>
+              <span className="text-muted-foreground">{t('serviceFee.feeLabel')}</span>
               <strong><GigCoinAmount amount={serviceFee} /></strong>
             </div>
             <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
-              <span className="text-muted-foreground">Current GigCoin Balance</span>
+              <span className="text-muted-foreground">{t('serviceFee.currentBalance')}</span>
               <strong>
                 {loadingBalance
                   ? <Loader2 size={16} className="animate-spin" />
                   : balance === null
-                    ? 'Unavailable'
+                    ? t('serviceFee.unavailable')
                     : <GigCoinAmount amount={balance} />}
               </strong>
             </div>
@@ -89,19 +92,19 @@ export function ServiceFeeDialog({
         )}
 
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={submitting} onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={submitting} onClick={onCancel}>{t('serviceFee.cancel')}</AlertDialogCancel>
           {insufficient ? (
             <AlertDialogAction
-              aria-label="Top Up"
+              aria-label={t('serviceFee.topUp')}
               className="min-w-24 border border-transparent"
               style={{ backgroundColor: 'var(--brand, #494be7)', color: 'var(--brand-foreground, #ffffff)' }}
               onClick={(event) => { event.preventDefault(); onTopUp(); }}
             >
-              <span style={{ color: 'var(--brand-foreground, #ffffff)' }}>Top Up</span>
+              <span style={{ color: 'var(--brand-foreground, #ffffff)' }}>{t('serviceFee.topUp')}</span>
             </AlertDialogAction>
           ) : (
             <AlertDialogAction
-              aria-label="Confirm service fee"
+              aria-label={t('serviceFee.confirmAriaLabel')}
               className="min-w-24 border border-transparent"
               style={{ backgroundColor: 'var(--brand, #494be7)', color: 'var(--brand-foreground, #ffffff)' }}
               disabled={submitting || loadingBalance || balance === null}
@@ -109,10 +112,10 @@ export function ServiceFeeDialog({
             >
               {submitting ? (
                 <span className="flex items-center gap-2" style={{ color: 'var(--brand-foreground, #ffffff)' }}>
-                  <Loader2 size={15} className="animate-spin" />Processing
+                  <Loader2 size={15} className="animate-spin" />{t('serviceFee.processing')}
                 </span>
               ) : (
-                <span style={{ color: 'var(--brand-foreground, #ffffff)' }}>Confirm</span>
+                <span style={{ color: 'var(--brand-foreground, #ffffff)' }}>{t('serviceFee.confirm')}</span>
               )}
             </AlertDialogAction>
           )}

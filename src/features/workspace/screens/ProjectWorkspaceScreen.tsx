@@ -15,6 +15,7 @@ import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
   const url = handoff.sourceType === ContractProductHandoffSourceType.Link
@@ -349,7 +350,7 @@ export default function ProjectWorkspaceScreen() {
     if (response.success && response.data) {
       setEndProjectBalance(response.data.availableTokens);
     } else {
-      setEndProjectError(response.message || 'Unable to load your GigCoin balance.');
+      setEndProjectError(response.message || t('workspace.unableLoadGigCoinBalance'));
     }
     setIsLoadingEndProjectBalance(false);
   };
@@ -376,7 +377,7 @@ export default function ProjectWorkspaceScreen() {
         return;
       }
 
-      setEndProjectError(result.message || 'Failed to end project.');
+      setEndProjectError(result.message || t('workspace.failedEndProjectError'));
       setIsEndingProject(false);
       return;
     }
@@ -1107,9 +1108,7 @@ export default function ProjectWorkspaceScreen() {
       <ServiceFeeDialog
         open={endProjectModalOpen}
         mode={endProjectFeeMode}
-        actionDescription="Ending this project"
-        insufficientDescription="ending this project"
-        amountLabel="Completed Job Amount"
+        action="endProject"
         jobAmount={completedJobAmount}
         serviceFee={endProjectServiceFee}
         balance={endProjectBalance}

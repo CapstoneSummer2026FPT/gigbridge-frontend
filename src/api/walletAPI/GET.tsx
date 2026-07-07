@@ -1,73 +1,13 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
+import type {
+  FinancialOverviewPeriod,
+  FinancialOverviewResponse,
+  WalletResponse,
+  WalletTransactionResponse,
+} from '../../types/models/Financial';
 
 const walletUrl = 'wallet';
-
-export interface WalletResponse {
-  walletId: string;
-  userId: string;
-  availableTokens: number;
-  heldTokens: number;
-  availableVnd: number;
-  heldVnd: number;
-}
-
-export interface WalletTransactionResponse {
-  walletTransactionId: string;
-  walletId: string;
-  userId: string;
-  tokenAmount: number;
-  vndAmount: number;
-  type: number;
-  status: number;
-  idempotencyKey?: string | null;
-  gatewayProvider?: string | null;
-  gatewayOrderCode?: string | null;
-  gatewayTransactionCode?: string | null;
-  contractId?: string | null;
-  contractEscrowId?: string | null;
-  note?: string | null;
-  createdAt: string;
-  completedAt?: string | null;
-}
-
-export type FinancialOverviewPeriod = 'day' | 'month' | 'year';
-export type FinancialOverviewRole = 'Client' | 'Freelancer';
-export type FinancialTransactionCategory = 'escrow' | 'released' | 'refund' | 'serviceFee';
-
-export interface FinancialTrendPoint {
-  period: string;
-  periodStartUtc: string;
-  paidOrReceivedAmount: number;
-  escrowFundedAmount: number;
-  serviceFeeAmount: number;
-}
-
-export interface FinancialTransactionItem {
-  walletTransactionId: string;
-  contractId: string;
-  project: string;
-  category: FinancialTransactionCategory;
-  amount: number;
-  signedAmount: number;
-  occurredAt: string;
-}
-
-export interface FinancialOverviewResponse {
-  role: FinancialOverviewRole;
-  period: FinancialOverviewPeriod;
-  periodStartUtc: string;
-  periodEndUtc: string;
-  totalAmount: number;
-  averageAmount: number;
-  progressAmount: number;
-  totalContractValue: number;
-  progressPercentage: number;
-  totalServiceFeePaid: number;
-  averageDivisorJobCount: number;
-  trendPoints: FinancialTrendPoint[];
-  recentTransactions: FinancialTransactionItem[];
-}
 
 export const walletGetAPI = {
   /**

@@ -18,6 +18,7 @@ import { ContractStatus } from '../../../types/models/Contract';
 import { googleMeetAPI, type GoogleMeetConnectionStatus } from '../../../api/googleMeetAPI';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -216,6 +217,7 @@ function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { p
 }
 
 export function useMessages() {
+  const { t } = useTranslation();
   const { user, role } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1034,7 +1036,7 @@ export function useMessages() {
 
     const jobAmount = offeredAmount ?? Number(activeConv?.proposedPrice);
     if (!Number.isFinite(jobAmount) || jobAmount <= 0) {
-      setAnchorNotice('Unable to determine the final job amount.');
+      setAnchorNotice(t('serviceFee.unableDetermineJobAmount'));
       return;
     }
 
@@ -1058,7 +1060,7 @@ export function useMessages() {
         loadingBalance: false,
         error: walletResponse.success
           ? null
-          : walletResponse.message || 'Unable to load your GigCoin balance.',
+          : walletResponse.message || t('serviceFee.unableLoadBalance'),
       };
     });
   };
@@ -1097,7 +1099,7 @@ export function useMessages() {
         }
 
         setAcceptFeeDialog(current => current
-          ? { ...current, error: res.message || 'Failed to accept deal.' }
+          ? { ...current, error: res.message || t('serviceFee.failedAcceptJob') }
           : current);
         return;
       }
