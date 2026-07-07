@@ -59,6 +59,7 @@ const getCanvasPoint = (canvas: HTMLCanvasElement, event: React.MouseEvent<HTMLC
 };
 
 export default function SignatureWorkflowScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
   const { user, role } = useApp();

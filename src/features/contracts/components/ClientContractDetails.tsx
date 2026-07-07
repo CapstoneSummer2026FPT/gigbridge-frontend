@@ -61,6 +61,8 @@ export function ClientContractDetails({
   const [actionLoading, setActionLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [isFullySignedPendingEscrow, setIsFullySignedPendingEscrow] = useState(false);
+  const [hasClientSignedContract, setHasClientSignedContract] = useState(false);
+  const [showEscrowSuccess, setShowEscrowSuccess] = useState(false);
 
   // Form states (pre-populated from props)
   const [scopeOfWork, setScopeOfWork] = useState(contract.scopeOfWork || '');
@@ -102,6 +104,7 @@ export function ClientContractDetails({
     const loadESignStatus = async (): Promise<void> => {
       if (!contract?.contractsId || contract.status !== ContractStatus.PendingSignature) {
         setIsFullySignedPendingEscrow(false);
+        setHasClientSignedContract(false);
         return;
       }
 
@@ -113,6 +116,13 @@ export function ClientContractDetails({
 
         const contractDocument = response.success ? response.data : null;
         const isContractFullySigned = contractDocument?.status === ESignDocumentStatus.FullySigned;
+        const hasClientContractSignature = Boolean(
+          contractDocument?.signatures.some(
+            signature =>
+              signature.signerRole === ESignerRole.Client &&
+              signature.status === SignatureStatus.Signed
+          )
+        );
         const hasFreelancerContractSignature = Boolean(
           contractDocument?.signatures.some(
             signature =>
@@ -123,7 +133,7 @@ export function ClientContractDetails({
 
         let isClientJobPostSigned = false;
         const jobPostId = String(contract.jobPostsId || contract.jobPostId || '');
-        if (!isContractFullySigned && hasFreelancerContractSignature && jobPostId) {
+        if (!isContractFullySigned && !hasClientContractSignature && jobPostId) {
           try {
             const jobPostDocumentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
             if (isCancelled) {
@@ -139,12 +149,15 @@ export function ClientContractDetails({
           }
         }
 
+        const hasClientSignature = hasClientContractSignature || isClientJobPostSigned;
+        setHasClientSignedContract(hasClientSignature);
         setIsFullySignedPendingEscrow(
-          isContractFullySigned || (hasFreelancerContractSignature && isClientJobPostSigned)
+          isContractFullySigned || (hasFreelancerContractSignature && hasClientSignature)
         );
       } catch (error) {
         if (!isCancelled) {
           setIsFullySignedPendingEscrow(false);
+          setHasClientSignedContract(false);
         }
       }
     };
@@ -286,7 +299,7 @@ export function ClientContractDetails({
     try {
       const res = await contractPostAPI.fundEscrow(contract.contractsId);
       if (res.success) {
-        alert('Escrow funded successfully! Workspace is now open.');
+        setShowEscrowSuccess(true);
         onRefresh();
       } else {
         alert(res.message || 'Failed to fund escrow.');
@@ -667,14 +680,25 @@ export function ClientContractDetails({
                   </>
                 )}
 
-                {/* PendingSignature: Freelancer is still signing — show waiting state for client */}
+                {/* PendingSignature: each party signs the contract before escrow funding. */}
                 {effectiveStatus === ContractStatus.PendingSignature && (
                   <>
-                    <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex items-center gap-3">
-                      <Clock size={20} className="shrink-0 animate-pulse" />
-                      <div className="text-sm font-semibold">
-                        {t('contracts.waitingFreelancerSign')}
+                    <div className="bg-primary/10 text-primary border border-primary/20 p-6 rounded-3xl flex flex-col sm:flex-row sm:items-center gap-4">
+                      <Clock size={20} className={hasClientSignedContract ? "shrink-0 animate-pulse" : "shrink-0"} />
+                      <div className="flex-1 text-sm font-semibold">
+                        {hasClientSignedContract
+                          ? t('contracts.waitingFreelancerSign')
+                          : t('contracts.readyForEsign')}
                       </div>
+                      {!hasClientSignedContract && (
+                        <button
+                          onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
+                          className="btn-primary-custom px-6 py-3 rounded-xl text-sm font-bold cursor-pointer inline-flex items-center justify-center gap-2"
+                        >
+                          <FileText size={18} />
+                          {t('contracts.proceedToEsign')}
+                        </button>
+                      )}
                     </div>
                     {renderViewOnlyTerms()}
                     {renderViewOnlyMilestones()}
@@ -1210,6 +1234,57 @@ export function ClientContractDetails({
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showEscrowSuccess && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="escrow-success-title"
+          >
+            <motion.div
+              className="w-full max-w-md rounded-2xl border border-emerald-500/25 bg-card p-7 text-center shadow-2xl"
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.97 }}
+            >
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+                <CheckCircle size={30} />
+              </div>
+              <h2 id="escrow-success-title" className="text-xl font-bold text-foreground">
+                {t('contracts.escrowFundedTitle', { defaultValue: 'Escrow funded successfully' })}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {t('contracts.escrowFundedMessage', { defaultValue: 'The project funds are secured and your workspace is ready.' })}
+              </p>
+              <div className="mt-5 rounded-xl border border-border/40 bg-secondary/20 p-4">
+                <span className="block text-[10px] font-black uppercase text-muted-foreground">{t('contracts.fundedAmount', { defaultValue: 'Funded amount' })}</span>
+                <span className="mt-1 block text-2xl font-bold text-emerald-500">{formatContractAmount(escrowFundingAmount)}</span>
+              </div>
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setShowEscrowSuccess(false)}
+                  className="flex-1 rounded-xl border border-border/50 bg-secondary/50 px-5 py-3 text-sm font-bold text-foreground cursor-pointer"
+                >
+                  {t('common.close', { defaultValue: 'Close' })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/workspace/${contract.contractsId}`)}
+                  className="btn-primary-custom flex-1 rounded-xl px-5 py-3 text-sm font-bold cursor-pointer"
+                >
+                  {t('proposals.goToWorkspace', { defaultValue: 'Go to Workspace' })}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppLayout>
   );
 }

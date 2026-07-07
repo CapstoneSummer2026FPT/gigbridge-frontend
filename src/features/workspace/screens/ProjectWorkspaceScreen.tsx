@@ -7,6 +7,7 @@ import {
   Upload, Link2, X, AlertCircle, Loader2, Wallet
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
