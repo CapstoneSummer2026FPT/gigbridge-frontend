@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { AlertCircle, Briefcase, CheckCircle2, Clock, Eye, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getProposalCreatePath } from '../../proposals/utils/proposalRoutes';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobInvitationAPI } from '../../../api/jobInvitationAPI';
@@ -177,7 +178,7 @@ export default function JobInvitationsScreen() {
           updateInvitation(await jobInvitationAPI.markApplied(invitationId));
           toast.success('Invitation marked as applied.');
         }
-        navigate(`/proposals/create/${jobPostId}?invitationId=${invitationId}`);
+        navigate(getProposalCreatePath(jobPostId, invitationId));
       } catch (err) {
         console.error('Failed to apply invitation:', err);
         toast.error(err instanceof Error ? err.message : 'Invitation could not be marked as applied.');

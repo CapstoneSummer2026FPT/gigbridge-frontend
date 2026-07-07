@@ -6,6 +6,7 @@ import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
 
 import {
+  JobPostStatus,
   JobPostVisibility,
   type CreateDraftJobPostResponse,
   type GetMyJobPostDetailDto,
@@ -85,7 +86,7 @@ export interface PostJobRouteState {
   jobData?: PostJobRouteJobData | null;
 }
 
-type SubmitMode = 'draft' | 'questions' | 'esign' | 'contract';
+type SubmitMode = 'draft' | 'questions' | 'publish';
 type LeaveAction = 'save' | 'discard' | null;
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
@@ -115,7 +116,7 @@ const createDraftJobPostOnce = async (): Promise<string> => {
   return draftJobPostRequest;
 };
 
-const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: true });
+const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: false });
 
 const normalizeSkillName = (value: string): string => value.trim().toLowerCase();
 
@@ -131,7 +132,7 @@ const toStringValue = (value: string | number | null | undefined): string => (
 const initialQuestionsFromState = (initialJobData?: PostJobRouteJobData | null): QuestionInput[] => {
   const initialQuestions = initialJobData?.interviewQuestions?.map(question => ({
     questionText: question.questionText || question.question || '',
-    isRequired: question.isRequired ?? true,
+    isRequired: question.isRequired ?? false,
   })) || [];
 
   return initialQuestions.length > 0 ? initialQuestions : [emptyQuestion()];
@@ -717,7 +718,7 @@ export function usePostJob() {
         setQuestions(
           generatedData.questionRecruitment.map(qText => ({
             questionText: qText,
-            isRequired: true,
+            isRequired: false,
           }))
         );
       }
@@ -734,11 +735,11 @@ export function usePostJob() {
   };
 
   const validateForm = () => {
-    if (!form.title.trim()) return 'Job title is required.';
-    if (form.title.trim().length > 200) return 'Job title must not exceed 200 characters.';
+    if (!form.title.trim()) return 'Project title is required.';
+    if (form.title.trim().length > 200) return 'Project title must not exceed 200 characters.';
     if (!form.majorId) return 'Major is required.';
     if (!form.majorCategoryId || !form.categoryId) return 'Category is required.';
-    if (!form.description.trim()) return 'Job description is required.';
+    if (!form.description.trim()) return 'Requirement details are required.';
 
     const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
     const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
@@ -838,7 +839,7 @@ export function usePostJob() {
   };
 
   const submitDraftFlow = async (mode: SubmitMode): Promise<void> => {
-    if (mode === 'questions' || mode === 'esign' || mode === 'contract') {
+    if (mode === 'questions' || mode === 'publish') {
       const detailValidationError = validateForm();
       if (detailValidationError) {
         showValidationError(detailValidationError);
@@ -846,7 +847,7 @@ export function usePostJob() {
       }
     }
 
-    if (mode === 'esign' || mode === 'contract') {
+    if (mode === 'publish') {
       const questionValidationError = validateQuestions();
       if (questionValidationError) {
         showValidationError(questionValidationError);
@@ -867,17 +868,23 @@ export function usePostJob() {
         return;
       }
 
-      if (mode === 'esign' || mode === 'contract') {
+      if (mode === 'publish') {
+        const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
+        if (!publishResponse.success) {
+          throw new Error(publishResponse.message || 'Project request could not be published.');
+        }
+
+        toast.success('Project request published.');
         allowNextNavigation();
-        navigate('/jobs/post/contract', { state: navigationState });
+        navigate(`/jobs/my-jobs/${currentJobPostId}`);
         return;
       }
 
-      toast.success('JobPost saved as draft.');
+      toast.success('Project request saved as draft.');
       allowNextNavigation();
       navigate('/jobs/my-jobs');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'JobPost could not be saved.';
+      const message = error instanceof Error ? error.message : 'Project request could not be saved.';
       setErrorMessage(message);
       toast.error(message);
     } finally {

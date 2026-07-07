@@ -151,7 +151,7 @@ export default function CreatePostJobContractScreen() {
                       <img src="public/icons/G-coin.png" alt="G-Coin" className="w-5 h-5" />
                     </span>
                     <input 
-                      id="contract-budget"
+                      id="contract-budget"                                                                                                                                                 
                       type="number" 
                       placeholder="5000" 
                       value={contractForm.budget}

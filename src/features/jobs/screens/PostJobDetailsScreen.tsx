@@ -1,7 +1,6 @@
 import { Bold, ChevronRight, Italic, List, ListOrdered, Plus, Save, Underline, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { JobPostVisibility } from '../../../types/models/Job';
-import { PostJobFlowStepper } from '../components/PostJobFlowStepper';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { usePostJob } from '../hooks/usePostJob';
 import { JOB_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
@@ -48,13 +47,12 @@ export function PostJobDetailsScreen() {
       <div className="max-w-[1180px] mx-auto px-6 py-8 relative">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(159,75,255,0.02),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(0,119,255,0.02),transparent_50%)] opacity-50 pointer-events-none" />
 
-        <div className="flex flex-col gap-6 items-center mb-8">
+        <div className="flex flex-col items-center mb-8">
           <div className="flex flex-col md:flex-row items-center justify-between w-full gap-4 border-b border-border pb-6">
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground uppercase" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif", letterSpacing: '0.05em' }}>
-              Create New Job Post
+              Create Project Request
             </h1>
           </div>
-          <PostJobFlowStepper activeStep="details" />
         </div>
 
         {errorMessage && (
@@ -89,11 +87,11 @@ export function PostJobDetailsScreen() {
         )}
 
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-          <h2 className="text-lg font-bold border-b border-border pb-4 mb-6 text-foreground">Job Details</h2>
+          <h2 className="text-lg font-bold border-b border-border pb-4 mb-6 text-foreground">Project Requirement</h2>
 
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Title *</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Project Title *</label>
               <input
                 type="text"
                 placeholder="e.g. Senior Frontend Engineer"
@@ -149,7 +147,7 @@ export function PostJobDetailsScreen() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Required Skills</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Helpful Skills</label>
               <div className="border border-border rounded-xl p-3 bg-background shadow-sm flex flex-wrap gap-2 items-center focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
                 {selectedOfficialSkills.map(skill => (
                   <span key={skill.skillId} className="bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
@@ -223,7 +221,7 @@ export function PostJobDetailsScreen() {
 
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center mb-1">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Job Description *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Requirement Details *</label>
               </div>
               <div className="border border-border rounded-xl overflow-hidden shadow-sm flex flex-col bg-background focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 focus-within:border-[var(--gb-cyan)] transition-all">
                 <div className="bg-muted/30 border-b border-border px-3 py-2 flex items-center gap-1.5">
@@ -308,7 +306,7 @@ export function PostJobDetailsScreen() {
 
         <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm">
           <div className="hidden md:flex flex-col">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">New Job Post Preview</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Project Request Preview</span>
             <span className="text-xs font-bold text-foreground truncate max-w-md mt-0.5">{previewTitle}</span>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -326,7 +324,7 @@ export function PostJobDetailsScreen() {
               disabled={isActionDisabled}
               className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
             >
-              <span>{renderSubmitLabel('questions', 'Next: Interview Questions')}</span>
+              <span>{renderSubmitLabel('questions', 'Next: Clarifying Questions')}</span>
               <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
             </button>
           </div>

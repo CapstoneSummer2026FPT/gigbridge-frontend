@@ -1,6 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { ScheduleEvent } from '../scheduleAPI';
+import type { NegotiationMilestoneDto, NegotiationOfferDetailDto } from '../../types/models/Message';
 
 export interface ConversationSummaryResponse {
   conversationId: string;
@@ -95,4 +96,10 @@ export const messageGetAPI = {
 
   getMessagesAround: async (conversationId: string, messageId: string, radius: number = 20): Promise<ApiResponse<ConversationMessageResponse[]>> =>
     apiService.get<ConversationMessageResponse[]>(`messages/conversation/${conversationId}/around/${messageId}`, { radius }),
+
+  getNegotiationMilestonePlan: async (conversationId: string): Promise<ApiResponse<NegotiationMilestoneDto[]>> =>
+    apiService.get<NegotiationMilestoneDto[]>(`negotiation-offers/conversations/${conversationId}/milestone-plan`),
+
+  getNegotiationOfferDetail: async (offerId: string): Promise<ApiResponse<NegotiationOfferDetailDto>> =>
+    apiService.get<NegotiationOfferDetailDto>(`negotiation-offers/${offerId}`),
 };

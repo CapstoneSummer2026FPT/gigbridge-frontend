@@ -95,6 +95,14 @@ export default function WalletHistoryScreen() {
         return t('walletHistory.descRefund');
       case 5:
         return t('walletHistory.descAdjustment');
+      case 6:
+        return t('walletHistory.descWithdrawalLock');
+      case 7:
+        return t('walletHistory.descWithdrawalSuccess');
+      case 8:
+        return t('walletHistory.descWithdrawalRefund');
+      case 9:
+        return t('walletHistory.descWithdrawalFee');
       default:
         return t('walletHistory.descDefault');
     }
@@ -104,13 +112,15 @@ export default function WalletHistoryScreen() {
     const succeeded = transactions.filter(t => t.status === 1);
     const totalDeposits = succeeded.filter(t => t.type === 1).reduce((sum, t) => sum + t.tokenAmount, 0);
     const totalHold = succeeded.filter(t => t.type === 2).reduce((sum, t) => sum + t.tokenAmount, 0);
-    const totalRefund = succeeded.filter(t => t.type === 4).reduce((sum, t) => sum + t.tokenAmount, 0);
+    const totalRefund = succeeded.filter(t => t.type === 4 || t.type === 8).reduce((sum, t) => sum + t.tokenAmount, 0);
+    const totalWithdrawn = succeeded.filter(t => t.type === 7).reduce((sum, t) => sum + t.tokenAmount, 0);
     const pending = transactions.filter(t => t.status === 0).length;
 
     return {
       totalDeposits,
       totalHold,
       totalRefund,
+      totalWithdrawn,
       pending,
       totalTransactions: transactions.length,
     };
@@ -164,6 +174,14 @@ export default function WalletHistoryScreen() {
         return <span className="badge-cyan text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeRefund')}</span>;
       case 5:
         return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeAdjustment')}</span>;
+      case 6:
+        return <span className="badge-amber text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalLock')}</span>;
+      case 7:
+        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalSuccess')}</span>;
+      case 8:
+        return <span className="badge-green text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalRefund')}</span>;
+      case 9:
+        return <span className="badge-red text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeWithdrawalFee')}</span>;
       default:
         return <span className="badge-gray text-[10px] px-1.5 py-0.5 font-bold uppercase tracking-wider">{t('walletHistory.typeOther')}</span>;
     }
@@ -176,9 +194,13 @@ export default function WalletHistoryScreen() {
         return <RefreshCw size={16} className="text-muted" />;
       case 1:
       case 4:
+      case 8:
         return <ArrowUpRight size={16} className="text-green" />;
       case 2:
       case 3:
+      case 6:
+      case 7:
+      case 9:
         return <ArrowDownRight size={16} className="text-red" />;
       default:
         return <Wallet size={16} className="text-cyan" />;
@@ -186,7 +208,7 @@ export default function WalletHistoryScreen() {
   };
 
   const getAmountDisplay = (trans: WalletTransactionResponse) => {
-    const isPositive = trans.type === 0 || trans.type === 1 || trans.type === 4;
+    const isPositive = trans.type === 0 || trans.type === 1 || trans.type === 4 || trans.type === 8;
     const prefix = isPositive ? '+' : '-';
     const colorClass = isPositive ? 'text-green' : 'text-red';
 
@@ -195,7 +217,7 @@ export default function WalletHistoryScreen() {
         <div className={`text-lg sm:text-xl font-bold flex items-center justify-end gap-1 ${colorClass}`}>
           <GigCoinAmount amount={trans.tokenAmount} prefix={prefix} />
         </div>
-        {trans.type === 1 && trans.vndAmount > 0 && (
+        {[1, 6, 7, 8, 9].includes(trans.type) && trans.vndAmount > 0 && (
           <p className="text-xs text-secondary mt-0.5 font-semibold">
             {fmtNumber(trans.vndAmount)} đ
           </p>
@@ -239,11 +261,12 @@ export default function WalletHistoryScreen() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-8">
             {[
               { label: t('walletHistory.statTotalDeposits'), value: <GigCoinAmount amount={stats.totalDeposits} />, icon: <ArrowUpRight size={16} />, color: 'green' },
               { label: t('walletHistory.statTotalHold'), value: <GigCoinAmount amount={stats.totalHold} />, icon: <ArrowDownRight size={16} />, color: 'red' },
               { label: t('walletHistory.statTotalRefund'), value: <GigCoinAmount amount={stats.totalRefund} />, icon: <RefreshCw size={16} />, color: 'cyan' },
+              { label: t('walletHistory.statTotalWithdrawn'), value: <GigCoinAmount amount={stats.totalWithdrawn} />, icon: <ArrowDownRight size={16} />, color: 'amber' },
               { label: t('walletHistory.statPending'), value: stats.pending.toString(), icon: <Loader2 size={16} className={stats.pending > 0 ? 'animate-spin' : ''} />, color: 'amber' },
               { label: t('walletHistory.statTotalTransactions'), value: stats.totalTransactions.toString(), icon: <Wallet size={16} />, color: 'cyan' },
             ].map(stat => (
@@ -283,6 +306,10 @@ export default function WalletHistoryScreen() {
                 <option value="4">{t('walletHistory.filterRefund')}</option>
                 <option value="0">{t('walletHistory.filterAdmin')}</option>
                 <option value="5">{t('walletHistory.filterAdjustment')}</option>
+                <option value="6">{t('walletHistory.filterWithdrawalLock')}</option>
+                <option value="7">{t('walletHistory.filterWithdrawalSuccess')}</option>
+                <option value="8">{t('walletHistory.filterWithdrawalRefund')}</option>
+                <option value="9">{t('walletHistory.filterWithdrawalFee')}</option>
               </select>
               <select
                 value={statusFilter}

@@ -161,6 +161,32 @@ export interface MsgConversation {
   lastOfferId?: string | null;
 }
 
+export interface NegotiationMilestoneDto {
+  id?: string | null;
+  title?: string | null;
+  description?: string | null;
+  amount: number;
+  estimatedDuration?: string | null;
+  dueDate?: string | null;
+  deliverables?: string | null;
+  acceptanceCriteria?: string | null;
+  orderIndex: number;
+}
+
+export interface NegotiationOfferDetailDto {
+  negotiationOfferId: string;
+  conversationId: string;
+  finalPrice: number;
+  scopeSummary?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  clientNote?: string | null;
+  status: number;
+  createdAt: string;
+  respondedAt?: string | null;
+  milestones: NegotiationMilestoneDto[];
+}
+
 /** @deprecated Use IMessage instead */
 export interface Message {
   id: string;
@@ -179,6 +205,7 @@ export interface Message {
   negotiationStatus?: 'pending' | 'accepted' | 'declined';
   proposedPrice?: string;
   negotiationOfferId?: string | null;
+  offerDetail?: NegotiationOfferDetailDto | null;
   schedule?: import('../../api/scheduleAPI').ScheduleEvent;
 }
 

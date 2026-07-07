@@ -43,6 +43,7 @@ import AdminCheatingManagementScreen from '../features/admin/screens/AdminCheati
 import AdminJobsScreen from '../features/admin/screens/AdminJobsScreen';
 import AdminSystemTrackingScreen from '../features/admin/screens/AdminSystemTrackingScreen';
 import AdminRevenueScreen from '../features/admin/screens/AdminRevenueScreen';
+import AdminWithdrawalsScreen from '../features/admin/screens/AdminWithdrawalsScreen';
 import AdminReportsScreen from '../features/admin/screens/AdminReportsScreen';
 import AdminFeedbackScreen from '../features/admin/screens/AdminFeedbackScreen';
 import AdminNotificationsScreen from '../features/admin/screens/AdminNotificationsScreen';
@@ -87,6 +88,7 @@ import {
 // Import router styles
 import './styles/router.css';
 import { UserRole } from '../types';
+import { getProposalCreatePath } from '../features/proposals/utils/proposalRoutes';
 
 function NotFound() {
   return (
@@ -142,7 +144,7 @@ function ContractListRoute() {
 
 function NavigateToProposalCreate() {
   const { jobPostId } = useParams<{ jobPostId: string }>();
-  return <Navigate to={`/proposals/create/${jobPostId || ''}`} replace />;
+  return <Navigate to={getProposalCreatePath(jobPostId || '')} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -250,6 +252,7 @@ export const router = createBrowserRouter([
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/revenue', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
       { path: 'admin/system-finance', element: <AdminRoute><AdminRevenueScreen /></AdminRoute> },
+      { path: 'admin/withdrawals', element: <AdminRoute><AdminWithdrawalsScreen /></AdminRoute> },
       { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
       { path: 'admin/cheating', element: <AdminRoute><AdminCheatingManagementScreen /></AdminRoute> },
 

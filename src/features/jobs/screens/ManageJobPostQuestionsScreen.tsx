@@ -8,7 +8,7 @@ import type { JobPostQuestionDto } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 
-const DRAFT_RULE_MESSAGE = 'Only draft job posts can update questions.';
+const DRAFT_RULE_MESSAGE = 'Only draft project requests can update clarifying questions.';
 
 type QuestionDraft = JobPostQuestionDto & {
   isNew?: boolean;
@@ -95,7 +95,7 @@ export default function ManageJobPostQuestionsScreen() {
           jobPostsId: jobPostId,
           questionText: '',
           orderIndex: prev.length,
-          isRequired: true,
+          isRequired: false,
           createdAt: new Date().toISOString(),
           updatedAt: null,
           isNew: true,

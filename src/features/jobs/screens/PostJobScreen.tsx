@@ -197,39 +197,6 @@ export default function PostJobScreen() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center w-full max-w-5xl mx-auto py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--gb-cyan)] text-white flex items-center justify-center shadow-md font-bold text-sm shrink-0">1</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-[var(--gb-cyan)] uppercase tracking-wider font-bold">{t('postJob.step1')}</span>
-                <span className="text-xs text-foreground font-bold">{t('postJob.step1Label')}</span>
-              </div>
-            </div>
-            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
-            <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">2</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('postJob.step2')}</span>
-                <span className="text-xs text-muted-foreground font-bold">{t('postJob.step2Label')}</span>
-              </div>
-            </div>
-            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
-            <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">3</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('postJob.step3')}</span>
-                <span className="text-xs text-muted-foreground font-bold">{t('postJob.step3Label')}</span>
-              </div>
-            </div>
-            <div className="flex-grow mx-2 sm:mx-6 h-[2px] bg-border rounded-full opacity-50" />
-            <div className="flex items-center gap-3 opacity-60">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-sm shrink-0">4</div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">{t('postJob.step4')}</span>
-                <span className="text-xs text-muted-foreground font-bold">{t('postJob.step4Label')}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {errorMessage && (
@@ -272,7 +239,7 @@ export default function PostJobScreen() {
         <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start ${
           isInstantJobMode && !isJobDetailsGenerated ? 'hidden' : ''
         }`}>
-          {/* LEFT: Job Details (col-span-7) */}
+          {/* LEFT: Project Requirement (col-span-7) */}
           <div id="guide-job-details-panel" className={`lg:col-span-7 order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
             isJobDetailsGenerated ? 'panels-fade-in' : ''
           }`}>
@@ -558,7 +525,7 @@ export default function PostJobScreen() {
             </div>
           </div>
 
-          {/* RIGHT: Questions for Interview (col-span-5) */}
+          {/* RIGHT: Clarifying Questions (col-span-5) */}
           <div
             className={`lg:col-span-5 order-2 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
               isJobDetailsGenerated ? 'panels-fade-in-delay' : ''
@@ -572,7 +539,7 @@ export default function PostJobScreen() {
               </div>
             </div>
 
-            {/* Interview Questions Guide */}
+            {/* Clarifying Questions Guide */}
             <div className="rounded-xl border border-[var(--gb-purple)]/20 bg-gradient-to-br from-[var(--gb-purple)]/6 to-transparent p-4 -mt-2 mb-1">
               <div className="flex items-start gap-3">
                 <div className="w-7 h-7 rounded-lg bg-[var(--gb-purple)]/15 flex items-center justify-center shrink-0 mt-0.5">
@@ -669,7 +636,7 @@ export default function PostJobScreen() {
             <div className="flex flex-col gap-3 mt-2">
               <button
                 type="button"
-                onClick={() => setQuestions([...questions, { questionText: '', isRequired: true }])}
+                onClick={() => setQuestions([...questions, { questionText: '', isRequired: false }])}
                 className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
               >
                 <Plus size={14} /> {t('postJob.addQuestion')}
@@ -678,7 +645,7 @@ export default function PostJobScreen() {
           </div>
         </div>
 
-        {/* New Job Post Preview bar — hidden in instant job guide mode */}
+        {/* Project Request Preview bar - hidden in instant job guide mode */}
         {!(isInstantJobMode && !isJobDetailsGenerated) && (
           <div className="bg-card border border-border rounded-2xl p-6 mt-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 shadow-sm max-w-[1440px] mx-auto">
             <div className="hidden md:flex flex-col">
@@ -696,12 +663,12 @@ export default function PostJobScreen() {
               </button>
               <button
                 type="button"
-                onClick={() => submitDraftFlow('esign')}
+                onClick={() => submitDraftFlow('publish')}
                 disabled={isActionDisabled}
                 className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:bg-[var(--gb-cyan)]/90 shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer border-none group"
               >
                 <Check size={16} />
-                <span>{renderSubmitLabel('esign', t('postJob.nextContractSetup'))}</span>
+                <span>{renderSubmitLabel('publish', t('postJob.publishProjectRequest'))}</span>
                 <ChevronRight size={16} className="transition-transform group-hover:translate-x-1" />
               </button>
             </div>

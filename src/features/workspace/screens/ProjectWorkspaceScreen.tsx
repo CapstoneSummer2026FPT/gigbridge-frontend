@@ -7,15 +7,14 @@ import {
   Upload, Link2, X, AlertCircle, Loader2, Wallet
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
-import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
-import { useTranslation } from '../../../hooks/useTranslation';
 
 const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
   const url = handoff.sourceType === ContractProductHandoffSourceType.Link
