@@ -74,6 +74,7 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
+  createdAt: job.createdAt,
   isRemote: true,
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
@@ -106,6 +107,7 @@ const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
   proposalCount: job.proposalCount,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
+  createdAt: job.createdAt,
   isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
 });
@@ -128,6 +130,7 @@ const toLegacyJobFromMyJobDetail = (job: GetMyJobPostDetailDto): Job => ({
   proposalCount: job.proposalCount,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
+  createdAt: job.createdAt,
   isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
 });
@@ -150,6 +153,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
+  createdAt: job.createdAt,
   isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,

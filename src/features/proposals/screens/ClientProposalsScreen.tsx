@@ -217,6 +217,7 @@ export default function ClientProposalsScreen() {
   const selectedJob = jobs.find(item => item.jobPostsId === selectedJobId);
   const isBusy = (id: string, action: BusyAction) => busyAction === actionKey(id, action);
   const canClientAct = (status: number) => [ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(status);
+  const detailMilestoneTotal = detail?.milestonePlans?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ?? 0;
 
   const section = (title: string, value?: string | null) => value ? (
     <section className="rounded-lg border border-border bg-background p-4">
@@ -379,7 +380,8 @@ export default function ClientProposalsScreen() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h2 className="truncate font-bold">{detail.freelancerName || 'Freelancer proposal'}</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">{formatGigCoin(detail.proposedBudget || 0)} - {detail.proposedDuration || 'Duration not specified'}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Proposed rate: {formatGigCoin(detail.proposedBudget || 0)} · Milestones: {formatGigCoin(detailMilestoneTotal)} · {detail.proposedDuration || 'Duration not specified'}</p>
+                      {Math.abs((detail.proposedBudget || 0) - detailMilestoneTotal) >= 0.01 && <p className="mt-2 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-600">Manual rate override. Reconcile the final price and milestone total before sending a final offer.</p>}
                     </div>
                     <span className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${badgeClass(Number(detail.status))}`}>{getStatusLabel(detail.status)}</span>
                   </div>

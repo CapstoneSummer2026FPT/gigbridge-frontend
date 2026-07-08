@@ -232,7 +232,7 @@ export default function PostJobScreen() {
 
         {/* AI Guide — extracted component, shown when instant job mode is active but not yet generated */}
         {isInstantJobMode && !isJobDetailsGenerated && (
-          <AIGenJobGuide showMockBadge />
+          <AIGenJobGuide />
         )}
 
         {/* Main panels grid - hidden when instant job mode is active but not generated */}

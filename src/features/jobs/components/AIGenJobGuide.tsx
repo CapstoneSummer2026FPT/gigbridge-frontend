@@ -1,14 +1,9 @@
 import {
   WandSparkles, Target, Search, Pencil,
-  CheckCircle2, Lightbulb, ChevronDown, FlaskConical,
+  CheckCircle2, Lightbulb, ChevronDown,
 } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { useTranslation } from '../../../hooks/useTranslation';
-
-interface AIGenJobGuideProps {
-  /** Show the "Mock Mode" badge when the backend AI endpoint is unavailable */
-  showMockBadge?: boolean;
-}
 
 const STEP_CONFIGS = [
   {
@@ -41,7 +36,7 @@ const STEP_CONFIGS = [
   },
 ] as const;
 
-export function AIGenJobGuide({ showMockBadge = false }: AIGenJobGuideProps) {
+export function AIGenJobGuide() {
   const { t } = useTranslation();
 
   const tips = (t('aiGenJobGuide.tips', { returnObjects: true }) as string[]) || [];
@@ -55,16 +50,6 @@ export function AIGenJobGuide({ showMockBadge = false }: AIGenJobGuideProps) {
         <div className="absolute -bottom-20 -left-20 w-56 h-56 rounded-full bg-[var(--gb-cyan)]/5 blur-3xl pointer-events-none" />
 
         <div className="relative p-6 sm:p-8">
-
-          {/* Mock badge */}
-          {showMockBadge && (
-            <div className="flex items-center justify-end mb-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 text-[10px] font-extrabold uppercase tracking-wider">
-                <FlaskConical size={11} />
-                {t('aiGenJobGuide.mockModeActive')}
-              </span>
-            </div>
-          )}
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 mb-8">

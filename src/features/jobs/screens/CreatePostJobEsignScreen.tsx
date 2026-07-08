@@ -85,45 +85,10 @@ export default function CreatePostJobEsignScreen() {
           if (isMounted) setDocument(createResponse.data);
         }
       } catch (err) {
-        console.warn('API call failed, falling back to mock E-Sign document for demo:', err);
         if (isMounted) {
-          const mockDocument: ESignDocumentDto = {
-            documentId: `doc-${jobPostId}`,
-            jobPostId: jobPostId,
-            contractId: `contract-${jobPostId}`,
-            templateId: 'template-default',
-            documentCode: 'GB-E-SIGN-2026-MOCK',
-            renderedHtmlContent: `
-              <div style="font-family: serif; color: black; line-height: 1.6; padding: 20px;">
-                <h2 style="text-align: center; text-transform: uppercase; font-weight: bold; margin-bottom: 24px; font-size: 20px; color: #1e293b;"> hợp đồng dịch vụ tuyển dụng nhân sự tự do </h2>
-                <p style="text-align: right; font-style: italic; color: #475569;">Số: GB-E-SIGN-2026-MOCK</p>
-                <p style="margin-top: 16px; color: #1e293b;">Hợp đồng này được lập ngày ${new Date().toLocaleDateString('vi-VN')} giữa các bên:</p>
-                
-                <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">BÊN A: NHÀ TUYỂN DỤNG (BÊN GIAO VIỆC)</h3>
-                <p style="margin-left: 12px; color: #334155;">Họ và tên: <strong>${user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Chủ dự án'}</strong></p>
-                <p style="margin-left: 12px; color: #334155;">Tên công việc / Dự án: <strong>${jobData?.title || contractForm?.title || 'Dự án capstone'}</strong></p>
-                <p style="margin-left: 12px; color: #334155;">Ngân sách dự kiến tối đa: <strong>${contractForm?.budget || '5,000'} G-coin</strong></p>
-                
-                <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">BÊN B: CỘNG TÁC VIÊN FREELANCER (BÊN NHẬN VIỆC)</h3>
-                <p style="margin-left: 12px; color: #334155;">Ứng viên Freelancer được tuyển dụng thông qua nền tảng GigBridge.</p>
-                
-                <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">ĐIỀU 1: NỘI DUNG VÀ TIẾN ĐỘ CÔNG VIỆC</h3>
-                <p style="margin-left: 12px; color: #334155;">${contractForm?.description || 'Nội dung và yêu cầu công việc chi tiết được quy định cụ thể tại phần mô tả công việc (Job Description) đã được đăng tải trên hệ thống.'}</p>
-                <p style="margin-left: 12px; color: #334155;">Thời hạn hoàn thành dự kiến: <strong>${contractForm?.endDate || 'Theo thoả thuận'}</strong>.</p>
-                
-                <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">ĐIỀU 2: PHÍ DỊCH VỤ VÀ PHƯƠNG THỨC THANH TOÁN</h3>
-                <p style="margin-left: 12px; color: #334155;">Tổng giá trị hợp đồng là <strong>${contractForm?.budget || '5,000'} G-coin</strong>. Việc thanh toán sẽ được chia làm các giai đoạn (Milestones) dựa trên khối lượng công việc hoàn thành thực tế và được phê duyệt bởi Bên A thông qua cơ chế ký quỹ (Escrow) của GigBridge.</p>
-                
-                <h3 style="font-weight: bold; margin-top: 16px; font-size: 14px; color: #0f172a;">ĐIỀU 3: ĐIỀU KHOẢN BẢO MẬT</h3>
-                <p style="margin-left: 12px; color: #334155;">Hai bên cam kết bảo mật toàn bộ thông tin trao đổi, dữ liệu dự án và mã nguồn được chia sẻ trong suốt quá trình thực hiện hợp đồng này.</p>
-              </div>
-            `,
-            status: ESignDocumentStatus.PendingSignatures,
-            createdAt: new Date().toISOString(),
-            signatures: [],
-          };
-          setDocument(mockDocument);
-          setCreatedContractId(`contract-${jobPostId}`);
+          setDocument(null);
+          setCreatedContractId(null);
+          setLoadError(err instanceof Error ? err.message : 'Unable to load the E-sign document from the server.');
         }
       } finally {
         if (isMounted) setIsLoadingDocument(false);
@@ -294,10 +259,7 @@ export default function CreatePostJobEsignScreen() {
 
       setIsSuccessModalOpen(true);
     } catch (error) {
-      console.warn('API submit signature failed, fallback to mock success for demo:', error);
-      toast.success('E-sign signature submitted successfully! (Demo Mode)');
-      setCreatedContractId(`contract-${jobPostId}`);
-      setIsSuccessModalOpen(true);
+      toast.error(error instanceof Error ? error.message : 'Failed to submit E-sign signature.');
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
@@ -344,13 +306,10 @@ export default function CreatePostJobEsignScreen() {
         <div className="max-w-[1440px] mx-auto px-6 py-16 flex flex-col items-center justify-center gap-4">
           <AlertTriangle className="w-10 h-10 text-red-500" />
           <p className="text-sm text-red-500 font-semibold">{loadError || 'Document could not be loaded.'}</p>
-          <button
-            type="button"
-            onClick={handleBack}
-            className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all cursor-pointer"
-          >
-            Go Back
-          </button>
+          <div className="flex flex-wrap justify-center gap-3">
+            <button type="button" onClick={() => window.location.reload()} className="px-6 py-3 rounded-full font-bold text-sm bg-[var(--gb-cyan)] text-white hover:opacity-90 transition-all cursor-pointer">Retry</button>
+            <button type="button" onClick={handleBack} className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all cursor-pointer">Go Back</button>
+          </div>
         </div>
       </AppLayout>
     );

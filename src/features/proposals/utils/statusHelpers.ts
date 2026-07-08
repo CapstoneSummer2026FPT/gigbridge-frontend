@@ -1,4 +1,4 @@
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../../../types/models/Proposal';
 import { ProposalStatus } from '../../../types/models/Proposal';
 
 export const getStatusLabel = (status: ProposalViewModel['status'] | string | null | undefined) => {

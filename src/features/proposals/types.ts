@@ -1,4 +1,4 @@
-import type { ProposalViewModel } from './mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../../types/models/Proposal';
 
 export type JobProposalGroup = {
   jobPostsId: string;

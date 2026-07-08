@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { motion } from 'motion/react';
 import { Clock, Sparkles, Eye, CheckCircle, XCircle, FileSignature, Briefcase } from 'lucide-react';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../../../types/models/Proposal';
 import { GigCoinAmount, GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 

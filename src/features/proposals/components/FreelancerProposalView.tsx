@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { BarChart2, Briefcase, Clock, Eye, FileText, Rocket } from 'lucide-react';
 import { ProposalCard } from './ProposalCard';
-import type { ProposalViewModel } from '../mock/data-for-ProposalsInboxScreen';
+import type { ProposalViewModel } from '../../../types/models/Proposal';
 import type { JobProposalGroup, ProposalDetailMode, ProposalStatusFilter } from '../types';
 import { getStatusLabel, getStatusClass } from '../utils/statusHelpers';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';

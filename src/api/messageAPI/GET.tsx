@@ -25,6 +25,12 @@ export interface ConversationSummaryResponse {
   lastOfferId?: string | null;
   lastOfferPrice?: number | null;
   lastOfferStatus?: number | null;
+  jobBudgetMin?: number | null;
+  jobBudgetMax?: number | null;
+  jobCurrency?: string | null;
+  jobCategoryName?: string | null;
+  proposalBudget?: number | null;
+  proposalDuration?: string | null;
 }
 
 export interface MessageAttachmentResponse {
