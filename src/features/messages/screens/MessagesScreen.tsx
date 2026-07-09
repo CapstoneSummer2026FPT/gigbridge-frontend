@@ -1,6 +1,6 @@
 import {
   Send, Paperclip, Smile, Info, X, Ban, Download,
-  FileText, Image as ImageIcon, Table, ChevronDown,
+  FileText, Image as ImageIcon, ChevronDown,
   CreditCard, CheckCircle, Briefcase, Layers,
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
@@ -15,7 +15,7 @@ import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { useMessages } from '../hooks/useMessages';
-import { MOCK_ROOMS } from '../mock/data-for-MessagesScreen';
+import { MESSAGE_ROOMS } from '../messageRooms';
 import '../styles/messages-screen.css';
 
 function countdown(start: string, now: number) {
@@ -106,6 +106,8 @@ export default function MessagesScreen() {
     setShowDealPrice,
     dealPriceInput,
     setDealPriceInput,
+    dealPriceMode,
+    resetDealPriceToMilestones,
     dealMilestones,
     dealMilestonesLoading,
     dealMilestonesSaving,
@@ -166,7 +168,11 @@ export default function MessagesScreen() {
   };
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed';
   const dealPriceNumber = Number(dealPriceInput) || 0;
-  const dealMilestonesMatchPrice = dealPriceNumber > 0 && Math.abs(dealMilestoneTotal - dealPriceNumber) < 0.01;
+  const dealPriceValid = dealPriceNumber > 0 && dealPriceNumber <= 9999999999999999.99 && Math.round(dealPriceNumber * 100) / 100 === dealPriceNumber;
+  const dealMilestonesMatchPrice = dealPriceValid && Math.abs(dealMilestoneTotal - dealPriceNumber) < 0.01;
+  const sharedAttachments = Array.from(new Map(
+    activeMessages.flatMap(message => message.attachments || []).map(attachment => [attachment.messageAttachmentId, attachment])
+  ).values());
 
   if (loading) {
     return (
@@ -182,10 +188,10 @@ export default function MessagesScreen() {
     <AppLayout fullWidth>
       <div className="messages-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
         {/* 3-Column Layout */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 
           {/* ── Column 1: Rooms & Conversations List ─────────────────────── */}
-          <section className="w-80 border-r border-border flex flex-col bg-card overflow-hidden">
+          <section className="messages-conversation-list w-80 shrink-0 border-r border-border flex flex-col bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
                 {t('messages.conversations')}
@@ -212,7 +218,7 @@ export default function MessagesScreen() {
             </div>
 
             <div className="flex-1 overflow-y-auto messages-custom-scroll">
-              {MOCK_ROOMS.map(room => {
+              {MESSAGE_ROOMS.map(room => {
                 const convos = conversationsState.filter(c => c.roomId === room.id);
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isOpen = !!openRooms[room.id];
@@ -312,7 +318,7 @@ export default function MessagesScreen() {
           </section>
 
           {/* ── Column 2: Chat Area (Center Pane) ────────────────────────── */}
-          <section className="flex-1 flex flex-col bg-muted/10 overflow-hidden relative">
+          <section className="messages-chat-pane min-h-0 min-w-0 flex-1 flex flex-col bg-muted/10 overflow-hidden relative">
             {activeConv ? (
               <>
                 {/* Header info / Context of Job */}
@@ -404,7 +410,7 @@ export default function MessagesScreen() {
             )}
 
             {/* Message History */}
-            <div ref={chatHistoryRef} className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 messages-custom-scroll">
+            <div ref={chatHistoryRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6 flex flex-col gap-6 messages-custom-scroll">
               {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
               <div className="flex justify-center">
                 <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
@@ -657,14 +663,14 @@ export default function MessagesScreen() {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-card border-t border-border">
+            <div className="shrink-0 p-4 bg-card border-t border-border">
               <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
 
                 {/* Deal Price Popup */}
                 {showDealPrice && canProposeDeal && (
-                  <div className="p-4 border-b border-border bg-muted/50 rounded-t-2xl animate-in fade-in slide-in-from-bottom-2">
-                    <div className="flex flex-col gap-3">
-                      <div className="flex justify-between items-center">
+                  <div role="dialog" aria-modal="true" aria-label="Create final offer" className="fixed left-1/2 top-1/2 z-[120] max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in fade-in zoom-in-95 sm:p-5">
+                    <div className="flex min-w-0 flex-col gap-3">
+                      <div className="sticky top-0 z-10 flex justify-between items-center gap-3 bg-card pb-2">
                         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('messages.proposeDealPrice')}</span>
                         <button onClick={() => setShowDealPrice(false)} className="text-muted-foreground hover:text-foreground cursor-pointer border-none bg-transparent p-0">
                           <X size={14} />
@@ -676,8 +682,15 @@ export default function MessagesScreen() {
                         placeholder={t('messages.enterProposedPrice')}
                         value={dealPriceInput}
                         onChange={e => setDealPriceInput(e.target.value)}
-                        className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
+                        min="0.01"
+                        step="0.01"
+                        max="9999999999999999.99"
+                        className="min-w-0 max-w-full w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
                       />
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs">
+                        <span className={dealMilestonesMatchPrice ? 'text-emerald-600' : 'text-amber-600'}>Proposed rate: {dealPriceNumber || 0} · Milestone total: {dealMilestoneTotal} G-coin</span>
+                        {dealPriceMode === 'manual' && <button type="button" onClick={resetDealPriceToMilestones} className="font-bold text-[var(--gb-cyan)] hover:underline">Use milestone total</button>}
+                      </div>
                       <div className="space-y-2 rounded-xl border border-border bg-card p-3">
                         <div className="flex items-center justify-between gap-3">
                           <div>
@@ -695,7 +708,7 @@ export default function MessagesScreen() {
                         ) : dealMilestones.length === 0 ? (
                           <p className="text-xs text-muted-foreground">No milestone draft yet. Add one before sending a final offer.</p>
                         ) : (
-                          <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                          <div className="space-y-3 pr-1">
                             {dealMilestones.map((milestone, index) => (
                               <div key={milestone.id || index} className="space-y-2 rounded-lg border border-border bg-background p-3">
                                 <div className="flex items-center justify-between gap-2">
@@ -706,9 +719,9 @@ export default function MessagesScreen() {
                                 </div>
                                 <input value={milestone.title || ''} onChange={e => updateDealMilestone(index, { title: e.target.value })} placeholder="Title" className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
                                 <textarea value={milestone.description || ''} onChange={e => updateDealMilestone(index, { description: e.target.value })} placeholder="Description" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <div className="grid grid-cols-2 gap-2">
-                                  <input type="number" min="0" value={milestone.amount || ''} onChange={e => updateDealMilestone(index, { amount: Number(e.target.value) })} placeholder="Amount" className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                  <input value={milestone.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { estimatedDuration: e.target.value })} placeholder="Duration" className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
+                                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                                  <input type="number" min="0" step="0.01" max="9999999999999999.99" value={milestone.amount || ''} onChange={e => updateDealMilestone(index, { amount: Number(e.target.value) })} placeholder="Amount" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
+                                  <input value={milestone.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { estimatedDuration: e.target.value })} placeholder="Duration" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
                                 </div>
                                 <textarea value={milestone.deliverables || ''} onChange={e => updateDealMilestone(index, { deliverables: e.target.value })} placeholder="Deliverables" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
                                 <textarea value={milestone.acceptanceCriteria || ''} onChange={e => updateDealMilestone(index, { acceptanceCriteria: e.target.value })} placeholder="Acceptance criteria" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
@@ -723,7 +736,7 @@ export default function MessagesScreen() {
                       <p className="text-[11px] leading-5 text-muted-foreground">
                         {t('messages.proposeDealNote')}
                       </p>
-                      <div className="flex justify-between gap-2">
+                      <div className="sticky bottom-0 z-10 flex justify-between gap-2 border-t border-border bg-card pt-3">
                         <button
                           onClick={() => setShowDealPrice(false)}
                           className="flex-1 py-2 text-xs font-bold text-muted-foreground hover:bg-muted rounded-lg transition-colors uppercase tracking-widest cursor-pointer border-none bg-transparent"
@@ -734,7 +747,7 @@ export default function MessagesScreen() {
                           onClick={handleProposeDeal}
                           id="btn-propose-deal"
                           disabled={!dealPriceInput.trim() || dealMilestonesSaving || !dealMilestonesMatchPrice}
-                          className="flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none"
+                          className="min-w-0 flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {t('messages.send')}
                         </button>
@@ -990,21 +1003,16 @@ export default function MessagesScreen() {
                 <button className="text-xs text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer border-none bg-transparent p-0">See all</button>
               </div>
               <div className="space-y-3">
-                {[
-                  { name: 'Brief_Requirements.pdf', size: '1.2 MB', date: 'Jun 10', icon: <FileText className="text-red-500" size={14} /> },
-                  { name: 'Portfolio_Sample.zip',   size: '8.4 MB', date: 'Jun 11', icon: <ImageIcon className="text-[var(--gb-cyan)]" size={14} /> },
-                  { name: 'Project_Timeline.xlsx',  size: '98 KB',  date: 'Jun 11', icon: <Table className="text-green-500" size={14} /> },
-                ].map(f => (
-                  <div
-                    key={f.name}
-                    className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
-                  >
-                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">{f.icon}</div>
+                {sharedAttachments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No files have been shared in this conversation.</p>
+                ) : sharedAttachments.map(attachment => (
+                  <div key={attachment.messageAttachmentId} className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg transition-all border border-transparent hover:border-border">
+                    <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">{attachment.mimeType.startsWith('image/') ? <ImageIcon className="text-[var(--gb-cyan)]" size={14} /> : <FileText className="text-red-500" size={14} />}</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold truncate">{f.name}</p>
-                      <p className="text-[9px] text-muted-foreground">{f.size} • {f.date}</p>
+                      <p className="text-[11px] font-semibold truncate">{attachment.fileName}</p>
+                      <p className="text-[9px] text-muted-foreground">{Math.max(1, Math.ceil(attachment.fileSizeBytes / 1024))} KB</p>
                     </div>
-                    <Download size={13} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
+                    <a href={attachment.fileUrl} target="_blank" rel="noopener noreferrer" aria-label={`Download ${attachment.fileName}`}><Download size={13} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" /></a>
                   </div>
                 ))}
               </div>

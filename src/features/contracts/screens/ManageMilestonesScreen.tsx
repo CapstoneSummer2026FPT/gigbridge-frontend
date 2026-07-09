@@ -28,6 +28,9 @@ interface MilestoneFormData {
   description?: string;
 }
 
+const createClientMilestoneId = () => `new:${typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now()}`;
+const isClientMilestoneId = (value: string) => value.startsWith('new:');
+
 export default function ManageMilestonesScreen() {
   const { t } = useTranslation();
   const { contractId } = useParams<{ contractId: string }>();
@@ -35,7 +38,6 @@ export default function ManageMilestonesScreen() {
   const location = useLocation();
   const { role } = useApp();
 
-  const stateContract = location.state?.contractForm;
   const mode = new URLSearchParams(location.search).get('mode');
 
   // State
@@ -83,14 +85,6 @@ export default function ManageMilestonesScreen() {
       setLoading(true);
       setError(null);
 
-      // If contract details are passed via state, prioritize them
-      if (stateContract && stateContract.contractsId === contractId) {
-        setContract(stateContract);
-        setMilestones([]); // Newly created contract has no milestones initially
-        setLoading(false);
-        return;
-      }
-
       const contractResponse = await contractGetAPI.getContractById(contractId);
 
       if (!contractResponse.success || !contractResponse.data) {
@@ -115,7 +109,7 @@ export default function ManageMilestonesScreen() {
 
   useEffect(() => {
     loadData();
-  }, [contractId, stateContract]);
+  }, [contractId]);
 
   // Calculate remaining budget
   const calculateRemainingBudget = () => {
@@ -251,7 +245,7 @@ export default function ManageMilestonesScreen() {
     } else {
       // Add local state
       const nextMilestone: Milestone = {
-        id: `milestone_mock_${Date.now()}`,
+        id: createClientMilestoneId(),
         contract_id: contractId!,
         title: formData.title.trim(),
         amount: formData.amount,
@@ -300,7 +294,7 @@ export default function ManageMilestonesScreen() {
 
       const payload = {
         milestones: milestones.map(m => ({
-          milestoneId: m.id.startsWith('milestone_mock_') ? null : m.id,
+          milestoneId: isClientMilestoneId(m.id) ? null : m.id,
           title: m.title,
           amount: m.amount,
           dueDate: m.due_date,
@@ -345,7 +339,7 @@ export default function ManageMilestonesScreen() {
       // 1. Bulk save milestones
       const payload = {
         milestones: milestones.map(m => ({
-          milestoneId: m.id.startsWith('milestone_mock_') ? null : m.id,
+          milestoneId: isClientMilestoneId(m.id) ? null : m.id,
           title: m.title,
           amount: m.amount,
           dueDate: m.due_date,
@@ -401,7 +395,7 @@ export default function ManageMilestonesScreen() {
       // 1. Bulk save milestones
       const payload = {
         milestones: milestones.map(m => ({
-          milestoneId: m.id.startsWith('milestone_mock_') ? null : m.id,
+          milestoneId: isClientMilestoneId(m.id) ? null : m.id,
           title: m.title,
           amount: m.amount,
           dueDate: m.due_date,

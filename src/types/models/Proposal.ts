@@ -57,6 +57,24 @@ export interface ProposalDto {
   firstMilestoneAmount?: number | null;
 }
 
+export interface ProposalAttachmentViewModel {
+  propoAttach_ProposalAttachmentsId: string;
+  propo_ProposalsId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number;
+  createdAt: string;
+}
+
+export type ProposalViewModel = ProposalDto & {
+  updatedAt?: string;
+  isAIGenerated?: boolean;
+  interviewScore?: number;
+  rankingScore?: number;
+  boostedTokenAmount?: number;
+  attachments?: ProposalAttachmentViewModel[];
+};
+
 export interface ProposalWorkBreakdownItemDto {
   id?: string | null;
   title?: string | null;

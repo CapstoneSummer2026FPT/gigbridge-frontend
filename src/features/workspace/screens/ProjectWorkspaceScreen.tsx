@@ -12,6 +12,7 @@ import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
@@ -90,7 +91,7 @@ export default function ProjectWorkspaceScreen() {
     projectMessages,
     handleSendMessage,
     handleSimulateAttachment,
-    handleCreateMockMilestone,
+    handleOpenMilestoneEditor,
     handleStartMilestone,
     handleRequestMilestoneUnlock,
     handleWithdrawMilestone,
@@ -554,7 +555,7 @@ export default function ProjectWorkspaceScreen() {
                 )}
                 {isClient && (
                   <button
-                    onClick={handleCreateMockMilestone}
+                    onClick={handleOpenMilestoneEditor}
                     className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
                     title={t('workspace.proposeMilestone')}
                   >

@@ -159,6 +159,8 @@ export interface MsgConversation {
   proposalId?: string | null;
   contractId?: string | null;
   lastOfferId?: string | null;
+  proposalBudget?: number | null;
+  proposalDuration?: string | null;
 }
 
 export interface NegotiationMilestoneDto {
@@ -201,6 +203,14 @@ export interface Message {
   sendError?: string;
   fileUrl?: string;
   fileName?: string;
+  attachments?: Array<{
+    messageAttachmentId: string;
+    fileName: string;
+    fileUrl: string;
+    mimeType: string;
+    fileSizeBytes: number;
+    createdAt: string;
+  }>;
   dealStatus?: 'pending_freelancer' | 'agreed' | 'declined' | 'pending_client' | 'idle';
   negotiationStatus?: 'pending' | 'accepted' | 'declined';
   proposedPrice?: string;

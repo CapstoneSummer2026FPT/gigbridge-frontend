@@ -72,9 +72,37 @@ describe('CreateProposalScreen Phase 2', () => {
     await waitFor(() => expect(createProposalMock).toHaveBeenCalled());
     expect(createProposalMock.mock.calls[0][0]).toMatchObject({
       proposedBudget: 12.5,
+      proposedDuration: '2 weeks',
       milestonePlans: [expect.objectContaining({ amount: 12.5, estimatedDuration: '2 weeks' })],
     });
     expect(screen.getAllByText(/12\.5 G-coin/i).length).toBeGreaterThan(0);
+  });
+
+  it('keeps manual rate and duration overrides while milestones change', async () => {
+    render(<CreateProposalScreen />);
+    await screen.findByRole('heading', { name: 'Project Proposal' });
+
+    fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '100' } });
+    const milestoneDuration = screen.getAllByRole('spinbutton')[1];
+    fireEvent.change(milestoneDuration, { target: { value: '5' } });
+
+    fireEvent.change(screen.getByLabelText('Proposed rate'), { target: { value: '999' } });
+    fireEvent.change(screen.getByLabelText('Overall proposal duration'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Overall proposal duration unit'), { target: { value: 'months' } });
+
+    fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '200' } });
+    fireEvent.change(milestoneDuration, { target: { value: '10' } });
+
+    expect(screen.getByLabelText('Proposed rate')).toHaveValue(999);
+    expect(screen.getByLabelText('Overall proposal duration')).toHaveValue(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
+    await waitFor(() => expect(createProposalMock).toHaveBeenCalled());
+    expect(createProposalMock.mock.calls[0][0]).toMatchObject({
+      proposedBudget: 999,
+      proposedDuration: '1 month',
+      milestonePlans: [expect.objectContaining({ amount: 200, estimatedDuration: '10 weeks' })],
+    });
   });
 
   it('opens a newly added milestone card', async () => {

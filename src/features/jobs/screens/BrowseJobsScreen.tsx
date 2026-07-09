@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Medal, Zap } from 'lucide-react';
+import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -12,6 +12,8 @@ import type { SavedJobDto } from '../../../types/savedJob';
 import '../styles/browse-jobs-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { profileGetAPI } from '../../../api/profileAPI/GET';
+import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
 
 
 const PAGE_SIZE = 20;
@@ -22,49 +24,6 @@ type BrowseJob = Job & {
   datePosted: string;
   isFeatured: boolean;
 };
-
-const MOCK_TOP_FREELANCERS = [
-  {
-    rank: 1,
-    name: 'Alex Rivera',
-    role: 'Full-Stack Engineer',
-    elo: 2840,
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    isPro: true,
-  },
-  {
-    rank: 2,
-    name: 'Sofia Chen',
-    role: 'UI/UX Designer',
-    elo: 2750,
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    isPro: true,
-  },
-  {
-    rank: 3,
-    name: 'Marcus Vance',
-    role: 'DevOps Architect',
-    elo: 2690,
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    isPro: false,
-  },
-  {
-    rank: 4,
-    name: 'Priya Patel',
-    role: 'Data Scientist',
-    elo: 2610,
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    isPro: true,
-  },
-  {
-    rank: 5,
-    name: 'Liam Nguyen',
-    role: 'React Developer',
-    elo: 2580,
-    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-    isPro: false,
-  },
-];
 
 const sanitizeSearch = (value: string) => value.replace(/[<>"'`;]/g, '').slice(0, 120);
 
@@ -98,6 +57,7 @@ export default function BrowseJobsScreen() {
   const [categoryOptions, setCategoryOptions] = useState<string[]>(['All']);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [topFreelancers, setTopFreelancers] = useState<FreelancerProfileDetailDto[]>([]);
   const [page, setPage] = useState(1);
   const isFreelancer = role === UserRole.Freelancer;
 
@@ -138,7 +98,7 @@ export default function BrowseJobsScreen() {
         const data = await jobGetAPI.getJobs();
         setAllJobs(data.map(job => ({
           ...job,
-          datePosted: new Date().toISOString().slice(0, 10),
+          datePosted: job.createdAt || '',
           isFeatured: Boolean(job.isAiRecommended),
         })));
       } catch (error) {
@@ -150,6 +110,16 @@ export default function BrowseJobsScreen() {
       }
     };
     fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    profileGetAPI.getAllFreelancers().then(response => {
+      if (isMounted && response.success && response.data) setTopFreelancers(response.data.slice(0, 5));
+    }).catch(() => {
+      if (isMounted) setTopFreelancers([]);
+    });
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -494,14 +464,15 @@ export default function BrowseJobsScreen() {
               </div>
 
               <div className="ranking-list">
-                {MOCK_TOP_FREELANCERS.map((freelancer) => {
-                  const isGold = freelancer.rank === 1;
-                  const isSilver = freelancer.rank === 2;
-                  const isBronze = freelancer.rank === 3;
+                {topFreelancers.length === 0 ? <p className="p-4 text-xs text-muted-foreground">No freelancer ranking data is available.</p> : topFreelancers.map((freelancer, index) => {
+                  const rank = index + 1;
+                  const isGold = rank === 1;
+                  const isSilver = rank === 2;
+                  const isBronze = rank === 3;
                   
                   return (
                     <div 
-                      key={freelancer.rank} 
+                      key={freelancer.freelancerProfilesId}
                       className={`ranking-item ${
                         isGold ? 'ranking-item-top1' : 
                         isSilver ? 'ranking-item-top2' : 
@@ -514,31 +485,26 @@ export default function BrowseJobsScreen() {
                           isSilver ? 'ranking-position-silver' : 
                           isBronze ? 'ranking-position-bronze' : ''
                         }`}>
-                          {freelancer.rank}
+                          {rank}
                         </div>
                         <div className="ranking-avatar-container">
                           <img 
-                            src={freelancer.avatar} 
-                            alt={freelancer.name} 
+                            src={freelancer.userAvatar || '/img/avatar-fallback.png'}
+                            alt={freelancer.userFullName || 'Freelancer'}
                             className={`ranking-avatar ${
                               isGold ? 'ranking-avatar-gold' : 
                               isSilver ? 'ranking-avatar-silver' : 
                               isBronze ? 'ranking-avatar-bronze' : ''
                             }`}
                           />
-                          {freelancer.isPro && (
-                            <div className="ranking-badge-overlay">
-                              <Medal size={10} className="text-[#9f4bff]" fill="currentColor" />
-                            </div>
-                          )}
                         </div>
                         <div className="ranking-text-details">
-                          <span className="ranking-name">{freelancer.name}</span>
-                          <span className="ranking-role">{freelancer.role}</span>
+                          <span className="ranking-name">{freelancer.userFullName || 'Freelancer'}</span>
+                          <span className="ranking-role">{freelancer.title || 'Independent professional'}</span>
                         </div>
                       </div>
                       <div className="ranking-elo">
-                        <span className="ranking-elo-value">{freelancer.elo}</span>
+                        <span className="ranking-elo-value">{freelancer.eloPoints}</span>
                         <span className="ranking-elo-label">{t('jobs.elo')}</span>
                       </div>
                     </div>

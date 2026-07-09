@@ -10,9 +10,6 @@ import {
   ListOrdered,
   Pencil,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-
 interface MarkdownPreviewProps {
   value?: string | null;
   className?: string;

@@ -209,7 +209,6 @@ export function useProjectWorkspace(initialContractId: string) {
   const [project, setProject] = useState<WorkspaceProject>(emptyProject);
   const [showInfo, setShowInfo] = useState(true);
   const [messageInput, setMessageInput] = useState('');
-  const [aiMessage, setAiMessage] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [projectMessages, setProjectMessages] = useState<Message[]>([]);
@@ -217,10 +216,6 @@ export function useProjectWorkspace(initialContractId: string) {
   const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
   const conversationIdRef = useRef<string | null>(null);
   const activeProjectIdRef = useRef(activeProjectId);
-
-  const [aiChat, setAiChat] = useState<{ role: string; content: string }[]>([
-    { role: 'ai', content: 'Hello! I can help summarize this workspace, milestone progress, and recent chat activity.' },
-  ]);
 
   useEffect(() => {
     setActiveProjectId(initialContractId);
@@ -508,25 +503,11 @@ export function useProjectWorkspace(initialContractId: string) {
     }
   };
 
-  const handleSendAiMessage = (): void => {
-    if (!aiMessage.trim()) return;
-    const userMessage = aiMessage.trim();
-    setAiChat(prev => [...prev, { role: 'user', content: userMessage }]);
-    setAiMessage('');
-    setAiChat(prev => [
-      ...prev,
-      {
-        role: 'ai',
-        content: `This workspace is ${project.progress}% complete with ${project.milestones.length} milestone(s) tracked from the active contract.`,
-      },
-    ]);
-  };
-
   const handleSimulateAttachment = (): void => {
     alert('File attachments are not available in this workspace yet.');
   };
 
-  const handleCreateMockMilestone = (): void => {
+  const handleOpenMilestoneEditor = (): void => {
     if (!activeProjectId) return;
     navigate(`/contracts/${activeProjectId}/milestones?mode=contract-edit`);
   };
@@ -708,13 +689,10 @@ export function useProjectWorkspace(initialContractId: string) {
     setShowInfo,
     messageInput,
     setMessageInput,
-    aiMessage,
-    setAiMessage,
     isFavorited,
     setIsFavorited,
     isBlocked,
     setIsBlocked,
-    aiChat,
     project,
     activeContract,
     currentProductHandoff,
@@ -728,9 +706,8 @@ export function useProjectWorkspace(initialContractId: string) {
     isPartnerOnline,
     projectMessages,
     handleSendMessage,
-    handleSendAiMessage,
     handleSimulateAttachment,
-    handleCreateMockMilestone,
+    handleOpenMilestoneEditor,
     handleStartMilestone,
     handleRequestMilestoneUnlock,
     handleWithdrawMilestone,

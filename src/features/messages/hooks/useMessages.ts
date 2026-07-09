@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
-import {
-  type MsgConversation,
-  type MsgMessage,
-} from '../mock/data-for-MessagesScreen';
+import type { Message as MsgMessage, MsgConversation } from '../../../types/models/Message';
 
 import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
@@ -54,6 +51,11 @@ function mapBackendConversation(c: any): MsgConversation {
   const lastOfferId = c.lastOfferId ?? c.LastOfferId ?? null;
   const lastOfferPrice = c.lastOfferPrice ?? c.LastOfferPrice ?? null;
   const lastOfferStatus = c.lastOfferStatus ?? c.LastOfferStatus ?? null;
+  const proposalBudget = c.proposalBudget ?? c.ProposalBudget ?? null;
+  const proposalDuration = c.proposalDuration ?? c.ProposalDuration ?? null;
+  const jobBudgetMin = c.jobBudgetMin ?? c.JobBudgetMin ?? null;
+  const jobBudgetMax = c.jobBudgetMax ?? c.JobBudgetMax ?? null;
+  const jobCurrency = c.jobCurrency ?? c.JobCurrency ?? 'G-coin';
   const isClient = (c.otherParticipantRole ?? c.OtherParticipantRole) === 0;
   const isInvited = conversationType === 4;
   const isWorkspace = conversationType === 1;
@@ -67,24 +69,32 @@ function mapBackendConversation(c: any): MsgConversation {
     roomId: isInvited ? 'room_invited' : isWorkspace ? 'room_workspace' : 'room_negotiation',
     participantId: c.otherParticipantId || '',
     participantName: c.otherParticipantName || 'Partner',
-    participantAvatar: c.otherParticipantAvatar || 'https://api.dicebear.com/9.x/avataaars/svg?seed=partner',
+    participantAvatar: c.otherParticipantAvatar || '/img/avatar-fallback.png',
     participantRole: c.otherParticipantRoleTitle || (isClient ? 'Client' : 'Freelancer'),
     participantCompany: c.otherParticipantCompany || '',
-    participantOnline: true,
+    participantOnline: false,
     job: {
       id: c.jobPostId || '',
       title: c.title || 'Untitled Job',
-      budget: lastOfferPrice ? `${lastOfferPrice} G-coin` : 'N/A',
-      category: '',
+      budget: lastOfferPrice != null
+        ? `${lastOfferPrice} ${jobCurrency}`
+        : proposalBudget != null
+          ? `${proposalBudget} ${jobCurrency}`
+          : jobBudgetMin != null || jobBudgetMax != null
+            ? `${jobBudgetMin ?? jobBudgetMax} - ${jobBudgetMax ?? jobBudgetMin} ${jobCurrency}`
+            : 'Not specified',
+      category: c.jobCategoryName ?? c.JobCategoryName ?? '',
     },
     lastMessage: c.lastMessage?.content || '',
     lastMessageAt: c.lastMessageAt || c.createdAt || new Date().toISOString(),
     unreadCount: c.unreadCount || 0,
     isMuted: false,
     dealStatus: mapOfferStatusToDealStatus(lastOfferStatus),
-    proposedPrice: lastOfferPrice ? lastOfferPrice.toString() : undefined,
+    proposedPrice: (lastOfferPrice ?? proposalBudget)?.toString(),
     conversationType,
     lastOfferId,
+    proposalBudget,
+    proposalDuration,
   };
 }
 
@@ -122,7 +132,8 @@ function mapBackendMessage(m: any): MsgMessage {
     dealStatus = 'pending_freelancer'; // Default
   }
 
-  const firstAttachment = m.attachments && m.attachments.length > 0 ? m.attachments[0] : null;
+  const attachments = m.attachments ?? m.Attachments ?? [];
+  const firstAttachment = attachments.length > 0 ? attachments[0] : null;
   let schedule: ScheduleEvent | undefined = m.schedule ?? undefined;
   if (!schedule && m.messageType === 9 && m.metadata) {
     try { schedule = typeof m.metadata === 'string' ? JSON.parse(m.metadata) : m.metadata; } catch { schedule = undefined; }
@@ -139,6 +150,7 @@ function mapBackendMessage(m: any): MsgMessage {
     isRead: true,
     fileUrl: firstAttachment?.fileUrl,
     fileName: firstAttachment?.fileName,
+    attachments,
     dealStatus: dealStatus,
     schedule,
     negotiationOfferId: messageType === 4 ? parseNegotiationOfferId(metadata) : undefined,
@@ -258,7 +270,8 @@ export function useMessages() {
   // ── UI state ─────────────────────────────────────────────────────────────
   const [showInfo, setShowInfo] = useState(true);
   const [showDealPrice, setShowDealPrice] = useState(false);
-  const [dealPriceInput, setDealPriceInput] = useState('');
+  const [dealPriceInput, setDealPriceInputState] = useState('');
+  const [dealPriceMode, setDealPriceMode] = useState<'auto' | 'manual'>('auto');
   const [dealMilestones, setDealMilestones] = useState<NegotiationMilestoneDto[]>([]);
   const [dealMilestonesLoading, setDealMilestonesLoading] = useState(false);
   const [dealMilestonesSaving, setDealMilestonesSaving] = useState(false);
@@ -315,29 +328,55 @@ export function useMessages() {
   );
 
   const normalizeDealMilestones = useCallback((items: NegotiationMilestoneDto[]) =>
-    items.map((item, orderIndex) => ({ ...item, amount: Number(item.amount) || 0, orderIndex })),
+    items.map((item, orderIndex) => ({ ...item, amount: Math.round((Number(item.amount) || 0) * 100) / 100, orderIndex })),
   []);
 
+  const getDealMilestoneTotal = useCallback((items: NegotiationMilestoneDto[]) =>
+    Math.round(items.reduce((total, item) => total + (Number(item.amount) || 0), 0) * 100) / 100,
+  []);
+
+  const setDealPriceInput = useCallback((value: string) => {
+    setDealPriceMode('manual');
+    setDealPriceInputState(value);
+  }, []);
+
+  const resetDealPriceToMilestones = useCallback(() => {
+    setDealPriceMode('auto');
+    setDealPriceInputState(dealMilestoneTotal > 0 ? String(dealMilestoneTotal) : '');
+  }, [dealMilestoneTotal]);
+
   const updateDealMilestone = useCallback((index: number, patch: Partial<NegotiationMilestoneDto>) => {
-    setDealMilestones(items => normalizeDealMilestones(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item)));
-  }, [normalizeDealMilestones]);
+    setDealMilestones(items => {
+      const next = normalizeDealMilestones(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
+      return next;
+    });
+  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
 
   const addDealMilestone = useCallback(() => {
-    setDealMilestones(items => normalizeDealMilestones([...items, {
-      title: '',
-      description: '',
-      amount: 0,
-      estimatedDuration: '',
-      dueDate: null,
-      deliverables: '',
-      acceptanceCriteria: '',
-      orderIndex: items.length,
-    }]));
-  }, [normalizeDealMilestones]);
+    setDealMilestones(items => {
+      const next = normalizeDealMilestones([...items, {
+        title: '',
+        description: '',
+        amount: 0,
+        estimatedDuration: '',
+        dueDate: null,
+        deliverables: '',
+        acceptanceCriteria: '',
+        orderIndex: items.length,
+      }]);
+      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
+      return next;
+    });
+  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
 
   const removeDealMilestone = useCallback((index: number) => {
-    setDealMilestones(items => normalizeDealMilestones(items.filter((_, itemIndex) => itemIndex !== index)));
-  }, [normalizeDealMilestones]);
+    setDealMilestones(items => {
+      const next = normalizeDealMilestones(items.filter((_, itemIndex) => itemIndex !== index));
+      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
+      return next;
+    });
+  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
 
   const refreshGoogleMeetStatus = useCallback(async () => {
     setGoogleMeetStatusLoading(true);
@@ -432,6 +471,8 @@ export function useMessages() {
   useEffect(() => {
     if (!activeConvId || activeConv?.roomType !== 'negotiation') {
       setDealMilestones([]);
+      setDealPriceInputState('');
+      setDealPriceMode('auto');
       return;
     }
 
@@ -439,14 +480,19 @@ export function useMessages() {
     setDealMilestonesLoading(true);
     messageGetAPI.getNegotiationMilestonePlan(activeConvId).then(response => {
       if (!active) return;
-      setDealMilestones(normalizeDealMilestones(response.data || []));
+      const normalized = normalizeDealMilestones(response.data || []);
+      const milestoneTotal = getDealMilestoneTotal(normalized);
+      const suggestedPrice = Number(activeConv?.proposedPrice) || milestoneTotal;
+      setDealMilestones(normalized);
+      setDealPriceInputState(suggestedPrice > 0 ? String(suggestedPrice) : '');
+      setDealPriceMode(suggestedPrice > 0 && Math.abs(suggestedPrice - milestoneTotal) >= 0.01 ? 'manual' : 'auto');
       setDealMilestonesLoading(false);
     }).catch(() => {
       if (active) setDealMilestonesLoading(false);
     });
 
     return () => { active = false; };
-  }, [activeConv?.roomType, activeConvId, normalizeDealMilestones]);
+  }, [activeConv?.proposedPrice, activeConv?.roomType, activeConvId, getDealMilestoneTotal, normalizeDealMilestones]);
 
   // Fetch conversations on mount
   const loadConversations = useCallback(async () => {
@@ -1071,7 +1117,10 @@ export function useMessages() {
   const handleProposeDeal = async () => {
     if (!dealPriceInput.trim() || !activeConvId) return;
     const price = parseFloat(dealPriceInput);
-    if (isNaN(price)) return;
+    if (!Number.isFinite(price) || price <= 0 || price > 9999999999999999.99 || Math.round(price * 100) / 100 !== price) {
+      setAnchorNotice('Final price must be positive and use at most 2 decimal places.');
+      return;
+    }
     const normalizedMilestones = normalizeDealMilestones(dealMilestones);
     if (normalizedMilestones.length === 0) {
       setAnchorNotice('Add at least one milestone before sending a final offer.');
@@ -1117,7 +1166,8 @@ export function useMessages() {
         )
       );
       setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'pending_freelancer' }));
-      setDealPriceInput('');
+      setDealPriceInputState('');
+      setDealPriceMode('auto');
       setShowDealPrice(false);
       loadConversations();
     } catch (err) {
@@ -1480,6 +1530,8 @@ export function useMessages() {
     setShowDealPrice,
     dealPriceInput,
     setDealPriceInput,
+    dealPriceMode,
+    resetDealPriceToMilestones,
     dealMilestones,
     dealMilestonesLoading,
     dealMilestonesSaving,

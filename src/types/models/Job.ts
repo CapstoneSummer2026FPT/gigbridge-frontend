@@ -74,6 +74,7 @@ export interface Job {
   isAiRecommended?: boolean;
   clientEloPoints?: number;
   postedAt: string;
+  createdAt?: string;
   isRemote: boolean;
   gigcoin_cost: number;
   visibility?: number;
