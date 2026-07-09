@@ -3,7 +3,7 @@ import type { ApiResponse } from '../../types/common';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto, ClientProfileResponseDto, FreelancerProfileResponseDto } from '../../types/models/Profile';
 
 
-const profileUrl = 'Profile';
+const profileUrl = 'profile';
 
 export const profilePutAPI = {
   /**

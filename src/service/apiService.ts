@@ -8,6 +8,13 @@ export const getApiRootUrl = () => API_BASE_URL.replace(/\/api\/?$/i, '').replac
 export const getChatHubUrl = () => `${getApiRootUrl()}/hubs/chat`;
 export const getNotificationHubUrl = () => `${getApiRootUrl()}/hubs/notification`;
 
+const normalizeEndpoint = (endpoint: string) => {
+  if (/^https?:\/\//i.test(endpoint)) return endpoint;
+  const baseIncludesApi = /\/api\/?$/i.test(API_BASE_URL);
+  const clean = endpoint.replace(/^\/+/, '');
+  return baseIncludesApi ? clean.replace(/^api\//i, '') : clean;
+};
+
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 90000,
@@ -133,7 +140,7 @@ const handleResponse = <T>(response: AxiosResponse<any>): ApiResponse<T> => {
 export const apiService = {
   async get<T>(endpoint: string, params: Record<string, any> = {}): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.get<ApiResponse<T>>(endpoint, { params });
+      const response = await apiClient.get<ApiResponse<T>>(normalizeEndpoint(endpoint), { params });
       return handleResponse(response);
     } catch (error: any) {
       return {
@@ -148,7 +155,7 @@ export const apiService = {
 
   async post<T>(endpoint: string, data: any = {}): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.post<ApiResponse<T>>(endpoint, data);
+      const response = await apiClient.post<ApiResponse<T>>(normalizeEndpoint(endpoint), data);
       return handleResponse(response);
     } catch (error: any) {
       return {
@@ -163,7 +170,7 @@ export const apiService = {
 
   async put<T>(endpoint: string, data: Record<string, any> = {}): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.put<ApiResponse<T>>(endpoint, data);
+      const response = await apiClient.put<ApiResponse<T>>(normalizeEndpoint(endpoint), data);
       return handleResponse(response);
     } catch (error: any) {
       return {
@@ -178,7 +185,7 @@ export const apiService = {
 
   async patch<T>(endpoint: string, data: Record<string, any> = {}): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.patch<ApiResponse<T>>(endpoint, data);
+      const response = await apiClient.patch<ApiResponse<T>>(normalizeEndpoint(endpoint), data);
       return handleResponse(response);
     } catch (error: any) {
       return {
@@ -193,7 +200,7 @@ export const apiService = {
 
   async delete<T>(endpoint: string, data?: Record<string, any>): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.delete<ApiResponse<T>>(endpoint, { data });
+      const response = await apiClient.delete<ApiResponse<T>>(normalizeEndpoint(endpoint), { data });
       return handleResponse(response);
     } catch (error: any) {
       return {

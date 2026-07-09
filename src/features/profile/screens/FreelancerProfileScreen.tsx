@@ -125,10 +125,16 @@ export default function FreelancerProfileScreen() {
                 <p className="font-headline-sm text-headline-sm text-on-surface-variant mb-2">
                   {profile?.title || 'Senior Full-Stack React Developer'}
                 </p>
-                {isPremium && isIdentityVerified && (
+                {profile?.showProVerifiedBadge === true && (
                   <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--gb-cyan)] text-white font-label-md text-[12px] font-bold tracking-wide shadow-sm mb-4">
                     <Crown size={14} className="text-white fill-current" />
                     Pro Verified
+                  </div>
+                )}
+                {profile?.premiumTierName && (
+                  <div className="text-sm text-on-surface-variant mb-3">
+                    {profile.premiumTierName} · {eloPoints} Elo
+                    {profile.premiumUntil && ` · Premium until ${new Date(profile.premiumUntil).toLocaleDateString()}`}
                   </div>
                 )}
 

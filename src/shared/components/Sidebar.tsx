@@ -310,6 +310,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [pendingReportCount, setPendingReportCount] = useState<number | null>(null);
   const [reviewingReportCount, setReviewingReportCount] = useState<number | null>(null);
   const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
+  const [showPremiumTeaser, setShowPremiumTeaser] = useState(false);
 
   const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
   const adminSections = role === 2 ? getAdminNavSections(t, openReportCount) : [];
@@ -458,7 +459,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span className="sidebar-pro-title">GigBridge Pro</span>
           </div>
           <p className="sidebar-pro-desc">{t('nav.proBadgeDesc')}</p>
-          <button className="btn-cyan sidebar-pro-button">{t('nav.upgrade')}</button>
+          <button className="btn-cyan sidebar-pro-button" onClick={() => setShowPremiumTeaser(true)}>{t('nav.upgrade')}</button>
         </div>
       )}
 
@@ -493,6 +494,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="flex items-center justify-between text-xs">
               <span className="text-secondary">Reviewing</span>
               <span className="badge-amber text-[10px] px-1.5 py-0">{reviewingReportCount ?? 0}</span>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+      {showPremiumTeaser && typeof document !== 'undefined' && createPortal(
+        <div className="premium-modal" onClick={() => setShowPremiumTeaser(false)}>
+          <div className="premium-modal-box" onClick={event => event.stopPropagation()}>
+            <div className="premium-eyebrow"><Zap size={16} /> GigBridge Premium</div>
+            <h2 className="text-2xl font-black text-primary mt-2">Give your work an unfairly polished edge.</h2>
+            <p className="premium-muted mt-2">Premium freelancers get Elo tiers, Vacation Mode, a verified presence, and token-powered profile promotion.</p>
+            <div className="premium-grid mt-4">
+              <div className="premium-card"><Shield size={20} /><strong>Protect your rank</strong></div>
+              <div className="premium-card"><TrendingUp size={20} /><strong>Boost visibility</strong></div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button className="premium-button secondary" onClick={() => setShowPremiumTeaser(false)}>Not now</button>
+              <button className="premium-button" onClick={() => { setShowPremiumTeaser(false); handleNavigate(role === 1 ? '/freelancer/premium' : '/subscription'); }}>
+                {role === 1 ? 'Open Premium hub' : 'View plans'}
+              </button>
             </div>
           </div>
         </div>,

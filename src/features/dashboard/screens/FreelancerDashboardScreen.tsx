@@ -1,7 +1,8 @@
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import {
   TrendingUp, Star, Zap, ChevronRight,
-  FileText, Briefcase, ArrowUpRight,
+  FileText, Briefcase, ArrowUpRight, Crown,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useFreelancerDashboard } from '../hooks/useFreelancerDashboard';
@@ -10,9 +11,12 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import '../styles/freelancer-dashboard-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { premiumAPI } from '../../premium/api';
+import { usePremiumResource } from '../../premium/hooks';
 
 export default function FreelancerDashboardScreen() {
   const navigate = useNavigate();
+  const premium = usePremiumResource(useCallback(premiumAPI.points, []));
 
   const {
     user,
@@ -95,6 +99,16 @@ export default function FreelancerDashboardScreen() {
           </section>
 
           {/* ── Main Content: Asymmetric 12-col Grid ── */}
+          <button
+            className="glass-card w-full rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 text-left hover:!border-brand transition-all"
+            onClick={() => navigate('/freelancer/premium')}
+          >
+            <div className="flex items-center gap-4">
+              <Crown size={24} className="text-purple" />
+              <div><div className="font-black text-text-primary">Premium status</div><div className="text-sm text-text-secondary">{premium.loading ? 'Loading…' : premium.data?.isPremium ? `${premium.data.tierName || 'Premium'} · ${premium.data.eloPoints} Elo` : 'Explore rank protection and profile promotion'}</div></div>
+            </div>
+            <span className="font-bold text-brand flex items-center gap-2">Open hub <ChevronRight size={18} /></span>
+          </button>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
 
             {/* ── Left Column (8 cols) ── */}

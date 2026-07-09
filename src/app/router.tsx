@@ -65,6 +65,7 @@ import PressKitScreen from '../features/company/screens/PressKitScreen';
 import GuideScreen from '../features/company/screens/GuideScreen';
 import WalletDepositScreen from '../features/wallet/screens/WalletDepositScreen';
 import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
+import FreelancerPremiumScreen from '../features/premium/screens/FreelancerPremiumScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import WalletMockCheckoutScreen from '../features/wallet/screens/WalletMockCheckoutScreen';
@@ -142,6 +143,13 @@ function ContractListRoute() {
   return role === UserRole.Freelancer ? <FreelancerContractScreen /> : <ManageContractScreen />;
 }
 
+function FreelancerPremiumRoute() {
+  const { role } = useApp();
+  return role === UserRole.Freelancer
+    ? <FreelancerPremiumScreen />
+    : <Navigate to="/subscription" replace />;
+}
+
 function NavigateToProposalCreate() {
   const { jobPostId } = useParams<{ jobPostId: string }>();
   return <Navigate to={getProposalCreatePath(jobPostId || '')} replace />;
@@ -168,6 +176,7 @@ export const router = createBrowserRouter([
 
       // Freelancer routes - requires authentication and setup
       { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
+      { path: 'freelancer/premium', element: <ProtectedRoute requireAuth requireSetup><FreelancerPremiumRoute /></ProtectedRoute> },
 
       // Jobs - requires authentication
       { path: 'jobs/post/guide', element: <ProtectedRoute requireAuth requireSetup><PostJobPreGuideScreen /></ProtectedRoute> },

@@ -1,303 +1,93 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { CreditCard, Check, Zap, Star, TrendingUp, Shield, Bot, Calendar } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { AlertTriangle, Check, Crown, RefreshCw } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { SubscriptionDuration } from '../../../types/models/Financial';
-import '../../admin/styles/admin-users-screen.css';
-import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { useApp } from '../../../app/providers/AppProvider';
+import { premiumAPI } from '../../premium/api';
+import { usePremiumResource } from '../../premium/hooks';
+import { PremiumSubscriptionStatus } from '../../premium/types';
+import '../../premium/styles/premium.css';
 
-const FREE_FEATURES = [
-  'Basic job posting',
-  'Limited proposals (3/month)',
-  'Standard support',
-  'Basic analytics',
-];
-
-const PRO_FEATURES = [
-  'Unlimited job posting',
-  'Unlimited proposals',
-  'AI-powered matching',
-  'AI interview preparation',
-  'AI proposal generator',
-  'Priority support 24/7',
-  'Advanced analytics',
-  'Custom contracts',
-  'Featured listings',
-  'No platform fees',
-];
+const parseFeatures = (value?: string | null) => {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.map(String);
+  } catch { /* backend may provide newline/comma text */ }
+  return value.split(/\r?\n|,/).map(x => x.trim()).filter(Boolean);
+};
 
 export default function SubscriptionScreen() {
-  const navigate = useNavigate();
-  const [duration, setDuration] = useState<SubscriptionDuration>(SubscriptionDuration.Monthly);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const { role } = useApp();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string>();
+  const plans = usePremiumResource(useCallback(premiumAPI.plans, []));
+  const current = usePremiumResource(useCallback(premiumAPI.currentSubscription, []));
+  const history = usePremiumResource(useCallback(premiumAPI.subscriptionHistory, []));
+  const subscription = current.data;
+  const entitled = subscription && new Date(subscription.endDate) > new Date();
 
-  // Mock current subscription
-  const currentPlan = 'Free';
-  const isProUser = currentPlan === 'Pro';
-
-  const monthlyPrice = 29.99;
-  const yearlyPrice = 299.99;
-  const yearlyMonthlyEquivalent = yearlyPrice / 12;
-  const yearlySavings = (monthlyPrice * 12) - yearlyPrice;
-
-  const selectedPrice = duration === SubscriptionDuration.Monthly ? monthlyPrice : yearlyPrice;
-
-  const handleSubscribe = async () => {
-    setProcessing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setProcessing(false);
-    setShowConfirm(false);
-    // Redirect to success or payment page
-    navigate('/subscription/success');
+  const cancel = async () => {
+    setSubmitting(true);
+    setActionError(undefined);
+    const result = await premiumAPI.cancelSubscription();
+    setSubmitting(false);
+    if (!result.success) return setActionError(result.message);
+    setConfirmCancel(false);
+    await Promise.all([current.refresh(), history.refresh()]);
   };
 
   return (
     <AppLayout>
-      <div className="w-full max-w-[100vw] overflow-x-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Zap size={24} className="text-purple" />
-              <span className="badge-purple text-sm">Upgrade</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-primary mb-3">
-              Unlock GigBridge <span className="gradient-text-cyan">Pro</span>
-            </h1>
-            <p className="text-lg text-secondary">Get unlimited access to AI-powered features</p>
+      <main className="premium-shell">
+        <section className="premium-hero">
+          <div className="premium-eyebrow"><Crown size={16} /> GigBridge Premium</div>
+          <h1 className="premium-title">Work with more reach and less friction.</h1>
+          <p className="premium-muted">Live plan benefits and subscription status, directly from your account.</p>
+          <div className="premium-notice">
+            <AlertTriangle size={20} color="#f59e0b" />
+            <div><strong>Payments are not available yet.</strong><div className="premium-muted">Purchases and yearly upgrades will open after the payment contract is approved.</div></div>
           </div>
+          {role === 1 && entitled && <a className="premium-button" href="/freelancer/premium">Open Premium hub</a>}
+        </section>
 
-          {/* Duration Toggle */}
-          <div className="flex justify-center mb-12">
-            <div className="role-toggle">
-              <button
-                onClick={() => setDuration(SubscriptionDuration.Monthly)}
-                className={`role-toggle-btn ${duration === SubscriptionDuration.Monthly ? 'active' : ''}`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setDuration(SubscriptionDuration.Yearly)}
-                className={`role-toggle-btn ${duration === SubscriptionDuration.Yearly ? 'active' : ''}`}
-              >
-                Yearly
-                <span className="badge-green text-[10px] ml-1.5 inline-flex items-center gap-1">Save <GigCoinAmount amount={yearlySavings} /></span>
-              </button>
-            </div>
+        {(plans.loading || current.loading) && <div className="premium-grid"><div className="premium-skeleton" /><div className="premium-skeleton" /></div>}
+        {(plans.error || current.error) && <div className="premium-error">{plans.error || current.error} <button className="premium-button secondary" onClick={() => { void plans.refresh(); void current.refresh(); }}><RefreshCw size={14} /> Retry</button></div>}
+
+        {!plans.loading && !current.loading && (
+          <div className="premium-grid">
+            <article className="premium-card">
+              <h3>Free</h3><div className="premium-price">0</div>
+              <p className="premium-muted">Core GigBridge tools for getting started.</p>
+              <button className="premium-button secondary" disabled={!subscription}>Current plan</button>
+            </article>
+            {(plans.data || []).map(plan => (
+              <article className="premium-card" key={plan.id}>
+                <div className="premium-eyebrow"><Crown size={14} /> Premium</div>
+                <h3>{plan.name}</h3>
+                <div className="premium-price">{plan.price.toLocaleString()} {plan.currency}</div>
+                <p className="premium-muted">{plan.description}</p>
+                {parseFeatures(plan.features).map(feature => <div className="premium-feature" key={feature}><Check size={16} color="#22c55e" />{feature}</div>)}
+                <button className="premium-button" disabled title="Payment integration pending">Purchase unavailable</button>
+              </article>
+            ))}
+            {!plans.data?.length && <article className="premium-card"><h3>No plans available</h3><p className="premium-muted">Plan configuration has not been published yet.</p></article>}
           </div>
+        )}
 
-          {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            {/* Free Plan */}
-            <div className="glass-card p-8 relative">
-              {currentPlan === 'Free' && (
-                <div className="absolute top-4 right-4">
-                  <span className="badge-cyan text-xs">Current Plan</span>
-                </div>
-              )}
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-primary mb-2">Free</h3>
-                <div className="flex items-baseline gap-1">
-                  <GigCoinAmount amount={0} className="text-4xl font-black text-primary" />
-                  <span className="text-sm text-secondary">/month</span>
-                </div>
-              </div>
+        {subscription && (
+          <section className="premium-card" style={{ marginTop: 20 }}>
+            <div className="premium-row"><div><h3>Your subscription</h3><p className="premium-muted">{subscription.planName}</p></div><span className="badge-purple">{PremiumSubscriptionStatus[subscription.status]}</span></div>
+            <div className="premium-row"><span>Entitled until</span><strong>{new Date(subscription.endDate).toLocaleDateString()}</strong></div>
+            <div className="premium-row"><span>Renewal</span><strong>{subscription.autoRenew ? 'Automatic' : 'Cancelled'}</strong></div>
+            {subscription.autoRenew && <button className="premium-button secondary" onClick={() => setConfirmCancel(true)}>Cancel renewal</button>}
+            {actionError && <p className="premium-error">{actionError}</p>}
+          </section>
+        )}
 
-              <div className="space-y-3 mb-8">
-                {FREE_FEATURES.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-gray/20 flex items-center justify-center flex-shrink-0">
-                      <Check size={12} className="text-gray" />
-                    </div>
-                    <span className="text-sm text-secondary">{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                disabled={currentPlan === 'Free'}
-                className="btn-ghost-cyan w-full px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {currentPlan === 'Free' ? 'Current Plan' : 'Downgrade'}
-              </button>
-            </div>
-
-            {/* Pro Plan */}
-            <div className="glass-card p-8 relative neon-border-purple">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="badge-purple text-xs flex items-center gap-1">
-                  <Star size={12} />
-                  Most Popular
-                </span>
-              </div>
-              {currentPlan === 'Pro' && (
-                <div className="absolute top-4 right-4">
-                  <span className="badge-green text-xs">Active</span>
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold gradient-text-purple mb-2">Pro</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-green">
-                    ${duration === SubscriptionDuration.Monthly ? monthlyPrice.toFixed(2) : yearlyMonthlyEquivalent.toFixed(2)}
-                  </span>
-                  <span className="text-sm text-secondary">/month</span>
-                </div>
-                {duration === SubscriptionDuration.Yearly && (
-                  <p className="text-xs text-green mt-1">
-                    Billed ${yearlyPrice.toFixed(2)}/year
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-3 mb-8">
-                {PRO_FEATURES.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-green/20 flex items-center justify-center flex-shrink-0">
-                      <Check size={12} className="text-green" />
-                    </div>
-                    <span className="text-sm text-primary font-medium">{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setShowConfirm(true)}
-                disabled={currentPlan === 'Pro'}
-                className="btn-purple w-full px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {currentPlan === 'Pro' ? 'Current Plan' : 'Upgrade to Pro'}
-              </button>
-            </div>
-          </div>
-
-          {/* Features Showcase */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="glass-card p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mx-auto mb-4">
-                <Bot size={28} className="text-purple" />
-              </div>
-              <h4 className="text-lg font-bold text-primary mb-2">AI-Powered Tools</h4>
-              <p className="text-sm text-secondary">
-                Smart matching, proposal generator, and interview prep powered by advanced AI
-              </p>
-            </div>
-
-            <div className="glass-card p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-green/20 flex items-center justify-center mx-auto mb-4">
-                <TrendingUp size={28} className="text-green" />
-              </div>
-              <h4 className="text-lg font-bold text-primary mb-2">Unlimited Growth</h4>
-              <p className="text-sm text-secondary">
-                No limits on jobs, proposals, or earnings. Scale your freelance business
-              </p>
-            </div>
-
-            <div className="glass-card p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-cyan/20 flex items-center justify-center mx-auto mb-4">
-                <Shield size={28} className="text-cyan" />
-              </div>
-              <h4 className="text-lg font-bold text-primary mb-2">Priority Support</h4>
-              <p className="text-sm text-secondary">
-                24/7 dedicated support team to help you succeed on the platform
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirmation Modal */}
-      {showConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowConfirm(false)}>
-          <div className="glass-card max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-purple/20 flex items-center justify-center">
-                <Zap size={24} className="text-purple" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-primary">Confirm Upgrade</h2>
-                <p className="text-xs text-muted">Review your subscription details</p>
-              </div>
-            </div>
-
-            <div className="glass-card p-5 mb-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-sm font-bold text-primary mb-1">GigBridge Pro</p>
-                  <p className="text-xs text-secondary capitalize">{duration} billing</p>
-                </div>
-                <span className="badge-purple text-xs">Pro</span>
-              </div>
-
-              <div className="space-y-2 text-sm pt-3 border-t border-white/5">
-                <div className="flex justify-between">
-                  <span className="text-secondary">
-                    {duration === SubscriptionDuration.Monthly ? 'Monthly' : 'Yearly'} Price
-                  </span>
-                  <span className="text-primary font-semibold">{selectedPrice.toFixed(2)} GigCoin</span>
-                </div>
-                {duration === SubscriptionDuration.Yearly && (
-                  <div className="flex justify-between">
-                    <span className="text-green text-xs">You save</span>
-                    <span className="text-green font-semibold text-xs">${yearlySavings.toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-between pt-3 mt-3 border-t border-white/5">
-                <span className="text-primary font-bold">Total Due Today</span>
-                <span className="text-2xl font-black text-green">{selectedPrice.toFixed(2)} GigCoin</span>
-              </div>
-            </div>
-
-            <div className="bg-cyan/10 border border-cyan/20 rounded-lg p-4 mb-6">
-              <div className="flex gap-3">
-                <Calendar size={18} className="text-cyan flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-primary mb-1">Auto-Renewal</p>
-                  <p className="text-xs text-secondary">
-                    Your subscription will automatically renew on{' '}
-                    {new Date(Date.now() + (duration === SubscriptionDuration.Monthly ? 30 : 365) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}. Cancel anytime from settings.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="btn-ghost-cyan flex-1 px-6 py-3"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubscribe}
-                disabled={processing}
-                className="btn-purple flex-1 px-6 py-3 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {processing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={16} />
-                    Confirm & Pay
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        {!!history.data?.length && <section className="premium-card" style={{ marginTop: 20 }}><h3>Subscription history</h3>{history.data.map(item => <div className="premium-row" key={item.id}><div><strong>{item.planName}</strong><div className="premium-muted">{new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}</div></div><span>{PremiumSubscriptionStatus[item.status]}</span></div>)}</section>}
+      </main>
+      {confirmCancel && <div className="premium-modal" onClick={() => setConfirmCancel(false)}><div className="premium-modal-box" onClick={e => e.stopPropagation()}><h2>Cancel automatic renewal?</h2><p className="premium-muted">Your Premium benefits remain active through the current end date.</p><div style={{ display: 'flex', gap: 10, marginTop: 20 }}><button className="premium-button secondary" onClick={() => setConfirmCancel(false)}>Keep renewal</button><button className="premium-button" disabled={submitting} onClick={() => void cancel()}>{submitting ? 'Cancelling…' : 'Confirm cancellation'}</button></div></div></div>}
     </AppLayout>
   );
 }
