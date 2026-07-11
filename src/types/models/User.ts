@@ -30,6 +30,8 @@ export interface User {
   gigcoin_balance: number;
   open_report_count?: number;
   is_currently_reported?: boolean;
+  is_premium?: boolean;
+  premium_until?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -53,6 +55,8 @@ export interface AdminUserDto {
   provider: string | null;
   openReportCount: number;
   isCurrentlyReported: boolean;
+  isPremium: boolean;
+  premiumUntil?: string | null;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -75,6 +79,7 @@ export interface GetUsersParams {
   Search?: string;
   /** 1 = active, 0 = inactive/banned, omit = all */
   Status?: number;
+  Premium?: boolean;
 }
 
 export interface CreateUserPayload {

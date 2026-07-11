@@ -35,6 +35,7 @@ export interface SubscriptionPlan {
   durationInDays: number;
   features?: string | null;
   sortOrder?: number | null;
+  billingPeriod: 'monthly' | 'yearly';
 }
 
 export interface PremiumSubscription {
@@ -45,6 +46,7 @@ export interface PremiumSubscription {
   startDate: string;
   endDate: string;
   autoRenew: boolean;
+  isPremium: boolean;
   cancelledAt?: string | null;
   createdAt: string;
 }
@@ -102,5 +104,40 @@ export interface Promotion {
   status: PromotionStatus;
   walletTransactionId: string;
   createdAt: string;
+  photoUrl: string;
+  displayName: string;
+  quote?: string | null;
+  showQuote: boolean;
+  jobTitle?: string | null;
+  showJobTitle: boolean;
+  impressionCount: number;
+  clickCount: number;
+  targetClickCount: number;
+  queuePosition: number;
 }
+
+export interface PromotionPolicy {
+  baseTargetClicks: number;
+  targetClicksPerCoin: number;
+  boostWeightPerCoin: number;
+  minimumBoostCoins: number;
+  maximumBoostCoinsPerTransaction: number;
+  displayNameMaxLength: number;
+  quoteMaxLength: number;
+  jobTitleMaxLength: number;
+  photoUrlMaxLength: number;
+  maximumPhotoBytes: number;
+  visitorKeyMaxLength: number;
+  defaultFeedLimit: number;
+  maximumFeedLimit: number;
+  interactionDeduplicationSeconds: number;
+  defaultDurationDays: number;
+  maxQueuedCampaigns: number;
+}
+
+export interface PromotionDraft { photoUrl: string; displayName: string; jobTitle?: string | null; policy: PromotionPolicy; }
+export interface PromotionManager { active?: Promotion | null; queued: Promotion[]; history: Promotion[]; policy: PromotionPolicy; availableTokens: number; }
+export interface PromotionCardInput { photoUrl: string; displayName: string; quote?: string; showQuote: boolean; jobTitle?: string; showJobTitle: boolean; }
+export interface PublicPromotionCard extends PromotionCardInput { id: string; freelancerUserId: string; }
+export interface PromotionInteractionResult { promotionId: string; status: PromotionStatus; clickCount: number; targetClickCount: number; }
 

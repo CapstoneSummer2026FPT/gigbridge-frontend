@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown } from 'lucide-react';
 import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
@@ -13,6 +13,7 @@ import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
 import { formatGigCoinNumber } from '../utils/gigcoin';
 import { useTranslation } from '../../hooks/useTranslation';
+import { premiumAPI } from '../../features/premium/api';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -35,6 +36,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [searchVal, setSearchVal] = useState('');
+  const [isPremiumFreelancer, setIsPremiumFreelancer] = useState(false);
+  const [premiumStatusLoaded, setPremiumStatusLoaded] = useState(false);
 
   // Safely get app context - might be null for guest users
   let appContext;
@@ -50,6 +53,19 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const setTheme = appContext?.setTheme || (() => { });
   const logout = appContext?.logout || (() => { });
   const isAuthenticated = appContext?.isAuthenticated || false;
+
+  useEffect(() => {
+    let active = true;
+    setPremiumStatusLoaded(false);
+    if (!user || role !== 1) { setIsPremiumFreelancer(false); setPremiumStatusLoaded(true); return; }
+    void premiumAPI.currentSubscription().then(response => {
+      if (active) {
+        setIsPremiumFreelancer(Boolean(response.success && response.data?.isPremium && new Date(response.data.endDate) > new Date()));
+        setPremiumStatusLoaded(true);
+      }
+    });
+    return () => { active = false; };
+  }, [location.pathname, role, user?.id]);
 
   const localizedNavItems = navItems.map(item => {
     if (item.label === 'Browse Jobs') return { ...item, label: t('nav.browseJobs') };
@@ -316,6 +332,17 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       )}
 
       <div className="flex items-center gap-2 ml-auto">
+        {user && role === 1 && premiumStatusLoaded && !isPremiumFreelancer && (
+          <button
+            type="button"
+            className="become-premium-button"
+            onClick={() => navigate('/premium/freelancer/pricing')}
+          >
+            <Crown size={15} />
+            <span className="hidden sm:inline">Become Premium</span>
+            <span className="sm:hidden">Premium</span>
+          </button>
+        )}
         {/* Wallet Balance Dropdown */}
         {user && role !== 2 && (
           <div className="relative">
@@ -353,7 +380,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 )}
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
-                  onClick={() => { navigate('/subscription'); setShowWalletMenu(false); }}>
+                  onClick={() => { navigate(role === 1 ? '/premium/freelancer/pricing' : '/subscription'); setShowWalletMenu(false); }}>
                   <CreditCard size={14} />
                   {t('nav.subscription')}
                 </button>
@@ -413,7 +440,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                           <p className="text-primary text-xs font-medium">{n.title}</p>
                           {!n.isRead && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-cyan flex-shrink-0" />}
                         </div>
-                        <p className="text-xs mt-0.5 line-clamp-2 text-secondary">{n.body}</p>
+                        {n.body && <p className="text-xs mt-0.5 line-clamp-2 text-secondary">{n.body}</p>}
                         {n.schedule && <p className="text-[10px] mt-1 text-cyan">{new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(n.schedule.scheduledAtUtc))} ICT · {n.schedule.actorName}</p>}
                       </div>
                     ))
@@ -438,10 +465,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); }}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-all glass-button"
             >
-              <div className="w-7 h-7 rounded-full avatar-glow flex items-center justify-center text-xs font-bold avatar-gradient">
+              <div className={`w-7 h-7 rounded-full avatar-glow flex items-center justify-center text-xs font-bold avatar-gradient ${isPremiumFreelancer ? 'premium-avatar-ring' : ''}`} aria-label={isPremiumFreelancer ? 'Premium freelancer' : undefined}>
                 {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                {isPremiumFreelancer && <Crown size={11} className="premium-avatar-crown" />}
               </div>
-              <span className="text-primary text-sm font-medium hidden md:block">{user.first_name}</span>
+              <span className={`text-primary text-sm font-medium hidden md:block ${isPremiumFreelancer ? 'premium-user-name' : ''}`}>{user.first_name}</span>
               <ChevronDown size={14} className="text-muted" />
             </button>
 

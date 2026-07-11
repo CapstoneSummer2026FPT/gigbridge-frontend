@@ -66,6 +66,7 @@ import GuideScreen from '../features/company/screens/GuideScreen';
 import WalletDepositScreen from '../features/wallet/screens/WalletDepositScreen';
 import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FreelancerPremiumScreen from '../features/premium/screens/FreelancerPremiumScreen';
+import FreelancerPricingScreen from '../features/premium/screens/FreelancerPricingScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import WalletMockCheckoutScreen from '../features/wallet/screens/WalletMockCheckoutScreen';
@@ -150,6 +151,18 @@ function FreelancerPremiumRoute() {
     : <Navigate to="/subscription" replace />;
 }
 
+function FreelancerOnly({ children }: { children: ReactNode }) {
+  const { role } = useApp();
+  return role === UserRole.Freelancer ? <>{children}</> : <Navigate to="/subscription" replace />;
+}
+
+function SubscriptionRoute() {
+  const { role } = useApp();
+  return role === UserRole.Freelancer
+    ? <Navigate to="/premium/freelancer/pricing" replace />
+    : <SubscriptionScreen />;
+}
+
 function NavigateToProposalCreate() {
   const { jobPostId } = useParams<{ jobPostId: string }>();
   return <Navigate to={getProposalCreatePath(jobPostId || '')} replace />;
@@ -176,7 +189,13 @@ export const router = createBrowserRouter([
 
       // Freelancer routes - requires authentication and setup
       { path: 'freelancer/dashboard', element: <ProtectedRoute requireAuth requireSetup><FreelancerDashboardScreen /></ProtectedRoute> },
-      { path: 'freelancer/premium', element: <ProtectedRoute requireAuth requireSetup><FreelancerPremiumRoute /></ProtectedRoute> },
+      { path: 'freelancer/premium', element: <ProtectedRoute requireAuth requireSetup><Navigate to="/premium/freelancer" replace /></ProtectedRoute> },
+      { path: 'premium/freelancer', element: <ProtectedRoute requireAuth requireSetup><FreelancerPremiumRoute /></ProtectedRoute> },
+      { path: 'premium/freelancer/pricing', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPricingScreen /></FreelancerOnly></ProtectedRoute> },
+      { path: 'premium/freelancer/points', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="points" /></FreelancerOnly></ProtectedRoute> },
+      { path: 'premium/freelancer/rank-protection', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="vacation" /></FreelancerOnly></ProtectedRoute> },
+      { path: 'premium/freelancer/promotions', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="promotions" /></FreelancerOnly></ProtectedRoute> },
+      { path: 'premium/freelancer/history', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="history" /></FreelancerOnly></ProtectedRoute> },
 
       // Jobs - requires authentication
       { path: 'jobs/post/guide', element: <ProtectedRoute requireAuth requireSetup><PostJobPreGuideScreen /></ProtectedRoute> },
@@ -241,7 +260,7 @@ export const router = createBrowserRouter([
       { path: 'wallet/payment-proof/:transactionId', element: <ProtectedRoute requireAuth requireSetup><UploadPaymentProofScreen /></ProtectedRoute> },
       { path: 'wallet/early-payout', element: <ProtectedRoute requireAuth requireSetup><EarlyPayoutScreen /></ProtectedRoute> },
       { path: 'buy-gigcoin', element: <ProtectedRoute requireAuth requireSetup><BuyGigcoinScreen /></ProtectedRoute> },
-      { path: 'subscription', element: <ProtectedRoute requireAuth requireSetup><SubscriptionScreen /></ProtectedRoute> },
+      { path: 'subscription', element: <ProtectedRoute requireAuth requireSetup><SubscriptionRoute /></ProtectedRoute> },
       { path: 'financial-overview', element: <ProtectedRoute requireAuth requireSetup><FinancialOverviewScreen /></ProtectedRoute> },
 
       // Admin - requires authentication and admin role

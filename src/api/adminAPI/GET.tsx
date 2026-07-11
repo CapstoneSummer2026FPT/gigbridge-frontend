@@ -33,6 +33,7 @@ export const adminGetAPI = {
       PageSize: 200,
       Search: search,
       Status: status,
+      Premium: undefined,
     });
   },
 

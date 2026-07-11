@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ApiResponse } from '../../types/common';
+import type { ApiResponse } from '../../../types/common';
 
 export function usePremiumResource<T>(loader: () => Promise<ApiResponse<T>>) {
   const [data, setData] = useState<T>();

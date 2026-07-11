@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
-import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag, Wallet, Folder, File as FileIcon, Image, Film, FileText } from 'lucide-react';
+import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag, Wallet, Folder, File as FileIcon, Image, Film, FileText, Crown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
 import { UserRole } from '../../../types';
 import '../styles/admin-users-screen.css';
 
-type UserFilter = 'all' | 'client' | 'freelancer' | 'admin' | 'banned';
+type UserFilter = 'all' | 'client' | 'freelancer' | 'premium' | 'admin' | 'banned';
 type UserSort = 'name' | 'joined' | 'status';
 
 const isUserSuspended = (user: User): boolean => {
@@ -39,6 +39,9 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
   const spaceIndex = dto.fullName.indexOf(' ');
   const firstName = spaceIndex >= 0 ? dto.fullName.slice(0, spaceIndex) : dto.fullName;
   const lastName = spaceIndex >= 0 ? dto.fullName.slice(spaceIndex + 1) : '';
+  // Premium is a freelancer-only entitlement. Use an explicit boolean check so
+  // malformed values such as "false" cannot become truthy in the admin UI.
+  const isPremium = dto.role === UserRole.Freelancer && dto.isPremium === true;
 
   return {
     id: dto.userId,
@@ -62,6 +65,8 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
     gigcoin_balance: 0,
     open_report_count: dto.openReportCount,
     is_currently_reported: dto.isCurrentlyReported,
+    is_premium: isPremium,
+    premium_until: isPremium ? dto.premiumUntil ?? null : null,
     created_at: dto.createdAt,
     updated_at: dto.updatedAt || dto.createdAt,
   };
@@ -306,6 +311,7 @@ export default function AdminUsersScreen() {
         filterType === 'all' ? true :
           filterType === 'client' ? user.role === 0 :
             filterType === 'freelancer' ? user.role === 1 :
+              filterType === 'premium' ? user.is_premium === true :
               filterType === 'admin' ? user.role === 2 :
                 filterType === 'banned' ? !user.is_active || isUserSuspended(user) : true;
 
@@ -330,9 +336,10 @@ export default function AdminUsersScreen() {
     const admins = allUsers.filter(u => u.role === 2).length;
     const banned = allUsers.filter(u => !u.is_active || isUserSuspended(u)).length;
     const verified = allUsers.filter(u => u.is_email_verified).length;
+    const premium = allUsers.filter(u => u.is_premium).length;
     const reported = reportedUserTotal;
 
-    return { total, clients, freelancers, admins, banned, verified, reported };
+    return { total, clients, freelancers, admins, banned, verified, premium, reported };
   }, [allUsers, reportedUserTotal]);
 
   const handleBanUser = async (userId: string) => {
@@ -363,6 +370,18 @@ export default function AdminUsersScreen() {
       }
       setShowActionMenu(null);
     }
+  };
+
+  const handlePremiumAction = async (user: User) => {
+    if (user.role !== UserRole.Freelancer) return;
+    const action = user.is_premium ? 'revoke Premium from' : 'promote to Premium';
+    if (!window.confirm(`Are you sure you want to ${action} ${user.full_name}?`)) return;
+    const response = user.is_premium
+      ? await adminAPI.revokeUserPremium(user.id)
+      : await adminAPI.grantUserPremium(user.id);
+    if (!response.success) alert(response.message || 'Failed to update Premium status.');
+    else await loadUsers();
+    setShowActionMenu(null);
   };
 
   const handleChangeRole = async (_userId: string, _newRole: 0 | 1 | 2) => {
@@ -455,13 +474,14 @@ export default function AdminUsersScreen() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4 mb-8">
           {[
             { label: 'Total Users', value: stats.total.toLocaleString(), icon: <Users size={16} />, color: 'cyan' },
             { label: 'Clients', value: stats.clients.toLocaleString(), icon: <Briefcase size={16} />, color: 'purple' },
             { label: 'Freelancers', value: stats.freelancers.toLocaleString(), icon: <UserCheck size={16} />, color: 'green' },
             { label: 'Admins', value: stats.admins.toString(), icon: <Shield size={16} />, color: 'amber' },
             { label: 'Verified', value: stats.verified.toLocaleString(), icon: <CheckCircle size={16} />, color: 'green' },
+            { label: 'Premium', value: stats.premium.toLocaleString(), icon: <Crown size={16} />, color: 'purple' },
             { label: 'Restricted', value: stats.banned.toString(), icon: <Ban size={16} />, color: 'red' },
             { label: 'Reported Users', value: (stats.reported ?? 0).toLocaleString(), icon: <Flag size={16} />, color: 'red' },
           ].map(stat => (
@@ -512,6 +532,7 @@ export default function AdminUsersScreen() {
                     { type: 'all', label: 'All Users', icon: <Users size={16} />, color: 'cyan' },
                     { type: 'client', label: 'Clients', icon: <Briefcase size={16} />, color: 'purple' },
                     { type: 'freelancer', label: 'Freelancers', icon: <UserCheck size={16} />, color: 'green' },
+                    { type: 'premium', label: 'Premium', icon: <Crown size={16} />, color: 'purple' },
                     { type: 'admin', label: 'Admins', icon: <Shield size={16} />, color: 'amber' },
                     { type: 'banned', label: 'Restricted', icon: <Ban size={16} />, color: 'red' },
                   ].map(filter => (
@@ -589,7 +610,7 @@ export default function AdminUsersScreen() {
                     <tr key={user.id} className="hover:bg-white/5 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white">
+                          <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white ${user.is_premium ? 'admin-premium-avatar' : ''}`}>
                             {user.first_name.charAt(0)}{user.last_name.charAt(0)}
                           </div>
                           <div>
@@ -602,6 +623,7 @@ export default function AdminUsersScreen() {
                                   <Flag size={12} /> {user.open_report_count || 0}
                                 </span>
                               )}
+                              {user.is_premium && <span className="admin-premium-badge" title={user.premium_until ? `Premium through ${new Date(user.premium_until).toLocaleDateString()}` : 'Premium user'}><Crown size={11} /> Premium</span>}
                             </div>
                             <p className="text-xs text-secondary">{user.id}</p>
                           </div>
@@ -678,6 +700,16 @@ export default function AdminUsersScreen() {
                                   <Wallet size={14} />
                                   Add Fund
                                 </button>
+
+                                <div className="h-px my-1 dropdown-divider" />
+
+                                {user.role === UserRole.Freelancer && <button
+                                  onClick={() => void handlePremiumAction(user)}
+                                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${user.is_premium ? 'hover:bg-red/10 text-red' : 'hover:bg-purple/10 text-purple'}`}
+                                >
+                                  <Crown size={14} />
+                                  {user.is_premium ? 'Revoke Premium' : 'Promote to Premium'}
+                                </button>}
 
                                 <div className="h-px my-1 dropdown-divider" />
 

@@ -18,6 +18,8 @@ export interface AdminBroadcastNotificationPayload {
 }
 
 export const adminPostAPI = {
+  grantUserPremium: async (userId: string): Promise<ApiResponse<object>> =>
+    apiService.post<object>(`${Admin_Api_Base_Url}/users/${userId}/premium`),
   /**
    * POST /api/v1/admin/users
    * Creates a new user. The backend hashes the password and sets

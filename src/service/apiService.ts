@@ -153,9 +153,9 @@ export const apiService = {
     }
   },
 
-  async post<T>(endpoint: string, data: any = {}): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data: any = {}, headers: Record<string, string> = {}): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.post<ApiResponse<T>>(normalizeEndpoint(endpoint), data);
+      const response = await apiClient.post<ApiResponse<T>>(normalizeEndpoint(endpoint), data, { headers });
       return handleResponse(response);
     } catch (error: any) {
       return {

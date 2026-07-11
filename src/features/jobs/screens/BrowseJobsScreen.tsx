@@ -14,6 +14,8 @@ import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
+import { premiumAPI } from '../../premium/api';
+import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
 
 
 const PAGE_SIZE = 20;
@@ -58,8 +60,41 @@ export default function BrowseJobsScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [topFreelancers, setTopFreelancers] = useState<FreelancerProfileDetailDto[]>([]);
+  const [isPremium, setIsPremium] = useState<boolean | null>(null);
+  const [isPromotionActive, setIsPromotionActive] = useState(false);
   const [page, setPage] = useState(1);
   const isFreelancer = role === UserRole.Freelancer;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPremiumStatus = async () => {
+      if (!user || !isFreelancer) {
+        setIsPremium(false);
+        setIsPromotionActive(false);
+        return;
+      }
+
+      setIsPremium(null);
+      const response = await premiumAPI.currentSubscription();
+      if (!isMounted) return;
+      const subscription = response.success ? response.data : null;
+      const hasPremium = Boolean(
+        subscription?.isPremium && new Date(subscription.endDate) > new Date(),
+      );
+      setIsPremium(hasPremium);
+      if (!hasPremium) {
+        setIsPromotionActive(false);
+        return;
+      }
+
+      const promotionResponse = await premiumAPI.currentPromotion();
+      if (isMounted) setIsPromotionActive(Boolean(promotionResponse.success && promotionResponse.data));
+    };
+
+    void fetchPremiumStatus();
+    return () => { isMounted = false; };
+  }, [isFreelancer, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -422,19 +457,26 @@ export default function BrowseJobsScreen() {
 
           {/* Right Column (1/3 width) - Sidebar with System Ads and Freelancer Rankings */}
           <div className="system-ads-sidebar-container">
-            {/* Ad 1: GigBridge Premium */}
-            <div className="system-ad-card system-ad-card-premium">
+            <SponsoredPromotionCard />
+            {/* Ad 1: Premium upgrade or promotion activation */}
+            {isPremium !== null && <div className={`system-ad-card ${isPremium ? 'system-ad-card-promotion' : 'system-ad-card-premium'}`}>
               <div className="system-ad-title">
-                <Sparkles size={18} className="ad-icon-purple" />
-                <span>{t('jobs.premiumTitle')}</span>
+                {isPremium ? <TrendingUp size={18} className="ad-icon-promotion" /> : <Sparkles size={18} className="ad-icon-purple" />}
+                <span>{isPremium ? t('jobs.promotionTitle') : t('jobs.premiumTitle')}</span>
               </div>
               <p className="system-ad-subtitle">
-                {t('jobs.premiumDesc')}
+                {isPremium ? t('jobs.promotionDesc') : t('jobs.premiumDesc')}
               </p>
-              <button className="system-ad-btn system-ad-btn-primary">
-                {t('jobs.upgradePlan')}
+              <button
+                className={`system-ad-btn ${isPremium ? 'system-ad-btn-promotion' : 'system-ad-btn-primary'}`}
+                disabled={Boolean(isPremium && isPromotionActive)}
+                onClick={() => navigate(isPremium ? '/premium/freelancer/promotions' : '/premium/freelancer/pricing')}
+              >
+                {isPremium
+                  ? t(isPromotionActive ? 'jobs.promotionActive' : 'jobs.startPromotion')
+                  : t('jobs.upgradePlan')}
               </button>
-            </div>
+            </div>}
 
             {/* Ad 2: Skill Certification */}
             <div className="system-ad-card">

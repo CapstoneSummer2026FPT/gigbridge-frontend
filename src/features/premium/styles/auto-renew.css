@@ -1,0 +1,17 @@
+.premium-auto-renew {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 4px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.premium-auto-renew input {
+  width: 17px;
+  height: 17px;
+  accent-color: #10b981;
+}
+
+.premium-auto-renew input:disabled { cursor: wait; }
+.premium-auto-renew-help { font-size: 13px; margin: 0 0 14px; }

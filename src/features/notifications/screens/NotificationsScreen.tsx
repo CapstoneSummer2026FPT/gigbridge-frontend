@@ -124,7 +124,7 @@ export default function NotificationsScreen() {
                           {!notif.isRead && <div className="notif-dot" />}
                         </div>
                       </div>
-                      <p className="text-sm mt-1 leading-relaxed text-secondary">{notif.body}</p>
+                      {notif.body && <p className="text-sm mt-1 leading-relaxed text-secondary">{notif.body}</p>}
                       {notif.schedule && <div className="mt-2 rounded-lg bg-cyan/5 border border-cyan/10 p-2 text-xs"><strong>{notif.schedule.title}</strong><span className="block text-secondary">{new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(notif.schedule.scheduledAtUtc))} Vietnam Time (ICT) · {notif.schedule.actorName}</span></div>}
                     </div>
                     <button className="opacity-0 group-hover:opacity-100 p-1 transition-all text-secondary">

@@ -8,11 +8,9 @@ import {
   CheckCircle2,
   ChevronDown,
   Heart,
-  Info,
   Grid,
   List,
   MapPin,
-  Rocket,
   Search,
   Sparkles,
   Star,
@@ -24,6 +22,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { savedFreelancerAPI } from '../../../api/savedFreelancerAPI';
 import { InviteFreelancerToJobModal } from '../../profile/components/InviteFreelancerToJobModal';
+import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
 import type { SavedFreelancerDto } from '../../../types/savedFreelancer';
 import {
@@ -868,30 +867,8 @@ export default function SmartTalentMatchingScreen() {
 
           {/* Right: Activity & Leaderboard */}
           <aside className="col-span-12 lg:col-span-3 space-y-6">
+            {isClient && <div className="talent-featured-promotion"><SponsoredPromotionCard /></div>}
 
-            {/* Boost Ad */}
-            <div className="glass-panel rounded-3xl p-6 overflow-hidden bg-blue-50/20 black:bg-blue-950/5 relative group shadow-sm">
-              <div className="relative z-10">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="px-2 py-0.5 bg-blue-100 black:bg-blue-900/30 text-blue-700 black:text-blue-300 rounded text-[10px] font-bold uppercase tracking-widest">
-                    {t('talentMatching.sponsored')}
-                  </span>
-                  <Info size={14} className="text-gray-400 cursor-pointer hover:text-blue-600" />
-                </div>
-                <h3 className="text-lg font-bold mb-2 text-gray-900 black:text-white">
-                  {t('talentMatching.boostTitle')}
-                </h3>
-                <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
-                  {t('talentMatching.boostDesc')}
-                </p>
-                <button className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl hover:shadow-lg transition-shadow text-xs">
-                  {t('talentMatching.upgradeNow')}
-                </button>
-              </div>
-              <div className="absolute -right-4 -top-4 opacity-[0.03] black:opacity-[0.05] group-hover:scale-105 transition-transform duration-500">
-                <Rocket size={100} className="text-blue-900 black:text-white" />
-              </div>
-            </div>
 
             {/* Global Leaderboard */}
             <div className="glass-panel rounded-3xl p-6 shadow-sm">
