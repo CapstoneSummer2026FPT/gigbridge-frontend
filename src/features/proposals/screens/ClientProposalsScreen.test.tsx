@@ -6,6 +6,7 @@ import ClientProposalsScreen from './ClientProposalsScreen';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  getMyJobPosts: vi.fn(),
   getProposalsByJobPost: vi.fn(),
   getProposalDetail: vi.fn(),
   updateProposalStatus: vi.fn(),
@@ -28,10 +29,7 @@ vi.mock('../../../shared/components/MarkdownEditor', () => ({
 
 vi.mock('../../../api/jobAPI', () => ({
   jobAPI: {
-    getMyJobPosts: vi.fn().mockResolvedValue({
-      success: true,
-      data: [{ jobPostsId: 'job-1', title: 'Marketplace request', description: 'Build a marketplace' }],
-    }),
+    getMyJobPosts: mocks.getMyJobPosts,
   },
 }));
 
@@ -112,6 +110,16 @@ const arrangeProposal = (status = ProposalStatus.Pending) => {
 describe('ClientProposalsScreen Phase 2', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getMyJobPosts.mockResolvedValue({
+      success: true,
+      data: [{
+        jobPostsId: 'job-1',
+        title: 'Marketplace request',
+        description: 'Build a marketplace',
+        status: 1,
+        visibility: 0,
+      }],
+    });
     arrangeProposal();
     mocks.updateProposalStatus.mockResolvedValue({ success: true, data: { success: true, status: ProposalStatus.Shortlisted } });
     mocks.acceptForNegotiation.mockResolvedValue({ success: true, data: 'conversation-1' });
@@ -159,5 +167,25 @@ describe('ClientProposalsScreen Phase 2', () => {
 
     expect(mocks.startNegotiationFromProposal).toHaveBeenCalledWith('proposal-1');
     expect(mocks.navigate).toHaveBeenCalledWith('/messages', { state: { activeConvId: 'conversation-2' } });
+  });
+
+  it('keeps proposal actions read-only when the selected job is closed', async () => {
+    mocks.getMyJobPosts.mockResolvedValueOnce({
+      success: true,
+      data: [{
+        jobPostsId: 'job-1',
+        title: 'Marketplace request',
+        description: 'Build a marketplace',
+        status: 2,
+        visibility: 0,
+      }],
+    });
+
+    render(<ClientProposalsScreen />);
+
+    expect(await screen.findByText(/Proposal review is read-only/i)).toBeInTheDocument();
+    expect(screen.queryByTitle('Shortlist')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Start negotiation')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Reject')).not.toBeInTheDocument();
   });
 });

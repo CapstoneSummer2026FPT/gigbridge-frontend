@@ -170,7 +170,17 @@ export default function ClientProposalsScreen() {
     navigate(`/proposals?job=${id}`, { replace: true });
   };
 
+  const selectedJob = jobs.find(item => item.jobPostsId === selectedJobId);
+  const selectedJobCanNegotiate =
+    Number(selectedJob?.status) === 1 &&
+    Number(selectedJob?.visibility) !== 3;
+
   const updateStatus = async (id: string, status: ProposalStatusValue, action: BusyAction) => {
+    if (!selectedJobCanNegotiate) {
+      setMessage('This job post is no longer open for proposal actions.');
+      return;
+    }
+
     setBusyAction(actionKey(id, action));
     setMessage('');
     const response = await proposalPatchAPI.updateProposalStatus(id, { status });
@@ -187,6 +197,11 @@ export default function ClientProposalsScreen() {
   };
 
   const acceptForNegotiation = async (id: string) => {
+    if (!selectedJobCanNegotiate) {
+      setMessage('This job post is no longer open for negotiation.');
+      return;
+    }
+
     setBusyAction(actionKey(id, 'accept'));
     setMessage('');
     const response = await proposalPostAPI.acceptForNegotiation(id);
@@ -201,6 +216,11 @@ export default function ClientProposalsScreen() {
   };
 
   const openNegotiation = async (id: string) => {
+    if (!selectedJobCanNegotiate) {
+      setMessage('This job post is no longer open for negotiation.');
+      return;
+    }
+
     setBusyAction(actionKey(id, 'open'));
     setMessage('');
     const response = await messagePostAPI.startNegotiationFromProposal(id);
@@ -214,9 +234,8 @@ export default function ClientProposalsScreen() {
     navigate('/messages', { state: { activeConvId: response.data } });
   };
 
-  const selectedJob = jobs.find(item => item.jobPostsId === selectedJobId);
   const isBusy = (id: string, action: BusyAction) => busyAction === actionKey(id, action);
-  const canClientAct = (status: number) => [ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(status);
+  const canClientAct = (status: number) => selectedJobCanNegotiate && [ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(status);
   const detailMilestoneTotal = detail?.milestonePlans?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ?? 0;
 
   const section = (title: string, value?: string | null) => value ? (
@@ -287,6 +306,11 @@ export default function ClientProposalsScreen() {
               <div className="min-w-0">
                 <h2 className="truncate font-bold">{selectedJob?.title || 'Select a project request'}</h2>
                 <p className="text-xs text-muted-foreground">{visible.length} of {proposals.length} proposals shown</p>
+                {selectedJob && !selectedJobCanNegotiate && (
+                  <p className="mt-1 text-xs font-semibold text-amber-600">
+                    This job post is not open for negotiation. Proposal review is read-only.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -341,7 +365,7 @@ export default function ClientProposalsScreen() {
                             <button title="View details" onClick={event => { event.stopPropagation(); setActiveId(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
                               <Eye size={14} /> Details
                             </button>
-                            {status === ProposalStatus.Pending && (
+                            {status === ProposalStatus.Pending && selectedJobCanNegotiate && (
                               <button title="Shortlist" disabled={isBusy(item.proposalsId, 'shortlist')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Shortlisted, 'shortlist'); }} className="inline-flex items-center justify-center gap-1 rounded border border-cyan-500/30 px-2 py-1.5 font-semibold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
                                 <Check size={14} /> {isBusy(item.proposalsId, 'shortlist') ? 'Saving' : 'Shortlist'}
                               </button>
@@ -430,7 +454,7 @@ export default function ClientProposalsScreen() {
 
                 <div className="flex flex-wrap gap-2 border-t border-border pt-4">
                   <button onClick={() => navigate(`/proposals/${detail.proposalId}/answers`)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted/20">Clarifying answers</button>
-                  {Number(detail.status) === ProposalStatus.Pending && (
+                  {Number(detail.status) === ProposalStatus.Pending && selectedJobCanNegotiate && (
                     <button disabled={isBusy(detail.proposalId, 'shortlist')} onClick={() => updateStatus(detail.proposalId, ProposalStatus.Shortlisted, 'shortlist')} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs font-bold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
                       <Check size={14} /> Shortlist
                     </button>
@@ -445,7 +469,7 @@ export default function ClientProposalsScreen() {
                       </button>
                     </>
                   )}
-                  {Number(detail.status) === ProposalStatus.Accepted && (
+                  {Number(detail.status) === ProposalStatus.Accepted && selectedJobCanNegotiate && (
                     <button disabled={isBusy(detail.proposalId, 'open')} onClick={() => openNegotiation(detail.proposalId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
                       <MessageSquare size={14} /> Open negotiation
                     </button>

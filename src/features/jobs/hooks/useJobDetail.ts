@@ -3,13 +3,14 @@ import { useLocation, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
+import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { savedJobAPI } from '../../../api/savedJobAPI';
 import { userGetAPI } from '../../../api/userAPI/GET';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
-import type { Job } from '../../../types/models/Job';
+import type { Job, JobPostDetailDto } from '../../../types/models/Job';
 import type { User } from '../../../types/models/User';
 import { UserRole } from '../../../types/models/User';
 import { JobPostStatus, type GetMyJobPostDetailDto } from '../../../types/models/Job';
@@ -56,6 +57,27 @@ const toJobFromClientDetail = (dto: GetMyJobPostDetailDto): Job => ({
   visibility: dto.visibility,
 });
 
+const toJobFromDetail = (dto: JobPostDetailDto): Job => ({
+  id: dto.jobPostsId,
+  clientId: dto.clientProfilesId,
+  title: dto.title,
+  description: dto.description,
+  category: dto.categoryName || 'All',
+  skills: dto.skills?.map(s => s.skillName) || [],
+  budgetMin: dto.budgetMin ?? 0,
+  budgetMax: dto.budgetMax ?? 0,
+  jobType: 'fixed',
+  deadline: dto.endDate ?? undefined,
+  status: toLegacyStatus(dto.status),
+  proposalCount: 0,
+  viewCount: 0,
+  postedAt: formatPostedAt(dto.createdAt),
+  createdAt: dto.createdAt,
+  isRemote: !dto.location || dto.location.toLowerCase().includes('remote'),
+  gigcoin_cost: 0,
+  visibility: dto.visibility ?? undefined,
+});
+
 /**
  * Custom hook that abstracts all data fetching, state management,
  * and side-effect logic for the Job Detail Screen.
@@ -75,7 +97,9 @@ export function useJobDetail() {
   const { user, role } = useApp();
 
   const activeJobPostId = jobPostId || id;
-  const isClientMode = location.pathname.startsWith('/jobs/my-jobs/');
+  const isClientRoute = location.pathname.startsWith('/jobs/my-jobs/');
+  const [isClientOwnedJob, setIsClientOwnedJob] = useState(false);
+  const isClientMode = isClientRoute || isClientOwnedJob;
 
   // ── Data state ────────────────────────────────────────────────
   const [job, setJob] = useState<Job | null>(null);
@@ -103,61 +127,100 @@ export function useJobDetail() {
 
     setLoading(true);
     try {
-      if (isClientMode) {
-        const res = await jobGetAPI.getMyJobPostById(activeJobPostId);
-        if (!res.data) throw new Error(res.message || 'Job not found');
-        setJob(toJobFromClientDetail(res.data));
+      if (role === UserRole.Client && user) {
+        const ownerResponse = await jobGetAPI.getMyJobPostById(activeJobPostId);
+        if (ownerResponse.success && ownerResponse.data) {
+          setIsClientOwnedJob(true);
+          setJob(toJobFromClientDetail(ownerResponse.data));
+          setClient(null);
+          setClientProfile(null);
+          setSimilarJobs([]);
+          return;
+        }
+
+        setIsClientOwnedJob(false);
+
+        if (isClientRoute) {
+          throw new Error(ownerResponse.message || 'Job not found');
+        }
+      } else {
+        setIsClientOwnedJob(false);
+      }
+
+      if (role === UserRole.Admin && user) {
+        const adminResponse = await adminGetAPI.getJobPostDetail(activeJobPostId);
+        if (!adminResponse.success || !adminResponse.data) {
+          throw new Error(adminResponse.message || 'Job not found');
+        }
+
+        setJob(toJobFromDetail(adminResponse.data));
         setClient(null);
         setClientProfile(null);
         setSimilarJobs([]);
         return;
       }
 
-      const data = await jobGetAPI.getJobById(activeJobPostId);
-      setJob(data.job);
-      
-      let fetchedClient: User | null = data.client ?? null;
-      let fetchedClientProfile: any = data.clientProfile ?? null;
+      try {
+        const data = await jobGetAPI.getJobById(activeJobPostId);
+        setJob(data.job);
 
-      if (!fetchedClient && data.job.clientId) {
-        try {
-          const profileRes = await profileGetAPI.getClientProfile(data.job.clientId);
-          if (profileRes.success && profileRes.data) {
-            const apiData = profileRes.data;
-            fetchedClient = {
-              id: apiData.userId,
-              full_name: apiData.userFullName || 'Client User',
-              avatar: apiData.userAvatar,
-              email: apiData.userEmail || '',
-              phone_number: '',
-              role: UserRole.Client,
-            } as any;
-            fetchedClientProfile = {
-              user_id: apiData.userId,
-              company_name: apiData.companyName || 'Company Name',
-              company_website: apiData.companyWebsite,
-              company_size: apiData.companySize,
-              industry: apiData.industry || 'Technology',
-              company_description: apiData.companyDescription || '',
-              location: apiData.location || 'San Francisco, CA',
-              rating: apiData.rating,
-              reviewCount: apiData.reviewCount,
-              totalSpent: apiData.totalSpent,
-              postedJobs: apiData.postedJobs,
-              isVerifiedClient: apiData.isVerifiedClient,
-            };
+        let fetchedClient: User | null = data.client ?? null;
+        let fetchedClientProfile: any = data.clientProfile ?? null;
+
+        if (!fetchedClient && data.job.clientId) {
+          try {
+            const profileRes = await profileGetAPI.getClientProfile(data.job.clientId);
+            if (profileRes.success && profileRes.data) {
+              const apiData = profileRes.data;
+              fetchedClient = {
+                id: apiData.userId,
+                full_name: apiData.userFullName || 'Client User',
+                avatar: apiData.userAvatar,
+                email: apiData.userEmail || '',
+                phone_number: '',
+                role: UserRole.Client,
+              } as any;
+              fetchedClientProfile = {
+                user_id: apiData.userId,
+                company_name: apiData.companyName || 'Company Name',
+                company_website: apiData.companyWebsite,
+                company_size: apiData.companySize,
+                industry: apiData.industry || 'Technology',
+                company_description: apiData.companyDescription || '',
+                location: apiData.location || 'San Francisco, CA',
+                rating: apiData.rating,
+                reviewCount: apiData.reviewCount,
+                totalSpent: apiData.totalSpent,
+                postedJobs: apiData.postedJobs,
+                isVerifiedClient: apiData.isVerifiedClient,
+              };
+            }
+          } catch (err) {
+            console.error('Failed to fetch client profile in useJobDetail:', err);
           }
-        } catch (err) {
-          console.error('Failed to fetch client profile in useJobDetail:', err);
         }
+
+        setClient(fetchedClient);
+        setClientProfile(fetchedClientProfile);
+
+        const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
+        setSimilarJobs(allJobs.filter(j => j.id !== activeJobPostId).slice(0, 3));
+      } catch (publicError) {
+        if (role === UserRole.Freelancer && user) {
+          const appliedResponse = await jobGetAPI.getMyAppliedJobPostById(activeJobPostId);
+          if (appliedResponse.success && appliedResponse.data) {
+            setJob(toJobFromDetail(appliedResponse.data));
+            setClient(null);
+            setClientProfile(null);
+            setSimilarJobs([]);
+            return;
+          }
+        }
+
+        throw publicError;
       }
-
-      setClient(fetchedClient);
-      setClientProfile(fetchedClientProfile);
-
-      const allJobs = await jobGetAPI.getJobs({ category: data.job.category });
-      setSimilarJobs(allJobs.filter(j => j.id !== activeJobPostId).slice(0, 3));
     } catch {
+      setIsClientOwnedJob(isClientRoute);
       setJob(null);
       setClient(null);
       setClientProfile(null);
@@ -165,7 +228,7 @@ export function useJobDetail() {
     } finally {
       setLoading(false);
     }
-  }, [activeJobPostId, isClientMode]);
+  }, [activeJobPostId, isClientRoute, role, user]);
 
   // ── Fetch my existing proposal ────────────────────────────────
   const fetchMyProposal = useCallback(async () => {
@@ -264,6 +327,11 @@ export function useJobDetail() {
 
   const handleApplyJob = async () => {
     if (!job || !user) return;
+    if (job.status !== 'open' || job.visibility === 3) {
+      setProposalMessage('This job post is no longer accepting proposals.');
+      return;
+    }
+
     setIsApplying(true);
     try {
       navigate(getProposalCreatePath(job.id));
@@ -274,6 +342,10 @@ export function useJobDetail() {
 
   const handleWithdrawProposal = async () => {
     if (!myProposal) return;
+    if (Number(myProposal.status) !== ProposalStatus.Pending) {
+      setProposalMessage('Only pending proposals can be withdrawn. Approved proposals stay in the hiring flow.');
+      return;
+    }
     setIsApplying(true);
     setProposalMessage('');
     try {
@@ -301,8 +373,9 @@ export function useJobDetail() {
 
   // ── Derived values ────────────────────────────────────────────
   const applicationCost = job?.gigcoin_cost ?? 0;
+  const canApplyToJob = job?.status === 'open' && job?.visibility !== 3;
   const canApplyWithGigcoins =
-    applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost);
+    canApplyToJob && (applicationCost === 0 || (gigcoinBalance !== null && gigcoinBalance >= applicationCost));
   const formatStatus = (status: Job['status']) =>
     status.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
@@ -332,6 +405,7 @@ export function useJobDetail() {
 
     // Derived
     applicationCost,
+    canApplyToJob,
     canApplyWithGigcoins,
 
     // Helpers

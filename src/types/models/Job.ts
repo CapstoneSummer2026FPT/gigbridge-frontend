@@ -175,6 +175,7 @@ export interface JobPostAttachmentDto {
 export interface JobPostDetailDto {
   jobPostsId: string;
   clientProfilesId: string;
+  clientFullName?: string | null;
   title: string;
   description: string;
   majorCategoryId?: string | null;

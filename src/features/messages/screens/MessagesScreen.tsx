@@ -166,7 +166,13 @@ export default function MessagesScreen() {
     if (status === 'pending_client') return 'Đang chờ cập nhật';
     return 'Đang đồng bộ';
   };
-  const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed';
+  const canNegotiateActiveJob = activeConv?.canNegotiate !== false;
+  const jobDetailPath = activeConv
+    ? isClient
+      ? `/jobs/my-jobs/${activeConv.job.id}`
+      : `/jobs/${activeConv.job.id}`
+    : '/jobs/browse';
+  const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed' && canNegotiateActiveJob;
   const dealPriceNumber = Number(dealPriceInput) || 0;
   const dealPriceValid = dealPriceNumber > 0 && dealPriceNumber <= 9999999999999999.99 && Math.round(dealPriceNumber * 100) / 100 === dealPriceNumber;
   const dealMilestonesMatchPrice = dealPriceValid && Math.abs(dealMilestoneTotal - dealPriceNumber) < 0.01;
@@ -341,7 +347,7 @@ export default function MessagesScreen() {
                   
                   {/* Premium Job Pill */}
                   <div 
-                    onClick={() => navigate(`/jobs/${activeConv.job.id}`)}
+                    onClick={() => navigate(jobDetailPath)}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--gb-cyan)]/5 border border-[var(--gb-cyan)]/15 text-[10px] font-bold text-[var(--gb-cyan)] mt-1.5 max-w-[280px] md:max-w-md truncate cursor-pointer hover:bg-[var(--gb-cyan)]/10 active:scale-95 transition-all shadow-[0_1px_2px_rgba(0,119,255,0.02)]"
                     title={t('messages.clickViewJobPost')}
                   >
@@ -412,6 +418,11 @@ export default function MessagesScreen() {
             {/* Message History */}
             <div ref={chatHistoryRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6 flex flex-col gap-6 messages-custom-scroll">
               {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
+              {!canNegotiateActiveJob && activeConv.roomType !== 'workspace' && (
+                <div className="mx-auto max-w-xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-xs font-semibold text-amber-700">
+                  This job post is no longer open for negotiation. Final offers and negotiation responses are disabled.
+                </div>
+              )}
               <div className="flex justify-center">
                 <span className="bg-muted px-3 py-1 rounded-full text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
                   {activeConv.roomType === 'invited'
@@ -578,7 +589,11 @@ export default function MessagesScreen() {
                               Đề xuất này không còn là đề xuất hiện tại.
                             </div>
                           ) : dealBubbleStatus === 'pending_freelancer' ? (
-                            !mine ? (
+                            !canNegotiateActiveJob ? (
+                              <div className="text-xs text-center text-amber-700 font-medium bg-amber-500/10 p-2 rounded-lg">
+                                This job post is no longer open for negotiation.
+                              </div>
+                            ) : !mine ? (
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleAcceptDeal(
@@ -820,7 +835,7 @@ export default function MessagesScreen() {
                             </div>
 
                             {/* "Vào vòng đàm phán" – only when in Invited room and not yet requested */}
-                            {activeConv.roomType === 'invited' && negStatus === 'idle' && (
+                            {activeConv.roomType === 'invited' && negStatus === 'idle' && canNegotiateActiveJob && (
                               <button
                                 onClick={handleSendNegotiationRequest}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-foreground hover:bg-teal-500/10 hover:text-teal-600 transition-colors cursor-pointer text-left border-none bg-transparent"
@@ -830,6 +845,15 @@ export default function MessagesScreen() {
                                 </div>
                                 <span>Vào vòng đàm phán</span>
                               </button>
+                            )}
+
+                            {activeConv.roomType === 'invited' && negStatus === 'idle' && !canNegotiateActiveJob && (
+                              <div className="flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground">
+                                <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0 text-amber-600">
+                                  <ArrowRightLeft size={14} />
+                                </div>
+                                <span className="text-xs">Job post is no longer open for negotiation.</span>
+                              </div>
                             )}
 
                             {/* Already requested state */}
@@ -986,7 +1010,7 @@ export default function MessagesScreen() {
                   </div>
 
                   <button
-                    onClick={() => navigate(`/jobs/${activeConv.job.id}`)}
+                    onClick={() => navigate(jobDetailPath)}
                     className="w-full flex items-center justify-center gap-2 mt-2 py-3 text-xs font-extrabold text-white bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 rounded-xl shadow-lg shadow-blue-500/10 active:scale-[0.97] transition-all cursor-pointer border-none"
                   >
                     <ExternalLink size={13} />

@@ -136,6 +136,8 @@ export interface JobInfo {
   title: string;
   budget: string;
   category: string;
+  status?: number | null;
+  visibility?: number | null;
 }
 
 export interface MsgConversation {
@@ -161,6 +163,9 @@ export interface MsgConversation {
   lastOfferId?: string | null;
   proposalBudget?: number | null;
   proposalDuration?: string | null;
+  jobStatus?: number | null;
+  jobVisibility?: number | null;
+  canNegotiate?: boolean;
 }
 
 export interface NegotiationMilestoneDto {

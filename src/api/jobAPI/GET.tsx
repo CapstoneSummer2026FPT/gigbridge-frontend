@@ -149,7 +149,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
   deadline: job.endDate ?? undefined,
-  status: 'open',
+  status: toLegacyStatusFromJobPost(job.status),
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
@@ -157,6 +157,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
+  visibility: job.visibility ?? undefined,
 });
 
 const filterLegacyJobs = (jobs: Job[], filters: LegacyJobFilters = {}): Job[] => {
@@ -277,6 +278,14 @@ export const jobGetAPI = {
     params: JobPostQueryParams = {}
   ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
     return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/my-applications`, params);
+  },
+
+  /**
+   * GET /api/JobPosts/my-applications/{jobPostId}
+   * Freelancer-only job post detail for jobs the current user applied to or was invited to.
+   */
+  getMyAppliedJobPostById: async (jobPostId: string): Promise<ApiResponse<JobPostDetailDto>> => {
+    return apiService.get<JobPostDetailDto>(`${jobPostsUrl}/my-applications/${jobPostId}`);
   },
 
   /**

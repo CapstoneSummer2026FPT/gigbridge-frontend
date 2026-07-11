@@ -31,6 +31,9 @@ export interface ConversationSummaryResponse {
   jobCategoryName?: string | null;
   proposalBudget?: number | null;
   proposalDuration?: string | null;
+  jobStatus?: number | null;
+  jobVisibility?: number | null;
+  canNegotiate?: boolean;
 }
 
 export interface MessageAttachmentResponse {
