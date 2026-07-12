@@ -56,6 +56,14 @@ function mapBackendConversation(c: any): MsgConversation {
   const jobBudgetMin = c.jobBudgetMin ?? c.JobBudgetMin ?? null;
   const jobBudgetMax = c.jobBudgetMax ?? c.JobBudgetMax ?? null;
   const jobCurrency = c.jobCurrency ?? c.JobCurrency ?? 'G-coin';
+  const jobStatus = c.jobStatus ?? c.JobStatus ?? null;
+  const jobVisibility = c.jobVisibility ?? c.JobVisibility ?? null;
+  const backendCanNegotiate = c.canNegotiate ?? c.CanNegotiate;
+  const canNegotiate = typeof backendCanNegotiate === 'boolean'
+    ? backendCanNegotiate
+    : jobStatus == null
+      ? Number(jobVisibility) !== 3
+      : Number(jobStatus) === 1 && Number(jobVisibility) !== 3;
   const isClient = (c.otherParticipantRole ?? c.OtherParticipantRole) === 0;
   const isInvited = conversationType === 4;
   const isWorkspace = conversationType === 1;
@@ -84,6 +92,8 @@ function mapBackendConversation(c: any): MsgConversation {
             ? `${jobBudgetMin ?? jobBudgetMax} - ${jobBudgetMax ?? jobBudgetMin} ${jobCurrency}`
             : 'Not specified',
       category: c.jobCategoryName ?? c.JobCategoryName ?? '',
+      status: jobStatus,
+      visibility: jobVisibility,
     },
     lastMessage: c.lastMessage?.content || '',
     lastMessageAt: c.lastMessageAt || c.createdAt || new Date().toISOString(),
@@ -95,6 +105,9 @@ function mapBackendConversation(c: any): MsgConversation {
     lastOfferId,
     proposalBudget,
     proposalDuration,
+    jobStatus,
+    jobVisibility,
+    canNegotiate,
   };
 }
 
@@ -302,6 +315,15 @@ export function useMessages() {
   const [googleMeetConnecting, setGoogleMeetConnecting] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [anchorNotice, setAnchorNotice] = useState('');
+  const negotiationClosedNotice = 'This job post is no longer open for negotiation.';
+  const ensureActiveNegotiationEligible = useCallback(() => {
+    if (activeConv?.canNegotiate === false) {
+      setAnchorNotice(negotiationClosedNotice);
+      return false;
+    }
+
+    return true;
+  }, [activeConv?.canNegotiate]);
   const [acceptFeeDialog, setAcceptFeeDialog] = useState<{
     offerId: string;
     jobAmount: number;
@@ -1116,6 +1138,7 @@ export function useMessages() {
 
   const handleProposeDeal = async () => {
     if (!dealPriceInput.trim() || !activeConvId) return;
+    if (!ensureActiveNegotiationEligible()) return;
     const price = parseFloat(dealPriceInput);
     if (!Number.isFinite(price) || price <= 0 || price > 9999999999999999.99 || Math.round(price * 100) / 100 !== price) {
       setAnchorNotice('Final price must be positive and use at most 2 decimal places.');
@@ -1180,6 +1203,7 @@ export function useMessages() {
 
   const handleSaveDealMilestones = async () => {
     if (!activeConvId) return;
+    if (!ensureActiveNegotiationEligible()) return;
     setDealMilestonesSaving(true);
     const normalized = normalizeDealMilestones(dealMilestones);
     const response = await messagePutAPI.updateNegotiationMilestonePlan(activeConvId, { milestones: normalized });
@@ -1195,6 +1219,7 @@ export function useMessages() {
   const handleAcceptDeal = async (negotiationOfferId?: string | null, offeredAmount?: number) => {
     const offerId = negotiationOfferId ?? activeConv?.lastOfferId;
     if (!offerId || !activeConvId) return;
+    if (!ensureActiveNegotiationEligible()) return;
 
     const jobAmount = offeredAmount ?? Number(activeConv?.proposedPrice);
     if (!Number.isFinite(jobAmount) || jobAmount <= 0) {
@@ -1239,6 +1264,10 @@ export function useMessages() {
 
   const confirmAcceptDeal = async () => {
     if (!acceptFeeDialog || !activeConvId || isAcceptingDeal) return;
+    if (!ensureActiveNegotiationEligible()) {
+      setAcceptFeeDialog(null);
+      return;
+    }
 
     const serviceFee = calculateServiceFee(acceptFeeDialog.jobAmount);
     if (acceptFeeDialog.balance === null) return;
@@ -1308,6 +1337,7 @@ export function useMessages() {
   const handleDeclineDeal = async (negotiationOfferId?: string | null) => {
     const offerId = negotiationOfferId ?? activeConv?.lastOfferId;
     if (!offerId || !activeConvId) return;
+    if (!ensureActiveNegotiationEligible()) return;
     try {
       const res = await messagePostAPI.respondFinalOffer({
         negotiationOfferId: offerId,
@@ -1373,13 +1403,19 @@ export function useMessages() {
 
   // ── "Vào vòng đàm phán" – Client confirm move directly without waiting ────
   const handleSendNegotiationRequest = useCallback(() => {
+    if (!ensureActiveNegotiationEligible()) {
+      setShowConvMenu(false);
+      return;
+    }
+
     setShowConvMenu(false);
     setShowNegModal(true);
-  }, []);
+  }, [ensureActiveNegotiationEligible]);
 
   const handleConfirmMoveToNegotiation = async () => {
     setShowNegModal(false);
     if (!activeConv?.proposalId) return;
+    if (!ensureActiveNegotiationEligible()) return;
 
     try {
       await messagePostAPI.startNegotiationFromProposal(activeConv.proposalId);

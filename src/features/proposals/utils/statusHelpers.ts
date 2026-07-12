@@ -27,7 +27,7 @@ export const canSubmitDraftProposal = (status: number | string | null | undefine
 
 export const canWithdrawProposal = (status: number | string | null | undefined) => {
   const value = Number(status);
-  return value === ProposalStatus.Pending || value === ProposalStatus.Shortlisted;
+  return value === ProposalStatus.Pending;
 };
 
 export const canEditProposal = (status: number | string | null | undefined) =>

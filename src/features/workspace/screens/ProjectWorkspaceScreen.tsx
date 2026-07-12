@@ -413,7 +413,7 @@ export default function ProjectWorkspaceScreen() {
             <div className="flex flex-col">
               <h1 className="font-headline-md text-base font-bold text-foreground">{currentProjData.titleLong}</h1>
               <button
-                onClick={() => navigate(`/jobs/${project.jobId}`)}
+                onClick={() => navigate(isClient ? `/jobs/my-jobs/${project.jobId}` : `/jobs/${project.jobId}`)}
                 className="text-[10px] text-[var(--gb-cyan)] font-bold hover:underline uppercase tracking-widest text-left mt-0.5 cursor-pointer"
               >
                 {t('workspace.viewJobDetail')}

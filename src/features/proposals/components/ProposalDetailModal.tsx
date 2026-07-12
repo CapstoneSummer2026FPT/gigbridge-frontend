@@ -3,6 +3,7 @@ import { X, Download, FileText, Award } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ProposalViewModel } from '../../../types/models/Proposal';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { getStatusLabel } from '../utils/statusHelpers';
 
 interface ProposalDetailModalProps {
   proposal: ProposalViewModel;
@@ -124,13 +125,7 @@ export const ProposalDetailModal: FC<ProposalDetailModalProps> = ({
               </div>
               <div>
                 <span>Status</span>
-                <strong>
-                  {proposal.status === 0 && 'Pending'}
-                  {proposal.status === 1 && 'Shortlisted'}
-                  {proposal.status === 2 && 'Accepted'}
-                  {proposal.status === 3 && 'Rejected'}
-                  {proposal.status === 4 && 'Withdrawn'}
-                </strong>
+                <strong>{getStatusLabel(proposal.status)}</strong>
               </div>
               <div>
                 <span>Submitted</span>

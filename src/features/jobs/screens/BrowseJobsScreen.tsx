@@ -95,7 +95,7 @@ export default function BrowseJobsScreen() {
       try {
         setLoading(true);
         setLoadError(null);
-        const data = await jobGetAPI.getJobs();
+        const data = await jobGetAPI.getAllPublicJobs();
         setAllJobs(data.map(job => ({
           ...job,
           datePosted: job.createdAt || '',

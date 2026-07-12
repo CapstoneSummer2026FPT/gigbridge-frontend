@@ -30,6 +30,7 @@ export default function JobDetailScreen() {
     isSavingSavedJob,
     proposalMessage,
     applicationCost,
+    canApplyToJob,
     canApplyWithGigcoins,
     formatStatus,
     toggleSavedJob,
@@ -301,6 +302,10 @@ export default function JobDetailScreen() {
                     {canViewProposalAnswers(myProposal.status) && (
                       <button className="jd-btn-secondary" onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}><FileText size={13} />{t('jobDetail.viewAnswers')}</button>
                     )}
+                  </div>
+                ) : !canApplyToJob ? (
+                  <div className="rounded-xl border border-warning/25 bg-warning/8 p-3 text-xs font-semibold text-warning">
+                    This job post is no longer accepting proposals.
                   </div>
                 ) : canApplyWithGigcoins ? (
                   <button className="jd-btn-apply" onClick={handleApplyJob} disabled={isApplying}>

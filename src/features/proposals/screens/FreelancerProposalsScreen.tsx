@@ -82,6 +82,11 @@ export default function FreelancerProposalsScreen() {
   );
 
   const handleWithdraw = async (proposal: ProposalItem) => {
+    if (!canWithdrawProposal(proposal.status)) {
+      setMessage('Only pending proposals can be withdrawn. Approved proposals stay in the hiring flow.');
+      return;
+    }
+
     setActionLoadingId(proposal.proposalsId);
     setMessage('');
 

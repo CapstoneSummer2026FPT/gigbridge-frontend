@@ -18,6 +18,7 @@ import type {
 } from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
+const PUBLIC_JOB_FETCH_PAGE_SIZE = 100;
 
 const mergeSkillNames = (...groups: Array<Array<string | null | undefined> | undefined>): string[] => {
   const result: string[] = [];
@@ -149,7 +150,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   budgetMax: job.budgetMax ?? 0,
   jobType: 'fixed',
   deadline: job.endDate ?? undefined,
-  status: 'open',
+  status: toLegacyStatusFromJobPost(job.status),
   proposalCount: 0,
   viewCount: 0,
   postedAt: formatPostedAt(job.createdAt),
@@ -157,6 +158,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
+  visibility: job.visibility ?? undefined,
 });
 
 const filterLegacyJobs = (jobs: Job[], filters: LegacyJobFilters = {}): Job[] => {
@@ -280,6 +282,14 @@ export const jobGetAPI = {
   },
 
   /**
+   * GET /api/JobPosts/my-applications/{jobPostId}
+   * Freelancer-only job post detail for jobs the current user applied to or was invited to.
+   */
+  getMyAppliedJobPostById: async (jobPostId: string): Promise<ApiResponse<JobPostDetailDto>> => {
+    return apiService.get<JobPostDetailDto>(`${jobPostsUrl}/my-applications/${jobPostId}`);
+  },
+
+  /**
    * GET /api/JobPosts/{jobPostId}/questions
    * Questions attached to a job post.
    */
@@ -291,6 +301,34 @@ export const jobGetAPI = {
   getJobs: async (params: LegacyJobFilters = {}): Promise<Job[]> => {
     const response = await jobGetAPI.getPublicJobPosts(params);
     return filterLegacyJobs((response.data || []).map(toLegacyJobFromSummary), params);
+  },
+
+  getAllPublicJobs: async (params: LegacyJobFilters = {}): Promise<Job[]> => {
+    const allJobs: JobPostSummaryDto[] = [];
+    let pageIndex = 1;
+
+    while (true) {
+      const response = await jobGetAPI.getPublicJobPosts({
+        ...params,
+        pageIndex,
+        pageSize: PUBLIC_JOB_FETCH_PAGE_SIZE,
+      });
+
+      if (!response.success) {
+        throw new Error(response.message || 'Unable to load public jobs.');
+      }
+
+      const items = response.data || [];
+      allJobs.push(...items);
+
+      if (items.length < PUBLIC_JOB_FETCH_PAGE_SIZE) {
+        break;
+      }
+
+      pageIndex += 1;
+    }
+
+    return filterLegacyJobs(allJobs.map(toLegacyJobFromSummary), params);
   },
 
   getJobById: async (id: string): Promise<{ job: Job; client: null; clientProfile: null }> => {
