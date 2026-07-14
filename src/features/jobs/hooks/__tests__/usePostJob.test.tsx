@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePostJob } from '../usePostJob';
 import { jobAPI } from '../../../../api/jobAPI';
-import { JobPostStatus } from '../../../../types/models/Job';
 
 let mockLocationState: any = null;
 const mockNavigate = vi.fn();
@@ -114,7 +113,7 @@ describe('usePostJob hook skills conversion', () => {
     });
   });
 
-  it('publishes a project request without requiring clarifying questions', async () => {
+  it('continues to contract setup without requiring clarifying questions', async () => {
     vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue({ success: true, data: [] });
 
     const { result } = renderHook(() => usePostJob());
@@ -140,8 +139,11 @@ describe('usePostJob hook skills conversion', () => {
       title: 'Build vendor onboarding portal',
       questions: [],
     }));
-    expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
-    expect(mockNavigate).toHaveBeenCalledWith('/jobs/my-jobs/job-1');
-    expect(mockNavigate).not.toHaveBeenCalledWith('/jobs/post/contract', expect.anything());
+    expect(jobAPI.updateJobPostStatus).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/jobs/post/contract', expect.objectContaining({
+      state: expect.objectContaining({
+        jobPostId: 'job-1',
+      }),
+    }));
   });
 });
