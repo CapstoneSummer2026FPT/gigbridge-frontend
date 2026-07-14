@@ -3,19 +3,19 @@ import type { ClientProfileDetailDto, FreelancerProfileDetailDto } from '../../t
 
 export const profileGetAPI = {
   getFreelancerProfile: async (userId: string) => {
-    return await apiService.get<FreelancerProfileDetailDto>(`Profile/freelancer/${userId}`);
+    return await apiService.get<FreelancerProfileDetailDto>(`profile/freelancer/${userId}`);
   },
 
   getMyFreelancerProfile: async () => {
-    return await apiService.get<FreelancerProfileDetailDto>('Profile/freelancer/me');
+    return await apiService.get<FreelancerProfileDetailDto>('profile/freelancer/me');
   },
 
   getClientProfile: async (userId: string) => {
-    return await apiService.get<ClientProfileDetailDto>(`Profile/client/${userId}`);
+    return await apiService.get<ClientProfileDetailDto>(`profile/client/${userId}`);
   },
 
   getAllFreelancers: async (filters?: { skills?: string[]; availabilityStatus?: string; minRating?: number }) => {
-    return await apiService.get<FreelancerProfileDetailDto[]>('Profile/freelancer', filters || {});
+    return await apiService.get<FreelancerProfileDetailDto[]>('profile/freelancer', filters || {});
   },
 
   getCompanySizes: async () => {

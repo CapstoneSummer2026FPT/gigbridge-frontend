@@ -1,7 +1,8 @@
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  TrendingUp, Star, Zap, ChevronRight,
-  FileText, Briefcase, ArrowUpRight,
+  TrendingUp, Star, Zap, ChevronRight, ChevronDown,
+  FileText, Briefcase, ArrowUpRight, Crown, Shield, Megaphone,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useFreelancerDashboard } from '../hooks/useFreelancerDashboard';
@@ -10,9 +11,13 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import '../styles/freelancer-dashboard-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { premiumAPI } from '../../premium/api';
+import { usePremiumResource } from '../../premium/hooks';
 
 export default function FreelancerDashboardScreen() {
   const navigate = useNavigate();
+  const premium = usePremiumResource(useCallback(premiumAPI.points, []));
+  const [premiumBarOpen, setPremiumBarOpen] = useState(false);
 
   const {
     user,
@@ -95,6 +100,18 @@ export default function FreelancerDashboardScreen() {
           </section>
 
           {/* ── Main Content: Asymmetric 12-col Grid ── */}
+          {premium.data?.isPremium && <div className="glass-card w-full rounded-3xl overflow-hidden transition-all hover:!border-brand">
+            <button type="button" className="w-full p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 text-left" onClick={() => setPremiumBarOpen(open => !open)} aria-expanded={premiumBarOpen}>
+              <div className="flex items-center gap-4"><Crown size={24} className="text-purple" /><div><div className="font-black text-text-primary">Premium status</div><div className="text-sm text-text-secondary">{premium.data.tierName || 'Premium'} · {premium.data.eloPoints} Elo</div></div></div>
+              <span className="font-bold text-brand flex items-center gap-2">{premiumBarOpen ? 'Hide details' : 'Show details'} <ChevronDown size={18} className={`transition-transform ${premiumBarOpen ? 'rotate-180' : ''}`} /></span>
+            </button>
+            {premiumBarOpen && <div className="border-t border-border px-6 py-4 flex flex-wrap items-center gap-3">
+              <button className="premium-dashboard-link" onClick={() => navigate('/premium/freelancer/points')}><Star size={16} /> Points & tier</button>
+              <button className="premium-dashboard-link" onClick={() => navigate('/premium/freelancer/rank-protection')}><Shield size={16} /> Rank protection</button>
+              <button className="premium-dashboard-link" onClick={() => navigate('/premium/freelancer/promotions')}><Megaphone size={16} /> Promotions</button>
+              <button className="premium-dashboard-link ml-auto" onClick={() => navigate('/premium/freelancer')}>Open hub <ChevronRight size={16} /></button>
+            </div>}
+          </div>}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
 
             {/* ── Left Column (8 cols) ── */}

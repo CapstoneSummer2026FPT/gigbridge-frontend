@@ -10,6 +10,7 @@ import {
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
 import { reportAPI } from '../../api/reportAPI';
+import { premiumAPI } from '../../features/premium/api';
 import '../styles/Sidebar.css';
 
 interface NavItem {
@@ -304,9 +305,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [pendingReportCount, setPendingReportCount] = useState<number | null>(null);
   const [reviewingReportCount, setReviewingReportCount] = useState<number | null>(null);
   const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
+  const [showPremiumTeaser, setShowPremiumTeaser] = useState(false);
+  const [isPremiumFreelancer, setIsPremiumFreelancer] = useState(false);
 
   const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
   const adminSections = role === 2 ? getAdminNavSections(t, openReportCount) : [];
+
+  useEffect(() => {
+    let active = true;
+    if (role !== 1) { setIsPremiumFreelancer(false); return; }
+    void premiumAPI.currentSubscription().then(response => {
+      if (active) setIsPremiumFreelancer(Boolean(response.success && response.data?.isPremium && new Date(response.data.endDate) > new Date()));
+    });
+    return () => { active = false; };
+  }, [role, location.pathname]);
 
   useEffect(() => {
     if (role !== 2) return;
@@ -449,10 +461,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="sidebar-pro-badge">
           <div className="sidebar-pro-header">
             <Zap size={14} className="sidebar-pro-icon" />
-            <span className="sidebar-pro-title">GigBridge Pro</span>
+            <span className="sidebar-pro-title">{t(role === 0 ? 'nav.clientPremium' : isPremiumFreelancer ? 'nav.premiumActive' : 'nav.freelancerPremium')}</span>
           </div>
           <p className="sidebar-pro-desc">{t('nav.proBadgeDesc')}</p>
-          <button className="btn-cyan sidebar-pro-button">{t('nav.upgrade')}</button>
+          <button className="btn-cyan sidebar-pro-button" disabled={role === 0} onClick={() => role === 1 && (isPremiumFreelancer ? handleNavigate('/premium/freelancer') : setShowPremiumTeaser(true))}>{t(role === 0 ? 'nav.comingSoon' : isPremiumFreelancer ? 'nav.openHub' : 'nav.upgrade')}</button>
         </div>
       )}
 
@@ -487,6 +499,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="flex items-center justify-between text-xs">
               <span className="text-secondary">Reviewing</span>
               <span className="badge-amber text-[10px] px-1.5 py-0">{reviewingReportCount ?? 0}</span>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+      {showPremiumTeaser && typeof document !== 'undefined' && createPortal(
+        <div className="premium-modal" onClick={() => setShowPremiumTeaser(false)}>
+          <div className="premium-modal-box" onClick={event => event.stopPropagation()}>
+            <div className="premium-eyebrow"><Zap size={16} /> GigBridge Premium</div>
+            <h2 className="text-2xl font-black text-primary mt-2">{t('nav.premiumTeaserTitle')}</h2>
+            <p className="premium-muted mt-2">{t('nav.premiumTeaserDesc')}</p>
+            <div className="premium-grid mt-4">
+              <div className="premium-card"><Shield size={20} /><strong>{t('nav.protectRank')}</strong></div>
+              <div className="premium-card"><TrendingUp size={20} /><strong>{t('nav.boostVisibility')}</strong></div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button className="premium-button secondary" onClick={() => setShowPremiumTeaser(false)}>{t('nav.notNow')}</button>
+              <button className="premium-button" onClick={() => { setShowPremiumTeaser(false); handleNavigate('/premium/freelancer/pricing'); }}>
+                {t('nav.viewFreelancerPlans')}
+              </button>
             </div>
           </div>
         </div>,

@@ -51,6 +51,23 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.talent-featured-promotion .browse-promotion-section {
+  display: grid;
+  gap: 12px;
+}
+
+.talent-featured-promotion .browse-promotion-section > h3 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.talent-featured-promotion .browse-promotion-section .promotion-profile-card {
+  width: 100%;
+  min-height: 390px;
+}
+
 /* Compact layout overrides */
 .compact-layout .bento-card {
   padding: 12px 16px !important;

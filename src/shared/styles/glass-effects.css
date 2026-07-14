@@ -618,6 +618,12 @@ input[type="number"].input-gb::-webkit-inner-spin-button {
   box-shadow: 0 0 0 2px #0A0F1C, 0 0 0 4px rgba(0, 119, 255, 0.4);
 }
 
+.premium-avatar-ring{position:relative;isolation:isolate;box-shadow:0 0 0 2px var(--card),0 0 0 4px #f5b942,0 0 14px rgba(139,92,246,.45);background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff}
+.premium-avatar-crown{position:absolute;z-index:2;right:-4px;bottom:-4px;width:13px;height:13px;padding:2px;border-radius:50%;color:#6d4300;fill:#6d4300;background:#f5b942;box-shadow:0 0 0 2px var(--card);filter:none}
+.premium-user-name{color:#7c3aed;font-weight:800}
+.become-premium-button{display:inline-flex;align-items:center;gap:.45rem;padding:.55rem .8rem;border-radius:.75rem;border:1px solid rgba(139,92,246,.45);background:linear-gradient(135deg,rgba(124,58,237,.16),rgba(34,211,238,.12));color:#7c3aed;font-size:.75rem;font-weight:900;white-space:nowrap;transition:transform .2s,border-color .2s,box-shadow .2s}.become-premium-button:hover{transform:translateY(-1px);border-color:#7c3aed;box-shadow:0 8px 24px rgba(124,58,237,.18)}
+@media (prefers-reduced-motion:no-preference){.premium-avatar-ring{animation:premiumAvatarGlow 3s ease-in-out infinite alternate}@keyframes premiumAvatarGlow{to{box-shadow:0 0 0 2px var(--card),0 0 0 4px #c084fc,0 0 18px rgba(34,211,238,.55)}}}
+
 /* ─── Notification dot ─── */
 .notif-dot {
   width: 8px;

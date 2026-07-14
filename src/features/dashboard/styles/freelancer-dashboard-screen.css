@@ -297,3 +297,5 @@
     filter: blur(60px) !important;
   }
 }
+.premium-dashboard-link{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem .85rem;border-radius:.75rem;color:var(--text-secondary);font-size:.8rem;font-weight:800;transition:color .2s,background .2s}
+.premium-dashboard-link:hover{color:var(--gb-purple,#7c3aed);background:rgba(124,58,237,.08)}

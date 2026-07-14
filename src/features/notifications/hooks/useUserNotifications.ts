@@ -127,8 +127,13 @@ const getActionUrl = (notification: any, type: UiNotificationType): string | und
 
 const normalizeNotification = (notification: any): UiNotification => {
   const type = normalizeType(getField(notification, 'type', 'Type'));
-  const title = getField<string>(notification, 'title', 'Title') ?? 'Notification';
-  const body = getField<string>(notification, 'body', 'message', 'content', 'Message', 'Content') ?? '';
+  let title = getField<string>(notification, 'title', 'Title') ?? 'Notification';
+  let body = getField<string>(notification, 'body', 'message', 'content', 'Message', 'Content') ?? '';
+  if (title.trim().toLowerCase() === 'freelancer premium activated') {
+    const endDate = body.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+    title = endDate ? `Freelancer Premium activated through ${endDate}` : title;
+    body = '';
+  }
   const createdAt = getField<string>(notification, 'createdAt', 'CreatedAt') ?? new Date().toISOString();
   const metadataRaw = getField<any>(notification, 'metadata', 'Metadata');
   let schedule: UiNotification['schedule'];
