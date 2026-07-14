@@ -70,9 +70,11 @@ export interface WalletResponse {
   walletId: string;
   userId: string;
   availableTokens: number;
+  withdrawableTokens: number;
   heldTokens: number;
   pendingWithdrawalTokens: number;
   availableVnd: number;
+  withdrawableVnd: number;
   heldVnd: number;
   pendingWithdrawalVnd: number;
 }

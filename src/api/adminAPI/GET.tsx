@@ -9,7 +9,7 @@ import type {
 } from '../../types/models/Cheating';
 import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
-import type { WithdrawalResponse } from '../../types/models/Financial';
+import type { WithdrawalResponse, WithdrawalStatus } from '../../types/models/Financial';
 
 const Admin_Api_Base_Url = '/admin';
 

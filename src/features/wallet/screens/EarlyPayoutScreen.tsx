@@ -110,10 +110,13 @@ export default function EarlyPayoutScreen() {
   );
 
   const amountValue = Number(amount || 0);
+  const availableTokens = wallet?.availableTokens ?? 0;
+  const withdrawableTokens = wallet?.withdrawableTokens ?? 0;
+  const nonWithdrawableTokens = Math.max(0, availableTokens - withdrawableTokens);
   const feeVnd = 0;
   const vndAmount = amountValue * VND_PER_GIGCOIN;
   const netVnd = Math.max(0, vndAmount - feeVnd);
-  const hasEnoughBalance = wallet ? amountValue <= wallet.availableTokens : false;
+  const hasEnoughBalance = wallet ? amountValue <= withdrawableTokens : false;
   const amountValid =
     Number.isFinite(amountValue) &&
     amountValue >= MIN_WITHDRAWAL_TOKENS &&
@@ -283,7 +286,7 @@ export default function EarlyPayoutScreen() {
     }
 
     if (!amountValid) {
-      setError(`Số GigCoin rút phải từ ${MIN_WITHDRAWAL_TOKENS} đến ${MAX_WITHDRAWAL_TOKENS.toLocaleString('vi-VN')} và không vượt quá số dư khả dụng.`);
+      setError(`Số GigCoin rút phải từ ${MIN_WITHDRAWAL_TOKENS} đến ${MAX_WITHDRAWAL_TOKENS.toLocaleString('vi-VN')} và không vượt quá GigCoin kiếm được từ dự án.`);
       return;
     }
 
@@ -354,9 +357,15 @@ export default function EarlyPayoutScreen() {
             <section className="early-payout-stats">
               <div className="early-payout-stat">
                 <Wallet size={18} />
-                <span>Khả dụng</span>
-                <strong><GigCoinAmount amount={wallet?.availableTokens || 0} /></strong>
-                <small>{formatVnd(wallet?.availableVnd || 0)}</small>
+                <span>Tổng khả dụng</span>
+                <strong><GigCoinAmount amount={availableTokens} /></strong>
+                <small>{formatVnd(wallet?.availableVnd ?? 0)}</small>
+              </div>
+              <div className="early-payout-stat">
+                <Banknote size={18} />
+                <span>Có thể rút</span>
+                <strong><GigCoinAmount amount={withdrawableTokens} /></strong>
+                <small>{formatVnd(wallet?.withdrawableVnd ?? 0)}</small>
               </div>
               <div className="early-payout-stat">
                 <ShieldCheck size={18} />
@@ -377,8 +386,13 @@ export default function EarlyPayoutScreen() {
                 <div className="early-payout-balance">
                   <Wallet size={24} />
                   <div>
-                    <span>Số dư có thể rút</span>
-                    <strong><GigCoinAmount amount={wallet?.availableTokens || 0} /></strong>
+                    <span>GigCoin kiếm được có thể rút</span>
+                    <strong><GigCoinAmount amount={withdrawableTokens} /></strong>
+                    {nonWithdrawableTokens > 0 && (
+                      <small className="early-payout-balance-note">
+                        <GigCoinAmount amount={nonWithdrawableTokens} /> còn lại chỉ dùng trong app.
+                      </small>
+                    )}
                   </div>
                 </div>
 
@@ -389,7 +403,7 @@ export default function EarlyPayoutScreen() {
                       type="button"
                       className={amountValue === quickAmount ? 'selected' : ''}
                       onClick={() => setAmount(String(quickAmount))}
-                      disabled={quickAmount > (wallet?.availableTokens || 0)}
+                      disabled={quickAmount > withdrawableTokens}
                     >
                       <GigCoinAmount amount={quickAmount} />
                     </button>

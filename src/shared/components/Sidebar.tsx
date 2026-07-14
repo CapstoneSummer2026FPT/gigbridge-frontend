@@ -154,16 +154,9 @@ function getFreelancerNavItems(t: any): NavItem[] {
       icon: <Wallet size={18} />,
       children: [
         { id: 'deposit', label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { id: 'withdrawals', label: t('wallet.withdraw'), icon: <Banknote size={18} />, path: '/wallet/withdrawals' },
         { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
-    },
-    {
-      id: 'early-payout',
-      label: t('nav.earlyPayout'),
-      icon: <Zap size={18} />,
-      path: '/wallet/early-payout',
-      badge: 'PRO',
-      badgeType: 'purple',
     },
     {
       id: 'market-insights',
@@ -220,6 +213,7 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
       title: t('nav.financial') || 'Financial',
       items: [
         { label: t('nav.revenue') || 'Revenue', icon: <TrendingUp size={18} />, path: '/admin/revenue' },
+        { label: t('nav.withdrawals') || 'Withdrawals', icon: <Banknote size={18} />, path: '/admin/withdrawals' },
         { label: t('nav.systemFinance') || 'System Finance', icon: <BarChart2 size={18} />, path: '/admin/system-finance' },
       ],
     },

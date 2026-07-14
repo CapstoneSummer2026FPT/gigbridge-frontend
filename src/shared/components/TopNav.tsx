@@ -346,7 +346,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
                 {role === 1 && (
                   <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
-                    onClick={() => { navigate('/wallet/early-payout'); setShowWalletMenu(false); }}>
+                    onClick={() => { navigate('/wallet/withdrawals'); setShowWalletMenu(false); }}>
                     <Banknote size={14} />
                     <span>{t('wallet.withdraw')}</span>
                   </button>
