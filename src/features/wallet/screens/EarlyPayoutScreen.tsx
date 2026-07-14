@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Banknote,
@@ -16,24 +16,25 @@ import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import { BankAccountStatus, WithdrawalStatus } from '../../../types';
-import type { BankAccountResponse, WalletResponse, WithdrawalResponse } from '../../../types';
+import type {
+  BankAccountResponse,
+  SupportedBankResponse,
+  WalletResponse,
+  WithdrawalResponse,
+  WithdrawalSettingsResponse,
+} from '../../../types';
 import '../styles/early-payout-screen.css';
 
-const VND_PER_GIGCOIN = 1000;
-const MIN_WITHDRAWAL_TOKENS = 10;
-const MAX_WITHDRAWAL_TOKENS = 100_000;
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000, 5000];
 
 type BankFormState = {
-  bankCode: string;
-  bankName: string;
+  bankBin: string;
   accountNumber: string;
   accountName: string;
 };
 
 const emptyBankForm: BankFormState = {
-  bankCode: '',
-  bankName: '',
+  bankBin: '',
   accountNumber: '',
   accountName: '',
 };
@@ -53,10 +54,6 @@ function formatDate(value?: string | null): string {
   });
 }
 
-function makeIdempotencyKey(): string {
-  return `withdraw_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
 function isTerminalStatus(status: WithdrawalStatus): boolean {
   return status === WithdrawalStatus.Success || status === WithdrawalStatus.Failed || status === WithdrawalStatus.Cancelled;
 }
@@ -68,7 +65,7 @@ function getStatusMeta(status: WithdrawalStatus) {
     case WithdrawalStatus.Processing:
       return { label: 'Đang xử lý', className: 'processing' };
     case WithdrawalStatus.SyncRequired:
-      return { label: 'Cần đồng bộ', className: 'sync' };
+      return { label: 'Đang xử lý', className: 'processing' };
     case WithdrawalStatus.Success:
       return { label: 'Thành công', className: 'success' };
     case WithdrawalStatus.Failed:
@@ -88,6 +85,8 @@ export default function EarlyPayoutScreen() {
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccountResponse[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
+  const [settings, setSettings] = useState<WithdrawalSettingsResponse | null>(null);
+  const [supportedBanks, setSupportedBanks] = useState<SupportedBankResponse[]>([]);
   const [selectedBankId, setSelectedBankId] = useState('');
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
   const [amount, setAmount] = useState('100');
@@ -98,9 +97,10 @@ export default function EarlyPayoutScreen() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const withdrawalDraftRef = useRef<{ fingerprint: string; key: string } | null>(null);
 
   const activeBankAccounts = useMemo(
-    () => bankAccounts.filter(account => account.status === BankAccountStatus.Active),
+    () => bankAccounts.filter(account => account.status === BankAccountStatus.Active && Boolean(account.bankBin)),
     [bankAccounts]
   );
 
@@ -109,28 +109,40 @@ export default function EarlyPayoutScreen() {
     [activeBankAccounts, selectedBankId]
   );
 
+  const editingBankAccount = useMemo(
+    () => bankAccounts.find(account => account.bankAccountId === editingBankId) || null,
+    [bankAccounts, editingBankId]
+  );
+  const editingBankRequiresAccountNumber = Boolean(
+    editingBankAccount && editingBankAccount.status !== BankAccountStatus.Active
+  );
+
   const amountValue = Number(amount || 0);
   const availableTokens = wallet?.availableTokens ?? 0;
   const withdrawableTokens = wallet?.withdrawableTokens ?? 0;
   const nonWithdrawableTokens = Math.max(0, availableTokens - withdrawableTokens);
-  const feeVnd = 0;
-  const vndAmount = amountValue * VND_PER_GIGCOIN;
+  const feeVnd = settings?.fixedFeeVnd ?? 0;
+  const vndAmount = amountValue * (settings?.vndPerToken ?? 0);
   const netVnd = Math.max(0, vndAmount - feeVnd);
   const hasEnoughBalance = wallet ? amountValue <= withdrawableTokens : false;
   const amountValid =
     Number.isFinite(amountValue) &&
-    amountValue >= MIN_WITHDRAWAL_TOKENS &&
-    amountValue <= MAX_WITHDRAWAL_TOKENS &&
+    Boolean(settings?.enabled) &&
+    amountValue >= (settings?.minTokens ?? Number.POSITIVE_INFINITY) &&
+    amountValue <= Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0) &&
+    netVnd > 0 &&
     hasEnoughBalance;
 
   const loadData = async () => {
     setLoading(true);
     setError('');
 
-    const [walletRes, bankRes, withdrawalRes] = await Promise.all([
+    const [walletRes, bankRes, withdrawalRes, settingsRes, banksRes] = await Promise.all([
       walletGetAPI.getMyWallet(),
       walletGetAPI.getBankAccounts(),
       walletGetAPI.getWithdrawals(50),
+      walletGetAPI.getWithdrawalSettings(),
+      walletGetAPI.getSupportedBanks(),
     ]);
     let nextError = '';
 
@@ -142,11 +154,11 @@ export default function EarlyPayoutScreen() {
 
     if (bankRes.success && bankRes.data) {
       setBankAccounts(bankRes.data);
-      const defaultBank = bankRes.data.find(account => account.isDefault && account.status === BankAccountStatus.Active);
-      const firstActive = bankRes.data.find(account => account.status === BankAccountStatus.Active);
+      const defaultBank = bankRes.data.find(account => account.isDefault && account.status === BankAccountStatus.Active && account.bankBin);
+      const firstActive = bankRes.data.find(account => account.status === BankAccountStatus.Active && account.bankBin);
       const activeIds = new Set(
         bankRes.data
-          .filter(account => account.status === BankAccountStatus.Active)
+          .filter(account => account.status === BankAccountStatus.Active && account.bankBin)
           .map(account => account.bankAccountId)
       );
       setSelectedBankId(current => (current && activeIds.has(current) ? current : defaultBank?.bankAccountId || firstActive?.bankAccountId || ''));
@@ -158,6 +170,18 @@ export default function EarlyPayoutScreen() {
       setWithdrawals(withdrawalRes.data);
     } else if (!nextError) {
       nextError = getResponseMessage(withdrawalRes.message, 'Không thể tải lịch sử rút tiền.');
+    }
+
+    if (settingsRes.success && settingsRes.data) {
+      setSettings(settingsRes.data);
+    } else if (!nextError) {
+      nextError = getResponseMessage(settingsRes.message, 'Khong the tai cau hinh rut tien.');
+    }
+
+    if (banksRes.success && banksRes.data) {
+      setSupportedBanks(banksRes.data);
+    } else if (!nextError) {
+      nextError = getResponseMessage(banksRes.message, 'Khong the tai danh sach ngan hang.');
     }
 
     setError(nextError);
@@ -181,8 +205,7 @@ export default function EarlyPayoutScreen() {
 
   const handleEditBank = (account: BankAccountResponse) => {
     setBankForm({
-      bankCode: account.bankCode,
-      bankName: account.bankName,
+      bankBin: account.bankBin ?? '',
       accountName: account.accountName,
       accountNumber: '',
     });
@@ -192,11 +215,18 @@ export default function EarlyPayoutScreen() {
   };
 
   const handleSaveBankAccount = async () => {
-    const accountNumberPattern = /^[0-9A-Za-z\s.-]{6,34}$/;
+    const accountNumberPattern = /^[0-9A-Za-z\s-]{4,40}$/;
     const accountNumber = bankForm.accountNumber.trim();
+    const selectedDirectoryBank = supportedBanks.find(bank => bank.bin === bankForm.bankBin);
+    if (!selectedDirectoryBank) {
+      setError('Vui long chon ngan hang hop le.');
+      return;
+    }
+
     const basePayload = {
-      bankCode: bankForm.bankCode.trim().toUpperCase(),
-      bankName: bankForm.bankName.trim(),
+      bankBin: selectedDirectoryBank.bin,
+      bankCode: selectedDirectoryBank.code,
+      bankName: selectedDirectoryBank.name,
       accountName: bankForm.accountName.trim(),
     };
 
@@ -205,7 +235,8 @@ export default function EarlyPayoutScreen() {
       return;
     }
 
-    if (basePayload.accountName.length < 2 || (!editingBankId && !accountNumberPattern.test(accountNumber))) {
+    if (basePayload.accountName.length < 2 ||
+      ((!editingBankId || editingBankRequiresAccountNumber) && !accountNumberPattern.test(accountNumber))) {
       setError('Vui lòng nhập tên chủ tài khoản và số tài khoản hợp lệ.');
       return;
     }
@@ -234,7 +265,7 @@ export default function EarlyPayoutScreen() {
       clearBankForm();
       setSuccess(editingBankId ? 'Đã cập nhật tài khoản ngân hàng.' : 'Đã lưu tài khoản ngân hàng.');
       await loadData();
-      setSelectedBankId(response.data.bankAccountId);
+      setSelectedBankId(response.data.status === BankAccountStatus.Active ? response.data.bankAccountId : '');
     } else {
       setError(getResponseMessage(response.message, 'Không thể lưu tài khoản ngân hàng.'));
     }
@@ -286,7 +317,7 @@ export default function EarlyPayoutScreen() {
     }
 
     if (!amountValid) {
-      setError(`Số GigCoin rút phải từ ${MIN_WITHDRAWAL_TOKENS} đến ${MAX_WITHDRAWAL_TOKENS.toLocaleString('vi-VN')} và không vượt quá GigCoin kiếm được từ dự án.`);
+      setError(`Số GigCoin rút phải từ ${settings?.minTokens ?? 0} đến ${(settings?.maxTokens ?? 0).toLocaleString('vi-VN')} và không vượt quá thu nhập có thể rút.`);
       return;
     }
 
@@ -294,13 +325,19 @@ export default function EarlyPayoutScreen() {
     setError('');
     setSuccess('');
 
+    const fingerprint = `${selectedBank.bankAccountId}:${amountValue}`;
+    if (withdrawalDraftRef.current?.fingerprint !== fingerprint) {
+      withdrawalDraftRef.current = { fingerprint, key: crypto.randomUUID() };
+    }
+
     const response = await walletPostAPI.createWithdrawal({
       tokenAmount: amountValue,
       bankAccountId: selectedBank.bankAccountId,
-      idempotencyKey: makeIdempotencyKey(),
+      idempotencyKey: withdrawalDraftRef.current.key,
     });
 
     if (response.success && response.data) {
+      withdrawalDraftRef.current = null;
       setAmount('');
       setSuccess('Đã tạo yêu cầu rút tiền. GigCoin đã được khóa cho đến khi PayOS trả trạng thái cuối.');
       await loadData();
@@ -346,6 +383,11 @@ export default function EarlyPayoutScreen() {
 
         {error && <div className="early-payout-alert danger"><AlertTriangle size={17} />{error}</div>}
         {success && <div className="early-payout-alert success"><CheckCircle2 size={17} />{success}</div>}
+        {settings && !settings.enabled && (
+          <div className="early-payout-alert danger">
+            <AlertTriangle size={17} />Chức năng rút tiền đang tạm khóa để bảo trì.
+          </div>
+        )}
 
         {loading ? (
           <div className="early-payout-loading">
@@ -403,7 +445,8 @@ export default function EarlyPayoutScreen() {
                       type="button"
                       className={amountValue === quickAmount ? 'selected' : ''}
                       onClick={() => setAmount(String(quickAmount))}
-                      disabled={quickAmount > withdrawableTokens}
+                      disabled={!settings?.enabled || quickAmount > withdrawableTokens ||
+                        quickAmount > Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0)}
                     >
                       <GigCoinAmount amount={quickAmount} />
                     </button>
@@ -415,8 +458,8 @@ export default function EarlyPayoutScreen() {
                   <input
                     value={amount}
                     type="number"
-                    min={MIN_WITHDRAWAL_TOKENS}
-                    max={MAX_WITHDRAWAL_TOKENS}
+                    min={settings?.minTokens ?? 0}
+                    max={Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0)}
                     step="0.0001"
                     onChange={event => setAmount(event.target.value)}
                     placeholder="Nhập số GigCoin"
@@ -468,11 +511,24 @@ export default function EarlyPayoutScreen() {
                   <Banknote size={22} />
                   <strong>{editingBankId ? 'Sửa tài khoản ngân hàng' : 'Thêm tài khoản ngân hàng'}</strong>
                   <div className="early-payout-form-grid">
-                    <input value={bankForm.bankCode} onChange={event => handleBankFormChange('bankCode', event.target.value)} placeholder="Mã ngân hàng" />
-                    <input value={bankForm.bankName} onChange={event => handleBankFormChange('bankName', event.target.value)} placeholder="Tên ngân hàng" />
+                    <select value={bankForm.bankBin} onChange={event => handleBankFormChange('bankBin', event.target.value)}>
+                      <option value="">Chọn ngân hàng</option>
+                      {supportedBanks.map(bank => (
+                        <option key={bank.bin} value={bank.bin}>{bank.shortName} - {bank.name}</option>
+                      ))}
+                    </select>
                     <input value={bankForm.accountName} onChange={event => handleBankFormChange('accountName', event.target.value)} placeholder="Tên chủ tài khoản" />
-                    <input value={bankForm.accountNumber} onChange={event => handleBankFormChange('accountNumber', event.target.value)} placeholder={editingBankId ? 'Số tài khoản mới (tùy chọn)' : 'Số tài khoản'} />
+                    <input
+                      value={bankForm.accountNumber}
+                      onChange={event => handleBankFormChange('accountNumber', event.target.value)}
+                      placeholder={editingBankRequiresAccountNumber
+                        ? 'Nhập lại số tài khoản'
+                        : editingBankId ? 'Số tài khoản mới (tùy chọn)' : 'Số tài khoản'}
+                    />
                   </div>
+                  {bankAccounts.length > activeBankAccounts.length && (
+                    <small className="early-payout-balance-note">Một số tài khoản cũ cần chọn lại ngân hàng trước khi sử dụng.</small>
+                  )}
                   <button type="button" onClick={() => void handleSaveBankAccount()} disabled={savingBank}>
                     {savingBank ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
                     {editingBankId ? 'Cập nhật tài khoản' : 'Lưu tài khoản'}
@@ -488,13 +544,16 @@ export default function EarlyPayoutScreen() {
                   <ShieldCheck size={22} />
                   <strong>Tài khoản đã lưu</strong>
                   <div className="early-payout-bank-list">
-                    {activeBankAccounts.map(account => (
-                      <article key={account.bankAccountId}>
+                    {bankAccounts.map(account => {
+                      const isActive = account.status === BankAccountStatus.Active && Boolean(account.bankBin);
+                      return (
+                      <article key={account.bankAccountId} className={isActive ? '' : 'requires-update'}>
                         <span>{account.bankName}</span>
                         <p>{account.accountName}</p>
                         <p>{account.accountNumberMasked}</p>
+                        {!isActive && <small>Cần chọn lại ngân hàng và nhập lại số tài khoản.</small>}
                         <div>
-                          {!account.isDefault && (
+                          {isActive && !account.isDefault && (
                             <button type="button" onClick={() => void handleSetDefaultBank(account.bankAccountId)} disabled={savingBank}>
                               Đặt mặc định
                             </button>
@@ -507,8 +566,9 @@ export default function EarlyPayoutScreen() {
                           </button>
                         </div>
                       </article>
-                    ))}
-                    {activeBankAccounts.length === 0 && <p>Chưa có tài khoản ngân hàng.</p>}
+                      );
+                    })}
+                    {bankAccounts.length === 0 && <p>Chưa có tài khoản ngân hàng.</p>}
                   </div>
                 </div>
               </aside>

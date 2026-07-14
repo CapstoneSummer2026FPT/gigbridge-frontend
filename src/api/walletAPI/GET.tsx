@@ -11,6 +11,8 @@ import type {
   WalletResponse,
   WalletTransactionResponse,
   WithdrawalResponse,
+  WithdrawalSettingsResponse,
+  SupportedBankResponse,
 } from '../../types/models/Financial';
 
 const walletUrl = 'wallet';
@@ -38,6 +40,14 @@ export const walletGetAPI = {
    */
   getBankAccounts: async (): Promise<ApiResponse<BankAccountResponse[]>> => {
     return apiService.get<BankAccountResponse[]>(`${walletUrl}/bank-accounts`);
+  },
+
+  getWithdrawalSettings: async (): Promise<ApiResponse<WithdrawalSettingsResponse>> => {
+    return apiService.get<WithdrawalSettingsResponse>(`${walletUrl}/withdrawal-settings`);
+  },
+
+  getSupportedBanks: async (): Promise<ApiResponse<SupportedBankResponse[]>> => {
+    return apiService.get<SupportedBankResponse[]>(`${walletUrl}/supported-banks`);
   },
 
   /**
