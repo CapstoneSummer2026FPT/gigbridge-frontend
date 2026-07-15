@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, Upload, Check, X, User, Phone, MapPin, Calendar, Briefcase, FileText, CheckCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
+import { profileGetAPI, profilePutAPI } from '../../../api/profileAPI';
+import { jobAPI } from '../../../api/jobAPI';
+import type { CategoryOptionDto, MajorDto } from '../../../types/models/Category';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -14,12 +16,14 @@ interface ProfileFormData {
   lastName: string;
   title: string;
   bio: string;
-  availability: string;
+  availability: number;
   phone: string;
   address: string;
   dateOfBirth: string;
   profileImage: string;
   skills: string[];
+  majorId: string;
+  categoryIds: string[];
 }
 
 interface ValidationErrors {
@@ -46,10 +50,9 @@ const AVAILABLE_SKILLS = [
 ];
 
 const AVAILABILITY_OPTIONS = [
-  { value: 'full-time', label: 'Full Time' },
-  { value: 'part-time', label: 'Part Time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'available-soon', label: 'Available Soon' },
+  { value: 0, label: 'Full Time' },
+  { value: 1, label: 'Part Time' },
+  { value: 2, label: 'Not Available' },
 ];
 
 export default function EditFreelancerProfileScreen() {
@@ -57,20 +60,19 @@ export default function EditFreelancerProfileScreen() {
   const { user } = useApp();
   const { t } = useTranslation();
 
-  // Load mock data
-  const mockProfile = SEED_FREELANCER_PROFILES[0];
-
   const [formData, setFormData] = useState<ProfileFormData>({
     firstName: 'Jane',
     lastName: 'Smith',
-    title: mockProfile?.title || 'Senior React Developer',
-    bio: mockProfile?.bio || '',
-    availability: 'available-soon',
+    title: '',
+    bio: '',
+    availability: 0,
     phone: '+1 (555) 987-6543',
     address: '456 Developer Ave, San Francisco, CA 94102',
     dateOfBirth: '1990-03-20',
     profileImage: 'https://via.placeholder.com/200',
     skills: ['React', 'TypeScript', 'Node.js', 'UI/UX Design'],
+    majorId: '',
+    categoryIds: [],
   });
 
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -78,6 +80,10 @@ export default function EditFreelancerProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
   const [showBannedMessage, setShowBannedMessage] = useState(false);
+  const [majors, setMajors] = useState<MajorDto[]>([]);
+  const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [taxonomyError, setTaxonomyError] = useState('');
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -86,6 +92,84 @@ export default function EditFreelancerProfileScreen() {
       isMounted.current = false;
     };
   }, []);
+
+  const loadCategories = async (majorId: string): Promise<CategoryOptionDto[]> => {
+    if (!majorId) {
+      setCategories([]);
+      return [];
+    }
+    const response = await jobAPI.getCategoriesByMajor(majorId);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to load categories.');
+    }
+    setCategories(response.data);
+    return response.data;
+  };
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      setIsLoadingProfile(true);
+      setTaxonomyError('');
+      try {
+        const [profileResponse, majorsResponse] = await Promise.all([
+          profileGetAPI.getMyFreelancerProfile(),
+          jobAPI.getMajors(),
+        ]);
+        if (!profileResponse.success || !profileResponse.data) {
+          throw new Error(profileResponse.message || 'Failed to load your freelancer profile.');
+        }
+        if (!majorsResponse.success || !majorsResponse.data) {
+          throw new Error(majorsResponse.message || 'Failed to load majors.');
+        }
+
+        const profile = profileResponse.data;
+        setMajors(majorsResponse.data);
+        if (profile.majorId) {
+          await loadCategories(profile.majorId);
+        }
+        if (isMounted.current) {
+          setFormData(current => ({
+            ...current,
+            title: profile.title || '',
+            bio: profile.bio || '',
+            availability: profile.availability ?? 0,
+            address: profile.location || '',
+            profileImage: profile.userAvatar || current.profileImage,
+            majorId: profile.majorId || '',
+            categoryIds: profile.categories?.map(category => category.categoryId) || [],
+            skills: profile.skills?.map(skill => skill.skillName) || current.skills,
+          }));
+        }
+      } catch (error) {
+        if (isMounted.current) {
+          setTaxonomyError((error as Error).message || 'Failed to load profile data.');
+        }
+      } finally {
+        if (isMounted.current) setIsLoadingProfile(false);
+      }
+    };
+
+    void loadProfile();
+  }, []);
+
+  const handleMajorChange = async (majorId: string) => {
+    setFormData(current => ({ ...current, majorId, categoryIds: [] }));
+    setTaxonomyError('');
+    try {
+      await loadCategories(majorId);
+    } catch (error) {
+      setTaxonomyError((error as Error).message || 'Failed to load categories.');
+    }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setFormData(current => ({
+      ...current,
+      categoryIds: current.categoryIds.includes(categoryId)
+        ? current.categoryIds.filter(id => id !== categoryId)
+        : [...current.categoryIds, categoryId],
+    }));
+  };
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -118,7 +202,7 @@ export default function EditFreelancerProfileScreen() {
     if (formData.address.length > 255) {
       newErrors.address = t('profile.errors.charLimit');
     }
-    if (formData.address.trim().length === 0 && formData.address.length > 0) {
+    if (formData.address.trim().length === 0) {
       newErrors.address = t('profile.errors.emptySpaceAddress');
     }
 
@@ -135,8 +219,15 @@ export default function EditFreelancerProfileScreen() {
     if (formData.bio.length > 255) {
       newErrors.bio = t('profile.errors.charLimit');
     }
-    if (formData.bio.trim().length === 0 && formData.bio.length > 0) {
+    if (formData.bio.trim().length === 0) {
       newErrors.bio = t('profile.errors.emptySpaceBio');
+    }
+
+    if (!formData.majorId) {
+      newErrors.majorId = 'Major is required.';
+    }
+    if (formData.categoryIds.length === 0) {
+      newErrors.categoryIds = 'Select at least one category.';
     }
 
     // Date of Birth validation (BR-23)
@@ -211,19 +302,20 @@ export default function EditFreelancerProfileScreen() {
       return;
     }
 
-    // Check if account is banned (MSG30)
-    if (Math.random() < 0.05) { // 5% chance for demo
-      if (isMounted.current) {
-        setShowBannedMessage(true);
-        setErrors({ banned: t('profile.accountBanned') });
-      }
-      return;
-    }
-
     setIsSaving(true);
+    setShowBannedMessage(false);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await profilePutAPI.updateFreelancerProfile({
+        title: formData.title.trim(),
+        bio: formData.bio.trim(),
+        availability: formData.availability,
+        location: formData.address.trim(),
+        majorId: formData.majorId,
+        categoryIds: formData.categoryIds,
+      });
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to save profile.');
+      }
       
       if (isMounted.current) {
         setSuccessMessage(t('profile.operationSuccess'));
@@ -236,6 +328,9 @@ export default function EditFreelancerProfileScreen() {
       }
     } catch (error) {
       console.error('Failed to save profile:', error);
+      if (isMounted.current) {
+        setErrors(current => ({ ...current, submit: (error as Error).message || 'Failed to save profile.' }));
+      }
     } finally {
       if (isMounted.current) {
         setIsSaving(false);
@@ -283,6 +378,16 @@ export default function EditFreelancerProfileScreen() {
     });
   }, []);
 
+  if (isLoadingProfile) {
+    return (
+      <AppLayout>
+        <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">
+          Loading your freelancer profile...
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="max-w-5xl mx-auto py-8 px-4">
@@ -316,6 +421,13 @@ export default function EditFreelancerProfileScreen() {
           <div className="edit-freelancer-profile-banned-message flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 mb-6">
             <X size={18} className="text-red-500" />
             <p className="text-sm font-medium text-red-500">{t('profile.accountBanned')}</p>
+          </div>
+        )}
+
+        {(taxonomyError || errors.submit) && (
+          <div className="edit-freelancer-profile-banned-message flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 mb-6" role="alert">
+            <X size={18} />
+            <p className="text-sm font-medium">{errors.submit || taxonomyError}</p>
           </div>
         )}
 
@@ -429,7 +541,7 @@ export default function EditFreelancerProfileScreen() {
                       <select
                         name="availability"
                         value={formData.availability}
-                        onChange={handleChange}
+                        onChange={event => setFormData(current => ({ ...current, availability: Number(event.target.value) }))}
                         className="edit-freelancer-profile-form-select w-full"
                       >
                         {AVAILABILITY_OPTIONS.map(opt => (
@@ -438,6 +550,50 @@ export default function EditFreelancerProfileScreen() {
                       </select>
                       <Calendar size={16} className="edit-freelancer-profile-input-icon" />
                     </div>
+                  </div>
+
+                  <div className="edit-freelancer-profile-form-group md:col-span-2">
+                    <label className="edit-freelancer-profile-form-label">Major *</label>
+                    <select
+                      value={formData.majorId}
+                      onChange={event => void handleMajorChange(event.target.value)}
+                      className="edit-freelancer-profile-form-select w-full"
+                    >
+                      <option value="">Select your major</option>
+                      {majors.map(major => (
+                        <option key={major.majorId} value={major.majorId}>{major.name}</option>
+                      ))}
+                    </select>
+                    {errors.majorId && <p className="edit-freelancer-profile-form-error">{errors.majorId}</p>}
+                  </div>
+
+                  <div className="edit-freelancer-profile-form-group md:col-span-2">
+                    <label className="edit-freelancer-profile-form-label">Categories *</label>
+                    {formData.majorId && categories.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                        {categories.map(category => {
+                          const selected = formData.categoryIds.includes(category.categoryId);
+                          return (
+                            <button
+                              key={category.categoryId}
+                              type="button"
+                              onClick={() => toggleCategory(category.categoryId)}
+                              className={`text-left px-4 py-3 rounded-xl border transition-colors cursor-pointer ${selected ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface text-muted-foreground'}`}
+                            >
+                              <span className="flex items-center gap-2">
+                                {selected && <Check size={15} />}
+                                {category.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {formData.majorId ? 'No active categories are available.' : 'Select a major first.'}
+                      </p>
+                    )}
+                    {errors.categoryIds && <p className="edit-freelancer-profile-form-error">{errors.categoryIds}</p>}
                   </div>
                 </div>
               </div>

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronRight, Building, MapPin, Globe, Briefcase, Sparkles } from 'lucide-react';
+import { ChevronRight, Building, MapPin, Globe, Briefcase, Sparkles, Tags, RefreshCw } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { profilePutAPI, profileGetAPI } from '../../../api/profileAPI';
 import { UserRole } from '../../../types/models/User';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../../types/models/Profile';
+import type { CategoryOptionDto, MajorDto } from '../../../types/models/Category';
+import { jobAPI } from '../../../api/jobAPI';
 import '../styles/profile-setup-screen.css';
 
 const INDUSTRIES_FALLBACK = [
@@ -45,6 +47,10 @@ export default function ProfileSetupScreen() {
 
   const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>(COMPANY_SIZES_FALLBACK);
   const [industries, setIndustries] = useState<string[]>(INDUSTRIES_FALLBACK);
+  const [majors, setMajors] = useState<MajorDto[]>([]);
+  const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
+  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState(false);
+  const [taxonomyError, setTaxonomyError] = useState<string | null>(null);
 
   useEffect(() => {
     if (role === 0) { // Client
@@ -68,6 +74,29 @@ export default function ProfileSetupScreen() {
     }
   }, [role]);
 
+  const loadMajors = async () => {
+    setIsTaxonomyLoading(true);
+    setTaxonomyError(null);
+    try {
+      const response = await jobAPI.getMajors();
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load majors.');
+      }
+      setMajors(response.data);
+    } catch (err) {
+      setMajors([]);
+      setTaxonomyError((err as Error).message || 'Failed to load majors.');
+    } finally {
+      setIsTaxonomyLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (role === UserRole.Freelancer) {
+      void loadMajors();
+    }
+  }, [role]);
+
   const [clientData, setClientData] = useState({
     CompanyName: '',
     CompanyWebsite: '',
@@ -83,7 +112,38 @@ export default function ProfileSetupScreen() {
     bio: '',
     availability: 0,
     location: '',
+    majorId: '',
+    categoryIds: [],
   });
+
+  const handleMajorChange = async (majorId: string) => {
+    setFreelancerData(current => ({ ...current, majorId, categoryIds: [] }));
+    setCategories([]);
+    setTaxonomyError(null);
+    if (!majorId) return;
+
+    setIsTaxonomyLoading(true);
+    try {
+      const response = await jobAPI.getCategoriesByMajor(majorId);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load categories.');
+      }
+      setCategories(response.data);
+    } catch (err) {
+      setTaxonomyError((err as Error).message || 'Failed to load categories.');
+    } finally {
+      setIsTaxonomyLoading(false);
+    }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setFreelancerData(current => ({
+      ...current,
+      categoryIds: current.categoryIds.includes(categoryId)
+        ? current.categoryIds.filter(id => id !== categoryId)
+        : [...current.categoryIds, categoryId],
+    }));
+  };
 
   const isClient = role === 0;
   const totalSteps = 2;
@@ -144,8 +204,15 @@ export default function ProfileSetupScreen() {
       if (step === 1) return clientData.CompanyName && clientData.Industry;
       return clientData.Location;
     } else {
-      if (step === 1) return freelancerData.title;
-      if (step === 1) return freelancerData.title;
+      if (step === 1) {
+        return Boolean(
+          freelancerData.title.trim() &&
+          freelancerData.majorId &&
+          freelancerData.categoryIds.length > 0 &&
+          !isTaxonomyLoading &&
+          !taxonomyError
+        );
+      }
       return freelancerData.location && freelancerData.bio;
     }
   };
@@ -255,6 +322,7 @@ export default function ProfileSetupScreen() {
                     ))}
                   </select>
                 </div>
+
               </div>
             )}
 
@@ -286,6 +354,7 @@ export default function ProfileSetupScreen() {
                     className="input-gb"
                   />
                 </div>
+
               </div>
             )}
           </div>
@@ -311,6 +380,61 @@ export default function ProfileSetupScreen() {
                     className="input-gb"
                   />
                 </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    <Briefcase size={16} />
+                    Major *
+                  </label>
+                  <select
+                    value={freelancerData.majorId}
+                    onChange={event => void handleMajorChange(event.target.value)}
+                    className="input-gb"
+                    disabled={isTaxonomyLoading && majors.length === 0}
+                  >
+                    <option value="">{isTaxonomyLoading && majors.length === 0 ? 'Loading majors...' : 'Select your major'}</option>
+                    {majors.map(major => (
+                      <option key={major.majorId} value={major.majorId}>{major.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {freelancerData.majorId && (
+                  <div className="form-group">
+                    <label className="form-label">
+                      <Tags size={16} />
+                      Categories *
+                    </label>
+                    {isTaxonomyLoading ? (
+                      <p className="taxonomy-help">Loading categories...</p>
+                    ) : categories.length > 0 ? (
+                      <div className="taxonomy-category-grid">
+                        {categories.map(category => (
+                          <label key={category.categoryId} className={`taxonomy-category-option ${freelancerData.categoryIds.includes(category.categoryId) ? 'taxonomy-category-option-selected' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={freelancerData.categoryIds.includes(category.categoryId)}
+                              onChange={() => toggleCategory(category.categoryId)}
+                            />
+                            <span>{category.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="taxonomy-help">No active categories are available for this major.</p>
+                    )}
+                    <p className="taxonomy-help">Select one or more categories that best match your work.</p>
+                  </div>
+                )}
+
+                {taxonomyError && (
+                  <div className="taxonomy-error" role="alert">
+                    <span>{taxonomyError}</span>
+                    <button type="button" onClick={() => freelancerData.majorId ? void handleMajorChange(freelancerData.majorId) : void loadMajors()}>
+                      <RefreshCw size={14} /> Retry
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
