@@ -29,6 +29,7 @@ export default function JobDetailScreen() {
     isApplying,
     isSavingSavedJob,
     proposalMessage,
+    proposalCheckFailed,
     applicationCost,
     canApplyToJob,
     canApplyWithGigcoins,
@@ -302,6 +303,10 @@ export default function JobDetailScreen() {
                     {canViewProposalAnswers(myProposal.status) && (
                       <button className="jd-btn-secondary" onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}><FileText size={13} />{t('jobDetail.viewAnswers')}</button>
                     )}
+                  </div>
+                ) : proposalCheckFailed ? (
+                  <div className="rounded-xl border border-red-500/25 bg-red-500/8 p-3 text-xs font-semibold text-red-500">
+                    Unable to verify your proposal status. Please refresh the page or try again later.
                   </div>
                 ) : !canApplyToJob ? (
                   <div className="rounded-xl border border-warning/25 bg-warning/8 p-3 text-xs font-semibold text-warning">
