@@ -117,12 +117,12 @@ export interface CheatingPenaltyLogDto {
 }
 
 export interface UpdateClientProfileDto {
-  CompanyName: string;
-  CompanyWebsite?: string;
-  CompanySize: number;
-  Industry: string;
-  CompanyDescription?: string;
-  Location: string;
+  companyName: string;
+  companyWebsite?: string;
+  companySize: number;
+  industry: string;
+  companyDescription?: string;
+  location: string;
 }
 
 export interface UpdateFreelancerProfileDto {
@@ -132,6 +132,7 @@ export interface UpdateFreelancerProfileDto {
   location: string;
   majorId: string;
   categoryIds: string[];
+  skillIds?: string[];
 }
 
 export interface ClientProfileDetailDto {
@@ -178,6 +179,7 @@ export interface FreelancerProfileResponseDto {
   majorId?: string | null;
   majorName?: string | null;
   categories: FreelancerProfileCategoryDto[];
+  skills: FreelancerSkillDto[];
 }
 
 export interface FreelancerProfile {

@@ -98,12 +98,12 @@ export default function ProfileSetupScreen() {
   }, [role]);
 
   const [clientData, setClientData] = useState({
-    CompanyName: '',
-    CompanyWebsite: '',
-    CompanySize: 0,
-    Industry: '',
-    Location: '',
-    CompanyDescription: '',
+    companyName: '',
+    companyWebsite: '',
+    companySize: 0,
+    industry: '',
+    location: '',
+    companyDescription: '',
   });
 
   // Freelancer form data
@@ -201,8 +201,8 @@ export default function ProfileSetupScreen() {
 
   const canProceed = () => {
     if (isClient) {
-      if (step === 1) return clientData.CompanyName && clientData.Industry;
-      return clientData.Location;
+      if (step === 1) return clientData.companyName && clientData.industry;
+      return clientData.location;
     } else {
       if (step === 1) {
         return Boolean(
@@ -269,8 +269,8 @@ export default function ProfileSetupScreen() {
                   </label>
                   <input
                     type="text"
-                    value={clientData.CompanyName}
-                    onChange={e => setClientData({ ...clientData, CompanyName: e.target.value })}
+                    value={clientData.companyName}
+                    onChange={e => setClientData({ ...clientData, companyName: e.target.value })}
                     placeholder="Enter your company name"
                     className="input-gb"
                   />
@@ -282,8 +282,8 @@ export default function ProfileSetupScreen() {
                     Industry *
                   </label>
                   <select
-                    value={clientData.Industry}
-                    onChange={e => setClientData({ ...clientData, Industry: e.target.value })}
+                    value={clientData.industry}
+                    onChange={e => setClientData({ ...clientData, industry: e.target.value })}
                     className="input-gb"
                   >
                     <option value="">Select an industry</option>
@@ -300,8 +300,8 @@ export default function ProfileSetupScreen() {
                   </label>
                   <input
                     type="url"
-                    value={clientData.CompanyWebsite}
-                    onChange={e => setClientData({ ...clientData, CompanyWebsite: e.target.value })}
+                    value={clientData.companyWebsite}
+                    onChange={e => setClientData({ ...clientData, companyWebsite: e.target.value })}
                     placeholder="https://yourcompany.com"
                     className="input-gb"
                   />
@@ -313,8 +313,8 @@ export default function ProfileSetupScreen() {
                     Company Size *
                   </label>
                   <select
-                    value={clientData.CompanySize}
-                    onChange={e => setClientData({ ...clientData, CompanySize: parseInt(e.target.value) || 0 })}
+                    value={clientData.companySize}
+                    onChange={e => setClientData({ ...clientData, companySize: parseInt(e.target.value) || 0 })}
                     className="input-gb"
                   >
                     {companySizes.map(size => (
@@ -337,8 +337,8 @@ export default function ProfileSetupScreen() {
                   </label>
                   <input
                     type="text"
-                    value={clientData.Location}
-                    onChange={e => setClientData({ ...clientData, Location: e.target.value })}
+                    value={clientData.location}
+                    onChange={e => setClientData({ ...clientData, location: e.target.value })}
                     placeholder="City, Country"
                     className="input-gb"
                   />
@@ -347,8 +347,8 @@ export default function ProfileSetupScreen() {
                 <div className="form-group">
                   <label className="form-label">Company Description</label>
                   <textarea
-                    value={clientData.CompanyDescription}
-                    onChange={e => setClientData({ ...clientData, CompanyDescription: e.target.value })}
+                    value={clientData.companyDescription}
+                    onChange={e => setClientData({ ...clientData, companyDescription: e.target.value })}
                     placeholder="Tell us about your company..."
                     rows={4}
                     className="input-gb"
