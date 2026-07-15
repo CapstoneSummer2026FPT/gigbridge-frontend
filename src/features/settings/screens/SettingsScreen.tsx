@@ -40,9 +40,7 @@ export default function SettingsScreen() {
   const [billingError, setBillingError] = useState('');
   const [billingSaved, setBillingSaved] = useState(false);
 
-  const profile = role === 'freelancer'
-    ? SEED_FREELANCER_PROFILES.find(p => p.userId === user?.id) || SEED_FREELANCER_PROFILES[0]
-    : null;
+  const profile = null;
 
   const [formData, setFormData] = useState({
     name: user?.full_name || '',
@@ -87,7 +85,7 @@ export default function SettingsScreen() {
           }
         } else if (role === UserRole.Client) {
           const [profileRes, sizesRes, indRes] = await Promise.all([
-            profileGetAPI.getClientProfile(user.id),
+            profileGetAPI.getMyClientProfile(),
             profileGetAPI.getCompanySizes(),
             profileGetAPI.getIndustries()
           ]);
