@@ -42,7 +42,6 @@ export const adminAPI = {
   createMilestone: adminPostAPI.createMilestone,
   syncWithdrawal: adminPostAPI.syncWithdrawal,
   retryWithdrawal: adminPostAPI.retryWithdrawal,
-  markWithdrawalFailed: adminPostAPI.markWithdrawalFailed,
   updateUser: adminPutAPI.updateUser,
   updateFAQ: adminPutAPI.updateFAQ,
   updateFAQCategory: adminPutAPI.updateFAQCategory,

@@ -100,10 +100,4 @@ export const adminPostAPI = {
     return apiService.post<WithdrawalResponse>(`admin/withdrawals/${withdrawalId}/retry`);
   },
 
-  markWithdrawalFailed: async (
-    withdrawalId: string,
-    payload: { reason: string }
-  ): Promise<ApiResponse<WithdrawalResponse>> => {
-    return apiService.post<WithdrawalResponse>(`admin/withdrawals/${withdrawalId}/mark-failed`, payload);
-  },
 };

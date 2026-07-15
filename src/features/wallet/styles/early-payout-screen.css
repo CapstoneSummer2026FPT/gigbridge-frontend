@@ -317,7 +317,8 @@
   gap: 0.55rem;
 }
 
-.early-payout-form-grid input {
+.early-payout-form-grid input,
+.early-payout-form-grid select {
   min-height: 2.4rem;
   padding: 0 0.75rem;
   border: 1px solid var(--gb-border);
@@ -339,6 +340,14 @@
   border: 1px solid var(--gb-border);
   border-radius: 0.7rem;
   background: var(--gb-bg-primary);
+}
+
+.early-payout-bank-list article.requires-update {
+  border-color: color-mix(in srgb, var(--gb-warning) 65%, var(--gb-border));
+}
+
+.early-payout-bank-list article.requires-update small {
+  color: var(--gb-warning);
 }
 
 .early-payout-bank-list article div {

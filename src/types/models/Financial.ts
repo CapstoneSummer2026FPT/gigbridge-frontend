@@ -137,6 +137,7 @@ export enum BankAccountStatus {
 export interface BankAccountResponse {
   bankAccountId: string;
   userId: string;
+  bankBin?: string | null;
   bankCode: string;
   bankName: string;
   accountNumberMasked: string;
@@ -152,6 +153,7 @@ export interface WithdrawalResponse {
   userId: string;
   walletId: string;
   bankAccountId?: string | null;
+  bankBin?: string | null;
   bankCode: string;
   bankName: string;
   bankAccountNumberMasked: string;
@@ -172,9 +174,29 @@ export interface WithdrawalResponse {
   processingStartedAt?: string | null;
   lastSyncedAt?: string | null;
   completedAt?: string | null;
+  canRetry: boolean;
+}
+
+export interface WithdrawalSettingsResponse {
+  enabled: boolean;
+  vndPerToken: number;
+  fixedFeeVnd: number;
+  minTokens: number;
+  maxTokens: number;
+  dailyMaxTokens: number;
+  provider: string;
+}
+
+export interface SupportedBankResponse {
+  bin: string;
+  code: string;
+  shortName: string;
+  name: string;
+  logo?: string | null;
 }
 
 export interface CreateBankAccountRequest {
+  bankBin: string;
   bankCode: string;
   bankName: string;
   accountNumber: string;
@@ -183,6 +205,7 @@ export interface CreateBankAccountRequest {
 }
 
 export interface UpdateBankAccountRequest {
+  bankBin?: string;
   bankCode?: string;
   bankName?: string;
   accountNumber?: string;
@@ -193,7 +216,7 @@ export interface UpdateBankAccountRequest {
 export interface CreateWithdrawalRequest {
   tokenAmount: number;
   bankAccountId?: string | null;
-  idempotencyKey?: string;
+  idempotencyKey: string;
 }
 
 export type FinancialOverviewPeriod = 'day' | 'month' | 'year';

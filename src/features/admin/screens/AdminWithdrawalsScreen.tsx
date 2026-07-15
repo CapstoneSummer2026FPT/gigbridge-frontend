@@ -21,7 +21,7 @@ import type { WithdrawalResponse } from '../../../types';
 import '../styles/admin-users-screen.css';
 
 type StatusFilter = WithdrawalStatus | 'all';
-type AdminAction = 'sync' | 'retry' | 'fail';
+type AdminAction = 'sync' | 'retry';
 
 const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'all', label: 'All statuses' },
@@ -135,23 +135,13 @@ export default function AdminWithdrawalsScreen() {
   };
 
   const runAction = async (withdrawal: WithdrawalResponse, action: AdminAction) => {
-    let reason = '';
-    if (action === 'fail') {
-      const promptResult = window.prompt('Manual fail reason. Only proceed after provider-confirmed failure evidence.');
-      if (!promptResult?.trim()) return;
-      reason = promptResult.trim();
-    }
-
     setActioning(`${action}:${withdrawal.withdrawalId}`);
     setError('');
     setSuccess('');
 
-    const response =
-      action === 'sync'
-        ? await adminAPI.syncWithdrawal(withdrawal.withdrawalId)
-        : action === 'retry'
-          ? await adminAPI.retryWithdrawal(withdrawal.withdrawalId)
-          : await adminAPI.markWithdrawalFailed(withdrawal.withdrawalId, { reason });
+    const response = action === 'sync'
+      ? await adminAPI.syncWithdrawal(withdrawal.withdrawalId)
+      : await adminAPI.retryWithdrawal(withdrawal.withdrawalId);
 
     if (response.success && response.data) {
       updateWithdrawal(response.data);
@@ -254,7 +244,6 @@ export default function AdminWithdrawalsScreen() {
                 const status = getStatusMeta(withdrawal.status);
                 const syncActionKey = `sync:${withdrawal.withdrawalId}`;
                 const retryActionKey = `retry:${withdrawal.withdrawalId}`;
-                const failActionKey = `fail:${withdrawal.withdrawalId}`;
 
                 return (
                   <article key={withdrawal.withdrawalId} className="glass-card p-5 hover:border-cyan/30 transition-all">
@@ -290,7 +279,7 @@ export default function AdminWithdrawalsScreen() {
                             <Eye size={13} />
                             Detail
                           </button>
-                          {!isTerminal(withdrawal.status) && (
+                          {withdrawal.canRetry && (
                             <button
                               type="button"
                               className="btn-ghost-cyan px-3 py-2 text-xs inline-flex items-center gap-1"
@@ -310,17 +299,6 @@ export default function AdminWithdrawalsScreen() {
                             >
                               {actioning === retryActionKey ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />}
                               Retry
-                            </button>
-                          )}
-                          {withdrawal.status === WithdrawalStatus.SyncRequired && (
-                            <button
-                              type="button"
-                              className="px-3 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-1 bg-red-500/10 text-red-500 border border-red-500/25"
-                              onClick={() => void runAction(withdrawal, 'fail')}
-                              disabled={actioning === failActionKey}
-                            >
-                              {actioning === failActionKey ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
-                              Mark failed
                             </button>
                           )}
                         </div>
