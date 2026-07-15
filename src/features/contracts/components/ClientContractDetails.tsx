@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Lock, CheckCircle, Clock,
   User, FileText, Calendar, Download, ArrowLeft,
-  Mail, ShieldAlert, ListChecks, Copy, Check, ChevronDown, Star
+  Mail, ShieldAlert, ListChecks, Copy, Check, ChevronDown, Star, LoaderCircle, RefreshCw
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
@@ -25,6 +25,7 @@ import {
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import type { Dispute } from '../../../types/models/Dispute';
 
 interface AuditTrailEntry {
   id: string;
@@ -42,6 +43,10 @@ interface ClientContractDetailsProps {
   auditTrail: AuditTrailEntry[];
   onRefresh: () => void;
   isAdminOverride?: boolean;
+  activeDispute: Dispute | null;
+  activeDisputeError: string | null;
+  activeDisputeLoading: boolean;
+  onRetryDispute: () => void;
 }
 
 export function ClientContractDetails({
@@ -49,7 +54,11 @@ export function ClientContractDetails({
   milestones,
   auditTrail,
   onRefresh,
-  isAdminOverride = false
+  isAdminOverride = false,
+  activeDispute,
+  activeDisputeError,
+  activeDisputeLoading,
+  onRetryDispute
 }: ClientContractDetailsProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -1158,17 +1167,46 @@ export function ClientContractDetails({
                     </motion.button>
                   )}
 
-                  {contract.status === ContractStatus.Active && (
+                  {!isAdminOverride && activeDisputeLoading && (
+                    <div className="w-full py-3 border border-border/50 rounded-xl text-muted-foreground text-sm font-semibold flex items-center justify-center gap-2">
+                      <LoaderCircle size={17} className="animate-spin" />
+                      {t('contracts.checkingDispute', { defaultValue: 'Checking dispute status…' })}
+                    </div>
+                  )}
+
+                  {!isAdminOverride && !activeDisputeLoading && activeDisputeError && (
+                    <div className="w-full p-3 bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl text-sm font-semibold">
+                      <p className="m-0 mb-2">{activeDisputeError}</p>
+                      <button onClick={onRetryDispute} className="w-full py-2 border border-red-500/30 rounded-lg flex items-center justify-center gap-2 cursor-pointer">
+                        <RefreshCw size={15} /> {t('common.retry', { defaultValue: 'Retry' })}
+                      </button>
+                    </div>
+                  )}
+
+                  {!isAdminOverride && !activeDisputeLoading && !activeDisputeError && activeDispute && (
                     <motion.button 
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => navigate(`/contracts/${contract.contractsId}/disputes/create`)} 
+                      onClick={() => navigate(`/contracts/${contract.contractsId}/disputes/${activeDispute.id}`)}
                       className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
                     >
                       <ShieldAlert size={17} />
-                      {t('contracts.fileDispute')}
+                      {t('contracts.viewDispute', { defaultValue: 'View Dispute Case' })}
                     </motion.button>
                   )}
+
+                  {!isAdminOverride && !activeDisputeLoading && !activeDisputeError && !activeDispute &&
+                    [ContractStatus.PendingEscrow, ContractStatus.Active, ContractStatus.Completed].includes(contract.status) && (
+                      <motion.button
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate(`/contracts/${contract.contractsId}/disputes/create`)}
+                        className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
+                      >
+                        <ShieldAlert size={17} />
+                        {t('contracts.fileDispute')}
+                      </motion.button>
+                    )}
                 </div>
               </div>
 

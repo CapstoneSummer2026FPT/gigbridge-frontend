@@ -8,7 +8,9 @@
 .dispute-back-btn,
 .dispute-submit-btn,
 .evidence-add-row button,
-.dispute-success-card button {
+.dispute-success-card button,
+.dispute-state-card button,
+.evidence-picker-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -31,7 +33,8 @@
 .dispute-form-card,
 .evidence-card,
 .dispute-success-card,
-.dispute-message {
+.dispute-message,
+.dispute-state-card {
   border: 1px solid var(--gb-border);
   border-radius: 8px;
   background: var(--gb-glass-bg);
@@ -135,7 +138,8 @@
 
 .dispute-form-card select,
 .dispute-form-card textarea,
-.evidence-add-row input {
+.evidence-add-row input,
+.evidence-card textarea {
   width: 100%;
   border: 1px solid var(--gb-border);
   border-radius: 8px;
@@ -156,6 +160,19 @@
   resize: vertical;
 }
 
+.evidence-card label {
+  display: block;
+  margin: 1rem 0 0.4rem;
+  color: var(--gb-text-primary);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.evidence-card textarea {
+  padding: 0.85rem;
+  resize: vertical;
+}
+
 .dispute-count {
   margin-top: 0.35rem;
   color: var(--gb-text-secondary);
@@ -164,7 +181,8 @@
 }
 
 .dispute-submit-btn,
-.dispute-success-card button {
+.dispute-success-card button,
+.dispute-state-card button {
   width: 100%;
   margin-top: 1rem;
   color: white;
@@ -221,6 +239,57 @@
 .evidence-item strong {
   color: var(--gb-text-secondary);
   font-size: 0.8rem;
+}
+
+.evidence-file-input {
+  display: none;
+}
+
+.evidence-picker-btn {
+  width: 100%;
+  padding: 0 1rem;
+  color: #004ea8;
+  background: rgba(0, 119, 255, 0.12);
+}
+
+.dispute-submit-btn:disabled,
+.evidence-picker-btn:disabled,
+.evidence-item button:disabled,
+.dispute-form-card select:disabled,
+.dispute-form-card textarea:disabled,
+.evidence-card textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dispute-state-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.dispute-state-card h2,
+.dispute-state-card p {
+  margin: 0;
+}
+
+.dispute-state-card p {
+  max-width: 620px;
+  color: var(--gb-text-secondary);
+}
+
+.dispute-state-error svg {
+  color: #dc2626;
+}
+
+.dispute-spinner {
+  animation: dispute-spin 0.9s linear infinite;
+}
+
+@keyframes dispute-spin {
+  to { transform: rotate(360deg); }
 }
 
 .dispute-success-card {

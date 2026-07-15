@@ -3,10 +3,12 @@ import { useNavigate, useParams } from 'react-router';
 import { Lock, AlertCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { disputeGetAPI } from '../../../api/disputeAPI';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { ContractStatus, type ContractDto, type Milestone } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
+import type { Dispute } from '../../../types/models/Dispute';
 import { ClientContractDetails } from '../components/ClientContractDetails';
 import { FreelancerContractDetails } from '../components/FreelancerContractDetails';
 
@@ -68,6 +70,9 @@ export default function ViewContractDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<ContractUserRole>('none');
+  const [activeDispute, setActiveDispute] = useState<Dispute | null>(null);
+  const [activeDisputeError, setActiveDisputeError] = useState<string | null>(null);
+  const [activeDisputeLoading, setActiveDisputeLoading] = useState(false);
 
   // Determine user role relative to contract
   useEffect(() => {
@@ -109,6 +114,8 @@ export default function ViewContractDetailsScreen() {
     try {
       setLoading(true);
       setError(null);
+      setActiveDisputeLoading(true);
+      setActiveDisputeError(null);
 
       const apiResponse = await contractGetAPI.getContractById(contractId);
       
@@ -116,13 +123,29 @@ export default function ViewContractDetailsScreen() {
         const contractData = apiResponse.data as ContractDetailsData;
         
         // Fetch milestones for this contract from API
-        const milestonesResponse = await contractGetAPI.getMilestonesByContract(contractId);
+        const shouldLoadActiveDispute = user?.role === UserRole.Client || user?.role === UserRole.Freelancer;
+        const [milestonesResponse, activeDisputeResponse] = await Promise.all([
+          contractGetAPI.getMilestonesByContract(contractId),
+          shouldLoadActiveDispute
+            ? disputeGetAPI.getActiveDispute(contractId)
+            : Promise.resolve(null),
+        ]);
         const milestonesList = milestonesResponse.success && milestonesResponse.data 
           ? milestonesResponse.data 
           : [];
           
         setContract(contractData);
         setMilestones(milestonesList);
+        if (activeDisputeResponse) {
+          if (activeDisputeResponse.success) {
+            setActiveDispute(activeDisputeResponse.data ?? null);
+          } else {
+            setActiveDispute(null);
+            setActiveDisputeError(activeDisputeResponse.message || 'Unable to check active disputes.');
+          }
+        } else {
+          setActiveDispute(null);
+        }
         generateAuditTrail(contractData);
       } else {
         setError(apiResponse.message || t('contracts.unableToLoadContract'));
@@ -133,8 +156,9 @@ export default function ViewContractDetailsScreen() {
       console.error('Failed to load contract details:', err);
     } finally {
       setLoading(false);
+      setActiveDisputeLoading(false);
     }
-  }, [contractId, t]);
+  }, [contractId, t, user?.role]);
 
   useEffect(() => {
     loadContractDetails();
@@ -277,6 +301,10 @@ export default function ViewContractDetailsScreen() {
         milestones={milestones}
         auditTrail={auditTrail}
         onRefresh={loadContractDetails}
+        activeDispute={activeDispute}
+        activeDisputeError={activeDisputeError}
+        activeDisputeLoading={activeDisputeLoading}
+        onRetryDispute={loadContractDetails}
       />
     );
   }
@@ -288,6 +316,10 @@ export default function ViewContractDetailsScreen() {
         milestones={milestones}
         auditTrail={auditTrail}
         onRefresh={loadContractDetails}
+        activeDispute={activeDispute}
+        activeDisputeError={activeDisputeError}
+        activeDisputeLoading={activeDisputeLoading}
+        onRetryDispute={loadContractDetails}
       />
     );
   }
@@ -300,6 +332,10 @@ export default function ViewContractDetailsScreen() {
       auditTrail={auditTrail}
       onRefresh={loadContractDetails}
       isAdminOverride={userRole === 'admin'}
+      activeDispute={null}
+      activeDisputeError={null}
+      activeDisputeLoading={false}
+      onRetryDispute={loadContractDetails}
     />
   );
 }

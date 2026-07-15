@@ -54,6 +54,7 @@ import AdminFAQManagementScreen from '../features/admin/screens/AdminFAQManageme
 import AdminAdsPackagesScreen from '../features/admin/screens/AdminAdsPackagesScreen';
 import AdminDisputeManagementScreen from '../features/admin/screens/AdminDisputeManagementScreen';
 import CreateDisputeScreen from '../features/disputes/screens/CreateDisputeScreen';
+import DisputeDetailScreen from '../features/disputes/screens/DisputeDetailScreen';
 import MarketInsightsScreen from '../features/market-insights/screens/MarketInsightsScreen';
 import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
 import CreateReviewScreen from '../features/reviews/screens/CreateReviewScreen';
@@ -233,6 +234,7 @@ export const router = createBrowserRouter([
       { path: 'contracts/create/:proposalId', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/disputes/create', element: <ProtectedRoute requireAuth requireSetup><CreateDisputeScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/disputes/:disputeId', element: <ProtectedRoute requireAuth requireSetup><DisputeDetailScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/documents/:documentId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup><ManageMilestonesScreen /></ProtectedRoute> },
