@@ -33,8 +33,6 @@ export default function SettingsScreen() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>([]);
-  const [industries, setIndustries] = useState<string[]>([]);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<{ id: number; name: string }[]>([]);
   const [billingConfig, setBillingConfig] = useState<BillingEarningsConfig>(getStoredBillingConfig);
   const [billingError, setBillingError] = useState('');
@@ -84,17 +82,7 @@ export default function SettingsScreen() {
             }));
           }
         } else if (role === UserRole.Client) {
-          const [profileRes, sizesRes, indRes] = await Promise.all([
-            profileGetAPI.getMyClientProfile(),
-            profileGetAPI.getCompanySizes(),
-            profileGetAPI.getIndustries()
-          ]);
-          if (sizesRes.success && sizesRes.data) {
-            setCompanySizes(sizesRes.data);
-          }
-          if (indRes.success && indRes.data) {
-            setIndustries(indRes.data);
-          }
+          const profileRes = await profileGetAPI.getMyClientProfile();
           if (profileRes.success && profileRes.data) {
             setFormData(prev => ({
               ...prev,
@@ -372,15 +360,21 @@ export default function SettingsScreen() {
                             </div>
                             <div>
                               <label className="text-xs font-medium text-primary mb-2 block">{t('profile.industry')}</label>
-                              <select value={formData.industry}
+                              <input type="text" list="industry-list" value={formData.industry}
                                 onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))}
-                                className="input-gb w-full px-4 py-3 text-sm bg-black"
-                                style={{ colorScheme: 'dark' }}>
-                                <option value="">Select an industry</option>
-                                {industries.map(ind => (
-                                  <option key={ind} value={ind}>{ind}</option>
-                                ))}
-                              </select>
+                                className="input-gb w-full px-4 py-3 text-sm" placeholder="Select or type an industry" />
+                              <datalist id="industry-list">
+                                <option value="Technology" />
+                                <option value="Finance" />
+                                <option value="Healthcare" />
+                                <option value="E-commerce" />
+                                <option value="Education" />
+                                <option value="Marketing" />
+                                <option value="Real Estate" />
+                                <option value="Entertainment" />
+                                <option value="Manufacturing" />
+                                <option value="Other" />
+                              </datalist>
                             </div>
                             <div>
                               <label className="text-xs font-medium text-primary mb-2 block">{t('settings.companySize', { defaultValue: 'Company Size' })}</label>
@@ -388,9 +382,10 @@ export default function SettingsScreen() {
                                 onChange={e => setFormData(prev => ({ ...prev, companySize: parseInt(e.target.value) || 0 }))}
                                 className="input-gb w-full px-4 py-3 text-sm bg-black"
                                 style={{ colorScheme: 'dark' }}>
-                                {companySizes.map(size => (
-                                  <option key={size.id} value={size.id}>{size.name}</option>
-                                ))}
+                                <option value={0}>Solo (1-9 employees)</option>
+                                <option value={1}>Small (10-49 employees)</option>
+                                <option value={2}>Medium (50-249 employees)</option>
+                                <option value={3}>Large (250+ employees)</option>
                               </select>
                             </div>
                           </>
