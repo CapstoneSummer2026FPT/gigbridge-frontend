@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { Fragment, useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import {
@@ -7,6 +7,7 @@ import {
   Bot,
   CheckCircle2,
   ChevronDown,
+  Crown,
   Heart,
   Grid,
   List,
@@ -20,16 +21,15 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
+import { jobAPI } from '../../../api/jobAPI';
 import { savedFreelancerAPI } from '../../../api/savedFreelancerAPI';
 import { InviteFreelancerToJobModal } from '../../profile/components/InviteFreelancerToJobModal';
 import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
 import type { SavedFreelancerDto } from '../../../types/savedFreelancer';
-import {
-  MOCK_MATCHING_JOBS,
-  rankTalentForJob,
-  type RankedTalentMatch,
-} from '../mock/data-for-SmartTalentMatchingScreen';
+import { JobPostStatus } from '../../../types/models/Job';
+import { clientPremiumAPI, premiumClientAPI } from '../../premium/api';
+import type { TalentMatch } from '../../premium/types/premiumClient';
 import '../styles/smart-talent-matching-screen.css';
 
 // Metadata helper to retrieve rate, success rate, and earnings for each mockup designer/developer
@@ -62,13 +62,68 @@ const getTalentAvatar = (id: string, defaultUrl: string) => {
 
 const FILTER_SKILL_TAGS = ['UX Design', 'React', 'Node.js', 'Figma', 'Three.js', 'TypeScript', 'Flutter'];
 
-type ApiTalentMatch = RankedTalentMatch & {
+export type ApiTalentMatch = {
+  id: string;
   freelancerProfileId: string;
   userId: string;
+  fullName: string;
+  title: string;
+  location: string;
+  avatarUrl: string;
+  projectBudget: number;
+  category: string;
+  industryExperience: string[];
+  skills: string[];
+  completedMilestones: number;
+  anonymousRating: number;
+  responseTime: string;
+  availability: string;
+  recentWork: string;
+  matchScore: number;
+  skillScore: number;
+  budgetScore: number;
+  categoryScore: number;
+  advancedScore: number;
+  matchedSkills: string[];
+  matchReasons: string[];
   rating: number;
   eloPoints: number;
+  isPremium: boolean;
   profileCompletionScore?: number;
 };
+
+type MatchingJob = { id: string; title: string };
+export type TalentTab = 'all' | 'matches' | 'saved';
+
+export const resolveTalentTab = (tab: string | null): TalentTab =>
+  tab === 'matches' || tab === 'saved' ? tab : 'all';
+
+export const applyPremiumTalentMatches = (
+  matches: TalentMatch[],
+  talents: ApiTalentMatch[],
+): ApiTalentMatch[] => {
+  const profiles = new Map(talents.map(talent => [talent.freelancerProfileId, talent]));
+  return [...matches]
+    .sort((a, b) => b.matchPercentage - a.matchPercentage)
+    .map(match => {
+      const talent = profiles.get(match.freelancerId);
+      if (!talent) return null;
+      const skillTotal = match.matchedSkills.length + match.missingSkills.length;
+      return {
+        ...talent,
+        matchScore: Math.round(match.matchPercentage),
+        skillScore: skillTotal === 0
+          ? 0
+          : Math.round((match.matchedSkills.length / skillTotal) * 48),
+        matchedSkills: match.matchedSkills,
+        matchReasons: match.reasons,
+      };
+    })
+    .filter((talent): talent is ApiTalentMatch => talent !== null);
+};
+
+export const prioritizePremiumTalents = (talents: ApiTalentMatch[]): ApiTalentMatch[] =>
+  [...talents].sort((left, right) => Number(right.isPremium) - Number(left.isPremium));
 
 const getFreelancerProfileId = (freelancer: FreelancerProfileDetailDto): string =>
   freelancer.freelancerProfilesId ?? freelancer.freelancerProfileId ?? '';
@@ -115,6 +170,7 @@ const mapFreelancerProfileToTalent = (freelancer: FreelancerProfileDetailDto): A
     matchReasons: ['Backend freelancer profile'],
     rating,
     eloPoints: freelancer.eloPoints ?? 100,
+    isPremium: Boolean(freelancer.isPremium),
     profileCompletionScore: freelancer.profileCompletionScore,
   };
 };
@@ -125,11 +181,11 @@ export default function SmartTalentMatchingScreen() {
   const { role } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const initialTab = tabParam === 'saved' ? 'saved' : tabParam === 'all' ? 'all' : 'matches';
+  const initialTab = resolveTalentTab(tabParam);
 
-  const openJobs = MOCK_MATCHING_JOBS.filter(job => job.status === 'Open');
-  const [selectedJobId, setSelectedJobId] = useState(openJobs[0]?.id || '');
-  const [premiumEnabled, setPremiumEnabled] = useState(true);
+  const [openJobs, setOpenJobs] = useState<MatchingJob[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [query, setQuery] = useState('');
   const [invitedIds, setInvitedIds] = useState<string[]>([]);
   const [inviteTalentTarget, setInviteTalentTarget] = useState<ApiTalentMatch | null>(null);
@@ -137,22 +193,19 @@ export default function SmartTalentMatchingScreen() {
   const [savedFreelancerIds, setSavedFreelancerIds] = useState<Set<string>>(new Set());
   const [savingFreelancerIds, setSavingFreelancerIds] = useState<Set<string>>(new Set());
   const [loadingTalents, setLoadingTalents] = useState(true);
+  const [loadingMatches, setLoadingMatches] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'matches' | 'saved'>(initialTab);
+  const [matchingError, setMatchingError] = useState<string | null>(null);
+  const [rankedMatches, setRankedMatches] = useState<ApiTalentMatch[]>([]);
+  const [activeTab, setActiveTab] = useState<TalentTab>(initialTab);
   const [isCompact, setIsCompact] = useState(true);
   const [perPage, setPerPage] = useState(20);
 
   useEffect(() => {
-    if (tabParam === 'saved') {
-      setActiveTab('saved');
-    } else if (tabParam === 'all') {
-      setActiveTab('all');
-    } else if (tabParam === 'matches') {
-      setActiveTab('matches');
-    }
+    setActiveTab(resolveTalentTab(tabParam));
   }, [tabParam]);
 
-  const handleTabChange = (tab: 'all' | 'matches' | 'saved') => {
+  const handleTabChange = (tab: TalentTab) => {
     setActiveTab(tab);
     setSearchParams({ tab });
   };
@@ -163,8 +216,8 @@ export default function SmartTalentMatchingScreen() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [minSuccessRate, setMinSuccessRate] = useState<number | null>(null);
 
-  const selectedJob = MOCK_MATCHING_JOBS.find(job => job.id === selectedJobId);
-  const isClient = role === 0 || role === null;
+  const selectedJob = openJobs.find(job => job.id === selectedJobId);
+  const isClient = role === 0;
   const canSaveFreelancers = role === 0;
   const isPremiumClient = isClient && premiumEnabled;
 
@@ -176,10 +229,27 @@ export default function SmartTalentMatchingScreen() {
         setLoadingTalents(true);
         setLoadError(null);
 
-        const freelancersResponse = await profileGetAPI.getAllFreelancers();
-        const savedFreelancers = canSaveFreelancers
-          ? await savedFreelancerAPI.getMySavedFreelancers()
-          : [];
+        const [freelancersResponse, savedFreelancers, jobsResponse, subscriptionResponse] = await Promise.all([
+          profileGetAPI.getAllFreelancers(),
+          canSaveFreelancers
+            ? savedFreelancerAPI.getMySavedFreelancers().catch(error => {
+                console.error('Failed to load saved freelancers:', error);
+                return [];
+              })
+            : [],
+          isClient
+            ? jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 }).catch(error => {
+                console.error('Failed to load client jobs:', error);
+                return null;
+              })
+            : Promise.resolve(null),
+          isClient
+            ? clientPremiumAPI.currentSubscription().catch(error => {
+                console.error('Failed to load client Premium status:', error);
+                return null;
+              })
+            : Promise.resolve(null),
+        ]);
 
         if (!isMounted) return;
 
@@ -191,6 +261,18 @@ export default function SmartTalentMatchingScreen() {
           .map(mapFreelancerProfileToTalent)
           .filter(talent => talent.freelancerProfileId));
         setSavedFreelancerIds(new Set(savedFreelancers.map(getSavedFreelancerProfileId).filter(Boolean)));
+        const jobs = jobsResponse?.success
+          ? (jobsResponse.data || [])
+              .filter(job => Number(job.status) === JobPostStatus.Open)
+              .map(job => ({ id: job.jobPostsId, title: job.title }))
+          : [];
+        setOpenJobs(jobs);
+        setSelectedJobId(current => jobs.some(job => job.id === current) ? current : jobs[0]?.id || '');
+        setPremiumEnabled(Boolean(
+          subscriptionResponse?.success
+          && subscriptionResponse.data?.isPremium
+          && new Date(subscriptionResponse.data.endDate) > new Date()
+        ));
       } catch (error) {
         if (!isMounted) return;
         const message = error instanceof Error ? error.message : 'Unable to load freelancer profiles.';
@@ -208,13 +290,40 @@ export default function SmartTalentMatchingScreen() {
     return () => {
       isMounted = false;
     };
-  }, [canSaveFreelancers]);
+  }, [canSaveFreelancers, isClient]);
 
-  // Base list of candidates ranked for the job context
-  const rankedMatches = useMemo<ApiTalentMatch[]>(() => {
-    if (!selectedJob) return [];
-    return rankTalentForJob(selectedJob, talents) as ApiTalentMatch[];
-  }, [selectedJob, talents]);
+  useEffect(() => {
+    let isMounted = true;
+    if (activeTab !== 'matches' || !isPremiumClient || !selectedJobId) {
+      setRankedMatches([]);
+      setMatchingError(null);
+      setLoadingMatches(false);
+      return () => { isMounted = false; };
+    }
+
+    setLoadingMatches(true);
+    setMatchingError(null);
+    void premiumClientAPI.getTalentMatches(selectedJobId, 50).then(response => {
+      if (!isMounted) return;
+      if (!response.success || !response.data) {
+        setRankedMatches([]);
+        setMatchingError(response.message || 'AI talent matching is temporarily unavailable.');
+        return;
+      }
+      setRankedMatches(applyPremiumTalentMatches(response.data.matches, talents));
+    }).catch(error => {
+      if (!isMounted) return;
+      console.error('Failed to load AI talent matches:', error);
+      setRankedMatches([]);
+      setMatchingError(error instanceof Error
+        ? error.message
+        : 'AI talent matching is temporarily unavailable.');
+    }).finally(() => {
+      if (isMounted) setLoadingMatches(false);
+    });
+
+    return () => { isMounted = false; };
+  }, [activeTab, isPremiumClient, selectedJobId, talents]);
 
   // Combine full pool and matching pool, adding dummy scores if needed
   const basePool = useMemo<ApiTalentMatch[]>(() => {
@@ -222,26 +331,12 @@ export default function SmartTalentMatchingScreen() {
       return isPremiumClient ? rankedMatches : [];
     }
 
-    // Map full pool to match layout structures
-    return talents.map(talent => {
-      const matchInRanked = rankedMatches.find(r => r.id === talent.id);
-      if (matchInRanked) return matchInRanked;
-      return {
-        ...talent,
-        matchScore: 80,
-        skillScore: 35,
-        budgetScore: 10,
-        categoryScore: 15,
-        advancedScore: 10,
-        matchedSkills: [],
-        matchReasons: ['Generic fit context'],
-      };
-    });
+    return talents;
   }, [activeTab, rankedMatches, isPremiumClient, talents]);
 
   // Apply visual filtering controls
   const filteredTalents = useMemo<ApiTalentMatch[]>(() => {
-    return basePool.filter(talent => {
+    const matchesFilters = basePool.filter(talent => {
       const meta = getTalentMetadata(talent.id);
 
       // Tab filter
@@ -293,7 +388,12 @@ export default function SmartTalentMatchingScreen() {
 
       return true;
     });
+
+    return prioritizePremiumTalents(matchesFilters);
   }, [basePool, activeTab, savedFreelancerIds, query, jobTypes, hourlyRate, selectedSkills, minSuccessRate]);
+
+  const visibleTalents = filteredTalents.slice(0, perPage);
+  const premiumTalentCount = filteredTalents.filter(talent => talent.isPremium).length;
 
   const inviteTalent = (talent: ApiTalentMatch) => {
     if (!isClient) {
@@ -362,6 +462,10 @@ export default function SmartTalentMatchingScreen() {
     setSelectedSkills([]);
     setMinSuccessRate(null);
   };
+
+  const isLoading = loadingTalents || (activeTab === 'matches' && loadingMatches);
+  const displayError = loadError || (activeTab === 'matches' ? matchingError : null);
+  const canDisplayTalents = activeTab !== 'matches' || (isPremiumClient && Boolean(selectedJobId));
 
   return (
     <AppLayout>
@@ -587,7 +691,7 @@ export default function SmartTalentMatchingScreen() {
               </div>
             </div>
 
-            {/* Premium Upgrade Banner */}
+            {/* Premium Smart Matching Banner */}
             <div className="bg-blue-600 p-6 rounded-2xl text-white relative overflow-hidden group shadow-md">
               <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
                 <Sparkles size={120} />
@@ -601,7 +705,9 @@ export default function SmartTalentMatchingScreen() {
               </p>
               <button
                 type="button"
-                onClick={() => setPremiumEnabled(!premiumEnabled)}
+                onClick={() => isPremiumClient
+                  ? handleTabChange('matches')
+                  : navigate('/premium/client/pricing')}
                 className={`w-full py-3 font-bold rounded-xl relative z-10 transition-all text-xs hover:shadow-lg ${premiumEnabled
                     ? 'bg-white text-blue-600 hover:bg-gray-100'
                     : 'bg-yellow-500 text-gray-900 hover:bg-yellow-400'
@@ -683,36 +789,54 @@ export default function SmartTalentMatchingScreen() {
             </div>
 
             {/* Error notifications */}
-            {!isPremiumClient && activeTab === 'matches' && (
+            {!loadingTalents && !isPremiumClient && activeTab === 'matches' && (
               <div className="bg-red-50 black:bg-red-950/20 text-red-700 black:text-red-300 border border-red-200 black:border-red-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
                 <AlertTriangle size={18} className="shrink-0" />
                 <span>{t('talentMatching.premiumAlert')}</span>
               </div>
             )}
 
-            {openJobs.length === 0 && (
+            {!loadingTalents && activeTab === 'matches' && isPremiumClient && openJobs.length === 0 && (
               <div className="bg-yellow-50 black:bg-yellow-950/20 text-yellow-700 black:text-yellow-300 border border-yellow-200 black:border-yellow-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
                 <AlertTriangle size={18} className="shrink-0" />
                 <span>{t('talentMatching.createJobAlert')}</span>
               </div>
             )}
 
-            {loadingTalents && (
+            {isLoading && (
               <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
                 <p className="text-primary font-semibold mb-2">{t('talentMatching.loadingProfiles')}</p>
                 <p className="text-sm text-muted-foreground">{t('talentMatching.loadingProfilesDesc')}</p>
               </div>
             )}
 
-            {!loadingTalents && loadError && (
+            {!isLoading && displayError && (
               <div className="bg-red-50 black:bg-red-950/20 text-red-700 black:text-red-300 border border-red-200 black:border-red-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
                 <AlertTriangle size={18} className="shrink-0" />
-                <span>{loadError}</span>
+                <span>{displayError}</span>
+              </div>
+            )}
+
+            {!isLoading && !displayError && activeTab === 'matches' && isPremiumClient && selectedJob && (
+              <div className="rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50 p-5 black:border-purple-800/60 black:from-purple-950/30 black:to-blue-950/20">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white shadow-sm">
+                    <Sparkles size={19} className="fill-current" />
+                  </span>
+                  <div>
+                    <h2 className="font-bold text-purple-950 black:text-purple-100">
+                      {t('talentMatching.tailoredMatchesTitle', { job: selectedJob.title })}
+                    </h2>
+                    <p className="mt-1 text-xs leading-relaxed text-purple-700 black:text-purple-300">
+                      {t('talentMatching.tailoredMatchesDesc')}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Empty state */}
-            {!loadingTalents && !loadError && filteredTalents.length === 0 && (
+            {!isLoading && !displayError && canDisplayTalents && filteredTalents.length === 0 && (
               <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
                 <AlertTriangle size={36} className="text-yellow-500 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-foreground mb-2">
@@ -731,19 +855,53 @@ export default function SmartTalentMatchingScreen() {
             )}
 
             {/* Talent cards rendering */}
-            {!loadingTalents && !loadError && filteredTalents.slice(0, perPage).map((talent, index) => {
+            {!isLoading && !displayError && canDisplayTalents && visibleTalents.map((talent, index) => {
               const invited = invitedIds.includes(talent.id);
               const isFavorite = savedFreelancerIds.has(talent.freelancerProfileId);
               const isSaving = savingFreelancerIds.has(talent.freelancerProfileId);
               const meta = getTalentMetadata(talent.id);
               const avatar = getTalentAvatar(talent.id, talent.avatarUrl);
               const score = talent.matchScore || 85;
+              const beginsPremiumSection = talent.isPremium && index === 0;
+              const beginsStandardSection = !talent.isPremium
+                && (index === 0 || visibleTalents[index - 1]?.isPremium);
 
               return (
-                <div
-                  key={talent.id}
-                  className="bento-card rounded-3xl p-6 flex flex-col md:flex-row gap-6 relative overflow-hidden group"
-                >
+                <Fragment key={talent.id}>
+                  {beginsPremiumSection && (
+                    <div className="rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 black:border-amber-700/50 black:from-amber-950/30 black:to-yellow-950/20">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
+                          <Crown size={20} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <h2 className="font-bold text-amber-950 black:text-amber-100">
+                            {t('talentMatching.priorityPremiumTalent')}
+                          </h2>
+                          <p className="text-xs text-amber-800 black:text-amber-300">
+                            {t('talentMatching.priorityPremiumTalentDesc')}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-amber-200/80 px-3 py-1 text-xs font-bold text-amber-900 black:bg-amber-800/60 black:text-amber-100">
+                          {premiumTalentCount}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {beginsStandardSection && (
+                    <div className="flex items-center gap-3 pt-2">
+                      <div className="h-px flex-1 bg-gray-200 black:bg-gray-800" />
+                      <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        {t('talentMatching.moreFreelancers')}
+                      </h2>
+                      <div className="h-px flex-1 bg-gray-200 black:bg-gray-800" />
+                    </div>
+                  )}
+
+                  <div
+                    className={`bento-card rounded-3xl p-6 flex flex-col md:flex-row gap-6 relative overflow-hidden group ${talent.isPremium ? 'premium-talent-card' : ''}`}
+                  >
                   {/* Photo area */}
                   <div
                     onClick={() => navigate(`/profile/freelancer/${talent.userId}`)}
@@ -768,6 +926,12 @@ export default function SmartTalentMatchingScreen() {
                       <div className="verified-badge-top absolute top-3 left-3 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 shadow-sm">
                         <Award size={12} className="fill-current" />
                         {t('talentMatching.risingTalent')}
+                      </div>
+                    )}
+                    {talent.isPremium && (
+                      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-amber-500/95 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm backdrop-blur-md">
+                        <Crown size={12} className="fill-current" />
+                        {t('talentMatching.premiumFreelancer')}
                       </div>
                     )}
                   </div>
@@ -849,12 +1013,13 @@ export default function SmartTalentMatchingScreen() {
                       <span>{talent.availability}</span>
                     </div>
                   </div>
-                </div>
+                  </div>
+                </Fragment>
               );
             })}
 
             {/* Load more button */}
-            {!loadingTalents && !loadError && filteredTalents.length > perPage && (
+            {!isLoading && !displayError && canDisplayTalents && filteredTalents.length > perPage && (
               <button
                 onClick={() => setPerPage(prev => prev + 10)}
                 className="w-full py-4 border-2 border-dashed border-gray-300 black:border-gray-800 rounded-3xl text-gray-600 black:text-gray-400 font-bold hover:bg-gray-100 black:hover:bg-gray-900/40 hover:border-blue-500/40 transition-all flex items-center justify-center gap-2 group"

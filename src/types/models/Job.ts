@@ -303,6 +303,10 @@ export interface GenerateJobDescriptionResponse {
   customSkills: string[];
   description: string;
   questionRecruitment?: string[] | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  currency?: string | null;
+  aiDisclaimer?: string | null;
 }
 
 export interface JobPostQuestionDto {

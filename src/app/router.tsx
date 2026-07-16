@@ -36,6 +36,7 @@ import ProjectsListScreen from '../features/workspace/screens/ProjectsListScreen
 import ProjectWorkspaceScreen from '../features/workspace/screens/ProjectWorkspaceScreen';
 import MessagesScreen from '../features/messages/screens/MessagesScreen';
 import AIInterviewScreen from '../features/ai-interview/screens/AIInterviewScreen';
+import SmartTalentMatchingScreen from '../features/talent-matching/screens/SmartTalentMatchingScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import AdminDashboardScreen from '../features/admin/screens/AdminDashboardScreen';
 import AdminUsersScreen from '../features/admin/screens/AdminUsersScreen';
@@ -53,12 +54,12 @@ import AdminAssetsScreen from '../features/admin/screens/AdminAssetsScreen';
 import AdminFAQManagementScreen from '../features/admin/screens/AdminFAQManagementScreen';
 import AdminAdsPackagesScreen from '../features/admin/screens/AdminAdsPackagesScreen';
 import AdminDisputeManagementScreen from '../features/admin/screens/AdminDisputeManagementScreen';
+import AdminPromotionPolicyScreen from '../features/admin/screens/AdminPromotionPolicyScreen';
 import CreateDisputeScreen from '../features/disputes/screens/CreateDisputeScreen';
 import DisputeDetailScreen from '../features/disputes/screens/DisputeDetailScreen';
 import MarketInsightsScreen from '../features/market-insights/screens/MarketInsightsScreen';
 import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
 import CreateReviewScreen from '../features/reviews/screens/CreateReviewScreen';
-import SmartTalentMatchingScreen from '../features/talent-matching/screens/SmartTalentMatchingScreen';
 import AboutScreen from '../features/company/screens/AboutScreen';
 import CareersScreen from '../features/company/screens/CareersScreen';
 import FAQScreen from '../features/company/screens/FAQScreen';
@@ -68,6 +69,9 @@ import WalletDepositScreen from '../features/wallet/screens/WalletDepositScreen'
 import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FreelancerPremiumScreen from '../features/premium/screens/FreelancerPremiumScreen';
 import FreelancerPricingScreen from '../features/premium/screens/FreelancerPricingScreen';
+import PremiumClientJobWorkspaceScreen from '../features/premium/screens/PremiumClientJobWorkspaceScreen';
+import ClientPremiumScreen from '../features/premium/screens/ClientPremiumScreen';
+import ClientPricingScreen from '../features/premium/screens/ClientPricingScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import WalletMockCheckoutScreen from '../features/wallet/screens/WalletMockCheckoutScreen';
@@ -179,11 +183,18 @@ function FreelancerOnly({ children }: { children: ReactNode }) {
   return role === UserRole.Freelancer ? <>{children}</> : <Navigate to="/subscription" replace />;
 }
 
+function ClientOnly({ children }: { children: ReactNode }) {
+  const { role } = useApp();
+  return role === UserRole.Client ? <>{children}</> : <Navigate to="/" replace />;
+}
+
 function SubscriptionRoute() {
   const { role } = useApp();
   return role === UserRole.Freelancer
     ? <Navigate to="/premium/freelancer/pricing" replace />
-    : <SubscriptionScreen />;
+    : role === UserRole.Client
+      ? <Navigate to="/premium/client/pricing" replace />
+      : <SubscriptionScreen />;
 }
 
 function NavigateToProposalCreate() {
@@ -219,6 +230,9 @@ export const router = createBrowserRouter([
       { path: 'premium/freelancer/rank-protection', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="vacation" /></FreelancerOnly></ProtectedRoute> },
       { path: 'premium/freelancer/promotions', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="promotions" /></FreelancerOnly></ProtectedRoute> },
       { path: 'premium/freelancer/history', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="history" /></FreelancerOnly></ProtectedRoute> },
+      { path: 'client/premium', element: <ProtectedRoute requireAuth requireSetup><Navigate to="/premium/client" replace /></ProtectedRoute> },
+      { path: 'premium/client', element: <ProtectedRoute requireAuth requireSetup><ClientOnly><ClientPremiumScreen /></ClientOnly></ProtectedRoute> },
+      { path: 'premium/client/pricing', element: <ProtectedRoute requireAuth requireSetup><ClientOnly><ClientPricingScreen /></ClientOnly></ProtectedRoute> },
 
       // Jobs - requires authentication
       { path: 'jobs/post/guide', element: <ProtectedRoute requireAuth requireSetup><PostJobPreGuideScreen /></ProtectedRoute> },
@@ -233,6 +247,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/my-jobs/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><JobDetailScreen /></ProtectedRoute> },
       { path: 'jobs/:id', element: <ProtectedRoute requireAuth><JobDetailScreen /></ProtectedRoute> },
       { path: 'jobs/:id/edit', element: <ProtectedRoute requireAuth requireSetup><EditJobPostScreen /></ProtectedRoute> },
+      { path: 'jobs/:jobPostId/premium', element: <ProtectedRoute requireAuth requireSetup><ClientOnly><PremiumClientJobWorkspaceScreen /></ClientOnly></ProtectedRoute> },
       { path: 'client/job-posts/:jobPostId/questions', element: <ProtectedRoute requireAuth requireSetup><ManageJobPostQuestionsScreen /></ProtectedRoute> },
 
       // Profiles - requires authentication
@@ -273,7 +288,7 @@ export const router = createBrowserRouter([
       { path: 'ai-assistant', element: <Navigate to="/" replace state={{ openAIAssistant: true }} /> },
       { path: 'ai-interview', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
       { path: 'ai-interview/:jobPostId', element: <ProtectedRoute requireAuth requireSetup><AIInterviewScreen /></ProtectedRoute> },
-      { path: 'talent-matching', element: <ProtectedRoute requireAuth requireSetup><SmartTalentMatchingScreen /></ProtectedRoute> },
+      { path: 'talent-matching', element: <ProtectedRoute requireAuth requireSetup><ClientOnly><SmartTalentMatchingScreen /></ClientOnly></ProtectedRoute> },
 
       // Settings - requires authentication
       { path: 'settings', element: <ProtectedRoute requireAuth><SettingsScreen /></ProtectedRoute> },
@@ -301,6 +316,7 @@ export const router = createBrowserRouter([
       { path: 'admin/faq-management', element: <AdminRoute><AdminFAQManagementScreen /></AdminRoute> },
       { path: 'admin/ads-packages', element: <AdminRoute><AdminAdsPackagesScreen /></AdminRoute> },
       { path: 'admin/disputes', element: <AdminRoute><AdminDisputeManagementScreen /></AdminRoute> },
+      { path: 'admin/job-promotion-policy', element: <AdminRoute><AdminPromotionPolicyScreen /></AdminRoute> },
       { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
       { path: 'admin/feedback', element: <AdminRoute><AdminFeedbackScreen /></AdminRoute> },
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },

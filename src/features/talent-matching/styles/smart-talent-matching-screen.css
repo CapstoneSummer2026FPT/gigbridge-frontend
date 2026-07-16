@@ -32,6 +32,16 @@
   box-shadow: 0px 10px 30px rgba(159, 75, 255, 0.15);
 }
 
+.premium-talent-card {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 8px 28px rgba(245, 158, 11, 0.1);
+}
+
+.black .premium-talent-card {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 8px 28px rgba(245, 158, 11, 0.08);
+}
+
 
 
 .custom-scrollbar::-webkit-scrollbar {

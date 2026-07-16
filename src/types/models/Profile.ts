@@ -86,6 +86,7 @@ export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
   userAvatar?: string;
   rating?: number;
   eloPoints?: number;
+  isPremium?: boolean;
   showProVerifiedBadge?: boolean;
   premiumUntil?: string | null;
   premiumTierName?: string | null;

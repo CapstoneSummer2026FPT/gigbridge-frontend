@@ -704,7 +704,9 @@ export function usePostJob() {
         skillIds: generatedSkillIds,
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
-        currency: prev.currency || GIGCOIN_CURRENCY_CODE,
+        budgetMin: generatedData.budgetMin != null ? String(generatedData.budgetMin) : prev.budgetMin,
+        budgetMax: generatedData.budgetMax != null ? String(generatedData.budgetMax) : prev.budgetMax,
+        currency: generatedData.currency || prev.currency || GIGCOIN_CURRENCY_CODE,
         estimatedDuration: prev.estimatedDuration || '2-4 weeks',
         location: prev.location || 'Remote',
         visibility: String(JobPostVisibility.Public),
@@ -724,6 +726,7 @@ export function usePostJob() {
 
       setIsJobDetailsGenerated(true);
       toast.success('Job details generated successfully based on your prompt.');
+      if (generatedData.aiDisclaimer) toast.info(generatedData.aiDisclaimer);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
       toast.error(errorMsg);

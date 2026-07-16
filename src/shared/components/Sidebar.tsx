@@ -10,7 +10,7 @@ import {
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
 import { reportAPI } from '../../api/reportAPI';
-import { premiumAPI } from '../../features/premium/api';
+import { clientPremiumAPI, premiumAPI } from '../../features/premium/api';
 import '../styles/Sidebar.css';
 
 interface NavItem {
@@ -67,7 +67,6 @@ function getClientNavItems(t: any): NavItem[] {
       icon: <Search size={18} />,
       children: [
         { id: 'smart-matching', label: t('nav.smartMatching'), icon: <Zap size={18} />, path: '/talent-matching', badge: 'PRO', badgeType: 'purple' },
-        { id: 'saved-freelancers', label: t('nav.savedFreelancers'), icon: <Bookmark size={18} />, path: '/talent-matching?tab=saved' },
       ],
     },
     {
@@ -192,6 +191,7 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
         { label: t('nav.disputeManagement') || 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
         { label: t('nav.faqManagement') || 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
         { label: t('nav.adsPackages') || 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },
+        { label: 'Promotion Policy', icon: <Settings size={18} />, path: '/admin/job-promotion-policy' },
         { label: t('nav.userFeedback') || 'User Feedback', icon: <MessageSquare size={18} />, path: '/admin/feedback' },
         { label: t('nav.cheatingManagement') || 'Cheating Management', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
         {
@@ -306,16 +306,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [reviewingReportCount, setReviewingReportCount] = useState<number | null>(null);
   const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
   const [showPremiumTeaser, setShowPremiumTeaser] = useState(false);
-  const [isPremiumFreelancer, setIsPremiumFreelancer] = useState(false);
+  const [isPremiumMember, setIsPremiumMember] = useState(false);
 
   const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
   const adminSections = role === 2 ? getAdminNavSections(t, openReportCount) : [];
 
   useEffect(() => {
     let active = true;
-    if (role !== 1) { setIsPremiumFreelancer(false); return; }
-    void premiumAPI.currentSubscription().then(response => {
-      if (active) setIsPremiumFreelancer(Boolean(response.success && response.data?.isPremium && new Date(response.data.endDate) > new Date()));
+    if (role !== 0 && role !== 1) { setIsPremiumMember(false); return; }
+    const request = role === 0 ? clientPremiumAPI.currentSubscription : premiumAPI.currentSubscription;
+    void request().then(response => {
+      if (active) setIsPremiumMember(Boolean(response.success && response.data?.isPremium && new Date(response.data.endDate) > new Date()));
     });
     return () => { active = false; };
   }, [role, location.pathname]);
@@ -461,10 +462,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="sidebar-pro-badge">
           <div className="sidebar-pro-header">
             <Zap size={14} className="sidebar-pro-icon" />
-            <span className="sidebar-pro-title">{t(role === 0 ? 'nav.clientPremium' : isPremiumFreelancer ? 'nav.premiumActive' : 'nav.freelancerPremium')}</span>
+            <span className="sidebar-pro-title">{t(isPremiumMember ? 'nav.premiumActive' : role === 0 ? 'nav.clientPremium' : 'nav.freelancerPremium')}</span>
           </div>
           <p className="sidebar-pro-desc">{t('nav.proBadgeDesc')}</p>
-          <button className="btn-cyan sidebar-pro-button" disabled={role === 0} onClick={() => role === 1 && (isPremiumFreelancer ? handleNavigate('/premium/freelancer') : setShowPremiumTeaser(true))}>{t(role === 0 ? 'nav.comingSoon' : isPremiumFreelancer ? 'nav.openHub' : 'nav.upgrade')}</button>
+          <button className="btn-cyan sidebar-pro-button" onClick={() => role === 0 ? handleNavigate(isPremiumMember ? '/premium/client' : '/premium/client/pricing') : (isPremiumMember ? handleNavigate('/premium/freelancer') : setShowPremiumTeaser(true))}>{t(isPremiumMember ? 'nav.openHub' : 'nav.upgrade')}</button>
         </div>
       )}
 

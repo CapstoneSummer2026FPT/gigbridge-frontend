@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  Edit3, AlertCircle, Search, Eye, X, Plus, Briefcase, Users,
+  Edit3, AlertCircle, Search, Eye, X, Plus, Briefcase, Users, Crown,
   CheckCircle, Clock, Ban, Calendar, FileText,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -322,6 +322,12 @@ export default function ManageJobPostsScreen() {
                       <button onClick={() => navigate(`/jobs/${job.jobPostsId}/edit`)} className="mjp-btn mjp-btn-amber">
                         <Edit3 size={14} /> Edit
                       </button>
+
+                      {status === 'Open' && (
+                        <button onClick={() => navigate(`/jobs/${job.jobPostsId}/premium`)} className="mjp-btn mjp-btn-cyan">
+                          <Crown size={14} /> Premium tools
+                        </button>
+                      )}
 
                       {status !== 'Closed' && (
                         <button

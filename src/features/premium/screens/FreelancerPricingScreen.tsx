@@ -87,8 +87,6 @@ export default function FreelancerPricingScreen() {
         </article>)}
       </div>}
 
-    <section className="premium-card premium-client-coming"><div><div className="premium-eyebrow">For clients</div><h3>Client Premium is coming later</h3><p className="premium-muted">Hiring-focused plans are being designed separately. No client purchase is available yet.</p></div><span className="premium-coming-badge">Coming soon</span></section>
-
     {selected && <div className="premium-modal" onClick={() => !busy && setSelected(undefined)}><div className="premium-modal-box" onClick={e => e.stopPropagation()}>
       <div className="premium-eyebrow"><GigCoinLogo size={18} /> Confirm GigCoin purchase</div><h2>{selected.name}</h2>
       <div className="premium-row"><span>Plan price</span><GigCoinAmount amount={selected.price} /></div><div className="premium-row"><span>Current balance</span><GigCoinAmount amount={wallet.data?.availableTokens || 0} /></div>
