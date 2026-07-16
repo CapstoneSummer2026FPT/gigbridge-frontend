@@ -1489,7 +1489,13 @@ export function useMessages() {
   const retryGoogleMeet = async (schedule: ScheduleEvent) => {
     const response = await scheduleAPI.retryMeeting(schedule.scheduleId);
     if (!response.success) {
-      setAnchorNotice(response.message || 'Unable to retry Google Meet creation.');
+      const message = response.message || 'Unable to retry Google Meet creation.';
+      if (message.includes('connected')) {
+        setAnchorNotice('Google Meet access is missing. Reconnect your Google account to continue.');
+        await connectGoogleMeet();
+      } else {
+        setAnchorNotice(message);
+      }
       return;
     }
 
