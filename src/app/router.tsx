@@ -54,6 +54,7 @@ import AdminFAQManagementScreen from '../features/admin/screens/AdminFAQManageme
 import AdminAdsPackagesScreen from '../features/admin/screens/AdminAdsPackagesScreen';
 import AdminDisputeManagementScreen from '../features/admin/screens/AdminDisputeManagementScreen';
 import CreateDisputeScreen from '../features/disputes/screens/CreateDisputeScreen';
+import DisputeDetailScreen from '../features/disputes/screens/DisputeDetailScreen';
 import MarketInsightsScreen from '../features/market-insights/screens/MarketInsightsScreen';
 import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
 import CreateReviewScreen from '../features/reviews/screens/CreateReviewScreen';
@@ -139,6 +140,28 @@ function AdminRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function OwnProfileEditRoute({ expectedRole, children }: { expectedRole: UserRole; children: ReactNode }) {
+  const { user, isLoading } = useApp();
+  const { id } = useParams<{ id: string }>();
+
+  if (isLoading || !user) {
+    return null;
+  }
+
+  if (user.role === UserRole.Admin) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  const roleSegment = user.role === UserRole.Freelancer ? 'freelancer' : 'client';
+  const ownEditPath = `/profile/${roleSegment}/${user.id}/edit`;
+
+  if (user.role !== expectedRole || id?.toLowerCase() !== user.id.toLowerCase()) {
+    return <Navigate to={ownEditPath} replace />;
+  }
+
+  return <>{children}</>;
+}
+
 function ContractListRoute() {
   const { role } = useApp();
   return role === UserRole.Freelancer ? <FreelancerContractScreen /> : <ManageContractScreen />;
@@ -215,8 +238,8 @@ export const router = createBrowserRouter([
       // Profiles - requires authentication
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
-      { path: 'profile/freelancer/:id/edit', element: <ProtectedRoute requireAuth><EditFreelancerProfileScreen /></ProtectedRoute> },
-      { path: 'profile/client/:id/edit', element: <ProtectedRoute requireAuth><EditClientProfileScreen /></ProtectedRoute> },
+      { path: 'profile/freelancer/:id/edit', element: <ProtectedRoute requireAuth><OwnProfileEditRoute expectedRole={UserRole.Freelancer}><EditFreelancerProfileScreen /></OwnProfileEditRoute></ProtectedRoute> },
+      { path: 'profile/client/:id/edit', element: <ProtectedRoute requireAuth><OwnProfileEditRoute expectedRole={UserRole.Client}><EditClientProfileScreen /></OwnProfileEditRoute></ProtectedRoute> },
       { path: 'profile/manage-content', element: <ProtectedRoute requireAuth><ManageFreelancerContentScreen /></ProtectedRoute> },
 
       // Proposals - requires authentication and setup
@@ -233,6 +256,7 @@ export const router = createBrowserRouter([
       { path: 'contracts/create/:proposalId', element: <ProtectedRoute requireAuth requireSetup><CreateEsignContractScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId', element: <ProtectedRoute requireAuth requireSetup><ViewContractDetailsScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/disputes/create', element: <ProtectedRoute requireAuth requireSetup><CreateDisputeScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/disputes/:disputeId', element: <ProtectedRoute requireAuth requireSetup><DisputeDetailScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/documents/:documentId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup><ManageMilestonesScreen /></ProtectedRoute> },

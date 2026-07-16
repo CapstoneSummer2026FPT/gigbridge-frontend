@@ -3,6 +3,9 @@ import type { ApiResponse } from '../../types/common';
 import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
 import type { WithdrawalResponse } from '../../types/models/Financial';
+import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
+import type { DisputeResolution } from '../../types/models/Dispute';
+import { normalizeAdminDisputeDetail } from './disputeUtils';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -18,6 +21,21 @@ export interface AdminBroadcastNotificationPayload {
 }
 
 export const adminPostAPI = {
+  resolveDispute: async (
+    disputeId: string,
+    resolution: DisputeResolution,
+    resolutionNote: string
+  ): Promise<ApiResponse<AdminDisputeDetail>> => {
+    const response = await apiService.post<unknown>(
+      `${Admin_Api_Base_Url}/disputes/${disputeId}/resolve`,
+      { resolution, resolutionNote }
+    );
+    return {
+      ...response,
+      data: response.data ? normalizeAdminDisputeDetail(response.data) : undefined,
+    };
+  },
+
   grantUserPremium: async (userId: string): Promise<ApiResponse<object>> =>
     apiService.post<object>(`${Admin_Api_Base_Url}/users/${userId}/premium`),
   /**

@@ -2,10 +2,27 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { AdminCheatingViolationDto, ReviewCheatingViolationRequest } from '../../types/models/Cheating';
 import type { AdminUserDto } from '../../types/models/User';
+import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
+import type { DisputeStatus } from '../../types/models/Dispute';
+import { normalizeAdminDisputeDetail } from './disputeUtils';
 
 const Admin_Api_Base_Url = '/admin';
 
 export const adminPatchAPI = {
+  updateDisputeStatus: async (
+    disputeId: string,
+    status: DisputeStatus
+  ): Promise<ApiResponse<AdminDisputeDetail>> => {
+    const response = await apiService.patch<unknown>(
+      `${Admin_Api_Base_Url}/disputes/${disputeId}/status`,
+      { status }
+    );
+    return {
+      ...response,
+      data: response.data ? normalizeAdminDisputeDetail(response.data) : undefined,
+    };
+  },
+
   /**
    * PATCH /api/v1/admin/users/toggle-activity
    * Toggles the IsActive flag for the user with the given email.

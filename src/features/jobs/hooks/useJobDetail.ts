@@ -116,6 +116,7 @@ export function useJobDetail() {
   const [isApplying, setIsApplying] = useState(false);
   const [isSavingSavedJob, setIsSavingSavedJob] = useState(false);
   const [proposalMessage, setProposalMessage] = useState('');
+  const [proposalCheckFailed, setProposalCheckFailed] = useState(false);
 
   // ── Fetch job + similar jobs ──────────────────────────────────
   const fetchJob = useCallback(async () => {
@@ -234,10 +235,12 @@ export function useJobDetail() {
   const fetchMyProposal = useCallback(async () => {
     if (!activeJobPostId || isClientMode || role !== UserRole.Freelancer || !user) {
       setMyProposal(null);
+      setProposalCheckFailed(false);
       return;
     }
     setProposalLoading(true);
     setProposalMessage('');
+    setProposalCheckFailed(false);
     try {
       const res = await proposalGetAPI.getMyProposalByJobPost(activeJobPostId);
       if (res.success && res.data) {
@@ -248,7 +251,14 @@ export function useJobDetail() {
         setMyProposal(null);
         return;
       }
+      // Non-404 error means we couldn't determine proposal status
       setProposalMessage(res.message || 'Could not load proposal status.');
+      setProposalCheckFailed(true);
+      setMyProposal(null);
+    } catch {
+      setProposalCheckFailed(true);
+      setMyProposal(null);
+      setProposalMessage('Unable to verify your proposal status. Please try again.');
     } finally {
       setProposalLoading(false);
     }
@@ -402,6 +412,7 @@ export function useJobDetail() {
     isApplying,
     isSavingSavedJob,
     proposalMessage,
+    proposalCheckFailed,
 
     // Derived
     applicationCost,

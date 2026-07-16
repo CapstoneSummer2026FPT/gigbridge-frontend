@@ -10,6 +10,10 @@ export const profileGetAPI = {
     return await apiService.get<FreelancerProfileDetailDto>('profile/freelancer/me');
   },
 
+  getMyClientProfile: async () => {
+    return await apiService.get<ClientProfileDetailDto>('profile/client/me');
+  },
+
   getClientProfile: async (userId: string) => {
     return await apiService.get<ClientProfileDetailDto>(`profile/client/${userId}`);
   },

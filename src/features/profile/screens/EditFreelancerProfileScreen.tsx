@@ -1,639 +1,422 @@
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Upload, Check, X, User, Phone, MapPin, Calendar, Briefcase, FileText, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Briefcase, Check, FileText, MapPin, RefreshCw, Tags, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
-import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
-import gsap from 'gsap';
-import { useGSAP } from '@gsap/react';
+import { profileGetAPI, profilePutAPI } from '../../../api/profileAPI';
+import { jobAPI } from '../../../api/jobAPI';
+import type { UpdateFreelancerProfileDto } from '../../../types/models/Profile';
+import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/edit-freelancer-profile-screen.css';
 
-interface ProfileFormData {
-  firstName: string;
-  lastName: string;
-  title: string;
-  bio: string;
-  availability: string;
-  phone: string;
-  address: string;
-  dateOfBirth: string;
-  profileImage: string;
-  skills: string[];
-}
+type FormErrors = Partial<Record<keyof UpdateFreelancerProfileDto | 'submit', string>>;
+type AvailabilityOption = { id: number; name: string };
 
-interface ValidationErrors {
-  [key: string]: string;
-}
-
-const AVAILABLE_SKILLS = [
-  'React',
-  'Vue.js',
-  'Angular',
-  'Node.js',
-  'Python',
-  'JavaScript',
-  'TypeScript',
-  'HTML/CSS',
-  'UI/UX Design',
-  'Graphic Design',
-  'Project Management',
-  'DevOps',
-  'AWS',
-  'Docker',
-  'MongoDB',
-  'PostgreSQL',
-];
-
-const AVAILABILITY_OPTIONS = [
-  { value: 'full-time', label: 'Full Time' },
-  { value: 'part-time', label: 'Part Time' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'available-soon', label: 'Available Soon' },
-];
+const emptyForm: UpdateFreelancerProfileDto = {
+  title: '',
+  bio: '',
+  availability: 0,
+  location: '',
+  majorId: '',
+  categoryIds: [],
+  skillIds: [],
+};
 
 export default function EditFreelancerProfileScreen() {
   const navigate = useNavigate();
   const { user } = useApp();
   const { t } = useTranslation();
-
-  // Load mock data
-  const mockProfile = SEED_FREELANCER_PROFILES[0];
-
-  const [formData, setFormData] = useState<ProfileFormData>({
-    firstName: 'Jane',
-    lastName: 'Smith',
-    title: mockProfile?.title || 'Senior React Developer',
-    bio: mockProfile?.bio || '',
-    availability: 'available-soon',
-    phone: '+1 (555) 987-6543',
-    address: '456 Developer Ave, San Francisco, CA 94102',
-    dateOfBirth: '1990-03-20',
-    profileImage: 'https://via.placeholder.com/200',
-    skills: ['React', 'TypeScript', 'Node.js', 'UI/UX Design'],
-  });
-
-  const [errors, setErrors] = useState<ValidationErrors>({});
-  const [successMessage, setSuccessMessage] = useState('');
+  const mountedRef = useRef(true);
+  const saveLockRef = useRef(false);
+  const [formData, setFormData] = useState<UpdateFreelancerProfileDto>(emptyForm);
+  const [majors, setMajors] = useState<MajorDto[]>([]);
+  const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
+  const [skills, setSkills] = useState<SkillOptionDto[]>([]);
+  const [availabilityOptions, setAvailabilityOptions] = useState<AvailabilityOption[]>([]);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [loadError, setLoadError] = useState('');
+  const [categoryError, setCategoryError] = useState('');
+  const [skillError, setSkillError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [previewImage, setPreviewImage] = useState('');
-  const [showBannedMessage, setShowBannedMessage] = useState(false);
-  const isMounted = useRef(true);
+  const [isSaved, setIsSaved] = useState(false);
+  const [hasConflict, setHasConflict] = useState(false);
 
   useEffect(() => {
-    isMounted.current = true;
+    mountedRef.current = true;
     return () => {
-      isMounted.current = false;
+      mountedRef.current = false;
     };
   }, []);
 
-  const validateForm = (): boolean => {
-    const newErrors: ValidationErrors = {};
-
-    // First Name validation (BR-24)
-    if (formData.firstName.length > 255) {
-      newErrors.firstName = t('profile.errors.charLimit');
-    }
-    if (formData.firstName.trim().length === 0) {
-      newErrors.firstName = t('profile.errors.emptySpaceFirst');
+  const fetchCategories = useCallback(async (majorId: string): Promise<CategoryOptionDto[] | null> => {
+    if (!majorId) {
+      setCategories([]);
+      return [];
     }
 
-    // Last Name validation (BR-25)
-    if (formData.lastName.length > 255) {
-      newErrors.lastName = t('profile.errors.charLimit');
-    }
-    if (formData.lastName.trim().length === 0) {
-      newErrors.lastName = t('profile.errors.emptySpaceLast');
-    }
-
-    // Professional Title validation
-    if (formData.title.length > 255) {
-      newErrors.title = t('profile.errors.charLimit');
-    }
-    if (formData.title.trim().length === 0) {
-      newErrors.title = t('profile.errors.emptySpaceTitle');
+    setIsLoadingCategories(true);
+    setCategoryError('');
+    const response = await jobAPI.getCategoriesByMajor(majorId);
+    if (!mountedRef.current) return null;
+    setIsLoadingCategories(false);
+    if (!response.success || !response.data) {
+      setCategories([]);
+      setCategoryError(response.message || t('profile.edit.categoryLoadError'));
+      return null;
     }
 
-    // Address validation (BR-26)
-    if (formData.address.length > 255) {
-      newErrors.address = t('profile.errors.charLimit');
-    }
-    if (formData.address.trim().length === 0 && formData.address.length > 0) {
-      newErrors.address = t('profile.errors.emptySpaceAddress');
+    setCategories(response.data);
+    return response.data;
+  }, [t]);
+
+  const fetchSkills = useCallback(async (
+    categoryIds: string[],
+    existingSkills: SkillOptionDto[] = [],
+  ): Promise<SkillOptionDto[] | null> => {
+    setIsLoadingSkills(true);
+    setSkillError('');
+    const responses = await Promise.all(categoryIds.map(categoryId => jobAPI.getSkillsByCategory(categoryId)));
+    if (!mountedRef.current) return null;
+    setIsLoadingSkills(false);
+
+    const failedResponse = responses.find(response => !response.success || !response.data);
+    if (failedResponse) {
+      setSkills(existingSkills);
+      setSkillError(failedResponse.message || t('profile.edit.skillLoadError'));
+      return null;
     }
 
-    // Phone validation (BR-27)
-    const phoneDigits = formData.phone.replace(/\D/g, '');
-    if (formData.phone && !/^\d+$|^[\d\s\-\+\(\)]+$/.test(formData.phone)) {
-      newErrors.phone = t('profile.errors.invalidPhone');
+    const merged = new Map<string, SkillOptionDto>();
+    existingSkills.forEach(skill => merged.set(skill.skillId, skill));
+    responses.forEach(response => response.data?.forEach(skill => merged.set(skill.skillId, skill)));
+    const options = [...merged.values()].sort((left, right) => left.name.localeCompare(right.name));
+    setSkills(options);
+    return options;
+  }, [t]);
+
+  const loadProfile = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError('');
+    setHasConflict(false);
+    setErrors({});
+    const [profileResponse, majorsResponse, availabilityResponse] = await Promise.all([
+      profileGetAPI.getMyFreelancerProfile(),
+      jobAPI.getMajors(),
+      profileGetAPI.getAvailabilityStatuses(),
+    ]);
+
+    if (!mountedRef.current) return;
+    if (!profileResponse.success || !profileResponse.data) {
+      setLoadError(profileResponse.message || t('profile.edit.loadError'));
+      setIsLoading(false);
+      return;
     }
-    if (formData.phone && (phoneDigits.length < 8 || phoneDigits.length > 20)) {
-      newErrors.phone = t('profile.errors.phoneLimit');
+    if (!majorsResponse.success || !majorsResponse.data || !availabilityResponse.success || !availabilityResponse.data) {
+      setLoadError(majorsResponse.message || availabilityResponse.message || t('profile.edit.lookupError'));
+      setIsLoading(false);
+      return;
     }
 
-    // Bio validation (BR-28)
-    if (formData.bio.length > 255) {
-      newErrors.bio = t('profile.errors.charLimit');
-    }
-    if (formData.bio.trim().length === 0 && formData.bio.length > 0) {
-      newErrors.bio = t('profile.errors.emptySpaceBio');
-    }
-
-    // Date of Birth validation (BR-23)
-    if (formData.dateOfBirth) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(formData.dateOfBirth)) {
-        newErrors.dateOfBirth = t('profile.errors.invalidDate');
-      } else {
-        const date = new Date(formData.dateOfBirth);
-        const today = new Date();
-        if (date > today) {
-          newErrors.dateOfBirth = t('profile.errors.futureBirth');
-        }
+    const profile = profileResponse.data;
+    setMajors(majorsResponse.data);
+    setAvailabilityOptions(availabilityResponse.data);
+    if (profile.majorId) {
+      const loadedCategories = await fetchCategories(profile.majorId);
+      if (loadedCategories === null) {
+        setIsLoading(false);
+        return;
       }
     }
+    const existingSkills = (profile.skills || []).map(skill => ({
+      skillId: skill.skillId,
+      name: skill.skillName,
+    }));
+    const loadedSkills = await fetchSkills(
+      profile.categories?.map(category => category.categoryId) || [],
+      existingSkills,
+    );
+    if (loadedSkills === null) {
+      setIsLoading(false);
+      return;
+    }
+    if (!mountedRef.current) return;
+    setFormData({
+      title: profile.title || '',
+      bio: profile.bio || '',
+      availability: profile.availability ?? availabilityResponse.data[0]?.id ?? 0,
+      location: profile.location || '',
+      majorId: profile.majorId || '',
+      categoryIds: profile.categories?.map(category => category.categoryId) || [],
+      skillIds: profile.skills?.map(skill => skill.skillId) || [],
+    });
+    setIsLoading(false);
+  }, [fetchCategories, fetchSkills, t]);
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  const setField = <K extends keyof UpdateFreelancerProfileDto>(key: K, value: UpdateFreelancerProfileDto[K]) => {
+    setFormData(current => ({ ...current, [key]: value }));
+    setErrors(current => {
+      const next = { ...current };
+      delete next[key];
+      delete next.submit;
+      return next;
+    });
+    setIsSaved(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, imageType: 'profileImage') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const changeMajor = async (majorId: string) => {
+    setFormData(current => ({ ...current, majorId, categoryIds: [], skillIds: [] }));
+    setSkills([]);
+    setSkillError('');
+    setErrors(current => ({ ...current, majorId: undefined, categoryIds: undefined, skillIds: undefined, submit: undefined }));
+    setIsSaved(false);
+    await fetchCategories(majorId);
+  };
 
-    // Validate format (BR-29, BR-31)
-    const allowedFormats = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!allowedFormats.includes(file.type)) {
-      setErrors(prev => ({
-        ...prev,
-        [imageType]: t('profile.errors.invalidPhotoType')
+  const toggleCategory = async (categoryId: string) => {
+    const selected = formData.categoryIds.includes(categoryId);
+    const nextCategoryIds = selected
+      ? formData.categoryIds.filter(id => id !== categoryId)
+      : [...formData.categoryIds, categoryId];
+    setField('categoryIds', nextCategoryIds);
+    const availableSkills = await fetchSkills(nextCategoryIds);
+    if (availableSkills !== null) {
+      const availableSkillIds = new Set(availableSkills.map(skill => skill.skillId));
+      setFormData(current => ({
+        ...current,
+        skillIds: (current.skillIds || []).filter(skillId => availableSkillIds.has(skillId)),
       }));
-      return;
     }
-
-    // Validate and resize (BR-30, BR-32)
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const dataUrl = event.target?.result as string;
-        if (isMounted.current) {
-          setFormData(prev => ({
-            ...prev,
-            [imageType]: dataUrl
-          }));
-          setPreviewImage(dataUrl);
-          setErrors(prev => {
-            const newErrors = { ...prev };
-            delete newErrors[imageType];
-            return newErrors;
-          });
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
   };
 
-  const toggleSkill = (skill: string) => {
-    setFormData(prev => ({
-      ...prev,
-      skills: prev.skills.includes(skill)
-        ? prev.skills.filter(s => s !== skill)
-        : [...prev.skills, skill]
-    }));
+  const toggleSkill = (skillId: string) => {
+    const selectedSkillIds = formData.skillIds || [];
+    setField('skillIds', selectedSkillIds.includes(skillId)
+      ? selectedSkillIds.filter(id => id !== skillId)
+      : [...selectedSkillIds, skillId]);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validate = (): boolean => {
+    const next: FormErrors = {};
+    const title = formData.title.trim();
+    const bio = formData.bio.trim();
+    const location = formData.location.trim();
 
-    if (!validateForm()) {
-      return;
+    if (!title) next.title = t('profile.edit.required');
+    else if (title.length > 300) next.title = t('profile.edit.maxLength', { count: 300 });
+    if (!bio) next.bio = t('profile.edit.required');
+    else if (bio.length > 2000) next.bio = t('profile.edit.maxLength', { count: 2000 });
+    if (!location) next.location = t('profile.edit.required');
+    else if (location.length > 300) next.location = t('profile.edit.maxLength', { count: 300 });
+    if (!availabilityOptions.some(option => option.id === formData.availability)) {
+      next.availability = t('profile.edit.invalidAvailability');
+    }
+    if (!formData.majorId || !majors.some(major => major.majorId === formData.majorId)) {
+      next.majorId = t('profile.edit.majorRequired');
+    }
+    if (formData.categoryIds.length === 0) {
+      next.categoryIds = t('profile.edit.categoryRequired');
+    } else if (formData.categoryIds.some(id => !categories.some(category => category.categoryId === id))) {
+      next.categoryIds = t('profile.edit.invalidCategory');
+    }
+    if ((formData.skillIds || []).some(id => !skills.some(skill => skill.skillId === id))) {
+      next.skillIds = t('profile.edit.invalidSkill');
     }
 
-    // Check if account is banned (MSG30)
-    if (Math.random() < 0.05) { // 5% chance for demo
-      if (isMounted.current) {
-        setShowBannedMessage(true);
-        setErrors({ banned: t('profile.accountBanned') });
-      }
-      return;
-    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
 
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (saveLockRef.current || isSaving || isLoadingCategories || isLoadingSkills || categoryError || skillError || !validate()) return;
+
+    saveLockRef.current = true;
     setIsSaving(true);
+    setIsSaved(false);
+    setHasConflict(false);
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (isMounted.current) {
-        setSuccessMessage(t('profile.operationSuccess'));
-        setTimeout(() => {
-          if (isMounted.current) {
-            setSuccessMessage('');
-            navigate(`/profile/freelancer/${user?.id}`);
-          }
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Failed to save profile:', error);
-    } finally {
-      if (isMounted.current) {
-        setIsSaving(false);
-      }
-    }
-  };
-
-  const handleCancel = () => {
-    navigate(`/profile/freelancer/${user?.id}`);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
+      const response = await profilePutAPI.updateFreelancerProfile({
+        title: formData.title.trim(),
+        bio: formData.bio.trim(),
+        availability: formData.availability,
+        location: formData.location.trim(),
+        majorId: formData.majorId,
+        categoryIds: [...new Set(formData.categoryIds)],
+        skillIds: [...new Set(formData.skillIds || [])],
       });
+
+      if (!mountedRef.current) return;
+      if (!response.success) {
+        const isConflict = response.statusCode === 409;
+        setHasConflict(isConflict);
+        setErrors({
+          submit: isConflict
+            ? t('profile.edit.concurrentUpdate')
+            : response.message || t('profile.edit.saveError'),
+        });
+        return;
+      }
+
+      setIsSaved(true);
+      window.setTimeout(() => {
+        if (mountedRef.current) navigate(`/profile/freelancer/${user!.id}`);
+      }, 700);
+    } finally {
+      saveLockRef.current = false;
+      if (mountedRef.current) setIsSaving(false);
     }
   };
 
-  // GSAP Entrance Animations
-  useGSAP(() => {
-    // Header transition
-    gsap.from('.edit-freelancer-profile-header', {
-      opacity: 0,
-      y: -20,
-      duration: 0.6,
-      ease: 'power3.out',
-    });
+  const cancel = () => navigate(`/profile/freelancer/${user!.id}`);
 
-    // Staggered slide/fade for main layout blocks
-    gsap.from('.edit-freelancer-card-animate', {
-      opacity: 0,
-      y: 30,
-      stagger: 0.1,
-      duration: 0.8,
-      ease: 'power3.out',
-    });
-  }, []);
+  if (isLoading) {
+    return <AppLayout><div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">{t('profile.edit.loading')}</div></AppLayout>;
+  }
+
+  if (loadError) {
+    return (
+      <AppLayout>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4 text-center">
+          <p className="text-red-500">{loadError}</p>
+          <button type="button" onClick={() => void loadProfile()} className="btn-cyan px-5 py-3 rounded-xl flex items-center gap-2"><RefreshCw size={16} />{t('profile.edit.retry')}</button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const errorFor = (key: keyof UpdateFreelancerProfileDto) => errors[key] && <p className="edit-freelancer-profile-form-error">{errors[key]}</p>;
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto py-8 px-4">
-        {/* Header */}
+      <div className="max-w-4xl mx-auto py-8 px-4">
         <div className="edit-freelancer-profile-header mb-8">
-          <button
-            onClick={handleCancel}
-            className="p-3 rounded-xl transition-all hover:bg-surface border border-transparent hover:border-border cursor-pointer flex items-center justify-center"
-            type="button"
-          >
-            <ArrowLeft size={18} className="text-primary" />
-          </button>
+          <button type="button" onClick={cancel} className="p-3 rounded-xl hover:bg-surface border border-transparent hover:border-border cursor-pointer"><ArrowLeft size={18} /></button>
           <div>
-            <h1 className="edit-freelancer-profile-header-title text-2xl font-bold text-foreground leading-tight">
-              {t('profile.editFreelancerProfile')}
-            </h1>
-            <p className="text-sm text-secondary mt-1">{t('profile.configurePersonalProfessional')}</p>
+            <h1 className="edit-freelancer-profile-header-title text-2xl font-bold">{t('profile.editFreelancerProfile')}</h1>
+            <p className="text-sm text-secondary mt-1">{t('profile.edit.freelancerSubtitle')}</p>
           </div>
         </div>
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="edit-freelancer-profile-success-message flex items-center gap-3 p-4 rounded-xl border mb-6">
-            <Check size={18} className="text-emerald-500" />
-            <p className="text-sm font-medium text-emerald-500">{successMessage}</p>
+        {isSaved && <div className="edit-freelancer-profile-success-message flex items-center gap-3 p-4 rounded-xl border mb-6"><Check size={18} /><span>{t('profile.operationSuccess')}</span></div>}
+        {errors.submit && (
+          <div role="alert" className="flex items-center justify-between gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 mb-6">
+            <span className="flex items-center gap-3"><X size={18} /><span>{errors.submit}</span></span>
+            {hasConflict && (
+              <button type="button" onClick={() => void loadProfile()} className="flex shrink-0 items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 cursor-pointer">
+                <RefreshCw size={14} />{t('profile.edit.reloadProfile')}
+              </button>
+            )}
           </div>
         )}
 
-        {/* Banned Message */}
-        {showBannedMessage && (
-          <div className="edit-freelancer-profile-banned-message flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 mb-6">
-            <X size={18} className="text-red-500" />
-            <p className="text-sm font-medium text-red-500">{t('profile.accountBanned')}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="edit-freelancer-profile-container">
-            {/* Left Column: Avatar & Completeness Checklist */}
-            <div className="edit-freelancer-profile-left edit-freelancer-card-animate space-y-6">
-              {/* Profile Image Card */}
-              <div className="glass-card edit-freelancer-profile-avatar-card p-6 flex flex-col items-center">
-                <h3 className="edit-freelancer-profile-section-title text-left w-full border-b border-border pb-3 mb-6">{t('profile.photo')}</h3>
-                
-                <div className="edit-freelancer-profile-avatar-wrapper group relative w-36 h-36 rounded-full overflow-hidden border-2 border-border shadow-inner">
-                  <img
-                    src={previewImage || formData.profileImage || 'https://via.placeholder.com/200'}
-                    alt="Profile"
-                    className="edit-freelancer-profile-avatar-img w-full h-full object-cover"
-                  />
-                  <div className="edit-freelancer-profile-avatar-overlay absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
-                    <label className="cursor-pointer p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
-                      <Upload size={22} className="text-white" />
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/gif"
-                        onChange={(e) => handleImageUpload(e, 'profileImage')}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                </div>
-                
-                <h4 className="edit-freelancer-profile-name font-bold text-foreground text-lg mt-4 text-center">
-                  {formData.firstName || t('profile.firstNamePlaceholder')} {formData.lastName || t('profile.lastNamePlaceholder')}
-                </h4>
-                <p className="edit-freelancer-profile-role text-xs text-muted-foreground font-semibold mt-1">{t('profile.representativeFreelancer')}</p>
-                
-                {errors.profileImage && (
-                  <p className="edit-freelancer-profile-form-error text-xs text-red-500 mt-3 text-center">{errors.profileImage}</p>
-                )}
-                
-                <div className="edit-freelancer-profile-avatar-specs mt-6 w-full text-center space-y-1 py-3 px-4 rounded-xl bg-surface-muted/50 border border-border">
-                  <p className="text-[11px] text-secondary">{t('profile.photoSpecs')}</p>
-                  <p className="text-[11px] text-secondary">{t('profile.photoSpecsSize')}</p>
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <section className="glass-card edit-freelancer-profile-section p-6">
+            <h2 className="edit-freelancer-profile-section-title font-bold border-b border-border pb-3 mb-6">{t('profile.edit.professionalDetails')}</h2>
+            <div className="edit-freelancer-profile-form-grid">
+              <div className="edit-freelancer-profile-form-group md:col-span-2">
+                <label className="edit-freelancer-profile-form-label">{t('profile.professionalTitle')} *</label>
+                <div className="edit-freelancer-profile-input-wrapper"><input value={formData.title} onChange={e => setField('title', e.target.value)} maxLength={300} className="edit-freelancer-profile-form-input" /><Briefcase size={16} className="edit-freelancer-profile-input-icon" /></div>
+                {errorFor('title')}
               </div>
-
-              {/* Profile Completeness Checklist Card */}
-              <div className="glass-card edit-freelancer-profile-tips-card p-6">
-                <h4 className="edit-freelancer-profile-tips-title font-bold text-foreground text-sm border-b border-border pb-3 mb-4">{t('profile.completeness')}</h4>
-                <p className="text-xs text-secondary leading-relaxed">
-                  {t('profile.completenessDescFreelancer')}
-                </p>
-                <ul className="edit-freelancer-profile-tips-list mt-6 space-y-3">
-                  <li className="flex items-center gap-2 text-xs">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500">✓</span>
-                    <span className="text-foreground">{t('profile.photoUploaded')}</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-xs">
-                    <span className={`flex items-center justify-center w-5 h-5 rounded-full ${formData.title ? 'bg-emerald-500/10 text-emerald-500' : 'bg-surface-muted border border-border text-muted-foreground'}`}>
-                      {formData.title ? '✓' : '•'}
-                    </span>
-                    <span className={formData.title ? 'text-foreground' : 'text-muted-foreground'}>{t('profile.titleConfigured')}</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-xs">
-                    <span className={`flex items-center justify-center w-5 h-5 rounded-full ${formData.skills.length > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-surface-muted border border-border text-muted-foreground'}`}>
-                      {formData.skills.length > 0 ? '✓' : '•'}
-                    </span>
-                    <span className={formData.skills.length > 0 ? 'text-foreground' : 'text-muted-foreground'}>{t('profile.skillsConfigured', { count: formData.skills.length })}</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-xs">
-                    <span className={`flex items-center justify-center w-5 h-5 rounded-full ${formData.bio ? 'bg-emerald-500/10 text-emerald-500' : 'bg-surface-muted border border-border text-muted-foreground'}`}>
-                      {formData.bio ? '✓' : '•'}
-                    </span>
-                    <span className={formData.bio ? 'text-foreground' : 'text-muted-foreground'}>{t('profile.bioConfigured')}</span>
-                  </li>
-                </ul>
+              <div className="edit-freelancer-profile-form-group">
+                <label className="edit-freelancer-profile-form-label">{t('profile.availabilityStatus')} *</label>
+                <select value={formData.availability} onChange={e => setField('availability', Number(e.target.value))} className="edit-freelancer-profile-form-select w-full">
+                  {availabilityOptions.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
+                </select>
+                {errorFor('availability')}
+              </div>
+              <div className="edit-freelancer-profile-form-group">
+                <label className="edit-freelancer-profile-form-label">{t('profile.edit.location')} *</label>
+                <div className="edit-freelancer-profile-input-wrapper"><input value={formData.location} onChange={e => setField('location', e.target.value)} maxLength={300} className="edit-freelancer-profile-form-input" /><MapPin size={16} className="edit-freelancer-profile-input-icon" /></div>
+                {errorFor('location')}
+              </div>
+              <div className="edit-freelancer-profile-form-group md:col-span-2">
+                <label className="edit-freelancer-profile-form-label">{t('profile.edit.bio')} *</label>
+                <div className="edit-freelancer-profile-input-wrapper !items-start"><textarea value={formData.bio} onChange={e => setField('bio', e.target.value)} maxLength={2000} rows={8} className="edit-freelancer-profile-form-textarea w-full" /><FileText size={16} className="edit-freelancer-profile-input-icon mt-3" /></div>
+                <div className="text-xs text-muted-foreground text-right mt-1">{formData.bio.length}/2000</div>
+                {errorFor('bio')}
               </div>
             </div>
+          </section>
 
-            {/* Right Column: Professional & Personal & Bio & Skills */}
-            <div className="edit-freelancer-profile-right edit-freelancer-card-animate space-y-6">
-              {/* Professional Information */}
-              <div className="glass-card edit-freelancer-profile-section p-6">
-                <h2 className="edit-freelancer-profile-section-title font-bold text-base border-b border-border pb-3 mb-6">{t('profile.professionalTitle')}</h2>
-                
-                <div className="edit-freelancer-profile-form-grid">
-                  {/* Professional Title */}
-                  <div className="edit-freelancer-profile-form-group md:col-span-2">
-                    <label className="edit-freelancer-profile-form-label">{t('profile.professionalTitle')} *</label>
-                    <div className="edit-freelancer-profile-input-wrapper">
-                      <input
-                        type="text"
-                        name="title"
-                        value={formData.title}
-                        onChange={handleChange}
-                        maxLength={255}
-                        className="edit-freelancer-profile-form-input"
-                        placeholder={t('profile.titlePlaceholder')}
-                        required
-                      />
-                      <Briefcase size={16} className="edit-freelancer-profile-input-icon" />
-                    </div>
-                    {errors.title && (
-                      <p className="edit-freelancer-profile-form-error">{errors.title}</p>
-                    )}
-                  </div>
+          <section className="glass-card edit-freelancer-profile-section p-6">
+            <h2 className="edit-freelancer-profile-section-title font-bold border-b border-border pb-3 mb-6">{t('profile.edit.specialization')}</h2>
+            <div className="edit-freelancer-profile-form-group">
+              <label className="edit-freelancer-profile-form-label">{t('profile.edit.major')} *</label>
+              <select value={formData.majorId} onChange={e => void changeMajor(e.target.value)} className="edit-freelancer-profile-form-select w-full">
+                <option value="">{t('profile.edit.selectMajor')}</option>
+                {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
+              </select>
+              {errorFor('majorId')}
+            </div>
 
-                  {/* Availability */}
-                  <div className="edit-freelancer-profile-form-group md:col-span-2">
-                    <label className="edit-freelancer-profile-form-label">{t('profile.availabilityStatus')}</label>
-                    <div className="edit-freelancer-profile-input-wrapper">
-                      <select
-                        name="availability"
-                        value={formData.availability}
-                        onChange={handleChange}
-                        className="edit-freelancer-profile-form-select w-full"
-                      >
-                        {AVAILABILITY_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                      <Calendar size={16} className="edit-freelancer-profile-input-icon" />
-                    </div>
-                  </div>
+            <div className="edit-freelancer-profile-form-group mt-6">
+              <label className="edit-freelancer-profile-form-label flex items-center gap-2"><Tags size={16} />{t('profile.edit.categories')} *</label>
+              {isLoadingCategories ? (
+                <p className="text-sm text-muted-foreground mt-3">{t('profile.edit.loadingCategories')}</p>
+              ) : categoryError ? (
+                <div className="flex items-center justify-between gap-3 mt-3 p-3 rounded-xl border border-red-500/20 text-red-500">
+                  <span>{categoryError}</span>
+                  <button type="button" onClick={() => void fetchCategories(formData.majorId)} className="flex items-center gap-1 cursor-pointer"><RefreshCw size={14} />{t('profile.edit.retry')}</button>
                 </div>
-              </div>
-
-              {/* Personal Information */}
-              <div className="glass-card edit-freelancer-profile-section p-6">
-                <h2 className="edit-freelancer-profile-section-title font-bold text-base border-b border-border pb-3 mb-6">{t('profile.personalInformation')}</h2>
-                
-                <div className="edit-freelancer-profile-form-grid">
-                  {/* First Name */}
-                  <div className="edit-freelancer-profile-form-group">
-                    <label className="edit-freelancer-profile-form-label">{t('profile.firstName')} *</label>
-                    <div className="edit-freelancer-profile-input-wrapper">
-                      <input
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        maxLength={255}
-                        className="edit-freelancer-profile-form-input"
-                        placeholder={t('profile.firstNamePlaceholder')}
-                        required
-                      />
-                      <User size={16} className="edit-freelancer-profile-input-icon" />
-                    </div>
-                    {errors.firstName && (
-                      <p className="edit-freelancer-profile-form-error">{errors.firstName}</p>
-                    )}
-                  </div>
-
-                  {/* Last Name */}
-                  <div className="edit-freelancer-profile-form-group">
-                    <label className="edit-freelancer-profile-form-label">{t('profile.lastName')} *</label>
-                    <div className="edit-freelancer-profile-input-wrapper">
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        maxLength={255}
-                        className="edit-freelancer-profile-form-input"
-                        placeholder={t('profile.lastNamePlaceholder')}
-                        required
-                      />
-                      <User size={16} className="edit-freelancer-profile-input-icon" />
-                    </div>
-                    {errors.lastName && (
-                      <p className="edit-freelancer-profile-form-error">{errors.lastName}</p>
-                    )}
-                  </div>
-
-                  {/* Date of Birth */}
-                  <div className="edit-freelancer-profile-form-group">
-                    <label className="edit-freelancer-profile-form-label">{t('profile.dateOfBirth')}</label>
-                    <div className="edit-freelancer-profile-input-wrapper">
-                      <input
-                        type="date"
-                        name="dateOfBirth"
-                        value={formData.dateOfBirth}
-                        onChange={handleChange}
-                        className="edit-freelancer-profile-form-input"
-                      />
-                      <Calendar size={16} className="edit-freelancer-profile-input-icon" />
-                    </div>
-                    {errors.dateOfBirth && (
-                      <p className="edit-freelancer-profile-form-error">{errors.dateOfBirth}</p>
-                    )}
-                  </div>
-
-                  {/* Phone */}
-                  <div className="edit-freelancer-profile-form-group">
-                    <label className="edit-freelancer-profile-form-label">{t('profile.phone')}</label>
-                    <div className="edit-freelancer-profile-input-wrapper">
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        className="edit-freelancer-profile-form-input"
-                        placeholder={t('profile.phonePlaceholder')}
-                      />
-                      <Phone size={16} className="edit-freelancer-profile-input-icon" />
-                    </div>
-                    {errors.phone && (
-                      <p className="edit-freelancer-profile-form-error">{errors.phone}</p>
-                    )}
-                  </div>
-
-                  {/* Address */}
-                  <div className="edit-freelancer-profile-form-group md:col-span-2">
-                    <label className="edit-freelancer-profile-form-label">{t('profile.address')}</label>
-                    <div className="edit-freelancer-profile-input-wrapper">
-                      <input
-                        type="text"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleChange}
-                        maxLength={255}
-                        className="edit-freelancer-profile-form-input"
-                        placeholder={t('profile.addressPlaceholder')}
-                      />
-                      <MapPin size={16} className="edit-freelancer-profile-input-icon" />
-                    </div>
-                    {errors.address && (
-                      <p className="edit-freelancer-profile-form-error">{errors.address}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Biography */}
-              <div className="glass-card edit-freelancer-profile-section p-6">
-                <h2 className="edit-freelancer-profile-section-title font-bold text-base border-b border-border pb-3 mb-6">{t('profile.biographyOverview')}</h2>
-                
-                <div className="edit-freelancer-profile-biography-container relative">
-                  <div className="edit-freelancer-profile-input-wrapper !items-start">
-                    <textarea
-                      name="bio"
-                      value={formData.bio}
-                      onChange={handleChange}
-                      maxLength={255}
-                      rows={5}
-                      className="edit-freelancer-profile-form-textarea w-full"
-                      placeholder={t('profile.bioPlaceholderFreelancer')}
-                    />
-                    <FileText size={16} className="edit-freelancer-profile-input-icon mt-3" />
-                  </div>
-                  <div className="edit-freelancer-profile-form-counter mt-2 flex justify-between items-center px-1">
-                    <span className="text-[11px] text-muted-foreground">{t('profile.bioCounterDescFreelancer')}</span>
-                    <span className="edit-freelancer-profile-char-count text-xs font-semibold">{formData.bio.length}/255</span>
-                  </div>
-                  {errors.bio && (
-                    <p className="edit-freelancer-profile-form-error mt-2">{errors.bio}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Skills */}
-              <div className="glass-card edit-freelancer-profile-section p-6">
-                <h2 className="edit-freelancer-profile-section-title font-bold text-base border-b border-border pb-3 mb-2">{t('profile.skillsInventory')}</h2>
-                <p className="text-xs text-muted-foreground mb-4">{t('profile.skillsInventoryDesc')}</p>
-                
-                <div className="edit-freelancer-profile-skills flex flex-wrap gap-2">
-                  {AVAILABLE_SKILLS.map(skill => {
-                    const isActive = formData.skills.includes(skill);
+              ) : formData.majorId && categories.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                  {categories.map(category => {
+                    const selected = formData.categoryIds.includes(category.categoryId);
                     return (
-                      <button
-                        key={skill}
-                        type="button"
-                        onClick={() => toggleSkill(skill)}
-                        className={`edit-freelancer-profile-skill-button px-4 py-2 text-xs font-medium border rounded-full transition-all duration-200 cursor-pointer ${
-                          isActive 
-                            ? 'bg-cyan-500 border-cyan-500 text-white shadow-md' 
-                            : 'border-border bg-surface hover:border-cyan-500 hover:text-cyan-500'
-                        }`}
-                      >
-                        {isActive && <span className="mr-1">✓</span>}
-                        {skill}
+                      <button key={category.categoryId} type="button" onClick={() => void toggleCategory(category.categoryId)} className={`text-left px-4 py-3 rounded-xl border cursor-pointer ${selected ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface text-muted-foreground'}`}>
+                        <span className="flex items-center gap-2">{selected && <Check size={15} />}{category.name}</span>
                       </button>
                     );
                   })}
                 </div>
-                {formData.skills.length === 0 && (
-                  <p className="edit-freelancer-profile-skills-label text-xs text-red-500 font-semibold mt-4">{t('profile.skillsSelectError')}</p>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="edit-freelancer-profile-actions flex gap-3 justify-end items-center pt-4">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="edit-freelancer-profile-button-cancel px-6 py-3 rounded-xl border border-border bg-transparent text-foreground hover:bg-surface transition-colors duration-200 cursor-pointer font-medium text-sm flex items-center justify-center min-h-[48px]"
-                >
-                  <X size={16} className="mr-2" />
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="btn-cyan edit-freelancer-profile-button-submit px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition-transform hover:-translate-y-0.5 duration-200 min-h-[48px]"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      {t('profile.savingChanges')}
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} />
-                      {t('profile.saveChanges')}
-                    </>
-                  )}
-                </button>
-              </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-3">{formData.majorId ? t('profile.edit.noCategories') : t('profile.edit.selectMajorFirst')}</p>
+              )}
+              {errorFor('categoryIds')}
             </div>
+
+            <div className="edit-freelancer-profile-form-group mt-6">
+              <label className="edit-freelancer-profile-form-label flex items-center gap-2"><Briefcase size={16} />{t('profile.edit.skills')}</label>
+              {isLoadingSkills ? (
+                <p className="text-sm text-muted-foreground mt-3">{t('profile.edit.loadingSkills')}</p>
+              ) : skillError ? (
+                <div className="flex items-center justify-between gap-3 mt-3 p-3 rounded-xl border border-red-500/20 text-red-500">
+                  <span>{skillError}</span>
+                  <button type="button" onClick={() => void fetchSkills(formData.categoryIds)} className="flex items-center gap-1 cursor-pointer"><RefreshCw size={14} />{t('profile.edit.retry')}</button>
+                </div>
+              ) : formData.categoryIds.length > 0 && skills.length > 0 ? (
+                <div className="flex flex-wrap gap-3 mt-3">
+                  {skills.map(skill => {
+                    const selected = (formData.skillIds || []).includes(skill.skillId);
+                    return (
+                      <button key={skill.skillId} type="button" onClick={() => toggleSkill(skill.skillId)} className={`px-4 py-2 rounded-full border cursor-pointer ${selected ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-surface text-muted-foreground'}`}>
+                        <span className="flex items-center gap-2">{selected && <Check size={14} />}{skill.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-3">{formData.categoryIds.length > 0 ? t('profile.edit.noSkills') : t('profile.edit.selectCategoryFirst')}</p>
+              )}
+              {errorFor('skillIds')}
+            </div>
+          </section>
+
+          <div className="edit-freelancer-profile-actions flex gap-3 justify-end">
+            <button type="button" onClick={cancel} className="px-6 py-3 rounded-xl border border-border cursor-pointer">{t('common.cancel')}</button>
+            <button type="submit" disabled={isSaving || isLoadingCategories || isLoadingSkills || Boolean(categoryError) || Boolean(skillError)} className="btn-cyan px-6 py-3 rounded-xl flex items-center gap-2 disabled:opacity-60">
+              {isSaving ? t('profile.savingChanges') : <><Check size={16} />{t('profile.saveChanges')}</>}
+            </button>
           </div>
         </form>
       </div>

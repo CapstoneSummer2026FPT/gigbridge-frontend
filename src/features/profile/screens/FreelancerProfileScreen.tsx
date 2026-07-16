@@ -155,6 +155,20 @@ export default function FreelancerProfileScreen() {
                     </span>
                   </div>
                 </div>
+                {(profile?.majorName || profile?.categories?.length > 0) && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {profile?.majorName && (
+                      <span className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-semibold">
+                        {profile.majorName}
+                      </span>
+                    )}
+                    {profile?.categories?.map((category: { categoryId: string; name: string }) => (
+                      <span key={category.categoryId} className="px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant text-on-surface-variant text-sm">
+                        {category.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -98,6 +98,12 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
               hourly_rate: 95,
               avatar: apiData.userAvatar,
               eloPoints: apiData.eloPoints ?? 100,
+              majorId: apiData.majorId,
+              majorName: apiData.majorName,
+              categories: apiData.categories ?? [],
+              showProVerifiedBadge: apiData.showProVerifiedBadge,
+              premiumTierName: apiData.tierName,
+              premiumUntil: apiData.premiumUntil,
             },
             skills: apiData.skills && apiData.skills.length > 0
               ? apiData.skills.map(s => s.skillName)
