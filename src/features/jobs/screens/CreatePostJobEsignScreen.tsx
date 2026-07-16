@@ -441,7 +441,7 @@ export default function CreatePostJobEsignScreen() {
             className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-muted-foreground hover:bg-muted transition-all cursor-pointer flex items-center gap-1.5"
           >
             <ChevronLeft size={16} />
-                Back to Contract Setup
+            Back to Contract Setup
           </button>
 
           {hasAlreadySigned ? (

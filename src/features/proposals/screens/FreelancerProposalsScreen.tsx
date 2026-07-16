@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Edit3, FileText, MessageSquare, Send, ShieldAlert, XCircle } from 'lucide-react';
+import { ArrowLeft, Bot, Edit3, FileText, MessageSquare, Send, ShieldAlert, XCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -261,6 +261,21 @@ export default function FreelancerProposalsScreen() {
                     >
                       <FileText size={16} />
                       View Answers
+                    </button>
+                  )}
+
+                  {[ProposalStatus.Pending, ProposalStatus.Shortlisted, ProposalStatus.Accepted].includes(Number(activeProposal.status)) && (
+                    <button
+                      onClick={() => navigate(`/ai-interview/${encodeURIComponent(activeProposal.jobPostsId)}`, {
+                        state: {
+                          jobPostId: activeProposal.jobPostsId,
+                          jobTitle: activeProposal.jobTitle,
+                        },
+                      })}
+                      className="btn-cyan text-sm px-5 py-2.5 flex items-center gap-2"
+                    >
+                      <Bot size={16} />
+                      Start AI Interview
                     </button>
                   )}
 
