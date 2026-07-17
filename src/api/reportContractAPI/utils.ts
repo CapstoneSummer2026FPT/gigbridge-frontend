@@ -28,6 +28,7 @@ const normalizeAttachment = (raw: unknown): ReportContractAttachment => {
     contentType: String(valueOf(source, 'contentType', 'ContentType') ?? ''),
     fileSize: Number(valueOf(source, 'fileSize', 'FileSize') ?? 0),
     uploadedAt: String(valueOf(source, 'uploadedAt', 'UploadedAt') ?? ''),
+    uploadedByUserId: valueOf<string | null>(source, 'uploadedByUserId', 'UploadedByUserId') ?? null,
   };
 };
 

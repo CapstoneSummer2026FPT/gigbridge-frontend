@@ -29,6 +29,7 @@ export interface ReportContractAttachment {
   contentType: string;
   fileSize: number;
   uploadedAt: string;
+  uploadedByUserId?: string | null;
 }
 
 export interface ReportContractInitiator {
@@ -97,6 +98,7 @@ export interface RespondToReportInput {
   explanation?: string | null;
   proposedResolution?: string | null;
   rejectReason?: string | null;
+  attachments?: File[];
 }
 
 export interface ConfirmResolutionInput {

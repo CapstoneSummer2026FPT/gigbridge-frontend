@@ -1,11 +1,15 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useTranslation } from '../../../hooks/useTranslation';
-import type { ReportContract } from '../../../types/models/ReportContract';
+import type { ReportContract, ReportContractAttachment } from '../../../types/models/ReportContract';
 import {
   ContractReportStatus,
   ContractReportResolutionAction,
 } from '../../../types/models/ReportContract';
-import { AlertCircle, X, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import {
+  AlertCircle, X, Loader2, CheckCircle, XCircle,
+  ExternalLink, FileText, Image, Film, Archive,
+  Upload, Download
+} from 'lucide-react';
 import '../styles/report-contract.css';
 
 const STATUS_KEYS: Record<number, string> = {
@@ -32,10 +36,67 @@ interface ReportDetailModalProps {
     explanation?: string | null;
     proposedResolution?: string | null;
     rejectReason?: string | null;
+    attachments?: File[];
   }) => Promise<{ success: boolean; message?: string }>;
   onConfirm: (isAccepted: boolean) => Promise<{ success: boolean; message?: string }>;
   isResponding: boolean;
   isConfirming: boolean;
+}
+
+function getFileIcon(contentType: string) {
+  if (contentType.startsWith('image/')) return <Image size={16} />;
+  if (contentType.startsWith('video/')) return <Film size={16} />;
+  if (contentType.includes('pdf')) return <FileText size={16} />;
+  if (contentType.includes('zip') || contentType.includes('rar') || contentType.includes('7z')) return <Archive size={16} />;
+  return <FileText size={16} />;
+}
+
+function isImageType(contentType: string): boolean {
+  return contentType.startsWith('image/');
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function AttachmentItem({ attachment }: { attachment: ReportContractAttachment }) {
+  return (
+    <a
+      key={attachment.reportContractAttachmentId}
+      href={attachment.fileUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rc-attachment-item"
+    >
+      <span className="rc-attachment-icon">
+        {isImageType(attachment.contentType) ? (
+          <img
+            src={attachment.fileUrl}
+            alt={attachment.fileName}
+            className="rc-attachment-thumb"
+          />
+        ) : (
+          getFileIcon(attachment.contentType)
+        )}
+      </span>
+      <span className="rc-attachment-name" title={attachment.fileName}>
+        {attachment.fileName}
+      </span>
+      <span className="rc-attachment-meta">
+        <span className="rc-attachment-size">{formatFileSize(attachment.fileSize)}</span>
+        {attachment.uploadedAt && (
+          <span className="rc-attachment-time">
+            {new Date(attachment.uploadedAt).toLocaleString()}
+          </span>
+        )}
+      </span>
+      <Download size={14} className="rc-attachment-download" />
+    </a>
+  );
 }
 
 export function ReportDetailModal({
@@ -53,7 +114,9 @@ export function ReportDetailModal({
   const [explanation, setExplanation] = useState('');
   const [proposedResolution, setProposedResolution] = useState('');
   const [rejectReason, setRejectReason] = useState('');
+  const [respondentFiles, setRespondentFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -65,12 +128,35 @@ export function ReportDetailModal({
   const respondentCanRespond = isRespondent && isPending;
   const reporterCanConfirm = isReporter && isWaitingConfirmation;
 
+  // Split attachments by uploader
+  const reporterAttachments = report.attachments.filter(
+    (a) => !a.uploadedByUserId || a.uploadedByUserId === report.reporter.id
+  );
+  const respondentAttachments = report.attachments.filter(
+    (a) => a.uploadedByUserId && a.uploadedByUserId === report.respondent?.id
+  );
+
   const resetRespondMode = () => {
     setRespondMode(null);
     setExplanation('');
     setProposedResolution('');
     setRejectReason('');
+    setRespondentFiles([]);
     setError(null);
+  };
+
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      setRespondentFiles((prev) => [...prev, ...Array.from(files)]);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setRespondentFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleRespondSubmit = async (event: FormEvent) => {
@@ -102,6 +188,7 @@ export function ReportDetailModal({
       explanation: explanation.trim() || null,
       proposedResolution: proposedResolution.trim() || null,
       rejectReason: rejectReason.trim() || null,
+      attachments: respondentFiles.length > 0 ? respondentFiles : undefined,
     });
 
     if (result.success) {
@@ -223,6 +310,34 @@ export function ReportDetailModal({
             <p className="rc-description-text">{report.desiredResolution}</p>
           </div>
 
+          {/* Reporter Evidence */}
+          {reporterAttachments.length > 0 && (
+            <div className="rc-detail-section">
+              <h4 className="rc-section-title rc-section-title-attachment">
+                {t('workspace.reportReporterEvidence')}
+              </h4>
+              <div className="rc-attachment-list">
+                {reporterAttachments.map((att) => (
+                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Respondent Evidence */}
+          {respondentAttachments.length > 0 && (
+            <div className="rc-detail-section">
+              <h4 className="rc-section-title rc-section-title-attachment">
+                {t('workspace.reportRespondentEvidence')}
+              </h4>
+              <div className="rc-attachment-list">
+                {respondentAttachments.map((att) => (
+                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Respondent Response */}
           {report.resolutionAction !== null && (
             <div className="rc-detail-section rc-response-section">
@@ -251,30 +366,6 @@ export function ReportDetailModal({
             </div>
           )}
 
-          {/* Attachments */}
-          {report.attachments.length > 0 && (
-            <div className="rc-detail-section">
-              <h4 className="rc-section-title">{t('workspace.reportAttachments')}</h4>
-              <div className="rc-attachment-list">
-                {report.attachments.map((att) => (
-                  <a
-                    key={att.reportContractAttachmentId}
-                    href={att.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rc-attachment-item"
-                  >
-                    <ExternalLink size={14} />
-                    <span>{att.fileName}</span>
-                    <span className="rc-attachment-size">
-                      {(att.fileSize / (1024 * 1024)).toFixed(2)} MB
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Respondent Actions */}
           {respondentCanRespond && (
             <div className="rc-detail-section rc-action-section">
@@ -283,9 +374,20 @@ export function ReportDetailModal({
               {/* Quick Accept */}
               <button
                 type="button"
-                onClick={() =>
-                  onRespond({ resolutionAction: ContractReportResolutionAction.AcceptIssue })
-                }
+                onClick={() => {
+                  setRespondMode(ContractReportResolutionAction.AcceptIssue);
+                  // For AcceptIssue, submit immediately without attachments
+                  onRespond({
+                    resolutionAction: ContractReportResolutionAction.AcceptIssue,
+                    attachments: respondentFiles.length > 0 ? respondentFiles : undefined,
+                  }).then((result) => {
+                    if (result.success) {
+                      resetRespondMode();
+                    } else {
+                      setError(result.message || 'Failed to submit response.');
+                    }
+                  });
+                }}
                 disabled={isResponding}
                 className="rc-action-button rc-action-accept"
               >
@@ -367,6 +469,39 @@ export function ReportDetailModal({
                       />
                     </div>
                   )}
+
+                  {/* Respondent Attachment Upload */}
+                  <div className="rc-field rc-respond-attachments">
+                    <label>{t('workspace.reportRespondentAttachments')}</label>
+                    <p className="rc-hint">{t('workspace.reportRespondentAttachmentsHint')}</p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      onChange={handleFileSelect}
+                      disabled={isResponding}
+                      multiple
+                      className="rc-file-input"
+                    />
+                    {respondentFiles.length > 0 && (
+                      <div className="rc-file-list">
+                        {respondentFiles.map((file, index) => (
+                          <div key={index} className="rc-file-item">
+                            <FileText size={15} />
+                            <span>{file.name}</span>
+                            <strong>{(file.size / (1024 * 1024)).toFixed(2)} MB</strong>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              disabled={isResponding}
+                              className="rc-file-remove"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <div className="rc-actions">
                     <button

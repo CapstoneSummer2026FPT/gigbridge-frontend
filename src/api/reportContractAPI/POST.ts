@@ -47,16 +47,33 @@ export const reportContractPostAPI = {
 
   /**
    * POST /api/contracts/{contractId}/reports/{reportId}/respond
-   * Respondent action (accept, explain, propose, reject)
+   * Respondent action (accept, explain, propose, reject) with optional file attachments
    */
   respondToReport: async (
     contractId: string,
     reportId: string,
     input: RespondToReportInput,
   ): Promise<ApiResponse<ReportContract>> => {
+    const formData = new FormData();
+    formData.append('resolutionAction', String(input.resolutionAction));
+    if (input.explanation) {
+      formData.append('explanation', input.explanation);
+    }
+    if (input.proposedResolution) {
+      formData.append('proposedResolution', input.proposedResolution);
+    }
+    if (input.rejectReason) {
+      formData.append('rejectReason', input.rejectReason);
+    }
+    if (input.attachments) {
+      for (const file of input.attachments) {
+        formData.append('attachments', file);
+      }
+    }
+
     const response = await apiService.post<unknown>(
       `${baseUrl(contractId)}/${reportId}/respond`,
-      input,
+      formData,
     );
     return {
       ...response,

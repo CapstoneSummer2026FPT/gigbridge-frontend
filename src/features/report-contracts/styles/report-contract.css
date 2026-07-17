@@ -662,7 +662,67 @@
   justify-content: center;
 }
 
-/* Resolved Notice */
+/* Attachment Group Sections */
+.rc-section-title-attachment::before {
+  content: '📎 ';
+  font-size: 0.75rem;
+}
+
+.rc-attachment-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-muted-foreground);
+}
+
+.rc-attachment-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.rc-attachment-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.rc-attachment-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
+.rc-attachment-time {
+  font-size: 0.575rem;
+  color: var(--color-muted-foreground);
+}
+
+.rc-attachment-download {
+  flex-shrink: 0;
+  color: var(--color-muted-foreground);
+  transition: color 0.2s;
+}
+
+.rc-attachment-item:hover .rc-attachment-download {
+  color: var(--gb-cyan, #3b82f6);
+}
+
+/* Respondent Attachments Upload */
+.rc-respond-attachments {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border, hsl(222, 25%, 15%));
+}
 .rc-resolved-notice {
   display: flex;
   align-items: center;

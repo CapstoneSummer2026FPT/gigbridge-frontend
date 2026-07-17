@@ -36,6 +36,7 @@ interface UseReportContractReturn {
       explanation?: string | null;
       proposedResolution?: string | null;
       rejectReason?: string | null;
+      attachments?: File[];
     },
   ) => Promise<ApiResponse<ReportContract>>;
   confirmResolution: (
@@ -148,6 +149,7 @@ export function useReportContract(): UseReportContractReturn {
         explanation?: string | null;
         proposedResolution?: string | null;
         rejectReason?: string | null;
+        attachments?: File[];
       },
     ): Promise<ApiResponse<ReportContract>> => {
       setIsRespondingReport(true);

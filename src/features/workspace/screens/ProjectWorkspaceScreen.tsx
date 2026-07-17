@@ -491,6 +491,7 @@ export default function ProjectWorkspaceScreen() {
       explanation?: string | null;
       proposedResolution?: string | null;
       rejectReason?: string | null;
+      attachments?: File[];
     }) => {
       if (!workspaceContractId || !viewReportId) {
         return { success: false, message: t('workspace.reportResponseFailed') };
