@@ -126,10 +126,23 @@ describe('useProjectWorkspace realtime chat', () => {
         messageId: 'message-2', conversationId: 'conversation-2', senderUserId: 'other-user',
         content: 'Wrong conversation', sentAt: '2026-07-02T02:01:00.000Z', messageType: 0,
       });
+      signalRMock.handlers.get('ReceiveMessage')?.({
+        messageId: 'report-message-1', conversationId: 'conversation-1', senderUserId: null,
+        content: 'An issue report was created.', sentAt: '2026-07-02T02:02:00.000Z', messageType: 5,
+        metadata: JSON.stringify({
+          kind: 'reportContract', reportId: 'report-1', contractId: 'contract-1', eventType: 'created',
+        }),
+      });
     });
 
-    expect(result.current.projectMessages).toHaveLength(1);
+    expect(result.current.projectMessages).toHaveLength(2);
     expect(result.current.projectMessages[0]).toMatchObject({ id: 'message-1', content: 'Realtime hello', sendStatus: 'sent' });
+    expect(result.current.projectMessages[1]).toMatchObject({
+      id: 'report-message-1',
+      type: 'system',
+      messageType: 5,
+      metadata: expect.stringContaining('report-1'),
+    });
   });
 
   it('replaces an optimistic message with its server echo instead of duplicating it', async () => {

@@ -182,7 +182,17 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
     conversationId: String(message.conversationId ?? message.ConversationId ?? ''),
     senderId: String(message.senderUserId ?? message.SenderUserId ?? message.senderId ?? ''),
     content: String(message.content ?? message.Content ?? ''),
-    type: messageType === 1 ? 'image' : messageType === 2 ? 'file' : 'text',
+    type: messageType === 1
+      ? 'image'
+      : messageType === 2
+        ? 'file'
+        : messageType >= 3
+          ? 'system'
+          : 'text',
+    messageType,
+    metadata: typeof (message.metadata ?? message.Metadata) === 'string'
+      ? String(message.metadata ?? message.Metadata)
+      : null,
     createdAt: String(message.sentAt ?? message.SentAt ?? message.createdAt ?? new Date().toISOString()),
     isRead: true,
     fileUrl: typeof firstAttachment?.fileUrl === 'string' ? firstAttachment.fileUrl : undefined,

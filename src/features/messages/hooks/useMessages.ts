@@ -134,11 +134,11 @@ function mapBackendMessage(m: any): MsgMessage {
   const messageType = m.messageType ?? m.MessageType;
   const metadata = m.metadata ?? m.Metadata;
   let msgType = 'text';
-  if (m.messageType === 1) msgType = 'image';
-  else if (m.messageType === 2) msgType = 'file';
-  else if (m.messageType === 3) msgType = 'system';
-  else if (m.messageType === 4) msgType = 'deal';
-  else if (m.messageType === 9) msgType = 'schedule';
+  if (messageType === 1) msgType = 'image';
+  else if (messageType === 2) msgType = 'file';
+  else if ([3, 5, 6, 7, 8].includes(messageType)) msgType = 'system';
+  else if (messageType === 4) msgType = 'deal';
+  else if (messageType === 9) msgType = 'schedule';
 
   let dealStatus: MsgMessage['dealStatus'] = undefined;
   if (messageType === 4) {
@@ -159,6 +159,8 @@ function mapBackendMessage(m: any): MsgMessage {
     conversationId: m.conversationId,
     senderId: m.senderUserId || 'system',
     type: msgType,
+    messageType,
+    metadata: typeof metadata === 'string' ? metadata : null,
     createdAt: m.sentAt,
     isRead: true,
     fileUrl: firstAttachment?.fileUrl,

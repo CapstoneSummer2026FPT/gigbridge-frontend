@@ -202,6 +202,8 @@ export interface Message {
   senderId?: string;
   clientMessageId?: string | null;
   type?: string; // 'text' | 'file' | 'deal' | 'negotiation_request' | 'system'
+  messageType?: MessageType | number;
+  metadata?: string | null;
   createdAt?: string;
   isRead?: boolean;
   sendStatus?: 'pending' | 'sent' | 'failed';

@@ -16,6 +16,12 @@ import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { useMessages } from '../hooks/useMessages';
 import { MESSAGE_ROOMS } from '../messageRooms';
+import { ReportDetailModal, useReportContract } from '../../report-contracts';
+import {
+  ContractReportResolutionAction,
+  ContractReportStatus,
+} from '../../../types/models/ReportContract';
+import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
 import '../styles/messages-screen.css';
 
 function countdown(start: string, now: number) {
@@ -90,6 +96,7 @@ function ScheduleCard({ schedule, latest, now, onEdit, onCancel, onRetry, onLate
 export default function MessagesScreen() {
   const { t } = useTranslation();
   const {
+    user,
     isClient,
     loading,
     signalRStatus,
@@ -157,6 +164,33 @@ export default function MessagesScreen() {
     nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
+  const [viewReportId, setViewReportId] = useState<string | null>(null);
+  const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
+  const {
+    selectedReport,
+    loadReportDetail,
+    isLoadingDetail: isLoadingReportDetail,
+    respondToReport,
+    isRespondingReport,
+    confirmResolution,
+    isConfirmingReport,
+    clearSelectedReport,
+  } = useReportContract();
+
+  const openReportDetail = async (contractId: string, reportId: string) => {
+    setViewReportId(reportId);
+    setUnavailableReportId(null);
+    const response = await loadReportDetail(contractId, reportId);
+    if (!response.success || !response.data) {
+      setUnavailableReportId(reportId);
+      setViewReportId(null);
+    }
+  };
+
+  const closeReportDetail = () => {
+    setViewReportId(null);
+    clearSelectedReport();
+  };
 
   const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
     if (!isLatestOffer) return 'Đề xuất cũ';
@@ -436,6 +470,7 @@ export default function MessagesScreen() {
               {activeMessages.map((msg, idx) => {
                 const mine = isMe(msg.senderId);
                 const isSystem = msg.type === 'system' || msg.senderId === 'system';
+                const reportEvent = parseReportSystemMessageMetadata(msg.metadata);
                 const latestScheduleMessage = msg.schedule ? activeMessages.filter(m => m.schedule?.scheduleId === msg.schedule?.scheduleId).sort((a,b) => (b.schedule?.eventSequence || 0) - (a.schedule?.eventSequence || 0))[0] : undefined;
 
                 // Older deployments persisted one message per schedule state.
@@ -444,6 +479,102 @@ export default function MessagesScreen() {
 
                 // ── System message (centered) ─────────────────────────────
                 if (isSystem) {
+                  if (reportEvent) {
+                    const titleKey = reportEvent.eventType === 'created'
+                      ? 'workspace.reportSystemCreatedTitle'
+                      : reportEvent.eventType === 'resolved'
+                        ? 'workspace.reportSystemResolvedTitle'
+                        : 'workspace.reportSystemUpdatedTitle';
+                    const actionKeys: Record<number, string> = {
+                      [ContractReportResolutionAction.AcceptIssue]: 'workspace.reportActionAcceptIssue',
+                      [ContractReportResolutionAction.ProvideExplanation]: 'workspace.reportActionProvideExplanation',
+                      [ContractReportResolutionAction.ProposeResolution]: 'workspace.reportActionProposeResolution',
+                      [ContractReportResolutionAction.RejectIssue]: 'workspace.reportActionRejectIssue',
+                    };
+                    const statusKeys: Record<number, string> = {
+                      [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
+                      [ContractReportStatus.WaitingReporterConfirmation]: 'workspace.reportStatusWaitingConfirmation',
+                      [ContractReportStatus.Resolved]: 'workspace.reportStatusResolved',
+                      [ContractReportStatus.Escalated]: 'workspace.reportStatusEscalated',
+                    };
+                    const issueKeys = [
+                      'workspace.reportIssueTypePaymentIssue',
+                      'workspace.reportIssueTypeMilestoneIssue',
+                      'workspace.reportIssueTypeDelay',
+                      'workspace.reportIssueTypePoorQuality',
+                      'workspace.reportIssueTypeCommunicationProblem',
+                      'workspace.reportIssueTypeScopeChange',
+                      'workspace.reportIssueTypeOther',
+                    ];
+                    const detail = reportEvent.proposedResolution || reportEvent.explanation || reportEvent.rejectReason;
+                    const actor = reportEvent.actorName || reportEvent.actorRole || t('workspace.reportParticipant');
+                    const summary = reportEvent.eventType === 'created'
+                      ? t('workspace.reportSystemCreatedSummary', { actor })
+                      : reportEvent.eventType === 'resolved'
+                        ? t('workspace.reportSystemResolvedSummary')
+                        : reportEvent.resolutionAction === ContractReportResolutionAction.AcceptIssue
+                          ? t('workspace.reportSystemAcceptedSummary', { actor })
+                          : reportEvent.resolutionAction === ContractReportResolutionAction.ProvideExplanation
+                            ? t('workspace.reportSystemExplainedSummary', { actor })
+                            : reportEvent.resolutionAction === ContractReportResolutionAction.ProposeResolution
+                              ? t('workspace.reportSystemProposedSummary', { actor })
+                              : reportEvent.resolutionAction === ContractReportResolutionAction.RejectIssue
+                                ? t('workspace.reportSystemRejectedSummary', { actor })
+                                : t('workspace.reportSystemUpdatedSummary', { actor });
+                    const unavailable = unavailableReportId === reportEvent.reportId;
+                    const selected = viewReportId === reportEvent.reportId;
+
+                    return (
+                      <div key={msg.id ?? idx} className="flex justify-center">
+                        <div className={`w-[min(440px,80vw)] rounded-2xl border bg-card p-4 shadow-sm ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500/30'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              {reportEvent.eventType === 'resolved'
+                                ? <CheckCircle size={18} className="text-emerald-500" />
+                                : <AlertCircle size={18} className="text-amber-500" />}
+                              <p className="text-sm font-bold">{t(titleKey)}</p>
+                            </div>
+                            <span className={`rc-status rc-status-${reportEvent.status}`}>
+                              {t(statusKeys[reportEvent.status] || 'workspace.reportStatusPending')}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">{summary}</p>
+                          {reportEvent.eventType === 'created' && (
+                            <div className="mt-3 space-y-2 rounded-xl bg-muted/60 p-3 text-xs">
+                              <p><strong>{t('workspace.reportSystemReason')}:</strong> {t(issueKeys[reportEvent.issueType] || issueKeys[6])}</p>
+                              <p><strong>{t('workspace.reportDesiredResolution')}:</strong> {reportEvent.desiredResolution}</p>
+                              <p><strong>{t('workspace.reportDescription')}:</strong> {reportEvent.description}</p>
+                            </div>
+                          )}
+                          {reportEvent.eventType === 'updated' && reportEvent.resolutionAction !== null && (
+                            <div className="mt-3 rounded-xl bg-muted/60 p-3 text-xs">
+                              <strong>{t('workspace.reportSystemAction')}:</strong>{' '}
+                              {t(actionKeys[reportEvent.resolutionAction])}
+                              {detail && <p className="mt-2"><strong>{t('workspace.reportSystemReason')}:</strong> {detail}</p>}
+                            </div>
+                          )}
+                          {reportEvent.eventType === 'resolved' && (
+                            <p className="mt-3 rounded-xl bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-700">
+                              {t('workspace.reportSystemResolvedBody')}
+                            </p>
+                          )}
+                          {unavailable ? (
+                            <p className="mt-3 text-xs font-semibold text-red-500">{t('workspace.reportUnavailable')}</p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void openReportDetail(reportEvent.contractId, reportEvent.reportId)}
+                              disabled={isLoadingReportDetail && selected}
+                              className="mt-3 rounded-lg border border-amber-500/30 bg-transparent px-3 py-2 text-xs font-bold text-amber-600 cursor-pointer hover:bg-amber-500/10 disabled:opacity-50"
+                            >
+                              {isLoadingReportDetail && selected ? t('common.loading') : t('workspace.reportView')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={msg.id ?? idx} className="flex justify-center">
                       <div className="bg-muted/80 border border-border rounded-full px-4 py-1.5 text-xs text-muted-foreground font-medium text-center max-w-md">
@@ -1135,6 +1266,25 @@ export default function MessagesScreen() {
             <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || googleMeetConnecting || (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : scheduleMode.startsWith('counter') ? !scheduleTime : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : scheduleMode.startsWith('counter') ? 'Send time' : t('schedule.save')}</button></div>
           </div>
         </div>
+      )}
+
+      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
+        <ReportDetailModal
+          report={selectedReport}
+          currentUserId={user?.id ?? ''}
+          isOpen
+          onClose={closeReportDetail}
+          onRespond={async (input) => {
+            const response = await respondToReport(selectedReport.contractId, selectedReport.id, input);
+            return { success: response.success, message: response.message };
+          }}
+          onConfirm={async (isAccepted) => {
+            const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
+            return { success: response.success, message: response.message };
+          }}
+          isResponding={isRespondingReport}
+          isConfirming={isConfirmingReport}
+        />
       )}
     </AppLayout>
   );
