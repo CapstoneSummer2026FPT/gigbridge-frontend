@@ -10,7 +10,9 @@ import {
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
 import { reportAPI } from '../../api/reportAPI';
-import { premiumAPI } from '../../features/premium/api';
+import { usePremiumStatus } from '../../features/premium/hooks';
+import { PremiumStatusBadge } from '../../features/premium/components/PremiumStatusBadge';
+import '../../features/premium/styles/premium.css';
 import '../styles/Sidebar.css';
 
 interface NavItem {
@@ -306,19 +308,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [reviewingReportCount, setReviewingReportCount] = useState<number | null>(null);
   const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
   const [showPremiumTeaser, setShowPremiumTeaser] = useState(false);
-  const [isPremiumFreelancer, setIsPremiumFreelancer] = useState(false);
+  const premiumStatus = usePremiumStatus(role);
 
   const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
   const adminSections = role === 2 ? getAdminNavSections(t, openReportCount) : [];
-
-  useEffect(() => {
-    let active = true;
-    if (role !== 1) { setIsPremiumFreelancer(false); return; }
-    void premiumAPI.currentSubscription().then(response => {
-      if (active) setIsPremiumFreelancer(Boolean(response.success && response.data?.isPremium && new Date(response.data.endDate) > new Date()));
-    });
-    return () => { active = false; };
-  }, [role, location.pathname]);
 
   useEffect(() => {
     if (role !== 2) return;
@@ -378,6 +371,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="sidebar-profile-info">
             <p className="sidebar-profile-name">{user.first_name}</p>
             <p className="sidebar-profile-role">{role === 0 ? t('projects.client') : role === 1 ? t('projects.freelancer') : t('nav.admin')}</p>
+            {(role === 0 || role === 1) && !premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} compact />}
           </div>
           <ChevronRight size={14} className="sidebar-profile-chevron" />
         </div>
@@ -461,10 +455,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="sidebar-pro-badge">
           <div className="sidebar-pro-header">
             <Zap size={14} className="sidebar-pro-icon" />
-            <span className="sidebar-pro-title">{t(role === 0 ? 'nav.clientPremium' : isPremiumFreelancer ? 'nav.premiumActive' : 'nav.freelancerPremium')}</span>
+            <span className="sidebar-pro-title">{t(premiumStatus.isPremium ? 'nav.premiumActive' : role === 0 ? 'nav.clientPremium' : 'nav.freelancerPremium')}</span>
           </div>
           <p className="sidebar-pro-desc">{t('nav.proBadgeDesc')}</p>
-          <button className="btn-cyan sidebar-pro-button" disabled={role === 0} onClick={() => role === 1 && (isPremiumFreelancer ? handleNavigate('/premium/freelancer') : setShowPremiumTeaser(true))}>{t(role === 0 ? 'nav.comingSoon' : isPremiumFreelancer ? 'nav.openHub' : 'nav.upgrade')}</button>
+          <button className="btn-cyan sidebar-pro-button" disabled={premiumStatus.loading} onClick={() => {
+            if (role === 0) handleNavigate(premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing');
+            else if (premiumStatus.isPremium) handleNavigate('/premium/freelancer');
+            else setShowPremiumTeaser(true);
+          }}>{t(premiumStatus.isPremium ? 'nav.openHub' : 'nav.upgrade')}</button>
         </div>
       )}
 

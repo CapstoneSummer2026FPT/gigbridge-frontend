@@ -278,7 +278,7 @@ export default function BrowseJobsScreen() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto">
+      <div className="browse-jobs-shell">
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
             {t('jobs.browseJobs').split(' ')[0]} <span className="text-blue-600 black:text-blue-400 italic font-light">{t('jobs.browseJobs').split(' ').slice(1).join(' ')}</span>
@@ -288,7 +288,7 @@ export default function BrowseJobsScreen() {
 
         <div className="browse-jobs-layout-grid">
           {/* Left Column (2/3 width) */}
-          <div className="space-y-6">
+          <div className="browse-jobs-results space-y-6">
             <div className="glass-card p-4">
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1">
@@ -456,8 +456,8 @@ export default function BrowseJobsScreen() {
           </div>
 
           {/* Right Column (1/3 width) - Sidebar with System Ads and Freelancer Rankings */}
-          <div className="system-ads-sidebar-container">
-            <SponsoredPromotionCard />
+          <aside className="system-ads-sidebar-container" aria-label="Promotions and freelancer insights">
+            <SponsoredPromotionCard promotionType="job" />
             {/* Ad 1: Premium upgrade or promotion activation */}
             {isPremium !== null && <div className={`system-ad-card ${isPremium ? 'system-ad-card-promotion' : 'system-ad-card-premium'}`}>
               <div className="system-ad-title">
@@ -554,7 +554,7 @@ export default function BrowseJobsScreen() {
                 })}
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </AppLayout>

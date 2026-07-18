@@ -118,7 +118,9 @@ const createDraftJobPostOnce = async (): Promise<string> => {
 
 const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: false });
 
-const normalizeSkillName = (value: string): string => value.trim().toLowerCase();
+const normalizeSkillName = (value: string): string => value.trim().toLowerCase()
+  .replaceAll('#', 'sharp').replaceAll('+', 'plus').replaceAll('&', 'and')
+  .replace(/[^\p{L}\p{N}]/gu, '');
 
 const isDefaultDraftTitle = (value: string): boolean => {
   const title = value.trim();

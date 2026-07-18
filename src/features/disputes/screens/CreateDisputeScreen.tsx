@@ -7,6 +7,10 @@ import { MOCK_CONTRACTS_FOR_SCREENS } from '../../contracts/mock/data-for-Contra
 import type { DisputeCategory } from '../mock/data-for-DisputeScreens';
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/create-dispute-screen.css';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
+import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import '../../premium/styles/premium.css';
 
 interface EvidenceDraft {
   id: string;
@@ -18,6 +22,8 @@ export default function CreateDisputeScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
   const [category, setCategory] = useState<DisputeCategory>('deliverable_quality');
   const [description, setDescription] = useState('');
   const [evidenceFiles, setEvidenceFiles] = useState<EvidenceDraft[]>([
@@ -41,7 +47,7 @@ export default function CreateDisputeScreen() {
     [contractId]
   );
 
-  const isPremiumClientDispute = contract?.clientProfilesId === 'demo_client_001';
+  const isPremiumClientDispute = role === 0 && premiumStatus.isPremium;
 
   const handleAddEvidence = () => {
     const fileSizeMb = Number(manualFileSize || 0);
@@ -97,12 +103,10 @@ export default function CreateDisputeScreen() {
             <h1>{t('contracts.openDispute')}</h1>
             <p>{t('contracts.disputeKicker')}</p>
           </div>
-          {isPremiumClientDispute && (
-            <div className="vip-dispute-chip">
-              <Sparkles size={18} />
-              {t('contracts.vipDisputeChip')}
-            </div>
-          )}
+          {role === 0 && !premiumStatus.loading && <div>
+            <PremiumStatusBadge active={isPremiumClientDispute} />
+            {isPremiumClientDispute && <div className="vip-dispute-chip" style={{ marginTop: 8 }}><Sparkles size={18} />{t('contracts.vipDisputeChip')}</div>}
+          </div>}
         </section>
 
         {error && (

@@ -87,7 +87,7 @@ export default function FreelancerPricingScreen() {
         </article>)}
       </div>}
 
-    <section className="premium-card premium-client-coming"><div><div className="premium-eyebrow">For clients</div><h3>Client Premium is coming later</h3><p className="premium-muted">Hiring-focused plans are being designed separately. No client purchase is available yet.</p></div><span className="premium-coming-badge">Coming soon</span></section>
+    <section className="premium-card premium-client-coming"><div><div className="premium-eyebrow">For clients</div><h3>Client Premium is available</h3><p className="premium-muted">Client accounts can unlock smart matching, AI job tools, promoted jobs, AI interviews, and priority dispute handling.</p></div><span className="premium-coming-badge">Client accounts</span></section>
 
     {selected && <div className="premium-modal" onClick={() => !busy && setSelected(undefined)}><div className="premium-modal-box" onClick={e => e.stopPropagation()}>
       <div className="premium-eyebrow"><GigCoinLogo size={18} /> Confirm GigCoin purchase</div><h2>{selected.name}</h2>

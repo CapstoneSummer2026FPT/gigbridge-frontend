@@ -7,6 +7,11 @@ import type {
   CreateJobPostRequest,
   GenerateJobDescriptionRequest,
   GenerateJobDescriptionResponse,
+  JobPostPromotionDto,
+  PromoteJobPostRequest,
+  JobPromotionInteractionDto,
+  CreateAiInterviewRequest,
+  AiInterviewDefinitionDto,
   JobPostQuestionDto,
 } from '../../types/models/Job';
 
@@ -65,6 +70,27 @@ export const jobPostAPI = {
 
     return apiService.post<GenerateJobDescriptionResponse>(`${jobPostsUrl}/ai/generate`, data);
   },
+
+  promoteJobPost: async (jobPostId: string, data: PromoteJobPostRequest): Promise<ApiResponse<JobPostPromotionDto>> =>
+    apiService.post<JobPostPromotionDto>(`${jobPostsUrl}/${jobPostId}/promote`, data),
+
+  trackJobPromotionImpression: async (promotionId: string): Promise<ApiResponse<JobPromotionInteractionDto>> =>
+    apiService.post<JobPromotionInteractionDto>(`job-promotions/${promotionId}/impression`),
+
+  trackJobPromotionClick: async (promotionId: string): Promise<ApiResponse<JobPromotionInteractionDto>> =>
+    apiService.post<JobPromotionInteractionDto>(`job-promotions/${promotionId}/click`),
+
+  uploadJobPromotionImage: async (file: File): Promise<ApiResponse<string>> => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiService.post<string>(`${jobPostsUrl}/promotion-image`, form);
+  },
+
+  createAiInterview: async (
+    jobPostId: string,
+    data: CreateAiInterviewRequest,
+  ): Promise<ApiResponse<AiInterviewDefinitionDto>> =>
+    apiService.post<AiInterviewDefinitionDto>(`${jobPostsUrl}/${jobPostId}/ai-interviews`, data),
 
   applyJob: async (): Promise<ApiResponse<never>> => {
     return {

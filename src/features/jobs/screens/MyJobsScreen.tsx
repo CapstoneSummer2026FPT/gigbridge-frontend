@@ -4,6 +4,7 @@ import {
   Briefcase, Search, Plus, Eye, Users, Calendar,
   CheckCircle, Ban, XCircle, LayoutGrid, AlignJustify, FileText,
   HelpCircle, Send, Lock, Globe, UserRoundCheck, AlertCircle,
+  Bot, ChevronDown, Crown, Megaphone, Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -13,10 +14,16 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import {
   JobPostStatus,
   JobPostVisibility,
+  type CreateAiInterviewRequest,
   type GetMyJobPostDto,
 } from '../../../types/models/Job';
 import '../styles/my-jobs-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
+import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import { JobPromotionStudio } from '../../premium/components/JobPromotionStudio';
+import '../../premium/styles/premium.css';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
@@ -75,6 +82,8 @@ const formatDate = (date: string) =>
 export default function MyJobsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -84,6 +93,10 @@ export default function MyJobsScreen() {
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
+  const [promoteTarget, setPromoteTarget] = useState<{ job: GetMyJobPostDto }>();
+  const [interviewTarget, setInterviewTarget] = useState<GetMyJobPostDto>();
+  const [interviewConfig, setInterviewConfig] = useState<CreateAiInterviewRequest>({ language: 'auto', mode: 'voice', questionCount: 5 });
+  const [premiumActionBusy, setPremiumActionBusy] = useState(false);
 
   const loadJobs = async () => {
     setIsLoading(true);
@@ -104,6 +117,24 @@ export default function MyJobsScreen() {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  const openPremiumPath = (action: () => void) => {
+    if (!premiumStatus.isPremium) {
+      navigate('/premium/client/pricing');
+      return;
+    }
+    action();
+  };
+
+  const createAiInterview = async () => {
+    if (!interviewTarget) return;
+    setPremiumActionBusy(true);
+    const response = await jobAPI.createAiInterview(interviewTarget.jobPostsId, interviewConfig);
+    setPremiumActionBusy(false);
+    if (!response.success || !response.data) return toast.error(response.message || 'Unable to configure the AI interview.');
+    setInterviewTarget(undefined);
+    toast.success(`AI interview enabled with ${response.data.questionCount} questions.`);
+  };
 
   const counts = useMemo(() => {
     const base = {
@@ -189,6 +220,7 @@ export default function MyJobsScreen() {
                 <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gb-cyan,#1782FC)' }}>
                   {t('myJobs.management')}
                 </span>
+                {!premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} compact />}
               </div>
               <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: '#0f0f1a', margin: 0 }} className="black:text-white">
                 {t('myJobs.title')}
@@ -408,6 +440,45 @@ export default function MyJobsScreen() {
                           >
                             <Users size={14} /> {t('myJobs.inviteFreelancers')}
                           </button>
+                          <details className="mj-premium-menu">
+                            <summary className="mj-premium-action-label">
+                              <Crown size={12} /> Premium features
+                              {job.isFeatured && <span className="mj-premium-active-dot" title="Promotion active" />}
+                              <ChevronDown size={13} className="mj-premium-chevron" />
+                            </summary>
+                            <div className="mj-premium-menu-panel">
+                              <button
+                                onClick={event => {
+                                  event.currentTarget.closest('details')?.removeAttribute('open');
+                                  openPremiumPath(() => navigate(`/talent-matching?job=${job.jobPostsId}`));
+                                }}
+                                className="mj-action-btn mj-btn-cyan"
+                              >
+                                <Target size={14} /> Talent matches {!premiumStatus.isPremium && <Crown size={12} />}
+                              </button>
+                              <button
+                                onClick={event => {
+                                  event.currentTarget.closest('details')?.removeAttribute('open');
+                                  openPremiumPath(() => setPromoteTarget({ job }));
+                                }}
+                                disabled={Boolean(job.isFeatured)}
+                                className="mj-action-btn mj-btn-cyan"
+                              >
+                                <Megaphone size={14} /> {job.isFeatured
+                                  ? `Promoted until ${job.featuredUntil ? formatDate(job.featuredUntil) : ''}`
+                                  : 'Promote'} {!premiumStatus.isPremium && <Crown size={12} />}
+                              </button>
+                              <button
+                                onClick={event => {
+                                  event.currentTarget.closest('details')?.removeAttribute('open');
+                                  openPremiumPath(() => setInterviewTarget(job));
+                                }}
+                                className="mj-action-btn mj-btn-cyan"
+                              >
+                                <Bot size={14} /> AI interview {!premiumStatus.isPremium && <Crown size={12} />}
+                              </button>
+                            </div>
+                          </details>
                         </>
                       )}
                       {canPublish(job) && (
@@ -473,6 +544,22 @@ export default function MyJobsScreen() {
             setInviteJobTitle(undefined);
           }}
         />
+      )}
+      {promoteTarget && <div className="premium-modal" onClick={() => setPromoteTarget(undefined)}><div className="premium-modal-box premium-modal-box-wide" onClick={event => event.stopPropagation()}><JobPromotionStudio entitled={premiumStatus.isPremium} initialJob={promoteTarget.job} onComplete={promotion => {
+        setJobs(current => current.map(job => job.jobPostsId === promotion.jobPostId ? { ...job, isFeatured: true, featuredUntil: promotion.featuredUntil } : job));
+        setPromoteTarget(undefined);
+      }} /><div className="premium-modal-actions"><button className="premium-button secondary" onClick={() => setPromoteTarget(undefined)}>Close</button></div></div></div>}
+      {interviewTarget && (
+        <div className="premium-modal" onClick={() => !premiumActionBusy && setInterviewTarget(undefined)}>
+          <div className="premium-modal-box" onClick={event => event.stopPropagation()}>
+            <div className="premium-eyebrow"><Bot size={16} /> AI interview setup</div>
+            <h2>{interviewTarget.title}</h2>
+            <label>Language<select className="premium-input" value={interviewConfig.language} onChange={event => setInterviewConfig(value => ({ ...value, language: event.target.value as 'auto' | 'en' | 'vi' }))}><option value="auto">Automatic</option><option value="en">English</option><option value="vi">Vietnamese</option></select></label>
+            <label>Mode<select className="premium-input" value={interviewConfig.mode} onChange={event => setInterviewConfig(value => ({ ...value, mode: event.target.value as 'text' | 'voice' }))}><option value="voice">Voice</option><option value="text">Text</option></select></label>
+            <label>Questions<input className="premium-input" type="number" min={1} max={20} value={interviewConfig.questionCount} onChange={event => setInterviewConfig(value => ({ ...value, questionCount: Math.max(1, Math.min(20, Number(event.target.value))) }))} /></label>
+            <div className="premium-modal-actions"><button className="premium-button secondary" disabled={premiumActionBusy} onClick={() => setInterviewTarget(undefined)}>Go back</button><button className="premium-button" disabled={premiumActionBusy} onClick={() => void createAiInterview()}>{premiumActionBusy ? 'Creating…' : 'Enable interview'}</button></div>
+          </div>
+        </div>
       )}
     </AppLayout>
   );

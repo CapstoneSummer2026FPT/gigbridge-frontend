@@ -1,1 +1,1 @@
-export { premiumAPI } from './premiumAPI';
+export { premiumAPI, clientPremiumAPI } from './premiumAPI';
