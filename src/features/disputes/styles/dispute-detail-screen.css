@@ -183,3 +183,19 @@
   .dispute-evidence-row { grid-template-columns: 1fr; }
   .dispute-detail-hero { flex-direction: column; }
 }
+.dispute-description-text { margin-top: .75rem; color: var(--muted-foreground); white-space: pre-wrap; }
+.dispute-request-block { margin-top: 1rem; padding: .9rem; border-radius: .75rem; background: var(--muted); font-size: .9rem; }
+.dispute-request-block p { margin: .25rem 0; }
+.dispute-chat-section { margin-top: 1rem; }
+.dispute-chat-state { display: flex; justify-content: center; align-items: center; gap: .5rem; min-height: 10rem; color: var(--muted-foreground); }
+.dispute-chat-messages { max-height: 420px; min-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: .75rem; padding: 1rem; border: 1px solid var(--border); border-radius: .85rem; background: var(--background); }
+.dispute-chat-message { align-self: flex-start; max-width: min(75%, 620px); }
+.dispute-chat-message > div { padding: .7rem .9rem; border-radius: .8rem .8rem .8rem .2rem; background: var(--muted); white-space: pre-wrap; }
+.dispute-chat-message.mine { align-self: flex-end; text-align: right; }
+.dispute-chat-message.mine > div { color: white; background: var(--gb-cyan); border-radius: .8rem .8rem .2rem .8rem; text-align: left; }
+.dispute-chat-message time { display: block; margin-top: .2rem; color: var(--muted-foreground); font-size: .7rem; }
+.dispute-chat-system { align-self: center; padding: .4rem .75rem; border-radius: 999px; color: #b45309; background: rgba(245, 158, 11, .12); font-size: .78rem; }
+.dispute-chat-input { display: flex; gap: .65rem; margin-top: .75rem; }
+.dispute-chat-input textarea { flex: 1; resize: vertical; min-height: 3rem; padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; color: var(--foreground); background: var(--background); }
+.dispute-chat-input button { align-self: stretch; display: flex; align-items: center; gap: .4rem; padding: 0 1rem; border: 0; border-radius: .75rem; color: white; background: var(--gb-cyan); font-weight: 700; cursor: pointer; }
+.dispute-chat-input button:disabled { opacity: .55; cursor: not-allowed; }

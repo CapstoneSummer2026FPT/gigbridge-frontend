@@ -707,6 +707,7 @@
     "chatMovedToNegotiation": "Cuộc trò chuyện đã được chuyển sang <strong>giai đoạn thương lượng</strong>",
     "invitedJobChat": "Trò chuyện công việc được mời",
     "workspaceChat": "Trò chuyện Workspace",
+    "disputeChat": "Trò chuyện tranh chấp",
     "negotiationChat": "Trò chuyện thương lượng",
     "failedToSend": "Thất bại",
     "proposeDealPrice": "Đề xuất giá thỏa thuận",
@@ -725,7 +726,9 @@
     "roomNegotiationLabel": "Thương Lượng",
     "roomNegotiationDesc": "Các cuộc thương lượng giá & phạm vi hoạt động",
     "roomWorkspaceLabel": "Workspace",
-    "roomWorkspaceDesc": "Phòng làm việc dự án đang hoạt động"
+    "roomWorkspaceDesc": "Phòng làm việc dự án đang hoạt động",
+    "roomDisputeLabel": "Tranh chấp",
+    "roomDisputeDesc": "Các cuộc trò chuyện tranh chấp hợp đồng chính thức"
   },
   "dashboard": {
     "welcome": "Chào mừng trở lại, {{name}}!",
@@ -1653,6 +1656,18 @@
     "waitingFreelancer": "Đang chờ freelancer",
     "withdrawThresholdWarning": "Ít nhất 50% số cột mốc phải được phê duyệt trước khi rút tiền.",
     "viewOnlyNotice": "Dự án đã hoàn thành · Không gian làm việc chỉ xem",
+    "disputeEscalationTitle": "Không thể đạt được thỏa thuận?",
+    "disputeEscalationDescription": "Giải pháp đề xuất chưa giải quyết được vấn đề. Bạn muốn tiếp tục thương lượng hay chuyển thành tranh chấp chính thức?",
+    "disputeEscalationWarning": "Việc tạo tranh chấp sẽ khóa hoạt động hợp đồng và chuyển trao đổi sang cuộc trò chuyện tranh chấp.",
+    "continueNegotiation": "Tiếp tục thương lượng",
+    "createDispute": "Tạo tranh chấp",
+    "creatingDispute": "Đang tạo tranh chấp...",
+    "disputeEscalationFailed": "Không thể tạo tranh chấp.",
+    "disputeTitlePrefix": "Tranh chấp hợp đồng",
+    "disputeLockedTitle": "Hợp đồng này hiện đang có tranh chấp.",
+    "disputeLockedDescription": "Vui lòng tiếp tục trao đổi trong cuộc trò chuyện tranh chấp.",
+    "disputedBadge": "Đang tranh chấp",
+    "openDispute": "Mở tranh chấp",
     "version": "Phiên bản {{version}}",
     "endProjectModalTitle": "Kết thúc dự án",
     "endProjectModalDesc": "Đánh dấu hợp đồng này đã hoàn thành và mở đợt thanh toán cuối cùng để freelancer nhận.",
@@ -1766,6 +1781,16 @@
     "reportSystemAction": "Hành động",
     "reportParticipant": "Một bên tham gia hợp đồng",
     "reportUnavailable": "Báo cáo này không còn khả dụng."
+  },
+  "disputes": {
+    "chatTitle": "Cuộc trò chuyện tranh chấp",
+    "chatLoading": "Đang tải cuộc trò chuyện...",
+    "chatEmpty": "Chưa có tin nhắn. Hãy bắt đầu trao đổi về tranh chấp bên dưới.",
+    "chatPlaceholder": "Nhập tin nhắn về tranh chấp này...",
+    "chatSend": "Gửi",
+    "chatUnavailable": "Cuộc trò chuyện tranh chấp chưa khả dụng.",
+    "chatLoadFailed": "Không thể tải cuộc trò chuyện tranh chấp.",
+    "chatSendFailed": "Không thể gửi tin nhắn."
   },
   "proposalAnswers": {
     "proposalIdMissing": "Thiếu ID đề xuất.",

@@ -11,6 +11,7 @@ import {
   Upload, Download
 } from 'lucide-react';
 import '../styles/report-contract.css';
+import { DisputeEscalationModal } from './DisputeEscalationModal';
 
 const STATUS_KEYS: Record<number, string> = {
   [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
@@ -39,8 +40,11 @@ interface ReportDetailModalProps {
     attachments?: File[];
   }) => Promise<{ success: boolean; message?: string }>;
   onConfirm: (isAccepted: boolean) => Promise<{ success: boolean; message?: string }>;
+  onEscalate: () => Promise<{ success: boolean; message?: string; disputeId?: string }>;
+  onDisputeCreated: (disputeId: string) => void;
   isResponding: boolean;
   isConfirming: boolean;
+  isEscalating: boolean;
 }
 
 function getFileIcon(contentType: string) {
@@ -106,8 +110,11 @@ export function ReportDetailModal({
   onClose,
   onRespond,
   onConfirm,
+  onEscalate,
+  onDisputeCreated,
   isResponding,
   isConfirming,
+  isEscalating,
 }: ReportDetailModalProps) {
   const { t } = useTranslation();
   const [respondMode, setRespondMode] = useState<number | null>(null);
@@ -116,6 +123,8 @@ export function ReportDetailModal({
   const [rejectReason, setRejectReason] = useState('');
   const [respondentFiles, setRespondentFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showEscalation, setShowEscalation] = useState(false);
+  const [escalationError, setEscalationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -209,10 +218,24 @@ export function ReportDetailModal({
     const result = await onConfirm(false);
     if (!result.success) {
       setError(result.message || 'Failed to decline resolution.');
+      return;
     }
+    setShowEscalation(true);
+  };
+
+  const handleEscalate = async () => {
+    setEscalationError(null);
+    const result = await onEscalate();
+    if (!result.success || !result.disputeId) {
+      setEscalationError(result.message || t('workspace.disputeEscalationFailed'));
+      return;
+    }
+    setShowEscalation(false);
+    onDisputeCreated(result.disputeId);
   };
 
   return (
+    <>
     <div className="rc-modal-backdrop" role="presentation" onClick={onClose}>
       <div
         className="rc-modal rc-modal-wide"
@@ -585,5 +608,18 @@ export function ReportDetailModal({
         </div>
       </div>
     </div>
+    <DisputeEscalationModal
+      isOpen={showEscalation}
+      isEscalating={isEscalating}
+      error={escalationError}
+      onClose={() => {
+        if (!isEscalating) {
+          setShowEscalation(false);
+          setEscalationError(null);
+        }
+      }}
+      onEscalate={() => void handleEscalate()}
+    />
+    </>
   );
 }

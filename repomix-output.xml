@@ -5404,6 +5404,162 @@ export interface MockContractWithMilestones extends ContractDto {
 /* Responsive Design */
 </file>
 
+<file path="src/features/contracts/styles/signature-workflow-screen.css">
+.signature-workflow-page {
+⋮----
+.signature-header {
+⋮----
+.signature-header h1 {
+⋮----
+.signature-header p {
+⋮----
+.back-btn {
+⋮----
+.back-btn:hover {
+⋮----
+/* Alerts */
+.signature-alert {
+⋮----
+.signature-alert.alert-error {
+⋮----
+.signature-alert.alert-success {
+⋮----
+.signature-alert.alert-warning {
+⋮----
+.signature-alert button {
+⋮----
+/* Steps */
+.signature-steps {
+⋮----
+.step {
+⋮----
+.step-number {
+⋮----
+.step.active .step-number {
+⋮----
+.step.completed .step-number {
+⋮----
+.step-label {
+⋮----
+.step.active .step-label {
+⋮----
+.step.completed .step-label {
+⋮----
+.step-divider {
+⋮----
+.step.completed ~ .step-divider {
+⋮----
+/* Loading and error states */
+.signature-loading,
+⋮----
+.signature-error {
+⋮----
+.signature-error h2 {
+⋮----
+.spinner {
+⋮----
+.spinner-small {
+⋮----
+/* Step content */
+.signature-step-content {
+⋮----
+.signature-section {
+⋮----
+.signature-section h2 {
+⋮----
+.signature-section h3 {
+⋮----
+/* Contract details */
+.contract-details {
+⋮----
+.detail-row {
+⋮----
+.detail-row span {
+⋮----
+.detail-row strong {
+⋮----
+.contract-description {
+⋮----
+.contract-description p {
+⋮----
+.signature-milestone-header,
+⋮----
+.signature-milestone-list {
+⋮----
+.signature-milestone-item {
+⋮----
+.signature-milestone-item p {
+⋮----
+.signature-milestone-number {
+⋮----
+.signature-inline-warning {
+⋮----
+.signature-document-frame {
+⋮----
+/* Info boxes */
+.signature-info-box {
+⋮----
+.signature-info-box svg {
+⋮----
+.signature-info-box h3 {
+⋮----
+.signature-info-box p {
+⋮----
+/* Signature pad */
+.signature-pad-wrapper {
+⋮----
+.signature-pad {
+⋮----
+.signature-instructions {
+⋮----
+/* Signature buttons */
+.signature-buttons {
+⋮----
+.btn-outline {
+⋮----
+.btn-outline:hover {
+⋮----
+/* Success state */
+.signature-success {
+⋮----
+.success-icon {
+⋮----
+.signature-success h2 {
+⋮----
+.signature-success > p {
+⋮----
+.signed-info {
+⋮----
+.info-item {
+⋮----
+.info-item span {
+⋮----
+.info-item strong {
+⋮----
+.signature-note {
+⋮----
+/* Action buttons */
+.signature-actions {
+⋮----
+.btn-secondary,
+⋮----
+.btn-secondary {
+⋮----
+.btn-secondary:hover:not(:disabled) {
+⋮----
+.btn-primary {
+⋮----
+.btn-primary:hover:not(:disabled) {
+⋮----
+.btn-primary:disabled,
+⋮----
+.btn-large {
+⋮----
+/* Responsive */
+⋮----
+.btn-primary,
+</file>
+
 <file path="src/features/contracts/styles/submit-milestone-deliverable-screen.css">
 /* Submit Milestone Deliverable Screen Styles */
 ⋮----
@@ -11954,56 +12110,6 @@ const baseUrl = (contractId: string) => `contracts/$
 
 </file>
 
-<file path="src/api/reportContractAPI/POST.ts">
-import { apiService } from '../../service/apiService';
-import type { ApiResponse } from '../../types/common';
-import type {
-  ConfirmResolutionInput,
-  ContractReportResolutionAction,
-  ReportContract,
-  RespondToReportInput,
-} from '../../types/models/ReportContract';
-import { normalizeReportContract } from './utils';
-⋮----
-const baseUrl = (contractId: string) => `contracts/$
-⋮----
-/**
-   * POST /api/contracts/{contractId}/reports
-   * Create a new report with optional file attachments
-   */
-⋮----
-/**
-   * POST /api/contracts/{contractId}/reports/{reportId}/respond
-   * Respondent action (accept, explain, propose, reject)
-   */
-⋮----
-/**
-   * POST /api/contracts/{contractId}/reports/{reportId}/confirm
-   * Reporter confirms or declines the resolution
-   */
-</file>
-
-<file path="src/api/reportContractAPI/utils.ts">
-import type {
-  ContractReportIssueType,
-  ContractReportResolutionAction,
-  ContractReportStatus,
-  ReportContract,
-  ReportContractAttachment,
-  ReportContractListItem,
-} from '../../types/models/ReportContract';
-⋮----
-type UnknownRecord = Record<string, unknown>;
-⋮----
-const valueOf = <T>(source: UnknownRecord, ...keys: string[]): T | undefined =>
-⋮----
-const normalizeAttachment = (raw: unknown): ReportContractAttachment =>
-⋮----
-export const normalizeReportContract = (raw: unknown): ReportContract =>
-⋮----
-export const normalizeReportContractListItem = (raw: unknown): ReportContractListItem =>
-</file>
-
 <file path="src/app/providers/AppProvider.tsx">
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User } from '../../types/models/User';
@@ -13875,162 +13981,6 @@ onClick=
 .black .milestone-card:hover,
 ⋮----
 .black .milestone-card.expanded,
-</file>
-
-<file path="src/features/contracts/styles/signature-workflow-screen.css">
-.signature-workflow-page {
-⋮----
-.signature-header {
-⋮----
-.signature-header h1 {
-⋮----
-.signature-header p {
-⋮----
-.back-btn {
-⋮----
-.back-btn:hover {
-⋮----
-/* Alerts */
-.signature-alert {
-⋮----
-.signature-alert.alert-error {
-⋮----
-.signature-alert.alert-success {
-⋮----
-.signature-alert.alert-warning {
-⋮----
-.signature-alert button {
-⋮----
-/* Steps */
-.signature-steps {
-⋮----
-.step {
-⋮----
-.step-number {
-⋮----
-.step.active .step-number {
-⋮----
-.step.completed .step-number {
-⋮----
-.step-label {
-⋮----
-.step.active .step-label {
-⋮----
-.step.completed .step-label {
-⋮----
-.step-divider {
-⋮----
-.step.completed ~ .step-divider {
-⋮----
-/* Loading and error states */
-.signature-loading,
-⋮----
-.signature-error {
-⋮----
-.signature-error h2 {
-⋮----
-.spinner {
-⋮----
-.spinner-small {
-⋮----
-/* Step content */
-.signature-step-content {
-⋮----
-.signature-section {
-⋮----
-.signature-section h2 {
-⋮----
-.signature-section h3 {
-⋮----
-/* Contract details */
-.contract-details {
-⋮----
-.detail-row {
-⋮----
-.detail-row span {
-⋮----
-.detail-row strong {
-⋮----
-.contract-description {
-⋮----
-.contract-description p {
-⋮----
-.signature-milestone-header,
-⋮----
-.signature-milestone-list {
-⋮----
-.signature-milestone-item {
-⋮----
-.signature-milestone-item p {
-⋮----
-.signature-milestone-number {
-⋮----
-.signature-inline-warning {
-⋮----
-.signature-document-frame {
-⋮----
-/* Info boxes */
-.signature-info-box {
-⋮----
-.signature-info-box svg {
-⋮----
-.signature-info-box h3 {
-⋮----
-.signature-info-box p {
-⋮----
-/* Signature pad */
-.signature-pad-wrapper {
-⋮----
-.signature-pad {
-⋮----
-.signature-instructions {
-⋮----
-/* Signature buttons */
-.signature-buttons {
-⋮----
-.btn-outline {
-⋮----
-.btn-outline:hover {
-⋮----
-/* Success state */
-.signature-success {
-⋮----
-.success-icon {
-⋮----
-.signature-success h2 {
-⋮----
-.signature-success > p {
-⋮----
-.signed-info {
-⋮----
-.info-item {
-⋮----
-.info-item span {
-⋮----
-.info-item strong {
-⋮----
-.signature-note {
-⋮----
-/* Action buttons */
-.signature-actions {
-⋮----
-.btn-secondary,
-⋮----
-.btn-secondary {
-⋮----
-.btn-secondary:hover:not(:disabled) {
-⋮----
-.btn-primary {
-⋮----
-.btn-primary:hover:not(:disabled) {
-⋮----
-.btn-primary:disabled,
-⋮----
-.btn-large {
-⋮----
-/* Responsive */
-⋮----
-.btn-primary,
 </file>
 
 <file path="src/features/contracts/styles/view-contract-details-screen.css">
@@ -16127,109 +16077,6 @@ export type ProposalStatusFilter = 'all' | '0' | '1' | '2' | '3' | '4' | '5';
 export type ProposalSortBy = 'interviewScore' | 'status' | 'submittedAt' | 'rate';
 </file>
 
-<file path="src/features/report-contracts/components/RaiseIssueModal.tsx">
-import { useState, useRef, type ChangeEvent, type FormEvent } from 'react';
-import { useTranslation } from '../../../hooks/useTranslation';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
-import type { Milestone } from '../../../types/models/Contract';
-import {
-  ContractReportIssueType,
-} from '../../../types/models/ReportContract';
-import { AlertCircle, X, Loader2, Upload, FileText } from 'lucide-react';
-⋮----
-interface RaiseIssueModalProps {
-  contractId: string;
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (input: {
-    issueType: number;
-    description: string;
-    desiredResolution: string;
-    milestoneId?: string | null;
-    attachments?: File[];
-  }) => Promise<{ success: boolean; message?: string }>;
-  isSubmitting: boolean;
-}
-⋮----
-const loadMilestones = async () =>
-⋮----
-// Silently fail - milestone field is optional
-⋮----
-// Load milestones when modal opens
-⋮----
-const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) =>
-⋮----
-const removeAttachment = (index: number) =>
-⋮----
-const resetForm = () =>
-⋮----
-const handleClose = () =>
-⋮----
-const handleSubmit = async (event: FormEvent) =>
-⋮----
-</file>
-
-<file path="src/features/report-contracts/components/ReportDetailModal.tsx">
-import { useState, type FormEvent } from 'react';
-import { useTranslation } from '../../../hooks/useTranslation';
-import type { ReportContract } from '../../../types/models/ReportContract';
-import {
-  ContractReportStatus,
-  ContractReportResolutionAction,
-} from '../../../types/models/ReportContract';
-import { AlertCircle, X, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
-⋮----
-interface ReportDetailModalProps {
-  report: ReportContract;
-  currentUserId: string;
-  isOpen: boolean;
-  onClose: () => void;
-  onRespond: (input: {
-    resolutionAction: number;
-    explanation?: string | null;
-    proposedResolution?: string | null;
-    rejectReason?: string | null;
-  }) => Promise<{ success: boolean; message?: string }>;
-  onConfirm: (isAccepted: boolean) => Promise<{ success: boolean; message?: string }>;
-  isResponding: boolean;
-  isConfirming: boolean;
-}
-⋮----
-const resetRespondMode = () =>
-⋮----
-const handleRespondSubmit = async (event: FormEvent) =>
-⋮----
-const handleConfirmAccept = async () =>
-⋮----
-const handleConfirmDecline = async () =>
-⋮----
-{/* Status Badge */}
-⋮----
-{/* Basic Info */}
-⋮----
-{/* Issue Description */}
-⋮----
-{/* Desired Resolution */}
-⋮----
-{/* Respondent Response */}
-⋮----
-{/* Attachments */}
-⋮----
-{/* Respondent Actions */}
-⋮----
-{/* Quick Accept */}
-⋮----
-{/* Action Selector for detailed responses */}
-⋮----
-{/* Detailed Response Forms */}
-⋮----
-
-⋮----
-{/* Reporter Confirmation */}
-⋮----
-{/* View-only notice for resolved reports */}
-</file>
-
 <file path="src/features/report-contracts/components/ReportList.tsx">
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { ReportContractListItem } from '../../../types/models/ReportContract';
@@ -16245,268 +16092,6 @@ interface ReportListProps {
   currentUserId: string;
   onViewReport: (reportId: string) => void;
 }
-</file>
-
-<file path="src/features/report-contracts/hooks/useReportContract.ts">
-import { useState, useCallback, useRef } from 'react';
-import { reportContractGetAPI } from '../../../api/reportContractAPI/GET';
-import { reportContractPostAPI } from '../../../api/reportContractAPI/POST';
-import type {
-  ReportContract,
-  ReportContractListItem,
-} from '../../../types/models/ReportContract';
-import type { ApiResponse } from '../../../types/common';
-⋮----
-interface UseReportContractReturn {
-  reports: ReportContractListItem[];
-  isLoading: boolean;
-  error: string | null;
-  loadReports: (contractId: string) => Promise<void>;
-  selectedReport: ReportContract | null;
-  isLoadingDetail: boolean;
-  isCreatingReport: boolean;
-  isRespondingReport: boolean;
-  isConfirmingReport: boolean;
-  createReport: (
-    contractId: string,
-    input: {
-      issueType: number;
-      description: string;
-      desiredResolution: string;
-      milestoneId?: string | null;
-      attachments?: File[];
-    },
-  ) => Promise<ApiResponse<ReportContract>>;
-  loadReportDetail: (contractId: string, reportId: string) => Promise<ApiResponse<ReportContract>>;
-  respondToReport: (
-    contractId: string,
-    reportId: string,
-    input: {
-      resolutionAction: number;
-      explanation?: string | null;
-      proposedResolution?: string | null;
-      rejectReason?: string | null;
-    },
-  ) => Promise<ApiResponse<ReportContract>>;
-  confirmResolution: (
-    contractId: string,
-    reportId: string,
-    isAccepted: boolean,
-  ) => Promise<ApiResponse<ReportContract>>;
-  clearError: () => void;
-  clearSelectedReport: () => void;
-}
-⋮----
-export function useReportContract(): UseReportContractReturn
-⋮----
-// Refresh the list after creation
-</file>
-
-<file path="src/features/report-contracts/styles/report-contract.css">
-/* =============================================
-   Report Contract Feature Styles
-   ============================================= */
-⋮----
-/* Modal Backdrop */
-.rc-modal-backdrop {
-⋮----
-/* Modal */
-.rc-modal {
-⋮----
-.rc-modal-wide {
-⋮----
-/* Modal Header */
-.rc-modal-header {
-⋮----
-.rc-modal-header h3 {
-⋮----
-.rc-modal-subtitle {
-⋮----
-.rc-icon-button {
-⋮----
-.rc-icon-button:hover {
-⋮----
-.rc-icon-button:disabled {
-⋮----
-/* Form */
-.rc-form {
-⋮----
-.rc-field {
-⋮----
-.rc-field label {
-⋮----
-.rc-field select,
-⋮----
-.rc-field select:focus,
-⋮----
-.rc-field select:disabled,
-⋮----
-.rc-hint {
-⋮----
-.rc-count {
-⋮----
-.rc-file-input {
-⋮----
-.rc-file-list {
-⋮----
-.rc-file-item {
-⋮----
-.rc-file-item strong {
-⋮----
-.rc-file-remove {
-⋮----
-.rc-file-remove:hover {
-⋮----
-.rc-error {
-⋮----
-.rc-actions {
-⋮----
-.rc-primary,
-⋮----
-.rc-primary {
-⋮----
-.rc-primary:hover:not(:disabled) {
-⋮----
-.rc-primary:disabled {
-⋮----
-.rc-secondary {
-⋮----
-.rc-secondary:hover:not(:disabled) {
-⋮----
-.rc-secondary:disabled {
-⋮----
-.rc-spin {
-⋮----
-/* =============================================
-   Report List
-   ============================================= */
-.rc-list {
-⋮----
-.rc-list-item {
-⋮----
-.rc-list-item:hover {
-⋮----
-.rc-list-item-icon {
-⋮----
-.rc-list-item-content {
-⋮----
-.rc-list-item-top {
-⋮----
-.rc-list-item-type {
-⋮----
-.rc-list-item-meta {
-⋮----
-.rc-separator {
-⋮----
-.rc-view-button {
-⋮----
-.rc-view-button:hover {
-⋮----
-.rc-list-loading,
-⋮----
-.rc-empty-icon {
-⋮----
-.rc-spinner {
-⋮----
-/* Status Badges */
-.rc-status {
-⋮----
-.rc-status-lg {
-⋮----
-.rc-status-0 {
-⋮----
-.rc-status-1 {
-⋮----
-.rc-status-2 {
-⋮----
-.rc-status-3 {
-⋮----
-/* =============================================
-   Report Detail
-   ============================================= */
-.rc-detail-body {
-⋮----
-.rc-detail-status-bar {
-⋮----
-.rc-escalated-badge {
-⋮----
-.rc-detail-section {
-⋮----
-.rc-section-title {
-⋮----
-.rc-detail-grid {
-⋮----
-.rc-detail-field label {
-⋮----
-.rc-detail-field span {
-⋮----
-.rc-description-text {
-⋮----
-/* Response Section */
-.rc-response-section {
-⋮----
-.rc-response-action {
-⋮----
-.rc-response-field {
-⋮----
-.rc-response-field label {
-⋮----
-.rc-response-field p {
-⋮----
-/* Attachments */
-.rc-attachment-list {
-⋮----
-.rc-attachment-item {
-⋮----
-.rc-attachment-item:hover {
-⋮----
-.rc-attachment-size {
-⋮----
-/* Action Section */
-.rc-action-section {
-⋮----
-.rc-action-button {
-⋮----
-.rc-action-button:hover:not(:disabled) {
-⋮----
-.rc-action-button:disabled {
-⋮----
-.rc-action-accept {
-⋮----
-.rc-action-accept:hover:not(:disabled) {
-⋮----
-.rc-action-decline {
-⋮----
-.rc-action-decline:hover:not(:disabled) {
-⋮----
-.rc-action-desc {
-⋮----
-.rc-respond-mode-selector {
-⋮----
-.rc-mode-btn {
-⋮----
-.rc-mode-btn:hover {
-⋮----
-.rc-mode-btn.active {
-⋮----
-.rc-respond-form {
-⋮----
-/* Confirm Actions */
-.rc-confirm-desc {
-⋮----
-.rc-confirm-actions {
-⋮----
-.rc-confirm-actions .rc-action-button {
-⋮----
-/* Resolved Notice */
-.rc-resolved-notice {
-⋮----
-/* =============================================
-   Raise Issue Button in workspace
-   ============================================= */
-.rc-raise-issue-btn {
-⋮----
-.rc-raise-issue-btn:hover {
 </file>
 
 <file path="src/features/report-contracts/index.ts">
@@ -16730,34 +16315,6 @@ import EarlyPayoutScreen from './EarlyPayoutScreen';
 .financial-overview-stats,
 ⋮----
 .financial-chart-card.wide {
-</file>
-
-<file path="src/features/workspace/screens/__tests__/ProjectWorkspaceReportContract.test.tsx">
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import ProjectWorkspaceScreen from '../ProjectWorkspaceScreen';
-import { ContractStatus } from '../../../../types/models/Contract';
-import {
-  ContractReportIssueType,
-  ContractReportResolutionAction,
-  ContractReportStatus,
-  type ReportContract,
-  type ReportContractListItem,
-} from '../../../../types/models/ReportContract';
-import { useProjectWorkspace } from '../../hooks/useProjectWorkspace';
-import { useReportContract } from '../../../../features/report-contracts';
-⋮----
-const reportDetail = (overrides: Partial<ReportContract> =
-⋮----
-const mockWorkspace = (
-  status = ContractStatus.Active,
-  userId = 'user-1',
-  projectMessages: Array<Record<string, unknown>> = [],
-) =>
-⋮----
-const mockReports = (selectedReport: ReportContract | null = null) =>
-⋮----
-const openReportDetail = async () =>
 </file>
 
 <file path="src/features/workspace/utils/reportSystemMessage.ts">
@@ -18082,113 +17639,6 @@ export interface SignaturePadData {
 }
 </file>
 
-<file path="src/types/models/ReportContract.ts">
-export enum ContractReportIssueType {
-  PaymentIssue = 0,
-  MilestoneIssue = 1,
-  Delay = 2,
-  PoorQuality = 3,
-  CommunicationProblem = 4,
-  ScopeChange = 5,
-  Other = 6,
-}
-⋮----
-export enum ContractReportStatus {
-  Pending = 0,
-  WaitingReporterConfirmation = 1,
-  Resolved = 2,
-  Escalated = 3,
-}
-⋮----
-export enum ContractReportResolutionAction {
-  AcceptIssue = 0,
-  ProvideExplanation = 1,
-  ProposeResolution = 2,
-  RejectIssue = 3,
-}
-⋮----
-export interface ReportContractAttachment {
-  reportContractAttachmentId: string;
-  fileUrl: string;
-  fileName: string;
-  contentType: string;
-  fileSize: number;
-  uploadedAt: string;
-}
-⋮----
-export interface ReportContractInitiator {
-  id: string;
-  name: string | null;
-  role: 'Client' | 'Freelancer' | null;
-}
-⋮----
-export interface ReportContractRespondent {
-  id: string;
-  name: string | null;
-  role: string | null;
-}
-⋮----
-export interface ReportContractMilestone {
-  id: string;
-  title: string | null;
-}
-⋮----
-export interface ReportContract {
-  id: string;
-  contractId: string;
-  reporter: ReportContractInitiator;
-  respondent: ReportContractRespondent | null;
-  milestone: ReportContractMilestone | null;
-  issueType: ContractReportIssueType;
-  description: string;
-  desiredResolution: string;
-  status: ContractReportStatus;
-  resolutionAction: ContractReportResolutionAction | null;
-  explanation: string | null;
-  proposedResolution: string | null;
-  rejectReason: string | null;
-  resolvedBy: string | null;
-  createdAt: string;
-  respondedAt: string | null;
-  resolvedAt: string | null;
-  isEscalatedToDispute: boolean;
-  attachments: ReportContractAttachment[];
-}
-⋮----
-export interface ReportContractListItem {
-  id: string;
-  reporterId: string;
-  reporterName: string | null;
-  reporterRole: string | null;
-  issueType: ContractReportIssueType;
-  status: ContractReportStatus;
-  resolutionAction: ContractReportResolutionAction | null;
-  createdAt: string;
-  respondedAt: string | null;
-  resolvedAt: string | null;
-}
-⋮----
-export interface CreateReportInput {
-  contractId: string;
-  issueType: ContractReportIssueType;
-  description: string;
-  desiredResolution: string;
-  milestoneId?: string | null;
-  attachments?: File[];
-}
-⋮----
-export interface RespondToReportInput {
-  resolutionAction: ContractReportResolutionAction;
-  explanation?: string | null;
-  proposedResolution?: string | null;
-  rejectReason?: string | null;
-}
-⋮----
-export interface ConfirmResolutionInput {
-  isAccepted: boolean;
-}
-</file>
-
 <file path="src/types/index.ts">
 /**
  * Central export for all type definitions
@@ -18471,6 +17921,56 @@ import type {
 /**
    * POST /api/Proposals/{proposalId}/answers
    */
+</file>
+
+<file path="src/api/reportContractAPI/POST.ts">
+import { apiService } from '../../service/apiService';
+import type { ApiResponse } from '../../types/common';
+import type {
+  ConfirmResolutionInput,
+  ContractReportResolutionAction,
+  ReportContract,
+  RespondToReportInput,
+} from '../../types/models/ReportContract';
+import { normalizeReportContract } from './utils';
+⋮----
+const baseUrl = (contractId: string) => `contracts/$
+⋮----
+/**
+   * POST /api/contracts/{contractId}/reports
+   * Create a new report with optional file attachments
+   */
+⋮----
+/**
+   * POST /api/contracts/{contractId}/reports/{reportId}/respond
+   * Respondent action (accept, explain, propose, reject) with optional file attachments
+   */
+⋮----
+/**
+   * POST /api/contracts/{contractId}/reports/{reportId}/confirm
+   * Reporter confirms or declines the resolution
+   */
+</file>
+
+<file path="src/api/reportContractAPI/utils.ts">
+import type {
+  ContractReportIssueType,
+  ContractReportResolutionAction,
+  ContractReportStatus,
+  ReportContract,
+  ReportContractAttachment,
+  ReportContractListItem,
+} from '../../types/models/ReportContract';
+⋮----
+type UnknownRecord = Record<string, unknown>;
+⋮----
+const valueOf = <T>(source: UnknownRecord, ...keys: string[]): T | undefined =>
+⋮----
+const normalizeAttachment = (raw: unknown): ReportContractAttachment =>
+⋮----
+export const normalizeReportContract = (raw: unknown): ReportContract =>
+⋮----
+export const normalizeReportContractListItem = (raw: unknown): ReportContractListItem =>
 </file>
 
 <file path="src/features/admin/screens/AdminCheatingManagementScreen.tsx">
@@ -20032,6 +19532,104 @@ export const canEditProposal = (status: number | string | null | undefined)
 export const canViewProposalAnswers = (status: number | string | null | undefined)
 </file>
 
+<file path="src/features/report-contracts/components/RaiseIssueModal.tsx">
+import { useState, useRef, type ChangeEvent, type FormEvent } from 'react';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import type { Milestone } from '../../../types/models/Contract';
+import {
+  ContractReportIssueType,
+} from '../../../types/models/ReportContract';
+import { AlertCircle, X, Loader2, Upload, FileText } from 'lucide-react';
+⋮----
+interface RaiseIssueModalProps {
+  contractId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (input: {
+    issueType: number;
+    description: string;
+    desiredResolution: string;
+    milestoneId?: string | null;
+    attachments?: File[];
+  }) => Promise<{ success: boolean; message?: string }>;
+  isSubmitting: boolean;
+}
+⋮----
+const loadMilestones = async () =>
+⋮----
+// Silently fail - milestone field is optional
+⋮----
+// Load milestones when modal opens
+⋮----
+const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) =>
+⋮----
+const removeAttachment = (index: number) =>
+⋮----
+const resetForm = () =>
+⋮----
+const handleClose = () =>
+⋮----
+const handleSubmit = async (event: FormEvent) =>
+⋮----
+</file>
+
+<file path="src/features/report-contracts/hooks/useReportContract.ts">
+import { useState, useCallback, useRef } from 'react';
+import { reportContractGetAPI } from '../../../api/reportContractAPI/GET';
+import { reportContractPostAPI } from '../../../api/reportContractAPI/POST';
+import type {
+  ReportContract,
+  ReportContractListItem,
+} from '../../../types/models/ReportContract';
+import type { ApiResponse } from '../../../types/common';
+⋮----
+interface UseReportContractReturn {
+  reports: ReportContractListItem[];
+  isLoading: boolean;
+  error: string | null;
+  loadReports: (contractId: string) => Promise<void>;
+  selectedReport: ReportContract | null;
+  isLoadingDetail: boolean;
+  isCreatingReport: boolean;
+  isRespondingReport: boolean;
+  isConfirmingReport: boolean;
+  createReport: (
+    contractId: string,
+    input: {
+      issueType: number;
+      description: string;
+      desiredResolution: string;
+      milestoneId?: string | null;
+      attachments?: File[];
+    },
+  ) => Promise<ApiResponse<ReportContract>>;
+  loadReportDetail: (contractId: string, reportId: string) => Promise<ApiResponse<ReportContract>>;
+  respondToReport: (
+    contractId: string,
+    reportId: string,
+    input: {
+      resolutionAction: number;
+      explanation?: string | null;
+      proposedResolution?: string | null;
+      rejectReason?: string | null;
+      attachments?: File[];
+    },
+  ) => Promise<ApiResponse<ReportContract>>;
+  confirmResolution: (
+    contractId: string,
+    reportId: string,
+    isAccepted: boolean,
+  ) => Promise<ApiResponse<ReportContract>>;
+  clearError: () => void;
+  clearSelectedReport: () => void;
+}
+⋮----
+export function useReportContract(): UseReportContractReturn
+⋮----
+// Refresh the list after creation
+</file>
+
 <file path="src/features/wallet/screens/SubscriptionScreen.tsx">
 import { useCallback, useState } from 'react';
 import { AlertTriangle, Check, Crown, RefreshCw } from 'lucide-react';
@@ -20047,6 +19645,34 @@ const parseFeatures = (value?: string | null) =>
 ⋮----
 const cancel = async () =>
 ⋮----
+</file>
+
+<file path="src/features/workspace/screens/__tests__/ProjectWorkspaceReportContract.test.tsx">
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import ProjectWorkspaceScreen from '../ProjectWorkspaceScreen';
+import { ContractStatus } from '../../../../types/models/Contract';
+import {
+  ContractReportIssueType,
+  ContractReportResolutionAction,
+  ContractReportStatus,
+  type ReportContract,
+  type ReportContractListItem,
+} from '../../../../types/models/ReportContract';
+import { useProjectWorkspace } from '../../hooks/useProjectWorkspace';
+import { useReportContract } from '../../../../features/report-contracts';
+⋮----
+const reportDetail = (overrides: Partial<ReportContract> =
+⋮----
+const mockWorkspace = (
+  status = ContractStatus.Active,
+  userId = 'user-1',
+  projectMessages: Array<Record<string, unknown>> = [],
+) =>
+⋮----
+const mockReports = (selectedReport: ReportContract | null = null) =>
+⋮----
+const openReportDetail = async () =>
 </file>
 
 <file path="src/features/workspace/screens/__tests__/ProjectWorkspaceScreen.test.tsx">
@@ -20455,6 +20081,115 @@ export function formatGigCoinNumber(amount: number | null | undefined): string
 export function formatGigCoin(amount: number | null | undefined): string
 ⋮----
 export function formatGigCoinRange(min?: number | null, max?: number | null): string
+</file>
+
+<file path="src/types/models/ReportContract.ts">
+export enum ContractReportIssueType {
+  PaymentIssue = 0,
+  MilestoneIssue = 1,
+  Delay = 2,
+  PoorQuality = 3,
+  CommunicationProblem = 4,
+  ScopeChange = 5,
+  Other = 6,
+}
+⋮----
+export enum ContractReportStatus {
+  Pending = 0,
+  WaitingReporterConfirmation = 1,
+  Resolved = 2,
+  Escalated = 3,
+}
+⋮----
+export enum ContractReportResolutionAction {
+  AcceptIssue = 0,
+  ProvideExplanation = 1,
+  ProposeResolution = 2,
+  RejectIssue = 3,
+}
+⋮----
+export interface ReportContractAttachment {
+  reportContractAttachmentId: string;
+  fileUrl: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  uploadedAt: string;
+  uploadedByUserId?: string | null;
+}
+⋮----
+export interface ReportContractInitiator {
+  id: string;
+  name: string | null;
+  role: 'Client' | 'Freelancer' | null;
+}
+⋮----
+export interface ReportContractRespondent {
+  id: string;
+  name: string | null;
+  role: string | null;
+}
+⋮----
+export interface ReportContractMilestone {
+  id: string;
+  title: string | null;
+}
+⋮----
+export interface ReportContract {
+  id: string;
+  contractId: string;
+  reporter: ReportContractInitiator;
+  respondent: ReportContractRespondent | null;
+  milestone: ReportContractMilestone | null;
+  issueType: ContractReportIssueType;
+  description: string;
+  desiredResolution: string;
+  status: ContractReportStatus;
+  resolutionAction: ContractReportResolutionAction | null;
+  explanation: string | null;
+  proposedResolution: string | null;
+  rejectReason: string | null;
+  resolvedBy: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+  resolvedAt: string | null;
+  isEscalatedToDispute: boolean;
+  attachments: ReportContractAttachment[];
+}
+⋮----
+export interface ReportContractListItem {
+  id: string;
+  reporterId: string;
+  reporterName: string | null;
+  reporterRole: string | null;
+  issueType: ContractReportIssueType;
+  status: ContractReportStatus;
+  resolutionAction: ContractReportResolutionAction | null;
+  createdAt: string;
+  respondedAt: string | null;
+  resolvedAt: string | null;
+}
+⋮----
+export interface CreateReportInput {
+  contractId: string;
+  issueType: ContractReportIssueType;
+  description: string;
+  desiredResolution: string;
+  milestoneId?: string | null;
+  attachments?: File[];
+}
+⋮----
+export interface RespondToReportInput {
+  resolutionAction: ContractReportResolutionAction;
+  explanation?: string | null;
+  proposedResolution?: string | null;
+  rejectReason?: string | null;
+  attachments?: File[];
+}
+⋮----
+export interface ConfirmResolutionInput {
+  isAccepted: boolean;
+}
 </file>
 
 <file path="src/types/models/User.ts">
@@ -21720,6 +21455,327 @@ const updateDuration = (amount: string, unit: ProposalDurationUnit) => updateMil
 ⋮----
 </file>
 
+<file path="src/features/report-contracts/components/ReportDetailModal.tsx">
+import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
+import { useTranslation } from '../../../hooks/useTranslation';
+import type { ReportContract, ReportContractAttachment } from '../../../types/models/ReportContract';
+import {
+  ContractReportStatus,
+  ContractReportResolutionAction,
+} from '../../../types/models/ReportContract';
+import {
+  AlertCircle, X, Loader2, CheckCircle, XCircle,
+  ExternalLink, FileText, Image, Film, Archive,
+  Upload, Download
+} from 'lucide-react';
+⋮----
+interface ReportDetailModalProps {
+  report: ReportContract;
+  currentUserId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onRespond: (input: {
+    resolutionAction: number;
+    explanation?: string | null;
+    proposedResolution?: string | null;
+    rejectReason?: string | null;
+    attachments?: File[];
+  }) => Promise<{ success: boolean; message?: string }>;
+  onConfirm: (isAccepted: boolean) => Promise<{ success: boolean; message?: string }>;
+  isResponding: boolean;
+  isConfirming: boolean;
+}
+⋮----
+function getFileIcon(contentType: string)
+⋮----
+function isImageType(contentType: string): boolean
+⋮----
+function formatFileSize(bytes: number): string
+⋮----
+// Split attachments by uploader
+⋮----
+const resetRespondMode = () =>
+⋮----
+const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) =>
+⋮----
+const removeFile = (index: number) =>
+⋮----
+const handleRespondSubmit = async (event: FormEvent) =>
+⋮----
+const handleConfirmAccept = async () =>
+⋮----
+const handleConfirmDecline = async () =>
+⋮----
+{/* Status Badge */}
+⋮----
+{/* Basic Info */}
+⋮----
+{/* Issue Description */}
+⋮----
+{/* Desired Resolution */}
+⋮----
+{/* Reporter Evidence */}
+⋮----
+{/* Respondent Evidence */}
+⋮----
+{/* Respondent Response */}
+⋮----
+{/* Respondent Actions */}
+⋮----
+{/* Quick Accept */}
+⋮----
+// For AcceptIssue, submit immediately without attachments
+⋮----
+{/* Action Selector for detailed responses */}
+⋮----
+{/* Detailed Response Forms */}
+⋮----
+{/* Respondent Attachment Upload */}
+⋮----
+
+⋮----
+{/* Reporter Confirmation */}
+⋮----
+{/* View-only notice for resolved reports */}
+</file>
+
+<file path="src/features/report-contracts/styles/report-contract.css">
+/* =============================================
+   Report Contract Feature Styles
+   ============================================= */
+⋮----
+/* Modal Backdrop */
+.rc-modal-backdrop {
+⋮----
+/* Modal */
+.rc-modal {
+⋮----
+.rc-modal-wide {
+⋮----
+/* Modal Header */
+.rc-modal-header {
+⋮----
+.rc-modal-header h3 {
+⋮----
+.rc-modal-subtitle {
+⋮----
+.rc-icon-button {
+⋮----
+.rc-icon-button:hover {
+⋮----
+.rc-icon-button:disabled {
+⋮----
+/* Form */
+.rc-form {
+⋮----
+.rc-field {
+⋮----
+.rc-field label {
+⋮----
+.rc-field select,
+⋮----
+.rc-field select:focus,
+⋮----
+.rc-field select:disabled,
+⋮----
+.rc-hint {
+⋮----
+.rc-count {
+⋮----
+.rc-file-input {
+⋮----
+.rc-file-list {
+⋮----
+.rc-file-item {
+⋮----
+.rc-file-item strong {
+⋮----
+.rc-file-remove {
+⋮----
+.rc-file-remove:hover {
+⋮----
+.rc-error {
+⋮----
+.rc-actions {
+⋮----
+.rc-primary,
+⋮----
+.rc-primary {
+⋮----
+.rc-primary:hover:not(:disabled) {
+⋮----
+.rc-primary:disabled {
+⋮----
+.rc-secondary {
+⋮----
+.rc-secondary:hover:not(:disabled) {
+⋮----
+.rc-secondary:disabled {
+⋮----
+.rc-spin {
+⋮----
+/* =============================================
+   Report List
+   ============================================= */
+.rc-list {
+⋮----
+.rc-list-item {
+⋮----
+.rc-list-item:hover {
+⋮----
+.rc-list-item-icon {
+⋮----
+.rc-list-item-content {
+⋮----
+.rc-list-item-top {
+⋮----
+.rc-list-item-type {
+⋮----
+.rc-list-item-meta {
+⋮----
+.rc-separator {
+⋮----
+.rc-view-button {
+⋮----
+.rc-view-button:hover {
+⋮----
+.rc-list-loading,
+⋮----
+.rc-empty-icon {
+⋮----
+.rc-spinner {
+⋮----
+/* Status Badges */
+.rc-status {
+⋮----
+.rc-status-lg {
+⋮----
+.rc-status-0 {
+⋮----
+.rc-status-1 {
+⋮----
+.rc-status-2 {
+⋮----
+.rc-status-3 {
+⋮----
+/* =============================================
+   Report Detail
+   ============================================= */
+.rc-detail-body {
+⋮----
+.rc-detail-status-bar {
+⋮----
+.rc-escalated-badge {
+⋮----
+.rc-detail-section {
+⋮----
+.rc-section-title {
+⋮----
+.rc-detail-grid {
+⋮----
+.rc-detail-field label {
+⋮----
+.rc-detail-field span {
+⋮----
+.rc-description-text {
+⋮----
+/* Response Section */
+.rc-response-section {
+⋮----
+.rc-response-action {
+⋮----
+.rc-response-field {
+⋮----
+.rc-response-field label {
+⋮----
+.rc-response-field p {
+⋮----
+/* Attachments */
+.rc-attachment-list {
+⋮----
+.rc-attachment-item {
+⋮----
+.rc-attachment-item:hover {
+⋮----
+.rc-attachment-size {
+⋮----
+/* Action Section */
+.rc-action-section {
+⋮----
+.rc-action-button {
+⋮----
+.rc-action-button:hover:not(:disabled) {
+⋮----
+.rc-action-button:disabled {
+⋮----
+.rc-action-accept {
+⋮----
+.rc-action-accept:hover:not(:disabled) {
+⋮----
+.rc-action-decline {
+⋮----
+.rc-action-decline:hover:not(:disabled) {
+⋮----
+.rc-action-desc {
+⋮----
+.rc-respond-mode-selector {
+⋮----
+.rc-mode-btn {
+⋮----
+.rc-mode-btn:hover {
+⋮----
+.rc-mode-btn.active {
+⋮----
+.rc-respond-form {
+⋮----
+/* Confirm Actions */
+.rc-confirm-desc {
+⋮----
+.rc-confirm-actions {
+⋮----
+.rc-confirm-actions .rc-action-button {
+⋮----
+/* Attachment Group Sections */
+.rc-section-title-attachment::before {
+⋮----
+.rc-attachment-icon {
+⋮----
+.rc-attachment-thumb {
+⋮----
+.rc-attachment-name {
+⋮----
+.rc-attachment-meta {
+⋮----
+.rc-attachment-time {
+⋮----
+.rc-attachment-download {
+⋮----
+.rc-attachment-item:hover .rc-attachment-download {
+⋮----
+/* Respondent Attachments Upload */
+.rc-respond-attachments {
+⋮----
+/* Hidden file input - styled button trigger instead */
+.rc-file-input-hidden {
+⋮----
+.rc-file-upload-button {
+⋮----
+.rc-file-upload-button:hover:not(:disabled) {
+⋮----
+.rc-file-upload-button:disabled {
+⋮----
+.rc-upload-text {
+⋮----
+.rc-resolved-notice {
+⋮----
+/* =============================================
+   Raise Issue Button in workspace
+   ============================================= */
+.rc-raise-issue-btn {
+⋮----
+.rc-raise-issue-btn:hover {
+</file>
+
 <file path="src/features/settings/screens/SettingsScreen.tsx">
 import { useState, useEffect } from 'react';
 import { User, Lock, CreditCard, Bell, Bot, Camera, Plus, X, Eye, EyeOff, Globe, Landmark } from 'lucide-react';
@@ -22262,6 +22318,75 @@ import type { ClaimFinalPayoutResponse, ContractProductHandoffResponse, CreateCo
 /**
    * POST /api/contracts/{contractId}/job-post-setup/complete
    */
+</file>
+
+<file path="src/features/contracts/screens/SignatureWorkflowScreen.tsx">
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { AlertCircle, CheckCircle, Clock, FileText, Loader, PenTool, X } from 'lucide-react';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import { useApp } from '../../../app/providers/AppProvider';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
+import { esignGetAPI } from '../../../api/esignAPI/GET';
+import type { ContractDto, Milestone } from '../../../types/models/Contract';
+import type { ESignDocumentDto } from '../../../types/models/ESign';
+import { ContractStatus } from '../../../types/models/Contract';
+import { SignatureStatus } from '../../../types/models/ESign';
+import { UserRole } from '../../../types/models/User';
+⋮----
+import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { useTranslation } from '../../../hooks/useTranslation';
+⋮----
+type SignatureStep = 'review' | 'capture' | 'complete';
+⋮----
+interface SignContractResponse {
+  status?: ContractStatus;
+  Status?: ContractStatus;
+  contractStatus?: ContractStatus;
+  ContractStatus?: ContractStatus;
+  contractId?: string;
+  ContractId?: string;
+  documentId?: string;
+  DocumentId?: string;
+  message?: string;
+  Message?: string;
+}
+⋮----
+const formatMoney = (value?: number): string
+⋮----
+const formatDate = (value?: string | null): string =>
+⋮----
+const getStatusFromResponse = (data: unknown): ContractStatus | undefined =>
+⋮----
+const getDocumentIdFromResponse = (data: unknown): string | undefined =>
+⋮----
+const getCanvasPoint = (canvas: HTMLCanvasElement, event: React.MouseEvent<HTMLCanvasElement>) =>
+⋮----
+const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>): void =>
+⋮----
+const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>): void =>
+⋮----
+const handleMouseUp = (): void =>
+⋮----
+const handleClearSignature = (): void =>
+⋮----
+const refreshAfterSigning = async (nextStatus?: ContractStatus): Promise<ContractStatus | undefined> =>
+⋮----
+const handleSubmitSignature = async (): Promise<void> =>
+⋮----
+// Already signed, proceed as success!
+⋮----
+const handleCompleteNavigation = (): void =>
+⋮----
+<p>
+⋮----
+<button onClick=
+⋮----
+<span className="step-label">
+⋮----
+<h3>
+⋮----
 </file>
 
 <file path="src/features/dashboard/screens/FreelancerDashboardScreen.tsx">
@@ -24265,75 +24390,6 @@ onChange=
 {/* Right side: Items per page dropdown */}
 </file>
 
-<file path="src/features/contracts/screens/SignatureWorkflowScreen.tsx">
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { AlertCircle, CheckCircle, Clock, FileText, Loader, PenTool, X } from 'lucide-react';
-import { AppLayout } from '../../../shared/components/AppLayout';
-import { useApp } from '../../../app/providers/AppProvider';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { contractPostAPI } from '../../../api/contractAPI/POST';
-import { esignGetAPI } from '../../../api/esignAPI/GET';
-import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import type { ESignDocumentDto } from '../../../types/models/ESign';
-import { ContractStatus } from '../../../types/models/Contract';
-import { SignatureStatus } from '../../../types/models/ESign';
-import { UserRole } from '../../../types/models/User';
-⋮----
-import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { useTranslation } from '../../../hooks/useTranslation';
-⋮----
-type SignatureStep = 'review' | 'capture' | 'complete';
-⋮----
-interface SignContractResponse {
-  status?: ContractStatus;
-  Status?: ContractStatus;
-  contractStatus?: ContractStatus;
-  ContractStatus?: ContractStatus;
-  contractId?: string;
-  ContractId?: string;
-  documentId?: string;
-  DocumentId?: string;
-  message?: string;
-  Message?: string;
-}
-⋮----
-const formatMoney = (value?: number): string
-⋮----
-const formatDate = (value?: string | null): string =>
-⋮----
-const getStatusFromResponse = (data: unknown): ContractStatus | undefined =>
-⋮----
-const getDocumentIdFromResponse = (data: unknown): string | undefined =>
-⋮----
-const getCanvasPoint = (canvas: HTMLCanvasElement, event: React.MouseEvent<HTMLCanvasElement>) =>
-⋮----
-const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>): void =>
-⋮----
-const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>): void =>
-⋮----
-const handleMouseUp = (): void =>
-⋮----
-const handleClearSignature = (): void =>
-⋮----
-const refreshAfterSigning = async (nextStatus?: ContractStatus): Promise<ContractStatus | undefined> =>
-⋮----
-const handleSubmitSignature = async (): Promise<void> =>
-⋮----
-// Already signed, proceed as success!
-⋮----
-const handleCompleteNavigation = (): void =>
-⋮----
-<p>
-⋮----
-<button onClick=
-⋮----
-<span className="step-label">
-⋮----
-<h3>
-⋮----
-</file>
-
 <file path="src/features/jobs/hooks/useJobDetail.ts">
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
@@ -25120,6 +25176,299 @@ import type {
    */
 </file>
 
+<file path="src/features/contracts/components/FreelancerContractDetails.tsx">
+import { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Lock, AlertCircle, CheckCircle, Clock,
+  User, FileText, Calendar, Download, ArrowLeft, Shield,
+  Mail, ListChecks, Copy, Check, FileCheck, ChevronDown,
+  Star, ShieldAlert, Edit3, XCircle, LoaderCircle, RefreshCw
+} from 'lucide-react';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import { esignGetAPI } from '../../../api/esignAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
+import { useApp } from '../../../app/providers/AppProvider';
+import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
+import { SignatureStatus } from '../../../types/models/ESign';
+import {
+  getContractStatusLabel,
+  getContractStatusClass,
+  formatContractAmount,
+  formatContractDate,
+  getMilestoneStatusLabel,
+  getMilestoneStatusClass
+} from '../../../shared/utils/contractUtils';
+⋮----
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import type { Dispute } from '../../../types/models/Dispute';
+⋮----
+interface AuditTrailEntry {
+  id: string;
+  action: string;
+  timestamp: string;
+  performedBy: string;
+  performedByRole: 'Client' | 'Freelancer' | 'Admin';
+  details?: string;
+  metadata?: Record<string, any>;
+}
+⋮----
+interface FreelancerContractDetailsProps {
+  contract: any;
+  milestones: Milestone[];
+  auditTrail: AuditTrailEntry[];
+  onRefresh: () => void;
+  isAdminOverride?: boolean;
+  activeDispute: Dispute | null;
+  activeDisputeError: string | null;
+  activeDisputeLoading: boolean;
+  onRetryDispute: () => void;
+}
+⋮----
+// States
+⋮----
+const loadESignStatus = async () =>
+⋮----
+// Stepper: PendingContractConfirmation -> PendingSignature -> PendingEscrow -> Active
+⋮----
+const handleCopyContractId = () =>
+⋮----
+const handleDownloadPDF = () =>
+⋮----
+const handleScrollToReview = () =>
+⋮----
+const handleViewESignContract = () =>
+⋮----
+// Confirm contract details (step 1)
+const handleConfirmDetails = async () =>
+⋮----
+// Request change for contract terms
+const handleRequestChange = async () =>
+⋮----
+// Request milestone change
+const handleRequestMilestoneChange = async () =>
+⋮----
+// Helper for rendering terms read-only
+⋮----
+<h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">
+⋮----
+
+⋮----
+{/* Decorative Background */}
+⋮----
+{/* Header */}
+⋮----
+onClick=
+⋮----
+{/* Stepper Panel */}
+⋮----
+{/* Grid Layout */}
+⋮----
+{/* Main Column */}
+⋮----
+{/* STEP 1A: PendingContractDetails - Waiting for client update after change request */}
+⋮----
+{/* STEP 1B: PendingContractConfirmation - Review & Confirm */}
+⋮----
+{/* Review Banner */}
+⋮----
+{/* Action Buttons */}
+⋮----
+{/* STEP 2: PendingSignature - E-Sign */}
+⋮----
+<h2 className="text-2xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">
+⋮----
+<span>
+⋮----
+<h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">
+⋮----
+<h3 className="text-sm font-black uppercase tracking-wider text-foreground">
+⋮----
+{/* STEP 3: PendingEscrow - Waiting for client */}
+⋮----
+{/* STEP 4+: Active/Completed Contract */}
+⋮----
+<span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+⋮----
+{/* Milestones Accordions */}
+⋮----
+<span className="text-sm font-bold text-foreground">
+⋮----
+{/* Submit deliverables CTA for active milestones */}
+⋮----
+{/* Audit Trail Timeline */}
+⋮----
+{/* Sidebar Column */}
+⋮----
+<span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">
+⋮----
+{/* Quick Actions Panel */}
+⋮----
+<h2 className="text-base font-bold text-foreground uppercase tracking-tight mb-5 font-zentry">
+⋮----
+{/* Submit deliverables for active contracts */}
+⋮----
+{/* Review terms action in PendingContractConfirmation */}
+⋮----
+<RefreshCw size=
+⋮----
+{/* Parties Info Panel */}
+⋮----
+{/* Change Request Modal (Terms) */}
+⋮----
+{/* Milestone Change Request Modal */}
+</file>
+
+<file path="src/features/contracts/screens/ManageMilestonesScreen.tsx">
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router';
+import {
+  Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock,
+  Calendar, ChevronDown, Save, X, Eye, ArrowLeft, Layers, ShieldAlert,
+  TrendingUp, Send
+} from 'lucide-react';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { contractPutAPI } from '../../../api/contractAPI/PUT';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
+import { useApp } from '../../../app/providers/AppProvider';
+import type { ContractDto, Milestone } from '../../../types/models/Contract';
+import { MilestoneStatus, ContractStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
+⋮----
+import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
+import { toast } from 'sonner';
+⋮----
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+⋮----
+interface MilestoneFormData {
+  title: string;
+  amount: number;
+  due_date: string;
+  description?: string;
+}
+⋮----
+const createClientMilestoneId = () => `new:$
+const isClientMilestoneId = (value: string)
+⋮----
+// State
+⋮----
+// Form state
+⋮----
+const getBaselineReleaseCap = (milestone: Milestone)
+const isMilestoneReleasedToCap = (milestone: Milestone)
+const isMilestoneCompleteForReview = (milestone: Milestone)
+const getMilestoneDisplayLabel = (milestone: Milestone)
+⋮----
+// Load contract and milestones
+const loadData = async () =>
+⋮----
+// Fetch milestones
+⋮----
+// Calculate remaining budget
+const calculateRemainingBudget = () =>
+⋮----
+const getBudgetExceededMessage = () =>
+⋮----
+const validateAllocatedBudget = () =>
+⋮----
+// Validate form
+const validateForm = (data: MilestoneFormData): string | null =>
+⋮----
+const handleCreateClick = () =>
+⋮----
+const handleEditClick = (milestone: Milestone) =>
+⋮----
+const handleCancelForm = () =>
+⋮----
+const handleSubmitForm = (e: React.FormEvent) =>
+⋮----
+// Update local state
+⋮----
+// Add local state
+⋮----
+const handleDeleteMilestone = (milestoneId: string) =>
+⋮----
+const handleSaveDraft = async () =>
+⋮----
+// Reload to get real Guids for newly created milestones
+⋮----
+const handleCompleteSetup = async () =>
+⋮----
+// 1. Bulk save milestones
+⋮----
+// 2. Call complete setup
+⋮----
+const handleSubmitDetails = async () =>
+⋮----
+// 1. Bulk save milestones
+⋮----
+// 2. Submit contract details for review
+⋮----
+const handleMilestoneWorkflowAction = async (
+    milestoneId: string,
+    action: 'start' | 'approve' | 'request-revision' | 'withdraw'
+) =>
+⋮----
+{/* Structural Typography & Ambient Orbs in Background */}
+⋮----
+{/* Shrunken, Compact Header Top-Bar */}
+⋮----
+onClick=
+⋮----
+{/* Messages */}
+⋮----
+{/* Main Layout Grid */}
+⋮----
+{/* Left Column: Milestones List & Form (scrollable) */}
+⋮----
+{/* Create/Edit Form panel */}
+⋮----
+
+⋮----
+onChange=
+⋮----
+{/* Milestones list container with timeline track line */}
+⋮----
+{/* Vertical timeline spine line */}
+⋮----
+<h3 className="text-sm font-bold text-foreground">
+⋮----
+{/* Centered Timeline Dot */}
+⋮----
+{/* Milestone card wrapper */}
+⋮----
+{/* Glowing Left Indicator track line */}
+⋮----
+{/* Card Header Content */}
+⋮----
+{/* Card Body - Collapsed (Due Date display only) */}
+⋮----
+<span>
+⋮----
+{/* Card Body - Expanded Details & Workflows */}
+⋮----
+{/* Status Workflow Controls */}
+⋮----
+{/* Actions panel */}
+⋮----
+{/* Right Column: Stacked KPI Overview Summary Panel */}
+⋮----
+{/* Stacked KPI list in side panel */}
+⋮----
+{/* Allocated Budget */}
+⋮----
+{/* Remaining Budget */}
+⋮----
+{/* Milestone Completion */}
+⋮----
+{/* Sidebar Navigation Actions */}
+</file>
+
 <file path="src/features/profile/screens/FreelancerProfileScreen.tsx">
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -25502,151 +25851,6 @@ import { adminPatchAPI } from './PATCH';
 import { adminDeleteAPI } from './DELETE';
 </file>
 
-<file path="src/features/contracts/components/FreelancerContractDetails.tsx">
-import { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { useTranslation } from '../../../hooks/useTranslation';
-import { motion, AnimatePresence } from 'motion/react';
-import {
-  Lock, AlertCircle, CheckCircle, Clock,
-  User, FileText, Calendar, Download, ArrowLeft, Shield,
-  Mail, ListChecks, Copy, Check, FileCheck, ChevronDown,
-  Star, ShieldAlert, Edit3, XCircle, LoaderCircle, RefreshCw
-} from 'lucide-react';
-import { AppLayout } from '../../../shared/components/AppLayout';
-import { esignGetAPI } from '../../../api/esignAPI/GET';
-import { contractPostAPI } from '../../../api/contractAPI/POST';
-import { useApp } from '../../../app/providers/AppProvider';
-import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
-import { SignatureStatus } from '../../../types/models/ESign';
-import {
-  getContractStatusLabel,
-  getContractStatusClass,
-  formatContractAmount,
-  formatContractDate,
-  getMilestoneStatusLabel,
-  getMilestoneStatusClass
-} from '../../../shared/utils/contractUtils';
-⋮----
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
-import type { Dispute } from '../../../types/models/Dispute';
-⋮----
-interface AuditTrailEntry {
-  id: string;
-  action: string;
-  timestamp: string;
-  performedBy: string;
-  performedByRole: 'Client' | 'Freelancer' | 'Admin';
-  details?: string;
-  metadata?: Record<string, any>;
-}
-⋮----
-interface FreelancerContractDetailsProps {
-  contract: any;
-  milestones: Milestone[];
-  auditTrail: AuditTrailEntry[];
-  onRefresh: () => void;
-  isAdminOverride?: boolean;
-  activeDispute: Dispute | null;
-  activeDisputeError: string | null;
-  activeDisputeLoading: boolean;
-  onRetryDispute: () => void;
-}
-⋮----
-// States
-⋮----
-const loadESignStatus = async () =>
-⋮----
-// Stepper: PendingContractConfirmation -> PendingSignature -> PendingEscrow -> Active
-⋮----
-const handleCopyContractId = () =>
-⋮----
-const handleDownloadPDF = () =>
-⋮----
-const handleScrollToReview = () =>
-⋮----
-const handleViewESignContract = () =>
-⋮----
-// Confirm contract details (step 1)
-const handleConfirmDetails = async () =>
-⋮----
-// Request change for contract terms
-const handleRequestChange = async () =>
-⋮----
-// Request milestone change
-const handleRequestMilestoneChange = async () =>
-⋮----
-// Helper for rendering terms read-only
-⋮----
-<h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">
-⋮----
-
-⋮----
-{/* Decorative Background */}
-⋮----
-{/* Header */}
-⋮----
-onClick=
-⋮----
-{/* Stepper Panel */}
-⋮----
-{/* Grid Layout */}
-⋮----
-{/* Main Column */}
-⋮----
-{/* STEP 1A: PendingContractDetails - Waiting for client update after change request */}
-⋮----
-{/* STEP 1B: PendingContractConfirmation - Review & Confirm */}
-⋮----
-{/* Review Banner */}
-⋮----
-{/* Action Buttons */}
-⋮----
-{/* STEP 2: PendingSignature - E-Sign */}
-⋮----
-<h2 className="text-2xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">
-⋮----
-<span>
-⋮----
-<h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">
-⋮----
-<h3 className="text-sm font-black uppercase tracking-wider text-foreground">
-⋮----
-{/* STEP 3: PendingEscrow - Waiting for client */}
-⋮----
-{/* STEP 4+: Active/Completed Contract */}
-⋮----
-<span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-⋮----
-{/* Milestones Accordions */}
-⋮----
-<span className="text-sm font-bold text-foreground">
-⋮----
-{/* Submit deliverables CTA for active milestones */}
-⋮----
-{/* Audit Trail Timeline */}
-⋮----
-{/* Sidebar Column */}
-⋮----
-<span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">
-⋮----
-{/* Quick Actions Panel */}
-⋮----
-<h2 className="text-base font-bold text-foreground uppercase tracking-tight mb-5 font-zentry">
-⋮----
-{/* Submit deliverables for active contracts */}
-⋮----
-{/* Review terms action in PendingContractConfirmation */}
-⋮----
-<RefreshCw size=
-⋮----
-{/* Parties Info Panel */}
-⋮----
-{/* Change Request Modal (Terms) */}
-⋮----
-{/* Milestone Change Request Modal */}
-</file>
-
 <file path="src/features/contracts/screens/ApproveMilestoneScreen.tsx">
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
@@ -25692,154 +25896,6 @@ const handleReject = async () =>
 <label htmlFor="revision-reason">
 <textarea id="revision-reason" value=
 <div className="approve-milestone-textarea-meta"><small id="revision-note">
-</file>
-
-<file path="src/features/contracts/screens/ManageMilestonesScreen.tsx">
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router';
-import {
-  Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock,
-  Calendar, ChevronDown, Save, X, Eye, ArrowLeft, Layers, ShieldAlert,
-  TrendingUp, Send
-} from 'lucide-react';
-import { AppLayout } from '../../../shared/components/AppLayout';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { contractPutAPI } from '../../../api/contractAPI/PUT';
-import { contractPostAPI } from '../../../api/contractAPI/POST';
-import { useApp } from '../../../app/providers/AppProvider';
-import type { ContractDto, Milestone } from '../../../types/models/Contract';
-import { MilestoneStatus, ContractStatus } from '../../../types/models/Contract';
-import { UserRole } from '../../../types/models/User';
-import { useTranslation } from '../../../hooks/useTranslation';
-import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
-⋮----
-import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
-import { toast } from 'sonner';
-⋮----
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
-⋮----
-interface MilestoneFormData {
-  title: string;
-  amount: number;
-  due_date: string;
-  description?: string;
-}
-⋮----
-const createClientMilestoneId = () => `new:$
-const isClientMilestoneId = (value: string)
-⋮----
-// State
-⋮----
-// Form state
-⋮----
-const getBaselineReleaseCap = (milestone: Milestone)
-const isMilestoneReleasedToCap = (milestone: Milestone)
-const isMilestoneCompleteForReview = (milestone: Milestone)
-const getMilestoneDisplayLabel = (milestone: Milestone)
-⋮----
-// Load contract and milestones
-const loadData = async () =>
-⋮----
-// Fetch milestones
-⋮----
-// Calculate remaining budget
-const calculateRemainingBudget = () =>
-⋮----
-const getBudgetExceededMessage = () =>
-⋮----
-const validateAllocatedBudget = () =>
-⋮----
-// Validate form
-const validateForm = (data: MilestoneFormData): string | null =>
-⋮----
-const handleCreateClick = () =>
-⋮----
-const handleEditClick = (milestone: Milestone) =>
-⋮----
-const handleCancelForm = () =>
-⋮----
-const handleSubmitForm = (e: React.FormEvent) =>
-⋮----
-// Update local state
-⋮----
-// Add local state
-⋮----
-const handleDeleteMilestone = (milestoneId: string) =>
-⋮----
-const handleSaveDraft = async () =>
-⋮----
-// Reload to get real Guids for newly created milestones
-⋮----
-const handleCompleteSetup = async () =>
-⋮----
-// 1. Bulk save milestones
-⋮----
-// 2. Call complete setup
-⋮----
-const handleSubmitDetails = async () =>
-⋮----
-// 1. Bulk save milestones
-⋮----
-// 2. Submit contract details for review
-⋮----
-const handleMilestoneWorkflowAction = async (
-    milestoneId: string,
-    action: 'start' | 'approve' | 'request-revision' | 'withdraw'
-) =>
-⋮----
-{/* Structural Typography & Ambient Orbs in Background */}
-⋮----
-{/* Shrunken, Compact Header Top-Bar */}
-⋮----
-onClick=
-⋮----
-{/* Messages */}
-⋮----
-{/* Main Layout Grid */}
-⋮----
-{/* Left Column: Milestones List & Form (scrollable) */}
-⋮----
-{/* Create/Edit Form panel */}
-⋮----
-
-⋮----
-onChange=
-⋮----
-{/* Milestones list container with timeline track line */}
-⋮----
-{/* Vertical timeline spine line */}
-⋮----
-<h3 className="text-sm font-bold text-foreground">
-⋮----
-{/* Centered Timeline Dot */}
-⋮----
-{/* Milestone card wrapper */}
-⋮----
-{/* Glowing Left Indicator track line */}
-⋮----
-{/* Card Header Content */}
-⋮----
-{/* Card Body - Collapsed (Due Date display only) */}
-⋮----
-<span>
-⋮----
-{/* Card Body - Expanded Details & Workflows */}
-⋮----
-{/* Status Workflow Controls */}
-⋮----
-{/* Actions panel */}
-⋮----
-{/* Right Column: Stacked KPI Overview Summary Panel */}
-⋮----
-{/* Stacked KPI list in side panel */}
-⋮----
-{/* Allocated Budget */}
-⋮----
-{/* Remaining Budget */}
-⋮----
-{/* Milestone Completion */}
-⋮----
-{/* Sidebar Navigation Actions */}
 </file>
 
 <file path="src/features/jobs/screens/JobDetailScreen.tsx">
@@ -25968,203 +26024,6 @@ onChange=
 ⋮----
 setInviteJobId(job.jobPostsId);
 setInviteJobTitle(job.title);
-</file>
-
-<file path="src/features/jobs/screens/EditJobPostScreen.tsx">
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { useBlocker, useNavigate, useParams } from 'react-router';
-import { ArrowLeft, AlertCircle, Check, Plus, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { AppLayout } from '../../../shared/components/AppLayout';
-import { getErrorMessage } from '../../../shared/utils/errorUtils';
-import { jobAPI } from '../../../api/jobAPI';
-import type { ApiResponse } from '../../../types/common';
-import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
-import {
-  JobPostStatus,
-  JobPostVisibility,
-  type SaveDraftJobPostRequest,
-  type UpdateJobPostRequest,
-} from '../../../types/models/Job';
-import { useTranslation } from '../../../hooks/useTranslation';
-import {
-  DEFAULT_JOB_DURATION_UNIT,
-  formatJobDuration,
-  isValidJobDurationValue,
-  JOB_DURATION_UNITS,
-  parseJobDuration,
-  type JobDurationUnit,
-} from '../utils/jobDuration';
-⋮----
-import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
-import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
-⋮----
-interface FormErrors {
-  title?: string;
-  description?: string;
-  taxonomy?: string;
-  budget?: string;
-  duration?: string;
-  endDate?: string;
-  skills?: string;
-  server?: string;
-}
-⋮----
-interface EditJobPostFormData {
-  title: string;
-  description: string;
-  majorId: string;
-  majorCategoryId: string;
-  categoryId: string;
-  budgetMin: string;
-  budgetMax: string;
-  currency: string;
-  estimatedDurationValue: string;
-  estimatedDurationUnit: JobDurationUnit;
-  location: string;
-  visibility: string;
-  endDate: string;
-  skillIds: string[];
-  customSkillNames: string[];
-}
-⋮----
-const normalizeSkillName = (value: string)
-⋮----
-const normalizeApiFieldErrors = (value: unknown): string[] =>
-⋮----
-const uniqueMessages = (messages: string[]): string[] => (
-  Array.from(new Set(messages.map(message => message.trim()).filter(Boolean)))
-);
-⋮----
-const joinMessages = (messages: string[]): string
-⋮----
-const appendFormError = (target: FormErrors, field: keyof FormErrors, messages: string[]) =>
-⋮----
-const mapApiErrorsToEditFormErrors = (response: ApiResponse<unknown>, fallback: string): FormErrors =>
-⋮----
-const handleBeforeUnload = (event: BeforeUnloadEvent) =>
-⋮----
-// Filter selected official skills and convert mismatched ones to custom skills
-⋮----
-const clearFormErrors = (...fields: (keyof FormErrors)[]) =>
-⋮----
-const handleInputChange = <Field extends keyof EditJobPostFormData>(
-    field: Field,
-    value: EditJobPostFormData[Field]
-) =>
-⋮----
-const handleMajorChange = (majorId: string) =>
-⋮----
-const handleCategoryChange = (majorCategoryId: string) =>
-⋮----
-const addOfficialSkill = (skill: SkillOptionDto) =>
-⋮----
-const addTypedSkill = () =>
-⋮----
-const validateForm = () =>
-⋮----
-const buildPayload = (): UpdateJobPostRequest => (
-⋮----
-const buildDraftPayload = (): SaveDraftJobPostRequest => (
-⋮----
-const allowNextNavigation = () =>
-⋮----
-const continueBlockedNavigation = () =>
-⋮----
-const cancelBlockedNavigation = () =>
-⋮----
-const handleLeaveSaveDraft = async () =>
-⋮----
-const handleLeaveDiscardDraft = async () =>
-⋮----
-const handleSubmit = async (e: FormEvent) =>
-⋮----
-<button onClick=
-⋮----
-{/* Section 1: Job Details */}
-⋮----
-onChange=
-⋮----
-{/* Section 2: Classification & Skills */}
-⋮----
-{/* Section 3: Budget & Logistics */}
-⋮----
-</file>
-
-<file path="src/shared/components/Sidebar.tsx">
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useNavigate, useLocation } from 'react-router';
-import {
-  LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
-  Bot, BarChart2, Settings, Shield, Users, Flag,
-  TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, ShieldAlert, Layers, Banknote
-} from 'lucide-react';
-import { useApp } from '../../app/providers/AppProvider';
-import { useTranslation } from '../../hooks/useTranslation';
-import { reportAPI } from '../../api/reportAPI';
-import { premiumAPI } from '../../features/premium/api';
-⋮----
-interface NavItem {
-  id?: string;
-  label: string;
-  icon: React.ReactNode;
-  path?: string;
-  badge?: string;
-  badgeType?: 'cyan' | 'purple' | 'green' | 'red' | 'amber';
-  badgeLabel?: string;
-  children?: NavItem[];
-}
-⋮----
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-⋮----
-interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-}
-⋮----
-onToggle(item.id || item.label);
-⋮----
-onNavigate(item.path);
-⋮----
-{/* Children */}
-⋮----
-onNavigate(child.path);
-⋮----
-const handleToggleMenu = (id: string) =>
-⋮----
-const handleNavigate = (path: string) =>
-⋮----
-const isActive = (path?: string) =>
-⋮----
-const isMenuActive = (item: NavItem) =>
-⋮----
-{/* User Profile Mini */}
-⋮----
-{/* Navigation */}
-⋮----
-{/* Admin sectioned navigation */}
-⋮----
-handleNavigate(item.path);
-⋮----
-const rect = event.currentTarget.getBoundingClientRect();
-⋮----
-setReportHoverPosition(
-⋮----
-{/* Client/Freelancer hierarchical navigation */}
-⋮----
-{/* Bottom Links */}
-⋮----
-<button onClick=
-⋮----
-{/* AI Pro Badge */}
-⋮----
-{/* Close Button */}
 </file>
 
 <file path="src/features/contracts/components/ClientContractDetails.tsx">
@@ -26298,6 +26157,128 @@ onClick=
 <RefreshCw size=
 ⋮----
 {/* Parties Info Panel */}
+</file>
+
+<file path="src/features/jobs/screens/EditJobPostScreen.tsx">
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useBlocker, useNavigate, useParams } from 'react-router';
+import { ArrowLeft, AlertCircle, Check, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
+import { jobAPI } from '../../../api/jobAPI';
+import type { ApiResponse } from '../../../types/common';
+import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
+import {
+  JobPostStatus,
+  JobPostVisibility,
+  type SaveDraftJobPostRequest,
+  type UpdateJobPostRequest,
+} from '../../../types/models/Job';
+import { useTranslation } from '../../../hooks/useTranslation';
+import {
+  DEFAULT_JOB_DURATION_UNIT,
+  formatJobDuration,
+  isValidJobDurationValue,
+  JOB_DURATION_UNITS,
+  parseJobDuration,
+  type JobDurationUnit,
+} from '../utils/jobDuration';
+⋮----
+import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
+import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
+⋮----
+interface FormErrors {
+  title?: string;
+  description?: string;
+  taxonomy?: string;
+  budget?: string;
+  duration?: string;
+  endDate?: string;
+  skills?: string;
+  server?: string;
+}
+⋮----
+interface EditJobPostFormData {
+  title: string;
+  description: string;
+  majorId: string;
+  majorCategoryId: string;
+  categoryId: string;
+  budgetMin: string;
+  budgetMax: string;
+  currency: string;
+  estimatedDurationValue: string;
+  estimatedDurationUnit: JobDurationUnit;
+  location: string;
+  visibility: string;
+  endDate: string;
+  skillIds: string[];
+  customSkillNames: string[];
+}
+⋮----
+const normalizeSkillName = (value: string)
+⋮----
+const normalizeApiFieldErrors = (value: unknown): string[] =>
+⋮----
+const uniqueMessages = (messages: string[]): string[] => (
+  Array.from(new Set(messages.map(message => message.trim()).filter(Boolean)))
+);
+⋮----
+const joinMessages = (messages: string[]): string
+⋮----
+const appendFormError = (target: FormErrors, field: keyof FormErrors, messages: string[]) =>
+⋮----
+const mapApiErrorsToEditFormErrors = (response: ApiResponse<unknown>, fallback: string): FormErrors =>
+⋮----
+const handleBeforeUnload = (event: BeforeUnloadEvent) =>
+⋮----
+// Filter selected official skills and convert mismatched ones to custom skills
+⋮----
+const clearFormErrors = (...fields: (keyof FormErrors)[]) =>
+⋮----
+const handleInputChange = <Field extends keyof EditJobPostFormData>(
+    field: Field,
+    value: EditJobPostFormData[Field]
+) =>
+⋮----
+const handleMajorChange = (majorId: string) =>
+⋮----
+const handleCategoryChange = (majorCategoryId: string) =>
+⋮----
+const addOfficialSkill = (skill: SkillOptionDto) =>
+⋮----
+const addTypedSkill = () =>
+⋮----
+const validateForm = () =>
+⋮----
+const buildPayload = (): UpdateJobPostRequest => (
+⋮----
+const buildDraftPayload = (): SaveDraftJobPostRequest => (
+⋮----
+const allowNextNavigation = () =>
+⋮----
+const continueBlockedNavigation = () =>
+⋮----
+const cancelBlockedNavigation = () =>
+⋮----
+const handleLeaveSaveDraft = async () =>
+⋮----
+const handleLeaveDiscardDraft = async () =>
+⋮----
+const handleSubmit = async (e: FormEvent) =>
+⋮----
+<button onClick=
+⋮----
+{/* Section 1: Job Details */}
+⋮----
+onChange=
+⋮----
+{/* Section 2: Classification & Skills */}
+⋮----
+{/* Section 3: Budget & Logistics */}
+⋮----
 </file>
 
 <file path="src/features/messages/hooks/useMessages.ts">
@@ -26572,6 +26553,159 @@ onCounterProposal=
 ⋮----
 onRespond=
 onConfirm=
+</file>
+
+<file path="src/shared/components/Sidebar.tsx">
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate, useLocation } from 'react-router';
+import {
+  LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
+  Bot, BarChart2, Settings, Shield, Users, Flag,
+  TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
+  ChevronDown, Wallet, ShieldAlert, Layers, Banknote
+} from 'lucide-react';
+import { useApp } from '../../app/providers/AppProvider';
+import { useTranslation } from '../../hooks/useTranslation';
+import { reportAPI } from '../../api/reportAPI';
+import { premiumAPI } from '../../features/premium/api';
+⋮----
+interface NavItem {
+  id?: string;
+  label: string;
+  icon: React.ReactNode;
+  path?: string;
+  badge?: string;
+  badgeType?: 'cyan' | 'purple' | 'green' | 'red' | 'amber';
+  badgeLabel?: string;
+  children?: NavItem[];
+}
+⋮----
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+⋮----
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+⋮----
+onToggle(item.id || item.label);
+⋮----
+onNavigate(item.path);
+⋮----
+{/* Children */}
+⋮----
+onNavigate(child.path);
+⋮----
+const handleToggleMenu = (id: string) =>
+⋮----
+const handleNavigate = (path: string) =>
+⋮----
+const isActive = (path?: string) =>
+⋮----
+const isMenuActive = (item: NavItem) =>
+⋮----
+{/* User Profile Mini */}
+⋮----
+{/* Navigation */}
+⋮----
+{/* Admin sectioned navigation */}
+⋮----
+handleNavigate(item.path);
+⋮----
+const rect = event.currentTarget.getBoundingClientRect();
+⋮----
+setReportHoverPosition(
+⋮----
+{/* Client/Freelancer hierarchical navigation */}
+⋮----
+{/* Bottom Links */}
+⋮----
+<button onClick=
+⋮----
+{/* AI Pro Badge */}
+⋮----
+{/* Close Button */}
+</file>
+
+<file path="src/shared/components/TopNav.tsx">
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown } from 'lucide-react';
+import { useWindowScroll } from 'react-use';
+import gsap from 'gsap';
+import { TiLocationArrow } from 'react-icons/ti';
+import clsx from 'clsx';
+import { useApp } from '../../app/providers/AppProvider';
+import { walletGetAPI } from '../../api/walletAPI/GET';
+import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
+import { useUserNotifications } from '../../features/notifications/hooks/useUserNotifications';
+import Button from './Button';
+import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
+import { formatGigCoinNumber } from '../utils/gigcoin';
+import { useTranslation } from '../../hooks/useTranslation';
+import { premiumAPI } from '../../features/premium/api';
+⋮----
+interface TopNavProps {
+  onMenuClick?: () => void;
+  showMenuButton?: boolean;
+}
+⋮----
+// Safely get app context - might be null for guest users
+⋮----
+// Wallet and notification data
+⋮----
+const fetchWalletBalance = async () =>
+⋮----
+const handleSearch = (e: React.FormEvent) =>
+⋮----
+// Landing Page Audio & Scroll Visibility Logic
+⋮----
+const toggleAudioIndicator = () =>
+⋮----
+const handleCtaClick = () =>
+⋮----
+// ═══════════════════════════════════════════════════════════════
+// LANDING PAGE CUSTOM NAV BAR
+// ═══════════════════════════════════════════════════════════════
+⋮----
+{/* Logo and CTA Button */}
+⋮----
+onClick=
+⋮----
+{/* Navigation Links and Audio Button */}
+⋮----
+// ═══════════════════════════════════════════════════════════════
+// STANDARD APPLICATION TOP NAV
+// ═══════════════════════════════════════════════════════════════
+⋮----
+{/* Hamburger Menu Button - Show on both mobile and desktop when logged in */}
+⋮----
+{/* Logo */}
+⋮----
+{/* Search Bar */}
+⋮----
+onChange=
+⋮----
+{/* Nav Links (Guest) */}
+⋮----
+{/* Wallet Balance Dropdown */}
+⋮----
+<span>
+⋮----
+{/* Notifications */}
+⋮----
+{/* User Menu / Auth Buttons */}
+⋮----
+{/* Theme and Language Switcher Capsule inside Dropdown */}
+⋮----
+{/* Combined Theme and Language Switcher for Guest Users */}
+⋮----
+{/* Click outside to close menus */}
+⋮----
+<div className="fixed inset-0 z-40" onClick=
 </file>
 
 <file path="src/locales/en/common.json">
@@ -28303,6 +28437,13 @@ onConfirm=
     "reportProposedResolutionTitle": "Proposed Resolution",
     "reportRejectReasonTitle": "Reject Reason",
     "reportAttachments": "Attachments",
+    "reportReporterEvidence": "Reporter Evidence",
+    "reportRespondentEvidence": "Respondent Evidence",
+    "reportRespondentAttachments": "Attachments (optional)",
+    "reportRespondentAttachmentsHint": "Upload files to support your response",
+    "reportDownload": "Download",
+    "reportAttachmentCount": "📎 {{count}} file(s) attached",
+    "reportChooseFiles": "Choose files",
     "reportCreated": "Issue raised",
     "reportCreatedDesc": "The issue has been raised and the other party will be notified.",
     "failedSubmitReportError": "Failed to submit the report.",
@@ -30308,6 +30449,13 @@ onConfirm=
     "reportProposedResolutionTitle": "Giải pháp đề xuất",
     "reportRejectReasonTitle": "Lý do từ chối",
     "reportAttachments": "Tệp đính kèm",
+    "reportReporterEvidence": "Bằng chứng của người báo cáo",
+    "reportRespondentEvidence": "Bằng chứng của người phản hồi",
+    "reportRespondentAttachments": "Tệp đính kèm (không bắt buộc)",
+    "reportRespondentAttachmentsHint": "Tải lên tệp để hỗ trợ phản hồi của bạn",
+    "reportDownload": "Tải xuống",
+    "reportAttachmentCount": "📎 {{count}} tệp đã đính kèm",
+    "reportChooseFiles": "Chọn tệp",
     "reportCreated": "Đã báo cáo vấn đề",
     "reportCreatedDesc": "Vấn đề đã được báo cáo và bên kia sẽ được thông báo.",
     "failedSubmitReportError": "Không thể gửi báo cáo.",
@@ -30586,84 +30734,6 @@ onConfirm=
 }
 </file>
 
-<file path="src/shared/components/TopNav.tsx">
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown } from 'lucide-react';
-import { useWindowScroll } from 'react-use';
-import gsap from 'gsap';
-import { TiLocationArrow } from 'react-icons/ti';
-import clsx from 'clsx';
-import { useApp } from '../../app/providers/AppProvider';
-import { walletGetAPI } from '../../api/walletAPI/GET';
-import { CombinedThemeLanguageSwitcher } from './LanguageSwitcher';
-import { useUserNotifications } from '../../features/notifications/hooks/useUserNotifications';
-import Button from './Button';
-import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
-import { formatGigCoinNumber } from '../utils/gigcoin';
-import { useTranslation } from '../../hooks/useTranslation';
-import { premiumAPI } from '../../features/premium/api';
-⋮----
-interface TopNavProps {
-  onMenuClick?: () => void;
-  showMenuButton?: boolean;
-}
-⋮----
-// Safely get app context - might be null for guest users
-⋮----
-// Wallet and notification data
-⋮----
-const fetchWalletBalance = async () =>
-⋮----
-const handleSearch = (e: React.FormEvent) =>
-⋮----
-// Landing Page Audio & Scroll Visibility Logic
-⋮----
-const toggleAudioIndicator = () =>
-⋮----
-const handleCtaClick = () =>
-⋮----
-// ═══════════════════════════════════════════════════════════════
-// LANDING PAGE CUSTOM NAV BAR
-// ═══════════════════════════════════════════════════════════════
-⋮----
-{/* Logo and CTA Button */}
-⋮----
-onClick=
-⋮----
-{/* Navigation Links and Audio Button */}
-⋮----
-// ═══════════════════════════════════════════════════════════════
-// STANDARD APPLICATION TOP NAV
-// ═══════════════════════════════════════════════════════════════
-⋮----
-{/* Hamburger Menu Button - Show on both mobile and desktop when logged in */}
-⋮----
-{/* Logo */}
-⋮----
-{/* Search Bar */}
-⋮----
-onChange=
-⋮----
-{/* Nav Links (Guest) */}
-⋮----
-{/* Wallet Balance Dropdown */}
-⋮----
-<span>
-⋮----
-{/* Notifications */}
-⋮----
-{/* User Menu / Auth Buttons */}
-⋮----
-{/* Theme and Language Switcher Capsule inside Dropdown */}
-⋮----
-{/* Combined Theme and Language Switcher for Guest Users */}
-⋮----
-{/* Click outside to close menus */}
-⋮----
-<div className="fixed inset-0 z-40" onClick=
-</file>
-
 <file path="src/features/jobs/hooks/usePostJob.ts">
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useBlocker, useLocation, useNavigate } from 'react-router';
@@ -30912,137 +30982,6 @@ onDragStart=
 <LiquidLoading overlay message=
 </file>
 
-<file path="src/features/workspace/screens/ProjectWorkspaceScreen.tsx">
-import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import {
-  ArrowLeft, Ban, Send, Plus, AlertTriangle,
-  Paperclip, Smile, CheckCircle, Circle, Download,
-  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet
-} from 'lucide-react';
-import { AppLayout } from '../../../shared/components/AppLayout';
-import { useTranslation } from '../../../hooks/useTranslation';
-import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
-import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
-import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
-import {
-  ContractReportIssueType,
-  ContractReportResolutionAction,
-  ContractReportStatus,
-} from '../../../types/models/ReportContract';
-⋮----
-import { walletGetAPI } from '../../../api/walletAPI/GET';
-import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
-import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
-import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
-import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
-import {
-  parseReportSystemMessageMetadata,
-  type ReportSystemMessageMetadata,
-} from '../utils/reportSystemMessage';
-⋮----
-const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null =>
-⋮----
-const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: any): string
-⋮----
-const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: any): string =>
-⋮----
-const getReportSystemDetail = (event: ReportSystemMessageMetadata): string | null =>
-⋮----
-const resetSubmitModal = () =>
-⋮----
-const openSubmitModal = (milestone:
-⋮----
-const handleSelectSubmitFile = (event: ChangeEvent<HTMLInputElement>) =>
-⋮----
-const handleSubmitDeliverable = async (event: FormEvent) =>
-⋮----
-const resetProductModal = () =>
-⋮----
-const handleSelectProductFile = (event: ChangeEvent<HTMLInputElement>) =>
-⋮----
-const handleSendProductMaterials = async (event: FormEvent) =>
-⋮----
-const handleStartPendingMilestone = async (milestoneId: string) =>
-⋮----
-const handleRequestPendingMilestoneUnlock = async (milestoneId: string) =>
-⋮----
-const handleWithdrawApprovedMilestone = async (milestoneId: string) =>
-⋮----
-const openEndProjectDialog = async () =>
-⋮----
-const closeEndProjectDialog = () =>
-⋮----
-const handleConfirmEndProject = async () =>
-⋮----
-const handleClaimPayout = async () =>
-⋮----
-{/* Top Header */}
-⋮----
-onClick=
-⋮----
-<span>
-⋮----
-{/* Mobile Navigation Tabs (visible only on mobile/tablet) */}
-⋮----
-{/* 3-Column Messaging Workspace */}
-⋮----
-{/* Column 1: Conversations List (Left Pane) */}
-⋮----
-setActiveProjectId(proj.id);
-navigate(`/workspace/$
-⋮----
-{/* Column 2: Milestone Management (Center Pane) */}
-⋮----
-{/* Header */}
-⋮----
-{/* Dashboard stats */}
-⋮----
-
-⋮----
-{/* Milestones timeline/list */}
-⋮----
-<span className="text-muted-foreground">
-⋮----
-{/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files) */}
-⋮----
-{/* 2 Tabs at the top */}
-⋮----
-{/* Tab content area */}
-⋮----
-{/* Chat Header */}
-⋮----
-{/* Partner info with JS-state hover popover */}
-⋮----
-{/* Hover Popover — stays open while hovered */}
-⋮----
-if (profilePopoverTimeout.current) clearTimeout(profilePopoverTimeout.current);
-⋮----
-profilePopoverTimeout.current = setTimeout(()
-⋮----
-e.stopPropagation();
-navigate(`/profile/$
-⋮----
-setIsBlocked(!isBlocked);
-alert(isBlocked ? t('workspace.contactUnblocked') : t('workspace.contactBlocked'));
-⋮----
-{/* Messages list */}
-⋮----
-{/* Input area */}
-⋮----
-setEndProjectModalOpen(false);
-navigate('/wallet/deposit');
-⋮----
-setSubmitMode('file');
-setSubmitLink('');
-setSubmitError(null);
-⋮----
-setProductMode('file');
-setProductLink('');
-setProductError(null);
-</file>
-
 <file path="src/app/router.tsx">
 import type { ReactNode } from 'react';
 import { createBrowserRouter, Navigate, Outlet, useParams } from 'react-router';
@@ -31185,6 +31124,139 @@ return <Navigate to=
 // Company Pages - public
 ⋮----
 // 404
+</file>
+
+<file path="src/features/workspace/screens/ProjectWorkspaceScreen.tsx">
+import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import {
+  ArrowLeft, Ban, Send, Plus, AlertTriangle,
+  Paperclip, Smile, CheckCircle, Circle, Download,
+  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
+  Upload, Link2, X, AlertCircle, Loader2, Wallet
+} from 'lucide-react';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
+import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
+import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
+import {
+  ContractReportIssueType,
+  ContractReportResolutionAction,
+  ContractReportStatus,
+} from '../../../types/models/ReportContract';
+⋮----
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
+import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
+import {
+  parseReportSystemMessageMetadata,
+  type ReportSystemMessageMetadata,
+} from '../utils/reportSystemMessage';
+⋮----
+const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null =>
+⋮----
+const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: any): string
+⋮----
+const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: any): string =>
+⋮----
+const getReportSystemDetail = (event: ReportSystemMessageMetadata): string | null =>
+⋮----
+const resetSubmitModal = () =>
+⋮----
+const openSubmitModal = (milestone:
+⋮----
+const handleSelectSubmitFile = (event: ChangeEvent<HTMLInputElement>) =>
+⋮----
+const handleSubmitDeliverable = async (event: FormEvent) =>
+⋮----
+const resetProductModal = () =>
+⋮----
+const handleSelectProductFile = (event: ChangeEvent<HTMLInputElement>) =>
+⋮----
+const handleSendProductMaterials = async (event: FormEvent) =>
+⋮----
+const handleStartPendingMilestone = async (milestoneId: string) =>
+⋮----
+const handleRequestPendingMilestoneUnlock = async (milestoneId: string) =>
+⋮----
+const handleWithdrawApprovedMilestone = async (milestoneId: string) =>
+⋮----
+const openEndProjectDialog = async () =>
+⋮----
+const closeEndProjectDialog = () =>
+⋮----
+const handleConfirmEndProject = async () =>
+⋮----
+const handleClaimPayout = async () =>
+⋮----
+{/* Top Header */}
+⋮----
+onClick=
+⋮----
+{/* Mobile Navigation Tabs (visible only on mobile/tablet) */}
+⋮----
+{/* 3-Column Messaging Workspace */}
+⋮----
+{/* Column 1: Conversations List (Left Pane) */}
+⋮----
+setActiveProjectId(proj.id);
+navigate(`/workspace/$
+⋮----
+{/* Column 2: Milestone Management (Center Pane) */}
+⋮----
+{/* Header */}
+⋮----
+<span>
+⋮----
+title=
+⋮----
+{/* Dashboard stats */}
+⋮----
+
+⋮----
+{/* Milestones timeline/list */}
+⋮----
+<span className="text-muted-foreground">
+⋮----
+{/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files) */}
+⋮----
+{/* 2 Tabs at the top */}
+⋮----
+{/* Tab content area */}
+⋮----
+{/* Chat Header */}
+⋮----
+{/* Partner info with JS-state hover popover */}
+⋮----
+{/* Hover Popover — stays open while hovered */}
+⋮----
+if (profilePopoverTimeout.current) clearTimeout(profilePopoverTimeout.current);
+⋮----
+profilePopoverTimeout.current = setTimeout(()
+⋮----
+e.stopPropagation();
+navigate(`/profile/$
+⋮----
+setIsBlocked(!isBlocked);
+alert(isBlocked ? t('workspace.contactUnblocked') : t('workspace.contactBlocked'));
+⋮----
+{/* Messages list */}
+⋮----
+{/* Input area */}
+⋮----
+setEndProjectModalOpen(false);
+navigate('/wallet/deposit');
+⋮----
+setSubmitMode('file');
+setSubmitLink('');
+setSubmitError(null);
+⋮----
+setProductMode('file');
+setProductLink('');
+setProductError(null);
 </file>
 
 </files>

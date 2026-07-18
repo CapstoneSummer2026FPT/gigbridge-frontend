@@ -48,6 +48,7 @@ interface WorkspaceProjectListItem {
   unread: boolean;
   online: boolean;
   titleLong: string;
+  status: ContractStatus;
 }
 
 interface SubmitMilestoneDeliverablePayload {
@@ -162,11 +163,14 @@ const mapContractListItem = (contract: ContractDto, isClient: boolean): Workspac
     partnerAvatar: getAvatarUrl(partnerName),
     latestMessage: contract.status === ContractStatus.Active
       ? 'Workspace is open.'
-      : 'Workspace open. Waiting for escrow funding.',
+      : contract.status === ContractStatus.Disputed
+        ? 'Workspace is read-only while the dispute is open.'
+        : 'Workspace open. Waiting for escrow funding.',
     time: formatTime(contract.updatedAt || contract.createdAt),
     unread: false,
     online: true,
     titleLong: contract.jobTitle || contract.title,
+    status: contract.status,
   };
 };
 
@@ -204,6 +208,9 @@ const getCurrentProductHandoffFromList = (
   handoffs: ContractProductHandoffResponse[]
 ): ContractProductHandoffResponse | null =>
   handoffs.find(handoff => handoff.isCurrent) ?? handoffs[0] ?? null;
+
+const isContractLocked = (status?: ContractStatus): boolean =>
+  status === ContractStatus.Completed || status === ContractStatus.Disputed;
 
 export function useProjectWorkspace(initialContractId: string) {
   const navigate = useNavigate();
@@ -255,7 +262,8 @@ export function useProjectWorkspace(initialContractId: string) {
           setWorkspaceContracts(
             contractsResponse.data.filter(contract =>
               contract.status === ContractStatus.PendingEscrow ||
-              contract.status === ContractStatus.Active
+              contract.status === ContractStatus.Active ||
+              contract.status === ContractStatus.Disputed
             )
           );
         }
@@ -449,6 +457,7 @@ export function useProjectWorkspace(initialContractId: string) {
     time: 'Just now',
     unread: false,
     online: true,
+    status: activeContract?.status ?? ContractStatus.Active,
   };
 
   const partnerName = currentProjData.partnerName;
@@ -458,7 +467,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const isPartnerOnline = currentProjData.online;
 
   const handleSendMessage = async (): Promise<void> => {
-    if (activeContract?.status === ContractStatus.Completed || !messageInput.trim() || !project.conversationId) return;
+    if (isContractLocked(activeContract?.status) || !messageInput.trim() || !project.conversationId) return;
 
     const clientMessageId = crypto.randomUUID();
     const newMessage: Message = {
@@ -552,7 +561,7 @@ export function useProjectWorkspace(initialContractId: string) {
     milestoneId: string,
     payload: SubmitMilestoneDeliverablePayload
   ): Promise<SubmitMilestoneDeliverableResult> => {
-    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -583,7 +592,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleStartMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -598,7 +607,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleRequestMilestoneUnlock = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -613,7 +622,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleWithdrawMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -628,7 +637,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleEndProject = async (): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -660,7 +669,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const handleSubmitProductHandoff = async (
     payload: SubmitProductHandoffPayload
   ): Promise<SubmitMilestoneDeliverableResult> => {
-    if (!activeProjectId) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 

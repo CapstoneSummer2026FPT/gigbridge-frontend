@@ -5,7 +5,9 @@ import type {
   ReportContract,
   ReportContractListItem,
 } from '../../../types/models/ReportContract';
+import { ContractReportStatus } from '../../../types/models/ReportContract';
 import type { ApiResponse } from '../../../types/common';
+import type { Dispute, EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 
 interface UseReportContractReturn {
   reports: ReportContractListItem[];
@@ -17,6 +19,7 @@ interface UseReportContractReturn {
   isCreatingReport: boolean;
   isRespondingReport: boolean;
   isConfirmingReport: boolean;
+  isEscalatingReport: boolean;
   createReport: (
     contractId: string,
     input: {
@@ -44,6 +47,11 @@ interface UseReportContractReturn {
     reportId: string,
     isAccepted: boolean,
   ) => Promise<ApiResponse<ReportContract>>;
+  escalateToDispute: (
+    contractId: string,
+    reportId: string,
+    input: EscalateReportToDisputeInput,
+  ) => Promise<ApiResponse<Dispute>>;
   clearError: () => void;
   clearSelectedReport: () => void;
 }
@@ -57,6 +65,7 @@ export function useReportContract(): UseReportContractReturn {
   const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [isRespondingReport, setIsRespondingReport] = useState(false);
   const [isConfirmingReport, setIsConfirmingReport] = useState(false);
+  const [isEscalatingReport, setIsEscalatingReport] = useState(false);
   const currentRequestId = useRef(0);
 
   const loadReports = useCallback(async (contractId: string) => {
@@ -202,6 +211,36 @@ export function useReportContract(): UseReportContractReturn {
     [loadReports],
   );
 
+  const escalateToDispute = useCallback(
+    async (
+      contractId: string,
+      reportId: string,
+      input: EscalateReportToDisputeInput,
+    ): Promise<ApiResponse<Dispute>> => {
+      setIsEscalatingReport(true);
+      setError(null);
+      try {
+        const response = await reportContractPostAPI.escalateToDispute(contractId, reportId, input);
+        if (response.success) {
+          await loadReports(contractId);
+          setSelectedReport(previous => previous ? {
+            ...previous,
+            status: ContractReportStatus.Escalated,
+            isEscalatedToDispute: true,
+          } : previous);
+        }
+        return response as ApiResponse<Dispute>;
+      } catch {
+        const message = 'Failed to create dispute.';
+        setError(message);
+        return { success: false, statusCode: 500, message, data: undefined };
+      } finally {
+        setIsEscalatingReport(false);
+      }
+    },
+    [loadReports],
+  );
+
   const clearError = useCallback(() => setError(null), []);
 
   const clearSelectedReport = useCallback(() => setSelectedReport(null), []);
@@ -216,10 +255,12 @@ export function useReportContract(): UseReportContractReturn {
     isCreatingReport,
     isRespondingReport,
     isConfirmingReport,
+    isEscalatingReport,
     createReport,
     loadReportDetail,
     respondToReport,
     confirmResolution,
+    escalateToDispute,
     clearError,
     clearSelectedReport,
   };

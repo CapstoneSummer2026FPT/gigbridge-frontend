@@ -5,7 +5,7 @@ import {
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
-  Plus, Trash2,
+  Plus, Trash2, ShieldAlert,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
@@ -23,6 +23,13 @@ import {
 } from '../../../types/models/ReportContract';
 import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
 import '../styles/messages-screen.css';
+
+const ROOM_COPY = {
+  invited: { label: 'messages.roomInvitedLabel', description: 'messages.roomInvitedDesc' },
+  negotiation: { label: 'messages.roomNegotiationLabel', description: 'messages.roomNegotiationDesc' },
+  workspace: { label: 'messages.roomWorkspaceLabel', description: 'messages.roomWorkspaceDesc' },
+  dispute: { label: 'messages.roomDisputeLabel', description: 'messages.roomDisputeDesc' },
+} as const;
 
 function countdown(start: string, now: number) {
   const delta = new Date(start).getTime() - now;
@@ -105,6 +112,8 @@ export default function MessagesScreen() {
     conversationsState,
     activeConvId,
     activeConv,
+    isActiveWorkspaceDisputed,
+    activeWorkspaceDisputeId,
     activeMessages,
     dealStatus,
     showInfo,
@@ -174,6 +183,8 @@ export default function MessagesScreen() {
     isRespondingReport,
     confirmResolution,
     isConfirmingReport,
+    escalateToDispute,
+    isEscalatingReport,
     clearSelectedReport,
   } = useReportContract();
 
@@ -207,6 +218,7 @@ export default function MessagesScreen() {
       : `/jobs/${activeConv.job.id}`
     : '/jobs/browse';
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed' && canNegotiateActiveJob;
+  const isNegotiationConversation = activeConv?.roomType === 'invited' || activeConv?.roomType === 'negotiation';
   const dealPriceNumber = Number(dealPriceInput) || 0;
   const dealPriceValid = dealPriceNumber > 0 && dealPriceNumber <= 9999999999999999.99 && Math.round(dealPriceNumber * 100) / 100 === dealPriceNumber;
   const dealMilestonesMatchPrice = dealPriceValid && Math.abs(dealMilestoneTotal - dealPriceNumber) < 0.01;
@@ -262,7 +274,13 @@ export default function MessagesScreen() {
                 const convos = conversationsState.filter(c => c.roomId === room.id);
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isOpen = !!openRooms[room.id];
-                const RoomIcon = room.type === 'invited' ? Briefcase : room.type === 'workspace' ? CheckCircle : Layers;
+                const RoomIcon = room.type === 'invited'
+                  ? Briefcase
+                  : room.type === 'workspace'
+                    ? CheckCircle
+                    : room.type === 'dispute'
+                      ? ShieldAlert
+                      : Layers;
 
                 return (
                   <div key={room.id}>
@@ -274,16 +292,18 @@ export default function MessagesScreen() {
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         room.type === 'invited'
                           ? 'bg-teal-500/10 text-teal-500'
+                          : room.type === 'dispute'
+                            ? 'bg-amber-500/10 text-amber-600'
                           : 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
                       }`}>
                         <RoomIcon size={14} />
                       </div>
                       <div className="flex-1 text-left">
                         <span className="text-sm font-semibold text-foreground">
-                          {room.type === 'invited' ? t('messages.roomInvitedLabel') : room.type === 'negotiation' ? t('messages.roomNegotiationLabel') : t('messages.roomWorkspaceLabel')}
+                          {t(ROOM_COPY[room.type].label)}
                         </span>
                         <p className="text-[10px] text-muted-foreground leading-tight">
-                          {room.type === 'invited' ? t('messages.roomInvitedDesc') : room.type === 'negotiation' ? t('messages.roomNegotiationDesc') : t('messages.roomWorkspaceDesc')}
+                          {t(ROOM_COPY[room.type].description)}
                         </p>
                       </div>
                       {roomUnread > 0 && (
@@ -417,7 +437,7 @@ export default function MessagesScreen() {
             </div>
 
             {/* Agreed Deal Banner (freelancer: navigate to contract) */}
-            {dealStatus === 'agreed' && activeConv.roomType !== 'workspace' && (
+            {dealStatus === 'agreed' && isNegotiationConversation && (
               <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
                   <CheckCircle size={18} />
@@ -439,7 +459,7 @@ export default function MessagesScreen() {
             )}
 
             {/* Negotiation accepted banner → conversation already moved */}
-            {negStatus === 'accepted' && activeConv.roomType !== 'workspace' && (
+            {negStatus === 'accepted' && isNegotiationConversation && (
               <div className="bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 px-6 py-2.5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <ArrowRightLeft size={14} className="text-[var(--gb-cyan)] flex-shrink-0" />
                 <p
@@ -452,7 +472,7 @@ export default function MessagesScreen() {
             {/* Message History */}
             <div ref={chatHistoryRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6 flex flex-col gap-6 messages-custom-scroll">
               {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
-              {!canNegotiateActiveJob && activeConv.roomType !== 'workspace' && (
+              {!canNegotiateActiveJob && isNegotiationConversation && (
                 <div className="mx-auto max-w-xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-xs font-semibold text-amber-700">
                   This job post is no longer open for negotiation. Final offers and negotiation responses are disabled.
                 </div>
@@ -463,7 +483,9 @@ export default function MessagesScreen() {
                     ? t('messages.invitedJobChat')
                     : activeConv.roomType === 'workspace'
                       ? t('messages.workspaceChat')
-                      : t('messages.negotiationChat')}
+                      : activeConv.roomType === 'dispute'
+                        ? t('messages.disputeChat')
+                        : t('messages.negotiationChat')}
                 </span>
               </div>
 
@@ -809,6 +831,26 @@ export default function MessagesScreen() {
             </div>
 
             {/* Input Area */}
+            {isActiveWorkspaceDisputed ? (
+              <div className="shrink-0 border-t border-amber-500/20 bg-amber-500/10 p-4">
+                <div className="mx-auto flex max-w-3xl items-center justify-center gap-3 text-amber-700">
+                  <ShieldAlert size={20} className="shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <strong className="text-sm">{t('workspace.disputeLockedTitle')}</strong>
+                    <p className="text-xs">{t('workspace.disputeLockedDescription')}</p>
+                  </div>
+                  {activeWorkspaceDisputeId && activeConv.contractId && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/contracts/${activeConv.contractId}/disputes/${activeWorkspaceDisputeId}`)}
+                      className="shrink-0 rounded-full border-none bg-amber-600 px-4 py-2 text-xs font-bold text-white cursor-pointer hover:bg-amber-700"
+                    >
+                      {t('workspace.openDispute')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className="shrink-0 p-4 bg-card border-t border-border">
               <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
 
@@ -1058,6 +1100,7 @@ export default function MessagesScreen() {
                 </div>
               </div>
             </div>
+            )}
             </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-card">
@@ -1282,8 +1325,19 @@ export default function MessagesScreen() {
             const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
             return { success: response.success, message: response.message };
           }}
+          onEscalate={async () => {
+            const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, {
+              title: t('workspace.disputeTitlePrefix'),
+              description: selectedReport.description,
+              reason: selectedReport.description,
+              requestedResolution: selectedReport.desiredResolution,
+            });
+            return { success: response.success, message: response.message, disputeId: response.data?.id };
+          }}
+          onDisputeCreated={(disputeId) => navigate(`/contracts/${selectedReport.contractId}/disputes/${disputeId}`)}
           isResponding={isRespondingReport}
           isConfirming={isConfirmingReport}
+          isEscalating={isEscalatingReport}
         />
       )}
     </AppLayout>

@@ -42,13 +42,25 @@ export const normalizeDispute = (raw: unknown): Dispute => {
       name: valueOf<string | null>(source, 'initiatorName', 'InitiatorName') ?? null,
       role: valueOf<'Client' | 'Freelancer' | null>(source, 'initiatorRole', 'InitiatorRole') ?? null,
     },
+    respondent: valueOf<string | null>(source, 'respondentId', 'RespondentId')
+      ? {
+          id: String(valueOf(source, 'respondentId', 'RespondentId') ?? ''),
+          name: valueOf<string | null>(source, 'respondentName', 'RespondentName') ?? null,
+          role: valueOf<'Client' | 'Freelancer' | null>(source, 'respondentRole', 'RespondentRole') ?? null,
+        }
+      : null,
     milestone: milestoneId
       ? {
           id: milestoneId,
           title: valueOf<string | null>(source, 'milestoneTitle', 'MilestoneTitle') ?? null,
         }
       : null,
+    relatedReportId: valueOf<string | null>(source, 'relatedReportId', 'RelatedReportId') ?? null,
+    title: valueOf<string | null>(source, 'title', 'Title') ?? null,
+    description: valueOf<string | null>(source, 'description', 'Description') ?? null,
     reason: String(valueOf(source, 'reason', 'Reason') ?? ''),
+    claimedAmount: valueOf<number | null>(source, 'claimedAmount', 'ClaimedAmount') ?? null,
+    requestedResolution: valueOf<string | null>(source, 'requestedResolution', 'RequestedResolution') ?? null,
     status: Number(valueOf(source, 'status', 'Status') ?? 0) as DisputeStatus,
     resolution: resolution === undefined || resolution === null
       ? null
@@ -59,6 +71,7 @@ export const normalizeDispute = (raw: unknown): Dispute => {
     createdAt: String(valueOf(source, 'createdAt', 'CreatedAt') ?? ''),
     updatedAt: valueOf<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
     resolvedAt: valueOf<string | null>(source, 'resolvedAt', 'ResolvedAt') ?? null,
+    openedAt: valueOf<string | null>(source, 'openedAt', 'OpenedAt') ?? null,
   };
 };
 

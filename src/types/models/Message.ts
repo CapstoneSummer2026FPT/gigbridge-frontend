@@ -129,7 +129,7 @@ export interface IConversation {
 
 // ─── Legacy / Review ──────────────────────────────────────────────────────────
 
-export type RoomType = 'invited' | 'negotiation' | 'workspace';
+export type RoomType = 'invited' | 'negotiation' | 'workspace' | 'dispute';
 
 export interface JobInfo {
   id: string;
@@ -160,6 +160,7 @@ export interface MsgConversation {
   conversationType?: number; // 0=JobNegotiation, 1=ContractWorkroom, etc.
   proposalId?: string | null;
   contractId?: string | null;
+  disputeId?: string | null;
   lastOfferId?: string | null;
   proposalBudget?: number | null;
   proposalDuration?: string | null;

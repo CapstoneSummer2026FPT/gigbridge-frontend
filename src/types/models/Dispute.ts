@@ -36,8 +36,14 @@ export interface Dispute {
   id: string;
   contractId: string;
   initiator: DisputeInitiator;
+  respondent: DisputeInitiator | null;
   milestone: DisputeMilestone | null;
+  relatedReportId: string | null;
+  title: string | null;
+  description: string | null;
   reason: string;
+  claimedAmount: number | null;
+  requestedResolution: string | null;
   status: DisputeStatus;
   resolution: DisputeResolution | null;
   resolutionLabel: string | null;
@@ -46,6 +52,15 @@ export interface Dispute {
   createdAt: string;
   updatedAt: string | null;
   resolvedAt: string | null;
+  openedAt: string | null;
+}
+
+export interface EscalateReportToDisputeInput {
+  title?: string | null;
+  description?: string | null;
+  reason: string;
+  claimedAmount?: number | null;
+  requestedResolution?: string | null;
 }
 
 export interface CreateDisputeInput {

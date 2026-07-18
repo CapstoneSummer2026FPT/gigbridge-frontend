@@ -4,7 +4,7 @@ import {
   ArrowLeft, Ban, Send, Plus, AlertTriangle,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -18,6 +18,7 @@ import {
 } from '../../../types/models/ReportContract';
 import '../styles/project-workspace-screen.css';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { disputeGetAPI } from '../../../api/disputeAPI';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
@@ -125,6 +126,7 @@ export default function ProjectWorkspaceScreen() {
   const [reportListOpen, setReportListOpen] = useState(false);
   const [viewReportId, setViewReportId] = useState<string | null>(null);
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
   const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submitFileInputRef = useRef<HTMLInputElement>(null);
   const productFileInputRef = useRef<HTMLInputElement>(null);
@@ -178,6 +180,8 @@ export default function ProjectWorkspaceScreen() {
     isRespondingReport,
     confirmResolution,
     isConfirmingReport,
+    escalateToDispute,
+    isEscalatingReport,
     loadReports,
     error: reportError,
     clearSelectedReport,
@@ -198,7 +202,9 @@ export default function ProjectWorkspaceScreen() {
   const projectReleasedInFull = project.totalBudget > 0
     ? project.paidAmount >= project.totalBudget
     : allMilestonesReleased;
+  const isContractDisputed = activeContract?.status === ContractStatus.Disputed;
   const isWorkspaceViewOnly = activeContract?.status === ContractStatus.Completed;
+  const isWorkspaceLocked = isWorkspaceViewOnly || isContractDisputed;
   const showFreelancerPayoutCard = !isClient &&
     activeContract?.status === ContractStatus.Completed &&
     allMilestonesApproved;
@@ -216,6 +222,18 @@ export default function ProjectWorkspaceScreen() {
     setUnavailableReportId(null);
     clearSelectedReport();
   }, [workspaceContractId, clearSelectedReport]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!workspaceContractId || !isContractDisputed) {
+      setActiveDisputeId(null);
+      return;
+    }
+    void disputeGetAPI.getActiveDispute(workspaceContractId).then(response => {
+      if (!cancelled) setActiveDisputeId(response.success ? response.data?.id ?? null : null);
+    });
+    return () => { cancelled = true; };
+  }, [isContractDisputed, workspaceContractId]);
 
   const resetSubmitModal = () => {
     setSubmitModal(null);
@@ -515,6 +533,24 @@ export default function ProjectWorkspaceScreen() {
     [confirmResolution, t, viewReportId, workspaceContractId],
   );
 
+  const handleEscalateContractReport = useCallback(async () => {
+    if (!workspaceContractId || !selectedReport) {
+      return { success: false, message: t('workspace.disputeEscalationFailed') };
+    }
+    const response = await escalateToDispute(workspaceContractId, selectedReport.id, {
+      title: `${t('workspace.disputeTitlePrefix')}: ${activeContract?.title || project.title}`,
+      description: selectedReport.description,
+      reason: selectedReport.description,
+      requestedResolution: selectedReport.desiredResolution,
+    });
+    if (response.success && response.data) setActiveDisputeId(response.data.id);
+    return {
+      success: response.success,
+      message: response.message,
+      disputeId: response.data?.id,
+    };
+  }, [activeContract?.title, escalateToDispute, project.title, selectedReport, t, workspaceContractId]);
+
   const openEndProjectDialog = async () => {
     setEndProjectError(null);
     setEndProjectFeeMode('confirmation');
@@ -711,6 +747,11 @@ export default function ProjectWorkspaceScreen() {
                           <h3 className="font-headline-sm text-sm truncate font-semibold">{proj.partnerName}</h3>
                           <span className="text-[10px] text-muted-foreground">{proj.time}</span>
                         </div>
+                        {proj.status === ContractStatus.Disputed && (
+                          <span className="workspace-disputed-badge">
+                            <LockKeyhole size={11} /> {t('workspace.disputedBadge')}
+                          </span>
+                        )}
                         <p className={`text-xs truncate ${proj.unread ? 'text-foreground font-semibold animate-pulse' : 'text-muted-foreground'}`}>
                           {proj.latestMessage}
                         </p>
@@ -837,10 +878,10 @@ export default function ProjectWorkspaceScreen() {
                   const isPending = milestone.status === 'pending';
                   const withdrawableAmount = Math.max(0, milestone.amount * 0.8 - milestone.releasedAmount);
                   const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
-                  const canFreelancerSubmit = !isWorkspaceViewOnly && !isClient && isInProgress;
-                  const canClientReview = !isWorkspaceViewOnly && isClient && isSubmitted;
-                  const canClientStart = !isWorkspaceViewOnly && isClient && isPending;
-                  const canFreelancerRequestUnlock = !isWorkspaceViewOnly && !isClient && isPending;
+                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress;
+                  const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+                  const canClientStart = !isWorkspaceLocked && isClient && isPending;
+                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
                   const showFreelancerWithdraw = !isClient &&
                     activeContract?.status === ContractStatus.Active &&
                     isCompleted &&
@@ -1295,9 +1336,22 @@ export default function ProjectWorkspaceScreen() {
                   </div>
 
                   {/* Input area */}
-                  {isWorkspaceViewOnly ? (
+                  {isWorkspaceLocked ? (
                     <div className="p-4 bg-muted/50 border-t border-border text-center text-xs font-semibold text-muted-foreground">
-                      {t('workspace.viewOnlyNotice')}
+                      {isContractDisputed ? (
+                        <div className="workspace-dispute-lock">
+                          <AlertTriangle size={18} />
+                          <div>
+                            <strong>{t('workspace.disputeLockedTitle')}</strong>
+                            <p>{t('workspace.disputeLockedDescription')}</p>
+                          </div>
+                          {activeDisputeId && (
+                            <button type="button" onClick={() => navigate(`/contracts/${workspaceContractId}/disputes/${activeDisputeId}`)}>
+                              {t('workspace.openDispute')}
+                            </button>
+                          )}
+                        </div>
+                      ) : t('workspace.viewOnlyNotice')}
                     </div>
                   ) : (
                   <div className="p-3 bg-card border-t border-border flex-shrink-0">
@@ -1780,8 +1834,11 @@ export default function ProjectWorkspaceScreen() {
           onClose={handleCloseReportDetail}
           onRespond={handleRespondToContractReport}
           onConfirm={handleConfirmContractReport}
+          onEscalate={handleEscalateContractReport}
+          onDisputeCreated={(disputeId) => navigate(`/contracts/${workspaceContractId}/disputes/${disputeId}`)}
           isResponding={isRespondingReport}
           isConfirming={isConfirmingReport}
+          isEscalating={isEscalatingReport}
         />
       )}
     </AppLayout>

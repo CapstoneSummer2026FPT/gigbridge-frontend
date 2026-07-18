@@ -22,6 +22,7 @@ import {
   type DisputeEvidence,
 } from '../../../types/models/Dispute';
 import '../styles/dispute-detail-screen.css';
+import { DisputeChat } from '../components/DisputeChat';
 
 const statusLabels: Record<DisputeStatus, string> = {
   [DisputeStatus.Open]: 'Open',
@@ -167,7 +168,7 @@ export default function DisputeDetailScreen() {
             <header className="dispute-detail-hero">
               <div>
                 <p className="dispute-detail-kicker">Dispute case</p>
-                <h1>{contract.title}</h1>
+                <h1>{dispute.title || contract.title}</h1>
                 <p className="dispute-detail-case-id">Case ID: {dispute.id}</p>
               </div>
               <span className={`dispute-status dispute-status-${dispute.status}`}>
@@ -182,6 +183,14 @@ export default function DisputeDetailScreen() {
                   <h2>Reason</h2>
                 </div>
                 <p className="dispute-reason-text">{dispute.reason}</p>
+                {dispute.description && <p className="dispute-description-text">{dispute.description}</p>}
+
+                {(dispute.requestedResolution || dispute.claimedAmount !== null) && (
+                  <div className="dispute-request-block">
+                    {dispute.requestedResolution && <p><strong>Requested resolution:</strong> {dispute.requestedResolution}</p>}
+                    {dispute.claimedAmount !== null && <p><strong>Claimed amount:</strong> {dispute.claimedAmount.toLocaleString()}</p>}
+                  </div>
+                )}
 
                 <div className="dispute-detail-meta-grid">
                   <div>
@@ -257,6 +266,8 @@ export default function DisputeDetailScreen() {
                 </div>
               )}
             </section>
+
+            <DisputeChat disputeId={dispute.id} />
           </>
         )}
       </main>

@@ -709,6 +709,7 @@
     "chatMovedToNegotiation": "Conversation has been moved to <strong>negotiation phase</strong>",
     "invitedJobChat": "Invited Job Chat",
     "workspaceChat": "Workspace Chat",
+    "disputeChat": "Dispute Chat",
     "negotiationChat": "Negotiation Chat",
     "failedToSend": "Failed",
     "proposeDealPrice": "Propose Deal Price",
@@ -727,7 +728,9 @@
     "roomNegotiationLabel": "Negotiation",
     "roomNegotiationDesc": "Active price & scope negotiations",
     "roomWorkspaceLabel": "Workspace",
-    "roomWorkspaceDesc": "Active project workrooms"
+    "roomWorkspaceDesc": "Active project workrooms",
+    "roomDisputeLabel": "Disputes",
+    "roomDisputeDesc": "Official contract dispute conversations"
   },
   "dashboard": {
     "welcome": "Welcome back, {{name}}!",
@@ -1655,6 +1658,18 @@
     "waitingFreelancer": "Waiting for freelancer",
     "withdrawThresholdWarning": "At least 50% of milestones must be approved before withdrawal.",
     "viewOnlyNotice": "Project completed · Workspace is view-only",
+    "disputeEscalationTitle": "Unable to reach an agreement?",
+    "disputeEscalationDescription": "The proposed resolution did not resolve the issue. Would you like to continue negotiating or escalate it into an official dispute?",
+    "disputeEscalationWarning": "Creating a dispute locks contract work and moves communication to the dispute conversation.",
+    "continueNegotiation": "Continue Negotiation",
+    "createDispute": "Create Dispute",
+    "creatingDispute": "Creating Dispute...",
+    "disputeEscalationFailed": "Failed to create the dispute.",
+    "disputeTitlePrefix": "Contract dispute",
+    "disputeLockedTitle": "This contract is currently under dispute.",
+    "disputeLockedDescription": "Please continue communication in the dispute conversation.",
+    "disputedBadge": "Disputed",
+    "openDispute": "Open Dispute",
     "version": "Version {{version}}",
     "endProjectModalTitle": "End Project",
     "endProjectModalDesc": "Mark this contract completed and open the final payout for freelancer claim.",
@@ -1768,6 +1783,16 @@
     "reportSystemAction": "Action",
     "reportParticipant": "A contract participant",
     "reportUnavailable": "This report is no longer available."
+  },
+  "disputes": {
+    "chatTitle": "Dispute conversation",
+    "chatLoading": "Loading conversation...",
+    "chatEmpty": "No messages yet. Start the dispute conversation below.",
+    "chatPlaceholder": "Write a message about this dispute...",
+    "chatSend": "Send",
+    "chatUnavailable": "The dispute conversation is not available yet.",
+    "chatLoadFailed": "Unable to load the dispute conversation.",
+    "chatSendFailed": "Unable to send the message."
   },
   "proposalAnswers": {
     "proposalIdMissing": "Proposal ID is missing.",

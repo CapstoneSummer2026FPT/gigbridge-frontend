@@ -6,6 +6,8 @@ import type {
   ReportContract,
   RespondToReportInput,
 } from '../../types/models/ReportContract';
+import type { Dispute, EscalateReportToDisputeInput } from '../../types/models/Dispute';
+import { normalizeDispute } from '../disputeAPI/utils';
 import { normalizeReportContract } from './utils';
 
 const baseUrl = (contractId: string) => `contracts/${contractId}/reports`;
@@ -97,6 +99,22 @@ export const reportContractPostAPI = {
     return {
       ...response,
       data: response.data ? normalizeReportContract(response.data) : undefined,
+    };
+  },
+
+  /** POST /api/contracts/{contractId}/reports/{reportId}/escalate */
+  escalateToDispute: async (
+    contractId: string,
+    reportId: string,
+    input: EscalateReportToDisputeInput,
+  ): Promise<ApiResponse<Dispute>> => {
+    const response = await apiService.post<unknown>(
+      `${baseUrl(contractId)}/${reportId}/escalate`,
+      input,
+    );
+    return {
+      ...response,
+      data: response.data ? normalizeDispute(response.data) : undefined,
     };
   },
 };
