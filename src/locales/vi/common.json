@@ -1730,6 +1730,7 @@
     "reportRespondentAttachmentsHint": "Tải lên tệp để hỗ trợ phản hồi của bạn",
     "reportDownload": "Tải xuống",
     "reportAttachmentCount": "📎 {{count}} tệp đã đính kèm",
+    "reportChooseFiles": "Chọn tệp",
     "reportCreated": "Đã báo cáo vấn đề",
     "reportCreatedDesc": "Vấn đề đã được báo cáo và bên kia sẽ được thông báo.",
     "failedSubmitReportError": "Không thể gửi báo cáo.",

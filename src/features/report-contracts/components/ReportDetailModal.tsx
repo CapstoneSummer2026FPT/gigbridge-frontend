@@ -146,13 +146,11 @@ export function ReportDetailModal({
   };
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      setRespondentFiles((prev) => [...prev, ...Array.from(files)]);
+    const selectedFiles = Array.from(event.currentTarget.files ?? []);
+    if (selectedFiles.length > 0) {
+      setRespondentFiles((prev) => [...prev, ...selectedFiles]);
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    event.currentTarget.value = '';
   };
 
   const removeFile = (index: number) => {
@@ -477,11 +475,21 @@ export function ReportDetailModal({
                     <input
                       ref={fileInputRef}
                       type="file"
+                      id="rc-respondent-files"
                       onChange={handleFileSelect}
                       disabled={isResponding}
                       multiple
-                      className="rc-file-input"
+                      className="rc-file-input-hidden"
                     />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isResponding}
+                      className="rc-file-upload-button"
+                    >
+                      <Upload size={18} />
+                      <span className="rc-upload-text">{t('workspace.reportChooseFiles') || 'Choose files'}</span>
+                    </button>
                     {respondentFiles.length > 0 && (
                       <div className="rc-file-list">
                         {respondentFiles.map((file, index) => (

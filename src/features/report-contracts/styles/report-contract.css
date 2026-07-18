@@ -723,6 +723,44 @@
   padding-top: 0.75rem;
   border-top: 1px solid var(--color-border, hsl(222, 25%, 15%));
 }
+
+/* Hidden file input - styled button trigger instead */
+.rc-file-input-hidden {
+  display: none;
+}
+
+.rc-file-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--color-border, hsl(222, 25%, 25%));
+  border-radius: 8px;
+  background: var(--color-card, hsl(222, 35%, 8%));
+  color: var(--color-muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.rc-file-upload-button:hover:not(:disabled) {
+  border-color: var(--gb-cyan, #3b82f6);
+  color: var(--gb-cyan, #3b82f6);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.rc-file-upload-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rc-upload-text {
+  font-size: 0.75rem;
+}
+
 .rc-resolved-notice {
   display: flex;
   align-items: center;

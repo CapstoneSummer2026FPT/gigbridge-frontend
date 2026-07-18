@@ -216,6 +216,26 @@ describe('ProjectWorkspaceScreen Report Contract integration', () => {
     render(<ProjectWorkspaceScreen />);
     fireEvent.click(screen.getByRole('button', { name: 'workspace.raiseIssue' }));
 
+    const firstAttachment = new File(['first evidence'], 'first-evidence.txt', {
+      type: 'text/plain',
+    });
+    const secondAttachment = new File(['second evidence'], 'second-evidence.txt', {
+      type: 'text/plain',
+    });
+    const fileInput = document.getElementById('rc-evidence-files') as HTMLInputElement;
+
+    fireEvent.change(fileInput, { target: { files: [firstAttachment] } });
+    fireEvent.change(fileInput, { target: { files: [secondAttachment] } });
+
+    expect(screen.getByText('first-evidence.txt')).toBeInTheDocument();
+    expect(screen.getByText('second-evidence.txt')).toBeInTheDocument();
+
+    const firstFileItem = screen.getByText('first-evidence.txt').closest('.rc-file-item');
+    const removeFirstFileButton = firstFileItem?.querySelector('button');
+    expect(removeFirstFileButton).not.toBeNull();
+    fireEvent.click(removeFirstFileButton as HTMLButtonElement);
+    expect(screen.queryByText('first-evidence.txt')).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText(/workspace.reportDescriptionLabel/), {
       target: { value: 'The delivery is late.' },
     });
@@ -230,7 +250,7 @@ describe('ProjectWorkspaceScreen Report Contract integration', () => {
         description: 'The delivery is late.',
         desiredResolution: 'Agree on a new date.',
         milestoneId: null,
-        attachments: undefined,
+        attachments: [secondAttachment],
       });
     });
   });
@@ -259,6 +279,44 @@ describe('ProjectWorkspaceScreen Report Contract integration', () => {
       });
     });
     expect(screen.queryByText('workspace.reportConfirmResolutionTitle')).not.toBeInTheDocument();
+  });
+
+  it('shows and submits attachments from a detailed report response', async () => {
+    mockWorkspace(ContractStatus.Active, 'user-2');
+    mockReports(reportDetail());
+    render(<ProjectWorkspaceScreen />);
+    await openReportDetail();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workspace.reportActionProvideExplanation' }),
+    );
+    const explanationField = screen
+      .getByText(/workspace.reportExplanationLabel/)
+      .closest('.rc-field')
+      ?.querySelector('textarea');
+    expect(explanationField).not.toBeNull();
+    fireEvent.change(explanationField as HTMLTextAreaElement, {
+      target: { value: 'The delay was caused by a dependency.' },
+    });
+
+    const attachment = new File(['response evidence'], 'response-evidence.txt', {
+      type: 'text/plain',
+    });
+    const fileInput = document.getElementById('rc-respondent-files') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [attachment] } });
+
+    expect(screen.getByText('response-evidence.txt')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'common.submit' }));
+
+    await waitFor(() => {
+      expect(respondToReportMock).toHaveBeenCalledWith('active-contract', 'report-1', {
+        resolutionAction: ContractReportResolutionAction.ProvideExplanation,
+        explanation: 'The delay was caused by a dependency.',
+        proposedResolution: null,
+        rejectReason: null,
+        attachments: [attachment],
+      });
+    });
   });
 
   it('connects reporter acceptance and decline to the report hook', async () => {

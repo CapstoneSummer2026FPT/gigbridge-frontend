@@ -1732,6 +1732,7 @@
     "reportRespondentAttachmentsHint": "Upload files to support your response",
     "reportDownload": "Download",
     "reportAttachmentCount": "📎 {{count}} file(s) attached",
+    "reportChooseFiles": "Choose files",
     "reportCreated": "Issue raised",
     "reportCreatedDesc": "The issue has been raised and the other party will be notified.",
     "failedSubmitReportError": "Failed to submit the report.",

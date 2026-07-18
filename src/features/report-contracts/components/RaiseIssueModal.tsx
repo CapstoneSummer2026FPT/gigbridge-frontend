@@ -62,13 +62,11 @@ export function RaiseIssueModal({
   }
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      setAttachments((prev) => [...prev, ...Array.from(files)]);
+    const selectedFiles = Array.from(event.currentTarget.files ?? []);
+    if (selectedFiles.length > 0) {
+      setAttachments((prev) => [...prev, ...selectedFiles]);
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    event.currentTarget.value = '';
   };
 
   const removeAttachment = (index: number) => {
@@ -243,11 +241,21 @@ export function RaiseIssueModal({
             <input
               ref={fileInputRef}
               type="file"
+              id="rc-evidence-files"
               onChange={handleFileSelect}
               disabled={isSubmitting}
               multiple
-              className="rc-file-input"
+              className="rc-file-input-hidden"
             />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSubmitting}
+              className="rc-file-upload-button"
+            >
+              <Upload size={18} />
+              <span className="rc-upload-text">{t('workspace.reportChooseFiles') || 'Choose files'}</span>
+            </button>
             {attachments.length > 0 && (
               <div className="rc-file-list">
                 {attachments.map((file, index) => (
