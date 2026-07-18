@@ -1314,6 +1314,7 @@ export default function MessagesScreen() {
       {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
         <ReportDetailModal
           report={selectedReport}
+          contractTitle={activeConv?.job.title || t('workspace.disputeTitlePrefix')}
           currentUserId={user?.id ?? ''}
           isOpen
           onClose={closeReportDetail}
@@ -1325,13 +1326,8 @@ export default function MessagesScreen() {
             const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
             return { success: response.success, message: response.message };
           }}
-          onEscalate={async () => {
-            const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, {
-              title: t('workspace.disputeTitlePrefix'),
-              description: selectedReport.description,
-              reason: selectedReport.description,
-              requestedResolution: selectedReport.desiredResolution,
-            });
+          onEscalate={async (input) => {
+            const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, input);
             return { success: response.success, message: response.message, disputeId: response.data?.id };
           }}
           onDisputeCreated={(disputeId) => navigate(`/contracts/${selectedReport.contractId}/disputes/${disputeId}`)}

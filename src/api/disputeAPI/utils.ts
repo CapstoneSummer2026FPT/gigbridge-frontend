@@ -4,6 +4,7 @@ import type {
   DisputeEvidenceDownload,
   DisputeResolution,
   DisputeStatus,
+  DisputeUrgency,
 } from '../../types/models/Dispute';
 
 type UnknownRecord = Record<string, unknown>;
@@ -16,7 +17,7 @@ const valueOf = <T>(source: UnknownRecord, ...keys: string[]): T | undefined => 
   return undefined;
 };
 
-const normalizeEvidence = (raw: unknown): DisputeEvidence => {
+export const normalizeEvidence = (raw: unknown): DisputeEvidence => {
   const source = (raw ?? {}) as UnknownRecord;
   return {
     id: String(valueOf(source, 'disputeEvidenceId', 'DisputeEvidenceId') ?? ''),
@@ -61,6 +62,8 @@ export const normalizeDispute = (raw: unknown): Dispute => {
     reason: String(valueOf(source, 'reason', 'Reason') ?? ''),
     claimedAmount: valueOf<number | null>(source, 'claimedAmount', 'ClaimedAmount') ?? null,
     requestedResolution: valueOf<string | null>(source, 'requestedResolution', 'RequestedResolution') ?? null,
+    issueType: valueOf<number | null>(source, 'issueType', 'IssueType') ?? null,
+    urgency: Number(valueOf(source, 'urgency', 'Urgency') ?? 0) as DisputeUrgency,
     status: Number(valueOf(source, 'status', 'Status') ?? 0) as DisputeStatus,
     resolution: resolution === undefined || resolution === null
       ? null

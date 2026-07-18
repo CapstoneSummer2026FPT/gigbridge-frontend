@@ -11,6 +11,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
+import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
   ContractReportIssueType,
   ContractReportResolutionAction,
@@ -533,23 +534,18 @@ export default function ProjectWorkspaceScreen() {
     [confirmResolution, t, viewReportId, workspaceContractId],
   );
 
-  const handleEscalateContractReport = useCallback(async () => {
+  const handleEscalateContractReport = useCallback(async (input: EscalateReportToDisputeInput) => {
     if (!workspaceContractId || !selectedReport) {
       return { success: false, message: t('workspace.disputeEscalationFailed') };
     }
-    const response = await escalateToDispute(workspaceContractId, selectedReport.id, {
-      title: `${t('workspace.disputeTitlePrefix')}: ${activeContract?.title || project.title}`,
-      description: selectedReport.description,
-      reason: selectedReport.description,
-      requestedResolution: selectedReport.desiredResolution,
-    });
+    const response = await escalateToDispute(workspaceContractId, selectedReport.id, input);
     if (response.success && response.data) setActiveDisputeId(response.data.id);
     return {
       success: response.success,
       message: response.message,
       disputeId: response.data?.id,
     };
-  }, [activeContract?.title, escalateToDispute, project.title, selectedReport, t, workspaceContractId]);
+  }, [escalateToDispute, selectedReport, t, workspaceContractId]);
 
   const openEndProjectDialog = async () => {
     setEndProjectError(null);
@@ -1829,6 +1825,7 @@ export default function ProjectWorkspaceScreen() {
       {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
         <ReportDetailModal
           report={selectedReport}
+          contractTitle={activeContract?.title || project.title}
           currentUserId={user?.id ?? ''}
           isOpen
           onClose={handleCloseReportDetail}

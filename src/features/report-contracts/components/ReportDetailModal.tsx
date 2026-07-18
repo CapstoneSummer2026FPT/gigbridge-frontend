@@ -1,6 +1,7 @@
 import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { ReportContract, ReportContractAttachment } from '../../../types/models/ReportContract';
+import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
   ContractReportStatus,
   ContractReportResolutionAction,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import '../styles/report-contract.css';
 import { DisputeEscalationModal } from './DisputeEscalationModal';
+import { DisputeCreationModal } from './DisputeCreationModal';
 
 const STATUS_KEYS: Record<number, string> = {
   [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
@@ -29,6 +31,7 @@ const RESOLUTION_ACTION_KEYS: Record<number, string> = {
 
 interface ReportDetailModalProps {
   report: ReportContract;
+  contractTitle: string;
   currentUserId: string;
   isOpen: boolean;
   onClose: () => void;
@@ -40,7 +43,7 @@ interface ReportDetailModalProps {
     attachments?: File[];
   }) => Promise<{ success: boolean; message?: string }>;
   onConfirm: (isAccepted: boolean) => Promise<{ success: boolean; message?: string }>;
-  onEscalate: () => Promise<{ success: boolean; message?: string; disputeId?: string }>;
+  onEscalate: (input: EscalateReportToDisputeInput) => Promise<{ success: boolean; message?: string; disputeId?: string }>;
   onDisputeCreated: (disputeId: string) => void;
   isResponding: boolean;
   isConfirming: boolean;
@@ -105,6 +108,7 @@ function AttachmentItem({ attachment }: { attachment: ReportContractAttachment }
 
 export function ReportDetailModal({
   report,
+  contractTitle,
   currentUserId,
   isOpen,
   onClose,
@@ -124,7 +128,7 @@ export function ReportDetailModal({
   const [respondentFiles, setRespondentFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showEscalation, setShowEscalation] = useState(false);
-  const [escalationError, setEscalationError] = useState<string | null>(null);
+  const [showDisputeCreation, setShowDisputeCreation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -221,17 +225,6 @@ export function ReportDetailModal({
       return;
     }
     setShowEscalation(true);
-  };
-
-  const handleEscalate = async () => {
-    setEscalationError(null);
-    const result = await onEscalate();
-    if (!result.success || !result.disputeId) {
-      setEscalationError(result.message || t('workspace.disputeEscalationFailed'));
-      return;
-    }
-    setShowEscalation(false);
-    onDisputeCreated(result.disputeId);
   };
 
   return (
@@ -610,15 +603,28 @@ export function ReportDetailModal({
     </div>
     <DisputeEscalationModal
       isOpen={showEscalation}
-      isEscalating={isEscalating}
-      error={escalationError}
+      isEscalating={false}
       onClose={() => {
-        if (!isEscalating) {
-          setShowEscalation(false);
-          setEscalationError(null);
-        }
+        setShowEscalation(false);
       }}
-      onEscalate={() => void handleEscalate()}
+      onEscalate={() => {
+        setShowEscalation(false);
+        setShowDisputeCreation(true);
+      }}
+    />
+    <DisputeCreationModal
+      isOpen={showDisputeCreation}
+      report={report}
+      contractTitle={contractTitle}
+      isSubmitting={isEscalating}
+      onClose={() => {
+        if (!isEscalating) setShowDisputeCreation(false);
+      }}
+      onSubmit={onEscalate}
+      onCreated={(disputeId) => {
+        setShowDisputeCreation(false);
+        onDisputeCreated(disputeId);
+      }}
     />
     </>
   );

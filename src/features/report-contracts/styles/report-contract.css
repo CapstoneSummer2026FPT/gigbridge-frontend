@@ -833,3 +833,30 @@
   .rc-escalation-actions { flex-direction: column-reverse; }
   .rc-escalation-actions button { width: 100%; }
 }
+
+.rc-dispute-creation-modal { width: min(760px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto; border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--foreground); box-shadow: 0 24px 70px rgba(15, 23, 42, .25); }
+.rc-dispute-creation-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.35rem; border-bottom: 1px solid var(--border); }
+.rc-dispute-creation-header span { color: #b45309; font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.rc-dispute-creation-header h3 { margin: .25rem 0 0; }
+.rc-dispute-creation-form { display: grid; gap: 1rem; padding: 1.25rem 1.35rem; }
+.rc-dispute-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; padding: .85rem; border: 1px solid rgba(245, 158, 11, .25); border-radius: 12px; background: rgba(245, 158, 11, .07); }
+.rc-dispute-summary-grid > div { display: grid; gap: .2rem; min-width: 0; }
+.rc-dispute-summary-grid span { color: var(--muted-foreground); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.rc-dispute-summary-grid strong { overflow-wrap: anywhere; font-size: .86rem; }
+.rc-dispute-creation-form .rc-field { display: grid; gap: .4rem; }
+.rc-dispute-creation-form .rc-field > span { font-size: .82rem; font-weight: 850; }
+.rc-dispute-creation-form input:not([type="checkbox"]), .rc-dispute-creation-form select, .rc-dispute-creation-form textarea { width: 100%; box-sizing: border-box; padding: .72rem .8rem; border: 1px solid var(--border); border-radius: 9px; outline: none; color: var(--foreground); background: var(--background); font: inherit; }
+.rc-dispute-creation-form textarea { resize: vertical; }
+.rc-dispute-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+.rc-dispute-existing-evidence, .rc-dispute-additional-evidence { display: grid; gap: .55rem; padding: .85rem; border: 1px solid var(--border); border-radius: 11px; }
+.rc-dispute-existing-evidence h4, .rc-dispute-additional-evidence h4 { display: flex; align-items: center; gap: .4rem; margin: 0; }
+.rc-dispute-existing-evidence p { margin: 0; color: var(--muted-foreground); font-size: .8rem; }
+.rc-dispute-existing-evidence > div { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .5rem; padding: .5rem .6rem; border-radius: 8px; background: var(--muted); }
+.rc-dispute-existing-evidence > div span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-dispute-existing-evidence > div small { color: var(--muted-foreground); }
+.rc-dispute-declaration { display: flex; align-items: flex-start; gap: .6rem; padding: .8rem; border-radius: 10px; background: var(--muted); cursor: pointer; font-size: .84rem; line-height: 1.45; }
+.rc-dispute-declaration input { margin-top: .15rem; }
+
+@media (max-width: 640px) {
+  .rc-dispute-summary-grid, .rc-dispute-form-grid { grid-template-columns: 1fr; }
+}

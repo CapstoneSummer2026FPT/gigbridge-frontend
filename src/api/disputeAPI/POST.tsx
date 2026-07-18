@@ -1,25 +1,26 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { CreateDisputeInput, Dispute } from '../../types/models/Dispute';
-import { normalizeDispute } from './utils';
+import type { DisputeEvidence } from '../../types/models/Dispute';
+import { normalizeEvidence } from './utils';
+
+const baseUrl = (contractId: string) => `contracts/${contractId}/disputes`;
 
 export const disputePostAPI = {
-  createDispute: async (input: CreateDisputeInput): Promise<ApiResponse<Dispute>> => {
+  addEvidence: async (
+    contractId: string,
+    disputeId: string,
+    files: File[],
+  ): Promise<ApiResponse<DisputeEvidence[]>> => {
     const formData = new FormData();
-    formData.append('reason', input.reason);
-    if (input.milestoneId) formData.append('milestoneId', input.milestoneId);
-    if (input.evidence) formData.append('evidence', input.evidence);
-    if (input.evidenceDescription?.trim()) {
-      formData.append('evidenceDescription', input.evidenceDescription.trim());
-    }
+    for (const file of files) formData.append('evidenceFiles', file);
 
-    const response = await apiService.post<unknown>(
-      `contracts/${input.contractId}/disputes`,
-      formData
+    const response = await apiService.post<unknown[]>(
+      `${baseUrl(contractId)}/${disputeId}/evidence`,
+      formData,
     );
     return {
       ...response,
-      data: response.data ? normalizeDispute(response.data) : undefined,
+      data: response.data?.map(normalizeEvidence) ?? [],
     };
   },
 };

@@ -12,6 +12,12 @@ export enum DisputeResolution {
   Dismissed = 3,
 }
 
+export enum DisputeUrgency {
+  Normal = 0,
+  High = 1,
+  Critical = 2,
+}
+
 export interface DisputeInitiator {
   id: string;
   name: string | null;
@@ -44,6 +50,8 @@ export interface Dispute {
   reason: string;
   claimedAmount: number | null;
   requestedResolution: string | null;
+  issueType: number | null;
+  urgency: DisputeUrgency;
   status: DisputeStatus;
   resolution: DisputeResolution | null;
   resolutionLabel: string | null;
@@ -56,19 +64,13 @@ export interface Dispute {
 }
 
 export interface EscalateReportToDisputeInput {
-  title?: string | null;
-  description?: string | null;
-  reason: string;
-  claimedAmount?: number | null;
-  requestedResolution?: string | null;
-}
-
-export interface CreateDisputeInput {
-  contractId: string;
-  reason: string;
-  milestoneId?: string | null;
-  evidence?: File | null;
-  evidenceDescription?: string | null;
+  title: string;
+  description: string;
+  claimedAmount: number;
+  requestedResolution: string;
+  urgency: DisputeUrgency;
+  declarationAccepted: boolean;
+  evidenceFiles?: File[];
 }
 
 export interface DisputeEvidenceDownload {

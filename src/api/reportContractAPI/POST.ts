@@ -108,9 +108,20 @@ export const reportContractPostAPI = {
     reportId: string,
     input: EscalateReportToDisputeInput,
   ): Promise<ApiResponse<Dispute>> => {
+    const formData = new FormData();
+    formData.append('title', input.title);
+    formData.append('description', input.description);
+    formData.append('claimedAmount', String(input.claimedAmount));
+    formData.append('requestedResolution', input.requestedResolution);
+    formData.append('urgency', String(input.urgency));
+    formData.append('declarationAccepted', String(input.declarationAccepted));
+    for (const file of input.evidenceFiles ?? []) {
+      formData.append('evidenceFiles', file);
+    }
+
     const response = await apiService.post<unknown>(
       `${baseUrl(contractId)}/${reportId}/escalate`,
-      input,
+      formData,
     );
     return {
       ...response,
