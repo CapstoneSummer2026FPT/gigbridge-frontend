@@ -515,7 +515,7 @@ export default function ClientProposalsScreen() {
       </div>
 
       {evalModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-card shadow-2xl p-6 text-foreground max-h-[85vh] flex flex-col">
             
             {/* Modal Header */}
