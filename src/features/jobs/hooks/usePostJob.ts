@@ -6,7 +6,6 @@ import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
 
 import {
-  JobPostStatus,
   JobPostVisibility,
   type CreateDraftJobPostResponse,
   type GetMyJobPostDetailDto,
@@ -871,14 +870,8 @@ export function usePostJob() {
       }
 
       if (mode === 'publish') {
-        const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
-        if (!publishResponse.success) {
-          throw new Error(publishResponse.message || 'Project request could not be published.');
-        }
-
-        toast.success('Project request published.');
         allowNextNavigation();
-        navigate(`/jobs/my-jobs/${currentJobPostId}`);
+        navigate('/jobs/post/contract', { state: navigationState });
         return;
       }
 

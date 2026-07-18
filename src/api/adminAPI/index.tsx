@@ -12,6 +12,11 @@ import { adminPatchAPI } from './PATCH';
 import { adminDeleteAPI } from './DELETE';
 
 export const adminAPI = {
+  getDisputes: adminGetAPI.getDisputes,
+  getDisputeDetail: adminGetAPI.getDisputeDetail,
+  getDisputeEvidenceDownload: adminGetAPI.getDisputeEvidenceDownload,
+  updateDisputeStatus: adminPatchAPI.updateDisputeStatus,
+  resolveDispute: adminPostAPI.resolveDispute,
   getUsers: adminGetAPI.getUsers,
   getAllUsers: adminGetAPI.getAllUsers,
   getFAQs: adminGetAPI.getFAQs,

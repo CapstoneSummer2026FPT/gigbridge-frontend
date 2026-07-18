@@ -10,10 +10,56 @@ import type {
 import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
 import type { WithdrawalResponse, WithdrawalStatus } from '../../types/models/Financial';
+import type {
+  AdminDisputeDetail,
+  AdminDisputeListParams,
+  AdminDisputeListResult,
+} from '../../types/models/AdminDispute';
+import type { DisputeEvidenceDownload } from '../../types/models/Dispute';
+import {
+  normalizeAdminDisputeDetail,
+  normalizeAdminDisputeListResult,
+} from './disputeUtils';
 
 const Admin_Api_Base_Url = '/admin';
 
 export const adminGetAPI = {
+  getDisputes: async (
+    params: AdminDisputeListParams = {}
+  ): Promise<ApiResponse<AdminDisputeListResult>> => {
+    const response = await apiService.get<unknown>(`${Admin_Api_Base_Url}/disputes`, params);
+    return {
+      ...response,
+      data: response.data ? normalizeAdminDisputeListResult(response.data) : undefined,
+    };
+  },
+
+  getDisputeDetail: async (disputeId: string): Promise<ApiResponse<AdminDisputeDetail>> => {
+    const response = await apiService.get<unknown>(`${Admin_Api_Base_Url}/disputes/${disputeId}`);
+    return {
+      ...response,
+      data: response.data ? normalizeAdminDisputeDetail(response.data) : undefined,
+    };
+  },
+
+  getDisputeEvidenceDownload: async (
+    disputeId: string,
+    evidenceId: string
+  ): Promise<ApiResponse<DisputeEvidenceDownload>> => {
+    const response = await apiService.get<Record<string, unknown>>(
+      `${Admin_Api_Base_Url}/disputes/${disputeId}/evidence/${evidenceId}/download`
+    );
+    const source = response.data;
+    return {
+      ...response,
+      data: source ? {
+        evidenceId: String(source.disputeEvidenceId ?? source.DisputeEvidenceId ?? ''),
+        fileName: String(source.fileName ?? source.FileName ?? ''),
+        downloadUrl: String(source.downloadUrl ?? source.DownloadUrl ?? ''),
+      } : undefined,
+    };
+  },
+
   /**
    * GET /api/v1/admin/users
    * Returns a paginated, searchable list of users.

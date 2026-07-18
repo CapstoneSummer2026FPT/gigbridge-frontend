@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserRole } from '../../../types/models/User';
+import { ProposalStatus } from '../../../types/models/Proposal';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import { useJobDetail } from '../hooks/useJobDetail';
 import '../styles/job-detail-screen.css';
@@ -29,6 +30,7 @@ export default function JobDetailScreen() {
     isApplying,
     isSavingSavedJob,
     proposalMessage,
+    proposalCheckFailed,
     applicationCost,
     canApplyToJob,
     canApplyWithGigcoins,
@@ -302,6 +304,20 @@ export default function JobDetailScreen() {
                     {canViewProposalAnswers(myProposal.status) && (
                       <button className="jd-btn-secondary" onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}><FileText size={13} />{t('jobDetail.viewAnswers')}</button>
                     )}
+                    {[ProposalStatus.Pending, ProposalStatus.Shortlisted, ProposalStatus.Accepted].includes(Number(myProposal.status)) && (
+                      <button
+                        className="jd-btn-secondary"
+                        onClick={() => navigate(`/ai-interview/${encodeURIComponent(job.id)}`, {
+                          state: { jobPostId: job.id, jobTitle: job.title },
+                        })}
+                      >
+                        <Bot size={13} /> Start AI Interview
+                      </button>
+                    )}
+                  </div>
+                ) : proposalCheckFailed ? (
+                  <div className="rounded-xl border border-red-500/25 bg-red-500/8 p-3 text-xs font-semibold text-red-500">
+                    Unable to verify your proposal status. Please refresh the page or try again later.
                   </div>
                 ) : !canApplyToJob ? (
                   <div className="rounded-xl border border-warning/25 bg-warning/8 p-3 text-xs font-semibold text-warning">

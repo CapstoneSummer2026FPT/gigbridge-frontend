@@ -138,9 +138,13 @@ const handleResponse = <T>(response: AxiosResponse<any>): ApiResponse<T> => {
 };
 
 export const apiService = {
-  async get<T>(endpoint: string, params: Record<string, any> = {}): Promise<ApiResponse<T>> {
+  async get<T>(
+    endpoint: string,
+    params: Record<string, any> = {},
+    headers: Record<string, string> = {}
+  ): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.get<ApiResponse<T>>(normalizeEndpoint(endpoint), { params });
+      const response = await apiClient.get<ApiResponse<T>>(normalizeEndpoint(endpoint), { params, headers });
       return handleResponse(response);
     } catch (error: any) {
       return {

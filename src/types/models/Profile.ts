@@ -69,6 +69,15 @@ export interface FreelancerProfileDto {
   profileCompletionScore?: number;
   createdAt: string;
   updatedAt?: string;
+  majorId?: string | null;
+  majorName?: string | null;
+  categories: FreelancerProfileCategoryDto[];
+}
+
+export interface FreelancerProfileCategoryDto {
+  majorCategoryId: string;
+  categoryId: string;
+  name: string;
 }
 
 export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
@@ -108,12 +117,12 @@ export interface CheatingPenaltyLogDto {
 }
 
 export interface UpdateClientProfileDto {
-  CompanyName: string;
-  CompanyWebsite?: string;
-  CompanySize: number;
-  Industry: string;
-  CompanyDescription?: string;
-  Location: string;
+  companyName: string;
+  companyWebsite?: string;
+  companySize: number;
+  industry: string;
+  companyDescription?: string;
+  location: string;
 }
 
 export interface UpdateFreelancerProfileDto {
@@ -121,6 +130,9 @@ export interface UpdateFreelancerProfileDto {
   bio: string;
   availability: number;
   location: string;
+  majorId: string;
+  categoryIds: string[];
+  skillIds?: string[];
 }
 
 export interface ClientProfileDetailDto {
@@ -164,6 +176,10 @@ export interface FreelancerProfileResponseDto {
   profileCompletionScore: number;
   createdAt: string;
   updatedAt: string;
+  majorId?: string | null;
+  majorName?: string | null;
+  categories: FreelancerProfileCategoryDto[];
+  skills: FreelancerSkillDto[];
 }
 
 export interface FreelancerProfile {
