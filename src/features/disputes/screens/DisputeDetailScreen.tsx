@@ -15,6 +15,7 @@ import {
 } from '../../../types/models/Dispute';
 import { DisputeChat } from '../components/DisputeChat';
 import { DisputeEvidenceUploader } from '../components/DisputeEvidenceUploader';
+import { useApp } from '../../../app/providers/AppProvider';
 import '../styles/dispute-detail-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
@@ -60,7 +61,8 @@ const formatSize = (value: number | null): string => {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const evidenceIcon = (fileName: string) => {
+const evidenceIcon = (fileName: string | null) => {
+  if (!fileName) return <FileText size={21} />;
   const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)) return <Image size={21} />;
   if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(extension)) return <Film size={21} />;
@@ -76,6 +78,7 @@ const errorTitle = (status: number): string => {
 };
 
 export default function DisputeDetailScreen() {
+  const { user } = useApp();
   const navigate = useNavigate();
   const { contractId, disputeId } = useParams<{ contractId: string; disputeId: string }>();
   const [dispute, setDispute] = useState<Dispute | null>(null);
@@ -133,7 +136,7 @@ export default function DisputeDetailScreen() {
     anchor.href = response.data.downloadUrl;
     anchor.target = '_blank';
     anchor.rel = 'noopener noreferrer';
-    anchor.download = response.data.fileName || evidence.fileName;
+    anchor.download = response.data.fileName || evidence.fileName || 'evidence';
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -190,15 +193,50 @@ export default function DisputeDetailScreen() {
               <DisputeEvidenceUploader
                 contractId={contractId}
                 disputeId={disputeId}
-                disabled={dispute.status !== DisputeStatus.Open && dispute.status !== DisputeStatus.UnderReview}
+                disabled={!([DisputeStatus.Open, DisputeStatus.WaitingAdmin, DisputeStatus.UnderReview, DisputeStatus.WaitingEvidence, DisputeStatus.DecisionPending] as DisputeStatus[]).includes(dispute.status)}
                 onUploaded={evidence => setDispute(current => current ? { ...current, evidence: [...current.evidence, ...evidence] } : current)}
               />
+              {dispute.evidence.filter(item => item.isRequestedByAdmin && item.requestedByAdminId).map(request => {
+                const targetParty = request.requestTarget === 0 ? dispute.initiator : dispute.respondent;
+                const groupFiles = dispute.evidence.filter(item =>
+                  item.requestGroupId === request.requestGroupId && item.uploadedById === targetParty?.id && item.fileName
+                );
+                return (
+                  <section className="dispute-evidence-group dispute-request-block" key={request.id}>
+                    <h3>Requested Evidence · {request.requestTarget === 0 ? 'Reporter' : 'Respondent'}</h3>
+                    <p>{request.description}</p>
+                    <span>Deadline: {formatDate(request.deadline)} · {request.isRequestFulfilled ? 'Fulfilled' : 'Pending'}</span>
+                    {!request.isRequestFulfilled && targetParty?.id === user?.id && (
+                      <DisputeEvidenceUploader
+                        contractId={contractId}
+                        disputeId={disputeId}
+                        requestEvidenceId={request.id}
+                        title="Submit requested evidence"
+                        disabled={false}
+                        onUploaded={items => setDispute(current => current ? {
+                          ...current,
+                          evidence: current.evidence
+                            .map(existing => items.find(item => item.id === existing.id) ?? existing)
+                            .concat(items.filter(item => !current.evidence.some(existing => existing.id === item.id))),
+                        } : current)}
+                      />
+                    )}
+                    {groupFiles.map(file => (
+                      <div className="dispute-evidence-row" key={file.id}>
+                        {evidenceIcon(file.fileName)}
+                        <div><strong>{file.fileName}</strong><span>{formatSize(file.fileSize)} · {formatDate(file.createdAt)}</span>{file.reviewedAt && <span>Reviewed {formatDate(file.reviewedAt)}</span>}</div>
+                        <button onClick={() => void downloadEvidence(file)} disabled={downloadingId !== null}><Download size={17} /> Download</button>
+                      </div>
+                    ))}
+                  </section>
+                );
+              })}
               {dispute.evidence.length === 0 ? <p className="dispute-detail-muted">No evidence files were submitted.</p> : (
                 <div className="dispute-evidence-groups">
                   {(['Client', 'Freelancer'] as const).map(role => {
                     const party = dispute.initiator.role === role ? dispute.initiator : dispute.respondent?.role === role ? dispute.respondent : null;
                     const evidenceItems = dispute.evidence
-                      .filter(evidence => party?.id === evidence.uploadedById)
+                      .filter(evidence => !evidence.isRequestedByAdmin && party?.id === evidence.uploadedById)
                       .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
                     return (
                       <section className="dispute-evidence-group" key={role}>

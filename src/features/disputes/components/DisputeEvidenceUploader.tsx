@@ -9,6 +9,8 @@ interface DisputeEvidenceUploaderProps {
   disputeId: string;
   disabled: boolean;
   onUploaded: (evidence: DisputeEvidence[]) => void;
+  requestEvidenceId?: string;
+  title?: string;
 }
 
 export function DisputeEvidenceUploader({
@@ -16,6 +18,8 @@ export function DisputeEvidenceUploader({
   disputeId,
   disabled,
   onUploaded,
+  requestEvidenceId,
+  title = 'Add evidence',
 }: DisputeEvidenceUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -25,7 +29,9 @@ export function DisputeEvidenceUploader({
     if (disabled || submitting || files.length === 0) return;
     setSubmitting(true);
     setError(null);
-    const response = await disputePostAPI.addEvidence(contractId, disputeId, files);
+    const response = requestEvidenceId
+      ? await disputePostAPI.addEvidence(contractId, disputeId, files, requestEvidenceId)
+      : await disputePostAPI.addEvidence(contractId, disputeId, files);
     setSubmitting(false);
 
     if (!response.success || !response.data) {
@@ -40,14 +46,14 @@ export function DisputeEvidenceUploader({
   if (disabled) {
     return (
       <div className="dispute-evidence-locked">
-        Evidence can only be added while the dispute is open or under review.
+        Evidence can only be added before the dispute is resolved or closed.
       </div>
     );
   }
 
   return (
     <div className="dispute-evidence-uploader">
-      <h3>Add evidence</h3>
+      <h3>{title}</h3>
       <p>Upload files, images, videos, archives, or documents that support your case.</p>
       <DisputeEvidenceFilePicker
         files={files}

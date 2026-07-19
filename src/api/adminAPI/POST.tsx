@@ -4,8 +4,10 @@ import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
 import type { WithdrawalResponse } from '../../types/models/Financial';
 import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
-import type { DisputeResolution } from '../../types/models/Dispute';
+import type { DisputeEvidence, DisputeMilestoneOutcome, DisputeResolution, EvidenceRequestTarget } from '../../types/models/Dispute';
 import { normalizeAdminDisputeDetail } from './disputeUtils';
+import { normalizeEvidence } from '../disputeAPI/utils';
+import type { MessageResponse } from '../messageAPI/GET';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -24,13 +26,31 @@ export interface AdminResolveDisputePayload {
   resolution: DisputeResolution;
   resolutionNote: string;
   internalNotes?: string;
-  refundToClientAmount?: number;
-  releaseToFreelancerAmount?: number;
-  milestoneActions?: { milestoneId: string; action: number }[];
+  milestoneDecisions: {
+    milestoneId: string;
+    outcome: DisputeMilestoneOutcome;
+    additionalReleaseToFreelancer: number;
+    refundToClient: number;
+  }[];
   contractAction: number;
 }
 
 export const adminPostAPI = {
+  sendDisputeMessage: async (
+    disputeId: string,
+    conversationId: string,
+    content: string,
+    attachments: File[],
+  ): Promise<ApiResponse<MessageResponse>> => {
+    const formData = new FormData();
+    if (content.trim()) formData.append('content', content.trim());
+    for (const file of attachments) formData.append('attachments', file);
+    return apiService.post<MessageResponse>(
+      `${Admin_Api_Base_Url}/disputes/${disputeId}/conversations/${conversationId}/messages`,
+      formData,
+    );
+  },
+
   resolveDispute: async (
     disputeId: string,
     payload: AdminResolveDisputePayload
@@ -48,16 +68,29 @@ export const adminPostAPI = {
   requestEvidence: async (
     disputeId: string,
     reason: string,
-    deadline?: string | null
+    deadline: string | null,
+    target: EvidenceRequestTarget,
   ): Promise<ApiResponse<AdminDisputeDetail>> => {
     const response = await apiService.post<unknown>(
       `${Admin_Api_Base_Url}/disputes/${disputeId}/request-evidence`,
-      { reason, deadline: deadline || null }
+      { reason, deadline: deadline || null, target }
     );
     return {
       ...response,
       data: response.data ? normalizeAdminDisputeDetail(response.data) : undefined,
     };
+  },
+
+  reviewDisputeEvidence: async (
+    disputeId: string,
+    evidenceId: string,
+    reviewNote?: string,
+  ): Promise<ApiResponse<DisputeEvidence>> => {
+    const response = await apiService.post<unknown>(
+      `${Admin_Api_Base_Url}/disputes/${disputeId}/evidence/${evidenceId}/review`,
+      { reviewNote: reviewNote?.trim() || null },
+    );
+    return { ...response, data: response.data ? normalizeEvidence(response.data) : undefined };
   },
 
   grantUserPremium: async (userId: string): Promise<ApiResponse<object>> =>

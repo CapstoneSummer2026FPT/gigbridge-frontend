@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { AlertCircle, LoaderCircle, MessageSquare, Send } from 'lucide-react';
+import { AlertCircle, LoaderCircle, MessageSquare, Paperclip, Send } from 'lucide-react';
 import { messageGetAPI, type ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -113,10 +113,11 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
             {messages.map(message => {
               const system = message.messageType === MessageType.System || message.messageType === MessageType.DisputeEvent;
               if (system) return <div className="dispute-chat-system" key={message.messageId}>{message.content}</div>;
+              if (message.messageType === MessageType.AdminOfficial) return <div className="dispute-chat-official" key={message.messageId}><strong>Administrator</strong><div>{message.content}</div>{message.attachments.map(attachment => <a key={attachment.messageAttachmentId} href={attachment.fileUrl} target="_blank" rel="noreferrer"><Paperclip size={13} /> {attachment.fileName}</a>)}<time>{new Date(message.sentAt).toLocaleString()}</time></div>;
               const mine = message.senderUserId === user?.id;
               return (
                 <div className={`dispute-chat-message ${mine ? 'mine' : ''}`} key={message.messageId}>
-                  <div>{message.content}</div>
+                  <div>{message.content}{message.attachments.map(attachment => <a key={attachment.messageAttachmentId} href={attachment.fileUrl} target="_blank" rel="noreferrer"><Paperclip size={13} /> {attachment.fileName}</a>)}</div>
                   <time>{new Date(message.sentAt).toLocaleString()}</time>
                 </div>
               );

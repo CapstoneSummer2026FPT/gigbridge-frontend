@@ -35,6 +35,18 @@ export interface AdminDisputeListResult {
   totalPages: number;
 }
 
+export interface AdminRelatedReport { reportId: string; issueType: number; description: string; desiredResolution: string; status: number; createdAt: string; }
+export interface AdminContractSummary { totalBudget: number; createdAt: string; startDate: string | null; endDate: string | null; completedAt: string | null; progressPercentage: number; }
+export interface AdminJobQuestion { question: string; acceptedAnswer: string | null; }
+export interface AdminProposalMilestone { title: string; description: string | null; amount: number; estimatedDuration: string | null; deliverables: string | null; acceptanceCriteria: string | null; orderIndex: number; }
+export interface AdminOriginalJob { jobPostId: string; title: string; description: string; budgetMin: number | null; budgetMax: number | null; currency: string | null; duration: string | null; category: string | null; skills: string[]; proposalAmount: number | null; proposalDuration: string | null; questions: AdminJobQuestion[]; proposedMilestones: AdminProposalMilestone[]; }
+export interface AdminMilestoneAttachment { attachmentId: string; fileName: string; fileUrl: string; fileSize: number | null; mimeType: string | null; uploadedByUserId: string | null; createdAt: string; }
+export interface AdminMilestone { milestoneId: string; title: string; description: string | null; amount: number; releasedAmount: number; allocatableAmount: number; status: number; deliverables: string | null; submissionDescription: string | null; dueDate: string | null; startedAt: string | null; submittedAt: string | null; approvedAt: string | null; paidAt: string | null; attachments: AdminMilestoneAttachment[]; }
+export interface AdminEscrowSummary { escrowId: string | null; originalEscrow: number; fundedAmount: number; releasedAmount: number; refundedAmount: number; serviceFeeAmount: number; remainingAmount: number; status: number | null; }
+export interface AdminConversationReferences { workspaceConversationId: string | null; disputeConversationId: string | null; }
+export interface AdminAuditEvent { auditId: string; adminId: string; action: string; oldValues: string | null; newValues: string | null; createdAt: string; }
+export interface AdminMilestoneDecision { decisionId: string; milestoneId: string; outcome: number; milestoneAmount: number; releasedBeforeDecision: number; additionalRelease: number; refund: number; decidedByAdminId: string; createdAt: string; }
+
 export interface AdminDisputeDetail {
   id: string;
   contractId: string;
@@ -59,6 +71,22 @@ export interface AdminDisputeDetail {
   createdAt: string;
   updatedAt: string | null;
   evidence: DisputeEvidence[];
+  title: string | null;
+  description: string | null;
+  claimedAmount: number | null;
+  requestedResolution: string | null;
+  urgency: number;
+  respondentId: string | null;
+  respondentName: string | null;
+  assignedAdminName: string | null;
+  relatedReport: AdminRelatedReport | null;
+  contract: AdminContractSummary;
+  originalJob: AdminOriginalJob;
+  milestones: AdminMilestone[];
+  escrow: AdminEscrowSummary;
+  conversations: AdminConversationReferences;
+  auditTrail: AdminAuditEvent[];
+  milestoneDecisions: AdminMilestoneDecision[];
 }
 
 export interface AdminDisputeListParams {

@@ -204,6 +204,9 @@
 .dispute-chat-message.mine > div { color: white; background: var(--gb-cyan); border-radius: .8rem .8rem .2rem .8rem; text-align: left; }
 .dispute-chat-message time { display: block; margin-top: .2rem; color: var(--muted-foreground); font-size: .7rem; }
 .dispute-chat-system { align-self: center; padding: .4rem .75rem; border-radius: 999px; color: #b45309; background: rgba(245, 158, 11, .12); font-size: .78rem; }
+.dispute-chat-official { align-self: center; width: min(90%, 620px); padding: .75rem 1rem; border: 1px solid rgba(14, 165, 233, .35); border-radius: .85rem; background: rgba(14, 165, 233, .08); text-align: center; white-space: pre-wrap; }
+.dispute-chat-official strong { display: block; margin-bottom: .35rem; color: var(--gb-cyan); }
+.dispute-chat-official time { display: block; margin-top: .35rem; color: var(--muted-foreground); font-size: .7rem; }
 .dispute-chat-input { display: flex; gap: .65rem; margin-top: .75rem; }
 .dispute-chat-input textarea { flex: 1; resize: vertical; min-height: 3rem; padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; color: var(--foreground); background: var(--background); }
 .dispute-chat-input button { align-self: stretch; display: flex; align-items: center; gap: .4rem; padding: 0 1rem; border: 0; border-radius: .75rem; color: white; background: var(--gb-cyan); font-weight: 700; cursor: pointer; }

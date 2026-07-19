@@ -19,6 +19,7 @@ export enum MessageType {
   MilestoneEvent = 6,
   PaymentEvent = 7,
   DisputeEvent = 8,
+  AdminOfficial = 10,
 }
 
 /**

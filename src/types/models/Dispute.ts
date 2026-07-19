@@ -21,6 +21,19 @@ export enum DisputeUrgency {
   Critical = 2,
 }
 
+export enum EvidenceRequestTarget {
+  Reporter = 0,
+  Respondent = 1,
+  Both = 2,
+}
+
+export enum DisputeMilestoneOutcome {
+  Accepted = 0,
+  Rejected = 1,
+  PartiallyAccepted = 2,
+  Cancelled = 3,
+}
+
 export interface DisputeInitiator {
   id: string;
   name: string | null;
@@ -34,11 +47,24 @@ export interface DisputeMilestone {
 
 export interface DisputeEvidence {
   id: string;
-  uploadedById: string;
-  fileName: string;
+  uploadedById: string | null;
+  fileName: string | null;
   fileSize: number | null;
   description: string | null;
   createdAt: string;
+  isRequestedByAdmin: boolean;
+  requestGroupId: string | null;
+  requestedByAdminId: string | null;
+  requestedAt: string | null;
+  deadline: string | null;
+  requestTarget: EvidenceRequestTarget | null;
+  isRequestFulfilled: boolean;
+  reviewedByAdminId: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  uploadedByName: string | null;
+  requestedByAdminName: string | null;
+  reviewedByAdminName: string | null;
 }
 
 export interface Dispute {

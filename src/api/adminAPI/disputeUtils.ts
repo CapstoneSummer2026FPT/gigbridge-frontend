@@ -4,8 +4,8 @@ import type {
   AdminDisputeListResult,
   AdminDisputeParty,
 } from '../../types/models/AdminDispute';
-import type { DisputeEvidence } from '../../types/models/Dispute';
 import { DisputeResolution, DisputeStatus } from '../../types/models/Dispute';
+import { normalizeEvidence } from '../disputeAPI/utils';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -25,18 +25,6 @@ const nullableString = (source: UnknownRecord, ...keys: string[]): string | null
 const normalizeResolution = (source: UnknownRecord): DisputeResolution | null => {
   const value = valueOf<number | null>(source, 'resolution', 'Resolution');
   return value === undefined || value === null ? null : Number(value) as DisputeResolution;
-};
-
-const normalizeEvidence = (raw: unknown): DisputeEvidence => {
-  const source = (raw ?? {}) as UnknownRecord;
-  return {
-    id: String(valueOf(source, 'disputeEvidenceId', 'DisputeEvidenceId') ?? ''),
-    uploadedById: String(valueOf(source, 'uploadedById', 'UploadedById') ?? ''),
-    fileName: String(valueOf(source, 'fileName', 'FileName') ?? ''),
-    fileSize: valueOf<number | null>(source, 'fileSize', 'FileSize') ?? null,
-    description: nullableString(source, 'description', 'Description'),
-    createdAt: String(valueOf(source, 'createdAt', 'CreatedAt') ?? ''),
-  };
 };
 
 const normalizeParty = (raw: unknown): AdminDisputeParty => {
@@ -88,6 +76,10 @@ export const normalizeAdminDisputeDetail = (raw: unknown): AdminDisputeDetail =>
   const source = (raw ?? {}) as UnknownRecord;
   const evidence = valueOf<unknown[]>(source, 'evidence', 'Evidence') ?? [];
   const freelancer = valueOf<unknown | null>(source, 'freelancer', 'Freelancer');
+  const contract = valueOf<AdminDisputeDetail['contract']>(source, 'contract', 'Contract');
+  const originalJob = valueOf<AdminDisputeDetail['originalJob']>(source, 'originalJob', 'OriginalJob');
+  const escrow = valueOf<AdminDisputeDetail['escrow']>(source, 'escrow', 'Escrow');
+  const conversations = valueOf<AdminDisputeDetail['conversations']>(source, 'conversations', 'Conversations');
   return {
     id: String(valueOf(source, 'disputeId', 'DisputeId') ?? ''),
     contractId: String(valueOf(source, 'contractId', 'ContractId') ?? ''),
@@ -112,5 +104,21 @@ export const normalizeAdminDisputeDetail = (raw: unknown): AdminDisputeDetail =>
     createdAt: String(valueOf(source, 'createdAt', 'CreatedAt') ?? ''),
     updatedAt: nullableString(source, 'updatedAt', 'UpdatedAt'),
     evidence: evidence.map(normalizeEvidence),
+    title: nullableString(source, 'title', 'Title'),
+    description: nullableString(source, 'description', 'Description'),
+    claimedAmount: valueOf<number | null>(source, 'claimedAmount', 'ClaimedAmount') ?? null,
+    requestedResolution: nullableString(source, 'requestedResolution', 'RequestedResolution'),
+    urgency: Number(valueOf(source, 'urgency', 'Urgency') ?? 0),
+    respondentId: nullableString(source, 'respondentId', 'RespondentId'),
+    respondentName: nullableString(source, 'respondentName', 'RespondentName'),
+    assignedAdminName: nullableString(source, 'assignedAdminName', 'AssignedAdminName'),
+    relatedReport: valueOf(source, 'relatedReport', 'RelatedReport') ?? null,
+    contract: contract ?? { totalBudget: 0, createdAt: '', startDate: null, endDate: null, completedAt: null, progressPercentage: 0 },
+    originalJob: originalJob ?? { jobPostId: '', title: '', description: '', budgetMin: null, budgetMax: null, currency: null, duration: null, category: null, skills: [], proposalAmount: null, proposalDuration: null, questions: [], proposedMilestones: [] },
+    milestones: valueOf(source, 'milestones', 'Milestones') ?? [],
+    escrow: escrow ?? { escrowId: null, originalEscrow: 0, fundedAmount: 0, releasedAmount: 0, refundedAmount: 0, serviceFeeAmount: 0, remainingAmount: 0, status: null },
+    conversations: conversations ?? { workspaceConversationId: null, disputeConversationId: null },
+    auditTrail: valueOf(source, 'auditTrail', 'AuditTrail') ?? [],
+    milestoneDecisions: valueOf(source, 'milestoneDecisions', 'MilestoneDecisions') ?? [],
   };
 };

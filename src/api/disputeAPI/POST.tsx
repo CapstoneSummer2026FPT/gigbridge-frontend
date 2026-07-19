@@ -10,9 +10,11 @@ export const disputePostAPI = {
     contractId: string,
     disputeId: string,
     files: File[],
+    requestEvidenceId?: string,
   ): Promise<ApiResponse<DisputeEvidence[]>> => {
     const formData = new FormData();
     for (const file of files) formData.append('evidenceFiles', file);
+    if (requestEvidenceId) formData.append('requestEvidenceId', requestEvidenceId);
 
     const response = await apiService.post<unknown[]>(
       `${baseUrl(contractId)}/${disputeId}/evidence`,

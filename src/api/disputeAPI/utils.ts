@@ -21,11 +21,24 @@ export const normalizeEvidence = (raw: unknown): DisputeEvidence => {
   const source = (raw ?? {}) as UnknownRecord;
   return {
     id: String(valueOf(source, 'disputeEvidenceId', 'DisputeEvidenceId') ?? ''),
-    uploadedById: String(valueOf(source, 'uploadedById', 'UploadedById') ?? ''),
-    fileName: String(valueOf(source, 'fileName', 'FileName') ?? ''),
+    uploadedById: valueOf<string | null>(source, 'uploadedById', 'UploadedById') ?? null,
+    fileName: valueOf<string | null>(source, 'fileName', 'FileName') ?? null,
     fileSize: valueOf<number | null>(source, 'fileSize', 'FileSize') ?? null,
     description: valueOf<string | null>(source, 'description', 'Description') ?? null,
     createdAt: String(valueOf(source, 'createdAt', 'CreatedAt') ?? ''),
+    isRequestedByAdmin: Boolean(valueOf(source, 'isRequestedByAdmin', 'IsRequestedByAdmin') ?? false),
+    requestGroupId: valueOf<string | null>(source, 'requestGroupId', 'RequestGroupId') ?? null,
+    requestedByAdminId: valueOf<string | null>(source, 'requestedByAdminId', 'RequestedByAdminId') ?? null,
+    requestedAt: valueOf<string | null>(source, 'requestedAt', 'RequestedAt') ?? null,
+    deadline: valueOf<string | null>(source, 'deadline', 'Deadline') ?? null,
+    requestTarget: valueOf<number | null>(source, 'requestTarget', 'RequestTarget') ?? null,
+    isRequestFulfilled: Boolean(valueOf(source, 'isRequestFulfilled', 'IsRequestFulfilled') ?? false),
+    reviewedByAdminId: valueOf<string | null>(source, 'reviewedByAdminId', 'ReviewedByAdminId') ?? null,
+    reviewedAt: valueOf<string | null>(source, 'reviewedAt', 'ReviewedAt') ?? null,
+    reviewNote: valueOf<string | null>(source, 'reviewNote', 'ReviewNote') ?? null,
+    uploadedByName: valueOf<string | null>(source, 'uploadedByName', 'UploadedByName') ?? null,
+    requestedByAdminName: valueOf<string | null>(source, 'requestedByAdminName', 'RequestedByAdminName') ?? null,
+    reviewedByAdminName: valueOf<string | null>(source, 'reviewedByAdminName', 'ReviewedByAdminName') ?? null,
   };
 };
 

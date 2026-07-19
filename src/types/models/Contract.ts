@@ -26,6 +26,7 @@ export enum MilestoneStatus {
   /** @deprecated Payment state is derived from releasedAmount and escrow status. */
   PaymentConfirmed = 5,
   Disputed = 6,
+  Cancelled = 7,
 }
 
 export enum ContractProductHandoffSourceType {
