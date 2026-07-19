@@ -53,6 +53,8 @@ export interface AdminDisputeDetail {
   resolutionLabel: string | null;
   resolutionNote: string | null;
   resolvedByAdminId: string | null;
+  assignedAdminId: string | null;
+  assignedAt: string | null;
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string | null;

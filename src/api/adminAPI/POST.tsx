@@ -20,15 +20,39 @@ export interface AdminBroadcastNotificationPayload {
   sendEmail: boolean;
 }
 
+export interface AdminResolveDisputePayload {
+  resolution: DisputeResolution;
+  resolutionNote: string;
+  internalNotes?: string;
+  refundToClientAmount?: number;
+  releaseToFreelancerAmount?: number;
+  milestoneActions?: { milestoneId: string; action: number }[];
+  contractAction: number;
+}
+
 export const adminPostAPI = {
   resolveDispute: async (
     disputeId: string,
-    resolution: DisputeResolution,
-    resolutionNote: string
+    payload: AdminResolveDisputePayload
   ): Promise<ApiResponse<AdminDisputeDetail>> => {
     const response = await apiService.post<unknown>(
       `${Admin_Api_Base_Url}/disputes/${disputeId}/resolve`,
-      { resolution, resolutionNote }
+      payload
+    );
+    return {
+      ...response,
+      data: response.data ? normalizeAdminDisputeDetail(response.data) : undefined,
+    };
+  },
+
+  requestEvidence: async (
+    disputeId: string,
+    reason: string,
+    deadline?: string | null
+  ): Promise<ApiResponse<AdminDisputeDetail>> => {
+    const response = await apiService.post<unknown>(
+      `${Admin_Api_Base_Url}/disputes/${disputeId}/request-evidence`,
+      { reason, deadline: deadline || null }
     );
     return {
       ...response,

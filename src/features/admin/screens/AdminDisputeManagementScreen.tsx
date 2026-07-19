@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { adminGetAPI, adminPatchAPI, adminPostAPI } from '../../../api/adminAPI';
+import type { AdminResolveDisputePayload } from '../../../api/adminAPI/POST';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import type { AdminDisputeDetail, AdminDisputeListItem } from '../../../types/models/AdminDispute';
 import { DisputeResolution, DisputeStatus, type DisputeEvidence } from '../../../types/models/Dispute';
@@ -20,7 +21,10 @@ import '../styles/admin-dispute-management-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
   [DisputeStatus.Open]: 'Open',
+  [DisputeStatus.WaitingAdmin]: 'Waiting Admin',
   [DisputeStatus.UnderReview]: 'Under Review',
+  [DisputeStatus.WaitingEvidence]: 'Waiting Evidence',
+  [DisputeStatus.DecisionPending]: 'Decision Pending',
   [DisputeStatus.Resolved]: 'Resolved',
   [DisputeStatus.Closed]: 'Closed',
 };
@@ -51,6 +55,22 @@ const apiError = (status: number, message: string): string => {
   return message || 'The request could not be completed.';
 };
 
+const STATUS_FILTERS: ('all' | DisputeStatus)[] = [
+  'all',
+  DisputeStatus.Open,
+  DisputeStatus.WaitingAdmin,
+  DisputeStatus.UnderReview,
+  DisputeStatus.WaitingEvidence,
+  DisputeStatus.DecisionPending,
+  DisputeStatus.Resolved,
+  DisputeStatus.Closed,
+];
+
+interface EvidenceRequestState {
+  reason: string;
+  deadline: string;
+}
+
 export default function AdminDisputeManagementScreen() {
   const [disputes, setDisputes] = useState<AdminDisputeListItem[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<'all' | DisputeStatus>('all');
@@ -66,8 +86,16 @@ export default function AdminDisputeManagementScreen() {
   const [success, setSuccess] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [showEvidenceDialog, setShowEvidenceDialog] = useState(false);
+  const [evidenceRequest, setEvidenceRequest] = useState<EvidenceRequestState>({ reason: '', deadline: '' });
+
+  // Resolve dialog fields
   const [resolution, setResolution] = useState<DisputeResolution>(DisputeResolution.ClientFavored);
   const [resolutionNote, setResolutionNote] = useState('');
+  const [internalNotes, setInternalNotes] = useState('');
+  const [refundAmount, setRefundAmount] = useState('');
+  const [releaseAmount, setReleaseAmount] = useState('');
+  const [contractAction, setContractAction] = useState<number>(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +163,10 @@ export default function AdminDisputeManagementScreen() {
   const stats = useMemo(() => ({
     visible: disputes.length,
     open: disputes.filter((item) => item.status === DisputeStatus.Open).length,
+    waitingAdmin: disputes.filter((item) => item.status === DisputeStatus.WaitingAdmin).length,
     underReview: disputes.filter((item) => item.status === DisputeStatus.UnderReview).length,
+    waitingEvidence: disputes.filter((item) => item.status === DisputeStatus.WaitingEvidence).length,
+    decisionPending: disputes.filter((item) => item.status === DisputeStatus.DecisionPending).length,
     resolved: disputes.filter((item) => item.status === DisputeStatus.Resolved).length,
     closed: disputes.filter((item) => item.status === DisputeStatus.Closed).length,
   }), [disputes]);
@@ -159,9 +190,35 @@ export default function AdminDisputeManagementScreen() {
     }
 
     applyUpdatedDetail(response.data);
-    setSuccess(targetStatus === DisputeStatus.UnderReview
-      ? 'Dispute moved to Under Review. Both contract participants were notified.'
-      : 'Dispute closed. Both contract participants were notified.');
+    setSuccess(`Dispute moved to ${statusLabels[targetStatus]}.`);
+  };
+
+  const requestEvidenceSubmit = async () => {
+    if (!selectedDispute || actionLoading) return;
+    if (!evidenceRequest.reason.trim()) {
+      setError('Evidence request reason is required.');
+      return;
+    }
+
+    setActionLoading(true);
+    setError(null);
+    setSuccess(null);
+    const response = await adminPostAPI.requestEvidence(
+      selectedDispute.id,
+      evidenceRequest.reason.trim(),
+      evidenceRequest.deadline || null
+    );
+    setActionLoading(false);
+
+    if (!response.success || !response.data) {
+      setError(apiError(response.statusCode, response.message));
+      return;
+    }
+
+    applyUpdatedDetail(response.data);
+    setShowEvidenceDialog(false);
+    setEvidenceRequest({ reason: '', deadline: '' });
+    setSuccess('Evidence requested. Participants were notified.');
   };
 
   const resolveCase = async () => {
@@ -174,11 +231,17 @@ export default function AdminDisputeManagementScreen() {
     setActionLoading(true);
     setError(null);
     setSuccess(null);
-    const response = await adminPostAPI.resolveDispute(
-      selectedDispute.id,
+
+    const payload: AdminResolveDisputePayload = {
       resolution,
-      resolutionNote.trim()
-    );
+      resolutionNote: resolutionNote.trim(),
+      internalNotes: internalNotes.trim() || undefined,
+      refundToClientAmount: refundAmount ? Number(refundAmount) : undefined,
+      releaseToFreelancerAmount: releaseAmount ? Number(releaseAmount) : undefined,
+      contractAction,
+    };
+
+    const response = await adminPostAPI.resolveDispute(selectedDispute.id, payload);
     setActionLoading(false);
 
     if (!response.success || !response.data) {
@@ -189,7 +252,11 @@ export default function AdminDisputeManagementScreen() {
     applyUpdatedDetail(response.data);
     setShowResolveDialog(false);
     setResolutionNote('');
-    setSuccess('Dispute decision recorded. Both contract participants were notified. No funds were transferred.');
+    setInternalNotes('');
+    setRefundAmount('');
+    setReleaseAmount('');
+    setContractAction(0);
+    setSuccess('Dispute resolved. Financial transactions and contract actions were executed.');
   };
 
   const downloadEvidence = async (evidence: DisputeEvidence) => {
@@ -213,6 +280,16 @@ export default function AdminDisputeManagementScreen() {
     anchor.remove();
   };
 
+  const resetResolveDialog = () => {
+    setShowResolveDialog(false);
+    setResolution(DisputeResolution.ClientFavored);
+    setResolutionNote('');
+    setInternalNotes('');
+    setRefundAmount('');
+    setReleaseAmount('');
+    setContractAction(0);
+  };
+
   return (
     <AppLayout>
       <div className="admin-disputes-wrapper">
@@ -222,18 +299,17 @@ export default function AdminDisputeManagementScreen() {
             <h1>Dispute Management</h1>
             <p>Review real dispute cases, evidence, participants, and record administrative decisions.</p>
           </div>
-          <div className="dispute-financial-notice">
-            <ShieldAlert size={18} />
-            Decisions recorded here do not transfer, release, split, or refund funds.
-          </div>
         </section>
 
         <section className="disputes-stats">
-          <div><span>Matching Cases</span><strong>{totalItems}</strong></div>
-          <div><span>Visible Open</span><strong>{stats.open}</strong></div>
-          <div><span>Visible Review</span><strong>{stats.underReview}</strong></div>
-          <div><span>Visible Resolved</span><strong>{stats.resolved}</strong></div>
-          <div><span>Visible Closed</span><strong>{stats.closed}</strong></div>
+          <div><span>Total Cases</span><strong>{totalItems}</strong></div>
+          <div><span>Open</span><strong>{stats.open}</strong></div>
+          <div><span>Waiting</span><strong>{stats.waitingAdmin}</strong></div>
+          <div><span>Review</span><strong>{stats.underReview}</strong></div>
+          <div><span>Evidence</span><strong>{stats.waitingEvidence}</strong></div>
+          <div><span>Pending</span><strong>{stats.decisionPending}</strong></div>
+          <div><span>Resolved</span><strong>{stats.resolved}</strong></div>
+          <div><span>Closed</span><strong>{stats.closed}</strong></div>
         </section>
 
         {error && (
@@ -266,16 +342,15 @@ export default function AdminDisputeManagementScreen() {
         <section className="disputes-layout">
           <div className="disputes-list-card">
             <div className="disputes-filter-row">
-              {(['all', DisputeStatus.Open, DisputeStatus.UnderReview, DisputeStatus.Resolved, DisputeStatus.Closed] as const)
-                .map((status) => (
-                  <button
-                    key={status}
-                    className={selectedStatus === status ? 'active' : ''}
-                    onClick={() => setSelectedStatus(status)}
-                  >
-                    {status === 'all' ? 'All' : statusLabels[status]}
-                  </button>
-                ))}
+              {STATUS_FILTERS.map((status) => (
+                <button
+                  key={status}
+                  className={selectedStatus === status ? 'active' : ''}
+                  onClick={() => setSelectedStatus(status)}
+                >
+                  {status === 'all' ? 'All' : statusLabels[status]}
+                </button>
+              ))}
             </div>
 
             <div className="disputes-list">
@@ -308,7 +383,7 @@ export default function AdminDisputeManagementScreen() {
             ) : (
               <>
                 <div className="detail-card-header">
-                  <div><p className="disputes-kicker">Case {selectedDispute.id}</p><h2>{selectedDispute.contractTitle}</h2></div>
+                  <div><p className="disputes-kicker">Case {selectedDispute.id.slice(0, 8)}</p><h2>{selectedDispute.contractTitle}</h2></div>
                   <Scale size={24} />
                 </div>
 
@@ -317,6 +392,9 @@ export default function AdminDisputeManagementScreen() {
                   <div><span>Initiator</span><strong>{selectedDispute.initiatorName}</strong><small>{selectedDispute.initiatorRole}</small></div>
                   <div><span>Milestone</span><strong>{selectedDispute.milestoneTitle ?? 'General contract dispute'}</strong></div>
                   <div><span>Updated</span><strong>{formatDate(selectedDispute.updatedAt)}</strong></div>
+                  {selectedDispute.assignedAdminId && (
+                    <div><span>Assigned Admin</span><strong>{selectedDispute.assignedAdminId.slice(0, 8)}</strong><small>{formatDate(selectedDispute.assignedAt)}</small></div>
+                  )}
                 </div>
 
                 <section className="dispute-detail-section">
@@ -362,11 +440,39 @@ export default function AdminDisputeManagementScreen() {
 
                 <section className="admin-dispute-actions">
                   {selectedDispute.status === DisputeStatus.Open && (
+                    <button onClick={() => void updateStatus(DisputeStatus.WaitingAdmin)} disabled={actionLoading}>
+                      <Clock size={16} /> Move to Waiting
+                    </button>
+                  )}
+                  {selectedDispute.status === DisputeStatus.WaitingAdmin && (
                     <button onClick={() => void updateStatus(DisputeStatus.UnderReview)} disabled={actionLoading}>
-                      <Clock size={16} /> Start Review
+                      <Clock size={16} /> Assign & Start Review
                     </button>
                   )}
                   {selectedDispute.status === DisputeStatus.UnderReview && (
+                    <>
+                      <button onClick={() => void updateStatus(DisputeStatus.WaitingEvidence)} disabled={actionLoading}>
+                        <Clock size={16} /> Request Evidence
+                      </button>
+                      <button onClick={() => void updateStatus(DisputeStatus.DecisionPending)} disabled={actionLoading}>
+                        <Clock size={16} /> Decision Pending
+                      </button>
+                      <button className="resolve-btn" onClick={() => setShowResolveDialog(true)} disabled={actionLoading}>
+                        <CheckCircle size={16} /> Resolve Case
+                      </button>
+                    </>
+                  )}
+                  {selectedDispute.status === DisputeStatus.WaitingEvidence && (
+                    <>
+                      <button onClick={() => void updateStatus(DisputeStatus.UnderReview)} disabled={actionLoading}>
+                        <Clock size={16} /> Return to Review
+                      </button>
+                      <button className="resolve-btn" onClick={() => setShowResolveDialog(true)} disabled={actionLoading}>
+                        <CheckCircle size={16} /> Resolve Case
+                      </button>
+                    </>
+                  )}
+                  {selectedDispute.status === DisputeStatus.DecisionPending && (
                     <button className="resolve-btn" onClick={() => setShowResolveDialog(true)} disabled={actionLoading}>
                       <CheckCircle size={16} /> Resolve Case
                     </button>
@@ -383,34 +489,113 @@ export default function AdminDisputeManagementScreen() {
           </div>
         </section>
 
-        {showResolveDialog && selectedDispute && (
+        {/* Evidence Request Dialog */}
+        {showEvidenceDialog && selectedDispute && (
           <div className="admin-dispute-modal-backdrop" role="presentation">
-            <section className="admin-dispute-modal" role="dialog" aria-modal="true" aria-labelledby="resolve-case-title">
+            <section className="admin-dispute-modal" role="dialog" aria-modal="true">
               <div className="admin-dispute-modal-header">
-                <div><p className="disputes-kicker">Administrative Decision</p><h2 id="resolve-case-title">Resolve Case</h2></div>
-                <button onClick={() => setShowResolveDialog(false)} disabled={actionLoading} aria-label="Close dialog"><X size={18} /></button>
+                <div><p className="disputes-kicker">Request Additional Evidence</p><h2>Request Evidence</h2></div>
+                <button onClick={() => setShowEvidenceDialog(false)} disabled={actionLoading} aria-label="Close"><X size={18} /></button>
               </div>
-              <div className="dispute-financial-warning">
-                <AlertCircle size={18} />
-                This action records the dispute decision only and does not automatically transfer or refund funds.
-              </div>
-              <label>Resolution
-                <select value={resolution} onChange={(event) => setResolution(Number(event.target.value) as DisputeResolution)} disabled={actionLoading}>
-                  {Object.entries(resolutionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              </label>
-              <label>Resolution Note
+              <label>Reason
                 <textarea
-                  value={resolutionNote}
-                  onChange={(event) => setResolutionNote(event.target.value)}
-                  rows={6}
-                  placeholder="Required: explain the decision for both parties"
+                  value={evidenceRequest.reason}
+                  onChange={(e) => setEvidenceRequest((prev) => ({ ...prev, reason: e.target.value }))}
+                  rows={4}
+                  placeholder="Explain why additional evidence is needed"
                   disabled={actionLoading}
                 />
               </label>
+              <label>Deadline (optional)
+                <input
+                  type="date"
+                  value={evidenceRequest.deadline}
+                  onChange={(e) => setEvidenceRequest((prev) => ({ ...prev, deadline: e.target.value }))}
+                  disabled={actionLoading}
+                />
+              </label>
+              <button onClick={() => void requestEvidenceSubmit()} disabled={actionLoading || !evidenceRequest.reason.trim()}>
+                {actionLoading ? <LoaderCircle className="admin-dispute-spin" size={17} /> : null}
+                Request Evidence
+              </button>
+            </section>
+          </div>
+        )}
+
+        {/* Resolve Dialog */}
+        {showResolveDialog && selectedDispute && (
+          <div className="admin-dispute-modal-backdrop" role="presentation" onClick={resetResolveDialog}>
+            <section className="admin-dispute-modal admin-dispute-modal-wide" role="dialog" aria-modal="true" aria-labelledby="resolve-case-title"
+              onClick={(e) => e.stopPropagation()}>
+              <div className="admin-dispute-modal-header">
+                <div><p className="disputes-kicker">Administrative Decision</p><h2 id="resolve-case-title">Resolve Case</h2></div>
+                <button onClick={resetResolveDialog} disabled={actionLoading} aria-label="Close dialog"><X size={18} /></button>
+              </div>
+
+              <div className="resolve-dialog-grid">
+                <div className="resolve-column">
+                  <label>Resolution
+                    <select value={resolution} onChange={(event) => setResolution(Number(event.target.value) as DisputeResolution)} disabled={actionLoading}>
+                      {Object.entries(resolutionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </label>
+
+                  {resolution !== DisputeResolution.Dismissed && (
+                    <>
+                      <label>
+                        Refund to Client (GigCoin)
+                        <input type="number" min="0" step="0.01"
+                          value={refundAmount}
+                          onChange={(e) => setRefundAmount(e.target.value)}
+                          disabled={actionLoading || resolution === DisputeResolution.FreelancerFavored}
+                          placeholder="0"
+                        />
+                      </label>
+                      <label>
+                        Release to Freelancer (GigCoin)
+                        <input type="number" min="0" step="0.01"
+                          value={releaseAmount}
+                          onChange={(e) => setReleaseAmount(e.target.value)}
+                          disabled={actionLoading || resolution === DisputeResolution.ClientFavored}
+                          placeholder="0"
+                        />
+                      </label>
+                    </>
+                  )}
+
+                  <label>Contract Action
+                    <select value={contractAction} onChange={(e) => setContractAction(Number(e.target.value))} disabled={actionLoading}>
+                      <option value={0}>Resume Contract</option>
+                      <option value={1}>Terminate Contract</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="resolve-column">
+                  <label>Resolution Note
+                    <textarea
+                      value={resolutionNote}
+                      onChange={(event) => setResolutionNote(event.target.value)}
+                      rows={6}
+                      placeholder="Required: explain the decision for both parties"
+                      disabled={actionLoading}
+                    />
+                  </label>
+                  <label>Internal Notes (optional)
+                    <textarea
+                      value={internalNotes}
+                      onChange={(event) => setInternalNotes(event.target.value)}
+                      rows={3}
+                      placeholder="Private notes (not visible to participants)"
+                      disabled={actionLoading}
+                    />
+                  </label>
+                </div>
+              </div>
+
               <button className="resolve-btn" onClick={() => void resolveCase()} disabled={actionLoading || !resolutionNote.trim()}>
                 {actionLoading ? <LoaderCircle className="admin-dispute-spin" size={17} /> : <CheckCircle size={17} />}
-                Record Resolution
+                Execute Resolution
               </button>
             </section>
           </div>

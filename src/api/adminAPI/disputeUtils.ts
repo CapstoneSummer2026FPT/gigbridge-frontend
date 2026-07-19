@@ -106,6 +106,8 @@ export const normalizeAdminDisputeDetail = (raw: unknown): AdminDisputeDetail =>
     resolutionLabel: nullableString(source, 'resolutionLabel', 'ResolutionLabel'),
     resolutionNote: nullableString(source, 'resolutionNote', 'ResolutionNote'),
     resolvedByAdminId: nullableString(source, 'resolvedByAdminId', 'ResolvedByAdminId'),
+    assignedAdminId: nullableString(source, 'assignedAdminId', 'AssignedAdminId'),
+    assignedAt: nullableString(source, 'assignedAt', 'AssignedAt'),
     resolvedAt: nullableString(source, 'resolvedAt', 'ResolvedAt'),
     createdAt: String(valueOf(source, 'createdAt', 'CreatedAt') ?? ''),
     updatedAt: nullableString(source, 'updatedAt', 'UpdatedAt'),
