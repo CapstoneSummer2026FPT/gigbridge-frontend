@@ -61,11 +61,11 @@ function isTerminalStatus(status: WithdrawalStatus): boolean {
 function getStatusMeta(status: WithdrawalStatus) {
   switch (status) {
     case WithdrawalStatus.Pending:
-      return { label: 'Đang chờ', className: 'pending' };
+      return { label: 'Đang xử lý tự động', className: 'pending' };
     case WithdrawalStatus.Processing:
-      return { label: 'Đang xử lý', className: 'processing' };
+      return { label: 'Đang xử lý tự động', className: 'processing' };
     case WithdrawalStatus.SyncRequired:
-      return { label: 'Đang xử lý', className: 'processing' };
+      return { label: 'Đang xử lý tự động', className: 'processing' };
     case WithdrawalStatus.Success:
       return { label: 'Thành công', className: 'success' };
     case WithdrawalStatus.Failed:
@@ -73,7 +73,7 @@ function getStatusMeta(status: WithdrawalStatus) {
     case WithdrawalStatus.Cancelled:
       return { label: 'Đã hủy', className: 'cancelled' };
     default:
-      return { label: 'Đang xử lý', className: 'processing' };
+      return { label: 'Đang xử lý tự động', className: 'processing' };
   }
 }
 
@@ -339,7 +339,7 @@ export default function EarlyPayoutScreen() {
     if (response.success && response.data) {
       withdrawalDraftRef.current = null;
       setAmount('');
-      setSuccess('Đã tạo yêu cầu rút tiền. GigCoin đã được khóa cho đến khi PayOS trả trạng thái cuối.');
+      setSuccess('Đã xếp hàng yêu cầu rút tiền. Hệ thống sẽ tự động tạo lệnh chi và kiểm tra trạng thái PayOS.');
       await loadData();
       window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     } else {
@@ -578,7 +578,7 @@ export default function EarlyPayoutScreen() {
               <div className="early-payout-history-head">
                 <div>
                   <h2>Lịch sử rút tiền</h2>
-                  <p>SYNC_REQUIRED vẫn giữ tiền bị khóa cho đến khi đồng bộ được trạng thái cuối.</p>
+                  <p>Hệ thống tự động tạo lệnh chi và thử lại khi PayOS tạm thời gián đoạn.</p>
                 </div>
               </div>
 
@@ -609,7 +609,7 @@ export default function EarlyPayoutScreen() {
                             disabled={syncingId === withdrawal.withdrawalId}
                           >
                             {syncingId === withdrawal.withdrawalId ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                            Đồng bộ
+                            Kiểm tra trạng thái
                           </button>
                         )}
                       </div>

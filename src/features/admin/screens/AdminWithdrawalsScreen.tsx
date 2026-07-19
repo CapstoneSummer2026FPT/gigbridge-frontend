@@ -145,7 +145,9 @@ export default function AdminWithdrawalsScreen() {
 
     if (response.success && response.data) {
       updateWithdrawal(response.data);
-      setSuccess(`Withdrawal ${action} completed.`);
+      setSuccess(action === 'retry'
+        ? 'Withdrawal retry queued; worker will process automatically.'
+        : 'Withdrawal status synced.');
     } else {
       setError(getResponseMessage(response.message, `Cannot ${action} withdrawal.`));
     }
@@ -279,7 +281,7 @@ export default function AdminWithdrawalsScreen() {
                             <Eye size={13} />
                             Detail
                           </button>
-                          {withdrawal.canRetry && (
+                          {!isTerminal(withdrawal.status) && (
                             <button
                               type="button"
                               className="btn-ghost-cyan px-3 py-2 text-xs inline-flex items-center gap-1"
@@ -290,7 +292,7 @@ export default function AdminWithdrawalsScreen() {
                               Sync
                             </button>
                           )}
-                          {!isTerminal(withdrawal.status) && (
+                          {withdrawal.canRetry && (
                             <button
                               type="button"
                               className="btn-ghost-cyan px-3 py-2 text-xs inline-flex items-center gap-1"

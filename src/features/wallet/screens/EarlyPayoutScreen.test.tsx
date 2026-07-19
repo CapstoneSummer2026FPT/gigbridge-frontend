@@ -135,4 +135,33 @@ describe('EarlyPayoutScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cập nhật tài khoản/i }));
     expect(api.updateBankAccount).not.toHaveBeenCalled();
   });
+
+  it('shows nonterminal withdrawals as automatically processed', async () => {
+    api.getWithdrawals.mockResolvedValue({
+      success: true,
+      data: [{
+        withdrawalId: 'withdrawal-1',
+        userId: 'user-1',
+        walletId: 'wallet-1',
+        bankCode: 'VCB',
+        bankName: 'Vietcombank',
+        bankAccountNumberMasked: '*****1234',
+        bankAccountName: 'NGUYEN VAN A',
+        tokenAmount: 10,
+        vndAmount: 10000,
+        feeVnd: 0,
+        netVndAmount: 10000,
+        status: 2,
+        provider: 'PayOS',
+        providerOrderCode: 'wd_1',
+        createdAt: '2026-07-17T00:00:00Z',
+        canRetry: true,
+      }],
+    });
+
+    render(<EarlyPayoutScreen />);
+
+    expect(await screen.findByText('Đang xử lý tự động')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kiểm tra trạng thái' })).toBeInTheDocument();
+  });
 });
