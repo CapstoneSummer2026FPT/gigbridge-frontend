@@ -1234,18 +1234,6 @@ export function ClientContractDetails({
                     </motion.button>
                   )}
 
-                  {!isAdminOverride && !activeDisputeLoading && !activeDisputeError && !activeDispute &&
-                    [ContractStatus.PendingEscrow, ContractStatus.Active, ContractStatus.Completed].includes(contract.status) && (
-                      <motion.button
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => navigate(`/contracts/${contract.contractsId}/disputes/create`)}
-                        className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
-                      >
-                        <ShieldAlert size={17} />
-                        {t('contracts.fileDispute')}
-                      </motion.button>
-                    )}
                 </div>
               </div>
 

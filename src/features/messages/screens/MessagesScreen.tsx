@@ -5,7 +5,7 @@ import {
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
-  Plus, Trash2,
+  Plus, Trash2, ShieldAlert,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
@@ -16,7 +16,20 @@ import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { useMessages } from '../hooks/useMessages';
 import { MESSAGE_ROOMS } from '../messageRooms';
+import { ReportDetailModal, useReportContract } from '../../report-contracts';
+import {
+  ContractReportResolutionAction,
+  ContractReportStatus,
+} from '../../../types/models/ReportContract';
+import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
 import '../styles/messages-screen.css';
+
+const ROOM_COPY = {
+  invited: { label: 'messages.roomInvitedLabel', description: 'messages.roomInvitedDesc' },
+  negotiation: { label: 'messages.roomNegotiationLabel', description: 'messages.roomNegotiationDesc' },
+  workspace: { label: 'messages.roomWorkspaceLabel', description: 'messages.roomWorkspaceDesc' },
+  dispute: { label: 'messages.roomDisputeLabel', description: 'messages.roomDisputeDesc' },
+} as const;
 
 function countdown(start: string, now: number) {
   const delta = new Date(start).getTime() - now;
@@ -90,6 +103,7 @@ function ScheduleCard({ schedule, latest, now, onEdit, onCancel, onRetry, onLate
 export default function MessagesScreen() {
   const { t } = useTranslation();
   const {
+    user,
     isClient,
     loading,
     signalRStatus,
@@ -98,6 +112,8 @@ export default function MessagesScreen() {
     conversationsState,
     activeConvId,
     activeConv,
+    isActiveWorkspaceDisputed,
+    activeWorkspaceDisputeId,
     activeMessages,
     dealStatus,
     showInfo,
@@ -157,6 +173,35 @@ export default function MessagesScreen() {
     nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
+  const [viewReportId, setViewReportId] = useState<string | null>(null);
+  const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
+  const {
+    selectedReport,
+    loadReportDetail,
+    isLoadingDetail: isLoadingReportDetail,
+    respondToReport,
+    isRespondingReport,
+    confirmResolution,
+    isConfirmingReport,
+    escalateToDispute,
+    isEscalatingReport,
+    clearSelectedReport,
+  } = useReportContract();
+
+  const openReportDetail = async (contractId: string, reportId: string) => {
+    setViewReportId(reportId);
+    setUnavailableReportId(null);
+    const response = await loadReportDetail(contractId, reportId);
+    if (!response.success || !response.data) {
+      setUnavailableReportId(reportId);
+      setViewReportId(null);
+    }
+  };
+
+  const closeReportDetail = () => {
+    setViewReportId(null);
+    clearSelectedReport();
+  };
 
   const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
     if (!isLatestOffer) return 'Đề xuất cũ';
@@ -173,6 +218,7 @@ export default function MessagesScreen() {
       : `/jobs/${activeConv.job.id}`
     : '/jobs/browse';
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed' && canNegotiateActiveJob;
+  const isNegotiationConversation = activeConv?.roomType === 'invited' || activeConv?.roomType === 'negotiation';
   const dealPriceNumber = Number(dealPriceInput) || 0;
   const dealPriceValid = dealPriceNumber > 0 && dealPriceNumber <= 9999999999999999.99 && Math.round(dealPriceNumber * 100) / 100 === dealPriceNumber;
   const dealMilestonesMatchPrice = dealPriceValid && Math.abs(dealMilestoneTotal - dealPriceNumber) < 0.01;
@@ -228,7 +274,13 @@ export default function MessagesScreen() {
                 const convos = conversationsState.filter(c => c.roomId === room.id);
                 const roomUnread = convos.reduce((s, c) => s + c.unreadCount, 0);
                 const isOpen = !!openRooms[room.id];
-                const RoomIcon = room.type === 'invited' ? Briefcase : room.type === 'workspace' ? CheckCircle : Layers;
+                const RoomIcon = room.type === 'invited'
+                  ? Briefcase
+                  : room.type === 'workspace'
+                    ? CheckCircle
+                    : room.type === 'dispute'
+                      ? ShieldAlert
+                      : Layers;
 
                 return (
                   <div key={room.id}>
@@ -240,16 +292,18 @@ export default function MessagesScreen() {
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         room.type === 'invited'
                           ? 'bg-teal-500/10 text-teal-500'
+                          : room.type === 'dispute'
+                            ? 'bg-amber-500/10 text-amber-600'
                           : 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)]'
                       }`}>
                         <RoomIcon size={14} />
                       </div>
                       <div className="flex-1 text-left">
                         <span className="text-sm font-semibold text-foreground">
-                          {room.type === 'invited' ? t('messages.roomInvitedLabel') : room.type === 'negotiation' ? t('messages.roomNegotiationLabel') : t('messages.roomWorkspaceLabel')}
+                          {t(ROOM_COPY[room.type].label)}
                         </span>
                         <p className="text-[10px] text-muted-foreground leading-tight">
-                          {room.type === 'invited' ? t('messages.roomInvitedDesc') : room.type === 'negotiation' ? t('messages.roomNegotiationDesc') : t('messages.roomWorkspaceDesc')}
+                          {t(ROOM_COPY[room.type].description)}
                         </p>
                       </div>
                       {roomUnread > 0 && (
@@ -383,7 +437,7 @@ export default function MessagesScreen() {
             </div>
 
             {/* Agreed Deal Banner (freelancer: navigate to contract) */}
-            {dealStatus === 'agreed' && activeConv.roomType !== 'workspace' && (
+            {dealStatus === 'agreed' && isNegotiationConversation && (
               <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
                   <CheckCircle size={18} />
@@ -405,7 +459,7 @@ export default function MessagesScreen() {
             )}
 
             {/* Negotiation accepted banner → conversation already moved */}
-            {negStatus === 'accepted' && activeConv.roomType !== 'workspace' && (
+            {negStatus === 'accepted' && isNegotiationConversation && (
               <div className="bg-[var(--gb-cyan)]/10 border-b border-[var(--gb-cyan)]/20 px-6 py-2.5 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <ArrowRightLeft size={14} className="text-[var(--gb-cyan)] flex-shrink-0" />
                 <p
@@ -418,7 +472,7 @@ export default function MessagesScreen() {
             {/* Message History */}
             <div ref={chatHistoryRef} className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6 flex flex-col gap-6 messages-custom-scroll">
               {anchorNotice && <button onClick={() => setAnchorNotice('')} className="mx-auto text-xs bg-amber-500/10 text-amber-700 px-3 py-2 rounded-lg border-none">{anchorNotice} ×</button>}
-              {!canNegotiateActiveJob && activeConv.roomType !== 'workspace' && (
+              {!canNegotiateActiveJob && isNegotiationConversation && (
                 <div className="mx-auto max-w-xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-xs font-semibold text-amber-700">
                   This job post is no longer open for negotiation. Final offers and negotiation responses are disabled.
                 </div>
@@ -429,13 +483,16 @@ export default function MessagesScreen() {
                     ? t('messages.invitedJobChat')
                     : activeConv.roomType === 'workspace'
                       ? t('messages.workspaceChat')
-                      : t('messages.negotiationChat')}
+                      : activeConv.roomType === 'dispute'
+                        ? t('messages.disputeChat')
+                        : t('messages.negotiationChat')}
                 </span>
               </div>
 
               {activeMessages.map((msg, idx) => {
                 const mine = isMe(msg.senderId);
                 const isSystem = msg.type === 'system' || msg.senderId === 'system';
+                const reportEvent = parseReportSystemMessageMetadata(msg.metadata);
                 const latestScheduleMessage = msg.schedule ? activeMessages.filter(m => m.schedule?.scheduleId === msg.schedule?.scheduleId).sort((a,b) => (b.schedule?.eventSequence || 0) - (a.schedule?.eventSequence || 0))[0] : undefined;
 
                 // Older deployments persisted one message per schedule state.
@@ -444,6 +501,102 @@ export default function MessagesScreen() {
 
                 // ── System message (centered) ─────────────────────────────
                 if (isSystem) {
+                  if (reportEvent) {
+                    const titleKey = reportEvent.eventType === 'created'
+                      ? 'workspace.reportSystemCreatedTitle'
+                      : reportEvent.eventType === 'resolved'
+                        ? 'workspace.reportSystemResolvedTitle'
+                        : 'workspace.reportSystemUpdatedTitle';
+                    const actionKeys: Record<number, string> = {
+                      [ContractReportResolutionAction.AcceptIssue]: 'workspace.reportActionAcceptIssue',
+                      [ContractReportResolutionAction.ProvideExplanation]: 'workspace.reportActionProvideExplanation',
+                      [ContractReportResolutionAction.ProposeResolution]: 'workspace.reportActionProposeResolution',
+                      [ContractReportResolutionAction.RejectIssue]: 'workspace.reportActionRejectIssue',
+                    };
+                    const statusKeys: Record<number, string> = {
+                      [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
+                      [ContractReportStatus.WaitingReporterConfirmation]: 'workspace.reportStatusWaitingConfirmation',
+                      [ContractReportStatus.Resolved]: 'workspace.reportStatusResolved',
+                      [ContractReportStatus.Escalated]: 'workspace.reportStatusEscalated',
+                    };
+                    const issueKeys = [
+                      'workspace.reportIssueTypePaymentIssue',
+                      'workspace.reportIssueTypeMilestoneIssue',
+                      'workspace.reportIssueTypeDelay',
+                      'workspace.reportIssueTypePoorQuality',
+                      'workspace.reportIssueTypeCommunicationProblem',
+                      'workspace.reportIssueTypeScopeChange',
+                      'workspace.reportIssueTypeOther',
+                    ];
+                    const detail = reportEvent.proposedResolution || reportEvent.explanation || reportEvent.rejectReason;
+                    const actor = reportEvent.actorName || reportEvent.actorRole || t('workspace.reportParticipant');
+                    const summary = reportEvent.eventType === 'created'
+                      ? t('workspace.reportSystemCreatedSummary', { actor })
+                      : reportEvent.eventType === 'resolved'
+                        ? t('workspace.reportSystemResolvedSummary')
+                        : reportEvent.resolutionAction === ContractReportResolutionAction.AcceptIssue
+                          ? t('workspace.reportSystemAcceptedSummary', { actor })
+                          : reportEvent.resolutionAction === ContractReportResolutionAction.ProvideExplanation
+                            ? t('workspace.reportSystemExplainedSummary', { actor })
+                            : reportEvent.resolutionAction === ContractReportResolutionAction.ProposeResolution
+                              ? t('workspace.reportSystemProposedSummary', { actor })
+                              : reportEvent.resolutionAction === ContractReportResolutionAction.RejectIssue
+                                ? t('workspace.reportSystemRejectedSummary', { actor })
+                                : t('workspace.reportSystemUpdatedSummary', { actor });
+                    const unavailable = unavailableReportId === reportEvent.reportId;
+                    const selected = viewReportId === reportEvent.reportId;
+
+                    return (
+                      <div key={msg.id ?? idx} className="flex justify-center">
+                        <div className={`w-[min(440px,80vw)] rounded-2xl border bg-card p-4 shadow-sm ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500/30'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              {reportEvent.eventType === 'resolved'
+                                ? <CheckCircle size={18} className="text-emerald-500" />
+                                : <AlertCircle size={18} className="text-amber-500" />}
+                              <p className="text-sm font-bold">{t(titleKey)}</p>
+                            </div>
+                            <span className={`rc-status rc-status-${reportEvent.status}`}>
+                              {t(statusKeys[reportEvent.status] || 'workspace.reportStatusPending')}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs text-muted-foreground">{summary}</p>
+                          {reportEvent.eventType === 'created' && (
+                            <div className="mt-3 space-y-2 rounded-xl bg-muted/60 p-3 text-xs">
+                              <p><strong>{t('workspace.reportSystemReason')}:</strong> {t(issueKeys[reportEvent.issueType] || issueKeys[6])}</p>
+                              <p><strong>{t('workspace.reportDesiredResolution')}:</strong> {reportEvent.desiredResolution}</p>
+                              <p><strong>{t('workspace.reportDescription')}:</strong> {reportEvent.description}</p>
+                            </div>
+                          )}
+                          {reportEvent.eventType === 'updated' && reportEvent.resolutionAction !== null && (
+                            <div className="mt-3 rounded-xl bg-muted/60 p-3 text-xs">
+                              <strong>{t('workspace.reportSystemAction')}:</strong>{' '}
+                              {t(actionKeys[reportEvent.resolutionAction])}
+                              {detail && <p className="mt-2"><strong>{t('workspace.reportSystemReason')}:</strong> {detail}</p>}
+                            </div>
+                          )}
+                          {reportEvent.eventType === 'resolved' && (
+                            <p className="mt-3 rounded-xl bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-700">
+                              {t('workspace.reportSystemResolvedBody')}
+                            </p>
+                          )}
+                          {unavailable ? (
+                            <p className="mt-3 text-xs font-semibold text-red-500">{t('workspace.reportUnavailable')}</p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void openReportDetail(reportEvent.contractId, reportEvent.reportId)}
+                              disabled={isLoadingReportDetail && selected}
+                              className="mt-3 rounded-lg border border-amber-500/30 bg-transparent px-3 py-2 text-xs font-bold text-amber-600 cursor-pointer hover:bg-amber-500/10 disabled:opacity-50"
+                            >
+                              {isLoadingReportDetail && selected ? t('common.loading') : t('workspace.reportView')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div key={msg.id ?? idx} className="flex justify-center">
                       <div className="bg-muted/80 border border-border rounded-full px-4 py-1.5 text-xs text-muted-foreground font-medium text-center max-w-md">
@@ -682,6 +835,26 @@ export default function MessagesScreen() {
             </div>
 
             {/* Input Area */}
+            {isActiveWorkspaceDisputed ? (
+              <div className="shrink-0 border-t border-amber-500/20 bg-amber-500/10 p-4">
+                <div className="mx-auto flex max-w-3xl items-center justify-center gap-3 text-amber-700">
+                  <ShieldAlert size={20} className="shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <strong className="text-sm">{t('workspace.disputeLockedTitle')}</strong>
+                    <p className="text-xs">{t('workspace.disputeLockedDescription')}</p>
+                  </div>
+                  {activeWorkspaceDisputeId && activeConv.contractId && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/contracts/${activeConv.contractId}/disputes/${activeWorkspaceDisputeId}`)}
+                      className="shrink-0 rounded-full border-none bg-amber-600 px-4 py-2 text-xs font-bold text-white cursor-pointer hover:bg-amber-700"
+                    >
+                      {t('workspace.openDispute')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
             <div className="shrink-0 p-4 bg-card border-t border-border">
               <div className="flex flex-col border border-border rounded-2xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
 
@@ -941,6 +1114,7 @@ export default function MessagesScreen() {
                 </div>
               </div>
             </div>
+            )}
             </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-card">
@@ -1149,6 +1323,32 @@ export default function MessagesScreen() {
             <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || googleMeetConnecting || (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : scheduleMode.startsWith('counter') ? !scheduleTime : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : scheduleMode.startsWith('counter') ? 'Send time' : t('schedule.save')}</button></div>
           </div>
         </div>
+      )}
+
+      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
+        <ReportDetailModal
+          report={selectedReport}
+          contractTitle={activeConv?.job.title || t('workspace.disputeTitlePrefix')}
+          currentUserId={user?.id ?? ''}
+          isOpen
+          onClose={closeReportDetail}
+          onRespond={async (input) => {
+            const response = await respondToReport(selectedReport.contractId, selectedReport.id, input);
+            return { success: response.success, message: response.message };
+          }}
+          onConfirm={async (isAccepted) => {
+            const response = await confirmResolution(selectedReport.contractId, selectedReport.id, isAccepted);
+            return { success: response.success, message: response.message };
+          }}
+          onEscalate={async (input) => {
+            const response = await escalateToDispute(selectedReport.contractId, selectedReport.id, input);
+            return { success: response.success, message: response.message, disputeId: response.data?.id };
+          }}
+          onDisputeCreated={(disputeId) => navigate(`/contracts/${selectedReport.contractId}/disputes/${disputeId}`)}
+          isResponding={isRespondingReport}
+          isConfirming={isConfirmingReport}
+          isEscalating={isEscalatingReport}
+        />
       )}
     </AppLayout>
   );

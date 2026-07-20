@@ -581,3 +581,14 @@
     max-width: 96% !important;
   }
 }
+.workspace-dispute-lock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  color: #b45309;
+}
+.workspace-dispute-lock div { text-align: left; }
+.workspace-dispute-lock p { margin: .2rem 0 0; font-weight: 500; }
+.workspace-dispute-lock button { border: 0; border-radius: 999px; padding: .5rem .9rem; background: #d97706; color: white; font-weight: 700; cursor: pointer; }
+.workspace-disputed-badge { display: inline-flex; align-items: center; gap: .25rem; margin-bottom: .2rem; padding: .15rem .45rem; border-radius: 999px; color: #b45309; background: rgba(245, 158, 11, .12); font-size: .65rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
