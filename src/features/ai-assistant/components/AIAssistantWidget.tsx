@@ -21,6 +21,7 @@ import {
   estimateTokenUsage,
   type AIAssistantMessage,
 } from '../mock/data-for-AIAssistantScreen';
+import { aiAssistantAPI } from '../../../api/aiAssistantAPI';
 import '../styles/ai-assistant-widget.css';
 
 const AI_SESSION_KEY = 'gb_ai_widget_v2';
@@ -70,7 +71,14 @@ export default function AIAssistantWidget() {
 
   /* ── State ── */
   const [isOpen,            setIsOpen]          = useState(false);
-  const [messages,          setMessages]        = useState<AIAssistantMessage[]>([]);
+  const [messages,          setMessages]        = useState<AIAssistantMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(AI_SESSION_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [input,             setInput]           = useState('');
   const [serviceState,      setServiceState]    = useState<ServiceState>('ready');
   const [error,             setError]           = useState('');
@@ -100,8 +108,7 @@ export default function AIAssistantWidget() {
     }
   }, [isOpen, messages.length]);
 
-  /* ── Fresh start: clear old session cache ── */
-  useEffect(() => { sessionStorage.removeItem(AI_SESSION_KEY); }, []);
+  /* ── Persistent storage enabled: conversation history persists across tab reloads ── */
 
   /* ── Speech recognition ── */
   useEffect(() => {
@@ -143,7 +150,7 @@ export default function AIAssistantWidget() {
 
   /* ── Persist messages ── */
   useEffect(() => {
-    sessionStorage.setItem(AI_SESSION_KEY, JSON.stringify(messages));
+    localStorage.setItem(AI_SESSION_KEY, JSON.stringify(messages));
   }, [messages]);
 
   /* ── Clear unread when panel opened ── */
@@ -187,6 +194,7 @@ export default function AIAssistantWidget() {
   const reset = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     stopSpeak();
+    localStorage.removeItem(AI_SESSION_KEY);
     setMessages([]);
     setInput('');
     setServiceState('ready');
@@ -226,26 +234,50 @@ export default function AIAssistantWidget() {
       setError('AI response is taking longer than expected...');
     }, AI_TIMEOUT_MS);
 
-    const willTimeout = text.toLowerCase().includes('timeout');
-    const willFail    = text.toLowerCase().includes('unavailable') || text.toLowerCase().includes('offline');
-    await new Promise(r => setTimeout(r, willTimeout ? 5600 : 1300));
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    // Map history and strip disclaimers
+    const history = messages.map(m => ({
+      role: m.role,
+      content: m.content.replace(/\n\nDisclaimer:[\s\S]*$/, '')
+    }));
 
-    if (willFail) { setServiceState('unavailable'); setError('AI service temporarily offline. Please try again.'); return; }
+    try {
+      const response = await aiAssistantAPI.query({
+        question: text,
+        history: history,
+        collectionName: 'general-knowledge',
+        style: 'precision'
+      });
 
-    const res = buildMockAIResponse(text, roleLabel);
-    const aiMsg: AIAssistantMessage = {
-      id: `ai_${Date.now()}`, role: 'assistant', type: res.type,
-      content: `${res.content}\n\nDisclaimer: ${AI_ASSISTANT_DISCLAIMER}`,
-      createdAt: new Date().toISOString(), tokenEstimate: estimateTokenUsage(res.content),
-    };
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    setMessages(p => [...p, aiMsg]);
-    setServiceState('ready');
-    setError('');
-    playSound('receive', soundEnabled);
-    if (!isOpen) setUnread(p => p + 1);
-    if (voiceEnabled) speak(res.content);
+      if (!response.success || !response.data) {
+        setServiceState('unavailable');
+        setError(response.message || 'AI service temporarily offline. Please try again.');
+        return;
+      }
+
+      const answer = response.data.answer;
+
+      const aiMsg: AIAssistantMessage = {
+        id: `ai_${Date.now()}`,
+        role: 'assistant',
+        type: 'text',
+        content: `${answer}\n\nDisclaimer: ${AI_ASSISTANT_DISCLAIMER}`,
+        createdAt: new Date().toISOString(),
+        tokenEstimate: estimateTokenUsage(answer),
+      };
+
+      setMessages(p => [...p, aiMsg]);
+      setServiceState('ready');
+      setError('');
+      playSound('receive', soundEnabled);
+      if (!isOpen) setUnread(p => p + 1);
+      if (voiceEnabled) speak(answer);
+    } catch (err: any) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setServiceState('unavailable');
+      setError(err?.message || 'Failed to generate response. Please try again.');
+    }
   };
 
   const handleSuggestionsWheel = (e: React.WheelEvent) => {

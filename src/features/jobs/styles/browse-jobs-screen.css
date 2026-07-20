@@ -129,18 +129,45 @@
   }
 }
 
-/* Redesign for layout grid columns */
+/* Responsive results + promotion rail */
+.browse-jobs-shell {
+  width: min(100%, 96rem);
+  margin-inline: auto;
+}
+
 .browse-jobs-layout-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
   align-items: start;
   margin-top: 1rem;
 }
 
-@media (min-width: 1024px) {
+.browse-jobs-results { min-width: 0; }
+
+@media (max-width: 767px) {
+  .system-ads-sidebar-container { display: contents; }
+  .system-ads-sidebar-container .promotion-sticky-card { order: 1; }
+  .browse-jobs-results { order: 2; }
+  .system-ads-sidebar-container > :not(.promotion-sticky-card) { order: 3; }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .browse-jobs-layout-grid { gap: 1.25rem; }
+  .system-ads-sidebar-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .system-ads-sidebar-container .promotion-sticky-card,
+  .system-ads-sidebar-container .freelancer-ranking-card { grid-column: 1 / -1; }
+}
+
+@media (min-width: 1200px) {
+  .browse-jobs-shell { width: min(100%, 100rem); }
   .browse-jobs-layout-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) clamp(19rem, 25vw, 24rem);
+    gap: clamp(1.25rem, 2vw, 2rem);
   }
 }
 
@@ -148,7 +175,8 @@
 .system-ads-sidebar-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  align-self: stretch;
 }
 
 /* Advertisements Section */
@@ -465,4 +493,4 @@
   letter-spacing: 0.05em;
 }
 
-.browse-promotion-section{display:grid;gap:12px}.browse-promotion-section>h3{margin:0;font-size:1rem;font-weight:800;color:var(--foreground)}.browse-promotion-section .promotion-profile-card{min-height:430px;width:100%}
+.browse-promotion-section{display:grid;gap:12px}.browse-promotion-section>h3{margin:0;font-size:clamp(.9rem,1.4vw,1rem);font-weight:800;color:var(--foreground)}.browse-promotion-section .promotion-profile-card{width:100%}

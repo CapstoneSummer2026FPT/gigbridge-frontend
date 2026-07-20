@@ -9,6 +9,7 @@ import type {
   LogProposalCheatingEventRequest,
   ProposalAnswerDto,
   QuestionTimerStateDto,
+  VettingEvaluationResponseDto,
 } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
@@ -68,6 +69,38 @@ export const proposalPostAPI = {
 
   acceptForNegotiation: async (proposalId: string): Promise<ApiResponse<string>> => {
     return apiService.post<string>(`${proposalsUrl}/${proposalId}/accept-for-negotiation`);
+  },
+
+  evaluateVettingAnswers: async (
+    proposalId: string
+  ): Promise<ApiResponse<VettingEvaluationResponseDto>> => {
+    const response = await apiService.post<any>(`${proposalsUrl}/${proposalId}/ai-interview-judging`);
+    if (response.success && response.data) {
+      const raw = response.data;
+      const mapped: VettingEvaluationResponseDto = {
+        score: raw.score,
+        summary: raw.summary,
+        technicalSkills: raw.technical_skills || [],
+        softSkills: raw.soft_skills || [],
+        recommendedHire: !!raw.recommended_hire,
+        holisticAdjustment: raw.holistic_adjustment || 0,
+        holisticAdjustmentReason: raw.holistic_adjustment_reason || '',
+        gradedQuestions: (raw.graded_questions || []).map((q: any) => ({
+          questionIndex: q.question_index,
+          questionText: q.question_text,
+          questionType: q.question_type,
+          difficulty: q.difficulty,
+          candidateAnswer: q.candidate_answer,
+          score: q.score,
+          feedback: q.feedback,
+        })),
+      };
+      return {
+        ...response,
+        data: mapped,
+      };
+    }
+    return response;
   },
 
   generateAICoverLetter: async (jobTitle: string, freelancerSkills: string[]): Promise<string> => {

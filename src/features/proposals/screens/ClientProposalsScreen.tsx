@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Check, Eye, FileText, MessageSquare, X } from 'lucide-react';
+import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { useTranslation } from '../../../hooks/useTranslation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
-import { ProposalStatus, type ProposalDetailDto, type ProposalDto } from '../../../types/models/Proposal';
+import { ProposalStatus, type ProposalDetailDto, type ProposalDto, type VettingEvaluationResponseDto } from '../../../types/models/Proposal';
 import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
 import { getStatusLabel } from '../utils/statusHelpers';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
@@ -44,8 +45,13 @@ const durationScore = (value?: string) => {
 };
 
 export default function ClientProposalsScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const [evalModalOpen, setEvalModalOpen] = useState(false);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [evalResult, setEvalResult] = useState<VettingEvaluationResponseDto | null>(null);
+  const [evalError, setEvalError] = useState('');
   const queryJobId = useMemo(() => new URLSearchParams(location.search).get('job'), [location.search]);
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(queryJobId);
@@ -232,6 +238,24 @@ export default function ClientProposalsScreen() {
     }
 
     navigate('/messages', { state: { activeConvId: response.data } });
+  };
+
+  const loadEvaluation = async (proposalId: string) => {
+    try {
+      setEvalLoading(true);
+      setEvalError('');
+      setEvalResult(null);
+      const response = await proposalPostAPI.evaluateVettingAnswers(proposalId);
+      if (response.success && response.data) {
+        setEvalResult(response.data);
+      } else {
+        setEvalError(response.message || 'Vetting evaluation failed.');
+      }
+    } catch (err: any) {
+      setEvalError(err.message || 'An error occurred during evaluation.');
+    } finally {
+      setEvalLoading(false);
+    }
   };
 
   const isBusy = (id: string, action: BusyAction) => busyAction === actionKey(id, action);
@@ -454,6 +478,15 @@ export default function ClientProposalsScreen() {
 
                 <div className="flex flex-wrap gap-2 border-t border-border pt-4">
                   <button onClick={() => navigate(`/proposals/${detail.proposalId}/answers`)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted/20">Clarifying answers</button>
+                  <button
+                    onClick={() => {
+                      setEvalModalOpen(true);
+                      void loadEvaluation(detail.proposalId);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2 text-xs font-bold text-purple-600 hover:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20"
+                  >
+                    <Brain size={13} /> {t('proposalAnswers.judgeAIInterview')}
+                  </button>
                   {Number(detail.status) === ProposalStatus.Pending && selectedJobCanNegotiate && (
                     <button disabled={isBusy(detail.proposalId, 'shortlist')} onClick={() => updateStatus(detail.proposalId, ProposalStatus.Shortlisted, 'shortlist')} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs font-bold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
                       <Check size={14} /> Shortlist
@@ -480,6 +513,179 @@ export default function ClientProposalsScreen() {
           </aside>
         </div>
       </div>
+
+      {evalModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-card shadow-2xl p-6 text-foreground max-h-[85vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Brain className="text-purple-500 h-5 w-5 animate-pulse" />
+                <h3 className="text-lg font-bold bg-gradient-to-r from-purple-500 to-indigo-500 bg-clip-text text-transparent">
+                  {t('proposalAnswers.aiEvaluationReport')}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEvalModalOpen(false)}
+                className="rounded-lg p-1 hover:bg-muted text-muted-foreground hover:text-foreground transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 scrollbar-thin">
+              {evalLoading && (
+                <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <div className="relative flex h-16 w-16 items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping"></div>
+                    <div className="relative rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 p-4 text-white">
+                      <Brain className="h-8 w-8 animate-pulse" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold text-muted-foreground animate-pulse">
+                    {t('proposalAnswers.evaluating')}
+                  </p>
+                </div>
+              )}
+
+              {evalError && (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-center text-red-500 text-sm">
+                  {evalError}
+                </div>
+              )}
+
+              {evalResult && (
+                <div className="space-y-6">
+                  {/* Summary Card */}
+                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/10 pb-4">
+                      {/* Overall Score */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/10 border border-purple-500/20">
+                          <span className="text-xl font-black text-purple-600 dark:text-purple-400">{evalResult.score}</span>
+                        </div>
+                        <div>
+                          <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t('proposalAnswers.overallScore')}</h4>
+                          <p className="text-sm font-semibold">{t('proposalAnswers.aiScore', { score: evalResult.score })}</p>
+                        </div>
+                      </div>
+
+                      {/* Recommendation Badge */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{t('proposalAnswers.recommendation')}:</span>
+                        {evalResult.recommendedHire ? (
+                          <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-500">
+                            {t('proposalAnswers.recommended')}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-red-500/15 border border-red-500/30 px-3 py-1 text-xs font-bold text-red-500">
+                            {t('proposalAnswers.notRecommended')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('proposalAnswers.summary')}</h4>
+                      <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{evalResult.summary}</p>
+                    </div>
+
+                    {/* Skills cloud */}
+                    <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-purple-500/10">
+                      <div>
+                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('proposalAnswers.technicalSkills')}</h5>
+                        <div className="flex flex-wrap gap-1.5">
+                          {evalResult.technicalSkills?.length ? evalResult.technicalSkills.map((s, idx) => (
+                            <span key={idx} className="rounded bg-background border border-border px-2 py-0.5 text-xs text-foreground font-medium">
+                              {s}
+                            </span>
+                          )) : <span className="text-xs text-muted-foreground">N/A</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('proposalAnswers.softSkills')}</h5>
+                        <div className="flex flex-wrap gap-1.5">
+                          {evalResult.softSkills?.length ? evalResult.softSkills.map((s, idx) => (
+                            <span key={idx} className="rounded bg-background border border-border px-2 py-0.5 text-xs text-foreground font-medium">
+                              {s}
+                            </span>
+                          )) : <span className="text-xs text-muted-foreground">N/A</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Holistic Adjustment */}
+                    {evalResult.holisticAdjustment !== 0 && (
+                      <div className="rounded-lg bg-background border border-border p-3 text-xs">
+                        <div className="flex items-center justify-between font-bold text-foreground">
+                          <span>{t('proposalAnswers.holisticAdjustment')}:</span>
+                          <span className={evalResult.holisticAdjustment > 0 ? 'text-emerald-500' : 'text-red-500'}>
+                            {evalResult.holisticAdjustment > 0 ? `+${evalResult.holisticAdjustment}` : evalResult.holisticAdjustment}
+                          </span>
+                        </div>
+                        {evalResult.holisticAdjustmentReason && (
+                          <p className="mt-1 text-muted-foreground">{t('proposalAnswers.adjustmentReason')}: {evalResult.holisticAdjustmentReason}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Question-by-Question Graded Feedback */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2">
+                      {t('proposalAnswers.questionBreakdown')}
+                    </h4>
+                    {evalResult.gradedQuestions?.map((q) => (
+                      <div key={q.questionIndex} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <h5 className="text-sm font-bold text-foreground">
+                            {q.questionIndex}. {q.questionText}
+                          </h5>
+                          <span className="shrink-0 rounded bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-bold text-purple-500">
+                            {q.score}/100
+                          </span>
+                        </div>
+
+                        {/* Candidate Answer */}
+                        <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
+                          <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                            {t('proposalAnswers.candidateAnswer')}
+                          </span>
+                          <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                            {q.candidateAnswer || t('proposalAnswers.noAnswerProvided')}
+                          </p>
+                        </div>
+
+                        {/* AI feedback */}
+                        <div className="rounded-lg bg-purple-500/5 border border-purple-500/10 p-3 text-xs space-y-1">
+                          <span className="block text-[10px] font-black uppercase text-purple-500 dark:text-purple-400 tracking-wider">
+                            {t('proposalAnswers.aiFeedback')}
+                          </span>
+                          <p className="text-muted-foreground leading-relaxed italic">{q.feedback}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-border pt-3 mt-4 flex justify-end">
+              <button
+                onClick={() => setEvalModalOpen(false)}
+                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/95 transition"
+              >
+                {t('proposalAnswers.close')}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

@@ -158,6 +158,8 @@ export interface GetMyJobPostDto {
   createdAt: string;
   updatedAt?: string | null;
   proposalCount: number;
+  isFeatured?: boolean;
+  featuredUntil?: string | null;
   setupProgress?: JobPostSetupProgressDto | null;
 }
 
@@ -303,6 +305,60 @@ export interface GenerateJobDescriptionResponse {
   customSkills: string[];
   description: string;
   questionRecruitment?: string[] | null;
+}
+
+export interface JobPostPromotionDto {
+  jobPostId: string;
+  isFeatured: boolean;
+  featuredFrom: string;
+  featuredUntil: string;
+  tokenCost: number;
+  walletTransactionId: string;
+  promotionId: string;
+  imageUrl: string;
+  promotionTitle: string;
+  promotionDescription: string;
+}
+
+export interface PromoteJobPostRequest {
+  idempotencyKey: string;
+  imageUrl: string;
+  promotionTitle: string;
+  promotionDescription: string;
+}
+
+export interface PublicJobPromotionCardDto {
+  id: string;
+  jobPostId: string;
+  imageUrl: string;
+  title: string;
+  description: string;
+  featuredUntil: string;
+}
+
+export interface JobPromotionInteractionDto {
+  id: string;
+  impressionCount: number;
+  clickCount: number;
+}
+
+export interface JobPromotionPolicyDto {
+  tokenCost: number;
+  durationDays: number;
+}
+
+export interface CreateAiInterviewRequest {
+  language: 'auto' | 'en' | 'vi';
+  mode: 'text' | 'voice';
+  questionCount: number;
+}
+
+export interface AiInterviewDefinitionDto extends CreateAiInterviewRequest {
+  interviewId: string;
+  jobPostId: string;
+  status: string;
+  createdAt: string;
+  externalReference?: string | null;
 }
 
 export interface JobPostQuestionDto {

@@ -246,3 +246,25 @@ export interface UpdateBulkProposalAnswerItemRequest {
 export interface UpdateBulkProposalAnswersRequest {
   answers: UpdateBulkProposalAnswerItemRequest[];
 }
+
+export interface GradedQuestionDto {
+  questionIndex: number;
+  questionText: string;
+  questionType: string;
+  difficulty: string;
+  candidateAnswer: string;
+  score: number;
+  feedback: string;
+}
+
+export interface VettingEvaluationResponseDto {
+  score: number;
+  summary: string;
+  technicalSkills: string[];
+  softSkills: string[];
+  recommendedHire: boolean;
+  holisticAdjustment: number;
+  holisticAdjustmentReason: string;
+  gradedQuestions: GradedQuestionDto[];
+}
+
