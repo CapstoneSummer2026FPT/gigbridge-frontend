@@ -11,6 +11,7 @@ import { useJobDetail } from '../hooks/useJobDetail';
 import '../styles/job-detail-screen.css';
 import { GigCoinAmount, GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 
 export default function JobDetailScreen() {
   const { t } = useTranslation();
@@ -211,6 +212,18 @@ export default function JobDetailScreen() {
               <h2 className="jd-section-title">{t('jobDetail.jobDescription')}</h2>
               <div className="jd-desc-text">{job.description}</div>
             </div>
+
+            {job.milestonePlans?.length ? (
+              <div className="glass-card rounded-2xl p-5 jd-stagger jd-d2">
+                <NestedMilestonePlanEditor
+                  value={job.milestonePlans as EditableMilestonePlan[]}
+                  onChange={() => undefined}
+                  readOnly
+                  title="Client baseline milestone and WBS"
+                  description="Review this baseline before preparing your proposal. You can propose changes to milestones and work items."
+                />
+              </div>
+            ) : null}
 
             {/* Skills */}
             <div className="glass-card rounded-2xl p-6 md:p-8 jd-stagger jd-d3">

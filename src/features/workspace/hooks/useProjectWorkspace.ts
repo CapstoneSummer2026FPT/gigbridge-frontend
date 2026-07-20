@@ -4,10 +4,11 @@ import * as signalR from '@microsoft/signalr';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
+import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import type { Message } from '../../../types';
-import type { ContractDto, ContractProductHandoffResponse, Milestone } from '../../../types/models/Contract';
+import type { ContractDto, ContractProductHandoffResponse, ContractWorkItem, Milestone, MilestoneEarlyStartRequest } from '../../../types/models/Contract';
 import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import { getChatHubUrl } from '../../../service/apiService';
@@ -21,6 +22,7 @@ interface WorkspaceMilestone {
   dueDate: string;
   status: 'pending' | 'in_progress' | 'submitted' | 'approved' | 'disputed';
   completedAt?: string;
+  workItems: ContractWorkItem[];
 }
 
 interface WorkspaceProject {
@@ -53,7 +55,6 @@ interface WorkspaceProjectListItem {
 interface SubmitMilestoneDeliverablePayload {
   description?: string;
   file?: File | null;
-  externalUrl?: string;
 }
 
 interface SubmitMilestoneDeliverableResult {
@@ -127,6 +128,7 @@ const mapMilestone = (milestone: Milestone): WorkspaceMilestone => ({
   dueDate: milestone.due_date ? new Date(milestone.due_date).toLocaleDateString() : 'Not set',
   status: mapMilestoneStatus(milestone.status),
   completedAt: milestone.paid_at ?? undefined,
+  workItems: milestone.workItems || [],
 });
 
 const buildProject = (contract: ContractDto, milestones: Milestone[]): WorkspaceProject => {
@@ -205,6 +207,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
   const [currentProductHandoff, setCurrentProductHandoff] = useState<ContractProductHandoffResponse | null>(null);
   const [productHandoffs, setProductHandoffs] = useState<ContractProductHandoffResponse[]>([]);
+  const [earlyStartRequests, setEarlyStartRequests] = useState<MilestoneEarlyStartRequest[]>([]);
   const [workspaceContracts, setWorkspaceContracts] = useState<ContractDto[]>([]);
   const [project, setProject] = useState<WorkspaceProject>(emptyProject);
   const [showInfo, setShowInfo] = useState(true);
@@ -232,11 +235,12 @@ export function useProjectWorkspace(initialContractId: string) {
       if (!activeProjectId) return;
 
       try {
-        const [contractResponse, milestonesResponse, contractsResponse, productHandoffsResponse] = await Promise.all([
+        const [contractResponse, milestonesResponse, contractsResponse, productHandoffsResponse, earlyStartResponse] = await Promise.all([
           contractGetAPI.getContractById(activeProjectId),
           contractGetAPI.getMilestonesByContract(activeProjectId),
           contractGetAPI.getMyContracts(),
           contractGetAPI.getProductHandoffs(activeProjectId),
+          contractGetAPI.getEarlyStartRequests?.(activeProjectId) ?? Promise.resolve({ success: true, statusCode: 200, data: [] }),
         ]);
 
         if (!current) return;
@@ -265,6 +269,7 @@ export function useProjectWorkspace(initialContractId: string) {
         setProject(nextProject);
         setProductHandoffs(nextProductHandoffs);
         setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
+        setEarlyStartRequests(earlyStartResponse.data || []);
 
         if (nextContract.conversationId) {
           const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
@@ -515,10 +520,11 @@ export function useProjectWorkspace(initialContractId: string) {
   const reloadActiveWorkspace = async (): Promise<void> => {
     if (!activeProjectId) return;
 
-    const [contractResponse, milestonesResponse, productHandoffsResponse] = await Promise.all([
+    const [contractResponse, milestonesResponse, productHandoffsResponse, earlyStartResponse] = await Promise.all([
       contractGetAPI.getContractById(activeProjectId),
       contractGetAPI.getMilestonesByContract(activeProjectId),
       contractGetAPI.getProductHandoffs(activeProjectId),
+      contractGetAPI.getEarlyStartRequests?.(activeProjectId) ?? Promise.resolve({ success: true, statusCode: 200, data: [] }),
     ]);
 
     if (contractResponse.success && contractResponse.data) {
@@ -528,6 +534,7 @@ export function useProjectWorkspace(initialContractId: string) {
       setProject(buildProject(nextContract, milestonesResponse.data ?? []));
       setProductHandoffs(nextProductHandoffs);
       setCurrentProductHandoff(getCurrentProductHandoffFromList(nextProductHandoffs));
+      setEarlyStartRequests(earlyStartResponse.data || []);
 
       if (nextContract.conversationId) {
         const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
@@ -548,7 +555,6 @@ export function useProjectWorkspace(initialContractId: string) {
 
     const formData = new FormData();
     const description = payload.description?.trim();
-    const externalUrl = payload.externalUrl?.trim();
 
     if (description) {
       formData.append('description', description);
@@ -558,9 +564,7 @@ export function useProjectWorkspace(initialContractId: string) {
       formData.append('file', payload.file);
     }
 
-    if (externalUrl) {
-      formData.append('externalUrl', externalUrl);
-    }
+    if (!payload.file) return { success: false, message: 'A platform-hosted deliverable file is required.' };
 
     const response = await contractPostAPI.submitMilestone(activeProjectId, milestoneId, formData);
 
@@ -587,17 +591,33 @@ export function useProjectWorkspace(initialContractId: string) {
     return { success: true, message: response.message };
   };
 
-  const handleRequestMilestoneUnlock = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+  const handleRequestMilestoneUnlock = async (milestoneId: string, reason: string): Promise<WorkspaceActionResult> => {
     if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
-    const response = await contractPostAPI.requestMilestoneUnlock(activeProjectId, milestoneId);
+    const response = await contractPostAPI.requestMilestoneUnlock(activeProjectId, milestoneId, reason);
 
     if (!response.success) {
       return { success: false, message: response.message || 'Failed to request milestone unlock.' };
     }
 
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleUpdateWorkItem = async (milestoneId: string, workItemId: string, status: number, progressNote?: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || activeContract?.status !== ContractStatus.Active) return { success: false, message: 'Contract is not active.' };
+    const response = await contractPutAPI.updateWorkItem(activeProjectId, milestoneId, workItemId, { status, progressNote });
+    if (!response.success) return { success: false, message: response.message || 'Work item could not be updated.' };
+    await reloadActiveWorkspace();
+    return { success: true, message: response.message };
+  };
+
+  const handleRespondEarlyStart = async (requestId: string, approve: boolean, note?: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId || !isClient) return { success: false, message: 'Only the client can respond.' };
+    const response = await contractPostAPI.respondEarlyStartRequest(activeProjectId, requestId, approve, note);
+    if (!response.success) return { success: false, message: response.message || 'Early start request could not be updated.' };
     await reloadActiveWorkspace();
     return { success: true, message: response.message };
   };
@@ -697,6 +717,7 @@ export function useProjectWorkspace(initialContractId: string) {
     activeContract,
     currentProductHandoff,
     productHandoffs,
+    earlyStartRequests,
     workspaceProjects,
     currentProjData,
     partnerName,
@@ -710,7 +731,8 @@ export function useProjectWorkspace(initialContractId: string) {
     handleOpenMilestoneEditor,
     handleStartMilestone,
     handleRequestMilestoneUnlock,
-    handleWithdrawMilestone,
+    handleUpdateWorkItem,
+    handleRespondEarlyStart,
     handleEndProject,
     handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,

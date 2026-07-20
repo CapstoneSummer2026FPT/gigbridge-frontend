@@ -136,6 +136,7 @@ const toLegacyJobFromMyJobDetail = (job: GetMyJobPostDetailDto): Job => ({
   createdAt: job.createdAt,
   isRemote: !job.location || job.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
+  milestonePlans: job.milestonePlans || [],
 });
 
 const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
@@ -161,6 +162,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
   visibility: job.visibility ?? undefined,
+  milestonePlans: job.milestonePlans || [],
 });
 
 const filterLegacyJobs = (jobs: Job[], filters: LegacyJobFilters = {}): Job[] => {

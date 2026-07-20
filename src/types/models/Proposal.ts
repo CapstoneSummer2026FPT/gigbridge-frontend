@@ -77,6 +77,8 @@ export type ProposalViewModel = ProposalDto & {
 
 export interface ProposalWorkBreakdownItemDto {
   id?: string | null;
+  milestonePlanId?: string | null;
+  milestoneOrderIndex?: number | null;
   title?: string | null;
   description?: string | null;
   deliverables?: string | null;
@@ -93,6 +95,7 @@ export interface ProposalMilestonePlanDto {
   deliverables?: string | null;
   acceptanceCriteria?: string | null;
   orderIndex: number;
+  workItems?: ProposalWorkBreakdownItemDto[];
 }
 
 export interface ProposalDetailDto {

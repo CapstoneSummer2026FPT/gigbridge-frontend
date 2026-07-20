@@ -9,7 +9,7 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
-import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
+import { ContractProductHandoffSourceType, ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
 import '../styles/project-workspace-screen.css';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
@@ -38,10 +38,8 @@ export default function ProjectWorkspaceScreen() {
   const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [submitModal, setSubmitModal] = useState<{ milestoneId: string; title: string } | null>(null);
-  const [submitMode, setSubmitMode] = useState<'file' | 'link'>('file');
   const [submitDescription, setSubmitDescription] = useState('');
   const [submitFile, setSubmitFile] = useState<File | null>(null);
-  const [submitLink, setSubmitLink] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
   const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
@@ -81,6 +79,7 @@ export default function ProjectWorkspaceScreen() {
     project,
     activeContract,
     productHandoffs,
+    earlyStartRequests,
     workspaceProjects,
     currentProjData,
     partnerName,
@@ -91,10 +90,9 @@ export default function ProjectWorkspaceScreen() {
     projectMessages,
     handleSendMessage,
     handleSimulateAttachment,
-    handleOpenMilestoneEditor,
-    handleStartMilestone,
     handleRequestMilestoneUnlock,
-    handleWithdrawMilestone,
+    handleUpdateWorkItem,
+    handleRespondEarlyStart,
     handleEndProject,
     handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
@@ -102,9 +100,6 @@ export default function ProjectWorkspaceScreen() {
     chatEndRef,
   } = useProjectWorkspace(contractId || '');
   const workspaceContractId = contractId || activeProjectId;
-  const approvedMilestoneCount = project.milestones.filter(milestone => milestone.status === 'approved').length;
-  const requiredApprovedForWithdraw = Math.ceil(project.milestones.length * 0.5);
-  const hasEnoughApprovedForWithdraw = project.milestones.length > 0 && approvedMilestoneCount >= requiredApprovedForWithdraw;
   const allMilestonesSubmittedOrApproved = project.milestones.length > 0 &&
     project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved');
   const allMilestonesApproved = project.milestones.length > 0 &&
@@ -130,10 +125,8 @@ export default function ProjectWorkspaceScreen() {
 
   const resetSubmitModal = () => {
     setSubmitModal(null);
-    setSubmitMode('file');
     setSubmitDescription('');
     setSubmitFile(null);
-    setSubmitLink('');
     setSubmitError(null);
     setIsSubmittingDeliverable(false);
     if (submitFileInputRef.current) {
@@ -143,10 +136,8 @@ export default function ProjectWorkspaceScreen() {
 
   const openSubmitModal = (milestone: { id: string; title: string }) => {
     setSubmitModal({ milestoneId: milestone.id, title: milestone.title });
-    setSubmitMode('file');
     setSubmitDescription('');
     setSubmitFile(null);
-    setSubmitLink('');
     setSubmitError(null);
   };
 
@@ -176,28 +167,15 @@ export default function ProjectWorkspaceScreen() {
     if (!submitModal) return;
 
     const trimmedDescription = submitDescription.trim();
-    const trimmedLink = submitLink.trim();
 
     if (trimmedDescription.length > 5000) {
       setSubmitError(t('workspace.descriptionMaxLengthError'));
       return;
     }
 
-    if (submitMode === 'file' && !submitFile) {
+    if (!submitFile) {
       setSubmitError(t('workspace.chooseFileBeforeSubmitError'));
       return;
-    }
-
-    if (submitMode === 'link') {
-      try {
-        const url = new URL(trimmedLink);
-        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-          throw new Error(t('workspace.invalidUrlProtocolError'));
-        }
-      } catch {
-        setSubmitError(t('workspace.enterValidHttpLinkError'));
-        return;
-      }
     }
 
     setIsSubmittingDeliverable(true);
@@ -205,8 +183,7 @@ export default function ProjectWorkspaceScreen() {
 
     const result = await handleSubmitMilestoneDeliverable(submitModal.milestoneId, {
       description: trimmedDescription,
-      file: submitMode === 'file' ? submitFile : null,
-      externalUrl: submitMode === 'link' ? trimmedLink : undefined,
+      file: submitFile,
     });
 
     if (!result.success) {
@@ -300,23 +277,12 @@ export default function ProjectWorkspaceScreen() {
     setShowInfo(true);
   };
 
-  const handleStartPendingMilestone = async (milestoneId: string) => {
-    setMilestoneActionPendingId(milestoneId);
-    setMilestoneActionError(null);
-    const result = await handleStartMilestone(milestoneId);
-    if (!result.success) {
-      setMilestoneActionError({
-        milestoneId,
-        message: result.message || t('workspace.failedStartMilestoneError'),
-      });
-    }
-    setMilestoneActionPendingId(null);
-  };
-
   const handleRequestPendingMilestoneUnlock = async (milestoneId: string) => {
+    const reason = window.prompt('Why should this next milestone start early?')?.trim();
+    if (!reason) return;
     setMilestoneActionPendingId(milestoneId);
     setMilestoneActionError(null);
-    const result = await handleRequestMilestoneUnlock(milestoneId);
+    const result = await handleRequestMilestoneUnlock(milestoneId, reason);
     if (!result.success) {
       setMilestoneActionError({
         milestoneId,
@@ -326,14 +292,15 @@ export default function ProjectWorkspaceScreen() {
     setMilestoneActionPendingId(null);
   };
 
-  const handleWithdrawApprovedMilestone = async (milestoneId: string) => {
+  const handleWorkItemTransition = async (milestoneId: string, workItemId: string, status: ContractWorkItemStatus) => {
     setMilestoneActionPendingId(milestoneId);
     setMilestoneActionError(null);
-    const result = await handleWithdrawMilestone(milestoneId);
+    const progressNote = window.prompt('Progress note (optional)') || undefined;
+    const result = await handleUpdateWorkItem(milestoneId, workItemId, status, progressNote);
     if (!result.success) {
       setMilestoneActionError({
         milestoneId,
-        message: result.message || t('workspace.failedWithdrawFundsError'),
+        message: result.message || 'Work item could not be updated.',
       });
     }
     setMilestoneActionPendingId(null);
@@ -553,16 +520,6 @@ export default function ProjectWorkspaceScreen() {
                     <span>{t('workspace.endProject')}</span>
                   </button>
                 )}
-                {isClient && (
-                  <button
-                    onClick={handleOpenMilestoneEditor}
-                    className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
-                    title={t('workspace.proposeMilestone')}
-                  >
-                    <Plus size={16} />
-                    <span>{t('workspace.proposeMilestone')}</span>
-                  </button>
-                )}
                 <button
                   onClick={() => setShowInfo(!showInfo)}
                   className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-all cursor-pointer ${showInfo ? 'bg-[var(--gb-cyan)]/10 border-[var(--gb-cyan)]/30 text-[var(--gb-cyan)]' : 'text-muted-foreground'}`}
@@ -636,17 +593,14 @@ export default function ProjectWorkspaceScreen() {
                   const isInProgress = milestone.status === 'in_progress';
                   const isSubmitted = milestone.status === 'submitted';
                   const isPending = milestone.status === 'pending';
-                  const withdrawableAmount = Math.max(0, milestone.amount * 0.8 - milestone.releasedAmount);
                   const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
-                  const canFreelancerSubmit = !isWorkspaceViewOnly && !isClient && isInProgress;
+                  const workItems = milestone.workItems || [];
+                  const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
+                  const canFreelancerSubmit = !isWorkspaceViewOnly && !isClient && isInProgress && allWorkItemsCompleted;
                   const canClientReview = !isWorkspaceViewOnly && isClient && isSubmitted;
-                  const canClientStart = !isWorkspaceViewOnly && isClient && isPending;
                   const canFreelancerRequestUnlock = !isWorkspaceViewOnly && !isClient && isPending;
-                  const showFreelancerWithdraw = !isClient &&
-                    activeContract?.status === ContractStatus.Active &&
-                    isCompleted &&
-                    withdrawableAmount > 0;
                   const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
+                  const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
 
                   return (
                     <div
@@ -713,14 +667,24 @@ export default function ProjectWorkspaceScreen() {
                         </div>
                       </div>
 
-                      {(isInProgress || isSubmitted || canClientStart || canFreelancerRequestUnlock || showFreelancerWithdraw || (!isClient && isCompleted && isReleasedInFull)) && (
+                      <div className="mt-4 space-y-2 border-t border-border pt-4">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Work Breakdown Structure</h4>
+                        {workItems.map((workItem, workIndex) => {
+                          const status = Number(workItem.status);
+                          const canStartWork = !isClient && isInProgress && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
+                          const canCompleteWork = !isClient && isInProgress && status === ContractWorkItemStatus.InProgress;
+                          return <div key={workItem.workItemId} className="rounded-lg border border-border bg-background p-3">
+                            <div className="flex flex-wrap items-start justify-between gap-2"><div><strong className="text-xs">{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-[11px] text-muted-foreground">{workItem.description}</p>}</div><span className="rounded bg-muted px-2 py-1 text-[10px] font-bold">{ContractWorkItemStatus[status] || status}</span></div>
+                            {workItem.progressNote && <p className="mt-2 text-[11px]"><strong>Progress:</strong> {workItem.progressNote}</p>}
+                            {(canStartWork || canCompleteWork) && <button type="button" onClick={() => handleWorkItemTransition(milestone.id, workItem.workItemId, canCompleteWork ? ContractWorkItemStatus.Completed : ContractWorkItemStatus.InProgress)} disabled={isMilestoneActionPending} className="mt-2 rounded border border-border px-3 py-1.5 text-[10px] font-bold hover:bg-muted disabled:opacity-50">{canCompleteWork ? 'Mark completed' : status === ContractWorkItemStatus.RevisionRequired ? 'Start revision' : 'Start work item'}</button>}
+                          </div>;
+                        })}
+                      </div>
+
+                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || (!isClient && isCompleted && isReleasedInFull)) && (
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                           <div className="flex-1 max-w-xs">
-                            {showFreelancerWithdraw ? (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                {t('workspace.withdrawableBeforeEnd')} <GigCoinAmount amount={withdrawableAmount} />
-                              </span>
-                            ) : !isClient && isCompleted && isReleasedInFull ? (
+                            {!isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                                 {t('workspace.releasedInFull')}
                               </span>
@@ -755,30 +719,13 @@ export default function ProjectWorkspaceScreen() {
                               >
                                 {t('workspace.submitDeliverable')}
                               </button>
-                            ) : canClientStart ? (
-                              <button
-                                onClick={() => handleStartPendingMilestone(milestone.id)}
-                                disabled={isMilestoneActionPending}
-                                className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 disabled:opacity-60 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                              >
-                                {isMilestoneActionPending ? t('workspace.starting') : t('workspace.startMilestone')}
-                              </button>
                             ) : canFreelancerRequestUnlock ? (
                               <button
                                 onClick={() => handleRequestPendingMilestoneUnlock(milestone.id)}
                                 disabled={isMilestoneActionPending}
                                 className="bg-card hover:bg-muted disabled:opacity-60 text-foreground border border-border px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
                               >
-                                {isMilestoneActionPending ? t('workspace.requesting') : t('workspace.requestUnlock')}
-                              </button>
-                            ) : showFreelancerWithdraw ? (
-                              <button
-                                onClick={() => handleWithdrawApprovedMilestone(milestone.id)}
-                                disabled={isMilestoneActionPending || !hasEnoughApprovedForWithdraw}
-                                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                                title={hasEnoughApprovedForWithdraw ? t('workspace.withdrawTooltip') : t('workspace.withdrawNotAllowedTooltip')}
-                              >
-                                {isMilestoneActionPending ? t('workspace.withdrawing') : t('workspace.withdraw')}
+                                {isMilestoneActionPending ? t('workspace.requesting') : 'Request early start'}
                               </button>
                             ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
@@ -797,11 +744,8 @@ export default function ProjectWorkspaceScreen() {
                           {milestoneActionError.message}
                         </div>
                       )}
-                      {showFreelancerWithdraw && !hasEnoughApprovedForWithdraw && (
-                        <div className="mt-3 text-[11px] font-semibold text-amber-600">
-                          {t('workspace.withdrawThresholdWarning')}
-                        </div>
-                      )}
+                      {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
+                      {isClient && earlyStartRequest && <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs"><strong>Early start requested</strong><p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p><div className="mt-2 flex gap-2"><button type="button" disabled={isMilestoneActionPending} onClick={async () => { setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not approve request.' }); setMilestoneActionPendingId(null); }} className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">Approve</button><button type="button" disabled={isMilestoneActionPending} onClick={async () => { const note = window.prompt('Rejection note') || undefined; setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not reject request.' }); setMilestoneActionPendingId(null); }} className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500">Reject</button></div></div>}
                     </div>
                   );
                 })
@@ -1150,38 +1094,7 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               )}
 
-              <div className="workspace-submit-mode" role="tablist" aria-label="Submission source">
-                <button
-                  type="button"
-                  className={submitMode === 'file' ? 'active' : ''}
-                  onClick={() => {
-                    setSubmitMode('file');
-                    setSubmitLink('');
-                    setSubmitError(null);
-                  }}
-                >
-                  <Upload size={15} />
-                  {t('workspace.fileSourceOption')}
-                </button>
-                <button
-                  type="button"
-                  className={submitMode === 'link' ? 'active' : ''}
-                  onClick={() => {
-                    setSubmitMode('link');
-                    setSubmitFile(null);
-                    setSubmitError(null);
-                    if (submitFileInputRef.current) {
-                      submitFileInputRef.current.value = '';
-                    }
-                  }}
-                >
-                  <Link2 size={15} />
-                  {t('workspace.linkSourceOption')}
-                </button>
-              </div>
-
-              {submitMode === 'file' ? (
-                <div className="workspace-submit-field">
+              <div className="workspace-submit-field">
                   <label htmlFor="workspace-deliverable-file">{t('workspace.fileSourceOption')}</label>
                   <input
                     ref={submitFileInputRef}
@@ -1198,19 +1111,6 @@ export default function ProjectWorkspaceScreen() {
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="workspace-submit-field">
-                  <label htmlFor="workspace-deliverable-link">{t('workspace.linkSourceOption')}</label>
-                  <input
-                    id="workspace-deliverable-link"
-                    type="url"
-                    value={submitLink ?? ''}
-                    onChange={(event) => setSubmitLink(event.target.value)}
-                    placeholder="https://..."
-                    disabled={isSubmittingDeliverable}
-                  />
-                </div>
-              )}
 
               <div className="workspace-submit-field">
                 <label htmlFor="workspace-deliverable-description">{t('workspace.descriptionField')}</label>
@@ -1240,8 +1140,7 @@ export default function ProjectWorkspaceScreen() {
                   className="workspace-submit-primary"
                   disabled={
                     isSubmittingDeliverable ||
-                    (submitMode === 'file' && !submitFile) ||
-                    (submitMode === 'link' && !submitLink.trim())
+                    !submitFile
                   }
                 >
                   {isSubmittingDeliverable ? (

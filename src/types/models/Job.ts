@@ -78,6 +78,7 @@ export interface Job {
   isRemote: boolean;
   gigcoin_cost: number;
   visibility?: number;
+  milestonePlans?: JobPostMilestonePlanDto[];
 }
 
 
@@ -131,6 +132,7 @@ export interface JobPostSetupProgressDto {
   eSignStatus?: number | null;
   esignStatus?: number | null;
   hasMilestones: boolean;
+  isMilestonePlanComplete?: boolean;
   canPublish: boolean;
 }
 
@@ -174,6 +176,27 @@ export interface JobPostAttachmentDto {
   fileName: string;
 }
 
+export interface JobPostWorkItemDto {
+  id?: string | null;
+  title?: string | null;
+  description?: string | null;
+  deliverables?: string | null;
+  estimatedDuration?: string | null;
+  orderIndex: number;
+}
+
+export interface JobPostMilestonePlanDto {
+  id?: string | null;
+  title?: string | null;
+  description?: string | null;
+  amount: number;
+  estimatedDuration?: string | null;
+  deliverables?: string | null;
+  acceptanceCriteria?: string | null;
+  orderIndex: number;
+  workItems: JobPostWorkItemDto[];
+}
+
 export interface JobPostDetailDto {
   jobPostsId: string;
   clientProfilesId: string;
@@ -198,6 +221,7 @@ export interface JobPostDetailDto {
   skills: JobPostSkillDto[];
   customSkillNames: string[];
   attachments: JobPostAttachmentDto[];
+  milestonePlans?: JobPostMilestonePlanDto[];
 }
 
 export interface GetMyJobPostDetailDto {
@@ -225,6 +249,7 @@ export interface GetMyJobPostDetailDto {
   attachments: JobPostAttachmentDto[];
   proposalCount: number;
   setupProgress?: JobPostSetupProgressDto | null;
+  milestonePlans?: JobPostMilestonePlanDto[];
 }
 
 export interface CreateJobPostRequest {
@@ -283,6 +308,7 @@ export interface SaveDraftJobPostRequest {
   skillIds?: string[] | null;
   customSkillNames?: string[] | null;
   questions?: SaveDraftJobPostQuestionRequest[] | null;
+  milestonePlans?: JobPostMilestonePlanDto[] | null;
 }
 
 export interface GenerateJobDescriptionRequest {

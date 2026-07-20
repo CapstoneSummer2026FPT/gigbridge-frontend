@@ -22,6 +22,7 @@ import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import '../styles/PostJobScreen.css';
 import { useApp } from '../../../app/providers/AppProvider';
 import { usePremiumStatus } from '../../premium/hooks';
+import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 
 export default function PostJobScreen() {
   const navigate = useNavigate();
@@ -54,6 +55,8 @@ export default function PostJobScreen() {
     draggedIndex,
     questions,
     setQuestions,
+    milestonePlans,
+    setMilestonePlans,
     isActionDisabled,
     taxonomyError,
     isMajorsLoading,
@@ -661,6 +664,18 @@ export default function PostJobScreen() {
             </div>
           </div>
         </div>
+
+        {!(isInstantJobMode && !isJobDetailsGenerated) && (
+          <div className="mx-auto mt-8 max-w-[1440px] rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+            <NestedMilestonePlanEditor
+              value={milestonePlans as EditableMilestonePlan[]}
+              onChange={plans => setMilestonePlans(plans)}
+              optional
+              title="Baseline milestone and Work Breakdown Structure"
+              description="Give freelancers a starting plan. They can review and propose changes in their proposal before any contract is created."
+            />
+          </div>
+        )}
 
         {/* Project Request Preview bar - hidden in instant job guide mode */}
         {!(isInstantJobMode && !isJobDetailsGenerated) && (

@@ -26,6 +26,28 @@ export enum MilestoneStatus {
   /** @deprecated Payment state is derived from releasedAmount and escrow status. */
   PaymentConfirmed = 5,
   Disputed = 6,
+  Cancelled = 7,
+}
+
+export enum ContractWorkItemStatus {
+  Todo = 0,
+  InProgress = 1,
+  Completed = 2,
+  RevisionRequired = 3,
+}
+
+export interface ContractWorkItem {
+  workItemId: string;
+  milestoneId: string;
+  title: string;
+  description?: string | null;
+  deliverables?: string | null;
+  estimatedDuration?: string | null;
+  orderIndex: number;
+  status: ContractWorkItemStatus | number;
+  progressNote?: string | null;
+  completedAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export enum ContractProductHandoffSourceType {
@@ -76,6 +98,7 @@ export interface ContractDto {
   conversationId?: string | null;
   canReview?: boolean;
   hasReviewedByCurrentUser?: boolean;
+  revisionNumber?: number;
 }
 
 export interface CreateContractDto {
@@ -115,6 +138,97 @@ export interface Milestone {
   paid_at: string | null;
   releasedAmount?: number;
   lastReleasedAt?: string | null;
+  description?: string | null;
+  estimatedDuration?: string | null;
+  deliverables?: string | null;
+  acceptanceCriteria?: string | null;
+  workItems: ContractWorkItem[];
+}
+
+export interface MilestoneEarlyStartRequest {
+  requestId: string;
+  contractId: string;
+  milestoneId: string;
+  reason: string;
+  responseNote?: string | null;
+  status: number;
+  createdAt: string;
+  respondedAt?: string | null;
+}
+
+export enum ContractChangeRequestStatus {
+  Pending = 0,
+  Accepted = 1,
+  Rejected = 2,
+  NeedsClarification = 3,
+}
+
+export enum ContractAmendmentStatus {
+  PendingFreelancerReview = 0,
+  ChangeRequested = 1,
+  PendingSignatures = 2,
+  PendingFunding = 3,
+  Applied = 4,
+  Rejected = 5,
+  Cancelled = 6,
+}
+
+export interface ContractChangeRequestDto {
+  changeRequestId: string;
+  contractId: string;
+  requestedByUserId: string;
+    reason: string;
+    requestedChanges: string;
+    responseNote?: string | null;
+    clarificationRequestNote?: string | null;
+    clarificationResponseNote?: string | null;
+  affectedMilestoneIds: string[];
+  affectedWorkItemIds: string[];
+  status: ContractChangeRequestStatus | number;
+    createdAt: string;
+    respondedAt?: string | null;
+    clarifiedAt?: string | null;
+    canRespond: boolean;
+    canClarify: boolean;
+}
+
+export interface ContractAmendmentWorkItemDto {
+  sourceWorkItemId?: string | null;
+  title: string;
+  description?: string | null;
+  deliverables?: string | null;
+  estimatedDuration?: string | null;
+  orderIndex: number;
+}
+
+export interface ContractAmendmentMilestoneDto {
+  sourceMilestoneId?: string | null;
+  title: string;
+  description?: string | null;
+  amount: number;
+  estimatedDuration?: string | null;
+  dueDate?: string | null;
+  deliverables?: string | null;
+  acceptanceCriteria?: string | null;
+  orderIndex: number;
+  workItems: ContractAmendmentWorkItemDto[];
+}
+
+export interface ContractAmendmentDetailDto {
+  amendmentId: string;
+  contractId: string;
+  changeRequestId: string;
+  revisionNumber: number;
+  reason: string;
+  originalTotalBudget: number;
+    proposedTotalBudget: number;
+    budgetDelta: number;
+    reviewNote?: string | null;
+  status: ContractAmendmentStatus | number;
+  signatureCount: number;
+  createdAt: string;
+  appliedAt?: string | null;
+  milestones: ContractAmendmentMilestoneDto[];
 }
 
 export interface WithdrawMilestoneResponse {

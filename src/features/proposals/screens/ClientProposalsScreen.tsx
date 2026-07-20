@@ -436,16 +436,16 @@ export default function ClientProposalsScreen() {
                 </div>
 
                 {section('Introduction', detail.coverLetter)}
-                {section('Requirement analysis', detail.analysisSummary)}
+                {section('Analysis', detail.analysisSummary)}
                 {section('Solution approach', detail.solutionApproach)}
                 {section('Overall deliverables', detail.deliverables)}
                 {section('Assumptions', detail.assumptions)}
                 {section('Out of scope', detail.outOfScope)}
 
                 <section>
-                  <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Work breakdown</h3>
+                  <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Legacy or unassigned work items</h3>
                   <div className="space-y-2">
-                    {detail.workBreakdownItems?.length ? detail.workBreakdownItems.map((item, index) => (
+                    {detail.workBreakdownItems?.filter(item => item.milestoneOrderIndex == null).length ? detail.workBreakdownItems.filter(item => item.milestoneOrderIndex == null).map((item, index) => (
                       <div key={item.id || index} className="rounded-lg border border-border bg-background p-3">
                         <div className="flex justify-between gap-3">
                           <strong className="text-sm">{index + 1}. {item.title || 'Untitled work item'}</strong>
@@ -454,7 +454,7 @@ export default function ClientProposalsScreen() {
                         {item.description && <p className="mt-2 truncate text-xs leading-5 text-muted-foreground" title={item.description}>{previewText(item.description, 88)}</p>}
                         {item.deliverables && <p className="mt-2 truncate text-xs" title={item.deliverables}><strong>Deliverables:</strong> {previewText(item.deliverables, 72)}</p>}
                       </div>
-                    )) : <p className="text-sm text-muted-foreground">Legacy proposal: no work breakdown.</p>}
+                    )) : <p className="text-sm text-muted-foreground">All work items are mapped to milestones.</p>}
                   </div>
                 </section>
 
@@ -471,6 +471,16 @@ export default function ClientProposalsScreen() {
                         {item.description && <p className="mt-2 truncate text-muted-foreground" title={item.description}>{previewText(item.description, 88)}</p>}
                         {item.deliverables && <p className="mt-2 truncate" title={item.deliverables}><strong>Deliverables:</strong> {previewText(item.deliverables, 72)}</p>}
                         {item.acceptanceCriteria && <p className="mt-2 truncate" title={item.acceptanceCriteria}><strong>Acceptance:</strong> {previewText(item.acceptanceCriteria, 72)}</p>}
+                        <div className="mt-3 space-y-2 border-t border-border pt-2">
+                          <strong className="text-[11px] uppercase text-muted-foreground">Work Breakdown Structure</strong>
+                          {(item.workItems?.length ? item.workItems : detail.workBreakdownItems?.filter(workItem => workItem.milestoneOrderIndex === item.orderIndex) || []).map((workItem, workIndex) => (
+                            <div key={workItem.id || workIndex} className="rounded-md bg-muted/40 p-2">
+                              <div className="flex justify-between gap-2"><strong>{workIndex + 1}. {workItem.title || 'Untitled work item'}</strong><span className="text-muted-foreground">{workItem.estimatedDuration}</span></div>
+                              {workItem.description && <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{workItem.description}</p>}
+                              {workItem.deliverables && <p className="mt-1"><strong>Deliverables:</strong> {workItem.deliverables}</p>}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )) : <p className="text-sm text-muted-foreground">Legacy proposal: no milestone plan.</p>}
                   </div>

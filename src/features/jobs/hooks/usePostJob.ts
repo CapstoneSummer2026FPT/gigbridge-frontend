@@ -7,10 +7,12 @@ import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types
 
 import {
   JobPostVisibility,
+  JobPostStatus,
   type CreateDraftJobPostResponse,
   type GetMyJobPostDetailDto,
   type JobPostQuestionDto,
   type SaveDraftJobPostRequest,
+  type JobPostMilestonePlanDto,
 } from '../../../types/models/Job';
 import {
   formatJobDuration,
@@ -78,6 +80,7 @@ export interface PostJobRouteJobData {
   skillNameById?: Record<string, string>;
   skillNamesById?: Record<string, string>;
   interviewQuestions?: readonly PostJobRouteQuestion[] | null;
+  milestonePlans?: JobPostMilestonePlanDto[] | null;
 }
 
 export interface PostJobRouteState {
@@ -245,6 +248,19 @@ export function usePostJob() {
 
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
+  const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() => initialJobData?.milestonePlans || []);
+  const milestonePlanTotal = useMemo(
+    () => milestonePlans.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    [milestonePlans]
+  );
+
+  useEffect(() => {
+    if (milestonePlans.length === 0) return;
+    const fixedBudget = milestonePlanTotal > 0 ? String(milestonePlanTotal) : '';
+    setForm(current => current.budgetMin === fixedBudget && current.budgetMax === fixedBudget
+      ? current
+      : { ...current, budgetMin: fixedBudget, budgetMax: fixedBudget });
+  }, [milestonePlanTotal, milestonePlans.length]);
 
   const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
@@ -266,8 +282,9 @@ export function usePostJob() {
       (!Number.isNaN(visibility) && visibility !== JobPostVisibility.Public) ||
       form.skillIds.length > 0 ||
       form.customSkillNames.length > 0 ||
-      questions.some(question => Boolean(question.questionText.trim()));
-  }, [form, questions]);
+      questions.some(question => Boolean(question.questionText.trim())) ||
+      milestonePlans.length > 0;
+  }, [form, questions, milestonePlans]);
 
   const shouldBlockNavigation = (Boolean(jobPostId) || hasSavableDraftContent) &&
     !navigationAllowedRef.current &&
@@ -358,6 +375,7 @@ export function usePostJob() {
 
         const job = jobResponse.data;
         setForm(formFromJobDetail(job));
+        setMilestonePlans(job.milestonePlans || []);
         setSkillNameById(prev => {
           const next = { ...prev };
           (job.skills || []).forEach(skill => {
@@ -513,6 +531,7 @@ export function usePostJob() {
     setSkillNameById({});
     setForm(initialFormFromState(null));
     setQuestions([emptyQuestion()]);
+    setMilestonePlans([]);
   };
 
   const insertMarkdown = (before: string, after: string): void => {
@@ -771,6 +790,18 @@ export function usePostJob() {
     return null;
   };
 
+  const validateMilestonePlans = (): string | null => {
+    for (const [index, milestone] of milestonePlans.entries()) {
+      if (!milestone.title?.trim() || Number(milestone.amount) <= 0 || !milestone.deliverables?.trim() || !milestone.acceptanceCriteria?.trim()) {
+        return `Milestone ${index + 1} requires title, positive amount, deliverables and acceptance criteria.`;
+      }
+      if ((milestone.workItems || []).some(item => !item.title?.trim() || !item.description?.trim())) {
+        return `Every work item in milestone ${index + 1} requires title and description.`;
+      }
+    }
+    return null;
+  };
+
   const showValidationError = (message: string): void => {
     setErrorMessage(message);
     toast.error(message);
@@ -801,6 +832,12 @@ export function usePostJob() {
           orderIndex: question.orderIndex,
           isRequired: question.isRequired,
         })),
+      milestonePlans: milestonePlans.map((milestone, orderIndex) => ({
+        ...milestone,
+        amount: Number(milestone.amount) || 0,
+        orderIndex,
+        workItems: (milestone.workItems || []).map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
+      })),
     };
   };
 
@@ -854,6 +891,11 @@ export function usePostJob() {
         showValidationError(questionValidationError);
         return;
       }
+      const planValidationError = validateMilestonePlans();
+      if (planValidationError) {
+        showValidationError(planValidationError);
+        return;
+      }
     }
 
     setSubmitMode(mode);
@@ -870,8 +912,11 @@ export function usePostJob() {
       }
 
       if (mode === 'publish') {
+        const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
+        if (!publishResponse.success) throw new Error(publishResponse.message || 'Project request could not be published.');
+        toast.success('Project request published.');
         allowNextNavigation();
-        navigate('/jobs/post/contract', { state: navigationState });
+        navigate('/jobs/my-jobs');
         return;
       }
 
@@ -968,6 +1013,8 @@ export function usePostJob() {
     draggedIndex,
     questions,
     setQuestions,
+    milestonePlans,
+    setMilestonePlans,
     isActionDisabled,
     questionsWithOrder,
     taxonomyError,

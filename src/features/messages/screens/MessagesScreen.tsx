@@ -579,6 +579,10 @@ export default function MessagesScreen() {
                                   {milestone.description && <p className="mt-1 whitespace-pre-wrap text-[11px] text-muted-foreground">{milestone.description}</p>}
                                   {milestone.deliverables && <p className="mt-1 text-[11px]"><strong>Deliverables:</strong> {milestone.deliverables}</p>}
                                   {milestone.acceptanceCriteria && <p className="mt-1 text-[11px]"><strong>Acceptance:</strong> {milestone.acceptanceCriteria}</p>}
+                                  {milestone.workItems?.length ? <div className="mt-2 space-y-1 border-t border-border/60 pt-2">
+                                    <strong className="text-[10px] uppercase text-muted-foreground">Work Breakdown Structure</strong>
+                                    {milestone.workItems.map((workItem, workIndex) => <div key={workItem.id || workIndex} className="rounded bg-muted/50 p-2 text-[11px]"><strong>{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-muted-foreground">{workItem.description}</p>}</div>)}
+                                  </div> : null}
                                 </div>
                               ))}
                             </div>
@@ -738,8 +742,18 @@ export default function MessagesScreen() {
                                   <input type="number" min="0" step="0.01" max="9999999999999999.99" value={milestone.amount || ''} onChange={e => updateDealMilestone(index, { amount: Number(e.target.value) })} placeholder="Amount" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
                                   <input value={milestone.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { estimatedDuration: e.target.value })} placeholder="Duration" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
                                 </div>
+                                <input type="date" value={milestone.dueDate || ''} onChange={e => updateDealMilestone(index, { dueDate: e.target.value || null })} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" aria-label="Milestone deadline" />
                                 <textarea value={milestone.deliverables || ''} onChange={e => updateDealMilestone(index, { deliverables: e.target.value })} placeholder="Deliverables" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
                                 <textarea value={milestone.acceptanceCriteria || ''} onChange={e => updateDealMilestone(index, { acceptanceCriteria: e.target.value })} placeholder="Acceptance criteria" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
+                                <div className="space-y-2 rounded-lg border border-border bg-card p-2">
+                                  <div className="flex items-center justify-between"><strong className="text-[11px] uppercase text-muted-foreground">Work Breakdown Structure</strong><button type="button" onClick={() => updateDealMilestone(index, { workItems: [...(milestone.workItems || []), { title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex: milestone.workItems?.length || 0 }] })} className="rounded border border-border p-1" title="Add work item"><Plus size={12} /></button></div>
+                                  {(milestone.workItems || []).map((workItem, workIndex) => <div key={workItem.id || workIndex} className="grid gap-2 rounded border border-border p-2 sm:grid-cols-2">
+                                    <input value={workItem.title || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, title: e.target.value } : item) })} placeholder="Work item title" className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
+                                    <input value={workItem.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, estimatedDuration: e.target.value } : item) })} placeholder="Duration" className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
+                                    <textarea value={workItem.description || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, description: e.target.value } : item) })} placeholder="Description" rows={2} className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
+                                    <div className="flex gap-2"><textarea value={workItem.deliverables || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, deliverables: e.target.value } : item) })} placeholder="Deliverables" rows={2} className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs" /><button type="button" onClick={() => updateDealMilestone(index, { workItems: milestone.workItems.filter((_, itemIndex) => itemIndex !== workIndex) })} className="self-start p-1 text-red-500" title="Remove work item"><Trash2 size={12} /></button></div>
+                                  </div>)}
+                                </div>
                               </div>
                             ))}
                           </div>
