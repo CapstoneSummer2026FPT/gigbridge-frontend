@@ -61,7 +61,14 @@
     "confirmNewPassword": "Confirm new password",
     "resetPassword": "Reset password",
     "resetPasswordSubtitle": "Choose your new secure password",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "policyAgreement": "I have read and agree to the GigBridge Policy version 1.0-DATN",
+    "policyAcceptanceRequired": "You must agree to the GigBridge Policy before signing up."
+  },
+  "policy": {
+    "loading": "Loading the GigBridge Policy...",
+    "loadError": "Unable to load the GigBridge Policy.",
+    "retry": "Retry"
   },
   "nav": {
     "dashboard": "Dashboard",

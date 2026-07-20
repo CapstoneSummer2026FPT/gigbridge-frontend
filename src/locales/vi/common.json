@@ -61,7 +61,14 @@
     "confirmNewPassword": "Xác nhận mật khẩu mới",
     "resetPassword": "Đặt lại mật khẩu",
     "resetPasswordSubtitle": "Chọn mật khẩu bảo mật mới của bạn",
-    "signOut": "Đăng Xuất"
+    "signOut": "Đăng Xuất",
+    "policyAgreement": "Tôi đã đọc và đồng ý với Bộ chính sách GigBridge phiên bản 1.0-DATN",
+    "policyAcceptanceRequired": "Bạn cần đồng ý với Bộ chính sách GigBridge trước khi đăng ký."
+  },
+  "policy": {
+    "loading": "Đang tải Bộ chính sách GigBridge...",
+    "loadError": "Không thể tải Bộ chính sách GigBridge.",
+    "retry": "Thử lại"
   },
   "nav": {
     "dashboard": "Bảng Điều Khiển",
