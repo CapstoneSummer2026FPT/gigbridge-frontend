@@ -2,17 +2,27 @@ import { useNavigate } from 'react-router';
 import {
   Sparkles, PenTool, HelpCircle, CheckCircle,
   Lightbulb, ChevronRight, MessageSquare, BookOpen,
-  ArrowRight, ShieldAlert, BadgeInfo
+  ArrowRight, ShieldAlert, BadgeInfo, LockKeyhole
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import '../styles/PostJobPreGuideScreen.css';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
+import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import '../../premium/styles/premium.css';
 
 export default function PostJobPreGuideScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
 
   const handleStartMode = (instantJobMode: boolean) => {
+    if (instantJobMode && !premiumStatus.isPremium) {
+      navigate('/premium/client/pricing');
+      return;
+    }
     navigate('/jobs/post', { state: { instantJobMode } });
   };
 
@@ -49,7 +59,7 @@ export default function PostJobPreGuideScreen() {
                 <Sparkles className="ai-select-sparkles-icon animate-pulse" size={26} />
               </div>
               <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
-                {t('postJobGuide.recommended')}
+                {premiumStatus.isPremium ? t('postJobGuide.recommended') : 'Premium'}
               </span>
             </div>
 
@@ -62,7 +72,9 @@ export default function PostJobPreGuideScreen() {
             </p>
 
             <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--gb-cyan)]">
-              <span>{t('postJobGuide.aiModeStart')}</span>
+              {!premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} compact />}
+              {!premiumStatus.isPremium && <LockKeyhole size={13} />}
+              <span>{premiumStatus.isPremium ? t('postJobGuide.aiModeStart') : 'View Client Premium'}</span>
               <ChevronRight size={14} />
             </div>
           </button>

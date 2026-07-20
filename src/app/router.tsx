@@ -66,9 +66,10 @@ import PressKitScreen from '../features/company/screens/PressKitScreen';
 import GuideScreen from '../features/company/screens/GuideScreen';
 import PolicyScreen from '../features/company/screens/PolicyScreen';
 import WalletDepositScreen from '../features/wallet/screens/WalletDepositScreen';
-import SubscriptionScreen from '../features/wallet/screens/SubscriptionScreen';
 import FreelancerPremiumScreen from '../features/premium/screens/FreelancerPremiumScreen';
 import FreelancerPricingScreen from '../features/premium/screens/FreelancerPricingScreen';
+import ClientPremiumScreen from '../features/premium/screens/ClientPremiumScreen';
+import ClientPricingScreen from '../features/premium/screens/ClientPricingScreen';
 import FinancialOverviewScreen from '../features/wallet/screens/FinancialOverviewScreen';
 import WalletHistoryScreen from '../features/wallet/screens/WalletHistoryScreen';
 import WalletMockCheckoutScreen from '../features/wallet/screens/WalletMockCheckoutScreen';
@@ -180,11 +181,16 @@ function FreelancerOnly({ children }: { children: ReactNode }) {
   return role === UserRole.Freelancer ? <>{children}</> : <Navigate to="/subscription" replace />;
 }
 
+function ClientOnly({ children }: { children: ReactNode }) {
+  const { role } = useApp();
+  return role === UserRole.Client ? <>{children}</> : <Navigate to="/premium/freelancer/pricing" replace />;
+}
+
 function SubscriptionRoute() {
   const { role } = useApp();
   return role === UserRole.Freelancer
     ? <Navigate to="/premium/freelancer/pricing" replace />
-    : <SubscriptionScreen />;
+    : <Navigate to="/premium/client/pricing" replace />;
 }
 
 function NavigateToProposalCreate() {
@@ -220,6 +226,8 @@ export const router = createBrowserRouter([
       { path: 'premium/freelancer/rank-protection', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="vacation" /></FreelancerOnly></ProtectedRoute> },
       { path: 'premium/freelancer/promotions', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="promotions" /></FreelancerOnly></ProtectedRoute> },
       { path: 'premium/freelancer/history', element: <ProtectedRoute requireAuth requireSetup><FreelancerOnly><FreelancerPremiumScreen initialTab="history" /></FreelancerOnly></ProtectedRoute> },
+      { path: 'premium/client', element: <ProtectedRoute requireAuth requireSetup><ClientOnly><ClientPremiumScreen /></ClientOnly></ProtectedRoute> },
+      { path: 'premium/client/pricing', element: <ProtectedRoute requireAuth requireSetup><ClientOnly><ClientPricingScreen /></ClientOnly></ProtectedRoute> },
 
       // Jobs - requires authentication
       { path: 'jobs/post/guide', element: <ProtectedRoute requireAuth requireSetup><PostJobPreGuideScreen /></ProtectedRoute> },

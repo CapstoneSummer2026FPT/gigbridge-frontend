@@ -1,4 +1,4 @@
-.promotion-profile-card{position:relative;overflow:hidden;min-height:540px;aspect-ratio:4/5;border:1px solid rgba(94,234,212,.55);border-radius:28px;background:#1e293b;box-shadow:0 24px 60px rgba(15,23,42,.24);isolation:isolate}
+.promotion-profile-card{position:relative;overflow:hidden;min-height:300px;aspect-ratio:16/11;border:1px solid rgba(94,234,212,.55);border-radius:22px;background:#1e293b;box-shadow:0 24px 60px rgba(15,23,42,.24);isolation:isolate}
 .promotion-profile-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;background:var(--surface-muted);z-index:-2}
 .promotion-profile-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(2,6,23,.08) 18%,rgba(2,6,23,.26) 58%,rgba(2,6,23,.62) 100%),linear-gradient(0deg,rgba(2,6,23,.72),transparent 38%)}
 .promotion-profile-content{position:absolute;top:10%;right:7%;width:min(48%,260px);display:grid;gap:18px;text-align:right;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.55)}
@@ -7,4 +7,14 @@
 .promotion-preview-badge{position:absolute;right:16px;top:16px;z-index:2;padding:6px 12px;border-radius:999px;background:rgba(15,23,42,.82);backdrop-filter:blur(8px);color:#fff;font-size:.72rem;font-weight:700}
 .promotion-explore-button{position:absolute;right:7%;bottom:12%;display:flex;align-items:center;gap:10px;padding:11px 20px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:rgba(15,23,42,.34);backdrop-filter:blur(12px);color:#fff;font-weight:700;cursor:pointer;transition:.2s ease}.promotion-explore-button:not(:disabled):hover{background:rgba(15,23,42,.62);transform:translateY(-2px)}.promotion-explore-button:disabled{cursor:default;opacity:.9}
 .promotion-carousel-dots{position:absolute;bottom:4%;left:50%;display:flex;align-items:center;gap:14px;transform:translateX(-50%)}.promotion-carousel-dots button{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.48);cursor:pointer}.promotion-carousel-dots button.active{width:13px;height:13px;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.25)}.promotion-carousel-dots button:disabled{cursor:default}
-@media(max-width:640px){.promotion-profile-card{min-height:470px}.promotion-profile-content{width:54%}}
+@media(max-width:767px){.promotion-profile-card{width:100%;min-height:clamp(280px,74vw,390px);aspect-ratio:16/10;border-radius:20px}.promotion-profile-content{top:8%;width:60%;gap:9px}.promotion-profile-kicker{font-size:clamp(.9rem,4vw,1.2rem)}.promotion-profile-content h3{font-size:clamp(1.15rem,5.5vw,1.55rem)}.promotion-profile-title,.promotion-profile-content blockquote{font-size:clamp(.8rem,3.4vw,1rem)}.promotion-explore-button{bottom:9%;padding:8px 13px;font-size:.8rem}.promotion-carousel-dots{bottom:3%;gap:10px}}
+.promoted-job-card .promotion-profile-shade{background:linear-gradient(90deg,rgba(2,6,23,.82) 0%,rgba(2,6,23,.5) 58%,rgba(2,6,23,.18) 100%),linear-gradient(0deg,rgba(2,6,23,.7),transparent 45%)}
+.promoted-job-content{left:7%;right:auto;width:min(58%,520px);text-align:left;gap:13px}
+.promotion-job-description{margin:0;display:-webkit-box;overflow:hidden;-webkit-line-clamp:4;-webkit-box-orient:vertical;font-size:clamp(.9rem,1.8vw,1.08rem);line-height:1.55}
+.promotion-job-expiry{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;color:#ccfbf1}
+.promoted-job-card .promotion-explore-button{left:7%;right:auto}
+@media(max-width:767px){.promoted-job-content{width:72%;gap:7px}.promotion-job-description{-webkit-line-clamp:2;font-size:.8rem;line-height:1.35}.promotion-job-expiry{font-size:.65rem}}
+.promotion-sticky-card{position:sticky;top:6.5rem;z-index:12;align-self:start;width:100%;min-width:0;max-width:100%}
+@media(min-width:768px) and (max-width:1199px){.promotion-sticky-card{position:static}.promotion-sticky-card .promotion-profile-card{min-height:360px;aspect-ratio:16/9}.promotion-sticky-card .promotion-profile-content{width:min(58%,520px)}}
+@media(min-width:1200px){.promotion-sticky-card .promotion-profile-card{width:100%;max-width:100%;height:clamp(25rem,calc(100vh - 10rem),38rem);min-height:0;aspect-ratio:auto}.promotion-sticky-card .promotion-profile-content{width:min(62%,260px)}.promotion-sticky-card .promoted-job-content{width:min(72%,280px)}}
+@media(max-width:767px){.promotion-sticky-card{position:static}}

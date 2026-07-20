@@ -6,6 +6,7 @@ import type {
 } from '../types/premium';
 
 const subscriptions = 'freelancer/subscriptions';
+const clientSubscriptions = 'client/subscriptions';
 const premium = 'freelancer/premium';
 
 export const premiumAPI = {
@@ -43,5 +44,17 @@ export const premiumAPI = {
   },
   wallet: walletGetAPI.getMyWallet,
   walletTransactions: () => walletGetAPI.getTransactions(100),
+};
+
+export const clientPremiumAPI = {
+  plans: () => apiService.get<SubscriptionPlan[]>(`${clientSubscriptions}/plans`),
+  currentSubscription: () => apiService.get<PremiumSubscription | null>(`${clientSubscriptions}/current`),
+  subscriptionHistory: () => apiService.get<PremiumSubscription[]>(`${clientSubscriptions}/history`),
+  cancelSubscription: () => apiService.post<PremiumSubscription>(`${clientSubscriptions}/cancel`),
+  updateAutoRenew: (autoRenew: boolean) =>
+    apiService.put<PremiumSubscription>(`${clientSubscriptions}/auto-renew`, { autoRenew }),
+  purchaseSubscription: (planId: string, idempotencyKey: string) =>
+    apiService.post<PremiumSubscription>(`${clientSubscriptions}/purchase`, { planId, idempotencyKey }),
+  wallet: walletGetAPI.getMyWallet,
 };
 

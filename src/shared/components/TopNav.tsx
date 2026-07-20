@@ -13,7 +13,7 @@ import Button from './Button';
 import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
 import { formatGigCoinNumber } from '../utils/gigcoin';
 import { useTranslation } from '../../hooks/useTranslation';
-import { premiumAPI } from '../../features/premium/api';
+import { usePremiumStatus } from '../../features/premium/hooks';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -36,8 +36,6 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [searchVal, setSearchVal] = useState('');
-  const [isPremiumFreelancer, setIsPremiumFreelancer] = useState(false);
-  const [premiumStatusLoaded, setPremiumStatusLoaded] = useState(false);
 
   // Safely get app context - might be null for guest users
   let appContext;
@@ -48,24 +46,12 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   }
 
   const user = appContext?.user || null;
-  const role = appContext?.role || null;
+  const role = appContext?.role ?? null;
   const theme = appContext?.theme || 'black';
   const setTheme = appContext?.setTheme || (() => { });
   const logout = appContext?.logout || (() => { });
   const isAuthenticated = appContext?.isAuthenticated || false;
-
-  useEffect(() => {
-    let active = true;
-    setPremiumStatusLoaded(false);
-    if (!user || role !== 1) { setIsPremiumFreelancer(false); setPremiumStatusLoaded(true); return; }
-    void premiumAPI.currentSubscription().then(response => {
-      if (active) {
-        setIsPremiumFreelancer(Boolean(response.success && response.data?.isPremium && new Date(response.data.endDate) > new Date()));
-        setPremiumStatusLoaded(true);
-      }
-    });
-    return () => { active = false; };
-  }, [location.pathname, role, user?.id]);
+  const premiumStatus = usePremiumStatus(user ? role : null);
 
   const localizedNavItems = navItems.map(item => {
     if (item.label === 'Browse Jobs') return { ...item, label: t('nav.browseJobs') };
@@ -332,14 +318,16 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       )}
 
       <div className="flex items-center gap-2 ml-auto">
-        {user && role === 1 && premiumStatusLoaded && !isPremiumFreelancer && (
+        {user && role !== 2 && !premiumStatus.loading && (
           <button
             type="button"
             className="become-premium-button"
-            onClick={() => navigate('/premium/freelancer/pricing')}
+            onClick={() => navigate(role === 0
+              ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
+              : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing')}
           >
             <Crown size={15} />
-            <span className="hidden sm:inline">Become Premium</span>
+            <span className="hidden sm:inline">{premiumStatus.isPremium ? 'Premium active' : 'Become Premium'}</span>
             <span className="sm:hidden">Premium</span>
           </button>
         )}
@@ -380,7 +368,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                 )}
 
                 <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
-                  onClick={() => { navigate(role === 1 ? '/premium/freelancer/pricing' : '/subscription'); setShowWalletMenu(false); }}>
+                  onClick={() => { navigate(role === 1 ? '/premium/freelancer/pricing' : '/premium/client/pricing'); setShowWalletMenu(false); }}>
                   <CreditCard size={14} />
                   {t('nav.subscription')}
                 </button>
@@ -465,11 +453,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); }}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-all glass-button"
             >
-              <div className={`w-7 h-7 rounded-full avatar-glow flex items-center justify-center text-xs font-bold avatar-gradient ${isPremiumFreelancer ? 'premium-avatar-ring' : ''}`} aria-label={isPremiumFreelancer ? 'Premium freelancer' : undefined}>
+              <div className={`w-7 h-7 rounded-full avatar-glow flex items-center justify-center text-xs font-bold avatar-gradient ${premiumStatus.isPremium ? 'premium-avatar-ring' : ''}`} aria-label={premiumStatus.isPremium ? 'Premium account' : undefined}>
                 {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                {isPremiumFreelancer && <Crown size={11} className="premium-avatar-crown" />}
+                {premiumStatus.isPremium && <Crown size={11} className="premium-avatar-crown" />}
               </div>
-              <span className={`text-primary text-sm font-medium hidden md:block ${isPremiumFreelancer ? 'premium-user-name' : ''}`}>{user.first_name}</span>
+              <span className={`text-primary text-sm font-medium hidden md:block ${premiumStatus.isPremium ? 'premium-user-name' : ''}`}>{user.first_name}</span>
               <ChevronDown size={14} className="text-muted" />
             </button>
 
