@@ -18,6 +18,8 @@ import type { NegotiationMilestoneDto } from '../../../types/models/Message';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { disputeGetAPI } from '../../../api/disputeAPI';
+import { getMessageRoom } from '../messageRooms';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -48,6 +50,7 @@ function mapBackendConversation(c: any): MsgConversation {
   const conversationType = c.conversationType ?? c.ConversationType;
   const proposalId = c.proposalId ?? c.ProposalId ?? null;
   const contractId = c.contractId ?? c.ContractId ?? null;
+  const disputeId = c.disputeId ?? c.DisputeId ?? null;
   const lastOfferId = c.lastOfferId ?? c.LastOfferId ?? null;
   const lastOfferPrice = c.lastOfferPrice ?? c.LastOfferPrice ?? null;
   const lastOfferStatus = c.lastOfferStatus ?? c.LastOfferStatus ?? null;
@@ -65,16 +68,15 @@ function mapBackendConversation(c: any): MsgConversation {
       ? Number(jobVisibility) !== 3
       : Number(jobStatus) === 1 && Number(jobVisibility) !== 3;
   const isClient = (c.otherParticipantRole ?? c.OtherParticipantRole) === 0;
-  const isInvited = conversationType === 4;
-  const isWorkspace = conversationType === 1;
-  const roomType = isInvited ? 'invited' : isWorkspace ? 'workspace' : 'negotiation';
+  const room = getMessageRoom(conversationType);
 
   return {
     id: c.conversationId ?? c.ConversationId,
     proposalId,
     contractId,
-    roomType,
-    roomId: isInvited ? 'room_invited' : isWorkspace ? 'room_workspace' : 'room_negotiation',
+    disputeId,
+    roomType: room.type,
+    roomId: room.id,
     participantId: c.otherParticipantId || '',
     participantName: c.otherParticipantName || 'Partner',
     participantAvatar: c.otherParticipantAvatar || '/img/avatar-fallback.png',
@@ -134,11 +136,11 @@ function mapBackendMessage(m: any): MsgMessage {
   const messageType = m.messageType ?? m.MessageType;
   const metadata = m.metadata ?? m.Metadata;
   let msgType = 'text';
-  if (m.messageType === 1) msgType = 'image';
-  else if (m.messageType === 2) msgType = 'file';
-  else if (m.messageType === 3) msgType = 'system';
-  else if (m.messageType === 4) msgType = 'deal';
-  else if (m.messageType === 9) msgType = 'schedule';
+  if (messageType === 1) msgType = 'image';
+  else if (messageType === 2) msgType = 'file';
+  else if ([3, 5, 6, 7, 8].includes(messageType)) msgType = 'system';
+  else if (messageType === 4) msgType = 'deal';
+  else if (messageType === 9) msgType = 'schedule';
 
   let dealStatus: MsgMessage['dealStatus'] = undefined;
   if (messageType === 4) {
@@ -159,6 +161,8 @@ function mapBackendMessage(m: any): MsgMessage {
     conversationId: m.conversationId,
     senderId: m.senderUserId || 'system',
     type: msgType,
+    messageType,
+    metadata: typeof metadata === 'string' ? metadata : null,
     createdAt: m.sentAt,
     isRead: true,
     fileUrl: firstAttachment?.fileUrl,
@@ -255,6 +259,7 @@ export function useMessages() {
     room_invited: true,
     room_negotiation: true,
     room_workspace: true,
+    room_dispute: true,
   });
 
   // ── Conversations state (mutable for room transfers) ─────────────────────
@@ -268,6 +273,37 @@ export function useMessages() {
     return '';
   });
   const activeConv = conversationsState.find(c => c.id === activeConvId);
+  const [isActiveWorkspaceDisputed, setIsActiveWorkspaceDisputed] = useState(false);
+  const [activeWorkspaceDisputeId, setActiveWorkspaceDisputeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const contractId = activeConv?.roomType === 'workspace' ? activeConv.contractId : null;
+    if (!contractId) {
+      setIsActiveWorkspaceDisputed(false);
+      setActiveWorkspaceDisputeId(null);
+      return;
+    }
+
+    const loadWorkspaceLock = async () => {
+      const contractResponse = await contractGetAPI.getContractById(contractId);
+      if (cancelled) return;
+      const disputed = contractResponse.success && contractResponse.data?.status === ContractStatus.Disputed;
+      setIsActiveWorkspaceDisputed(disputed);
+      if (!disputed) {
+        setActiveWorkspaceDisputeId(null);
+        return;
+      }
+
+      const disputeResponse = await disputeGetAPI.getActiveDispute(contractId);
+      if (!cancelled) {
+        setActiveWorkspaceDisputeId(disputeResponse.success ? disputeResponse.data?.id ?? null : null);
+      }
+    };
+
+    void loadWorkspaceLock();
+    return () => { cancelled = true; };
+  }, [activeConv?.contractId, activeConv?.roomType]);
 
   // ── Messages map ─────────────────────────────────────────────────────────
   const [messagesMap, setMessagesMap] = useState<Record<string, MsgMessage[]>>({});
@@ -1027,7 +1063,7 @@ export function useMessages() {
   };
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !activeConvId) return;
+    if (!messageInput.trim() || !activeConvId || isActiveWorkspaceDisputed) return;
     const content = messageInput.trim();
 
     const clientMessageId = typeof crypto.randomUUID === 'function'
@@ -1560,6 +1596,8 @@ export function useMessages() {
     activeConvId,
     setActiveConvId,
     activeConv,
+    isActiveWorkspaceDisputed,
+    activeWorkspaceDisputeId,
     messagesMap,
     setMessagesMap,
     activeMessages,

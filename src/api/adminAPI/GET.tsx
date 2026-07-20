@@ -16,6 +16,7 @@ import type {
   AdminDisputeListResult,
 } from '../../types/models/AdminDispute';
 import type { DisputeEvidenceDownload } from '../../types/models/Dispute';
+import type { ConversationMessageResponse } from '../messageAPI/GET';
 import {
   normalizeAdminDisputeDetail,
   normalizeAdminDisputeListResult,
@@ -41,6 +42,17 @@ export const adminGetAPI = {
       data: response.data ? normalizeAdminDisputeDetail(response.data) : undefined,
     };
   },
+
+  getDisputeConversationMessages: async (
+    disputeId: string,
+    conversationId: string,
+    before?: string,
+    pageSize = 100,
+  ): Promise<ApiResponse<ConversationMessageResponse[]>> =>
+    apiService.get<ConversationMessageResponse[]>(
+      `${Admin_Api_Base_Url}/disputes/${disputeId}/conversations/${conversationId}/messages`,
+      { before, pageSize },
+    ),
 
   getDisputeEvidenceDownload: async (
     disputeId: string,

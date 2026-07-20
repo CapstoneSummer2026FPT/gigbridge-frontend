@@ -4,6 +4,7 @@ import { useProjectWorkspace } from './useProjectWorkspace';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
+import { ContractStatus } from '../../../types/models/Contract';
 
 const signalRMock = vi.hoisted(() => {
   const handlers = new Map<string, (payload: Record<string, unknown>) => void>();
@@ -126,10 +127,23 @@ describe('useProjectWorkspace realtime chat', () => {
         messageId: 'message-2', conversationId: 'conversation-2', senderUserId: 'other-user',
         content: 'Wrong conversation', sentAt: '2026-07-02T02:01:00.000Z', messageType: 0,
       });
+      signalRMock.handlers.get('ReceiveMessage')?.({
+        messageId: 'report-message-1', conversationId: 'conversation-1', senderUserId: null,
+        content: 'An issue report was created.', sentAt: '2026-07-02T02:02:00.000Z', messageType: 5,
+        metadata: JSON.stringify({
+          kind: 'reportContract', reportId: 'report-1', contractId: 'contract-1', eventType: 'created',
+        }),
+      });
     });
 
-    expect(result.current.projectMessages).toHaveLength(1);
+    expect(result.current.projectMessages).toHaveLength(2);
     expect(result.current.projectMessages[0]).toMatchObject({ id: 'message-1', content: 'Realtime hello', sendStatus: 'sent' });
+    expect(result.current.projectMessages[1]).toMatchObject({
+      id: 'report-message-1',
+      type: 'system',
+      messageType: 5,
+      metadata: expect.stringContaining('report-1'),
+    });
   });
 
   it('replaces an optimistic message with its server echo instead of duplicating it', async () => {
@@ -207,5 +221,53 @@ describe('useProjectWorkspace realtime chat', () => {
     await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(walletUpdatedHandler).toHaveBeenCalledTimes(1));
     window.removeEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+  });
+
+  it('keeps disputed contracts in the sidebar after switching workspaces', async () => {
+    const contracts = [
+      {
+        contractsId: 'contract-disputed', jobPostsId: 'job-disputed', clientProfilesId: 'client-profile-1',
+        freelancerProfilesId: 'freelancer-profile-1', conversationId: 'conversation-disputed',
+        title: 'Disputed workspace', totalBudget: 100, status: ContractStatus.Disputed,
+        createdAt: '2026-07-01T01:00:00.000Z',
+      },
+      {
+        contractsId: 'contract-active', jobPostsId: 'job-active', clientProfilesId: 'client-profile-1',
+        freelancerProfilesId: 'freelancer-profile-1', conversationId: 'conversation-active',
+        title: 'Active workspace', totalBudget: 200, status: ContractStatus.Active,
+        createdAt: '2026-07-02T01:00:00.000Z',
+      },
+    ];
+    vi.mocked(contractGetAPI.getMyContracts).mockResolvedValue(success(contracts) as never);
+    vi.mocked(contractGetAPI.getContractById).mockImplementation(async contractId =>
+      success(contracts.find(contract => contract.contractsId === contractId)!) as never);
+
+    const { result } = renderHook(() => useProjectWorkspace('contract-disputed'));
+    await waitFor(() => expect(result.current.workspaceProjects).toHaveLength(2));
+    expect(result.current.workspaceProjects.find(item => item.id === 'contract-disputed')?.status)
+      .toBe(ContractStatus.Disputed);
+
+    act(() => result.current.setActiveProjectId('contract-active'));
+    await waitFor(() => expect(result.current.activeProjectId).toBe('contract-active'));
+    await waitFor(() => expect(result.current.workspaceProjects).toHaveLength(2));
+    expect(result.current.workspaceProjects.map(item => item.id))
+      .toEqual(expect.arrayContaining(['contract-active', 'contract-disputed']));
+  });
+
+  it('does not submit a workspace message when the contract is disputed', async () => {
+    vi.mocked(contractGetAPI.getContractById).mockResolvedValue(success({
+      contractsId: 'contract-1', jobPostsId: 'job-1', clientProfilesId: 'client-profile-1',
+      freelancerProfilesId: 'freelancer-profile-1', conversationId: 'conversation-1',
+      title: 'Disputed workspace', totalBudget: 100, status: ContractStatus.Disputed,
+      createdAt: '2026-07-02T01:00:00.000Z',
+    }) as never);
+
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(result.current.activeContract?.status).toBe(ContractStatus.Disputed));
+    act(() => result.current.setMessageInput('Blocked message'));
+    await act(async () => result.current.handleSendMessage());
+
+    expect(messagePostAPI.sendMessage).not.toHaveBeenCalled();
+    expect(result.current.projectMessages).toHaveLength(0);
   });
 });

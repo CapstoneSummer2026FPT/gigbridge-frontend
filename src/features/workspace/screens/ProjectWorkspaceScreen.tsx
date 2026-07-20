@@ -1,21 +1,33 @@
-import { useState, useRef, type ChangeEvent, type FormEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, Ban, Send, Plus,
+  ArrowLeft, Ban, Send, Plus, AlertTriangle,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus } from '../../../types/models/Contract';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
+import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
+import {
+  ContractReportIssueType,
+  ContractReportResolutionAction,
+  ContractReportStatus,
+} from '../../../types/models/ReportContract';
 import '../styles/project-workspace-screen.css';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { disputeGetAPI } from '../../../api/disputeAPI';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
+import {
+  parseReportSystemMessageMetadata,
+  type ReportSystemMessageMetadata,
+} from '../utils/reportSystemMessage';
 
 const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
   const url = handoff.sourceType === ContractProductHandoffSourceType.Link
@@ -29,6 +41,56 @@ const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: any)
   handoff.sourceType === ContractProductHandoffSourceType.Link
     ? t('workspace.workMaterialsLink')
     : handoff.fileName || t('workspace.workMaterialsFile');
+
+const REPORT_ISSUE_KEYS: Record<number, string> = {
+  [ContractReportIssueType.PaymentIssue]: 'workspace.reportIssueTypePaymentIssue',
+  [ContractReportIssueType.MilestoneIssue]: 'workspace.reportIssueTypeMilestoneIssue',
+  [ContractReportIssueType.Delay]: 'workspace.reportIssueTypeDelay',
+  [ContractReportIssueType.PoorQuality]: 'workspace.reportIssueTypePoorQuality',
+  [ContractReportIssueType.CommunicationProblem]: 'workspace.reportIssueTypeCommunicationProblem',
+  [ContractReportIssueType.ScopeChange]: 'workspace.reportIssueTypeScopeChange',
+  [ContractReportIssueType.Other]: 'workspace.reportIssueTypeOther',
+};
+
+const REPORT_ACTION_KEYS: Record<number, string> = {
+  [ContractReportResolutionAction.AcceptIssue]: 'workspace.reportActionAcceptIssue',
+  [ContractReportResolutionAction.ProvideExplanation]: 'workspace.reportActionProvideExplanation',
+  [ContractReportResolutionAction.ProposeResolution]: 'workspace.reportActionProposeResolution',
+  [ContractReportResolutionAction.RejectIssue]: 'workspace.reportActionRejectIssue',
+};
+
+const REPORT_STATUS_KEYS: Record<number, string> = {
+  [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
+  [ContractReportStatus.WaitingReporterConfirmation]: 'workspace.reportStatusWaitingConfirmation',
+  [ContractReportStatus.Resolved]: 'workspace.reportStatusResolved',
+  [ContractReportStatus.Escalated]: 'workspace.reportStatusEscalated',
+};
+
+const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: any): string => {
+  const actor = event.actorName || event.actorRole || t('workspace.reportParticipant');
+  if (event.eventType === 'created') return t('workspace.reportSystemCreatedSummary', { actor });
+  if (event.eventType === 'resolved') return t('workspace.reportSystemResolvedSummary');
+
+  switch (event.resolutionAction) {
+    case ContractReportResolutionAction.AcceptIssue:
+      return t('workspace.reportSystemAcceptedSummary', { actor });
+    case ContractReportResolutionAction.ProvideExplanation:
+      return t('workspace.reportSystemExplainedSummary', { actor });
+    case ContractReportResolutionAction.ProposeResolution:
+      return t('workspace.reportSystemProposedSummary', { actor });
+    case ContractReportResolutionAction.RejectIssue:
+      return t('workspace.reportSystemRejectedSummary', { actor });
+    default:
+      return t('workspace.reportSystemUpdatedSummary', { actor });
+  }
+};
+
+const getReportSystemDetail = (event: ReportSystemMessageMetadata): string | null => {
+  if (event.resolutionAction === ContractReportResolutionAction.ProvideExplanation) return event.explanation;
+  if (event.resolutionAction === ContractReportResolutionAction.ProposeResolution) return event.proposedResolution;
+  if (event.resolutionAction === ContractReportResolutionAction.RejectIssue) return event.rejectReason;
+  return null;
+};
 
 export default function ProjectWorkspaceScreen() {
   const { t } = useTranslation();
@@ -61,6 +123,11 @@ export default function ProjectWorkspaceScreen() {
   const [productLink, setProductLink] = useState('');
   const [productError, setProductError] = useState<string | null>(null);
   const [isSendingProduct, setIsSendingProduct] = useState(false);
+  const [raiseIssueModalOpen, setRaiseIssueModalOpen] = useState(false);
+  const [reportListOpen, setReportListOpen] = useState(false);
+  const [viewReportId, setViewReportId] = useState<string | null>(null);
+  const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
   const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const submitFileInputRef = useRef<HTMLInputElement>(null);
   const productFileInputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +168,26 @@ export default function ProjectWorkspaceScreen() {
     handleSubmitProductHandoff,
     chatEndRef,
   } = useProjectWorkspace(contractId || '');
-  const workspaceContractId = contractId || activeProjectId;
+
+  const {
+    reports: contractReports,
+    isLoading: isLoadingReports,
+    createReport,
+    isCreatingReport: isCreatingReport,
+    selectedReport,
+    loadReportDetail,
+    isLoadingDetail: isLoadingReportDetail,
+    respondToReport,
+    isRespondingReport,
+    confirmResolution,
+    isConfirmingReport,
+    escalateToDispute,
+    isEscalatingReport,
+    loadReports,
+    error: reportError,
+    clearSelectedReport,
+  } = useReportContract();
+  const workspaceContractId = activeProjectId || contractId || '';
   const approvedMilestoneCount = project.milestones.filter(milestone => milestone.status === 'approved').length;
   const requiredApprovedForWithdraw = Math.ceil(project.milestones.length * 0.5);
   const hasEnoughApprovedForWithdraw = project.milestones.length > 0 && approvedMilestoneCount >= requiredApprovedForWithdraw;
@@ -117,7 +203,9 @@ export default function ProjectWorkspaceScreen() {
   const projectReleasedInFull = project.totalBudget > 0
     ? project.paidAmount >= project.totalBudget
     : allMilestonesReleased;
+  const isContractDisputed = activeContract?.status === ContractStatus.Disputed;
   const isWorkspaceViewOnly = activeContract?.status === ContractStatus.Completed;
+  const isWorkspaceLocked = isWorkspaceViewOnly || isContractDisputed;
   const showFreelancerPayoutCard = !isClient &&
     activeContract?.status === ContractStatus.Completed &&
     allMilestonesApproved;
@@ -127,6 +215,26 @@ export default function ProjectWorkspaceScreen() {
   );
   const completedJobAmount = project.milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
   const endProjectServiceFee = calculateServiceFee(completedJobAmount);
+
+  useEffect(() => {
+    setRaiseIssueModalOpen(false);
+    setReportListOpen(false);
+    setViewReportId(null);
+    setUnavailableReportId(null);
+    clearSelectedReport();
+  }, [workspaceContractId, clearSelectedReport]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!workspaceContractId || !isContractDisputed) {
+      setActiveDisputeId(null);
+      return;
+    }
+    void disputeGetAPI.getActiveDispute(workspaceContractId).then(response => {
+      if (!cancelled) setActiveDisputeId(response.success ? response.data?.id ?? null : null);
+    });
+    return () => { cancelled = true; };
+  }, [isContractDisputed, workspaceContractId]);
 
   const resetSubmitModal = () => {
     setSubmitModal(null);
@@ -339,6 +447,106 @@ export default function ProjectWorkspaceScreen() {
     setMilestoneActionPendingId(null);
   };
 
+  const handleToggleReportList = useCallback(() => {
+    if (reportListOpen) {
+      setReportListOpen(false);
+      setViewReportId(null);
+      clearSelectedReport();
+      return;
+    }
+
+    setReportListOpen(true);
+    if (workspaceContractId) {
+      void loadReports(workspaceContractId);
+    }
+  }, [clearSelectedReport, loadReports, reportListOpen, workspaceContractId]);
+
+  const handleCloseReportList = useCallback(() => {
+    setReportListOpen(false);
+    setViewReportId(null);
+    clearSelectedReport();
+  }, [clearSelectedReport]);
+
+  const handleCreateContractReport = useCallback(
+    async (input: {
+      issueType: number;
+      description: string;
+      desiredResolution: string;
+      milestoneId?: string | null;
+      attachments?: File[];
+    }) => {
+      if (!workspaceContractId) {
+        return { success: false, message: t('workspace.failedSubmitReportError') };
+      }
+
+      const response = await createReport(workspaceContractId, input);
+      return { success: response.success, message: response.message };
+    },
+    [createReport, t, workspaceContractId],
+  );
+
+  const handleViewContractReport = useCallback(
+    async (reportId: string) => {
+      if (!workspaceContractId) return;
+      setViewReportId(reportId);
+      setUnavailableReportId(null);
+      const response = await loadReportDetail(workspaceContractId, reportId);
+      if (!response?.success || !response.data) {
+        setUnavailableReportId(reportId);
+        setViewReportId(null);
+      }
+    },
+    [loadReportDetail, workspaceContractId],
+  );
+
+  const handleCloseReportDetail = useCallback(() => {
+    setViewReportId(null);
+    clearSelectedReport();
+  }, [clearSelectedReport]);
+
+  const handleRespondToContractReport = useCallback(
+    async (input: {
+      resolutionAction: number;
+      explanation?: string | null;
+      proposedResolution?: string | null;
+      rejectReason?: string | null;
+      attachments?: File[];
+    }) => {
+      if (!workspaceContractId || !viewReportId) {
+        return { success: false, message: t('workspace.reportResponseFailed') };
+      }
+
+      const response = await respondToReport(workspaceContractId, viewReportId, input);
+      return { success: response.success, message: response.message };
+    },
+    [respondToReport, t, viewReportId, workspaceContractId],
+  );
+
+  const handleConfirmContractReport = useCallback(
+    async (isAccepted: boolean) => {
+      if (!workspaceContractId || !viewReportId) {
+        return { success: false, message: t('workspace.reportConfirmationFailed') };
+      }
+
+      const response = await confirmResolution(workspaceContractId, viewReportId, isAccepted);
+      return { success: response.success, message: response.message };
+    },
+    [confirmResolution, t, viewReportId, workspaceContractId],
+  );
+
+  const handleEscalateContractReport = useCallback(async (input: EscalateReportToDisputeInput) => {
+    if (!workspaceContractId || !selectedReport) {
+      return { success: false, message: t('workspace.disputeEscalationFailed') };
+    }
+    const response = await escalateToDispute(workspaceContractId, selectedReport.id, input);
+    if (response.success && response.data) setActiveDisputeId(response.data.id);
+    return {
+      success: response.success,
+      message: response.message,
+      disputeId: response.data?.id,
+    };
+  }, [escalateToDispute, selectedReport, t, workspaceContractId]);
+
   const openEndProjectDialog = async () => {
     setEndProjectError(null);
     setEndProjectFeeMode('confirmation');
@@ -431,6 +639,29 @@ export default function ProjectWorkspaceScreen() {
                 <span>{t('workspace.sendMaterialsButton')}</span>
               </button>
             )}
+            {activeContract?.status === ContractStatus.Active && workspaceContractId && (
+              <>
+                <button
+                  onClick={() => setRaiseIssueModalOpen(true)}
+                  className="rc-raise-issue-btn"
+                  title={t('workspace.raiseIssue')}
+                >
+                  <AlertTriangle size={14} />
+                  <span>{t('workspace.raiseIssue')}</span>
+                </button>
+                <button
+                  onClick={handleToggleReportList}
+                  className={`font-bold text-[10px] px-4 py-2 rounded-full transition-all uppercase tracking-widest cursor-pointer border ${
+                    reportListOpen
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                      : 'bg-muted border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <FileText size={14} className="inline mr-1" />
+                  {t('workspace.issueReports')}
+                </button>
+              </>
+            )}
             <button
               onClick={() => navigate(`/contracts/${project.contractId || contractId || ''}`)}
               className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all uppercase tracking-widest cursor-pointer"
@@ -512,6 +743,11 @@ export default function ProjectWorkspaceScreen() {
                           <h3 className="font-headline-sm text-sm truncate font-semibold">{proj.partnerName}</h3>
                           <span className="text-[10px] text-muted-foreground">{proj.time}</span>
                         </div>
+                        {proj.status === ContractStatus.Disputed && (
+                          <span className="workspace-disputed-badge">
+                            <LockKeyhole size={11} /> {t('workspace.disputedBadge')}
+                          </span>
+                        )}
                         <p className={`text-xs truncate ${proj.unread ? 'text-foreground font-semibold animate-pulse' : 'text-muted-foreground'}`}>
                           {proj.latestMessage}
                         </p>
@@ -638,10 +874,10 @@ export default function ProjectWorkspaceScreen() {
                   const isPending = milestone.status === 'pending';
                   const withdrawableAmount = Math.max(0, milestone.amount * 0.8 - milestone.releasedAmount);
                   const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
-                  const canFreelancerSubmit = !isWorkspaceViewOnly && !isClient && isInProgress;
-                  const canClientReview = !isWorkspaceViewOnly && isClient && isSubmitted;
-                  const canClientStart = !isWorkspaceViewOnly && isClient && isPending;
-                  const canFreelancerRequestUnlock = !isWorkspaceViewOnly && !isClient && isPending;
+                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress;
+                  const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+                  const canClientStart = !isWorkspaceLocked && isClient && isPending;
+                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
                   const showFreelancerWithdraw = !isClient &&
                     activeContract?.status === ContractStatus.Active &&
                     isCompleted &&
@@ -941,6 +1177,117 @@ export default function ProjectWorkspaceScreen() {
 
                     {projectMessages.map((msg, index) => {
                       const isMe = msg.senderId === user?.id || (msg.senderId === 'client' && isClient) || (msg.senderId === 'freelancer' && !isClient);
+                      const reportEvent = parseReportSystemMessageMetadata(msg.metadata);
+                      const isSystemMessage = msg.type === 'system';
+
+                      if (reportEvent) {
+                        const detail = getReportSystemDetail(reportEvent);
+                        const isSelected = viewReportId === reportEvent.reportId;
+                        const isUnavailable = unavailableReportId === reportEvent.reportId;
+                        const titleKey = reportEvent.eventType === 'created'
+                          ? 'workspace.reportSystemCreatedTitle'
+                          : reportEvent.eventType === 'resolved'
+                            ? 'workspace.reportSystemResolvedTitle'
+                            : 'workspace.reportSystemUpdatedTitle';
+
+                        return (
+                          <div key={msg.id || index} className="flex justify-center self-stretch">
+                            <div
+                              id={`report-system-${reportEvent.reportId}`}
+                              className={`w-full max-w-md rounded-xl border bg-card p-4 shadow-sm transition-all ${
+                                isSelected
+                                  ? 'border-amber-500 ring-2 ring-amber-500/20'
+                                  : 'border-amber-500/30'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  {reportEvent.eventType === 'resolved' ? (
+                                    <CheckCircle size={18} className="text-green-500" />
+                                  ) : (
+                                    <AlertTriangle size={18} className="text-amber-500" />
+                                  )}
+                                  <h4 className="text-sm font-bold text-foreground">{t(titleKey)}</h4>
+                                </div>
+                                <span className={`rc-status rc-status-${reportEvent.status}`}>
+                                  {t(REPORT_STATUS_KEYS[reportEvent.status] || 'workspace.reportStatusPending')}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                {getReportSystemSummary(reportEvent, t)}
+                              </p>
+
+                              {reportEvent.eventType === 'created' && (
+                                <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3 text-xs">
+                                  <div>
+                                    <strong>{t('workspace.reportSystemReason')}:</strong>{' '}
+                                    {t(REPORT_ISSUE_KEYS[reportEvent.issueType] || 'workspace.reportIssueTypeOther')}
+                                  </div>
+                                  <div>
+                                    <strong>{t('workspace.reportDesiredResolution')}:</strong>{' '}
+                                    {reportEvent.desiredResolution}
+                                  </div>
+                                  <div>
+                                    <strong>{t('workspace.reportDescription')}:</strong>{' '}
+                                    {reportEvent.description}
+                                  </div>
+                                </div>
+                              )}
+
+                              {reportEvent.eventType === 'updated' && (
+                                <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3 text-xs">
+                                  <div>
+                                    <strong>{t('workspace.reportSystemAction')}:</strong>{' '}
+                                    {reportEvent.resolutionAction === null
+                                      ? t('workspace.reportSystemUpdatedTitle')
+                                      : t(REPORT_ACTION_KEYS[reportEvent.resolutionAction])}
+                                  </div>
+                                  {detail && (
+                                    <div>
+                                      <strong>{t('workspace.reportSystemReason')}:</strong> {detail}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {reportEvent.eventType === 'resolved' && (
+                                <p className="mt-3 rounded-lg bg-green-500/10 p-3 text-xs font-medium text-green-600">
+                                  {t('workspace.reportSystemResolvedBody')}
+                                </p>
+                              )}
+
+                              {isUnavailable ? (
+                                <p className="mt-3 text-xs font-semibold text-red-500">
+                                  {t('workspace.reportUnavailable')}
+                                </p>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleViewContractReport(reportEvent.reportId)}
+                                  disabled={isLoadingReportDetail && isSelected}
+                                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-600 transition hover:bg-amber-500/10 disabled:opacity-50"
+                                >
+                                  {isLoadingReportDetail && isSelected
+                                    ? t('common.loading')
+                                    : t('workspace.reportView')}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (isSystemMessage) {
+                        return (
+                          <div key={msg.id || index} className="flex justify-center self-stretch">
+                            <div className="max-w-md rounded-full border border-border bg-muted/80 px-4 py-1.5 text-center text-xs font-medium text-muted-foreground">
+                              {msg.content}
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={msg.id || index} className={`flex items-end gap-2 max-w-[85%] ${isMe ? 'self-end flex-row-reverse' : ''}`}>
                           {!isMe && (
@@ -985,9 +1332,22 @@ export default function ProjectWorkspaceScreen() {
                   </div>
 
                   {/* Input area */}
-                  {isWorkspaceViewOnly ? (
+                  {isWorkspaceLocked ? (
                     <div className="p-4 bg-muted/50 border-t border-border text-center text-xs font-semibold text-muted-foreground">
-                      {t('workspace.viewOnlyNotice')}
+                      {isContractDisputed ? (
+                        <div className="workspace-dispute-lock">
+                          <AlertTriangle size={18} />
+                          <div>
+                            <strong>{t('workspace.disputeLockedTitle')}</strong>
+                            <p>{t('workspace.disputeLockedDescription')}</p>
+                          </div>
+                          {activeDisputeId && (
+                            <button type="button" onClick={() => navigate(`/contracts/${workspaceContractId}/disputes/${activeDisputeId}`)}>
+                              {t('workspace.openDispute')}
+                            </button>
+                          )}
+                        </div>
+                      ) : t('workspace.viewOnlyNotice')}
                     </div>
                   ) : (
                   <div className="p-3 bg-card border-t border-border flex-shrink-0">
@@ -1399,6 +1759,84 @@ export default function ProjectWorkspaceScreen() {
             </form>
           </div>
         </div>
+      )}
+
+      {workspaceContractId && (
+        <RaiseIssueModal
+          contractId={workspaceContractId}
+          isOpen={raiseIssueModalOpen}
+          onClose={() => setRaiseIssueModalOpen(false)}
+          onSubmit={handleCreateContractReport}
+          isSubmitting={isCreatingReport}
+        />
+      )}
+
+      {reportListOpen && (
+        <div className="rc-modal-backdrop" role="presentation" onClick={handleCloseReportList}>
+          <div
+            className="rc-modal rc-modal-wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rc-report-list-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="rc-modal-header">
+              <div>
+                <h3 id="rc-report-list-title">{t('workspace.issueReports')}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseReportList}
+                className="rc-icon-button"
+                title={t('common.close')}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {reportError && (
+              <div className="rc-form">
+                <div className="rc-error">
+                  <AlertCircle size={16} />
+                  <span>{reportError}</span>
+                </div>
+              </div>
+            )}
+            <ReportList
+              reports={contractReports}
+              isLoading={isLoadingReports}
+              currentUserId={user?.id ?? ''}
+              onViewReport={handleViewContractReport}
+            />
+          </div>
+        </div>
+      )}
+
+      {viewReportId && isLoadingReportDetail && (
+        <div className="rc-modal-backdrop" role="presentation">
+          <div className="rc-modal" role="status" aria-live="polite">
+            <div className="rc-list-loading">
+              <Loader2 size={20} className="rc-spin" />
+              <span>{t('common.loading')}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
+        <ReportDetailModal
+          report={selectedReport}
+          contractTitle={activeContract?.title || project.title}
+          currentUserId={user?.id ?? ''}
+          isOpen
+          onClose={handleCloseReportDetail}
+          onRespond={handleRespondToContractReport}
+          onConfirm={handleConfirmContractReport}
+          onEscalate={handleEscalateContractReport}
+          onDisputeCreated={(disputeId) => navigate(`/contracts/${workspaceContractId}/disputes/${disputeId}`)}
+          isResponding={isRespondingReport}
+          isConfirming={isConfirmingReport}
+          isEscalating={isEscalatingReport}
+        />
       )}
     </AppLayout>
   );
