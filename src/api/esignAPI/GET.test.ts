@@ -16,6 +16,10 @@ describe('e-sign GET response normalization', () => {
       ExpiresAt: null,
       FinalizedAt: '2026-06-28T01:00:00.000Z',
       ExportedPdfUrl: 'https://example.com/contract.pdf',
+      CurrentUserSignerRole: ESignerRole.Freelancer,
+      CanCurrentUserSign: false,
+      HasFinalArtifact: true,
+      FinalizedDocumentFileName: 'DOC-001.docx',
       CreatedAt: '2026-06-27T01:00:00.000Z',
       UpdatedAt: '2026-06-28T01:00:00.000Z',
       Signatures: [
@@ -40,6 +44,12 @@ describe('e-sign GET response normalization', () => {
 
     expect(document.status).toBe(ESignDocumentStatus.FullySigned);
     expect(document.signatures).toHaveLength(1);
+    expect(document).toMatchObject({
+      currentUserSignerRole: ESignerRole.Freelancer,
+      canCurrentUserSign: false,
+      hasFinalArtifact: true,
+      finalizedDocumentFileName: 'DOC-001.docx',
+    });
     expect(document.signatures[0]).toMatchObject({
       signatureId: 'sig-1',
       signerRole: ESignerRole.Freelancer,
@@ -90,6 +100,9 @@ describe('e-sign GET response normalization', () => {
           CurrentUserSignedAt: '2026-06-28T02:00:00.000Z',
           HasClientSigned: true,
           HasFreelancerSigned: true,
+          CanCurrentUserSign: false,
+          HasFinalArtifact: true,
+          FinalizedDocumentFileName: 'GB-CONTRACT-001.docx',
           SignatureCount: 2,
           FinalizedAt: '2026-06-28T03:00:00.000Z',
           ExportedPdfUrl: 'https://example.com/contract.pdf',
@@ -121,7 +134,18 @@ describe('e-sign GET response normalization', () => {
       currentUserSignerRole: ESignerRole.Client,
       hasClientSigned: true,
       hasFreelancerSigned: true,
+      canCurrentUserSign: false,
+      hasFinalArtifact: true,
+      finalizedDocumentFileName: 'GB-CONTRACT-001.docx',
       signatureCount: 2,
     });
+  });
+
+  it('keeps the signer role nullable for admin list responses', () => {
+    const page = normalizeESignDocumentListPage({
+      Items: [{ DocumentId: 'doc-admin', CurrentUserSignerRole: null }],
+    });
+
+    expect(page.items[0].currentUserSignerRole).toBeNull();
   });
 });

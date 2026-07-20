@@ -333,6 +333,24 @@
   line-height: 1.6;
 }
 
+.signature-policy-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.signature-policy-consent input {
+  margin-top: 0.25rem;
+}
+
+.signature-policy-consent a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 /* Signature pad */
 .signature-pad-wrapper {
   margin-bottom: 2rem;

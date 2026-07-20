@@ -1,15 +1,17 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router';
+import { MemoryRouter } from 'react-router';
 import ESignContractsScreen from '../ESignContractsScreen';
 import { esignGetAPI } from '../../../../api/esignAPI/GET';
 import { ESignerRole, ESignDocumentStatus, SignatureStatus } from '../../../../types/models/ESign';
 
 vi.mock('../../../../api/esignAPI/GET', () => ({
   esignGetAPI: {
-    getMySignedDocuments: vi.fn(),
+    getMyDocuments: vi.fn(),
+    getAdminDocuments: vi.fn(),
     getDocumentById: vi.fn(),
+    downloadDocument: vi.fn(),
   },
 }));
 
@@ -29,6 +31,9 @@ const signedDocumentItem = {
   currentUserSignedAt: '2026-06-28T02:00:00.000Z',
   hasClientSigned: true,
   hasFreelancerSigned: true,
+  canCurrentUserSign: false,
+  hasFinalArtifact: true,
+  finalizedDocumentFileName: 'GB-CONTRACT-001.docx',
   signatureCount: 2,
   finalizedAt: '2026-06-28T03:00:00.000Z',
   exportedPdfUrl: 'https://example.com/contract.pdf',
@@ -48,6 +53,10 @@ const signedDocumentDetail = {
   expiresAt: null,
   finalizedAt: '2026-06-28T03:00:00.000Z',
   exportedPdfUrl: 'https://example.com/contract.pdf',
+  currentUserSignerRole: ESignerRole.Client,
+  canCurrentUserSign: false,
+  hasFinalArtifact: true,
+  finalizedDocumentFileName: 'GB-CONTRACT-001.docx',
   createdAt: '2026-06-27T01:00:00.000Z',
   updatedAt: '2026-06-28T03:00:00.000Z',
   signatures: [
@@ -70,21 +79,30 @@ const signedDocumentDetail = {
   ],
 };
 
-const renderScreen = (): void => {
+const renderScreen = (path = '/contracts/esign'): void => {
   render(
-    <BrowserRouter>
+    <MemoryRouter initialEntries={[path]}>
       <ESignContractsScreen />
-    </BrowserRouter>
+    </MemoryRouter>
   );
 };
 
 describe('ESignContractsScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:contract'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
   });
 
-  it('loads signed contract documents', async () => {
-    vi.mocked(esignGetAPI.getMySignedDocuments).mockResolvedValue({
+  it('loads all participant contract documents', async () => {
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
       success: true,
       statusCode: 200,
       message: 'Success',
@@ -109,14 +127,14 @@ describe('ESignContractsScreen', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /mobile app contract/i })).toBeInTheDocument();
     });
-    expect(esignGetAPI.getMySignedDocuments).toHaveBeenCalledWith(
-      expect.objectContaining({ documentType: 'contract' })
+    expect(esignGetAPI.getMyDocuments).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 20 })
     );
     expect(screen.getByText('Job Post')).toBeInTheDocument();
   });
 
-  it('shows an empty state when no signed contracts exist', async () => {
-    vi.mocked(esignGetAPI.getMySignedDocuments).mockResolvedValue({
+  it('shows an empty state when no contracts exist', async () => {
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
       success: true,
       statusCode: 200,
       message: 'Success',
@@ -138,7 +156,7 @@ describe('ESignContractsScreen', () => {
   });
 
   it('opens a read-only preview without signing or editing controls', async () => {
-    vi.mocked(esignGetAPI.getMySignedDocuments).mockResolvedValue({
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
       success: true,
       statusCode: 200,
       message: 'Success',
@@ -174,5 +192,231 @@ describe('ESignContractsScreen', () => {
     expect(screen.queryByText('Sign contract')).not.toBeInTheDocument();
     expect(screen.queryByText('Proceed to sign')).not.toBeInTheDocument();
     expect(screen.queryByText('Edit contract')).not.toBeInTheDocument();
+  });
+
+  it('offers signing for a pending participant document', async () => {
+    const pendingItem = {
+      ...signedDocumentItem,
+      documentStatus: ESignDocumentStatus.PendingSignatures,
+      currentUserSignerRole: ESignerRole.Freelancer,
+      currentUserSignedAt: null,
+      hasFreelancerSigned: false,
+      canCurrentUserSign: true,
+      hasFinalArtifact: false,
+      finalizedDocumentFileName: null,
+    };
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [pendingItem],
+        pageNumber: 1,
+        totalPages: 1,
+        totalCount: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    });
+    vi.mocked(esignGetAPI.getDocumentById).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: { ...signedDocumentDetail, status: ESignDocumentStatus.PendingSignatures },
+    });
+
+    renderScreen();
+
+    expect(await screen.findByRole('link', { name: 'Sign now' })).toHaveAttribute(
+      'href',
+      '/contracts/contract-1/sign'
+    );
+    expect(screen.getByText('Client: Signed')).toBeInTheDocument();
+    expect(screen.getByText('Freelancer: Pending')).toBeInTheDocument();
+  });
+
+  it('shows the waiting state after the current user has signed', async () => {
+    const waitingItem = {
+      ...signedDocumentItem,
+      documentStatus: ESignDocumentStatus.PartiallySigned,
+      hasFreelancerSigned: false,
+      canCurrentUserSign: false,
+      hasFinalArtifact: false,
+      finalizedDocumentFileName: null,
+    };
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [waitingItem],
+        pageNumber: 1,
+        totalPages: 1,
+        totalCount: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    });
+    vi.mocked(esignGetAPI.getDocumentById).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: { ...signedDocumentDetail, status: ESignDocumentStatus.PartiallySigned },
+    });
+
+    renderScreen();
+
+    expect(await screen.findByText('Waiting for the other party')).toBeInTheDocument();
+  });
+
+  it('uses the admin list endpoint and keeps signing read-only', async () => {
+    vi.mocked(esignGetAPI.getAdminDocuments).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [{ ...signedDocumentItem, currentUserSignerRole: null, canCurrentUserSign: true }],
+        pageNumber: 1,
+        totalPages: 1,
+        totalCount: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    });
+    vi.mocked(esignGetAPI.getDocumentById).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: signedDocumentDetail,
+    });
+
+    renderScreen('/admin/contracts/esign');
+
+    await screen.findByRole('button', { name: /mobile app contract/i });
+    expect(esignGetAPI.getAdminDocuments).toHaveBeenCalled();
+    expect(esignGetAPI.getMyDocuments).not.toHaveBeenCalled();
+    expect(screen.queryByRole('link', { name: 'Sign now' })).not.toBeInTheDocument();
+  });
+
+  it('downloads the finalized DOCX through the authenticated API', async () => {
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [signedDocumentItem],
+        pageNumber: 1,
+        totalPages: 1,
+        totalCount: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    });
+    vi.mocked(esignGetAPI.getDocumentById).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: signedDocumentDetail,
+    });
+    const artifact = new Blob(['contract']);
+    vi.mocked(esignGetAPI.downloadDocument).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: artifact,
+    });
+
+    const user = userEvent.setup();
+    renderScreen();
+    await user.click(await screen.findByRole('button', { name: 'Download DOCX' }));
+
+    expect(esignGetAPI.downloadDocument).toHaveBeenCalledWith('doc-1');
+    expect(URL.createObjectURL).toHaveBeenCalledWith(artifact);
+  });
+
+  it('retries a failed authenticated DOCX download', async () => {
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [signedDocumentItem],
+        pageNumber: 1,
+        totalPages: 1,
+        totalCount: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    });
+    vi.mocked(esignGetAPI.getDocumentById).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: signedDocumentDetail,
+    });
+    vi.mocked(esignGetAPI.downloadDocument)
+      .mockResolvedValueOnce({ success: false, statusCode: 409, message: 'Artifact unavailable' })
+      .mockResolvedValueOnce({
+        success: true,
+        statusCode: 200,
+        message: 'Success',
+        data: new Blob(['contract']),
+      });
+
+    const user = userEvent.setup();
+    renderScreen();
+    await user.click(await screen.findByRole('button', { name: 'Download DOCX' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Artifact unavailable');
+    await user.click(screen.getByRole('button', { name: 'Retry DOCX' }));
+
+    expect(esignGetAPI.downloadDocument).toHaveBeenCalledTimes(2);
+  });
+
+  it('paginates and clears a document that is absent from the new result', async () => {
+    vi.mocked(esignGetAPI.getMyDocuments)
+      .mockResolvedValueOnce({
+        success: true,
+        statusCode: 200,
+        message: 'Success',
+        data: {
+          items: [signedDocumentItem],
+          pageNumber: 1,
+          totalPages: 2,
+          totalCount: 21,
+          hasPreviousPage: false,
+          hasNextPage: true,
+        },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        statusCode: 200,
+        message: 'Success',
+        data: {
+          items: [],
+          pageNumber: 2,
+          totalPages: 2,
+          totalCount: 21,
+          hasPreviousPage: true,
+          hasNextPage: false,
+        },
+      });
+    vi.mocked(esignGetAPI.getDocumentById).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: signedDocumentDetail,
+    });
+
+    const user = userEvent.setup();
+    renderScreen();
+    await screen.findByTitle('Read-only e-sign contract document');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    await waitFor(() => {
+      expect(esignGetAPI.getMyDocuments).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 })
+      );
+      expect(screen.queryByTitle('Read-only e-sign contract document')).not.toBeInTheDocument();
+    });
   });
 });

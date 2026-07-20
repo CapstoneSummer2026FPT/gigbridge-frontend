@@ -16,6 +16,7 @@ import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
+const POLICY_VERSION = '1.0-DATN';
 
 interface SignContractResponse {
   status?: ContractStatus;
@@ -75,6 +76,7 @@ export default function SignatureWorkflowScreen() {
   const [signatureStep, setSignatureStep] = useState<SignatureStep>('review');
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDrawn, setSignatureDrawn] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [signingInProgress, setSigningInProgress] = useState(false);
   const submittingRef = useRef(false);
 
@@ -250,6 +252,11 @@ export default function SignatureWorkflowScreen() {
       return;
     }
 
+    if (!policyAccepted) {
+      setError('Please accept the GigBridge policy before signing.');
+      return;
+    }
+
     try {
       submittingRef.current = true;
       setSigningInProgress(true);
@@ -261,6 +268,8 @@ export default function SignatureWorkflowScreen() {
         signatureImageUrl,
         signatureWidth: canvas.width,
         signatureHeight: canvas.height,
+        policyAccepted: true,
+        policyVersion: POLICY_VERSION,
       });
 
       if (!response.success) {
@@ -551,6 +560,22 @@ export default function SignatureWorkflowScreen() {
                   <p>{t('contracts.legalAgreementDesc')}</p>
                 </div>
               </div>
+
+              <label className="signature-policy-consent" htmlFor="signature-policy-consent">
+                <input
+                  id="signature-policy-consent"
+                  type="checkbox"
+                  checked={policyAccepted}
+                  onChange={event => setPolicyAccepted(event.target.checked)}
+                />
+                <span>
+                  Tôi đã đọc, hiểu và đồng ý với{' '}
+                  <a href="/policies" target="_blank" rel="noopener noreferrer">
+                    Bộ chính sách GigBridge phiên bản {POLICY_VERSION}
+                  </a>
+                  .
+                </span>
+              </label>
             </div>
 
             <div className="signature-actions">
@@ -560,7 +585,7 @@ export default function SignatureWorkflowScreen() {
               <button
                 className="btn-primary"
                 onClick={handleSubmitSignature}
-                disabled={!signatureDrawn || signingInProgress}
+                disabled={!signatureDrawn || !policyAccepted || signingInProgress}
               >
                 {signingInProgress ? (
                   <>
