@@ -5,7 +5,7 @@ import {
   Sparkles, X, Plus, ChevronRight,
   Bold, Italic, Underline, List, ListOrdered, Check, Save,
   GripVertical, Trash2, FileText, Clock,
-  Lightbulb, MessageSquare
+  Lightbulb, MessageSquare, Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
@@ -20,10 +20,14 @@ import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { LiquidLoading } from '../../../shared/components/LiquidLoading';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import '../styles/PostJobScreen.css';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
 
 export default function PostJobScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
   const [isGuideActive, setIsGuideActive] = useState(false);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
   const [isBudgetGuideOpen, setIsBudgetGuideOpen] = useState(false);
@@ -78,6 +82,12 @@ export default function PostJobScreen() {
     MAX_QUESTION_LENGTH,
     setForm,
   } = usePostJob();
+
+  useEffect(() => {
+    if (!premiumStatus.loading && !premiumStatus.isPremium && isInstantJobMode) {
+      setIsInstantJobMode(false);
+    }
+  }, [isInstantJobMode, premiumStatus.isPremium, premiumStatus.loading, setIsInstantJobMode]);
 
   const [detailsHeight, setDetailsHeight] = useState<number | null>(null);
 
@@ -162,7 +172,13 @@ export default function PostJobScreen() {
 
               <button
                 type="button"
-                onClick={() => { setIsInstantJobMode(!isInstantJobMode); }}
+                onClick={() => {
+                  if (!premiumStatus.isPremium) {
+                    navigate('/premium/client/pricing');
+                    return;
+                  }
+                  setIsInstantJobMode(!isInstantJobMode);
+                }}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-xs transition-all shadow-md cursor-pointer border-none ${
                   isInstantJobMode
                     ? 'bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white hover:opacity-95'
@@ -171,6 +187,7 @@ export default function PostJobScreen() {
               >
                 <Sparkles size={14} className={isInstantJobMode ? 'animate-pulse' : ''} />
                 {t('postJob.createInstantJobDetail')}
+                {!premiumStatus.isPremium && <Crown size={13} />}
               </button>
 
               <div className="relative group">

@@ -3,13 +3,16 @@ import { use3DTilt } from '../hooks/use3DTilt';
 import { useApp } from '../../../app/providers/AppProvider';
 import {
   PlusCircle, FileText, TrendingUp, ChevronRight,
-  Bot, Briefcase, Star, CheckCircle, Activity, Wallet
+  Bot, Briefcase, Star, CheckCircle, Activity, Wallet, Crown
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/client-dashboard-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { usePremiumStatus } from '../../premium/hooks';
+import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import '../../premium/styles/premium.css';
 
 export default function ClientDashboardScreen() {
   const {
@@ -27,7 +30,8 @@ export default function ClientDashboardScreen() {
     aiSuggestions,
     eliteMatches,
   } = useClientDashboard();
-  const { theme } = useApp();
+  const { theme, role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
 
   // Dynamic Pipeline and Funnel calculations
   const appliedCount = pendingProposals.length;
@@ -80,9 +84,10 @@ export default function ClientDashboardScreen() {
           {/* Header Section: Experimental Avant-Garde Layout */}
           <section className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 stagger-up">
             <div className="max-w-4xl">
-              <span className="inline-block text-primary font-bold tracking-[0.4em] uppercase text-xs mb-4">
-                Hiring Intelligence v3.0
-              </span>
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <span className="inline-block text-primary font-bold tracking-[0.4em] uppercase text-xs">Hiring Intelligence v3.0</span>
+                {!premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} />}
+              </div>
               <h1 className="font-display-lg text-7xl md:text-[9rem] font-black avant-garde-heading hero-text-overlay mb-6 uppercase">
                 CLIENT
               </h1>
@@ -93,6 +98,11 @@ export default function ClientDashboardScreen() {
             </div>
 
             <div className="flex flex-wrap gap-4 shrink-0">
+              <button className="group glass-card h-16 px-6 rounded-2xl flex items-center gap-3 hover:!border-brand transition-all duration-300 shadow-sm"
+                onClick={() => navigate(premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing')}>
+                <Crown size={17} className="text-purple" />
+                <span className="font-bold text-xs uppercase tracking-widest">{premiumStatus.isPremium ? 'Premium Hub' : 'Upgrade'}</span>
+              </button>
               <button className="group glass-card h-16 px-8 rounded-2xl flex items-center gap-3 hover:!border-brand hover:text-brand transition-all duration-300 shadow-sm"
                 onClick={() => navigate('/market-insights')}>
                 <span className="font-bold text-xs uppercase tracking-widest">{t('nav.marketInsights', 'Market Insights')}</span>

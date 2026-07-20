@@ -56,7 +56,9 @@ interface EditJobPostFormData {
   customSkillNames: string[];
 }
 
-const normalizeSkillName = (value: string) => value.trim().toLowerCase();
+const normalizeSkillName = (value: string) => value.trim().toLowerCase()
+  .replaceAll('#', 'sharp').replaceAll('+', 'plus').replaceAll('&', 'and')
+  .replace(/[^\p{L}\p{N}]/gu, '');
 const EMPTY_DRAFT_KEPT_MESSAGE = 'This draft already contains information, so it was kept as a saved draft.';
 
 const normalizeApiFieldErrors = (value: unknown): string[] => {

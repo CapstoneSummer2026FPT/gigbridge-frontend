@@ -15,6 +15,7 @@ import {
   type QuestionTimerStateDto,
 } from '../../../types/models/Proposal';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
+import { aiInterviewAPI } from '../../ai-interview/aiInterviewAPI';
 
 type AnswerRouteState = {
   proposalId?: string;
@@ -759,6 +760,13 @@ export default function ScreenProposalAnswerQuestion() {
       alert(statusResponse.data.cheatingPenalty.message);
     }
 
+    const interview = await aiInterviewAPI.requirement(jobPostId);
+    if (interview.success && interview.data?.required && !interview.data.completed) {
+      const params = new URLSearchParams({ jobPostId });
+      if (interview.data.interviewDefinitionId) params.set('definitionId', interview.data.interviewDefinitionId);
+      navigate(`/ai-interview?${params.toString()}`);
+      return;
+    }
     navigate('/proposals');
   };
 

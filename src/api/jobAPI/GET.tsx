@@ -14,6 +14,8 @@ import type {
   JobPostDetailDto,
   JobPostQueryParams,
   JobPostQuestionDto,
+  JobPromotionPolicyDto,
+  PublicJobPromotionCardDto,
   JobPostSummaryDto,
 } from '../../types/models/Job';
 
@@ -262,6 +264,12 @@ export const jobGetAPI = {
   ): Promise<ApiResponse<GetMyJobPostDto[]>> => {
     return apiService.get<GetMyJobPostDto[]>(`${jobPostsUrl}/my-jobs`, params);
   },
+
+  getJobPromotionPolicy: async (): Promise<ApiResponse<JobPromotionPolicyDto>> =>
+    apiService.get<JobPromotionPolicyDto>(`${jobPostsUrl}/promotion-policy`),
+
+  getJobPromotionFeed: async (limit = 10): Promise<ApiResponse<PublicJobPromotionCardDto[]>> =>
+    apiService.get<PublicJobPromotionCardDto[]>('job-promotions/feed', { limit }),
 
   /**
    * GET /api/JobPosts/my-drafts

@@ -7,6 +7,10 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { ContractStatus, type ContractDto, type Milestone } from '../../../types/models/Contract';
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/create-dispute-screen.css';
+import { useApp } from '../../../app/providers/AppProvider';
+import { usePremiumStatus } from '../../premium/hooks';
+import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import '../../premium/styles/premium.css';
 
 const MAX_REASON_LENGTH = 2000;
 const MAX_EVIDENCE_SIZE = 100 * 1024 * 1024;
@@ -46,6 +50,7 @@ export default function CreateDisputeScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isPremiumClientDispute = role === 0 && premiumStatus.isPremium;
   useEffect(() => {
     let cancelled = false;
 
