@@ -298,9 +298,9 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                         Budget: <strong className="text-foreground">{formatGigCoin(candidate.proposedBudget || 0)}</strong> · Duration: {candidate.proposedDuration || 'N/A'} · Submitted: {new Date(candidate.submittedAt).toLocaleDateString()}
                       </p>
 
-                      {/* AI Summary Preview */}
+                      {/* AI Summary */}
                       {candidate.aiSummary ? (
-                        <p className="text-xs text-foreground/90 leading-relaxed italic bg-purple-500/5 p-2.5 rounded-lg border border-purple-500/10 mt-2 line-clamp-2">
+                        <p className="text-xs text-foreground/90 leading-relaxed italic bg-purple-500/5 p-2.5 rounded-lg border border-purple-500/10 mt-2 whitespace-pre-wrap">
                           "{candidate.aiSummary}"
                         </p>
                       ) : (
