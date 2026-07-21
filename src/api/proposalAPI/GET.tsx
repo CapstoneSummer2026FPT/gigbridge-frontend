@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
+import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalJudgingListDto, ProposalQueryParams } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
 
@@ -54,6 +54,17 @@ export const proposalGetAPI = {
     params: ProposalQueryParams = {}
   ): Promise<ApiResponse<ProposalDto[]>> => {
     return apiService.get<ProposalDto[]>(`${proposalsUrl}/job/${jobPostId}/proposals`, params);
+  },
+
+  /**
+   * GET /api/Proposals/job/{jobPostId}/ai-judging-list
+   * Client-only ranked AI proposal judging list and summary stats for a job post.
+   */
+  getProposalJudgingList: async (
+    jobPostId: string,
+    params: { recommendedOnly?: boolean; minScore?: number; sortBy?: string } = {}
+  ): Promise<ApiResponse<ProposalJudgingListDto>> => {
+    return apiService.get<ProposalJudgingListDto>(`${proposalsUrl}/job/${jobPostId}/ai-judging-list`, params);
   },
 
   /**

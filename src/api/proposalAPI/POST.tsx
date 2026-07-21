@@ -1,6 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
+  BatchJudgeResultDto,
   CreateProposalAnswerRequest,
   CreateProposalRequest,
   CheatingEventLogResponse,
@@ -69,6 +70,13 @@ export const proposalPostAPI = {
 
   acceptForNegotiation: async (proposalId: string): Promise<ApiResponse<string>> => {
     return apiService.post<string>(`${proposalsUrl}/${proposalId}/accept-for-negotiation`);
+  },
+
+  judgeAllProposals: async (
+    jobPostId: string,
+    batchSize: number = 10
+  ): Promise<ApiResponse<BatchJudgeResultDto>> => {
+    return apiService.post<BatchJudgeResultDto>(`${proposalsUrl}/job/${jobPostId}/ai-judge-all?batchSize=${batchSize}`);
   },
 
   evaluateVettingAnswers: async (

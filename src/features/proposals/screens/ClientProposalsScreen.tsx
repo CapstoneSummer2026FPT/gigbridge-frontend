@@ -13,6 +13,7 @@ import { ProposalStatus, type ProposalDetailDto, type ProposalDto, type VettingE
 import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
 import { getStatusLabel } from '../utils/statusHelpers';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { ProposalJudgingListView } from '../components/ProposalJudgingListView';
 
 type SortBy = 'submittedAt' | 'status' | 'budget' | 'duration' | 'milestoneTotal';
 type BusyAction = 'shortlist' | 'reject' | 'accept' | 'open';
@@ -71,6 +72,15 @@ export default function ClientProposalsScreen() {
   const [milestoneMax, setMilestoneMax] = useState('');
   const [submittedFrom, setSubmittedFrom] = useState('');
   const [submittedTo, setSubmittedTo] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
+
+  const refreshProposals = () => {
+    if (!selectedJobId) return;
+    proposalGetAPI.getProposalsByJobPost(selectedJobId, { pageIndex: 1, pageSize: 100 })
+      .then(response => {
+        if (response.data) setProposals(response.data);
+      });
+  };
 
   useEffect(() => {
     let alive = true;
@@ -248,6 +258,15 @@ export default function ClientProposalsScreen() {
       const response = await proposalPostAPI.evaluateVettingAnswers(proposalId);
       if (response.success && response.data) {
         setEvalResult(response.data);
+        setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
+          ...p,
+          aiScore: response.data.score,
+          aiSummary: response.data.summary,
+          aiRecommendedHire: response.data.recommendedHire,
+          aiTechnicalSkills: response.data.technicalSkills,
+          aiSoftSkills: response.data.softSkills,
+          aiEvaluatedAt: new Date().toISOString()
+        } : p));
       } else {
         setEvalError(response.message || 'Vetting evaluation failed.');
       }
@@ -287,7 +306,21 @@ export default function ClientProposalsScreen() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1 text-xs">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`rounded-md px-3 py-1.5 font-bold transition ${viewMode === 'table' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Standard Table
+              </button>
+              <button
+                onClick={() => setViewMode('aiJudging')}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${viewMode === 'aiJudging' ? 'bg-purple-600 text-white shadow' : 'text-purple-600 dark:text-purple-400 hover:text-foreground'}`}
+              >
+                <Brain size={14} /> AI Judging Leaderboard
+              </button>
+            </div>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as ProposalStatusFilter)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs">
               <option value="all">All statuses</option>
               <option value="0">Draft</option>
@@ -326,92 +359,125 @@ export default function ClientProposalsScreen() {
           </aside>
 
           <main className="min-w-0 overflow-auto p-3 lg:p-4">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="truncate font-bold">{selectedJob?.title || 'Select a project request'}</h2>
-                <p className="text-xs text-muted-foreground">{visible.length} of {proposals.length} proposals shown</p>
-                {selectedJob && !selectedJobCanNegotiate && (
-                  <p className="mt-1 text-xs font-semibold text-amber-600">
-                    This job post is not open for negotiation. Proposal review is read-only.
-                  </p>
-                )}
-              </div>
-            </div>
+            {viewMode === 'aiJudging' ? (
+              <ProposalJudgingListView
+                jobPostId={selectedJobId || ''}
+                jobTitle={selectedJob?.title || 'Job Post'}
+                proposals={proposals}
+                loading={loading}
+                onSelectProposal={id => setActiveId(id)}
+                onOpenAiReport={id => {
+                  setActiveId(id);
+                  setEvalModalOpen(true);
+                  void loadEvaluation(id);
+                }}
+                onShortlist={id => updateStatus(id, ProposalStatus.Shortlisted, 'shortlist')}
+                onStartNegotiation={id => acceptForNegotiation(id)}
+                onReject={id => updateStatus(id, ProposalStatus.Rejected, 'reject')}
+                canAct={selectedJobCanNegotiate}
+                onRefreshProposals={refreshProposals}
+              />
+            ) : (
+              <>
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="truncate font-bold">{selectedJob?.title || 'Select a project request'}</h2>
+                    <p className="text-xs text-muted-foreground">{visible.length} of {proposals.length} proposals shown</p>
+                    {selectedJob && !selectedJobCanNegotiate && (
+                      <p className="mt-1 text-xs font-semibold text-amber-600">
+                        This job post is not open for negotiation. Proposal review is read-only.
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            <div className="mb-3 grid gap-2 rounded-xl border border-border bg-muted/20 p-3 text-xs sm:grid-cols-2 2xl:grid-cols-4">
-              <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" placeholder="Budget min" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={durationMax} onChange={e => setDurationMax(e.target.value)} type="number" placeholder="Max duration days" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={milestoneMin} onChange={e => setMilestoneMin(e.target.value)} type="number" placeholder="Milestone total min" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={milestoneMax} onChange={e => setMilestoneMax(e.target.value)} type="number" placeholder="Milestone total max" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={submittedFrom} onChange={e => setSubmittedFrom(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={submittedTo} onChange={e => setSubmittedTo(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
-            </div>
+                <div className="mb-3 grid gap-2 rounded-xl border border-border bg-muted/20 p-3 text-xs sm:grid-cols-2 2xl:grid-cols-4">
+                  <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" placeholder="Budget min" className="rounded border border-border bg-background px-2 py-2" />
+                  <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max" className="rounded border border-border bg-background px-2 py-2" />
+                  <input value={durationMax} onChange={e => setDurationMax(e.target.value)} type="number" placeholder="Max duration days" className="rounded border border-border bg-background px-2 py-2" />
+                  <input value={milestoneMin} onChange={e => setMilestoneMin(e.target.value)} type="number" placeholder="Milestone total min" className="rounded border border-border bg-background px-2 py-2" />
+                  <input value={milestoneMax} onChange={e => setMilestoneMax(e.target.value)} type="number" placeholder="Milestone total max" className="rounded border border-border bg-background px-2 py-2" />
+                  <input value={submittedFrom} onChange={e => setSubmittedFrom(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
+                  <input value={submittedTo} onChange={e => setSubmittedTo(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
+                </div>
 
-            {message && <div role="status" className="mb-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
+                {message && <div role="status" className="mb-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
 
-            <div className="overflow-x-auto rounded-xl border border-border bg-card">
-              <table className="w-full min-w-[980px] text-left text-xs">
-                <thead className="sticky top-0 bg-muted text-muted-foreground">
-                  <tr>
-                    <th className="w-36 p-3">Freelancer</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Budget</th>
-                    <th className="p-3">Duration</th>
-                    <th className="min-w-64 p-3">Analysis summary</th>
-                    <th className="p-3 text-center">Work items</th>
-                    <th className="p-3 text-center">Milestones</th>
-                    <th className="p-3">Milestone total</th>
-                    <th className="p-3">Submitted</th>
-                    <th className="w-44 p-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
-                  ) : visible.length === 0 ? (
-                    <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
-                  ) : visible.map(item => {
-                    const status = Number(item.status);
-                    return (
-                      <tr key={item.proposalsId} onClick={() => setActiveId(item.proposalsId)} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
-                        <td className="p-3 align-top font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
-                        <td className="p-3 align-top"><span className={`rounded px-2 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
-                        <td className="p-3 align-top font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
-                        <td className="p-3 align-top">{item.proposedDuration || 'N/A'}</td>
-                        <td className="p-3 align-top text-muted-foreground"><span className="block truncate leading-5" title={item.analysisSummaryPreview || item.coverLetter || ''}>{previewText(item.analysisSummaryPreview || item.coverLetter, 88) || 'Legacy proposal'}</span></td>
-                        <td className="p-3 text-center align-top">{item.workItemCount ?? 0}</td>
-                        <td className="p-3 text-center align-top">{item.milestoneCount ?? 0}</td>
-                        <td className="p-3 align-top font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
-                        <td className="p-3 align-top">{formatDate(item.submittedAt)}</td>
-                        <td className="p-3 align-top">
-                          <div className="grid grid-cols-2 gap-1">
-                            <button title="View details" onClick={event => { event.stopPropagation(); setActiveId(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
-                              <Eye size={14} /> Details
-                            </button>
-                            {status === ProposalStatus.Pending && selectedJobCanNegotiate && (
-                              <button title="Shortlist" disabled={isBusy(item.proposalsId, 'shortlist')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Shortlisted, 'shortlist'); }} className="inline-flex items-center justify-center gap-1 rounded border border-cyan-500/30 px-2 py-1.5 font-semibold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
-                                <Check size={14} /> {isBusy(item.proposalsId, 'shortlist') ? 'Saving' : 'Shortlist'}
-                              </button>
-                            )}
-                            {canClientAct(status) && (
-                              <>
-                                <button title="Start negotiation" disabled={isBusy(item.proposalsId, 'accept')} onClick={event => { event.stopPropagation(); acceptForNegotiation(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500/30 px-2 py-1.5 font-semibold text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50">
-                                  <MessageSquare size={14} /> {isBusy(item.proposalsId, 'accept') ? 'Opening' : 'Negotiate'}
-                                </button>
-                                <button title="Reject" disabled={isBusy(item.proposalsId, 'reject')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Rejected, 'reject'); }} className="inline-flex items-center justify-center gap-1 rounded border border-red-500/30 px-2 py-1.5 font-semibold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
-                                  <X size={14} /> {isBusy(item.proposalsId, 'reject') ? 'Saving' : 'Reject'}
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                  <table className="w-full min-w-[980px] text-left text-xs">
+                    <thead className="sticky top-0 bg-muted text-muted-foreground">
+                      <tr>
+                        <th className="w-36 p-3">Freelancer</th>
+                        <th className="p-3">AI Score</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Budget</th>
+                        <th className="p-3">Duration</th>
+                        <th className="min-w-64 p-3">Analysis summary</th>
+                        <th className="p-3 text-center">Work items</th>
+                        <th className="p-3 text-center">Milestones</th>
+                        <th className="p-3">Milestone total</th>
+                        <th className="p-3">Submitted</th>
+                        <th className="w-44 p-3">Actions</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr><td colSpan={11} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
+                      ) : visible.length === 0 ? (
+                        <tr><td colSpan={11} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
+                      ) : visible.map(item => {
+                        const status = Number(item.status);
+                        const hasScore = typeof item.aiScore === 'number';
+                        return (
+                          <tr key={item.proposalsId} onClick={() => setActiveId(item.proposalsId)} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
+                            <td className="p-3 align-top font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
+                            <td className="p-3 align-top">
+                              {hasScore ? (
+                                <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-black ${item.aiScore! >= 80 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : item.aiScore! >= 60 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                                  <Brain size={12} /> {item.aiScore}/100
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">N/A</span>
+                              )}
+                            </td>
+                            <td className="p-3 align-top"><span className={`rounded px-2 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
+                            <td className="p-3 align-top font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
+                            <td className="p-3 align-top">{item.proposedDuration || 'N/A'}</td>
+                            <td className="p-3 align-top text-muted-foreground"><span className="block truncate leading-5" title={item.aiSummary || item.analysisSummaryPreview || item.coverLetter || ''}>{previewText(item.aiSummary || item.analysisSummaryPreview || item.coverLetter, 88) || 'Legacy proposal'}</span></td>
+                            <td className="p-3 text-center align-top">{item.workItemCount ?? 0}</td>
+                            <td className="p-3 text-center align-top">{item.milestoneCount ?? 0}</td>
+                            <td className="p-3 align-top font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
+                            <td className="p-3 align-top">{formatDate(item.submittedAt)}</td>
+                            <td className="p-3 align-top">
+                              <div className="grid grid-cols-2 gap-1">
+                                <button title="View details" onClick={event => { event.stopPropagation(); setActiveId(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
+                                  <Eye size={14} /> Details
+                                </button>
+                                {status === ProposalStatus.Pending && selectedJobCanNegotiate && (
+                                  <button title="Shortlist" disabled={isBusy(item.proposalsId, 'shortlist')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Shortlisted, 'shortlist'); }} className="inline-flex items-center justify-center gap-1 rounded border border-cyan-500/30 px-2 py-1.5 font-semibold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
+                                    <Check size={14} /> {isBusy(item.proposalsId, 'shortlist') ? 'Saving' : 'Shortlist'}
+                                  </button>
+                                )}
+                                {canClientAct(status) && (
+                                  <>
+                                    <button title="Start negotiation" disabled={isBusy(item.proposalsId, 'accept')} onClick={event => { event.stopPropagation(); acceptForNegotiation(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500/30 px-2 py-1.5 font-semibold text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50">
+                                      <MessageSquare size={14} /> {isBusy(item.proposalsId, 'accept') ? 'Opening' : 'Negotiate'}
+                                    </button>
+                                    <button title="Reject" disabled={isBusy(item.proposalsId, 'reject')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Rejected, 'reject'); }} className="inline-flex items-center justify-center gap-1 rounded border border-red-500/30 px-2 py-1.5 font-semibold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
+                                      <X size={14} /> {isBusy(item.proposalsId, 'reject') ? 'Saving' : 'Reject'}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </main>
 
           <aside className="min-w-0 overflow-y-auto border-t border-border bg-muted/20 p-4 lg:border-l lg:border-t-0 2xl:p-5">
