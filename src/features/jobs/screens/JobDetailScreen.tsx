@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserRole } from '../../../types/models/User';
-import { ProposalStatus } from '../../../types/models/Proposal';
 import { canEditProposal, canViewProposalAnswers, canWithdrawProposal, getStatusLabel } from '../../proposals/utils/statusHelpers';
 import { useJobDetail } from '../hooks/useJobDetail';
 import '../styles/job-detail-screen.css';
@@ -303,16 +302,6 @@ export default function JobDetailScreen() {
                     )}
                     {canViewProposalAnswers(myProposal.status) && (
                       <button className="jd-btn-secondary" onClick={() => navigate(`/proposals/${myProposal.proposalId}/answers`)}><FileText size={13} />{t('jobDetail.viewAnswers')}</button>
-                    )}
-                    {[ProposalStatus.Pending, ProposalStatus.Shortlisted, ProposalStatus.Accepted].includes(Number(myProposal.status)) && (
-                      <button
-                        className="jd-btn-secondary"
-                        onClick={() => navigate(`/ai-interview/${encodeURIComponent(job.id)}`, {
-                          state: { jobPostId: job.id, jobTitle: job.title },
-                        })}
-                      >
-                        <Bot size={13} /> Start AI Interview
-                      </button>
                     )}
                   </div>
                 ) : proposalCheckFailed ? (
