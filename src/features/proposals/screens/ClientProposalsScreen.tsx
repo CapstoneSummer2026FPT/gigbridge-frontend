@@ -289,10 +289,12 @@ export default function ClientProposalsScreen() {
   const canClientAct = (status: number) => selectedJobCanNegotiate && [ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(status);
   const detailMilestoneTotal = detail?.milestonePlans?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ?? 0;
 
-  const section = (title: string, value?: string | null) => value ? (
-    <section className="rounded-lg border border-border bg-background p-4">
-      <h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">{title}</h3>
-      <p className="m-0 text-sm leading-6 text-foreground" title={value}>{previewText(value, 110)}</p>
+  const section = (title: string, value?: string | null, fullText: boolean = false) => value ? (
+    <section className="rounded-xl border border-border bg-background p-4 space-y-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      <p className="m-0 text-sm leading-relaxed text-foreground whitespace-pre-wrap bg-muted/20 p-3.5 rounded-xl border border-border/50" title={value}>
+        {fullText ? value : previewText(value, 110)}
+      </p>
     </section>
   ) : null;
 
@@ -789,42 +791,71 @@ export default function ClientProposalsScreen() {
                     <div className="py-10 text-center text-sm text-muted-foreground">No proposal details available.</div>
                   ) : (
                     <>
-                      {section('Introduction', detail.coverLetter)}
-                      {section('Requirement analysis', detail.analysisSummary)}
-                      {section('Solution approach', detail.solutionApproach)}
-                      {section('Overall deliverables', detail.deliverables)}
-                      {section('Assumptions', detail.assumptions)}
-                      {section('Out of scope', detail.outOfScope)}
+                      {section('Introduction', detail.coverLetter, true)}
+                      {section('Requirement analysis', detail.analysisSummary, true)}
+                      {section('Solution approach', detail.solutionApproach, true)}
+                      {section('Overall deliverables', detail.deliverables, true)}
+                      {section('Assumptions', detail.assumptions, true)}
+                      {section('Out of scope', detail.outOfScope, true)}
 
-                      <section>
-                        <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Work breakdown</h3>
-                        <div className="space-y-2">
+                      <section className="space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Work breakdown</h3>
+                        <div className="space-y-3">
                           {detail.workBreakdownItems?.length ? detail.workBreakdownItems.map((item, index) => (
-                            <div key={item.id || index} className="rounded-lg border border-border bg-background p-3">
-                              <div className="flex justify-between gap-3">
-                                <strong className="text-sm">{index + 1}. {item.title || 'Untitled work item'}</strong>
-                                <span className="text-xs text-muted-foreground">{item.estimatedDuration}</span>
+                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 space-y-3">
+                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
+                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled work item'}</strong>
+                                <span className="text-xs font-semibold text-muted-foreground">{item.estimatedDuration}</span>
                               </div>
-                              {item.description && <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.description}</p>}
-                              {item.deliverables && <p className="mt-2 text-xs"><strong>Deliverables:</strong> {item.deliverables}</p>}
+                              {item.description && (
+                                <div className="text-xs text-foreground space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.description}</p>
+                                </div>
+                              )}
+                              {item.deliverables && (
+                                <div className="text-xs text-foreground space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.deliverables}</p>
+                                </div>
+                              )}
                             </div>
                           )) : <p className="text-sm text-muted-foreground">No work breakdown provided.</p>}
                         </div>
                       </section>
 
-                      <section>
-                        <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Milestone plan</h3>
-                        <div className="space-y-2">
+                      <section className="space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Milestone plan</h3>
+                        <div className="space-y-3">
                           {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (
-                            <div key={item.id || index} className="rounded-lg border border-border bg-background p-3 text-xs">
-                              <div className="flex justify-between gap-3">
-                                <strong>{index + 1}. {item.title || 'Untitled milestone'}</strong>
-                                <span className="font-semibold">{formatGigCoin(item.amount)}</span>
+                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 text-xs space-y-3">
+                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
+                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled milestone'}</strong>
+                                <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">{formatGigCoin(item.amount)}</span>
                               </div>
-                              {item.estimatedDuration && <p className="mt-1 text-muted-foreground">Duration: {item.estimatedDuration}</p>}
-                              {item.description && <p className="mt-2 text-muted-foreground">{item.description}</p>}
-                              {item.deliverables && <p className="mt-2"><strong>Deliverables:</strong> {item.deliverables}</p>}
-                              {item.acceptanceCriteria && <p className="mt-2"><strong>Acceptance:</strong> {item.acceptanceCriteria}</p>}
+                              {item.estimatedDuration && (
+                                <div className="text-xs text-muted-foreground">
+                                  <strong>Duration:</strong> {item.estimatedDuration}
+                                </div>
+                              )}
+                              {item.description && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.description}</p>
+                                </div>
+                              )}
+                              {item.deliverables && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.deliverables}</p>
+                                </div>
+                              )}
+                              {item.acceptanceCriteria && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Acceptance Criteria</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.acceptanceCriteria}</p>
+                                </div>
+                              )}
                             </div>
                           )) : <p className="text-sm text-muted-foreground">No milestone plan provided.</p>}
                         </div>
