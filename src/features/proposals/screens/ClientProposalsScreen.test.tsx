@@ -127,6 +127,7 @@ describe('ClientProposalsScreen Phase 2', () => {
   });
 
   it('renders the comparison table and the complete proposal plan', async () => {
+    const user = userEvent.setup();
     render(<ClientProposalsScreen />);
 
     expect(screen.getByRole('heading', { name: 'Proposal Comparison' })).toBeInTheDocument();
@@ -135,6 +136,10 @@ describe('ClientProposalsScreen Phase 2', () => {
     expect(screen.getByRole('columnheader', { name: 'Milestone total' })).toBeInTheDocument();
 
     await waitFor(() => expect(screen.getAllByText('Ada Freelancer').length).toBeGreaterThan(0));
+
+    // Open detail modal
+    await user.click(screen.getByTitle('View details'));
+
     expect(await screen.findByText('Requirement analysis')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation delivery')).toBeInTheDocument();
@@ -163,6 +168,8 @@ describe('ClientProposalsScreen Phase 2', () => {
 
     render(<ClientProposalsScreen />);
 
+    // Open proposal detail modal first
+    await user.click(await screen.findByTitle('View details'));
     await user.click(await screen.findByRole('button', { name: /open negotiation/i }));
 
     expect(mocks.startNegotiationFromProposal).toHaveBeenCalledWith('proposal-1');
