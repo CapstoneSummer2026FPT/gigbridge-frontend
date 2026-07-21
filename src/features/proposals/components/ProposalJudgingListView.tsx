@@ -86,11 +86,11 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
 
   // Chunked Batch Judging Handler (processes in chunks of 10)
   const handleBatchJudge = async () => {
-    if (batchLoading || stats.unjudgedCount === 0) return;
+    if (batchLoading || proposals.length === 0) return;
 
     setBatchLoading(true);
     setBatchError('');
-    let remaining = stats.unjudgedCount;
+    let remaining = stats.unjudgedCount > 0 ? stats.unjudgedCount : proposals.length;
     let processedTotal = 0;
 
     try {
@@ -147,7 +147,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           <div className="flex items-center gap-3">
             <button
               onClick={handleBatchJudge}
-              disabled={batchLoading || stats.unjudgedCount === 0}
+              disabled={batchLoading || proposals.length === 0}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-500/25 transition hover:brightness-110 disabled:opacity-50"
             >
               {batchLoading ? (
@@ -161,7 +161,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                 <>
                   <Sparkles className="h-4 w-4" />
                   <span>
-                    {stats.unjudgedCount > 0 ? `Judge All (${stats.unjudgedCount} un-judged)` : 'All Proposals Judged'}
+                    {stats.unjudgedCount > 0 ? `Judge All (${stats.unjudgedCount} un-judged)` : `Re-Judge All (${proposals.length} proposals)`}
                   </span>
                 </>
               )}
@@ -305,7 +305,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                         </p>
                       ) : (
                         <p className="text-xs text-muted-foreground italic mt-1">
-                          No AI evaluation cached yet. Click "Judge AI Interview" to run individual evaluation.
+                          No AI evaluation cached yet. Click "Judge All" to evaluate candidates.
                         </p>
                       )}
 
@@ -342,16 +342,6 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          onOpenAiReport(candidate.proposalsId);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-600 hover:bg-purple-500/20 dark:text-purple-400"
-                      >
-                        <Brain size={14} /> AI Report
-                      </button>
-
                       {status === ProposalStatus.Pending && canAct && (
                         <button
                           onClick={e => {
