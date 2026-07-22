@@ -611,7 +611,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleRequestMilestoneUnlock = async (milestoneId: string, reason: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 

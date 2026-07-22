@@ -5,6 +5,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { clientPremiumAPI } from '../api/premiumAPI';
 import { PremiumStatusBadge } from '../components/PremiumStatusBadge';
 import { JobPromotionStudio } from '../components/JobPromotionStudio';
+import { PremiumTimeRemaining } from '../components/PremiumTimeRemaining';
 import { usePremiumResource } from '../hooks';
 import { PremiumSubscriptionStatus } from '../types';
 import '../styles/premium.css';
@@ -70,11 +71,11 @@ export default function ClientPremiumScreen() {
     {message.error && <div className="premium-error">{message.error}</div>}
     {message.success && <div className="premium-notice"><Sparkles size={18} />{message.success}</div>}
 
-    {current.loading ? <div className="premium-grid"><div className="premium-skeleton" /><div className="premium-skeleton" /></div> :
+    {(current.loading || history.loading) ? <div className="premium-grid"><div className="premium-skeleton" /><div className="premium-skeleton" /></div> :
       <div className="premium-grid">
         <section className="premium-card">
           <h3>{entitled ? current.data?.planName : 'Standard Client'}</h3>
-          <p className="premium-muted">{entitled ? `Premium through ${new Date(current.data!.endDate).toLocaleDateString()}` : 'Core hiring tools remain available. Premium actions will guide you to upgrade.'}</p>
+          {entitled ? <PremiumTimeRemaining subscriptions={history.data?.length ? history.data : (current.data ? [current.data] : [])} /> : <p className="premium-muted">Core hiring tools remain available. Premium actions will guide you to upgrade.</p>}
           {entitled && <>
             <label className="premium-auto-renew"><input type="checkbox" checked={Boolean(current.data?.autoRenew)} disabled={busy} onChange={event => void updateAutoRenew(event.target.checked)} /><span>Automatic renewal</span></label>
             <p className="premium-muted premium-auto-renew-help">{current.data?.autoRenew ? 'Your plan renews automatically using GigCoin.' : 'Your access ends on the current end date unless renewed.'}</p>

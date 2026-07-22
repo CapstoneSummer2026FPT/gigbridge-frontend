@@ -852,9 +852,10 @@ export default function ProjectWorkspaceScreen() {
                   const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
                   const workItems = milestone.workItems || [];
                   const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
-                  const canFreelancerSubmit = !isWorkspaceViewOnly && !isClient && isInProgress && allWorkItemsCompleted;
-                  const canClientReview = !isWorkspaceViewOnly && isClient && isSubmitted;
-                  const canFreelancerRequestUnlock = !isWorkspaceViewOnly && !isClient && isPending;
+                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress && allWorkItemsCompleted;
+                  const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+                  const canClientStart = !isWorkspaceLocked && isClient && isPending;
+                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
                   const showFreelancerWithdraw = !isClient &&
                     activeContract?.status === ContractStatus.Active &&
                     isCompleted &&

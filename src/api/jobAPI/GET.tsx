@@ -81,6 +81,7 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   isRemote: true,
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
+  hasAiInterview: Boolean(job.hasAiInterview),
 });
 
 const toLegacyStatusFromJobPost = (status: number | string | null | undefined): Job['status'] => {
@@ -163,6 +164,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   gigcoin_cost: 0,
   visibility: job.visibility ?? undefined,
   milestonePlans: job.milestonePlans || [],
+  hasAiInterview: Boolean(job.hasAiInterview),
 });
 
 const filterLegacyJobs = (jobs: Job[], filters: LegacyJobFilters = {}): Job[] => {

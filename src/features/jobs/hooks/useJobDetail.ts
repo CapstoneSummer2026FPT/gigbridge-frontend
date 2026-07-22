@@ -78,6 +78,7 @@ const toJobFromDetail = (dto: JobPostDetailDto): Job => ({
   gigcoin_cost: 0,
   visibility: dto.visibility ?? undefined,
   milestonePlans: dto.milestonePlans || [],
+  hasAiInterview: Boolean(dto.hasAiInterview),
 });
 
 /**

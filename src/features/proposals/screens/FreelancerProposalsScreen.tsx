@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { ArrowLeft, Bot, Edit3, FileText, MessageSquare, Send, ShieldAlert, XCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -19,7 +19,9 @@ type ProposalItem = ProposalDto & {
 export default function FreelancerProposalsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useApp();
+  const submittedProposalId = (location.state as { submittedProposalId?: string } | null)?.submittedProposalId;
 
   const [proposals, setProposals] = useState<ProposalItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,17 +45,29 @@ export default function FreelancerProposalsScreen() {
           return;
         }
 
-        setProposals((response.data || []).map(proposal => ({
+        const loadedProposals = (response.data || []).map(proposal => ({
           ...proposal,
           updatedAt: proposal.reviewedAt || proposal.submittedAt,
-        })));
+        }));
+        setProposals(loadedProposals);
+        if (submittedProposalId) {
+          const submittedProposal = loadedProposals.find(
+            proposal => proposal.proposalsId === submittedProposalId
+          );
+          if (submittedProposal) {
+            setActiveProposalId(submittedProposal.proposalsId);
+            setMessage(submittedProposal.hasAiInterview
+              ? t('aiInterview.proposal.submittedWithInterview')
+              : t('aiInterview.proposal.submitted'));
+          }
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchProposals();
-  }, [user]);
+  }, [submittedProposalId, t, user]);
 
   const filteredProposals = useMemo(() => {
     const items = statusFilter === 'all'
@@ -232,6 +246,24 @@ export default function FreelancerProposalsScreen() {
                   </p>
                 </div>
 
+                {activeProposal.hasAiInterview && (
+                  <div className="flex items-start gap-3 rounded-xl border border-[var(--gb-purple)]/25 bg-[var(--gb-purple)]/5 p-4">
+                    <Bot size={20} className="mt-0.5 shrink-0 text-[var(--gb-purple)]" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">
+                        {activeProposal.aiInterviewCompleted
+                          ? t('aiInterview.proposal.completedTitle')
+                          : t('aiInterview.proposal.readyTitle')}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {activeProposal.aiInterviewCompleted
+                          ? t('aiInterview.proposal.completedDescription')
+                          : t('aiInterview.proposal.readyDescription')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-3 mt-2 border-t border-border pt-6">
                   {canEditProposal(activeProposal.status) && (
                     <button
@@ -264,18 +296,23 @@ export default function FreelancerProposalsScreen() {
                     </button>
                   )}
 
-                  {[ProposalStatus.Pending, ProposalStatus.Shortlisted, ProposalStatus.Accepted].includes(Number(activeProposal.status)) && (
+                  {activeProposal.hasAiInterview
+                    && !activeProposal.aiInterviewCompleted
+                    && [ProposalStatus.Pending, ProposalStatus.Shortlisted, ProposalStatus.Accepted].includes(Number(activeProposal.status)) && (
                     <button
                       onClick={() => navigate(`/ai-interview/${encodeURIComponent(activeProposal.jobPostsId)}`, {
                         state: {
                           jobPostId: activeProposal.jobPostsId,
                           jobTitle: activeProposal.jobTitle,
+                          interviewDefinitionId: activeProposal.aiInterviewDefinitionId,
                         },
                       })}
                       className="btn-cyan text-sm px-5 py-2.5 flex items-center gap-2"
                     >
                       <Bot size={16} />
-                      Start AI Interview
+                      {activeProposal.aiInterviewInProgress
+                        ? t('aiInterview.proposal.continueAction')
+                        : t('aiInterview.proposal.startAction')}
                     </button>
                   )}
 
