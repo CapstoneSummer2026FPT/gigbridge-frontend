@@ -260,15 +260,40 @@ export default function ClientProposalsScreen() {
       setEvalResult(null);
       setRawAnswers([]);
 
-      const [evalRes, answersRes] = await Promise.all([
-        proposalPostAPI.evaluateVettingAnswers(proposalId).catch(() => null),
-        proposalGetAPI.getProposalAnswers(proposalId).catch(() => null),
-      ]);
+      const answersRes = await proposalGetAPI.getProposalAnswers(proposalId).catch(() => null);
 
       if (answersRes && answersRes.success && answersRes.data) {
         setRawAnswers(answersRes.data);
-      }
 
+        const hasAnswers = answersRes.data.length > 0 && answersRes.data.some(ans => ans.answerText?.trim());
+        if (hasAnswers) {
+          const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, true).catch(() => null);
+          if (evalRes && evalRes.success && evalRes.data) {
+            setEvalResult(evalRes.data);
+            setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
+              ...p,
+              aiScore: evalRes.data.score,
+              aiSummary: evalRes.data.summary,
+              aiRecommendedHire: evalRes.data.recommendedHire,
+              aiTechnicalSkills: evalRes.data.technicalSkills,
+              aiSoftSkills: evalRes.data.softSkills,
+              aiEvaluatedAt: new Date().toISOString()
+            } : p));
+          }
+        }
+      }
+    } catch (err: any) {
+      setEvalError(err.message || 'An error occurred during evaluation.');
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+  const runManualEvaluation = async (proposalId: string) => {
+    try {
+      setEvalLoading(true);
+      setEvalError('');
+      const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, false);
       if (evalRes && evalRes.success && evalRes.data) {
         setEvalResult(evalRes.data);
         setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
@@ -280,6 +305,8 @@ export default function ClientProposalsScreen() {
           aiSoftSkills: evalRes.data.softSkills,
           aiEvaluatedAt: new Date().toISOString()
         } : p));
+      } else {
+        setEvalError(evalRes.message || 'Failed to evaluate proposal.');
       }
     } catch (err: any) {
       setEvalError(err.message || 'An error occurred during evaluation.');
@@ -428,22 +455,20 @@ export default function ClientProposalsScreen() {
                         <th className="p-3">Status</th>
                         <th className="p-3">Budget</th>
                         <th className="p-3">Duration</th>
-                        <th className="min-w-64 p-3">Analysis summary</th>
                         <th className="p-3 text-center">Work items</th>
                         <th className="p-3 text-center">Milestones</th>
                         <th className="p-3">Milestone total</th>
                         <th className="p-3">Submitted</th>
-                        <th className="w-44 p-3">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loading ? (
-                        <tr><td colSpan={11} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
+                        <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
                       ) : visible.length === 0 ? (
-                        <tr><td colSpan={11} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
+                        <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
                       ) : visible.map(item => {
                         const status = Number(item.status);
-                        const hasScore = typeof item.aiScore === 'number';
+                        const hasScore = typeof item.aiScore === 'number' && item.aiScore > 0;
                         return (
                           <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'userAnswers')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
                             <td className="p-3 align-top font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
@@ -453,39 +478,16 @@ export default function ClientProposalsScreen() {
                                   <Brain size={12} /> {item.aiScore}/100
                                 </span>
                               ) : (
-                                <span className="text-muted-foreground">N/A</span>
+                                <span className="text-muted-foreground">none</span>
                               )}
                             </td>
                             <td className="p-3 align-top"><span className={`rounded px-2 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
                             <td className="p-3 align-top font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
                             <td className="p-3 align-top">{item.proposedDuration || 'N/A'}</td>
-                            <td className="p-3 align-top text-muted-foreground"><span className="block truncate leading-5" title={item.aiSummary || item.analysisSummaryPreview || item.coverLetter || ''}>{previewText(item.aiSummary || item.analysisSummaryPreview || item.coverLetter, 88) || 'Legacy proposal'}</span></td>
                             <td className="p-3 text-center align-top">{item.workItemCount ?? 0}</td>
                             <td className="p-3 text-center align-top">{item.milestoneCount ?? 0}</td>
                             <td className="p-3 align-top font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
                             <td className="p-3 align-top">{formatDate(item.submittedAt)}</td>
-                            <td className="p-3 align-top">
-                              <div className="grid grid-cols-2 gap-1">
-                                <button title="View details" onClick={event => { event.stopPropagation(); openProposalModal(item.proposalsId, 'userAnswers'); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
-                                  <Eye size={14} /> Details
-                                </button>
-                                {status === ProposalStatus.Pending && selectedJobCanNegotiate && (
-                                  <button title="Shortlist" disabled={isBusy(item.proposalsId, 'shortlist')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Shortlisted, 'shortlist'); }} className="inline-flex items-center justify-center gap-1 rounded border border-cyan-500/30 px-2 py-1.5 font-semibold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
-                                    <Check size={14} /> {isBusy(item.proposalsId, 'shortlist') ? 'Saving' : 'Shortlist'}
-                                  </button>
-                                )}
-                                {canClientAct(status) && (
-                                  <>
-                                    <button title="Start negotiation" disabled={isBusy(item.proposalsId, 'accept')} onClick={event => { event.stopPropagation(); acceptForNegotiation(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500/30 px-2 py-1.5 font-semibold text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50">
-                                      <MessageSquare size={14} /> {isBusy(item.proposalsId, 'accept') ? 'Opening' : 'Negotiate'}
-                                    </button>
-                                    <button title="Reject" disabled={isBusy(item.proposalsId, 'reject')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Rejected, 'reject'); }} className="inline-flex items-center justify-center gap-1 rounded border border-red-500/30 px-2 py-1.5 font-semibold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
-                                      <X size={14} /> {isBusy(item.proposalsId, 'reject') ? 'Saving' : 'Reject'}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
                           </tr>
                         );
                       })}
@@ -540,13 +542,6 @@ export default function ClientProposalsScreen() {
                     <Brain size={14} /> AI Evaluation Interview Report
                   </button>
                 </div>
-
-                <button
-                  onClick={() => setEvalModalOpen(false)}
-                  className="rounded-lg p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground transition"
-                >
-                  <X size={18} />
-                </button>
               </div>
             </div>
 
@@ -714,9 +709,22 @@ export default function ClientProposalsScreen() {
                     </div>
                   )}
                    {!evalLoading && (rawAnswers.length === 0 || !evalResult) && (
-                    <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
+                    <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-4">
                       <Brain size={32} className="mx-auto text-purple-500/60" />
-                      <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
+                      <div>
+                        <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
+                        {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
+                          <p className="text-muted-foreground mt-1">This proposal has not been evaluated by AI yet.</p>
+                        )}
+                      </div>
+                      {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
+                        <button
+                          onClick={() => activeId && runManualEvaluation(activeId)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md cursor-pointer border-none"
+                        >
+                          <Brain size={14} /> Evaluate Proposal with AI
+                        </button>
+                      )}
                     </div>
                   )}
 

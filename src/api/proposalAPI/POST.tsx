@@ -80,9 +80,11 @@ export const proposalPostAPI = {
   },
 
   evaluateVettingAnswers: async (
-    proposalId: string
+    proposalId: string,
+    onlyIfCached: boolean = false
   ): Promise<ApiResponse<VettingEvaluationResponseDto>> => {
-    const response = await apiService.post<any>(`${proposalsUrl}/${proposalId}/ai-interview-judging`);
+    const url = `${proposalsUrl}/${proposalId}/ai-interview-judging${onlyIfCached ? '?onlyIfCached=true' : ''}`;
+    const response = await apiService.post<any>(url);
     if (response.success && response.data) {
       const raw = response.data;
       const mapped: VettingEvaluationResponseDto = {
