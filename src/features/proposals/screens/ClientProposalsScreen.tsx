@@ -53,7 +53,7 @@ export default function ClientProposalsScreen() {
   const [evalLoading, setEvalLoading] = useState(false);
   const [evalResult, setEvalResult] = useState<VettingEvaluationResponseDto | null>(null);
   const [evalError, setEvalError] = useState('');
-  const [modalTab, setModalTab] = useState<'aiReport' | 'proposalDetails'>('aiReport');
+  const [modalTab, setModalTab] = useState<'userAnswers' | 'proposalDetails' | 'aiReport'>('userAnswers');
   const queryJobId = useMemo(() => new URLSearchParams(location.search).get('job'), [location.search]);
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(queryJobId);
@@ -288,7 +288,7 @@ export default function ClientProposalsScreen() {
     }
   };
 
-  const openProposalModal = (proposalId: string, initialTab: 'aiReport' | 'proposalDetails' = 'aiReport') => {
+  const openProposalModal = (proposalId: string, initialTab: 'userAnswers' | 'proposalDetails' | 'aiReport' = 'userAnswers') => {
     setActiveId(proposalId);
     setModalTab(initialTab);
     setEvalModalOpen(true);
@@ -385,8 +385,8 @@ export default function ClientProposalsScreen() {
                 jobTitle={selectedJob?.title || 'Job Post'}
                 proposals={proposals}
                 loading={loading}
-                onSelectProposal={id => openProposalModal(id)}
-                onOpenAiReport={id => openProposalModal(id)}
+                onSelectProposal={id => openProposalModal(id, 'aiReport')}
+                onOpenAiReport={id => openProposalModal(id, 'aiReport')}
                 onShortlist={id => updateStatus(id, ProposalStatus.Shortlisted, 'shortlist')}
                 onStartNegotiation={id => acceptForNegotiation(id)}
                 onReject={id => updateStatus(id, ProposalStatus.Rejected, 'reject')}
@@ -445,7 +445,7 @@ export default function ClientProposalsScreen() {
                         const status = Number(item.status);
                         const hasScore = typeof item.aiScore === 'number';
                         return (
-                          <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'proposalDetails')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
+                          <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'userAnswers')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
                             <td className="p-3 align-top font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
                             <td className="p-3 align-top">
                               {hasScore ? (
@@ -466,7 +466,7 @@ export default function ClientProposalsScreen() {
                             <td className="p-3 align-top">{formatDate(item.submittedAt)}</td>
                             <td className="p-3 align-top">
                               <div className="grid grid-cols-2 gap-1">
-                                <button title="View details" onClick={event => { event.stopPropagation(); openProposalModal(item.proposalsId, 'proposalDetails'); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
+                                <button title="View details" onClick={event => { event.stopPropagation(); openProposalModal(item.proposalsId, 'userAnswers'); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
                                   <Eye size={14} /> Details
                                 </button>
                                 {status === ProposalStatus.Pending && selectedJobCanNegotiate && (
@@ -522,16 +522,22 @@ export default function ClientProposalsScreen() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1 text-xs">
                   <button
-                    onClick={() => setModalTab('aiReport')}
-                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'aiReport' ? 'bg-purple-500/20 text-purple-600 border border-purple-500/30 dark:text-purple-400' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => setModalTab('userAnswers')}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'userAnswers' ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30 dark:text-amber-400' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                    <Brain size={14} /> AI Evaluation Report
+                    <FileQuestion size={14} /> User Interview Answer
                   </button>
                   <button
                     onClick={() => setModalTab('proposalDetails')}
                     className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'proposalDetails' ? 'bg-cyan-500/20 text-cyan-600 border border-cyan-500/30 dark:text-cyan-400' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                    <FileText size={14} /> Proposal Scope & Milestones
+                    <FileText size={14} /> Proposal Scope & Milestone
+                  </button>
+                  <button
+                    onClick={() => setModalTab('aiReport')}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'aiReport' ? 'bg-purple-500/20 text-purple-600 border border-purple-500/30 dark:text-purple-400' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    <Brain size={14} /> AI Evaluation Interview Report
                   </button>
                 </div>
 
@@ -546,7 +552,147 @@ export default function ClientProposalsScreen() {
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 scrollbar-thin">
-              {modalTab === 'aiReport' ? (
+              {modalTab === 'userAnswers' && (
+                <>
+                  {evalLoading && (
+                    <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                      <div className="relative flex h-16 w-16 items-center justify-center">
+                        <div className="absolute inset-0 rounded-full bg-amber-500/20 animate-ping"></div>
+                        <div className="relative rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 p-4 text-white">
+                          <FileQuestion className="h-8 w-8 animate-pulse" />
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-muted-foreground animate-pulse">
+                        Loading interview answers...
+                      </p>
+                    </div>
+                  )}
+
+                  {!evalLoading && (
+                    rawAnswers.length > 0 ? (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2 flex items-center justify-between">
+                          <span>Screening Questions & Candidate Answers</span>
+                          <span className="text-xs font-normal text-muted-foreground">({rawAnswers.length} questions)</span>
+                        </h4>
+
+                        {rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
+                          <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <h5 className="text-sm font-bold text-foreground">
+                                {ans.orderIndex || idx + 1}. {ans.questionText}
+                              </h5>
+                              {ans.isRequired && (
+                                <span className="shrink-0 rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
+                                  Required
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
+                              <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                                Candidate Answer
+                              </span>
+                              <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                                {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
+                        <FileQuestion size={32} className="mx-auto text-muted-foreground/40" />
+                        <p className="font-semibold text-foreground">No User Interview Answers available.</p>
+                      </div>
+                    )
+                  )}
+                </>
+              )}
+
+              {modalTab === 'proposalDetails' && (
+                <div className="space-y-6">
+                  {detailLoading ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">Loading proposal details...</div>
+                  ) : !detail ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">No proposal details available.</div>
+                  ) : (
+                    <>
+                      {section('Introduction', detail.coverLetter, true)}
+                      {section('Requirement analysis', detail.analysisSummary, true)}
+                      {section('Solution approach', detail.solutionApproach, true)}
+                      {section('Overall deliverables', detail.deliverables, true)}
+                      {section('Assumptions', detail.assumptions, true)}
+                      {section('Out of scope', detail.outOfScope, true)}
+
+                      <section className="space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Work breakdown</h3>
+                        <div className="space-y-3">
+                          {detail.workBreakdownItems?.length ? detail.workBreakdownItems.map((item, index) => (
+                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 space-y-3">
+                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
+                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled work item'}</strong>
+                                <span className="text-xs font-semibold text-muted-foreground">{item.estimatedDuration}</span>
+                              </div>
+                              {item.description && (
+                                <div className="text-xs text-foreground space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.description}</p>
+                                </div>
+                              )}
+                              {item.deliverables && (
+                                <div className="text-xs text-foreground space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.deliverables}</p>
+                                </div>
+                              )}
+                            </div>
+                          )) : <p className="text-sm text-muted-foreground">No work breakdown provided.</p>}
+                        </div>
+                      </section>
+
+                      <section className="space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Milestone plan</h3>
+                        <div className="space-y-3">
+                          {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (
+                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 text-xs space-y-3">
+                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
+                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled milestone'}</strong>
+                                <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">{formatGigCoin(item.amount)}</span>
+                              </div>
+                              {item.estimatedDuration && (
+                                <div className="text-xs text-muted-foreground">
+                                  <strong>Duration:</strong> {item.estimatedDuration}
+                                </div>
+                              )}
+                              {item.description && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.description}</p>
+                                </div>
+                              )}
+                              {item.deliverables && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.deliverables}</p>
+                                </div>
+                              )}
+                              {item.acceptanceCriteria && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Acceptance Criteria</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.acceptanceCriteria}</p>
+                                </div>
+                              )}
+                            </div>
+                          )) : <p className="text-sm text-muted-foreground">No milestone plan provided.</p>}
+                        </div>
+                      </section>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {modalTab === 'aiReport' && (
                 <>
                   {evalLoading && (
                     <div className="flex flex-col items-center justify-center py-16 space-y-4">
@@ -570,57 +716,24 @@ export default function ClientProposalsScreen() {
 
                   {!evalLoading && !evalResult && (
                     <div className="space-y-6">
-                      <div className="rounded-2xl border border-dashed border-purple-500/30 p-6 text-center space-y-3 bg-purple-500/5">
-                        <Brain size={40} className="mx-auto text-purple-500/60" />
-                        <h4 className="font-bold text-base text-foreground">No AI Evaluation Cached Yet</h4>
-                        <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-                          This proposal has not been evaluated by AI yet. You can run AI evaluation on demand or review the candidate's screening responses below.
-                        </p>
-                        <button
-                          onClick={() => activeId && loadEvaluation(activeId)}
-                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:brightness-110"
-                        >
-                          <Sparkles size={14} /> Evaluate Proposal with AI
-                        </button>
-                      </div>
-
-                      {/* Raw Screening Questions & Candidate Answers */}
                       {rawAnswers.length > 0 ? (
-                        <div className="space-y-4">
-                          <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2 flex items-center justify-between">
-                            <span>Screening Questions & Candidate Answers</span>
-                            <span className="text-xs font-normal text-muted-foreground">({rawAnswers.length} questions)</span>
-                          </h4>
-
-                          {rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
-                            <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <h5 className="text-sm font-bold text-foreground">
-                                  {ans.orderIndex || idx + 1}. {ans.questionText}
-                                </h5>
-                                {ans.isRequired && (
-                                  <span className="shrink-0 rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                                    Required
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
-                                <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                                  Candidate Answer
-                                </span>
-                                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
-                                  {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
+                        <div className="rounded-2xl border border-dashed border-purple-500/30 p-6 text-center space-y-3 bg-purple-500/5">
+                          <Brain size={40} className="mx-auto text-purple-500/60" />
+                          <h4 className="font-bold text-base text-foreground">No AI Evaluation Cached Yet</h4>
+                          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                            This proposal has not been evaluated by AI yet. You can run AI evaluation on demand.
+                          </p>
+                          <button
+                            onClick={() => activeId && loadEvaluation(activeId)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:brightness-110"
+                          >
+                            <Sparkles size={14} /> Evaluate Proposal with AI
+                          </button>
                         </div>
                       ) : (
                         <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
-                          <FileQuestion size={32} className="mx-auto text-muted-foreground/40" />
-                          <p className="font-semibold text-foreground">No screening questions attached</p>
-                          <p>This job post did not require screening questions when submitted.</p>
+                          <Brain size={32} className="mx-auto text-purple-500/60" />
+                          <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
                         </div>
                       )}
                     </div>
@@ -740,29 +853,6 @@ export default function ClientProposalsScreen() {
                               </div>
                             </div>
                           ))
-                        ) : rawAnswers.length > 0 ? (
-                          rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
-                            <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <h5 className="text-sm font-bold text-foreground">
-                                  {ans.orderIndex || idx + 1}. {ans.questionText}
-                                </h5>
-                                {ans.isRequired && (
-                                  <span className="shrink-0 rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                                    Required
-                                  </span>
-                                )}
-                              </div>
-                              <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
-                                <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                                  {t('proposalAnswers.candidateAnswer')}
-                                </span>
-                                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
-                                  {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
-                                </p>
-                              </div>
-                            </div>
-                          ))
                         ) : (
                           <div className="rounded-xl border border-border bg-muted/10 p-4 text-xs text-muted-foreground space-y-1">
                             <p className="font-semibold text-foreground">No screening questions evaluated for this proposal.</p>
@@ -773,108 +863,6 @@ export default function ClientProposalsScreen() {
                     </div>
                   )}
                 </>
-              ) : (
-                <div className="space-y-6">
-                  {detailLoading ? (
-                    <div className="py-10 text-center text-sm text-muted-foreground">Loading proposal details...</div>
-                  ) : !detail ? (
-                    <div className="py-10 text-center text-sm text-muted-foreground">No proposal details available.</div>
-                  ) : (
-                    <>
-                      {section('Introduction', detail.coverLetter, true)}
-                      {section('Requirement analysis', detail.analysisSummary, true)}
-                      {section('Solution approach', detail.solutionApproach, true)}
-                      {section('Overall deliverables', detail.deliverables, true)}
-                      {section('Assumptions', detail.assumptions, true)}
-                      {section('Out of scope', detail.outOfScope, true)}
-
-                      {rawAnswers.length > 0 && (
-                        <section className="space-y-3 border-t border-border pt-4">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Screening Questions & Candidate Answers</h3>
-                          <div className="space-y-3">
-                            {rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
-                              <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-background p-4 space-y-2 text-xs">
-                                <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
-                                  <strong className="text-sm font-bold text-foreground">{ans.orderIndex || idx + 1}. {ans.questionText}</strong>
-                                  {ans.isRequired && <span className="text-[10px] font-bold text-red-500 uppercase bg-red-500/10 px-2 py-0.5 rounded">Required</span>}
-                                </div>
-                                <div className="space-y-1 pt-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Candidate Answer</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">
-                                    {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </section>
-                      )}
-
-                      <section className="space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Work breakdown</h3>
-                        <div className="space-y-3">
-                          {detail.workBreakdownItems?.length ? detail.workBreakdownItems.map((item, index) => (
-                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 space-y-3">
-                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
-                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled work item'}</strong>
-                                <span className="text-xs font-semibold text-muted-foreground">{item.estimatedDuration}</span>
-                              </div>
-                              {item.description && (
-                                <div className="text-xs text-foreground space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.description}</p>
-                                </div>
-                              )}
-                              {item.deliverables && (
-                                <div className="text-xs text-foreground space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.deliverables}</p>
-                                </div>
-                              )}
-                            </div>
-                          )) : <p className="text-sm text-muted-foreground">No work breakdown provided.</p>}
-                        </div>
-                      </section>
-
-                      <section className="space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Milestone plan</h3>
-                        <div className="space-y-3">
-                          {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (
-                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 text-xs space-y-3">
-                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
-                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled milestone'}</strong>
-                                <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">{formatGigCoin(item.amount)}</span>
-                              </div>
-                              {item.estimatedDuration && (
-                                <div className="text-xs text-muted-foreground">
-                                  <strong>Duration:</strong> {item.estimatedDuration}
-                                </div>
-                              )}
-                              {item.description && (
-                                <div className="space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.description}</p>
-                                </div>
-                              )}
-                              {item.deliverables && (
-                                <div className="space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.deliverables}</p>
-                                </div>
-                              )}
-                              {item.acceptanceCriteria && (
-                                <div className="space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Acceptance Criteria</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.acceptanceCriteria}</p>
-                                </div>
-                              )}
-                            </div>
-                          )) : <p className="text-sm text-muted-foreground">No milestone plan provided.</p>}
-                        </div>
-                      </section>
-                    </>
-                  )}
-                </div>
               )}
             </div>
 
