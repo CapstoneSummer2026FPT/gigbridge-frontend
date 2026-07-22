@@ -200,6 +200,7 @@ export interface JobPostDetailDto {
   skills: JobPostSkillDto[];
   customSkillNames: string[];
   attachments: JobPostAttachmentDto[];
+  hasAiInterview?: boolean;
 }
 
 export interface GetMyJobPostDetailDto {

@@ -14,7 +14,6 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import {
   JobPostStatus,
   JobPostVisibility,
-  type CreateAiInterviewRequest,
   type GetMyJobPostDto,
 } from '../../../types/models/Job';
 import '../styles/my-jobs-screen.css';
@@ -95,7 +94,6 @@ export default function MyJobsScreen() {
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
   const [promoteTarget, setPromoteTarget] = useState<{ job: GetMyJobPostDto }>();
   const [interviewTarget, setInterviewTarget] = useState<GetMyJobPostDto>();
-  const [interviewConfig, setInterviewConfig] = useState<CreateAiInterviewRequest>({ language: 'auto', mode: 'voice', questionCount: 5 });
   const [premiumActionBusy, setPremiumActionBusy] = useState(false);
 
   const loadJobs = async () => {
@@ -126,10 +124,14 @@ export default function MyJobsScreen() {
     action();
   };
 
-  const createAiInterview = async () => {
-    if (!interviewTarget) return;
+  const createAiInterview = async (job: GetMyJobPostDto) => {
+    setInterviewTarget(job);
     setPremiumActionBusy(true);
-    const response = await jobAPI.createAiInterview(interviewTarget.jobPostsId, interviewConfig);
+    const response = await jobAPI.createAiInterview(job.jobPostsId, {
+      language: 'auto',
+      mode: 'voice',
+      questionCount: 5,
+    });
     setPremiumActionBusy(false);
     if (!response.success || !response.data) return toast.error(response.message || 'Unable to configure the AI interview.');
     setInterviewTarget(undefined);
@@ -471,11 +473,12 @@ export default function MyJobsScreen() {
                               <button
                                 onClick={event => {
                                   event.currentTarget.closest('details')?.removeAttribute('open');
-                                  openPremiumPath(() => setInterviewTarget(job));
+                                  openPremiumPath(() => void createAiInterview(job));
                                 }}
+                                disabled={premiumActionBusy}
                                 className="mj-action-btn mj-btn-cyan"
                               >
-                                <Bot size={14} /> AI interview {!premiumStatus.isPremium && <Crown size={12} />}
+                                <Bot size={14} /> {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Enabling interview…' : 'Enable AI interview'} {!premiumStatus.isPremium && <Crown size={12} />}
                               </button>
                             </div>
                           </details>
@@ -549,18 +552,6 @@ export default function MyJobsScreen() {
         setJobs(current => current.map(job => job.jobPostsId === promotion.jobPostId ? { ...job, isFeatured: true, featuredUntil: promotion.featuredUntil } : job));
         setPromoteTarget(undefined);
       }} /><div className="premium-modal-actions"><button className="premium-button secondary" onClick={() => setPromoteTarget(undefined)}>Close</button></div></div></div>}
-      {interviewTarget && (
-        <div className="premium-modal" onClick={() => !premiumActionBusy && setInterviewTarget(undefined)}>
-          <div className="premium-modal-box" onClick={event => event.stopPropagation()}>
-            <div className="premium-eyebrow"><Bot size={16} /> AI interview setup</div>
-            <h2>{interviewTarget.title}</h2>
-            <label>Language<select className="premium-input" value={interviewConfig.language} onChange={event => setInterviewConfig(value => ({ ...value, language: event.target.value as 'auto' | 'en' | 'vi' }))}><option value="auto">Automatic</option><option value="en">English</option><option value="vi">Vietnamese</option></select></label>
-            <label>Mode<select className="premium-input" value={interviewConfig.mode} onChange={event => setInterviewConfig(value => ({ ...value, mode: event.target.value as 'text' | 'voice' }))}><option value="voice">Voice</option><option value="text">Text</option></select></label>
-            <label>Questions<input className="premium-input" type="number" min={1} max={20} value={interviewConfig.questionCount} onChange={event => setInterviewConfig(value => ({ ...value, questionCount: Math.max(1, Math.min(20, Number(event.target.value))) }))} /></label>
-            <div className="premium-modal-actions"><button className="premium-button secondary" disabled={premiumActionBusy} onClick={() => setInterviewTarget(undefined)}>Go back</button><button className="premium-button" disabled={premiumActionBusy} onClick={() => void createAiInterview()}>{premiumActionBusy ? 'Creating…' : 'Enable interview'}</button></div>
-          </div>
-        </div>
-      )}
     </AppLayout>
   );
 }

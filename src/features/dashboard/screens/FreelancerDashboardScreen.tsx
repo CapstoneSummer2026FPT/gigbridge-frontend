@@ -21,6 +21,7 @@ export default function FreelancerDashboardScreen() {
 
   const {
     user,
+    profile,
     theme,
     userName,
     profileStrength,
@@ -100,6 +101,21 @@ export default function FreelancerDashboardScreen() {
           </section>
 
           {/* ── Main Content: Asymmetric 12-col Grid ── */}
+          {!isLoading && (profile?.skills?.length ?? 0) === 0 && (
+            <section className="glass-card rounded-3xl border border-brand/30 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+              <div>
+                <div className="text-sm font-black text-text-primary">Add skills to improve your matches</div>
+                <p className="text-sm text-text-secondary mt-1">Your title, bio, major, and categories already make you eligible. Canonical skills improve match confidence and make skill gaps clearer to clients.</p>
+              </div>
+              <button
+                className="shrink-0 rounded-2xl bg-brand px-5 py-3 text-xs font-black uppercase tracking-widest text-primary-foreground"
+                onClick={() => navigate('/profile/freelancer/' + (user?.id || '') + '/edit')}
+              >
+                Add skills
+              </button>
+            </section>
+          )}
+
           {premium.data?.isPremium && <div className="glass-card w-full rounded-3xl overflow-hidden transition-all hover:!border-brand">
             <button type="button" className="w-full p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 text-left" onClick={() => setPremiumBarOpen(open => !open)} aria-expanded={premiumBarOpen}>
               <div className="flex items-center gap-4"><Crown size={24} className="text-purple" /><div><div className="font-black text-text-primary">Premium status</div><div className="text-sm text-text-secondary">{premium.data.tierName || 'Premium'} · {premium.data.eloPoints} Elo</div></div></div>

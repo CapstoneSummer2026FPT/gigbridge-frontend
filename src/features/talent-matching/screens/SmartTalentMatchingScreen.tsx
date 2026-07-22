@@ -1,972 +1,683 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
-  Award,
   Bot,
-  CheckCircle2,
-  ChevronDown,
+  BriefcaseBusiness,
+  Check,
   Heart,
-  Grid,
-  List,
+  Info,
+  LockKeyhole,
   MapPin,
+  RefreshCw,
   Search,
   Sparkles,
   Star,
-  Trophy,
+  Users,
 } from 'lucide-react';
-import { AppLayout } from '../../../shared/components/AppLayout';
-import { useApp } from '../../../app/providers/AppProvider';
-import { useTranslation } from '../../../hooks/useTranslation';
+
+import { jobAPI } from '../../../api/jobAPI';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { savedFreelancerAPI } from '../../../api/savedFreelancerAPI';
-import { InviteFreelancerToJobModal } from '../../profile/components/InviteFreelancerToJobModal';
-import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
+import { talentMatchingAPI } from '../../../api/talentMatchingAPI';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../../../app/components/ui/tooltip';
+import { useApp } from '../../../app/providers/AppProvider';
+import { AppLayout } from '../../../shared/components/AppLayout';
+import type { GetMyJobPostDto } from '../../../types/models/Job';
+import { JobPostStatus } from '../../../types/models/Job';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
 import type { SavedFreelancerDto } from '../../../types/savedFreelancer';
-import {
-  MOCK_MATCHING_JOBS,
-  rankTalentForJob,
-  type RankedTalentMatch,
-} from '../mock/data-for-SmartTalentMatchingScreen';
+import type { AiTalentMatch } from '../../../types/talentMatching';
+import { UserRole } from '../../../types/models/User';
+import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
+import { usePremiumStatus } from '../../premium/hooks';
+import { InviteFreelancerToJobModal } from '../../profile/components/InviteFreelancerToJobModal';
+import { canUseSmartMatching } from '../utils/smartMatchingAccess';
 import '../styles/smart-talent-matching-screen.css';
 
-// Metadata helper to retrieve rate, success rate, and earnings for each mockup designer/developer
-const getTalentMetadata = (id: string) => {
-  switch (id) {
-    case 'u_freelancer_1':
-      return { rate: 120, successRate: 98, earnings: '$200k+', successClass: 'text-purple-600 black:text-purple-400' };
-    case 'u_freelancer_2':
-      return { rate: 90, successRate: 96, earnings: '$75k+', successClass: 'text-blue-600 black:text-blue-400' };
-    case 'u_freelancer_3':
-      return { rate: 95, successRate: 100, earnings: '$85k+', successClass: 'text-purple-600 black:text-purple-400' };
-    case 'u_freelancer_4':
-      return { rate: 80, successRate: 94, earnings: '$50k+', successClass: 'text-amber-500' };
-    case 'u_freelancer_5':
-      return { rate: 75, successRate: 92, earnings: '$35k+', successClass: 'text-amber-500' };
-    default:
-      return { rate: 85, successRate: 95, earnings: '$45k+', successClass: 'text-blue-600 black:text-blue-400' };
-  }
-};
+type ViewStage = 'browse' | 'saved' | 'smart';
 
-const getTalentAvatar = (id: string, defaultUrl: string) => {
-  if (id === 'u_freelancer_1') {
-    return 'https://lh3.googleusercontent.com/aida-public/AB6AXuAWoUslxKKGeg3BdjHv9T29V5bOcc6UGu622ToGiOestOTQ_Ik8bk6kWC8-hZ1lzbYTIpin4__O_4YFuOmem8qbbChLC0LpbdIH4f6c5t2yZDSQnz_Ikri6ZCO8JDZbfbNg1ONNEtH47Y7CbpTyvd9bP9R3WgCpkUH5wMd_JdZS7PUzApIGE1AXcwLhk9JpjAxsAIM0-9JepFZryVaicbVd9rv-kNeXQ-lMuhXnfPPOeqIOtv_b6s7lMEoCoRZLmJrwKzEhJdYFS3Um';
-  }
-  if (id === 'u_freelancer_3') {
-    return 'https://lh3.googleusercontent.com/aida-public/AB6AXuAosmjUZ4V4nFwq5m2khY-D4RCkgAnaPF_RIFbC_yRHj2bkFrK14ZG6GGtgAOTd7senX_9dhutwI-yeIJfQ56-jlLOKHBU5WOFW79Lv9S-MI7wCCm_uvgSc_OHNJiw2lyBAEm1lf8Xnxp3U_sWQxPHjxYjsCBalyVAcnyEXH7umNQ9kW9h80Cen56he7ife4aIwsTs0lL9D2al7CVJiLotU8dyyj9RToCV_P21f6Fxkwcl-z7OYFMV9NQoTrzU1LvwIC4AjrAdHkUSy';
-  }
-  return defaultUrl;
-};
+interface InviteTarget {
+  profileId: string;
+  displayName: string;
+  initialJobId?: string;
+  matchRunId?: string;
+}
 
-const FILTER_SKILL_TAGS = ['UX Design', 'React', 'Node.js', 'Figma', 'Three.js', 'TypeScript', 'Flutter'];
+const savedProfileId = (item: SavedFreelancerDto) =>
+  item.freelancerProfileId ?? item.freelancerProfilesId ?? '';
 
-type ApiTalentMatch = RankedTalentMatch & {
-  freelancerProfileId: string;
-  userId: string;
-  rating: number;
-  eloPoints: number;
-  profileCompletionScore?: number;
-};
+const freelancerProfileId = (item: FreelancerProfileDetailDto) =>
+  item.freelancerProfilesId ?? item.freelancerProfileId ?? '';
 
-const getFreelancerProfileId = (freelancer: FreelancerProfileDetailDto): string =>
-  freelancer.freelancerProfilesId ?? freelancer.freelancerProfileId ?? '';
+const initials = (name?: string | null) =>
+  (name || 'Freelancer')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase();
 
-const getSavedFreelancerProfileId = (freelancer: SavedFreelancerDto): string =>
-  freelancer.freelancerProfileId ?? freelancer.freelancerProfilesId ?? '';
+function DataConfidenceBadge({ match }: { match: AiTalentMatch }) {
+  const details = match.confidenceBreakdown;
+  const scoreAgreement = details?.scoreAgreement ?? Math.max(
+    0,
+    100 - Math.abs(match.scoreBreakdown.embedding - match.scoreBreakdown.algorithm),
+  );
+  const ariaLabel = details
+    ? `${match.confidence} data confidence. Profile coverage ${details.dataCoverage.toFixed(1)} percent. Score agreement ${scoreAgreement.toFixed(1)} percent.`
+    : `${match.confidence} data confidence. Score agreement ${scoreAgreement.toFixed(1)} percent. Profile coverage is unavailable from the current backend response.`;
 
-const formatAvailability = (availability?: number | null): string => {
-  if (availability === 0) return 'Available full-time';
-  if (availability === 1) return 'Available part-time';
-  if (availability === 2) return 'Not currently available';
-  return 'Availability not specified';
-};
-
-const mapFreelancerProfileToTalent = (freelancer: FreelancerProfileDetailDto): ApiTalentMatch => {
-  const skills = freelancer.skills?.map(skill => skill.skillName).filter(Boolean) || [];
-  const firstSkill = skills[0] || 'General';
-  const rating = freelancer.rating ?? 0;
-  const completedMilestones = freelancer.workExperiences?.length || 0;
-
-  return {
-    id: getFreelancerProfileId(freelancer),
-    freelancerProfileId: getFreelancerProfileId(freelancer),
-    userId: freelancer.userId,
-    fullName: freelancer.userFullName || 'Freelancer',
-    title: freelancer.title || 'Freelancer',
-    location: freelancer.location || 'Remote',
-    avatarUrl: freelancer.userAvatar || `https://i.pravatar.cc/120?u=${freelancer.userId}`,
-    projectBudget: 5000,
-    category: firstSkill,
-    industryExperience: freelancer.workExperiences?.map(exp => exp.companyName).filter(Boolean) || [],
-    skills,
-    completedMilestones,
-    anonymousRating: rating || 4.5,
-    responseTime: 'Responds soon',
-    availability: formatAvailability(freelancer.availability),
-    recentWork: freelancer.bio || 'No profile bio has been added yet.',
-    matchScore: Math.min(99, Math.max(50, Math.round((freelancer.eloPoints ?? 100) / 10))),
-    skillScore: Math.min(48, skills.length * 8),
-    budgetScore: 10,
-    categoryScore: 15,
-    advancedScore: Math.min(12, Math.round(rating * 2)),
-    matchedSkills: [],
-    matchReasons: ['Backend freelancer profile'],
-    rating,
-    eloPoints: freelancer.eloPoints ?? 100,
-    profileCompletionScore: freelancer.profileCompletionScore,
-  };
-};
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1 ${match.confidence === 'high' ? 'bg-green-500/10 text-green-600' : match.confidence === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-muted-foreground'}`}
+          aria-label={ariaLabel}
+        >
+          {match.confidence} data confidence
+          <Info size={12} aria-hidden="true" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6} className="max-w-72 space-y-1.5">
+        <p className="font-semibold">How reliable is the match calculation?</p>
+        {details ? (
+          <>
+            <p>Profile coverage: {details.dataCoverage.toFixed(1)}%</p>
+            <p>Embedding/algorithm agreement: {scoreAgreement.toFixed(1)}%</p>
+            <p>Data-confidence index: {details.confidenceScore.toFixed(1)}/100</p>
+          </>
+        ) : (
+          <>
+            <p>Embedding/algorithm agreement: {scoreAgreement.toFixed(1)}%</p>
+            <p>Profile coverage is unavailable until the backend is restarted.</p>
+          </>
+        )}
+        <p className="opacity-80">This measures data support, not how strong the match is.</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 export default function SmartTalentMatchingScreen() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { role } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const initialTab = tabParam === 'saved' ? 'saved' : tabParam === 'all' ? 'all' : 'matches';
-
-  const openJobs = MOCK_MATCHING_JOBS.filter(job => job.status === 'Open');
-  const [selectedJobId, setSelectedJobId] = useState(openJobs[0]?.id || '');
-  const [premiumEnabled, setPremiumEnabled] = useState(true);
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
+  const hasSmartMatchingAccess = canUseSmartMatching(role, premiumStatus.isPremium);
+  const requestSequence = useRef(0);
+  const [activeStage, setActiveStage] = useState<ViewStage>('browse');
+  const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
+  const [freelancers, setFreelancers] = useState<FreelancerProfileDetailDto[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [saved, setSaved] = useState<SavedFreelancerDto[]>([]);
+  const [matches, setMatches] = useState<AiTalentMatch[]>([]);
+  const [matchRunId, setMatchRunId] = useState<string | null>(null);
+  const [majorCategoryId, setMajorCategoryId] = useState<string | null>(null);
+  const [skillIds, setSkillIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
-  const [invitedIds, setInvitedIds] = useState<string[]>([]);
-  const [inviteTalentTarget, setInviteTalentTarget] = useState<ApiTalentMatch | null>(null);
-  const [talents, setTalents] = useState<ApiTalentMatch[]>([]);
-  const [savedFreelancerIds, setSavedFreelancerIds] = useState<Set<string>>(new Set());
-  const [savingFreelancerIds, setSavingFreelancerIds] = useState<Set<string>>(new Set());
-  const [loadingTalents, setLoadingTalents] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'matches' | 'saved'>(initialTab);
-  const [isCompact, setIsCompact] = useState(true);
-  const [perPage, setPerPage] = useState(20);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [jobsError, setJobsError] = useState<string | null>(null);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [loadingMatches, setLoadingMatches] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
+  const [inviteTarget, setInviteTarget] = useState<InviteTarget | null>(null);
+
+  const selectedJob = jobs.find(job => job.jobPostsId === selectedJobId);
+  const savedIds = useMemo(() => new Set(saved.map(savedProfileId).filter(Boolean)), [saved]);
+  const categoryOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    freelancers.forEach(freelancer => {
+      freelancer.categories.forEach(category => options.set(category.majorCategoryId, category.name));
+    });
+    jobs.forEach(job => {
+      if (job.majorCategoryId) {
+        options.set(job.majorCategoryId, job.categoryName || job.majorName || 'Job category');
+      }
+    });
+    return [...options.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [freelancers, jobs]);
+
+  const loadInitialData = useCallback(async () => {
+    setLoadingInitial(true);
+    setJobsError(null);
+    setBrowseError(null);
+    const [jobsResponse, freelancersResponse, savedResult] = await Promise.allSettled([
+      jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 }),
+      profileGetAPI.getAllFreelancers(),
+      savedFreelancerAPI.getMySavedFreelancers(),
+    ]);
+
+    if (jobsResponse.status === 'rejected' || !jobsResponse.value.success) {
+      setJobs([]);
+      setJobsError(
+        jobsResponse.status === 'fulfilled'
+          ? jobsResponse.value.message
+          : 'Unable to load your open jobs.',
+      );
+    } else {
+      const openJobs = (jobsResponse.value.data || []).filter(
+        job => Number(job.status) === JobPostStatus.Open,
+      );
+      setJobs(openJobs);
+      setSelectedJobId(current =>
+        openJobs.some(job => job.jobPostsId === current)
+          ? current
+          : openJobs[0]?.jobPostsId || '',
+      );
+    }
+
+    if (freelancersResponse.status === 'rejected' || !freelancersResponse.value.success) {
+      setFreelancers([]);
+      setBrowseError(
+        freelancersResponse.status === 'fulfilled'
+          ? freelancersResponse.value.message
+          : 'Unable to load freelancer profiles.',
+      );
+    } else {
+      setFreelancers(
+        (freelancersResponse.value.data || []).filter(item => freelancerProfileId(item)),
+      );
+    }
+
+    setSaved(savedResult.status === 'fulfilled' ? savedResult.value : []);
+    setLoadingInitial(false);
+  }, []);
 
   useEffect(() => {
-    if (tabParam === 'saved') {
-      setActiveTab('saved');
-    } else if (tabParam === 'all') {
-      setActiveTab('all');
-    } else if (tabParam === 'matches') {
-      setActiveTab('matches');
-    }
-  }, [tabParam]);
-
-  const handleTabChange = (tab: 'all' | 'matches' | 'saved') => {
-    setActiveTab(tab);
-    setSearchParams({ tab });
-  };
-
-  // Filters State
-  const [jobTypes, setJobTypes] = useState<string[]>(['Fixed Price', 'Hourly Contract']);
-  const [hourlyRate, setHourlyRate] = useState<number>(200);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [minSuccessRate, setMinSuccessRate] = useState<number | null>(null);
-
-  const selectedJob = MOCK_MATCHING_JOBS.find(job => job.id === selectedJobId);
-  const isClient = role === 0 || role === null;
-  const canSaveFreelancers = role === 0;
-  const isPremiumClient = isClient && premiumEnabled;
+    void loadInitialData();
+  }, [loadInitialData]);
 
   useEffect(() => {
-    let isMounted = true;
+    setMajorCategoryId(null);
+    setSkillIds([]);
+  }, [selectedJobId]);
 
-    const fetchTalents = async () => {
-      try {
-        setLoadingTalents(true);
-        setLoadError(null);
-
-        const freelancersResponse = await profileGetAPI.getAllFreelancers();
-        const savedFreelancers = canSaveFreelancers
-          ? await savedFreelancerAPI.getMySavedFreelancers()
-          : [];
-
-        if (!isMounted) return;
-
-        if (!freelancersResponse.success) {
-          throw new Error(freelancersResponse.message || 'Unable to load freelancer profiles.');
-        }
-
-        setTalents((freelancersResponse.data || [])
-          .map(mapFreelancerProfileToTalent)
-          .filter(talent => talent.freelancerProfileId));
-        setSavedFreelancerIds(new Set(savedFreelancers.map(getSavedFreelancerProfileId).filter(Boolean)));
-      } catch (error) {
-        if (!isMounted) return;
-        const message = error instanceof Error ? error.message : 'Unable to load freelancer profiles.';
-        console.error('Failed to load talent matching data:', error);
-        setLoadError(message);
-        setTalents([]);
-        setSavedFreelancerIds(new Set());
-      } finally {
-        if (isMounted) setLoadingTalents(false);
-      }
-    };
-
-    fetchTalents();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [canSaveFreelancers]);
-
-  // Base list of candidates ranked for the job context
-  const rankedMatches = useMemo<ApiTalentMatch[]>(() => {
-    if (!selectedJob) return [];
-    return rankTalentForJob(selectedJob, talents) as ApiTalentMatch[];
-  }, [selectedJob, talents]);
-
-  // Combine full pool and matching pool, adding dummy scores if needed
-  const basePool = useMemo<ApiTalentMatch[]>(() => {
-    if (activeTab === 'matches') {
-      return isPremiumClient ? rankedMatches : [];
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab === 'saved') {
+      setActiveStage('saved');
+    } else if (requestedTab === 'smart' && !premiumStatus.loading && hasSmartMatchingAccess) {
+      setActiveStage('smart');
+    } else if (!requestedTab || requestedTab === 'browse') {
+      setActiveStage('browse');
     }
+  }, [hasSmartMatchingAccess, premiumStatus.loading, searchParams]);
 
-    // Map full pool to match layout structures
-    return talents.map(talent => {
-      const matchInRanked = rankedMatches.find(r => r.id === talent.id);
-      if (matchInRanked) return matchInRanked;
-      return {
-        ...talent,
-        matchScore: 80,
-        skillScore: 35,
-        budgetScore: 10,
-        categoryScore: 15,
-        advancedScore: 10,
-        matchedSkills: [],
-        matchReasons: ['Generic fit context'],
-      };
+  const loadMatches = useCallback(async () => {
+    if (!selectedJobId || activeStage !== 'smart' || !hasSmartMatchingAccess) return;
+
+    const sequence = ++requestSequence.current;
+    setLoadingMatches(true);
+    setMatchError(null);
+    const response = await talentMatchingAPI.getMatches(selectedJobId, {
+      topK: 20,
+      filters: { majorCategoryId, skillIds },
     });
-  }, [activeTab, rankedMatches, isPremiumClient, talents]);
+    if (sequence !== requestSequence.current) return;
 
-  // Apply visual filtering controls
-  const filteredTalents = useMemo<ApiTalentMatch[]>(() => {
-    return basePool.filter(talent => {
-      const meta = getTalentMetadata(talent.id);
-
-      // Tab filter
-      if (activeTab === 'saved' && !savedFreelancerIds.has(talent.freelancerProfileId)) {
-        return false;
-      }
-
-      // Search Query filter
-      if (query.trim()) {
-        const sanitized = query.toLowerCase();
-        const matchesQuery = [
-          talent.fullName,
-          talent.title,
-          talent.location,
-          ...talent.skills,
-        ].join(' ').toLowerCase().includes(sanitized);
-        if (!matchesQuery) return false;
-      }
-
-      // Job Type filter (Simulate: fixed vs hourly rate bounds)
-      const isHourly = meta.rate < 100;
-      const isFixed = meta.rate >= 80;
-      if (jobTypes.length > 0) {
-        const hasFixedChecked = jobTypes.includes('Fixed Price');
-        const hasHourlyChecked = jobTypes.includes('Hourly Contract');
-        if (hasFixedChecked && !hasHourlyChecked && !isFixed) return false;
-        if (hasHourlyChecked && !hasFixedChecked && !isHourly) return false;
-      } else {
-        return false; // nothing checked
-      }
-
-      // Hourly Rate range slider filter
-      if (meta.rate > hourlyRate) {
-        return false;
-      }
-
-      // Industry expertise (skills selection tags)
-      if (selectedSkills.length > 0) {
-        const hasSkill = selectedSkills.some(skill =>
-          talent.skills.some(ts => ts.toLowerCase() === skill.toLowerCase())
-        );
-        if (!hasSkill) return false;
-      }
-
-      // Success rate buttons filter
-      if (minSuccessRate !== null && meta.successRate < minSuccessRate) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [basePool, activeTab, savedFreelancerIds, query, jobTypes, hourlyRate, selectedSkills, minSuccessRate]);
-
-  const inviteTalent = (talent: ApiTalentMatch) => {
-    if (!isClient) {
-      toast.error(t('talentMatching.logInAsClientToInvite'));
+    if (!response.success || !response.data) {
+      setMatches([]);
+      setMatchRunId(null);
+      setMatchError(
+        response.statusCode === 503
+          ? 'Smart matching is temporarily unavailable. Your job and filters are safe—please retry.'
+          : response.message || 'Unable to generate talent matches.',
+      );
+      setLoadingMatches(false);
       return;
     }
 
-    if (!talent.freelancerProfileId) {
-      toast.error(t('talentMatching.profileNotInvitable'));
-      return;
-    }
+    setMatches(response.data.matches);
+    setMatchRunId(response.data.matchRunId);
+    setLoadingMatches(false);
+    void Promise.allSettled(
+      response.data.matches.map(match =>
+        talentMatchingAPI.recordEvent(selectedJobId, {
+          matchRunId: response.data!.matchRunId,
+          freelancerProfileId: match.freelancerProfileId,
+          eventType: 'impression',
+          idempotencyKey: `match:${response.data!.matchRunId}:impression:${match.freelancerProfileId}`,
+        }),
+      ),
+    );
+  }, [activeStage, hasSmartMatchingAccess, majorCategoryId, selectedJobId, skillIds]);
 
-    setInviteTalentTarget(talent);
+  useEffect(() => {
+    void loadMatches();
+  }, [loadMatches]);
+
+  const filteredFreelancers = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return freelancers.filter(freelancer => {
+      const profileId = freelancerProfileId(freelancer);
+      if (activeStage === 'saved' && !savedIds.has(profileId)) return false;
+      if (
+        majorCategoryId &&
+        !freelancer.categories.some(category => category.majorCategoryId === majorCategoryId)
+      ) return false;
+      if (!normalized) return true;
+      return [
+        freelancer.userFullName,
+        freelancer.title,
+        freelancer.bio,
+        freelancer.location,
+        freelancer.majorName,
+        ...freelancer.skills.map(skill => skill.skillName),
+        ...freelancer.categories.map(category => category.name),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalized);
+    });
+  }, [activeStage, freelancers, majorCategoryId, query, savedIds]);
+
+  const filteredMatches = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return matches;
+    return matches.filter(match =>
+      [
+        match.displayName,
+        match.title,
+        match.location,
+        ...match.matchedSkills,
+        ...match.semanticStrengths,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(normalized),
+    );
+  }, [matches, query]);
+
+  const openMatchedProfile = (match: AiTalentMatch) => {
+    if (matchRunId && selectedJobId) {
+      void talentMatchingAPI.recordEvent(selectedJobId, {
+        matchRunId,
+        freelancerProfileId: match.freelancerProfileId,
+        eventType: 'profile_opened',
+        idempotencyKey: `match:${matchRunId}:profile-opened:${match.freelancerProfileId}`,
+      });
+    }
+    navigate(`/profile/freelancer/${match.userId}`);
   };
 
-  const toggleFavorite = async (talent: ApiTalentMatch) => {
-    const freelancerProfileId = talent.freelancerProfileId;
-    if (!freelancerProfileId) {
-      toast.error(t('talentMatching.profileNotSavable'));
-      return;
-    }
-
-    if (!canSaveFreelancers) {
-      toast.error(t('talentMatching.logInAsClientToSave'));
-      return;
-    }
-
-    setSavingFreelancerIds(prev => new Set(prev).add(freelancerProfileId));
-
+  const toggleSaved = async (profileId: string, attributedRunId?: string) => {
+    if (!profileId) return;
+    setSavingIds(current => new Set(current).add(profileId));
     try {
-      if (savedFreelancerIds.has(freelancerProfileId)) {
-        await savedFreelancerAPI.unsaveFreelancer(freelancerProfileId);
-        setSavedFreelancerIds(prev => {
-          const next = new Set(prev);
-          next.delete(freelancerProfileId);
-          return next;
-        });
-        toast.success(t('talentMatching.removedSuccess'));
+      if (savedIds.has(profileId)) {
+        await savedFreelancerAPI.unsaveFreelancer(profileId);
+        setSaved(current => current.filter(item => savedProfileId(item) !== profileId));
+        toast.success('Freelancer removed from saved talent.');
       } else {
-        await savedFreelancerAPI.saveFreelancer(freelancerProfileId);
-        setSavedFreelancerIds(prev => new Set(prev).add(freelancerProfileId));
-        toast.success(t('talentMatching.savedSuccess'));
+        await savedFreelancerAPI.saveFreelancer(profileId, attributedRunId);
+        setSaved(await savedFreelancerAPI.getMySavedFreelancers());
+        toast.success('Freelancer saved.');
       }
     } catch (error) {
-      console.error('Failed to update saved freelancer:', error);
-      toast.error(error instanceof Error ? error.message : 'Saved freelancer status could not be updated.');
+      toast.error(error instanceof Error ? error.message : 'Could not update saved talent.');
     } finally {
-      setSavingFreelancerIds(prev => {
-        const next = new Set(prev);
-        next.delete(freelancerProfileId);
+      setSavingIds(current => {
+        const next = new Set(current);
+        next.delete(profileId);
         return next;
       });
     }
   };
 
-  const toggleSkillFilter = (skill: string) => {
-    setSelectedSkills(prev =>
-      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+  const toggleSkill = (skillId: string) => {
+    setSkillIds(current =>
+      current.includes(skillId)
+        ? current.filter(id => id !== skillId)
+        : [...current, skillId],
     );
   };
 
-  const clearAllFilters = () => {
+  const resetFilters = () => {
+    setMajorCategoryId(null);
+    setSkillIds([]);
     setQuery('');
-    setJobTypes(['Fixed Price', 'Hourly Contract']);
-    setHourlyRate(200);
-    setSelectedSkills([]);
-    setMinSuccessRate(null);
   };
+
+  const changeStage = (stage: ViewStage) => {
+    requestSequence.current += 1;
+    setActiveStage(stage);
+    setMajorCategoryId(null);
+    setSkillIds([]);
+    setQuery('');
+    setLoadingMatches(false);
+    setMatchError(null);
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.set('tab', stage);
+    setSearchParams(nextSearchParams, { replace: true });
+    if (stage === 'smart') {
+      setMatches([]);
+      setMatchRunId(null);
+    }
+  };
+
+  const requestSmartMatching = () => {
+    if (premiumStatus.loading) return;
+    if (!hasSmartMatchingAccess) {
+      toast.info('Smart Matching is available with Client Premium.');
+      navigate(role === UserRole.Client ? '/premium/client/pricing' : '/');
+      return;
+    }
+    changeStage('smart');
+  };
+
+  const isDirectoryStage = activeStage === 'browse' || activeStage === 'saved';
+  const visibleResultCount = activeStage === 'smart' ? filteredMatches.length : filteredFreelancers.length;
+  const resultTitle = activeStage === 'smart'
+    ? 'Smart recommendations'
+    : activeStage === 'saved'
+      ? 'Saved freelancers'
+      : 'Freelancer directory';
+  const resultDescription = activeStage === 'smart'
+    ? 'Ranked for the selected job using skills, reputation, and verified platform evidence.'
+    : activeStage === 'saved'
+      ? 'Review the talent you shortlisted and invite the right people when you are ready.'
+      : 'Search the complete talent pool by name, specialty, skill, location, or category.';
+  const selectedCategoryName = categoryOptions.find(option => option.id === majorCategoryId)?.name;
+  const hasActiveFilters = Boolean(query.trim() || majorCategoryId || skillIds.length);
 
   return (
     <AppLayout>
-      <>
-        {/* Header & Tabs Section */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-8 relative z-50">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-foreground"
-              dangerouslySetInnerHTML={{ __html: t('talentMatching.title') }}
-            />
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              {t('talentMatching.subtitle')}
+      <div className="max-w-[1500px] mx-auto px-4 py-8">
+        <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-8">
+          <div>
+            <div className="flex items-center gap-2 text-purple-600 text-xs font-black uppercase tracking-[0.2em] mb-3">
+              <Sparkles size={16} /> Talent discovery
+            </div>
+            <h1 className="text-4xl font-black text-foreground">Find the right freelancer</h1>
+            <p className="text-muted-foreground mt-2 max-w-2xl">
+              Browse the complete freelancer directory, then use job-specific smart matching when you need a ranked shortlist.
             </p>
           </div>
-          
-          <div className="flex flex-col items-end gap-4 w-full md:w-auto shrink-0 font-sans">
-            <div className="glass-panel p-1 rounded-full flex gap-1 shadow-sm w-full md:w-auto justify-center">
-              <button
-                onClick={() => handleTabChange('all')}
-                className={`px-6 py-2.5 rounded-full text-xs font-semibold transition-all ${activeTab === 'all'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
-                  }`}
-              >
-                {t('talentMatching.allFreelancers')}
-              </button>
-
-              <div className="relative group z-[100]">
-                <button
-                  onClick={() => handleTabChange('matches')}
-                  className={`px-6 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 shadow-sm hover:scale-105 ${activeTab === 'matches'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-purple-100 black:bg-purple-950 text-purple-900 black:text-purple-100'
-                    }`}
-                >
-                  <Sparkles size={14} className="fill-current" />
-                  {t('talentMatching.bestMatches', { job: selectedJob ? selectedJob.title : t('talentMatching.selectJob') })}
-                  <ChevronDown size={14} />
-                </button>
-
-                {/* Dropdown Options */}
-                <div className="absolute right-0 top-full pt-2 w-56 hidden group-hover:block z-50">
-                  <div className="glass-panel rounded-xl shadow-xl p-2">
-                    <span className="block px-4 py-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                      {t('talentMatching.selectProjectContext')}
-                    </span>
-                    {openJobs.map(job => (
-                      <button
-                        key={job.id}
-                        onClick={() => {
-                          setSelectedJobId(job.id);
-                          handleTabChange('matches');
-                        }}
-                        className={`w-full text-left block px-4 py-3 hover:bg-gray-100 black:hover:bg-gray-800 rounded-lg text-sm transition-colors ${selectedJobId === job.id
-                            ? 'bg-purple-50 black:bg-purple-900/30 text-purple-700 black:text-purple-300 font-medium'
-                            : 'text-gray-700 black:text-gray-300'
-                          }`}
-                      >
-                        {job.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleTabChange('saved')}
-                className={`px-6 py-2.5 rounded-full text-xs font-semibold transition-all ${activeTab === 'saved'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
-                  }`}
-              >
-                {t('talentMatching.savedTalent', { count: savedFreelancerIds.size })}
-              </button>
-            </div>
+          <div className="flex max-w-full overflow-x-auto rounded-2xl border border-border bg-surface p-1">
+            <button className={`px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 ${activeStage === 'browse' ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`} onClick={() => changeStage('browse')}>
+              <Users size={16} /> Browse freelancers
+            </button>
+            <button className={`px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 whitespace-nowrap ${activeStage === 'saved' ? 'bg-blue-600 text-white' : 'text-muted-foreground'}`} onClick={() => changeStage('saved')}>
+              <Heart size={16} className={activeStage === 'saved' ? 'fill-current' : ''} /> Saved freelancers
+              <span className={`rounded-full px-2 py-0.5 text-[10px] ${activeStage === 'saved' ? 'bg-white/20 text-white' : 'bg-blue-600/10 text-blue-600'}`}>{saved.length}</span>
+            </button>
+            <button
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 whitespace-nowrap disabled:opacity-60 ${activeStage === 'smart' ? 'bg-purple-600 text-white' : 'text-muted-foreground'}`}
+              onClick={requestSmartMatching}
+              disabled={premiumStatus.loading}
+              aria-label={hasSmartMatchingAccess ? 'Smart matching' : 'Smart matching, Client Premium required'}
+              title={hasSmartMatchingAccess ? 'Open Smart Matching' : 'Requires Client Premium'}
+            >
+              {hasSmartMatchingAccess ? <Sparkles size={16} /> : <LockKeyhole size={16} />}
+              Smart matching
+              {!premiumStatus.loading && !hasSmartMatchingAccess && <span className="rounded-full bg-purple-600/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-purple-600">Premium</span>}
+            </button>
           </div>
         </header>
 
-        {/* Filters and main grid layout */}
+        {!premiumStatus.loading && !hasSmartMatchingAccess && role === UserRole.Client && (
+          <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-purple-500/25 bg-purple-500/5 p-5 sm:flex-row sm:items-center">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-purple-600/10 text-purple-600"><LockKeyhole size={21} /></span>
+            <div className="min-w-0 flex-1">
+              <strong className="text-foreground">Smart Matching is a Client Premium feature</strong>
+              <p className="mt-1 text-sm text-muted-foreground">You can keep browsing, saving, and inviting freelancers with your Standard plan. Upgrade for job-specific ranked recommendations.</p>
+            </div>
+            <button onClick={() => navigate('/premium/client/pricing')} className="shrink-0 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-bold text-white">View Premium</button>
+          </div>
+        )}
+
+        {activeStage === 'smart' && jobsError && (
+          <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/5 p-4 flex items-center justify-between gap-4 text-red-600">
+            <span>{jobsError}</span>
+            <button onClick={() => void loadInitialData()} className="flex items-center gap-2 font-bold"><RefreshCw size={16} /> Retry</button>
+          </div>
+        )}
+
         <div className="grid grid-cols-12 gap-6 items-start">
-
-          {/* Left: Minimal Filters */}
-          <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-24 space-y-8">
-            <div className="glass-panel p-6 rounded-2xl shadow-sm">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-foreground">{t('talentMatching.filters')}</h3>
-                <button
-                  onClick={clearAllFilters}
-                  className="text-blue-600 hover:text-blue-700 black:text-blue-400 black:hover:text-blue-300 text-xs font-bold transition-all hover:underline"
-                >
-                  {t('talentMatching.clearAll')}
-                </button>
-              </div>
-
-              <div className="space-y-8">
-                {/* Job Type Checkboxes */}
-                <div>
-                  <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-3 block">
-                    {t('talentMatching.jobType')}
-                  </label>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={jobTypes.includes('Fixed Price')}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setJobTypes(prev => [...prev, 'Fixed Price']);
-                          } else {
-                            setJobTypes(prev => prev.filter(t => t !== 'Fixed Price'));
-                          }
-                        }}
-                        className="w-5 h-5 rounded border-gray-300 black:border-gray-700 text-blue-600 focus:ring-blue-500/20"
-                      />
-                      <span className="text-sm text-gray-700 black:text-gray-300 group-hover:text-blue-600 transition-colors">
-                        {t('talentMatching.fixedPrice')}
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={jobTypes.includes('Hourly Contract')}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setJobTypes(prev => [...prev, 'Hourly Contract']);
-                          } else {
-                            setJobTypes(prev => prev.filter(t => t !== 'Hourly Contract'));
-                          }
-                        }}
-                        className="w-5 h-5 rounded border-gray-300 black:border-gray-700 text-blue-600 focus:ring-blue-500/20"
-                      />
-                      <span className="text-sm text-gray-700 black:text-gray-300 group-hover:text-blue-600 transition-colors">
-                        {t('talentMatching.hourlyContract')}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Hourly Rate slider */}
-                <div>
-                  <div className="flex justify-between mb-3">
-                    <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
-                      {t('talentMatching.maxHourlyRate')}
-                    </label>
-                    <span className="text-xs font-bold text-blue-600 black:text-blue-400">
-                      {t('talentMatching.hourlyRateValue', { rate: hourlyRate })}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="40"
-                    max="200"
-                    step="5"
-                    value={hourlyRate}
-                    onChange={e => setHourlyRate(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-200 black:bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-                    <span>$40</span>
-                    <span>$200+</span>
-                  </div>
-                </div>
-
-                {/* Skills tags selection */}
-                <div>
-                  <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-3 block">
-                    {t('talentMatching.industryExpertise')}
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {FILTER_SKILL_TAGS.map(skill => {
-                      const isSelected = selectedSkills.includes(skill);
-                      return (
-                        <button
-                          key={skill}
-                          onClick={() => toggleSkillFilter(skill)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${isSelected
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'bg-gray-100 black:bg-gray-800 text-gray-700 black:text-gray-300 hover:bg-gray-200 black:hover:bg-gray-700'
-                            }`}
-                        >
-                          {skill}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Min Success Rate buttons */}
-                <div>
-                  <label className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-3 block">
-                    {t('talentMatching.minSuccessRate')}
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setMinSuccessRate(90)}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${minSuccessRate === 90
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-200 black:border-gray-800 hover:border-blue-600 black:hover:border-blue-400 text-gray-700 black:text-gray-300'
-                        }`}
-                    >
-                      90%+
-                    </button>
-                    <button
-                      onClick={() => setMinSuccessRate(95)}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${minSuccessRate === 95
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-200 black:border-gray-800 hover:border-blue-600 black:hover:border-blue-400 text-gray-700 black:text-gray-300'
-                        }`}
-                    >
-                      95%+
-                    </button>
-                    <button
-                      onClick={() => setMinSuccessRate(null)}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${minSuccessRate === null
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-200 black:border-gray-800 hover:border-blue-600 black:hover:border-blue-400 text-gray-700 black:text-gray-300'
-                        }`}
-                    >
-                      {t('talentMatching.any')}
-                    </button>
-                  </div>
-                </div>
-              </div>
+          <aside className="col-span-12 lg:col-span-3 glass-panel rounded-3xl p-5 space-y-6 lg:sticky lg:top-24">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-muted-foreground">Refine talent</div>
+              <p className="mt-1 text-xs text-muted-foreground">Use category and job skills to focus the results.</p>
             </div>
-
-            {/* Premium Upgrade Banner */}
-            <div className="bg-blue-600 p-6 rounded-2xl text-white relative overflow-hidden group shadow-md">
-              <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                <Sparkles size={120} />
-              </div>
-              <h4 className="text-lg font-bold mb-2 relative z-10 flex items-center gap-2">
-                <Bot size={20} />
-                {t('talentMatching.premiumAccess')}
-              </h4>
-              <p className="text-xs opacity-90 mb-4 relative z-10 leading-relaxed">
-                {t('talentMatching.premiumAccessDesc')}
-              </p>
-              <button
-                type="button"
-                onClick={() => setPremiumEnabled(!premiumEnabled)}
-                className={`w-full py-3 font-bold rounded-xl relative z-10 transition-all text-xs hover:shadow-lg ${premiumEnabled
-                    ? 'bg-white text-blue-600 hover:bg-gray-100'
-                    : 'bg-yellow-500 text-gray-900 hover:bg-yellow-400'
-                  }`}
-              >
-                {premiumEnabled ? t('talentMatching.premiumEnabled') : t('talentMatching.upgradeNow')}
-              </button>
-            </div>
-          </aside>
-
-          {/* Center: Talent List */}
-          <section className={`col-span-12 lg:col-span-6 space-y-6 ${isCompact ? 'compact-layout' : ''}`}>
-
-            {/* Top Toolbar */}
-            <div className="flex items-center justify-between glass-panel p-3 rounded-2xl shadow-sm relative z-30">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
-                  {t('talentMatching.showPerPage')}
-                </span>
-                <div className="relative group">
-                  <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 black:bg-gray-800 rounded-lg text-xs font-semibold hover:bg-gray-200 black:hover:bg-gray-700 transition-colors text-gray-700 black:text-gray-300">
-                    {perPage}
-                    <ChevronDown size={12} />
+            {activeStage === 'smart' && (
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Open job</label>
+                <select value={selectedJobId} onChange={event => setSelectedJobId(event.target.value)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-3" disabled={loadingInitial || jobs.length === 0}>
+                  {jobs.length === 0 && <option value="">No open jobs</option>}
+                  {jobs.map(job => <option key={job.jobPostsId} value={job.jobPostsId}>{job.title}</option>)}
+                </select>
+                {jobs.length === 0 && !loadingInitial && (
+                  <button onClick={() => navigate('/jobs/post')} className="mt-3 w-full rounded-xl bg-blue-600 text-white px-4 py-3 font-bold text-sm">
+                    Create an open job
                   </button>
-                  <div className="absolute left-0 top-full pt-1 w-24 hidden group-hover:block z-50">
-                    <div className="glass-panel rounded-xl shadow-xl p-1">
-                      {[10, 20, 50].map(val => (
-                        <button
-                          key={val}
-                          onClick={() => setPerPage(val)}
-                          className={`w-full text-left block px-3 py-2 rounded-lg text-xs transition-colors ${perPage === val
-                              ? 'bg-blue-600 text-white'
-                              : 'text-gray-700 black:text-gray-300 hover:bg-gray-100 black:hover:bg-gray-800'
-                            }`}
-                        >
-                          {val}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
+            )}
 
-              {/* Search input in toolbar */}
-              <div className="relative max-w-xs w-48 hidden sm:block">
-                <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={t('talentMatching.quickSearch')}
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  className="w-full bg-gray-100 black:bg-gray-800 text-xs text-gray-700 black:text-gray-300 rounded-lg pl-8 pr-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/30"
-                />
-              </div>
-
-              {/* Layout mode buttons */}
-              <div className="flex items-center gap-2 bg-gray-100 black:bg-gray-800 p-1 rounded-xl font-sans">
-                <button
-                  onClick={() => setIsCompact(false)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${!isCompact
-                       ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 black:text-gray-400 hover:bg-gray-200 black:hover:bg-gray-700'
-                    }`}
-                >
-                  <Grid size={14} />
-                  {t('talentMatching.layoutDefault')}
-                </button>
-                <button
-                  onClick={() => setIsCompact(true)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${isCompact
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 black:text-gray-400 hover:bg-gray-200 black:hover:bg-gray-700'
-                    }`}
-                >
-                  <List size={14} />
-                  {t('talentMatching.layoutCompact')}
-                </button>
-              </div>
+            <div>
+              <label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Category</label>
+              <select value={majorCategoryId ?? ''} onChange={event => setMajorCategoryId(event.target.value || null)} className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-3">
+                <option value="">Any category</option>
+                {categoryOptions.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}
+              </select>
             </div>
 
-            {/* Error notifications */}
-            {!isPremiumClient && activeTab === 'matches' && (
-              <div className="bg-red-50 black:bg-red-950/20 text-red-700 black:text-red-300 border border-red-200 black:border-red-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
-                <AlertTriangle size={18} className="shrink-0" />
-                <span>{t('talentMatching.premiumAlert')}</span>
-              </div>
-            )}
-
-            {openJobs.length === 0 && (
-              <div className="bg-yellow-50 black:bg-yellow-950/20 text-yellow-700 black:text-yellow-300 border border-yellow-200 black:border-yellow-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
-                <AlertTriangle size={18} className="shrink-0" />
-                <span>{t('talentMatching.createJobAlert')}</span>
-              </div>
-            )}
-
-            {loadingTalents && (
-              <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
-                <p className="text-primary font-semibold mb-2">{t('talentMatching.loadingProfiles')}</p>
-                <p className="text-sm text-muted-foreground">{t('talentMatching.loadingProfilesDesc')}</p>
-              </div>
-            )}
-
-            {!loadingTalents && loadError && (
-              <div className="bg-red-50 black:bg-red-950/20 text-red-700 black:text-red-300 border border-red-200 black:border-red-800 p-4 rounded-2xl flex items-center gap-3 font-semibold text-sm shadow-sm">
-                <AlertTriangle size={18} className="shrink-0" />
-                <span>{loadError}</span>
-              </div>
-            )}
-
-            {/* Empty state */}
-            {!loadingTalents && !loadError && filteredTalents.length === 0 && (
-              <div className="glass-panel rounded-3xl p-12 text-center shadow-sm">
-                <AlertTriangle size={36} className="text-yellow-500 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-foreground mb-2">
-                  {t('talentMatching.noMatchesFound')}
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-                  {t('talentMatching.noMatchesFoundDesc')}
-                </p>
-                <button
-                  onClick={clearAllFilters}
-                  className="mt-6 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-sm hover:shadow-md transition-all"
-                >
-                  {t('talentMatching.resetAllFilters')}
-                </button>
-              </div>
-            )}
-
-            {/* Talent cards rendering */}
-            {!loadingTalents && !loadError && filteredTalents.slice(0, perPage).map((talent, index) => {
-              const invited = invitedIds.includes(talent.id);
-              const isFavorite = savedFreelancerIds.has(talent.freelancerProfileId);
-              const isSaving = savingFreelancerIds.has(talent.freelancerProfileId);
-              const meta = getTalentMetadata(talent.id);
-              const avatar = getTalentAvatar(talent.id, talent.avatarUrl);
-              const score = talent.matchScore || 85;
-
-              return (
-                <div
-                  key={talent.id}
-                  className="bento-card rounded-3xl p-6 flex flex-col md:flex-row gap-6 relative overflow-hidden group"
-                >
-                  {/* Photo area */}
-                  <div
-                    onClick={() => navigate(`/profile/freelancer/${talent.userId}`)}
-                    className="w-full md:w-48 h-64 md:h-auto rounded-2xl overflow-hidden relative shrink-0 bg-gray-100 black:bg-gray-800 cursor-pointer hover:opacity-95 transition-all"
-                  >
-                    <img
-                      alt={`${talent.fullName} Profile`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      src={avatar}
-                      onError={e => {
-                        (e.target as HTMLImageElement).src = `https://i.pravatar.cc/150?u=${talent.id}`;
-                      }}
-                    />
-
-                    {score >= 95 && (
-                      <div className="verified-badge-top absolute top-3 left-3 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                        <CheckCircle2 size={12} className="fill-current" />
-                        {t('talentMatching.topRated')}
-                      </div>
-                    )}
-                    {score >= 80 && score < 95 && (
-                      <div className="verified-badge-top absolute top-3 left-3 px-3 py-1 bg-purple-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                        <Award size={12} className="fill-current" />
-                        {t('talentMatching.risingTalent')}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Text details */}
-                  <div className="flex-1 flex flex-col font-sans">
-                    <div className="flex justify-between items-start mb-2 gap-4">
-                      <div>
-                        <h2
-                          onClick={() => navigate(`/profile/freelancer/${talent.userId}`)}
-                          className="font-bold text-xl text-foreground leading-tight cursor-pointer hover:text-blue-600 black:hover:text-cyan-400 transition-colors"
-                        >
-                          {talent.fullName}
-                        </h2>
-                        <p className="text-blue-600 black:text-blue-400 font-semibold text-sm">
-                          {talent.title}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          onClick={() => toggleFavorite(talent)}
-                          disabled={isSaving}
-                          className={`w-10 h-10 rounded-full border flex items-center justify-center transition-colors ${isFavorite
-                              ? 'bg-red-50 black:bg-red-950/20 border-red-200 black:border-red-800 text-red-500'
-                              : 'border-gray-200 black:border-gray-800 text-gray-500 black:text-gray-400 hover:bg-gray-100 black:hover:bg-gray-800'
-                            } ${isSaving ? 'opacity-60 cursor-not-allowed' : ''}`}
-                        >
-                          <Heart size={18} className={isFavorite ? 'fill-current' : ''} />
-                        </button>
-                        <button
-                          onClick={() => inviteTalent(talent)}
-                          className={`px-5 py-2 rounded-full text-xs font-bold transition-all hover:scale-[1.02] ${invited
-                              ? 'bg-green-100 black:bg-green-950/30 text-green-700 black:text-green-300 border border-green-200 black:border-green-800'
-                              : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md'
-                            }`}
-                        >
-                          {invited ? t('talentMatching.invited') : t('talentMatching.invite')}
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="text-muted-foreground text-sm mb-6 line-clamp-2 leading-relaxed">
-                      {talent.recentWork}
-                    </p>
-
-                    {/* Quick Stats Grid */}
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                      <div className="bg-gray-50 black:bg-gray-900/40 rounded-xl p-3 border border-gray-100 black:border-gray-800/30 text-center">
-                        <span className="block text-muted-foreground text-[10px] uppercase font-bold tracking-tighter mb-1">
-                          {t('talentMatching.rate')}
-                        </span>
-                        <span className="text-sm font-bold text-foreground">
-                          ${meta.rate}/hr
-                        </span>
-                      </div>
-                      <div className="bg-gray-50 black:bg-gray-900/40 rounded-xl p-3 border border-gray-100 black:border-gray-800/30 text-center">
-                        <span className="block text-muted-foreground text-[10px] uppercase font-bold tracking-tighter mb-1">
-                          {t('talentMatching.success')}
-                        </span>
-                        <span className={`text-sm font-bold ${meta.successClass}`}>
-                          {meta.successRate}%
-                        </span>
-                      </div>
-                      <div className="bg-gray-50 black:bg-gray-900/40 rounded-xl p-3 border border-gray-100 black:border-gray-800/30 text-center">
-                        <span className="block text-muted-foreground text-[10px] uppercase font-bold tracking-tighter mb-1">
-                          {t('talentMatching.earnings')}
-                        </span>
-                        <span className="text-sm font-bold text-foreground">
-                          {meta.earnings}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Metadata footer */}
-                    <div className="flex items-center gap-3 mt-auto text-xs text-muted-foreground">
-                      <MapPin size={14} className="text-gray-400" />
-                      <span>{talent.location}</span>
-                      <div className="h-1 w-1 bg-gray-300 black:bg-gray-700 rounded-full"></div>
-                      <span>{talent.availability}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Load more button */}
-            {!loadingTalents && !loadError && filteredTalents.length > perPage && (
-              <button
-                onClick={() => setPerPage(prev => prev + 10)}
-                className="w-full py-4 border-2 border-dashed border-gray-300 black:border-gray-800 rounded-3xl text-gray-600 black:text-gray-400 font-bold hover:bg-gray-100 black:hover:bg-gray-900/40 hover:border-blue-500/40 transition-all flex items-center justify-center gap-2 group"
-              >
-                <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
-                {t('talentMatching.exploreMore')}
-              </button>
-            )}
-          </section>
-
-          {/* Right: Activity & Leaderboard */}
-          <aside className="col-span-12 lg:col-span-3 space-y-6">
-            {isClient && <div className="talent-featured-promotion"><SponsoredPromotionCard /></div>}
-
-
-            {/* Global Leaderboard */}
-            <div className="glass-panel rounded-3xl p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-foreground">
-                  {t('talentMatching.leaderboard')}
-                </h3>
-                <span className="text-[10px] text-blue-600 black:text-blue-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                  <Trophy size={12} />
-                  {t('talentMatching.global')}
-                </span>
-              </div>
-
-              <div className="space-y-4">
-                {/* User 1 */}
-                <div className="flex items-center gap-4 group cursor-pointer hover:bg-gray-100 black:hover:bg-gray-800 p-2 rounded-xl transition-all">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 black:bg-blue-950/30 flex items-center justify-center font-bold text-blue-600 black:text-blue-400 group-hover:scale-95 transition-transform shrink-0">
-                    1
-                  </div>
-                  <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-gray-100 black:bg-gray-800">
-                    <img
-                      alt="Sarah Chen"
-                      className="w-full h-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_EwdhdovubczscFJZwiYSNyjkaOucTPKp17YDAhli8ybsFqAXEwvrDvhzBH9ecENXPrzLKZxi6CUqQZQ4z1GI2k51JFt8nEc34Lpg8M73pAVFl46XCcRgoKUqt5GqO4G7Ny2B471nSL-2E-unf9-JULwUClMg36b3rilTlcuFn5B4K56S0ClboT37CedwhAe_gN7zsaodqJUqlbmCQp4d4qDOH1GOQA8LiGK-h6W19F1K0D1f4hdqHIsyxcSdCV8Cw-MWUzFq4Z8R"
-                    />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <h4 className="text-sm font-bold text-foreground truncate">Sarah Chen</h4>
-                    <div className="flex items-center gap-1 text-[10px] text-purple-600 black:text-purple-400 font-semibold uppercase">
-                      <Star size={10} className="fill-current" />
-                      <span>{t('talentMatching.pts', { points: 982 })}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* User 2 */}
-                <div className="flex items-center gap-4 group cursor-pointer hover:bg-gray-100 black:hover:bg-gray-800 p-2 rounded-xl transition-all">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 black:bg-gray-800 flex items-center justify-center font-bold text-gray-600 black:text-gray-400 group-hover:scale-95 transition-transform shrink-0">
-                    2
-                  </div>
-                  <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-gray-100 black:bg-gray-800">
-                    <img
-                      alt="James Wilson"
-                      className="w-full h-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYn70r5M68ELLrVYEDj5BDaxjEG29lmMnQErI_2MXOR2AALcUAHVPIbOZIZ6HPBfcSJAymaI1ZllpV12-Nzo5w_vaOpltwQmr5qz8NdhAaV7UEk5vGQEfMa8eXph3HWSoB_4ASAfiwPg7Wox43Tbbl_De2Dbsu1jWwdhjg5tpLl5Oov8_feSItQjOhARkXPQlxML0BLQ8m0gw7Ci398pbfG2L_anzwL9-50NFDGPSDZK65eERmzCb3Ucfeba4VT1IfCutwEOhNQrHN"
-                    />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <h4 className="text-sm font-bold text-foreground truncate">James Wilson</h4>
-                    <div className="flex items-center gap-1 text-[10px] text-purple-600 black:text-purple-400 font-semibold uppercase">
-                      <Star size={10} className="fill-current" />
-                      <span>{t('talentMatching.pts', { points: 945 })}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* User 3 */}
-                <div className="flex items-center gap-4 group cursor-pointer hover:bg-gray-100 black:hover:bg-gray-800 p-2 rounded-xl transition-all">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 black:bg-gray-800 flex items-center justify-center font-bold text-gray-600 black:text-gray-400 group-hover:scale-95 transition-transform shrink-0">
-                    3
-                  </div>
-                  <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-gray-100 black:bg-gray-800">
-                    <img
-                      alt="Elena Rodriguez"
-                      className="w-full h-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqUC_Y1D5jpM7yNJGHGuc8VECN_SrWXHu93685yfwThAjEbG1QSxM6I5xDn7e_q8g1693Sj0Wc6nFnqtHzvRif_2AecYdwGtmJaDKYGWU4NoTxFUlHhWCn1noZQkCxEt4-HOSpdzLihAiYNYkHlCuP0qWNvDIJCPGKQKpC6TNRCqgwJZImTiQ0flfSd2lelms1vCyS6zriVLKiGCFfabJ7bCaTo7MQmLMGhnfDMS61LBWEGijw_k_1TXqfklOd6u8iE4Vvvd8crp6e"
-                    />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <h4 className="text-sm font-bold text-foreground truncate">Elena Rodriguez</h4>
-                    <div className="flex items-center gap-1 text-[10px] text-purple-600 black:text-purple-400 font-semibold uppercase">
-                      <Star size={10} className="fill-current" />
-                      <span>{t('talentMatching.pts', { points: 912 })}</span>
-                    </div>
-                  </div>
+            {activeStage === 'smart' && selectedJob && (
+              <div>
+                <div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Canonical skills</div>
+                <p className="text-xs text-muted-foreground mt-1">Job skills are preferences until you explicitly select them here.</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {selectedJob.skills.length === 0 && <span className="text-sm text-muted-foreground">This job has no canonical skills.</span>}
+                  {selectedJob.skills.map(skill => (
+                    <button key={skill.skillId} onClick={() => toggleSkill(skill.skillId)} className={`px-3 py-1.5 rounded-full border text-xs font-bold ${skillIds.includes(skill.skillId) ? 'bg-blue-600 text-white border-blue-600' : 'border-border text-muted-foreground'}`}>
+                      {skill.name}
+                    </button>
+                  ))}
                 </div>
               </div>
+            )}
 
-              <button className="w-full mt-6 text-center text-xs text-blue-600 black:text-blue-400 font-bold hover:underline transition-colors">
-                {t('talentMatching.viewAllRankings')}
-              </button>
-            </div>
           </aside>
 
+          <main className="col-span-12 lg:col-span-6 space-y-4">
+            <section className="glass-panel rounded-3xl p-5 sm:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-black text-foreground">{resultTitle}</h2>
+                    <span className="rounded-full bg-blue-600/10 px-2.5 py-1 text-xs font-black text-blue-600">{visibleResultCount} result{visibleResultCount === 1 ? '' : 's'}</span>
+                  </div>
+                  <p className="mt-1 max-w-xl text-sm text-muted-foreground">{resultDescription}</p>
+                </div>
+                {hasActiveFilters && <button onClick={resetFilters} className="shrink-0 text-sm font-bold text-blue-600 hover:underline">Clear filters</button>}
+              </div>
+              <div className="relative mt-5">
+                <Search size={19} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input value={query} onChange={event => setQuery(event.target.value)} placeholder={activeStage === 'smart' ? 'Search recommendations by name, title, or skill...' : 'Search by name, title, skill, location, or category...'} className="w-full rounded-2xl border border-border bg-background py-3.5 pl-12 pr-4 text-sm shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
+              </div>
+              {(selectedCategoryName || skillIds.length > 0) && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-bold text-muted-foreground">Active filters:</span>
+                {selectedCategoryName && <span className="rounded-full bg-blue-600/10 px-3 py-1.5 font-semibold text-blue-700">{selectedCategoryName}</span>}
+                {skillIds.length > 0 && <span className="rounded-full bg-purple-600/10 px-3 py-1.5 font-semibold text-purple-700">{skillIds.length} selected skill{skillIds.length === 1 ? '' : 's'}</span>}
+              </div>}
+            </section>
+
+            {isDirectoryStage && (
+              <>
+                {loadingInitial && (
+                  <div className="glass-panel rounded-3xl p-12 text-center">
+                    <Users size={36} className="mx-auto mb-4 text-blue-600 animate-pulse" />
+                    <h2 className="font-bold text-lg">Loading freelancer directory…</h2>
+                  </div>
+                )}
+                {!loadingInitial && browseError && (
+                  <div className="rounded-3xl border border-red-500/30 bg-red-500/5 p-8 text-center">
+                    <AlertTriangle size={34} className="mx-auto text-red-500 mb-3" />
+                    <h2 className="font-bold text-lg">Freelancers could not be loaded</h2>
+                    <p className="text-sm text-muted-foreground mt-2">{browseError}</p>
+                    <button onClick={() => void loadInitialData()} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-5 py-3 font-bold"><RefreshCw size={16} /> Retry</button>
+                  </div>
+                )}
+                {!loadingInitial && !browseError && filteredFreelancers.length === 0 && (
+                  <div className="glass-panel rounded-3xl p-10 text-center">
+                    {activeStage === 'saved' ? <Heart size={34} className="mx-auto text-muted-foreground mb-3" /> : <Users size={34} className="mx-auto text-muted-foreground mb-3" />}
+                    <h2 className="font-bold text-lg">{activeStage === 'saved' && !hasActiveFilters ? 'No saved freelancers yet' : 'No freelancers match these filters'}</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">{activeStage === 'saved' && !hasActiveFilters ? 'Save promising people from the directory and they will appear here.' : 'Try a broader keyword or remove the active category filters.'}</p>
+                    {activeStage === 'saved' && !hasActiveFilters ? <button onClick={() => changeStage('browse')} className="mt-4 text-blue-600 font-bold">Browse freelancers</button> : <button onClick={resetFilters} className="mt-4 text-blue-600 font-bold">Clear filters</button>}
+                  </div>
+                )}
+                {!loadingInitial && !browseError && filteredFreelancers.map(freelancer => {
+                  const profileId = freelancerProfileId(freelancer);
+                  const displayName = freelancer.userFullName || 'Freelancer';
+                  return (
+                    <article key={profileId} className="bento-card rounded-3xl p-6">
+                      <div className="flex gap-4 items-start">
+                        <button onClick={() => navigate(`/profile/freelancer/${freelancer.userId}`)} className="shrink-0">
+                          {freelancer.userAvatar ? <img src={freelancer.userAvatar} alt="" className="w-16 h-16 rounded-2xl object-cover" /> : <span className="w-16 h-16 rounded-2xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-black">{initials(displayName)}</span>}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <button onClick={() => navigate(`/profile/freelancer/${freelancer.userId}`)} className="text-left font-black text-xl hover:text-blue-600">{displayName}</button>
+                          <p className="text-sm font-semibold text-blue-600">{freelancer.title || 'Freelancer'}</p>
+                          <div className="flex flex-wrap gap-2 mt-3 text-xs">
+                            {freelancer.location && <span className="px-2.5 py-1 rounded-full bg-surface border border-border inline-flex items-center gap-1"><MapPin size={12} />{freelancer.location}</span>}
+                            {freelancer.majorName && <span className="px-2.5 py-1 rounded-full bg-surface border border-border">{freelancer.majorName}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {freelancer.bio && <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{freelancer.bio}</p>}
+                      {freelancer.skills.length > 0 && <div className="flex flex-wrap gap-2 mt-4">{freelancer.skills.slice(0, 8).map(skill => <span key={skill.skillId} className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-700 text-xs font-semibold">{skill.skillName}</span>)}</div>}
+                      <div className="mt-5 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-xs text-muted-foreground flex gap-3">
+                          <span className="inline-flex items-center gap-1"><Star size={13} />{freelancer.rating ? freelancer.rating.toFixed(1) : 'No reviews yet'}</span>
+                          <span>{freelancer.eloPoints ?? 100} ELO</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button disabled={savingIds.has(profileId)} onClick={() => void toggleSaved(profileId)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center disabled:opacity-50" aria-label="Save freelancer"><Heart size={17} className={savedIds.has(profileId) ? 'fill-red-500 text-red-500' : ''} /></button>
+                          <button onClick={() => setInviteTarget({ profileId, displayName })} className={`rounded-xl px-4 py-2 text-sm font-bold ${invitedIds.has(profileId) ? 'bg-green-500/10 text-green-700' : 'bg-blue-600 text-white'}`}>{invitedIds.has(profileId) ? 'Invited' : 'Invite'}</button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </>
+            )}
+
+            {activeStage === 'smart' && (
+              <>
+                {loadingMatches && (
+                  <div className="glass-panel rounded-3xl p-12 text-center">
+                    <Bot size={36} className="mx-auto mb-4 text-purple-600 animate-pulse" />
+                    <h2 className="font-bold text-lg">Retrieving and algorithmically scoring eligible talent…</h2>
+                    <p className="text-sm text-muted-foreground mt-2">No generative LLM is used for ranking.</p>
+                  </div>
+                )}
+                {!loadingMatches && matchError && (
+                  <div className="rounded-3xl border border-red-500/30 bg-red-500/5 p-8 text-center">
+                    <AlertTriangle size={34} className="mx-auto text-red-500 mb-3" />
+                    <h2 className="font-bold text-lg">Smart matching could not complete</h2>
+                    <p className="text-sm text-muted-foreground mt-2">{matchError}</p>
+                    <button onClick={() => void loadMatches()} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-5 py-3 font-bold"><RefreshCw size={16} /> Retry</button>
+                  </div>
+                )}
+                {!loadingMatches && !matchError && !selectedJobId && (
+                  <div className="glass-panel rounded-3xl p-10 text-center">
+                    <BriefcaseBusiness size={34} className="mx-auto text-muted-foreground mb-3" />
+                    <h2 className="font-bold text-lg">Create an open job to use smart matching</h2>
+                    <p className="text-sm text-muted-foreground mt-2">The matching algorithm needs a real job title, description, taxonomy, and preferred skills.</p>
+                  </div>
+                )}
+                {!loadingMatches && !matchError && selectedJobId && filteredMatches.length === 0 && (
+                  <div className="glass-panel rounded-3xl p-10 text-center">
+                    <BriefcaseBusiness size={34} className="mx-auto text-muted-foreground mb-3" />
+                    <h2 className="font-bold text-lg">No eligible freelancers found</h2>
+                    <p className="text-sm text-muted-foreground mt-2">Try removing an explicit category or skill filter. Missing job skills alone never exclude a freelancer.</p>
+                  </div>
+                )}
+                {!loadingMatches && !matchError && filteredMatches.map(match => (
+                  <article key={match.freelancerProfileId} className="bento-card rounded-3xl p-6">
+                    <div className="flex gap-4 items-start">
+                      <button onClick={() => openMatchedProfile(match)} className="shrink-0">
+                        {match.avatarUrl ? <img src={match.avatarUrl} alt="" className="w-16 h-16 rounded-2xl object-cover" /> : <span className="w-16 h-16 rounded-2xl bg-purple-600/10 text-purple-600 flex items-center justify-center font-black">{initials(match.displayName)}</span>}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap justify-between gap-3">
+                          <div>
+                            <button onClick={() => openMatchedProfile(match)} className="text-left font-black text-xl hover:text-blue-600">{match.displayName}</button>
+                            <p className="text-sm font-semibold text-blue-600">{match.title || 'Freelancer'}</p>
+                          </div>
+                          <div className="text-right"><div className="text-3xl font-black text-purple-600">{match.finalScore.toFixed(1)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Match score</div></div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-3 text-xs">
+                          <DataConfidenceBadge match={match} />
+                          {match.location && <span className="px-2.5 py-1 rounded-full bg-surface border border-border inline-flex items-center gap-1"><MapPin size={12} />{match.location}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-5 text-center">
+                      {Object.entries(match.scoreBreakdown).map(([label, score]) => <div key={label} className="rounded-xl bg-surface border border-border p-3"><strong className="block">{Number(score).toFixed(1)}</strong><span className="text-[10px] uppercase text-muted-foreground">{label}</span></div>)}
+                    </div>
+                    <div className="mt-5 space-y-3 text-sm">
+                      {match.semanticStrengths.length > 0 && <div><strong>Algorithm strengths:</strong> {match.semanticStrengths.join(' · ')}</div>}
+                      {match.matchedSkills.length > 0 && <div className="flex flex-wrap items-center gap-2"><strong>Matched:</strong>{match.matchedSkills.map(skill => <span key={skill} className="px-2 py-1 rounded-lg bg-green-500/10 text-green-700"><Check size={12} className="inline mr-1" />{skill}</span>)}</div>}
+                      {match.missingSkills.length > 0 && <div className="flex flex-wrap items-center gap-2"><strong>Skill gaps:</strong>{match.missingSkills.map(skill => <span key={skill} className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-700">{skill}</span>)}</div>}
+                      <ul className="space-y-1 text-muted-foreground list-disc pl-5">{match.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
+                    </div>
+                    <div className="mt-5 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
+                        <span className="inline-flex items-center gap-1"><Star size={13} />{match.reviewCount > 0 ? `${match.averageRating.toFixed(1)} (${match.reviewCount})` : 'No reviews yet'}</span>
+                        <span>{match.completedContracts} completed contract{match.completedContracts === 1 ? '' : 's'}</span><span>{match.eloPoints} ELO</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button disabled={savingIds.has(match.freelancerProfileId)} onClick={() => void toggleSaved(match.freelancerProfileId, matchRunId || undefined)} className="w-10 h-10 rounded-full border border-border flex items-center justify-center disabled:opacity-50" aria-label="Save freelancer"><Heart size={17} className={savedIds.has(match.freelancerProfileId) ? 'fill-red-500 text-red-500' : ''} /></button>
+                        <button onClick={() => setInviteTarget({ profileId: match.freelancerProfileId, displayName: match.displayName, initialJobId: selectedJobId, matchRunId: matchRunId || undefined })} className={`rounded-xl px-4 py-2 text-sm font-bold ${invitedIds.has(match.freelancerProfileId) ? 'bg-green-500/10 text-green-700' : 'bg-blue-600 text-white'}`}>{invitedIds.has(match.freelancerProfileId) ? 'Invited' : 'Invite to job'}</button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </>
+            )}
+          </main>
+
+          <aside className="col-span-12 lg:col-span-3 space-y-4">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground px-1">Sponsored · separate from matching</div>
+            <SponsoredPromotionCard promotionType="freelancer" />
+            <div className="glass-panel rounded-3xl p-5">
+              {isDirectoryStage ? (
+                <><h3 className="font-bold flex items-center gap-2"><Users size={18} className="text-blue-600" /> Browse first</h3><p className="text-sm text-muted-foreground mt-3">The directory shows normal backend freelancer profiles without inventing a job-fit score.</p><p className="text-xs text-muted-foreground mt-3">Switch to Smart matching when you want a ranked shortlist for a specific open job.</p></>
+              ) : (
+                <><h3 className="font-bold flex items-center gap-2"><Bot size={18} className="text-purple-600" /> How ranking works</h3><p className="text-sm text-muted-foreground mt-3">45% embedding similarity, 35% deterministic matching algorithm, and 20% structured platform evidence.</p><p className="text-xs text-muted-foreground mt-3">No generative LLM ranks candidates. Low-data profiles remain eligible, with data confidence reflecting profile coverage and score agreement—not match strength.</p></>
+              )}
+            </div>
+          </aside>
         </div>
 
-        {inviteTalentTarget && (
+        {inviteTarget && (
           <InviteFreelancerToJobModal
-            freelancerName={inviteTalentTarget.fullName}
-            freelancerId={inviteTalentTarget.freelancerProfileId}
-            onClose={() => setInviteTalentTarget(null)}
+            freelancerName={inviteTarget.displayName}
+            freelancerId={inviteTarget.profileId}
+            initialJobId={inviteTarget.initialJobId}
+            matchRunId={inviteTarget.matchRunId}
+            onClose={() => setInviteTarget(null)}
             onInvited={() => {
-              setInvitedIds(prev => prev.includes(inviteTalentTarget.id) ? prev : [...prev, inviteTalentTarget.id]);
-              toast.success(t('talentMatching.invitationSent'));
+              setInvitedIds(current => new Set(current).add(inviteTarget.profileId));
+              toast.success('Invitation sent.');
             }}
           />
         )}
-      </>
+      </div>
     </AppLayout>
   );
 }

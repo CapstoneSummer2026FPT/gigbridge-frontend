@@ -435,17 +435,6 @@ export default function BrowseJobsScreen() {
                           className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
                           {t('jobs.viewJob')}
                         </button>
-                        {job.hasAiInterview && isFreelancer && (
-                          <button
-                            onClick={event => {
-                              event.stopPropagation();
-                              navigate(`/proposals/create/${encodeURIComponent(job.id)}`);
-                            }}
-                            className="btn-cyan px-3 py-1.5 text-xs flex-shrink-0 inline-flex items-center gap-1.5"
-                          >
-                            <Bot size={13} /> {t('jobs.applyWithAiInterview')}
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>

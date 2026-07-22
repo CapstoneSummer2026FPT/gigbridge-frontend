@@ -328,7 +328,7 @@ export default function AIInterviewScreen() {
   const transcribeRecording = async (audioBlob: Blob) => {
     const response = await aiInterviewAPI.transcribeAudio(sessionId, audioBlob, interviewLanguage);
     if (!response.success || !response.data) {
-      setActionError(t('aiInterview.errors.transcriptionFailed'));
+      setActionError(response.message || t('aiInterview.errors.transcriptionFailed'));
       setAnswerState('idle');
       return;
     }

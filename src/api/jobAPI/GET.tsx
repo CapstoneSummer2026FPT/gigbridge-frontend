@@ -162,6 +162,7 @@ const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
   visibility: job.visibility ?? undefined,
+  hasAiInterview: Boolean(job.hasAiInterview),
 });
 
 const filterLegacyJobs = (jobs: Job[], filters: LegacyJobFilters = {}): Job[] => {

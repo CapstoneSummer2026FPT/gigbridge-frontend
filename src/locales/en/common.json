@@ -1995,6 +1995,16 @@
     "marketWatchTitle": "⚠️ Market Watch",
     "marketWatchBody": "Pure frontend roles declining 8% as AI tools automate routine UI tasks. Focus on architecture and AI integration."
   },
+  "premiumTime": {
+    "label": "Premium time remaining",
+    "remainingOfTotal": "{{remaining}} left of {{total}} total",
+    "paidThrough": "Paid through {{date}}",
+    "topUpsIncluded": "Includes all top-ups",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours"
+  },
   "freelancerPremium": {
     "name": "Freelancer Premium",
     "title": "Your Premium command center",

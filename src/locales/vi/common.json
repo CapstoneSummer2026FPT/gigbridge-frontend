@@ -1993,6 +1993,14 @@
     "marketWatchTitle": "⚠️ Cảnh Báo Thị Trường",
     "marketWatchBody": "Các vai trò thuần frontend giảm 8% khi các công cụ AI tự động hóa công việc thiết kế UI thông thường. Tập trung vào kiến trúc và tích hợp AI."
   },
+  "premiumTime": {
+    "label": "Thời gian Premium còn lại",
+    "remainingOfTotal": "Còn {{remaining}} trên tổng {{total}}",
+    "paidThrough": "Có hiệu lực đến {{date}}",
+    "topUpsIncluded": "Đã bao gồm mọi lần gia hạn",
+    "days_other": "{{count}} ngày",
+    "hours_other": "{{count}} giờ"
+  },
   "freelancerPremium": {
     "name": "Premium cho Freelancer",
     "title": "Trung tâm quản lý Premium",

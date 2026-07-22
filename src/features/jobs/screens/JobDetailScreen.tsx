@@ -103,6 +103,11 @@ export default function JobDetailScreen() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="badge-cyan text-[10px]">{job.category}</span>
                 {job.isAiRecommended && <span className="badge-purple text-[10px]">⚡ {t('jobDetail.aiMatch')}</span>}
+                {job.hasAiInterview && role === UserRole.Freelancer && (
+                  <span className="badge-purple text-[10px] inline-flex items-center gap-1">
+                    <Bot size={11} /> {t('jobs.aiInterviewTag')}
+                  </span>
+                )}
                 <span className={`jd-status jd-status-${job.status}`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-current" />
                   {formatStatus(job.status)}
@@ -314,7 +319,13 @@ export default function JobDetailScreen() {
                   </div>
                 ) : canApplyWithGigcoins ? (
                   <button className="jd-btn-apply" onClick={handleApplyJob} disabled={isApplying}>
-                    {isApplying ? (<><div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{t('jobDetail.applying')}</>) : (<><Zap size={15} />{t('jobDetail.applyNow')}</>)}
+                    {isApplying ? (
+                      <><div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />{t('jobDetail.applying')}</>
+                    ) : job.hasAiInterview ? (
+                      <><Bot size={15} />{t('jobs.applyWithAiInterview')}</>
+                    ) : (
+                      <><Zap size={15} />{t('jobDetail.applyNow')}</>
+                    )}
                   </button>
                 ) : (
                   <button className="jd-btn-apply" onClick={() => navigate('/wallet/deposit')} style={{ background: 'linear-gradient(135deg, #9f4bff, #7c3aed)' }}>
