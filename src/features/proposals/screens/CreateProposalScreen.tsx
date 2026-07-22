@@ -22,7 +22,6 @@ import type { JobPostDetailDto } from '../../../types/models/Job';
 import { canEditProposal, getStatusLabel } from '../utils/statusHelpers';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { MarkdownEditor } from '../../../shared/components/MarkdownEditor';
-import { aiInterviewAPI } from '../../ai-interview/aiInterviewAPI';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import {
   PROPOSAL_DURATION_UNITS,
@@ -253,14 +252,7 @@ export default function CreateProposalScreen() {
     const response = await proposalPatchAPI.updateProposalStatus(savedId, { status: ProposalStatus.Pending });
     setSubmitting(false);
     if (!response.success) return setError(response.message || 'Proposal was saved, but could not be submitted.');
-    const interview = await aiInterviewAPI.requirement(resolvedJobPostId);
-    if (interview.success && interview.data?.required && !interview.data.completed) {
-      const params = new URLSearchParams({ jobPostId: resolvedJobPostId });
-      if (interview.data.interviewDefinitionId) params.set('definitionId', interview.data.interviewDefinitionId);
-      navigate(`/ai-interview?${params.toString()}`);
-      return;
-    }
-    navigate('/proposals');
+    navigate('/proposals', { state: { submittedProposalId: savedId } });
   };
 
   const nestedMilestones = useMemo<EditableMilestonePlan[]>(() => milestones.map(milestone => ({

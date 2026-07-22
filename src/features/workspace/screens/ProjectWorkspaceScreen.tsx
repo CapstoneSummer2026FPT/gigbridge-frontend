@@ -852,9 +852,9 @@ export default function ProjectWorkspaceScreen() {
                   const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
                   const workItems = milestone.workItems || [];
                   const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
-                  const canFreelancerSubmit = !isWorkspaceViewOnly && !isClient && isInProgress && allWorkItemsCompleted;
-                  const canClientReview = !isWorkspaceViewOnly && isClient && isSubmitted;
-                  const canFreelancerRequestUnlock = !isWorkspaceViewOnly && !isClient && isPending;
+                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress && allWorkItemsCompleted;
+                  const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
                   const showFreelancerWithdraw = !isClient &&
                     activeContract?.status === ContractStatus.Active &&
                     isCompleted &&
@@ -931,8 +931,8 @@ export default function ProjectWorkspaceScreen() {
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Work Breakdown Structure</h4>
                         {workItems.map((workItem, workIndex) => {
                           const status = Number(workItem.status);
-                          const canStartWork = !isClient && isInProgress && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
-                          const canCompleteWork = !isClient && isInProgress && status === ContractWorkItemStatus.InProgress;
+                          const canStartWork = !isWorkspaceLocked && !isClient && isInProgress && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
+                          const canCompleteWork = !isWorkspaceLocked && !isClient && isInProgress && status === ContractWorkItemStatus.InProgress;
                           return <div key={workItem.workItemId} className="rounded-lg border border-border bg-background p-3">
                             <div className="flex flex-wrap items-start justify-between gap-2"><div><strong className="text-xs">{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-[11px] text-muted-foreground">{workItem.description}</p>}</div><span className="rounded bg-muted px-2 py-1 text-[10px] font-bold">{ContractWorkItemStatus[status] || status}</span></div>
                             {workItem.progressNote && <p className="mt-2 text-[11px]"><strong>Progress:</strong> {workItem.progressNote}</p>}
@@ -1023,7 +1023,7 @@ export default function ProjectWorkspaceScreen() {
                         </div>
                       )}
                       {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
-                      {isClient && earlyStartRequest && <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs"><strong>Early start requested</strong><p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p><div className="mt-2 flex gap-2"><button type="button" disabled={isMilestoneActionPending} onClick={async () => { setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not approve request.' }); setMilestoneActionPendingId(null); }} className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">Approve</button><button type="button" disabled={isMilestoneActionPending} onClick={async () => { const note = window.prompt('Rejection note') || undefined; setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not reject request.' }); setMilestoneActionPendingId(null); }} className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500">Reject</button></div></div>}
+                      {!isWorkspaceLocked && isClient && earlyStartRequest && <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs"><strong>Early start requested</strong><p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p><div className="mt-2 flex gap-2"><button type="button" disabled={isMilestoneActionPending} onClick={async () => { setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not approve request.' }); setMilestoneActionPendingId(null); }} className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">Approve</button><button type="button" disabled={isMilestoneActionPending} onClick={async () => { const note = window.prompt('Rejection note') || undefined; setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not reject request.' }); setMilestoneActionPendingId(null); }} className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500">Reject</button></div></div>}
                     </div>
                   );
                 })

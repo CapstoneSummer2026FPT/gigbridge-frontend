@@ -611,7 +611,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleRequestMilestoneUnlock = async (milestoneId: string, reason: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || activeContract?.status === ContractStatus.Completed) {
+    if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
     }
 
@@ -635,6 +635,7 @@ export function useProjectWorkspace(initialContractId: string) {
 
   const handleRespondEarlyStart = async (requestId: string, approve: boolean, note?: string): Promise<WorkspaceActionResult> => {
     if (!activeProjectId || !isClient) return { success: false, message: 'Only the client can respond.' };
+    if (isContractLocked(activeContract?.status)) return { success: false, message: 'Contract is locked.' };
     const response = await contractPostAPI.respondEarlyStartRequest(activeProjectId, requestId, approve, note);
     if (!response.success) return { success: false, message: response.message || 'Early start request could not be updated.' };
     await reloadActiveWorkspace();

@@ -58,6 +58,7 @@ export default function FreelancerPricingScreen() {
     setBusy(false);
     if (!response.success) return setError(response.message);
     window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    window.dispatchEvent(new Event('gigbridge-premium-updated'));
     navigate('/premium/freelancer', { replace: true, state: { purchased: true } });
   };
 

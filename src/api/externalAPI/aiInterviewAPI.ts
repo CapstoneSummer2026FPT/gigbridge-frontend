@@ -18,6 +18,8 @@ export interface AiInterviewQuestionResponse {
   audio_access_token?: string | null;
   questionIndex?: number;
   question_index?: number;
+  questionCount?: number;
+  question_count?: number;
   questionText?: string | null;
   question_text?: string | null;
   language?: string | null;
@@ -70,9 +72,10 @@ export interface AiInterviewDraftResponse {
 }
 
 export const aiInterviewAPI = {
-  start(jobPostId: string, language = 'auto') {
+  start(jobPostId: string, language = 'auto', interviewDefinitionId?: string | null) {
     return apiService.post<AiInterviewQuestionResponse>('ai-interviews/start', {
       jobPostId,
+      interviewDefinitionId: interviewDefinitionId || null,
       mode: 'voice',
       language,
     });

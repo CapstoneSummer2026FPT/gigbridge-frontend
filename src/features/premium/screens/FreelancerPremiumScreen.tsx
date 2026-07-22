@@ -9,6 +9,7 @@ import '../styles/premium.css';
 import '../styles/promotion-cta.css';
 import '../styles/auto-renew.css';
 import { PromotionManagerPanel } from '../components/PromotionManagerPanel';
+import { PremiumTimeRemaining } from '../components/PremiumTimeRemaining';
 import { useTranslation } from '../../../hooks/useTranslation';
 
 type Tab = 'overview' | 'points' | 'vacation' | 'promotions' | 'history';
@@ -58,7 +59,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
   };
 
   const tabs: { id: Tab; label: string }[] = [{ id: 'overview', label: t('freelancerPremium.tabs.overview') }, { id: 'points', label: t('freelancerPremium.tabs.points') }, { id: 'vacation', label: t('freelancerPremium.tabs.vacation') }, { id: 'promotions', label: t('freelancerPremium.tabs.promotions') }, { id: 'history', label: t('freelancerPremium.tabs.history') }];
-  const loading = current.loading || points.loading;
+  const loading = current.loading || points.loading || history.loading;
 
   if (!current.loading && !entitled) return <Navigate to="/premium/freelancer/pricing" replace />;
 
@@ -70,7 +71,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
     {message.success && <div className="premium-notice"><Sparkles size={18} />{message.success}</div>}
     {loading ? <div className="premium-grid"><div className="premium-skeleton" /><div className="premium-skeleton" /></div> :
       tab === 'overview' ? <div className="premium-grid">
-        <section className="premium-card"><Crown color="#8b5cf6" /><h3>{current.data?.planName || 'Premium'}</h3><p className="premium-muted">{t('freelancerPremium.premiumThrough', { date: formatDate(current.data!.endDate) })}</p><label className="premium-auto-renew"><input type="checkbox" checked={Boolean(current.data?.autoRenew)} disabled={autoRenewBusy} onChange={event => void updateAutoRenew(event.target.checked)} /><span>{t('freelancerPremium.autoRenew')}</span></label><p className="premium-muted premium-auto-renew-help">{t(current.data?.autoRenew ? 'freelancerPremium.autoRenewEnabledHelp' : 'freelancerPremium.autoRenewDisabledHelp')}</p><a href="/premium/freelancer/pricing" className="premium-button">{t('freelancerPremium.topUpPlan')}</a></section>
+        <section className="premium-card"><Crown color="#8b5cf6" /><h3>{current.data?.planName || 'Premium'}</h3><PremiumTimeRemaining subscriptions={history.data?.length ? history.data : (current.data ? [current.data] : [])} /><label className="premium-auto-renew"><input type="checkbox" checked={Boolean(current.data?.autoRenew)} disabled={autoRenewBusy} onChange={event => void updateAutoRenew(event.target.checked)} /><span>{t('freelancerPremium.autoRenew')}</span></label><p className="premium-muted premium-auto-renew-help">{t(current.data?.autoRenew ? 'freelancerPremium.autoRenewEnabledHelp' : 'freelancerPremium.autoRenewDisabledHelp')}</p><a href="/premium/freelancer/pricing" className="premium-button">{t('freelancerPremium.topUpPlan')}</a></section>
         <section className="premium-card"><Sparkles color="#22d3ee" /><h3>{points.data?.eloPoints ?? 0} Elo</h3><p className="premium-muted">{points.data?.tierName || t('freelancerPremium.tierUnlocks')}</p><div className="premium-progress"><span style={{ width: `${Math.min(100, Number(points.data?.tierProgress || 0))}%` }} /></div><button className="premium-button premium-promotion-cta" onClick={() => setTab('promotions')}><Megaphone size={16} /> {t('freelancerPremium.activatePromotion')}</button></section>
         <section className="premium-card"><Shield color="#22c55e" /><h3>{t('freelancerPremium.vacationMode')}</h3><p className="premium-muted">{vacation.data?.isEnabled ? t('freelancerPremium.protectedUntil', { date: formatDate(vacation.data.endsAt) }) : t('freelancerPremium.rankProtectionOff')}</p></section>
         <section className="premium-card"><Megaphone color="#f59e0b" /><h3>{t('freelancerPremium.profilePromotion')}</h3><p className="premium-muted">{promotion.data ? t('freelancerPremium.campaignActiveUntil', { name: promotion.data.packageName, date: formatDate(promotion.data.endsAt) }) : t('freelancerPremium.noActiveCampaign')}</p></section>

@@ -218,7 +218,9 @@
     "startChallenge": "Bắt Đầu Thử Thách",
     "topFreelancers": "Freelancers Hàng Đầu",
     "eloRatings": "Bảng Xếp Hạng Elo",
-    "elo": "Elo"
+    "elo": "Elo",
+    "aiInterviewTag": "Phỏng vấn AI",
+    "applyWithAiInterview": "Ứng tuyển & phỏng vấn"
   },
   "proposals": {
     "pending": "Đang Chờ",
@@ -1998,6 +2000,14 @@
     "marketWatchTitle": "⚠️ Cảnh Báo Thị Trường",
     "marketWatchBody": "Các vai trò thuần frontend giảm 8% khi các công cụ AI tự động hóa công việc thiết kế UI thông thường. Tập trung vào kiến trúc và tích hợp AI."
   },
+  "premiumTime": {
+    "label": "Thời gian Premium còn lại",
+    "remainingOfTotal": "Còn {{remaining}} trên tổng {{total}}",
+    "paidThrough": "Có hiệu lực đến {{date}}",
+    "topUpsIncluded": "Đã bao gồm mọi lần gia hạn",
+    "days_other": "{{count}} ngày",
+    "hours_other": "{{count}} giờ"
+  },
   "freelancerPremium": {
     "name": "Premium cho Freelancer",
     "title": "Trung tâm quản lý Premium",
@@ -2041,6 +2051,137 @@
     "submitting": "Đang gửi…",
     "confirm": "Xác nhận",
     "tabs": { "overview": "Tổng quan", "points": "Điểm & cấp bậc", "vacation": "Chế độ Nghỉ phép", "promotions": "Quảng bá", "history": "Lịch sử" }
+  },
+  "aiInterview": {
+    "intro": {
+      "title": "Phỏng vấn nhanh với AI",
+      "description": "Một cuộc trò chuyện tự nhiên bằng giọng nói với người phỏng vấn AI. Hãy thư giãn—chúng tôi sẽ hướng dẫn bạn.",
+      "interviewingFor": "Phỏng vấn cho vị trí",
+      "howItWorks": "Cách thức hoạt động",
+      "steps": {
+        "question": "1. Người phỏng vấn sẽ đọc từng câu hỏi. Nội dung câu hỏi sẽ được ẩn.",
+        "answer": "2. Nhấn Trả lời câu hỏi và trả lời một cách tự nhiên.",
+        "finish": "3. Nhấn nút hoàn tất hoặc im lặng 3 giây sau khi nói xong.",
+        "review": "4. Xem lại bản ghi lời nói, nói lại nếu cần rồi gửi câu trả lời."
+      }
+    },
+    "room": {
+      "inProgress": "Đang phỏng vấn",
+      "defaultTitle": "Phỏng vấn AI",
+      "currentQuestion": "Câu hỏi hiện tại",
+      "questionOf": "Câu hỏi {{current}} trên {{total}}"
+    },
+    "interviewer": {
+      "ariaLabel": "Người phỏng vấn AI",
+      "identity": "Alex · Người phỏng vấn GigBridge",
+      "audioOnly": "Hãy lắng nghe kỹ—câu hỏi phỏng vấn chỉ được phát bằng âm thanh.",
+      "states": {
+        "preparing": "Đang chuẩn bị câu hỏi…",
+        "speaking": "Alex đang nói",
+        "yourTurn": "Đến lượt bạn",
+        "failed": "Âm thanh cần được xử lý",
+        "ready": "Người phỏng vấn đã sẵn sàng"
+      }
+    },
+    "answer": {
+      "ariaLabel": "Câu trả lời của bạn",
+      "yourTurn": "Đến lượt bạn",
+      "micOn": "Mic đang bật",
+      "micOff": "Mic đang tắt",
+      "microphoneHint": "Micrô chỉ bắt đầu ghi sau khi bạn nhấn nút.",
+      "states": {
+        "idle": "Trả lời khi bạn sẵn sàng",
+        "recording": "Chúng tôi đang lắng nghe",
+        "transcribing": "Đang chuyển giọng nói thành văn bản",
+        "review": "Xem lại câu trả lời",
+        "submitting": "Đang chuyển câu trả lời cho Alex"
+      }
+    },
+    "recording": {
+      "label": "Đang ghi âm",
+      "finishHint": "Nhấn hoàn tất hoặc im lặng 3 giây để gửi.",
+      "silenceCountdown": "Đã phát hiện im lặng · sẽ gửi sau {{count}} giây…",
+      "silenceCountdown_other": "Đã phát hiện im lặng · sẽ gửi sau {{count}} giây…"
+    },
+    "transcribing": {
+      "title": "Đang chuyển câu trả lời thành văn bản…",
+      "description": "Quá trình này thường chỉ mất vài giây."
+    },
+    "review": {
+      "whatWeHeard": "Nội dung chúng tôi nghe được",
+      "readOnly": "Bản ghi chỉ đọc"
+    },
+    "submitting": {
+      "title": "Alex đang xem xét câu trả lời…",
+      "description": "Câu hỏi tiếp theo sẽ tự động được phát."
+    },
+    "proposal": {
+      "submitted": "Đề xuất của bạn đã được gửi thành công.",
+      "submittedWithInterview": "Đề xuất đã được gửi. Hãy bắt đầu phỏng vấn AI khi bạn sẵn sàng.",
+      "readyTitle": "Phỏng vấn AI đã sẵn sàng",
+      "readyDescription": "Khách hàng đã bật phỏng vấn AI cho công việc này. Bạn có thể bắt đầu ngay hoặc quay lại đây khi đã sẵn sàng.",
+      "completedTitle": "Đã hoàn tất phỏng vấn AI",
+      "completedDescription": "Câu trả lời phỏng vấn của bạn đã được gửi thành công.",
+      "startAction": "Bắt đầu phỏng vấn AI",
+      "continueAction": "Tiếp tục phỏng vấn AI"
+    },
+    "actions": {
+      "start": "Bắt đầu phỏng vấn AI",
+      "starting": "Đang bắt đầu phỏng vấn…",
+      "browseToChoose": "Duyệt việc làm để chọn vị trí phỏng vấn",
+      "answerQuestion": "Trả lời câu hỏi",
+      "retryAudio": "Thử phát lại câu hỏi",
+      "hearAgain": "Nghe lại câu hỏi",
+      "cancel": "Hủy",
+      "finishAnswer": "Hoàn tất câu trả lời",
+      "speakAgain": "Nói lại",
+      "submitAnswer": "Gửi câu trả lời",
+      "browseMoreJobs": "Xem thêm việc làm",
+      "goToDashboard": "Đến bảng điều khiển"
+    },
+    "errors": {
+      "chooseJob": "Hãy chọn một công việc trước khi bắt đầu phỏng vấn AI.",
+      "startFailed": "Không thể bắt đầu cuộc phỏng vấn AI. Vui lòng thử lại.",
+      "incompleteSession": "Dịch vụ phỏng vấn trả về phiên không đầy đủ. Vui lòng thử lại.",
+      "transcriptionFailed": "Không thể chuyển câu trả lời thành văn bản. Vui lòng ghi âm lại.",
+      "unsupportedRecording": "Trình duyệt này không hỗ trợ ghi âm bằng micrô. Vui lòng sử dụng phiên bản Chrome, Edge, Firefox hoặc Safari mới nhất.",
+      "recordingFailed": "Trình duyệt không thể ghi lại câu trả lời. Vui lòng thử lại.",
+      "noAudioCaptured": "Không ghi nhận được âm thanh. Vui lòng ghi âm lại câu trả lời.",
+      "microphoneDenied": "Quyền sử dụng micrô đã bị từ chối. Hãy cho phép truy cập micrô rồi thử lại.",
+      "microphoneUnavailable": "Không thể mở micrô. Vui lòng kiểm tra thiết bị rồi thử lại.",
+      "noTranscript": "Không ghi nhận được nội dung lời nói. Vui lòng nói lại trước khi gửi.",
+      "submitFailed": "Không thể gửi câu trả lời. Vui lòng thử lại.",
+      "nextQuestionMissing": "Dịch vụ phỏng vấn không trả về câu hỏi tiếp theo. Vui lòng thử lại.",
+      "replayFailed": "Không thể phát lại giọng nói của người phỏng vấn. Vui lòng thử lại.",
+      "voiceUnavailable": "Giọng nói của người phỏng vấn hiện không khả dụng. Vui lòng tải lại trang rồi thử lại.",
+      "audioStreamFailed": "Không thể phát giọng nói của người phỏng vấn. Vui lòng thử lại."
+    },
+    "debug": {
+      "title": "Bảng gỡ lỗi",
+      "session": "Phiên",
+      "question": "Câu hỏi",
+      "language": "Ngôn ngữ",
+      "confidence": "Độ tin cậy",
+      "notStarted": "chưa bắt đầu",
+      "pending": "đang chờ",
+      "notUsedYet": "chưa sử dụng",
+      "ttsStates": {
+        "idle": "chờ",
+        "streaming": "đang chuẩn bị",
+        "ready": "sẵn sàng",
+        "playing": "đang phát",
+        "failed": "thất bại"
+      }
+    },
+    "complete": {
+      "eyebrow": "Đã hoàn tất phỏng vấn",
+      "title": "Cảm ơn bạn đã sử dụng phỏng vấn AI",
+      "message": "Câu trả lời của bạn đã được gửi thành công. Bạn sẽ sớm nhận được thông báo nếu hồ sơ được chấp nhận.",
+      "inAppTitle": "Thông báo trong ứng dụng",
+      "inAppDescription": "Chúng tôi sẽ cập nhật cho bạn trong GigBridge.",
+      "emailTitle": "Cập nhật qua email",
+      "emailDescription": "Chúng tôi cũng sẽ gửi kết quả đến email của bạn."
+    }
   },
   "premiumPromotion": {
     "preview": "Xem trước",

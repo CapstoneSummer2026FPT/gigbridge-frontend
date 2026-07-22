@@ -14,7 +14,10 @@ const unwrap = <T,>(response: ApiResponse<T>, fallback: T): T => {
 
 export const savedFreelancerGetAPI = {
   getMySavedFreelancers: async (): Promise<SavedFreelancerDto[]> => {
-    const response = await apiService.get<SavedFreelancerDto[]>(`${savedFreelancersUrl}/my-saved-freelancers`);
+    const response = await apiService.get<SavedFreelancerDto[]>(
+      `${savedFreelancersUrl}/my-saved-freelancers`,
+      { pageIndex: 1, pageSize: 100 },
+    );
     return unwrap(response, []);
   },
 

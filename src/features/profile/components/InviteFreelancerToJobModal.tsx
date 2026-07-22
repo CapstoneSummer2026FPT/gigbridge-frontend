@@ -22,6 +22,8 @@ interface InviteFreelancerToJobModalProps {
   freelancerId: string;
   onClose: () => void;
   onInvited?: (jobPostIds: string[]) => void;
+  initialJobId?: string;
+  matchRunId?: string;
 }
 
 const getInvitationFreelancerProfileId = (invitation: JobInvitationDto): string =>
@@ -35,6 +37,8 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
   freelancerId,
   onClose,
   onInvited,
+  initialJobId,
+  matchRunId,
 }) => {
   const navigate = useNavigate();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -94,12 +98,16 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
 
         const openJobs = jobsResponse.data.filter(job => Number(job.status) === JobPostStatus.Open);
         setAvailableJobs(openJobs);
-        setAlreadyInvitedJobIds(new Set(
+        const invitedJobIds = new Set(
           sentInvitations
             .filter(invitation => getInvitationFreelancerProfileId(invitation) === freelancerId)
             .map(getInvitationJobPostId)
             .filter(Boolean)
-        ));
+        );
+        setAlreadyInvitedJobIds(invitedJobIds);
+        if (initialJobId && openJobs.some(job => job.jobPostsId === initialJobId) && !invitedJobIds.has(initialJobId)) {
+          setSelectedJobIds([initialJobId]);
+        }
       } catch (err) {
         if (!isMounted) return;
         setAvailableJobs([]);
@@ -115,7 +123,7 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
     return () => {
       isMounted = false;
     };
-  }, [freelancerId]);
+  }, [freelancerId, initialJobId]);
 
   const toggleJob = (jobId: string) => {
     if (alreadyInvitedJobIds.has(jobId) || sending || success) return;
@@ -146,6 +154,7 @@ export const InviteFreelancerToJobModal: FC<InviteFreelancerToJobModalProps> = (
         jobPostIds: selectedJobIds.filter(jobId => !alreadyInvitedJobIds.has(jobId)),
         freelancerProfileIds: [freelancerId],
         message: message.trim() || null,
+        matchRunId: matchRunId || null,
       });
 
       const createdJobIds = result.created.map(getInvitationJobPostId).filter(Boolean);
