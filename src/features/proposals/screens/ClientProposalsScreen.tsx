@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain } from 'lucide-react';
+import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain, Sparkles, FileQuestion } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -9,7 +9,7 @@ import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
-import { ProposalStatus, type ProposalDetailDto, type ProposalDto, type VettingEvaluationResponseDto } from '../../../types/models/Proposal';
+import { ProposalStatus, type ProposalDetailDto, type ProposalDto, type ProposalAnswerDto, type VettingEvaluationResponseDto } from '../../../types/models/Proposal';
 import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
 import { getStatusLabel } from '../utils/statusHelpers';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
@@ -251,25 +251,35 @@ export default function ClientProposalsScreen() {
     navigate('/messages', { state: { activeConvId: response.data } });
   };
 
+  const [rawAnswers, setRawAnswers] = useState<ProposalAnswerDto[]>([]);
+
   const loadEvaluation = async (proposalId: string) => {
     try {
       setEvalLoading(true);
       setEvalError('');
       setEvalResult(null);
-      const response = await proposalPostAPI.evaluateVettingAnswers(proposalId);
-      if (response.success && response.data) {
-        setEvalResult(response.data);
+      setRawAnswers([]);
+
+      const [evalRes, answersRes] = await Promise.all([
+        proposalPostAPI.evaluateVettingAnswers(proposalId).catch(() => null),
+        proposalGetAPI.getProposalAnswers(proposalId).catch(() => null),
+      ]);
+
+      if (answersRes && answersRes.success && answersRes.data) {
+        setRawAnswers(answersRes.data);
+      }
+
+      if (evalRes && evalRes.success && evalRes.data) {
+        setEvalResult(evalRes.data);
         setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
           ...p,
-          aiScore: response.data.score,
-          aiSummary: response.data.summary,
-          aiRecommendedHire: response.data.recommendedHire,
-          aiTechnicalSkills: response.data.technicalSkills,
-          aiSoftSkills: response.data.softSkills,
+          aiScore: evalRes.data.score,
+          aiSummary: evalRes.data.summary,
+          aiRecommendedHire: evalRes.data.recommendedHire,
+          aiTechnicalSkills: evalRes.data.technicalSkills,
+          aiSoftSkills: evalRes.data.softSkills,
           aiEvaluatedAt: new Date().toISOString()
         } : p));
-      } else {
-        setEvalError(response.message || 'Vetting evaluation failed.');
       }
     } catch (err: any) {
       setEvalError(err.message || 'An error occurred during evaluation.');
@@ -558,13 +568,61 @@ export default function ClientProposalsScreen() {
                     </div>
                   )}
 
-                  {!evalLoading && !evalResult && !evalError && (
-                    <div className="rounded-2xl border border-dashed border-border p-10 text-center space-y-3 bg-muted/10">
-                      <Brain size={44} className="mx-auto text-purple-500/40" />
-                      <h4 className="font-bold text-base text-foreground">No AI Evaluation Cached Yet</h4>
-                      <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-                        This candidate proposal has not been evaluated by AI yet. Click <strong>"Judge All Proposals"</strong> on the AI Leaderboard banner to batch-evaluate all candidates for this job post.
-                      </p>
+                  {!evalLoading && !evalResult && (
+                    <div className="space-y-6">
+                      <div className="rounded-2xl border border-dashed border-purple-500/30 p-6 text-center space-y-3 bg-purple-500/5">
+                        <Brain size={40} className="mx-auto text-purple-500/60" />
+                        <h4 className="font-bold text-base text-foreground">No AI Evaluation Cached Yet</h4>
+                        <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                          This proposal has not been evaluated by AI yet. You can run AI evaluation on demand or review the candidate's screening responses below.
+                        </p>
+                        <button
+                          onClick={() => activeId && loadEvaluation(activeId)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:brightness-110"
+                        >
+                          <Sparkles size={14} /> Evaluate Proposal with AI
+                        </button>
+                      </div>
+
+                      {/* Raw Screening Questions & Candidate Answers */}
+                      {rawAnswers.length > 0 ? (
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2 flex items-center justify-between">
+                            <span>Screening Questions & Candidate Answers</span>
+                            <span className="text-xs font-normal text-muted-foreground">({rawAnswers.length} questions)</span>
+                          </h4>
+
+                          {rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
+                            <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <h5 className="text-sm font-bold text-foreground">
+                                  {ans.orderIndex || idx + 1}. {ans.questionText}
+                                </h5>
+                                {ans.isRequired && (
+                                  <span className="shrink-0 rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
+                                    Required
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
+                                <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                                  Candidate Answer
+                                </span>
+                                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                                  {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
+                          <FileQuestion size={32} className="mx-auto text-muted-foreground/40" />
+                          <p className="font-semibold text-foreground">No screening questions attached</p>
+                          <p>This job post did not require screening questions when submitted.</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -645,8 +703,6 @@ export default function ClientProposalsScreen() {
                         )}
                       </div>
 
-
-
                       {/* Question-by-Question Graded Feedback */}
                       <div className="space-y-4">
                         <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2">
@@ -684,6 +740,29 @@ export default function ClientProposalsScreen() {
                               </div>
                             </div>
                           ))
+                        ) : rawAnswers.length > 0 ? (
+                          rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
+                            <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <h5 className="text-sm font-bold text-foreground">
+                                  {ans.orderIndex || idx + 1}. {ans.questionText}
+                                </h5>
+                                {ans.isRequired && (
+                                  <span className="shrink-0 rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
+                                    Required
+                                  </span>
+                                )}
+                              </div>
+                              <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
+                                <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                                  {t('proposalAnswers.candidateAnswer')}
+                                </span>
+                                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                                  {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
+                                </p>
+                              </div>
+                            </div>
+                          ))
                         ) : (
                           <div className="rounded-xl border border-border bg-muted/10 p-4 text-xs text-muted-foreground space-y-1">
                             <p className="font-semibold text-foreground">No screening questions evaluated for this proposal.</p>
@@ -708,6 +787,28 @@ export default function ClientProposalsScreen() {
                       {section('Overall deliverables', detail.deliverables, true)}
                       {section('Assumptions', detail.assumptions, true)}
                       {section('Out of scope', detail.outOfScope, true)}
+
+                      {rawAnswers.length > 0 && (
+                        <section className="space-y-3 border-t border-border pt-4">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Screening Questions & Candidate Answers</h3>
+                          <div className="space-y-3">
+                            {rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
+                              <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-background p-4 space-y-2 text-xs">
+                                <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
+                                  <strong className="text-sm font-bold text-foreground">{ans.orderIndex || idx + 1}. {ans.questionText}</strong>
+                                  {ans.isRequired && <span className="text-[10px] font-bold text-red-500 uppercase bg-red-500/10 px-2 py-0.5 rounded">Required</span>}
+                                </div>
+                                <div className="space-y-1 pt-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Candidate Answer</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">
+                                    {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      )}
 
                       <section className="space-y-3">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Work breakdown</h3>
