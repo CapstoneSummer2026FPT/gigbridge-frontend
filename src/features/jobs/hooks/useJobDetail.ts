@@ -76,6 +76,7 @@ const toJobFromDetail = (dto: JobPostDetailDto): Job => ({
   isRemote: !dto.location || dto.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
   visibility: dto.visibility ?? undefined,
+  hasAiInterview: Boolean(dto.hasAiInterview),
 });
 
 /**

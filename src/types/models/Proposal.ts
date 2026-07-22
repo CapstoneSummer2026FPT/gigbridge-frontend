@@ -55,6 +55,10 @@ export interface ProposalDto {
   milestoneCount?: number;
   milestoneTotal?: number;
   firstMilestoneAmount?: number | null;
+  hasAiInterview?: boolean;
+  aiInterviewCompleted?: boolean;
+  aiInterviewInProgress?: boolean;
+  aiInterviewDefinitionId?: string | null;
 }
 
 export interface ProposalAttachmentViewModel {
