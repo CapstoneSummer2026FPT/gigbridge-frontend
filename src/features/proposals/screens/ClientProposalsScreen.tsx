@@ -713,33 +713,14 @@ export default function ClientProposalsScreen() {
                       {evalError}
                     </div>
                   )}
-
-                  {!evalLoading && !evalResult && (
-                    <div className="space-y-6">
-                      {rawAnswers.length > 0 ? (
-                        <div className="rounded-2xl border border-dashed border-purple-500/30 p-6 text-center space-y-3 bg-purple-500/5">
-                          <Brain size={40} className="mx-auto text-purple-500/60" />
-                          <h4 className="font-bold text-base text-foreground">No AI Evaluation Cached Yet</h4>
-                          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-                            This proposal has not been evaluated by AI yet. You can run AI evaluation on demand.
-                          </p>
-                          <button
-                            onClick={() => activeId && loadEvaluation(activeId)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:brightness-110"
-                          >
-                            <Sparkles size={14} /> Evaluate Proposal with AI
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
-                          <Brain size={32} className="mx-auto text-purple-500/60" />
-                          <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
-                        </div>
-                      )}
+                   {!evalLoading && (rawAnswers.length === 0 || !evalResult) && (
+                    <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
+                      <Brain size={32} className="mx-auto text-purple-500/60" />
+                      <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
                     </div>
                   )}
 
-                  {evalResult && (
+                  {!evalLoading && rawAnswers.length > 0 && evalResult && (
                     <div className="space-y-6">
                       {/* Summary Card */}
                       <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
