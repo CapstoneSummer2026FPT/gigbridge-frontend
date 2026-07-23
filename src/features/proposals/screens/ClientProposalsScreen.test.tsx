@@ -140,8 +140,8 @@ describe('ClientProposalsScreen Phase 2', () => {
     // Open detail modal by clicking row
     await user.click((await screen.findAllByText('Ada Freelancer'))[0]);
 
-    // Click on the tab 'Proposal Scope & Milestone'
-    await user.click(await screen.findByRole('button', { name: /proposal scope/i }));
+    // Click on the tab 'freelancer Project Proposal'
+    await user.click(await screen.findByRole('button', { name: /freelancer project proposal/i }));
 
     expect(await screen.findByText('Analysis')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation')).toBeInTheDocument();

@@ -527,13 +527,13 @@ export default function ClientProposalsScreen() {
                     onClick={() => setModalTab('userAnswers')}
                     className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'userAnswers' ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30 dark:text-amber-400' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                    <FileQuestion size={14} /> User Interview Answer
+                    <FileQuestion size={14} /> freelancer  Interview Answer
                   </button>
                   <button
                     onClick={() => setModalTab('proposalDetails')}
                     className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'proposalDetails' ? 'bg-cyan-500/20 text-cyan-600 border border-cyan-500/30 dark:text-cyan-400' : 'text-muted-foreground hover:text-foreground'}`}
                   >
-                    <FileText size={14} /> Proposal Scope & Milestone
+                    <FileText size={14} /> freelancer Project Proposal
                   </button>
                   <button
                     onClick={() => setModalTab('aiReport')}
@@ -598,7 +598,7 @@ export default function ClientProposalsScreen() {
                     ) : (
                       <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
                         <FileQuestion size={32} className="mx-auto text-muted-foreground/40" />
-                        <p className="font-semibold text-foreground">No User Interview Answers available.</p>
+                        <p className="font-semibold text-foreground">No freelancer  Interview Answers available.</p>
                       </div>
                     )
                   )}
@@ -863,11 +863,11 @@ export default function ClientProposalsScreen() {
                 )}
                 {activeId && canClientAct(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)) && (
                   <>
-                    <button disabled={isBusy(activeId, 'accept')} onClick={() => acceptForNegotiation(activeId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-                      <MessageSquare size={14} /> Start negotiation
-                    </button>
                     <button disabled={isBusy(activeId, 'reject')} onClick={() => updateStatus(activeId, ProposalStatus.Rejected, 'reject')} className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
                       <X size={14} /> Reject
+                    </button>
+                    <button disabled={isBusy(activeId, 'accept')} onClick={() => acceptForNegotiation(activeId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                      <MessageSquare size={14} /> Start negotiation
                     </button>
                   </>
                 )}
