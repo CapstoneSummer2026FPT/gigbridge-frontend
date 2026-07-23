@@ -24,6 +24,7 @@ import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { MarkdownEditor } from '../../../shared/components/MarkdownEditor';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import {
+  MILESTONE_DURATION_UNITS,
   PROPOSAL_DURATION_UNITS,
   calculateProposalBudget,
   calculateProposalDuration,
@@ -39,7 +40,7 @@ const emptyWorkItem = (orderIndex: number): ProposalWorkBreakdownItemDto => ({
 });
 
 const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
-  title: '', description: '', amount: 0, estimatedDuration: '', deliverables: '', acceptanceCriteria: '', orderIndex,
+  title: '', description: '', amount: 0, estimatedDuration: '', dueDate: null, deliverables: '', acceptanceCriteria: '', orderIndex,
 });
 
 const normalizeOrder = <T extends { orderIndex: number }>(items: T[]) =>
@@ -191,10 +192,28 @@ export default function CreateProposalScreen() {
     if (workItems.some(item => item.milestoneOrderIndex == null)) return 'Every work item must belong to a milestone.';
     if (milestones.some(item => !workItems.some(workItem => workItem.milestoneOrderIndex === item.orderIndex))) return 'Every milestone needs at least one work item.';
     const errors: Record<string, string> = {};
+    const today = new Date().toISOString().slice(0, 10);
+    const proposalClosingDate = jobPost?.endDate?.split('T')[0] || null;
+    let previousDueDate: string | null = null;
     milestones.forEach((item, index) => {
       if (!item.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
       if (Number(item.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
-      if (!parseProposalDuration(item.estimatedDuration)) errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number.';
+      const parsedDuration = parseProposalDuration(item.estimatedDuration);
+      if (!parsedDuration || parsedDuration.unit === 'days') {
+        errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in weeks, months or years.';
+      }
+      if (!item.dueDate) {
+        errors[`${index}.dueDate`] = 'Deadline is required.';
+      } else {
+        if (item.dueDate < today) errors[`${index}.dueDate`] = 'Deadline cannot be in the past.';
+        if (proposalClosingDate && item.dueDate <= proposalClosingDate) {
+          errors[`${index}.dueDate`] = 'Deadline must be after the proposal closing date.';
+        }
+        if (previousDueDate && item.dueDate <= previousDueDate) {
+          errors[`${index}.dueDate`] = 'Deadline must be later than the previous milestone deadline.';
+        }
+        previousDueDate = item.dueDate;
+      }
       if (!item.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
       if (!item.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = 'Acceptance criteria are required.';
     });
@@ -317,6 +336,15 @@ export default function CreateProposalScreen() {
               expandedIndex={expandedMilestone}
               onExpandedChange={setExpandedMilestone}
               errors={milestoneErrors}
+              showDueDate
+              durationUnits={MILESTONE_DURATION_UNITS.map(unit => ({
+                value: unit,
+                label: unit.charAt(0).toUpperCase() + unit.slice(1),
+              }))}
+              fieldHints={{
+                duration: 'Estimated completion time after this milestone starts.',
+                deadline: 'Final date to complete and submit this milestone.',
+              }}
             />
 
 

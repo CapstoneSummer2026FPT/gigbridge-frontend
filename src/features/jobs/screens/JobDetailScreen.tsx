@@ -223,6 +223,7 @@ export default function JobDetailScreen() {
                   value={job.milestonePlans as EditableMilestonePlan[]}
                   onChange={() => undefined}
                   readOnly
+                  showDueDate
                   title="Client baseline milestone and WBS"
                   description="Review this baseline before preparing your proposal. You can propose changes to milestones and work items."
                 />

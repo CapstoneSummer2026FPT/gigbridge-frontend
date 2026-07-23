@@ -1,4 +1,5 @@
-export const PROPOSAL_DURATION_UNITS = ['days', 'weeks', 'months'] as const;
+export const PROPOSAL_DURATION_UNITS = ['days', 'weeks', 'months', 'years'] as const;
+export const MILESTONE_DURATION_UNITS = ['weeks', 'months', 'years'] as const;
 
 export type ProposalDurationUnit = typeof PROPOSAL_DURATION_UNITS[number];
 
@@ -11,21 +12,24 @@ const UNIT_DAYS: Record<ProposalDurationUnit, number> = {
   days: 1,
   weeks: 7,
   months: 30,
+  years: 365,
 };
 
 const UNIT_RANK: Record<ProposalDurationUnit, number> = {
   days: 0,
   weeks: 1,
   months: 2,
+  years: 3,
 };
 
-const DURATION_PATTERN = /^\s*(\d+)\s*(day|days|week|weeks|month|months)\s*$/i;
+const DURATION_PATTERN = /^\s*(\d+)\s*(day|days|week|weeks|month|months|year|years)\s*$/i;
 
 const normalizeUnit = (value: string): ProposalDurationUnit => {
   const unit = value.toLowerCase();
   if (unit === 'day' || unit === 'days') return 'days';
   if (unit === 'week' || unit === 'weeks') return 'weeks';
-  return 'months';
+  if (unit === 'month' || unit === 'months') return 'months';
+  return 'years';
 };
 
 export const parseProposalDuration = (value?: string | null): ProposalDurationParts | null => {

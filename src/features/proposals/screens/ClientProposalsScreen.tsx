@@ -468,6 +468,7 @@ export default function ClientProposalsScreen() {
                           <span className="font-semibold">{formatGigCoin(item.amount)}</span>
                         </div>
                         {item.estimatedDuration && <p className="mt-1 text-muted-foreground">Duration: {item.estimatedDuration}</p>}
+                        {item.dueDate && <p className="mt-1 text-muted-foreground">Deadline: {item.dueDate}</p>}
                         {item.description && <p className="mt-2 truncate text-muted-foreground" title={item.description}>{previewText(item.description, 88)}</p>}
                         {item.deliverables && <p className="mt-2 truncate" title={item.deliverables}><strong>Deliverables:</strong> {previewText(item.deliverables, 72)}</p>}
                         {item.acceptanceCriteria && <p className="mt-2 truncate" title={item.acceptanceCriteria}><strong>Acceptance:</strong> {previewText(item.acceptanceCriteria, 72)}</p>}

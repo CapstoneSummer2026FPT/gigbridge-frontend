@@ -57,6 +57,10 @@ export default function PostJobScreen() {
     setQuestions,
     milestonePlans,
     setMilestonePlans,
+    milestoneErrors,
+    setMilestoneErrors,
+    expandedMilestone,
+    setExpandedMilestone,
     isActionDisabled,
     taxonomyError,
     isMajorsLoading,
@@ -669,10 +673,48 @@ export default function PostJobScreen() {
           <div className="mx-auto mt-8 max-w-[1440px] rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
             <NestedMilestonePlanEditor
               value={milestonePlans as EditableMilestonePlan[]}
-              onChange={plans => setMilestonePlans(plans)}
+              onChange={plans => {
+                setMilestonePlans(plans);
+                setMilestoneErrors({});
+              }}
               optional
+              showDueDate
               title="Baseline milestone and Work Breakdown Structure"
               description="Give freelancers a starting plan. They can review and propose changes in their proposal before any contract is created."
+              expandedIndex={expandedMilestone}
+              onExpandedChange={setExpandedMilestone}
+              errors={milestoneErrors}
+              durationUnits={JOB_DURATION_UNITS.map(unit => ({
+                value: unit,
+                label: t(`postJob.durationUnits.${unit}`),
+              }))}
+              fieldHints={{
+                fixedProjectBudget: t('postJob.baselineBudgetHint'),
+                milestoneTitle: t('postJob.baselineMilestoneTitleHint'),
+                amount: t('postJob.baselineAmountHint'),
+                duration: t('postJob.baselineDurationHint'),
+                deadline: t('postJob.baselineDeadlineHint'),
+                description: t('postJob.baselineDescriptionHint'),
+                deliverables: t('postJob.baselineDeliverablesHint'),
+                acceptanceCriteria: t('postJob.baselineAcceptanceCriteriaHint'),
+                workBreakdown: t('postJob.baselineWorkBreakdownHint'),
+                workItemTitle: t('postJob.baselineWorkItemTitleHint'),
+                workItemDuration: t('postJob.baselineWorkItemDurationHint'),
+                workItemDescription: t('postJob.baselineWorkItemDescriptionHint'),
+                workItemDeliverables: t('postJob.baselineWorkItemDeliverablesHint'),
+              }}
+              fieldPlaceholders={{
+                milestoneTitle: t('postJob.baselineMilestoneTitlePlaceholder'),
+                amount: t('postJob.baselineAmountPlaceholder'),
+                duration: t('postJob.baselineDurationPlaceholder'),
+                description: t('postJob.baselineDescriptionPlaceholder'),
+                deliverables: t('postJob.baselineDeliverablesPlaceholder'),
+                acceptanceCriteria: t('postJob.baselineAcceptanceCriteriaPlaceholder'),
+                workItemTitle: t('postJob.baselineWorkItemTitlePlaceholder'),
+                workItemDuration: t('postJob.baselineWorkItemDurationPlaceholder'),
+                workItemDescription: t('postJob.baselineWorkItemDescriptionPlaceholder'),
+                workItemDeliverables: t('postJob.baselineWorkItemDeliverablesPlaceholder'),
+              }}
             />
           </div>
         )}

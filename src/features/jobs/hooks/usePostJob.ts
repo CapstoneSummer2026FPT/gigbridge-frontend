@@ -249,6 +249,10 @@ export function usePostJob() {
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
   const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() => initialJobData?.milestonePlans || []);
+  const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
+  const [expandedMilestone, setExpandedMilestone] = useState<number | null>(
+    initialJobData?.milestonePlans?.length ? 0 : null
+  );
   const milestonePlanTotal = useMemo(
     () => milestonePlans.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [milestonePlans]
@@ -376,6 +380,7 @@ export function usePostJob() {
         const job = jobResponse.data;
         setForm(formFromJobDetail(job));
         setMilestonePlans(job.milestonePlans || []);
+        setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
         setSkillNameById(prev => {
           const next = { ...prev };
           (job.skills || []).forEach(skill => {
@@ -791,15 +796,50 @@ export function usePostJob() {
   };
 
   const validateMilestonePlans = (): string | null => {
+    const errors: Record<string, string> = {};
+    const today = new Date().toISOString().slice(0, 10);
+    let previousDueDate: string | null = null;
+    let workItemError: string | null = null;
+
     for (const [index, milestone] of milestonePlans.entries()) {
-      if (!milestone.title?.trim() || Number(milestone.amount) <= 0 || !milestone.deliverables?.trim() || !milestone.acceptanceCriteria?.trim()) {
-        return `Milestone ${index + 1} requires title, positive amount, deliverables and acceptance criteria.`;
+      if (!milestone.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
+      if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
+      if (!/^\s*[1-9]\d*\s+(week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
+        errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in weeks, months or years.';
       }
+      if (!milestone.dueDate) {
+        errors[`${index}.dueDate`] = 'Deadline is required.';
+      } else {
+        if (milestone.dueDate < today) errors[`${index}.dueDate`] = 'Deadline cannot be in the past.';
+        if (form.deadline && milestone.dueDate <= form.deadline) {
+          errors[`${index}.dueDate`] = 'Deadline must be after the proposal closing date.';
+        }
+        if (previousDueDate && milestone.dueDate <= previousDueDate) {
+          errors[`${index}.dueDate`] = 'Deadline must be later than the previous milestone deadline.';
+        }
+        previousDueDate = milestone.dueDate;
+      }
+      if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
+      if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = 'Acceptance criteria are required.';
       if ((milestone.workItems || []).some(item => !item.title?.trim() || !item.description?.trim())) {
-        return `Every work item in milestone ${index + 1} requires title and description.`;
+        workItemError ??= `Every work item in milestone ${index + 1} requires title and description.`;
       }
     }
-    return null;
+
+    const firstErrorKey = Object.keys(errors)[0];
+    setMilestoneErrors(errors);
+    if (firstErrorKey) {
+      const [index, field] = firstErrorKey.split('.');
+      setExpandedMilestone(Number(index));
+      requestAnimationFrame(() => {
+        const target = document.querySelector<HTMLElement>(`[data-milestone-field="${index}.${field}"]`);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.focus();
+      });
+      return 'Complete the highlighted milestone fields before publishing.';
+    }
+
+    return workItemError;
   };
 
   const showValidationError = (message: string): void => {
@@ -1015,6 +1055,10 @@ export function usePostJob() {
     setQuestions,
     milestonePlans,
     setMilestonePlans,
+    milestoneErrors,
+    setMilestoneErrors,
+    expandedMilestone,
+    setExpandedMilestone,
     isActionDisabled,
     questionsWithOrder,
     taxonomyError,

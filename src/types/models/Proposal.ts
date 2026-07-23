@@ -96,6 +96,7 @@ export interface ProposalMilestonePlanDto {
   description?: string | null;
   amount: number;
   estimatedDuration?: string | null;
+  dueDate?: string | null;
   deliverables?: string | null;
   acceptanceCriteria?: string | null;
   orderIndex: number;

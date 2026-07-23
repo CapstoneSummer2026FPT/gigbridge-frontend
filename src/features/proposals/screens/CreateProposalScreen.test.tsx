@@ -65,7 +65,7 @@ describe('CreateProposalScreen Phase 2', () => {
     await screen.findByRole('heading', { name: 'Project Proposal' });
 
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12.5' } });
-    fireEvent.change(screen.getByLabelText('Duration'), { target: { value: '2 weeks' } });
+    fireEvent.change(screen.getByLabelText('Duration'), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
 
     await waitFor(() => expect(createProposalMock).toHaveBeenCalled());
@@ -83,14 +83,14 @@ describe('CreateProposalScreen Phase 2', () => {
 
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } });
     const milestoneDuration = screen.getByLabelText('Duration');
-    fireEvent.change(milestoneDuration, { target: { value: '5 weeks' } });
+    fireEvent.change(milestoneDuration, { target: { value: '5' } });
 
     expect(screen.queryByLabelText('Proposed rate')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Overall proposal duration'), { target: { value: '1' } });
     fireEvent.change(screen.getByLabelText('Overall proposal duration unit'), { target: { value: 'months' } });
 
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '200' } });
-    fireEvent.change(milestoneDuration, { target: { value: '10 weeks' } });
+    fireEvent.change(milestoneDuration, { target: { value: '10' } });
 
     expect(screen.getByLabelText('Calculated proposal budget')).toHaveTextContent('200 G-coin');
     expect(screen.getByLabelText('Overall proposal duration')).toHaveValue(1);
