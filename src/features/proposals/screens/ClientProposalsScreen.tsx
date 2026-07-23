@@ -621,32 +621,6 @@ export default function ClientProposalsScreen() {
                       {section('Out of scope', detail.outOfScope, true)}
 
                       <section className="space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Legacy or unassigned work items</h3>
-                        <div className="space-y-3">
-                          {detail.workBreakdownItems?.filter(item => item.milestoneOrderIndex == null).length ? detail.workBreakdownItems.filter(item => item.milestoneOrderIndex == null).map((item, index) => (
-                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 space-y-3">
-                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
-                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled work item'}</strong>
-                                <span className="text-xs font-semibold text-muted-foreground">{item.estimatedDuration}</span>
-                              </div>
-                              {item.description && (
-                                <div className="text-xs text-foreground space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.description}</p>
-                                </div>
-                              )}
-                              {item.deliverables && (
-                                <div className="text-xs text-foreground space-y-1">
-                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
-                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">{item.deliverables}</p>
-                                </div>
-                              )}
-                            </div>
-                          )) : <p className="text-sm text-muted-foreground">All work items are mapped to milestones.</p>}
-                        </div>
-                      </section>
-
-                      <section className="space-y-3">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Milestone plan</h3>
                         <div className="space-y-3">
                           {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (

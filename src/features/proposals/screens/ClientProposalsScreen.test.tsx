@@ -83,6 +83,7 @@ const detailProposal = (status = ProposalStatus.Pending) => ({
     deliverables: 'Working application shell',
     estimatedDuration: '1 week',
     orderIndex: 0,
+    milestoneOrderIndex: 0,
   }],
   milestonePlans: [{
     id: 'milestone-1',
