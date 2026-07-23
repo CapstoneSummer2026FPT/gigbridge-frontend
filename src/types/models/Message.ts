@@ -170,6 +170,15 @@ export interface MsgConversation {
   canNegotiate?: boolean;
 }
 
+export interface NegotiationWorkItemDto {
+  id?: string | null;
+  title?: string | null;
+  description?: string | null;
+  deliverables?: string | null;
+  estimatedDuration?: string | null;
+  orderIndex: number;
+}
+
 export interface NegotiationMilestoneDto {
   id?: string | null;
   title?: string | null;
@@ -180,6 +189,7 @@ export interface NegotiationMilestoneDto {
   deliverables?: string | null;
   acceptanceCriteria?: string | null;
   orderIndex: number;
+  workItems: NegotiationWorkItemDto[];
 }
 
 export interface NegotiationOfferDetailDto {

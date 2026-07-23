@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractDto, ContractProductHandoffResponse, ContractQueryParams, Milestone, MilestoneAttachment } from '../../types/models/Contract';
+import type { ContractDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 const milestonesUrl = 'Milestones';
@@ -64,6 +64,8 @@ interface BackendContractResponse {
   CanReview?: boolean;
   hasReviewedByCurrentUser?: boolean;
   HasReviewedByCurrentUser?: boolean;
+  revisionNumber?: number;
+  RevisionNumber?: number;
 }
 
 interface BackendMilestoneResponse {
@@ -91,6 +93,16 @@ interface BackendMilestoneResponse {
   LastReleasedAt?: string | null;
   releasedAmount?: number;
   ReleasedAmount?: number;
+  description?: string | null;
+  Description?: string | null;
+  estimatedDuration?: string | null;
+  EstimatedDuration?: string | null;
+  deliverables?: string | null;
+  Deliverables?: string | null;
+  acceptanceCriteria?: string | null;
+  AcceptanceCriteria?: string | null;
+  workItems?: ContractWorkItem[];
+  WorkItems?: ContractWorkItem[];
 }
 
 interface BackendMilestoneAttachmentResponse {
@@ -166,6 +178,7 @@ const normalizeContract = (contract: BackendContractResponse): ContractDto => {
     conversationId: getValue<string | null>(source, 'conversationId', 'ConversationId') ?? null,
     canReview: Boolean(getValue<boolean>(source, 'canReview', 'CanReview') ?? false),
     hasReviewedByCurrentUser: Boolean(getValue<boolean>(source, 'hasReviewedByCurrentUser', 'HasReviewedByCurrentUser') ?? false),
+    revisionNumber: Number(getValue(source, 'revisionNumber', 'RevisionNumber') ?? 1),
   };
 };
 
@@ -204,6 +217,17 @@ const normalizeMilestone = (milestone: BackendMilestoneResponse): Milestone => {
     paid_at: paidAt ?? null,
     releasedAmount: Number(getValue(source, 'releasedAmount', 'ReleasedAmount') ?? 0),
     lastReleasedAt: paidAt ?? null,
+    description: getValue<string | null>(source, 'description', 'Description') ?? null,
+    estimatedDuration: getValue<string | null>(source, 'estimatedDuration', 'EstimatedDuration') ?? null,
+    deliverables: getValue<string | null>(source, 'deliverables', 'Deliverables') ?? null,
+    acceptanceCriteria: getValue<string | null>(source, 'acceptanceCriteria', 'AcceptanceCriteria') ?? null,
+    workItems: (getValue<ContractWorkItem[]>(source, 'workItems', 'WorkItems') || []).map(item => ({
+      ...item,
+      workItemId: String((item as any).workItemId ?? (item as any).WorkItemId ?? ''),
+      milestoneId: String((item as any).milestoneId ?? (item as any).MilestoneId ?? id),
+      orderIndex: Number((item as any).orderIndex ?? (item as any).OrderIndex ?? 0),
+      status: Number((item as any).status ?? (item as any).Status ?? 0),
+    })),
   };
 };
 
@@ -419,4 +443,7 @@ export const contractGetAPI = {
       `contracts/${contractId}/product-handoffs`
     );
   },
+
+  getEarlyStartRequests: async (contractId: string): Promise<ApiResponse<MilestoneEarlyStartRequest[]>> =>
+    apiService.get<MilestoneEarlyStartRequest[]>(`contracts/${contractId}/milestones/early-start-requests`),
 };

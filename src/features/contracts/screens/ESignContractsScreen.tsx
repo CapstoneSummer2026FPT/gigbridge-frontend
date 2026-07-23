@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, MouseEvent } from 'react';
+import { Link, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import {
   AlertCircle,
@@ -20,17 +22,23 @@ import type {
   ESignDocumentListItemDto,
   ESignDocumentListPageDto,
 } from '../../../types/models/ESign';
-import { ESignerRole, ESignDocumentStatus } from '../../../types/models/ESign';
+import { ESignDocumentStatus } from '../../../types/models/ESign';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
 import '../styles/manage-contract-screen.css';
 import '../styles/esign-contracts-screen.css';
 
-type StatusFilter = 'all' | ESignDocumentStatus.FullySigned | ESignDocumentStatus.PartiallySigned;
+type StatusFilter = 'all' | ESignDocumentStatus;
+
+const PAGE_SIZE = 20;
 
 const STATUS_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
   { value: 'all', label: 'All' },
-  { value: ESignDocumentStatus.FullySigned, label: 'Fully signed' },
+  { value: ESignDocumentStatus.Draft, label: 'Draft' },
+  { value: ESignDocumentStatus.PendingSignatures, label: 'Pending' },
   { value: ESignDocumentStatus.PartiallySigned, label: 'Partially signed' },
+  { value: ESignDocumentStatus.FullySigned, label: 'Fully signed' },
+  { value: ESignDocumentStatus.Expired, label: 'Expired' },
+  { value: ESignDocumentStatus.Voided, label: 'Voided' },
 ];
 
 const formatDateTime = (value?: string | null): string => {
@@ -53,17 +61,6 @@ const getStatusLabel = (status: number): string => {
       return 'Voided';
     default:
       return 'Draft';
-  }
-};
-
-const getSignerRoleLabel = (role: number): string => {
-  switch (role) {
-    case ESignerRole.Client:
-      return 'Client';
-    case ESignerRole.Freelancer:
-      return 'Freelancer';
-    default:
-      return 'Signer';
   }
 };
 
@@ -120,11 +117,24 @@ interface PreviewPanelProps {
   isLoading: boolean;
   error: string | null;
   fallbackItem: ESignDocumentListItemDto | null;
+  isAdmin: boolean;
+  isDownloading: boolean;
+  downloadError: string | null;
+  onDownload: () => void;
+  onRetry: () => void;
 }
 
-function PreviewPanel({ document, isLoading, error, fallbackItem }: PreviewPanelProps): JSX.Element {
-  const pdfUrl = document?.exportedPdfUrl ?? fallbackItem?.exportedPdfUrl ?? null;
-
+function PreviewPanel({
+  document,
+  isLoading,
+  error,
+  fallbackItem,
+  isAdmin,
+  isDownloading,
+  downloadError,
+  onDownload,
+  onRetry,
+}: PreviewPanelProps): JSX.Element {
   if (isLoading) {
     return (
       <div className="esign-preview-state">
@@ -140,6 +150,9 @@ function PreviewPanel({ document, isLoading, error, fallbackItem }: PreviewPanel
         <AlertCircle size={32} />
         <h3>Unable to load document</h3>
         <p>{error}</p>
+        <button type="button" className="esign-secondary-action" onClick={onRetry}>
+          Try again
+        </button>
       </div>
     );
   }
@@ -149,7 +162,7 @@ function PreviewPanel({ document, isLoading, error, fallbackItem }: PreviewPanel
       <div className="esign-preview-state">
         <Eye size={34} />
         <h3>Select an e-sign contract</h3>
-        <p>Choose a signed contract from the list to preview the read-only document.</p>
+        <p>Choose a contract from the list to preview the read-only document.</p>
       </div>
     );
   }
@@ -162,27 +175,43 @@ function PreviewPanel({ document, isLoading, error, fallbackItem }: PreviewPanel
           <h2>{fallbackItem?.title || document.documentCode}</h2>
           <p>Job Post {getShortId(document.jobPostId)} · Document {document.documentCode}</p>
         </div>
-        {pdfUrl ? (
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="esign-secondary-action"
-          >
-            <Download size={16} />
-            View PDF
-          </a>
-        ) : null}
+        <div className="esign-preview-actions">
+          {!isAdmin && fallbackItem?.canCurrentUserSign && fallbackItem.contractId ? (
+            <Link className="esign-primary-action" to={`/contracts/${fallbackItem.contractId}/sign`}>
+              Sign now
+            </Link>
+          ) : null}
+          {!isAdmin && fallbackItem?.currentUserSignedAt && document.status !== ESignDocumentStatus.FullySigned ? (
+            <span className="esign-waiting">Waiting for the other party</span>
+          ) : null}
+          {fallbackItem?.hasFinalArtifact ? (
+            <button
+              type="button"
+              className="esign-secondary-action"
+              onClick={onDownload}
+              disabled={isDownloading}
+            >
+              {isDownloading ? <Loader size={16} className="spinner" /> : <Download size={16} />}
+              {isDownloading ? 'Downloading...' : downloadError ? 'Retry DOCX' : 'Download DOCX'}
+            </button>
+          ) : null}
+        </div>
       </div>
+
+      {downloadError ? <p className="esign-download-error" role="alert">{downloadError}</p> : null}
 
       <div className="esign-signature-strip">
         <span className="esign-pill">
           <CheckCircle2 size={14} />
           {getStatusLabel(document.status)}
         </span>
-        <span className="esign-pill">
+        <span className={`esign-pill ${fallbackItem?.hasClientSigned ? '' : 'pending'}`}>
           <UserRoundCheck size={14} />
-          {document.signatures.length} signature(s)
+          Client: {fallbackItem?.hasClientSigned ? 'Signed' : 'Pending'}
+        </span>
+        <span className={`esign-pill ${fallbackItem?.hasFreelancerSigned ? '' : 'pending'}`}>
+          <UserRoundCheck size={14} />
+          Freelancer: {fallbackItem?.hasFreelancerSigned ? 'Signed' : 'Pending'}
         </span>
         <span className="esign-pill">
           <Calendar size={14} />
@@ -201,7 +230,10 @@ function PreviewPanel({ document, isLoading, error, fallbackItem }: PreviewPanel
 }
 
 export default function ESignContractsScreen(): JSX.Element {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
   const [page, setPage] = useState<ESignDocumentListPageDto | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<ESignDocumentDto | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -210,18 +242,27 @@ export default function ESignContractsScreen(): JSX.Element {
   const [loadingDocument, setLoadingDocument] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
+  const listRequestId = useRef(0);
+  const documentRequestId = useRef(0);
 
   const loadDocuments = useCallback(async (): Promise<void> => {
+    const requestId = ++listRequestId.current;
     setLoadingList(true);
     setListError(null);
 
-    const response = await esignGetAPI.getMySignedDocuments({
-      page: 1,
-      pageSize: 50,
-      documentType: 'contract',
+    const params = {
+      page: pageNumber,
+      pageSize: PAGE_SIZE,
       status: statusFilter === 'all' ? undefined : statusFilter,
       q: searchQuery.trim() || undefined,
-    });
+    };
+    const response = isAdmin
+      ? await esignGetAPI.getAdminDocuments(params)
+      : await esignGetAPI.getMyDocuments(params);
+
+    if (requestId !== listRequestId.current) return;
 
     if (!response.success || !response.data) {
       setPage(null);
@@ -232,15 +273,19 @@ export default function ESignContractsScreen(): JSX.Element {
 
     setPage(response.data);
     setLoadingList(false);
-  }, [searchQuery, statusFilter]);
+  }, [isAdmin, pageNumber, searchQuery, statusFilter]);
 
   const loadDocument = useCallback(async (documentId: string): Promise<void> => {
+    const requestId = ++documentRequestId.current;
     setSelectedDocumentId(documentId);
     setSelectedDocument(null);
     setDocumentError(null);
+    setDownloadError(null);
     setLoadingDocument(true);
 
     const response = await esignGetAPI.getDocumentById(documentId);
+
+    if (requestId !== documentRequestId.current) return;
 
     if (!response.success || !response.data) {
       setDocumentError(response.message || 'Failed to load e-sign document.');
@@ -257,8 +302,19 @@ export default function ESignContractsScreen(): JSX.Element {
   }, [loadDocuments]);
 
   useEffect(() => {
-    const firstDocument = page?.items[0];
-    if (!selectedDocumentId && firstDocument) {
+    const items = page?.items ?? [];
+    const firstDocument = items[0];
+
+    if (!firstDocument) {
+      documentRequestId.current += 1;
+      setSelectedDocumentId(null);
+      setSelectedDocument(null);
+      setDocumentError(null);
+      setLoadingDocument(false);
+      return;
+    }
+
+    if (!selectedDocumentId || !items.some((item) => item.documentId === selectedDocumentId)) {
       void loadDocument(firstDocument.documentId);
     }
   }, [loadDocument, page?.items, selectedDocumentId]);
@@ -281,13 +337,57 @@ export default function ESignContractsScreen(): JSX.Element {
 
   const handleClearSearch = (): void => {
     setSearchQuery('');
+    setPageNumber(1);
+  };
+
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setSearchQuery(event.target.value);
+    setPageNumber(1);
+  };
+
+  const handleStatusChange = (event: MouseEvent<HTMLButtonElement>): void => {
+    const value = event.currentTarget.value;
+    setStatusFilter(value === 'all' ? 'all' : Number(value) as ESignDocumentStatus);
+    setPageNumber(1);
+  };
+
+  const handlePreviousPage = (): void => {
+    setPageNumber((current) => Math.max(1, current - 1));
+  };
+
+  const handleNextPage = (): void => {
+    setPageNumber((current) => current + 1);
+  };
+
+  const handleDownload = async (): Promise<void> => {
+    if (!selectedItem?.hasFinalArtifact) return;
+
+    setDownloadingDocumentId(selectedItem.documentId);
+    setDownloadError(null);
+    const response = await esignGetAPI.downloadDocument(selectedItem.documentId);
+
+    if (!response.success || !response.data) {
+      setDownloadError(response.message || 'Failed to download the finalized contract.');
+      setDownloadingDocumentId(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(response.data);
+    const anchor = window.document.createElement('a');
+    anchor.href = url;
+    anchor.download = selectedItem.finalizedDocumentFileName || `${selectedItem.documentCode || 'GigBridge-contract'}.docx`;
+    window.document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setDownloadingDocumentId(null);
   };
 
   const totalDocuments = page?.totalCount ?? 0;
   const fullySignedCount = page?.items.filter(
     (document) => document.documentStatus === ESignDocumentStatus.FullySigned
   ).length ?? 0;
-  const pdfCount = page?.items.filter((document) => Boolean(document.exportedPdfUrl)).length ?? 0;
+  const artifactCount = page?.items.filter((document) => document.hasFinalArtifact).length ?? 0;
 
   return (
     <AppLayout>
@@ -305,7 +405,7 @@ export default function ESignContractsScreen(): JSX.Element {
               Contract archive
             </span>
             <h1>E-sign Contracts</h1>
-            <p>Review signed e-sign contract documents by job post and contract.</p>
+            <p>Review, sign, preview, and download your contract documents.</p>
           </div>
 
           <div className="esign-summary-grid">
@@ -318,8 +418,8 @@ export default function ESignContractsScreen(): JSX.Element {
               <strong>{fullySignedCount}</strong>
             </div>
             <div>
-              <span>PDF ready</span>
-              <strong>{pdfCount}</strong>
+              <span>DOCX ready</span>
+              <strong>{artifactCount}</strong>
             </div>
           </div>
         </motion.header>
@@ -329,8 +429,11 @@ export default function ESignContractsScreen(): JSX.Element {
             <Search size={16} />
             <input
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search by title or document code..."
+              onChange={handleSearchChange}
+              aria-label="Search e-sign contracts"
+              placeholder={isAdmin
+                ? 'Search by title, code, name, or email...'
+                : 'Search by title or document code...'}
             />
             {searchQuery ? (
               <button type="button" onClick={handleClearSearch} title="Clear search">
@@ -345,8 +448,9 @@ export default function ESignContractsScreen(): JSX.Element {
                 key={String(option.value)}
                 type="button"
                 role="tab"
+                value={String(option.value)}
                 aria-selected={statusFilter === option.value}
-                onClick={() => setStatusFilter(option.value)}
+                onClick={handleStatusChange}
                 className={statusFilter === option.value ? 'active' : ''}
               >
                 {option.label}
@@ -359,21 +463,22 @@ export default function ESignContractsScreen(): JSX.Element {
           <div className="esign-list-error">
             <AlertCircle size={18} />
             <span>{listError}</span>
+            <button type="button" onClick={() => void loadDocuments()}>Try again</button>
           </div>
         ) : null}
 
         <div className="esign-content-grid">
-          <section className="esign-list-panel" aria-label="Signed e-sign contracts">
+          <section className="esign-list-panel" aria-label="E-sign contracts">
             {loadingList ? (
               <div className="esign-preview-state compact">
                 <Loader size={26} className="spinner" />
-                <p>Loading signed contracts...</p>
+                <p>Loading contracts...</p>
               </div>
             ) : groupedDocuments.length === 0 ? (
               <div className="esign-preview-state compact">
                 <FileText size={32} />
                 <h3>No e-sign contracts found</h3>
-                <p>Signed contract documents will appear here after you sign a contract.</p>
+                <p>Your contract documents will appear here when they are ready for review.</p>
               </div>
             ) : (
               groupedDocuments.map((group) => (
@@ -404,9 +509,28 @@ export default function ESignContractsScreen(): JSX.Element {
               isLoading={loadingDocument}
               error={documentError}
               fallbackItem={selectedItem}
+              isAdmin={isAdmin}
+              isDownloading={downloadingDocumentId === selectedDocumentId}
+              downloadError={downloadError}
+              onDownload={handleDownload}
+              onRetry={() => {
+                if (selectedDocumentId) void loadDocument(selectedDocumentId);
+              }}
             />
           </section>
         </div>
+
+        {page && page.totalPages > 1 ? (
+          <nav className="esign-pagination" aria-label="E-sign contract pages">
+            <button type="button" onClick={handlePreviousPage} disabled={!page.hasPreviousPage}>
+              Previous
+            </button>
+            <span>Page {page.pageNumber} of {page.totalPages}</span>
+            <button type="button" onClick={handleNextPage} disabled={!page.hasNextPage}>
+              Next
+            </button>
+          </nav>
+        ) : null}
       </div>
     </AppLayout>
   );

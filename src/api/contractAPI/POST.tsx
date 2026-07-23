@@ -69,9 +69,10 @@ export const contractPostAPI = {
    */
   requestMilestoneUnlock: async (
     contractId: string,
-    milestoneId: string
+    milestoneId: string,
+    reason: string,
   ): Promise<ApiResponse<Record<string, never>>> => {
-    return apiService.post<Record<string, never>>(`contracts/${contractId}/milestones/${milestoneId}/request-unlock`);
+    return apiService.post<Record<string, never>>(`contracts/${contractId}/milestones/${milestoneId}/early-start-requests`, { reason });
   },
 
   /**
@@ -100,9 +101,11 @@ export const contractPostAPI = {
    */
   requestMilestoneRevision: async (
     contractId: string,
-    milestoneId: string
+    milestoneId: string,
+    reason: string,
+    workItemIds: string[],
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/request-revision`);
+    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/request-revision`, { reason, workItemIds });
   },
 
   /**
@@ -114,6 +117,14 @@ export const contractPostAPI = {
   ): Promise<ApiResponse<WithdrawMilestoneResponse>> => {
     return apiService.post<WithdrawMilestoneResponse>(`contracts/${contractId}/milestones/${milestoneId}/withdraw`);
   },
+
+  respondEarlyStartRequest: async (
+    contractId: string,
+    requestId: string,
+    approve: boolean,
+    note?: string,
+  ): Promise<ApiResponse<Milestone>> =>
+    apiService.post<Milestone>(`contracts/${contractId}/milestones/early-start-requests/${requestId}/respond`, { approve, note }),
 
   /**
    * POST /api/contracts/{contractId}/end-project
@@ -221,7 +232,13 @@ export const contractPostAPI = {
    */
   sign: async (
     contractId: string,
-    payload: { signatureImageUrl: string; signatureWidth?: number; signatureHeight?: number }
+    payload: {
+      signatureImageUrl: string;
+      signatureWidth?: number;
+      signatureHeight?: number;
+      policyAccepted: boolean;
+      policyVersion: string;
+    }
   ): Promise<ApiResponse<any>> => {
     return apiService.post<any>(`contracts/${contractId}/sign`, payload);
   },

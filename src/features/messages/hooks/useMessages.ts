@@ -386,7 +386,12 @@ export function useMessages() {
   );
 
   const normalizeDealMilestones = useCallback((items: NegotiationMilestoneDto[]) =>
-    items.map((item, orderIndex) => ({ ...item, amount: Math.round((Number(item.amount) || 0) * 100) / 100, orderIndex })),
+    items.map((item, orderIndex) => ({
+      ...item,
+      amount: Math.round((Number(item.amount) || 0) * 100) / 100,
+      orderIndex,
+      workItems: (item.workItems || []).map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
+    })),
   []);
 
   const getDealMilestoneTotal = useCallback((items: NegotiationMilestoneDto[]) =>
@@ -422,6 +427,7 @@ export function useMessages() {
         deliverables: '',
         acceptanceCriteria: '',
         orderIndex: items.length,
+        workItems: [{ title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex: 0 }],
       }]);
       if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
       return next;
@@ -1187,6 +1193,10 @@ export function useMessages() {
     }
     if (normalizedMilestones.some(item => !item.title?.trim() || !item.deliverables?.trim() || !item.acceptanceCriteria?.trim() || Number(item.amount) <= 0)) {
       setAnchorNotice('Each milestone needs title, amount, deliverables, and acceptance criteria.');
+      return;
+    }
+    if (normalizedMilestones.some(item => !item.workItems.length || item.workItems.some(workItem => !workItem.title?.trim() || !workItem.description?.trim()))) {
+      setAnchorNotice('Each milestone needs at least one work item with title and description.');
       return;
     }
     if (Math.abs(normalizedMilestones.reduce((sum, item) => sum + item.amount, 0) - price) >= 0.01) {

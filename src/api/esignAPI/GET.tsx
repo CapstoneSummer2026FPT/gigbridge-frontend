@@ -65,6 +65,14 @@ interface BackendESignDocumentResponse {
   FinalizedAt?: string | null;
   exportedPdfUrl?: string | null;
   ExportedPdfUrl?: string | null;
+  currentUserSignerRole?: number | null;
+  CurrentUserSignerRole?: number | null;
+  canCurrentUserSign?: boolean;
+  CanCurrentUserSign?: boolean;
+  hasFinalArtifact?: boolean;
+  HasFinalArtifact?: boolean;
+  finalizedDocumentFileName?: string | null;
+  FinalizedDocumentFileName?: string | null;
   createdAt?: string;
   CreatedAt?: string;
   updatedAt?: string | null;
@@ -88,14 +96,20 @@ interface BackendESignDocumentListItemResponse {
   Title?: string;
   documentStatus?: number;
   DocumentStatus?: number;
-  currentUserSignerRole?: number;
-  CurrentUserSignerRole?: number;
+  currentUserSignerRole?: number | null;
+  CurrentUserSignerRole?: number | null;
   currentUserSignedAt?: string | null;
   CurrentUserSignedAt?: string | null;
   hasClientSigned?: boolean;
   HasClientSigned?: boolean;
   hasFreelancerSigned?: boolean;
   HasFreelancerSigned?: boolean;
+  canCurrentUserSign?: boolean;
+  CanCurrentUserSign?: boolean;
+  hasFinalArtifact?: boolean;
+  HasFinalArtifact?: boolean;
+  finalizedDocumentFileName?: string | null;
+  FinalizedDocumentFileName?: string | null;
   signatureCount?: number;
   SignatureCount?: number;
   finalizedAt?: string | null;
@@ -161,6 +175,7 @@ export const normalizeESignDocument = (
 ): ESignDocumentDto => {
   const source = document as Record<string, unknown>;
   const signatures = getValue<BackendESignSignatureResponse[]>(source, 'signatures', 'Signatures') ?? [];
+  const signerRole = getValue<number>(source, 'currentUserSignerRole', 'CurrentUserSignerRole');
 
   return {
     documentId: String(getValue(source, 'documentId', 'DocumentId') ?? ''),
@@ -174,6 +189,14 @@ export const normalizeESignDocument = (
     expiresAt: getValue<string | null>(source, 'expiresAt', 'ExpiresAt') ?? null,
     finalizedAt: getValue<string | null>(source, 'finalizedAt', 'FinalizedAt') ?? null,
     exportedPdfUrl: getValue<string | null>(source, 'exportedPdfUrl', 'ExportedPdfUrl') ?? null,
+    currentUserSignerRole: signerRole === undefined ? null : Number(signerRole),
+    canCurrentUserSign: Boolean(getValue<boolean>(source, 'canCurrentUserSign', 'CanCurrentUserSign') ?? false),
+    hasFinalArtifact: Boolean(getValue<boolean>(source, 'hasFinalArtifact', 'HasFinalArtifact') ?? false),
+    finalizedDocumentFileName: getValue<string | null>(
+      source,
+      'finalizedDocumentFileName',
+      'FinalizedDocumentFileName'
+    ) ?? null,
     createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
     updatedAt: getValue<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
     signatures: signatures.map(normalizeESignSignature),
@@ -184,6 +207,7 @@ export const normalizeESignDocumentListItem = (
   document: BackendESignDocumentListItemResponse
 ): ESignDocumentListItemDto => {
   const source = document as Record<string, unknown>;
+  const signerRole = getValue<number>(source, 'currentUserSignerRole', 'CurrentUserSignerRole');
 
   return {
     documentId: String(getValue(source, 'documentId', 'DocumentId') ?? ''),
@@ -193,10 +217,17 @@ export const normalizeESignDocumentListItem = (
     documentType: String(getValue(source, 'documentType', 'DocumentType') ?? ''),
     title: String(getValue(source, 'title', 'Title') ?? 'Untitled E-sign contract'),
     documentStatus: Number(getValue(source, 'documentStatus', 'DocumentStatus') ?? 0),
-    currentUserSignerRole: Number(getValue(source, 'currentUserSignerRole', 'CurrentUserSignerRole') ?? 0),
+    currentUserSignerRole: signerRole === undefined ? null : Number(signerRole),
     currentUserSignedAt: getValue<string | null>(source, 'currentUserSignedAt', 'CurrentUserSignedAt') ?? null,
     hasClientSigned: Boolean(getValue<boolean>(source, 'hasClientSigned', 'HasClientSigned') ?? false),
     hasFreelancerSigned: Boolean(getValue<boolean>(source, 'hasFreelancerSigned', 'HasFreelancerSigned') ?? false),
+    canCurrentUserSign: Boolean(getValue<boolean>(source, 'canCurrentUserSign', 'CanCurrentUserSign') ?? false),
+    hasFinalArtifact: Boolean(getValue<boolean>(source, 'hasFinalArtifact', 'HasFinalArtifact') ?? false),
+    finalizedDocumentFileName: getValue<string | null>(
+      source,
+      'finalizedDocumentFileName',
+      'FinalizedDocumentFileName'
+    ) ?? null,
     signatureCount: Number(getValue(source, 'signatureCount', 'SignatureCount') ?? 0),
     finalizedAt: getValue<string | null>(source, 'finalizedAt', 'FinalizedAt') ?? null,
     exportedPdfUrl: getValue<string | null>(source, 'exportedPdfUrl', 'ExportedPdfUrl') ?? null,
@@ -309,6 +340,32 @@ export const esignGetAPI = {
     );
     return normalizeDocumentListResponse(response);
   },
+
+  /** GET /api/ESign/documents/my */
+  getMyDocuments: async (
+    params: ESignDocumentListQueryParams = {}
+  ): Promise<ApiResponse<ESignDocumentListPageDto>> => {
+    const response = await apiService.get<BackendPaginatedESignDocumentsResponse>(
+      `${esignUrl}/documents/my`,
+      params
+    );
+    return normalizeDocumentListResponse(response);
+  },
+
+  /** GET /api/admin/esign-documents */
+  getAdminDocuments: async (
+    params: ESignDocumentListQueryParams = {}
+  ): Promise<ApiResponse<ESignDocumentListPageDto>> => {
+    const response = await apiService.get<BackendPaginatedESignDocumentsResponse>(
+      'admin/esign-documents',
+      params
+    );
+    return normalizeDocumentListResponse(response);
+  },
+
+  /** GET /api/ESign/documents/{documentId}/download */
+  downloadDocument: (documentId: string): Promise<ApiResponse<Blob>> =>
+    apiService.download(`${esignUrl}/documents/${documentId}/download`),
 
   /**
    * GET /api/ESign/signatures/{signatureId}

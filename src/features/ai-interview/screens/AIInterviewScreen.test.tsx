@@ -39,6 +39,31 @@ vi.mock('../../../app/providers/AppProvider', () => ({
   useApp: () => ({ user: { preferred_language: 'en', full_name: 'Candidate' } }),
 }));
 
+vi.mock('../../../hooks/useTranslation', () => ({
+  useTranslation: () => ({
+    i18n: { resolvedLanguage: 'en', language: 'en' },
+    t: (key: string, values?: Record<string, unknown>) => {
+      if (key === 'aiInterview.room.questionOf') {
+        return `Question ${values?.current} of ${values?.total}`;
+      }
+
+      const translations: Record<string, string> = {
+        'aiInterview.actions.start': 'Start AI Interview',
+        'aiInterview.actions.answerQuestion': 'Answer question',
+        'aiInterview.actions.retryAudio': 'Retry question audio',
+        'aiInterview.actions.hearAgain': 'Hear question again',
+        'aiInterview.actions.finishAnswer': 'Finish answer',
+        'aiInterview.actions.submitAnswer': 'Submit answer',
+        'aiInterview.errors.chooseJob': 'Choose a job before starting an AI interview.',
+        'aiInterview.complete.title': 'Thank you for using our AI interview',
+        'aiInterview.complete.message': 'Your responses have been submitted successfully. You’ll receive a notification soon if your application is accepted.',
+      };
+
+      return translations[key] ?? key;
+    },
+  }),
+}));
+
 vi.mock('../../../api/externalAPI/aiInterviewAPI', () => ({
   aiInterviewAPI: {
     start: startInterviewMock,

@@ -11,8 +11,41 @@ const handleWithdrawMilestoneMock = vi.fn();
 const handleEndProjectMock = vi.fn();
 const handleClaimFinalPayoutMock = vi.fn();
 
+vi.mock('../../../../hooks/useTranslation', () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      if (values?.defaultValue) return String(values.defaultValue);
+      if (key === 'workspace.version') return `Version ${values?.version}`;
+      const labels: Record<string, string> = {
+        'workspace.sharedFiles': 'Shared files',
+        'workspace.workMaterialsLink': 'Work materials link',
+        'workspace.endProject': 'End project',
+        'workspace.approveAllTooltip': 'Approve all milestones to end project',
+        'workspace.releaseEscrowTooltip': 'Release escrow',
+        'workspace.paidInFull': 'Paid in full',
+        'workspace.escrowReleasedFully': 'Escrow has been fully released to your wallet',
+        'workspace.finalPayoutReady': 'Final payout is ready',
+        'workspace.viewWalletHistory': 'View wallet history',
+        'workspace.claimPayout': 'Nhận tiền',
+        'workspace.viewOnlyNotice': 'Workspace is view-only',
+        'workspace.releasedInFull': 'Released in full',
+        'serviceFee.endProject.confirmationDescription': 'Final payout available to freelancer',
+        'serviceFee.confirm': 'End project',
+        'serviceFee.confirmAriaLabel': 'End project',
+      };
+      return labels[key] || key;
+    },
+  }),
+}));
+
 vi.mock('../../hooks/useProjectWorkspace', () => ({
   useProjectWorkspace: vi.fn(),
+}));
+
+vi.mock('../../../../api/walletAPI/GET', () => ({
+  walletGetAPI: {
+    getMyWallet: vi.fn().mockResolvedValue({ success: true, data: { availableTokens: 1000 } }),
+  },
 }));
 
 vi.mock('../../../../shared/components/AppLayout', () => ({
@@ -85,6 +118,7 @@ const mockWorkspaceHook = (options: {
       createdAt: '2026-07-02T01:00:00.000Z',
     },
     currentProductHandoff: null,
+    earlyStartRequests: [],
     productHandoffs: [
       {
         contractProductHandoffId: 'handoff-3',
@@ -181,27 +215,26 @@ describe('ProjectWorkspaceScreen', () => {
     expect(window.open).toHaveBeenCalledWith('https://example.com/source-v2.zip', '_blank', 'noopener,noreferrer');
   });
 
-  it('lets clients start any pending milestone', async () => {
+  it('does not let clients directly start or edit pending milestones', () => {
     mockWorkspaceHook({ isClient: true, milestones: [pendingMilestone] });
 
     render(<ProjectWorkspaceScreen />);
 
-    fireEvent.click(screen.getByRole('button', { name: /start milestone/i }));
-
-    await waitFor(() => {
-      expect(handleStartMilestoneMock).toHaveBeenCalledWith('milestone-2');
-    });
+    expect(screen.queryByRole('button', { name: /start milestone/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /propose milestone/i })).not.toBeInTheDocument();
+    expect(handleStartMilestoneMock).not.toHaveBeenCalled();
   });
 
-  it('lets freelancers request unlock for pending milestones', async () => {
+  it('lets freelancers request an early start with a reason', async () => {
     mockWorkspaceHook({ isClient: false, milestones: [pendingMilestone] });
+    vi.spyOn(window, 'prompt').mockReturnValue('Start integration work while review is pending.');
 
     render(<ProjectWorkspaceScreen />);
 
-    fireEvent.click(screen.getByRole('button', { name: /request unlock/i }));
+    fireEvent.click(screen.getByRole('button', { name: /request early start/i }));
 
     await waitFor(() => {
-      expect(handleRequestMilestoneUnlockMock).toHaveBeenCalledWith('milestone-2');
+      expect(handleRequestMilestoneUnlockMock).toHaveBeenCalledWith('milestone-2', 'Start integration work while review is pending.');
     });
   });
 
@@ -235,18 +268,20 @@ describe('ProjectWorkspaceScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: /end project/i }));
     expect(screen.getByText(/final payout available to freelancer/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /end project/i }).at(-1)!);
+    const confirmButton = await screen.findByRole('button', { name: /end project/i });
+    await waitFor(() => expect(confirmButton).toBeEnabled());
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(handleEndProjectMock).toHaveBeenCalled();
     });
   });
 
-  it('shows freelancer Withdraw on approved milestones instead of End Project', async () => {
+  it('shows released state without a manual withdraw action', () => {
     mockWorkspaceHook({
       isClient: false,
       milestones: [
-        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 100, releasedAmount: 0 },
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved 1', status: 'approved', amount: 100, releasedAmount: 100 },
         { ...pendingMilestone, id: 'milestone-2', title: 'Approved 2', status: 'approved', amount: 100, releasedAmount: 80 },
       ],
     });
@@ -254,11 +289,9 @@ describe('ProjectWorkspaceScreen', () => {
     render(<ProjectWorkspaceScreen />);
 
     expect(screen.queryByRole('button', { name: /end project/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /withdraw/i }));
-
-    await waitFor(() => {
-      expect(handleWithdrawMilestoneMock).toHaveBeenCalledWith('milestone-1');
-    });
+    expect(screen.queryByRole('button', { name: /withdraw/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/released in full/i)).toHaveLength(2);
+    expect(handleWithdrawMilestoneMock).not.toHaveBeenCalled();
   });
 
   it('shows paid in full for freelancers after claim and opens wallet history', () => {

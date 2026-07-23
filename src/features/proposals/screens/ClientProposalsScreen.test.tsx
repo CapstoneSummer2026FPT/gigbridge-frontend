@@ -142,7 +142,7 @@ describe('ClientProposalsScreen Phase 2', () => {
     // Click on the tab 'Proposal Scope & Milestone'
     await user.click(await screen.findByRole('button', { name: /proposal scope/i }));
 
-    expect(await screen.findByText('Requirement analysis')).toBeInTheDocument();
+    expect(await screen.findByText('Analysis')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation delivery')).toBeInTheDocument();
     expect(screen.getByText(/Build passes/)).toBeInTheDocument();

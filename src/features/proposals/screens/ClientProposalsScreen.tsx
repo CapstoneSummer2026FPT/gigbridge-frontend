@@ -614,16 +614,16 @@ export default function ClientProposalsScreen() {
                   ) : (
                     <>
                       {section('Introduction', detail.coverLetter, true)}
-                      {section('Requirement analysis', detail.analysisSummary, true)}
+                      {section('Analysis', detail.analysisSummary, true)}
                       {section('Solution approach', detail.solutionApproach, true)}
                       {section('Overall deliverables', detail.deliverables, true)}
                       {section('Assumptions', detail.assumptions, true)}
                       {section('Out of scope', detail.outOfScope, true)}
 
                       <section className="space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Work breakdown</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Legacy or unassigned work items</h3>
                         <div className="space-y-3">
-                          {detail.workBreakdownItems?.length ? detail.workBreakdownItems.map((item, index) => (
+                          {detail.workBreakdownItems?.filter(item => item.milestoneOrderIndex == null).length ? detail.workBreakdownItems.filter(item => item.milestoneOrderIndex == null).map((item, index) => (
                             <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 space-y-3">
                               <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
                                 <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled work item'}</strong>
@@ -642,7 +642,7 @@ export default function ClientProposalsScreen() {
                                 </div>
                               )}
                             </div>
-                          )) : <p className="text-sm text-muted-foreground">No work breakdown provided.</p>}
+                          )) : <p className="text-sm text-muted-foreground">All work items are mapped to milestones.</p>}
                         </div>
                       </section>
 
@@ -658,6 +658,11 @@ export default function ClientProposalsScreen() {
                               {item.estimatedDuration && (
                                 <div className="text-xs text-muted-foreground">
                                   <strong>Duration:</strong> {item.estimatedDuration}
+                                </div>
+                              )}
+                              {item.dueDate && (
+                                <div className="text-xs text-muted-foreground">
+                                  <strong>Deadline:</strong> {item.dueDate}
                                 </div>
                               )}
                               {item.description && (
@@ -678,8 +683,27 @@ export default function ClientProposalsScreen() {
                                   <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.acceptanceCriteria}</p>
                                 </div>
                               )}
+                              <div className="mt-3 space-y-2 border-t border-border pt-2">
+                                <strong className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Work Breakdown Structure</strong>
+                                {(item.workItems?.length ? item.workItems : detail.workBreakdownItems?.filter(workItem => workItem.milestoneOrderIndex === item.orderIndex) || []).map((workItem, workIndex) => (
+                                  <div key={workItem.id || workIndex} className="rounded-lg bg-muted/30 p-3 space-y-1">
+                                    <div className="flex justify-between items-center gap-2">
+                                      <strong className="text-xs text-foreground">{workIndex + 1}. {workItem.title || 'Untitled work item'}</strong>
+                                      <span className="text-[10px] font-semibold text-muted-foreground">{workItem.estimatedDuration}</span>
+                                    </div>
+                                    {workItem.description && (
+                                      <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{workItem.description}</p>
+                                    )}
+                                    {workItem.deliverables && (
+                                      <p className="text-xs text-foreground">
+                                        <strong>Deliverables:</strong> {workItem.deliverables}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          )) : <p className="text-sm text-muted-foreground">No milestone plan provided.</p>}
+                          )) : <p className="text-sm text-muted-foreground">Legacy proposal: no milestone plan.</p>}
                         </div>
                       </section>
                     </>
