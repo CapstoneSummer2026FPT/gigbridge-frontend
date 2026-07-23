@@ -63,6 +63,7 @@ import CareersScreen from '../features/company/screens/CareersScreen';
 import FAQScreen from '../features/company/screens/FAQScreen';
 import PressKitScreen from '../features/company/screens/PressKitScreen';
 import GuideScreen from '../features/company/screens/GuideScreen';
+import PolicyScreen from '../features/company/screens/PolicyScreen';
 import WalletDepositScreen from '../features/wallet/screens/WalletDepositScreen';
 import FreelancerPremiumScreen from '../features/premium/screens/FreelancerPremiumScreen';
 import FreelancerPricingScreen from '../features/premium/screens/FreelancerPricingScreen';
@@ -329,6 +330,9 @@ export const router = createBrowserRouter([
       { path: 'faq', element: <FAQScreen /> },
       { path: 'press-kit', element: <PressKitScreen /> },
       { path: 'guide', element: <GuideScreen /> },
+      { path: 'policies', element: <PolicyScreen /> },
+      { path: 'terms', element: <PolicyScreen /> },
+      { path: 'privacy', element: <PolicyScreen /> },
       { path: 'integrations/google-meet/callback', element: <GoogleMeetOAuthCallbackScreen /> },
 
       // 404

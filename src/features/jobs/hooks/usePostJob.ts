@@ -7,10 +7,12 @@ import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types
 
 import {
   JobPostVisibility,
+  JobPostStatus,
   type CreateDraftJobPostResponse,
   type GetMyJobPostDetailDto,
   type JobPostQuestionDto,
   type SaveDraftJobPostRequest,
+  type JobPostMilestonePlanDto,
 } from '../../../types/models/Job';
 import {
   formatJobDuration,
@@ -78,6 +80,7 @@ export interface PostJobRouteJobData {
   skillNameById?: Record<string, string>;
   skillNamesById?: Record<string, string>;
   interviewQuestions?: readonly PostJobRouteQuestion[] | null;
+  milestonePlans?: JobPostMilestonePlanDto[] | null;
 }
 
 export interface PostJobRouteState {
@@ -245,6 +248,23 @@ export function usePostJob() {
 
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
+  const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() => initialJobData?.milestonePlans || []);
+  const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
+  const [expandedMilestone, setExpandedMilestone] = useState<number | null>(
+    initialJobData?.milestonePlans?.length ? 0 : null
+  );
+  const milestonePlanTotal = useMemo(
+    () => milestonePlans.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    [milestonePlans]
+  );
+
+  useEffect(() => {
+    if (milestonePlans.length === 0) return;
+    const fixedBudget = milestonePlanTotal > 0 ? String(milestonePlanTotal) : '';
+    setForm(current => current.budgetMin === fixedBudget && current.budgetMax === fixedBudget
+      ? current
+      : { ...current, budgetMin: fixedBudget, budgetMax: fixedBudget });
+  }, [milestonePlanTotal, milestonePlans.length]);
 
   const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
@@ -266,8 +286,9 @@ export function usePostJob() {
       (!Number.isNaN(visibility) && visibility !== JobPostVisibility.Public) ||
       form.skillIds.length > 0 ||
       form.customSkillNames.length > 0 ||
-      questions.some(question => Boolean(question.questionText.trim()));
-  }, [form, questions]);
+      questions.some(question => Boolean(question.questionText.trim())) ||
+      milestonePlans.length > 0;
+  }, [form, questions, milestonePlans]);
 
   const shouldBlockNavigation = (Boolean(jobPostId) || hasSavableDraftContent) &&
     !navigationAllowedRef.current &&
@@ -358,6 +379,8 @@ export function usePostJob() {
 
         const job = jobResponse.data;
         setForm(formFromJobDetail(job));
+        setMilestonePlans(job.milestonePlans || []);
+        setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
         setSkillNameById(prev => {
           const next = { ...prev };
           (job.skills || []).forEach(skill => {
@@ -513,6 +536,7 @@ export function usePostJob() {
     setSkillNameById({});
     setForm(initialFormFromState(null));
     setQuestions([emptyQuestion()]);
+    setMilestonePlans([]);
   };
 
   const insertMarkdown = (before: string, after: string): void => {
@@ -771,6 +795,53 @@ export function usePostJob() {
     return null;
   };
 
+  const validateMilestonePlans = (): string | null => {
+    const errors: Record<string, string> = {};
+    const today = new Date().toISOString().slice(0, 10);
+    let previousDueDate: string | null = null;
+    let workItemError: string | null = null;
+
+    for (const [index, milestone] of milestonePlans.entries()) {
+      if (!milestone.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
+      if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
+      if (!/^\s*[1-9]\d*\s+(week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
+        errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in weeks, months or years.';
+      }
+      if (!milestone.dueDate) {
+        errors[`${index}.dueDate`] = 'Deadline is required.';
+      } else {
+        if (milestone.dueDate < today) errors[`${index}.dueDate`] = 'Deadline cannot be in the past.';
+        if (form.deadline && milestone.dueDate <= form.deadline) {
+          errors[`${index}.dueDate`] = 'Deadline must be after the proposal closing date.';
+        }
+        if (previousDueDate && milestone.dueDate <= previousDueDate) {
+          errors[`${index}.dueDate`] = 'Deadline must be later than the previous milestone deadline.';
+        }
+        previousDueDate = milestone.dueDate;
+      }
+      if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
+      if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = 'Acceptance criteria are required.';
+      if ((milestone.workItems || []).some(item => !item.title?.trim() || !item.description?.trim())) {
+        workItemError ??= `Every work item in milestone ${index + 1} requires title and description.`;
+      }
+    }
+
+    const firstErrorKey = Object.keys(errors)[0];
+    setMilestoneErrors(errors);
+    if (firstErrorKey) {
+      const [index, field] = firstErrorKey.split('.');
+      setExpandedMilestone(Number(index));
+      requestAnimationFrame(() => {
+        const target = document.querySelector<HTMLElement>(`[data-milestone-field="${index}.${field}"]`);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.focus();
+      });
+      return 'Complete the highlighted milestone fields before publishing.';
+    }
+
+    return workItemError;
+  };
+
   const showValidationError = (message: string): void => {
     setErrorMessage(message);
     toast.error(message);
@@ -801,6 +872,12 @@ export function usePostJob() {
           orderIndex: question.orderIndex,
           isRequired: question.isRequired,
         })),
+      milestonePlans: milestonePlans.map((milestone, orderIndex) => ({
+        ...milestone,
+        amount: Number(milestone.amount) || 0,
+        orderIndex,
+        workItems: (milestone.workItems || []).map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
+      })),
     };
   };
 
@@ -854,6 +931,11 @@ export function usePostJob() {
         showValidationError(questionValidationError);
         return;
       }
+      const planValidationError = validateMilestonePlans();
+      if (planValidationError) {
+        showValidationError(planValidationError);
+        return;
+      }
     }
 
     setSubmitMode(mode);
@@ -870,8 +952,11 @@ export function usePostJob() {
       }
 
       if (mode === 'publish') {
+        const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
+        if (!publishResponse.success) throw new Error(publishResponse.message || 'Project request could not be published.');
+        toast.success('Project request published.');
         allowNextNavigation();
-        navigate('/jobs/post/contract', { state: navigationState });
+        navigate('/jobs/my-jobs');
         return;
       }
 
@@ -968,6 +1053,12 @@ export function usePostJob() {
     draggedIndex,
     questions,
     setQuestions,
+    milestonePlans,
+    setMilestonePlans,
+    milestoneErrors,
+    setMilestoneErrors,
+    expandedMilestone,
+    setExpandedMilestone,
     isActionDisabled,
     questionsWithOrder,
     taxonomyError,

@@ -19,10 +19,12 @@ describe('proposal totals', () => {
   it('rounds up using the largest milestone unit', () => {
     expect(calculateProposalDuration(['3 weeks', '5 days'])).toBe('4 weeks');
     expect(calculateProposalDuration(['1 month', '6 weeks'])).toBe('3 months');
+    expect(calculateProposalDuration(['1 year', '6 months'])).toBe('2 years');
   });
 
   it('supports singular units and rejects invalid durations', () => {
     expect(parseProposalDuration('1 day')).toEqual({ amount: 1, unit: 'days' });
+    expect(parseProposalDuration('2 years')).toEqual({ amount: 2, unit: 'years' });
     expect(parseProposalDuration('1.5 weeks')).toBeNull();
     expect(parseProposalDuration('0 days')).toBeNull();
   });

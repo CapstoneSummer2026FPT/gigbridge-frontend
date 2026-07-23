@@ -9,6 +9,29 @@ import { MilestoneStatus } from '../../../../types/models/Contract';
 
 const navigateMock = vi.fn();
 
+vi.mock('../../../../hooks/useTranslation', () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: Record<string, unknown>) => {
+      if (values?.defaultValue) return String(values.defaultValue);
+      const labels: Record<string, string> = {
+        'contracts.submittedDeliverablesTitle': 'Submitted deliverables',
+        'contracts.noAttachedFiles': 'No attached files',
+        'contracts.filesCount': `${values?.count} files`,
+        'contracts.filesCountPlural': `${values?.count} files`,
+        'contracts.backToWorkspace': 'Back to workspace',
+        'contracts.approveWork': 'Approve work',
+        'contracts.acceptThisDelivery': 'Accept this delivery',
+        'contracts.requestRevisionOpt': 'Request revision',
+        'contracts.sendBackForChanges': 'Send it back',
+        'contracts.whatNeedsToBeChanged': 'What needs to be changed',
+        'contracts.requestRevisionBtn': 'Request revision',
+        'contracts.approveMilestoneBtn': 'Approve milestone',
+      };
+      return labels[key] || key;
+    },
+  }),
+}));
+
 vi.mock('../../../../api/contractAPI/GET', () => ({
   contractGetAPI: {
     getContractById: vi.fn(),
@@ -74,6 +97,16 @@ describe('ApproveMilestoneScreen', () => {
         due_date: '2026-07-10',
         status: MilestoneStatus.Submitted,
         paid_at: null,
+        workItems: [{
+          workItemId: 'work-item-1',
+          milestoneId: 'milestone-1',
+          title: 'Complete implementation',
+          description: 'Deliver the agreed implementation.',
+          deliverables: 'Source code',
+          estimatedDuration: '1 week',
+          orderIndex: 0,
+          status: 2,
+        }],
       },
     });
 
@@ -135,6 +168,8 @@ describe('ApproveMilestoneScreen', () => {
 
     const reason = screen.getByLabelText(/what needs to be changed/i);
     await user.type(reason, 'Please update the authentication flow.');
+    expect(submit).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: /complete implementation/i }));
     expect(submit).toBeEnabled();
 
     fireEvent.change(reason, { target: { value: 'a'.repeat(501) } });

@@ -35,6 +35,7 @@ export default function SignupScreen() {
   const [successMessage, setSuccessMessage] = useState('');
   const [googleClient, setGoogleClient] = useState<any>(null);
   const [googleError, setGoogleError] = useState('');
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
 
   const selectedRoleRef = useRef<UserRole | null>(null);
   useEffect(() => {
@@ -126,6 +127,11 @@ export default function SignupScreen() {
 
   const handleGoogleSignupClick = () => {
     setGoogleError('');
+    if (!acceptedPolicy) {
+      setGoogleError(t('auth.policyAcceptanceRequired'));
+      return;
+    }
+
     const currentRole = selectedRoleRef.current;
     if (currentRole === null) {
       if (isMounted.current) {
@@ -237,6 +243,12 @@ export default function SignupScreen() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!acceptedPolicy) {
+      setError(t('auth.policyAcceptanceRequired'));
+      return;
+    }
+
     setIsEmailLoading(true);
 
     try {
@@ -449,10 +461,35 @@ export default function SignupScreen() {
               <p className="mb-6 auth-subtitle auth-form-animate">
                 {t('auth.registeringAs', { role: selectedRole === UserRole.Client ? t('projects.client') : t('projects.freelancer') })}
               </p>
-              
+
+              <div className="mb-4 flex items-start gap-3 auth-form-animate">
+                <input
+                  id="policy-acceptance"
+                  type="checkbox"
+                  checked={acceptedPolicy}
+                  onChange={(event) => setAcceptedPolicy(event.target.checked)}
+                  disabled={isLoading}
+                  className="mt-1 h-4 w-4 shrink-0 accent-cyan-500"
+                />
+                <div className="text-sm leading-5 text-secondary">
+                  <label htmlFor="policy-acceptance" className="cursor-pointer">
+                    {t('auth.policyAgreement')}
+                  </label>
+                  <div className="mt-1 flex flex-wrap gap-x-2">
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
+                      {t('footer.termsOfService')}
+                    </a>
+                    <span aria-hidden="true">·</span>
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
+                      {t('footer.privacyPolicy')}
+                    </a>
+                  </div>
+                </div>
+              </div>
+
               <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn auth-form-animate"
                 onClick={handleGoogleSignupClick}
-                disabled={isLoading || !googleClient}
+                disabled={isLoading || !googleClient || !acceptedPolicy}
                 type="button">
                 {isGoogleLoading ? (
                   <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -587,7 +624,7 @@ export default function SignupScreen() {
                   </button>
                 </div>
 
-                <button type="submit" disabled={isLoading || !isOtpVerified || !formData.fullName || !formData.password}
+                <button type="submit" disabled={isLoading || !isOtpVerified || !formData.fullName || !formData.password || !acceptedPolicy}
                   className="btn-cyan w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed auth-form-animate hover:scale-[1.01] transition-transform">
                   {isLoading ? (
                     <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />

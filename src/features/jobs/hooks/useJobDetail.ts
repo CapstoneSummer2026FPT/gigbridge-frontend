@@ -55,6 +55,7 @@ const toJobFromClientDetail = (dto: GetMyJobPostDetailDto): Job => ({
   isRemote: !dto.location || dto.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
   visibility: dto.visibility,
+  milestonePlans: dto.milestonePlans || [],
 });
 
 const toJobFromDetail = (dto: JobPostDetailDto): Job => ({
@@ -76,6 +77,7 @@ const toJobFromDetail = (dto: JobPostDetailDto): Job => ({
   isRemote: !dto.location || dto.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
   visibility: dto.visibility ?? undefined,
+  milestonePlans: dto.milestonePlans || [],
   hasAiInterview: Boolean(dto.hasAiInterview),
 });
 

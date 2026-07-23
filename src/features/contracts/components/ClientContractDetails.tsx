@@ -26,6 +26,8 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import type { Dispute } from '../../../types/models/Dispute';
+import { ContractChangeControlPanel } from './ContractChangeControlPanel';
+import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 
 interface AuditTrailEntry {
   id: string;
@@ -83,9 +85,16 @@ export function ClientContractDetails({
   const [formMilestones, setFormMilestones] = useState<any[]>(
     milestones.map(m => ({
       milestoneId: m.id,
+      id: m.id,
       title: m.title,
+      description: m.description,
       amount: m.amount,
       dueDate: m.due_date ? m.due_date.substring(0, 10) : '',
+      estimatedDuration: m.estimatedDuration,
+      deliverables: m.deliverables,
+      acceptanceCriteria: m.acceptanceCriteria,
+      orderIndex: m.id ? milestones.indexOf(m) : 0,
+      workItems: (m.workItems || []).map((item, orderIndex) => ({ id: item.workItemId, ...item, orderIndex })),
     }))
   );
 
@@ -100,9 +109,16 @@ export function ClientContractDetails({
     setFormMilestones(
       milestones.map(m => ({
         milestoneId: m.id,
+        id: m.id,
         title: m.title,
+        description: m.description,
         amount: m.amount,
         dueDate: m.due_date ? m.due_date.substring(0, 10) : '',
+        estimatedDuration: m.estimatedDuration,
+        deliverables: m.deliverables,
+        acceptanceCriteria: m.acceptanceCriteria,
+        orderIndex: milestones.indexOf(m),
+        workItems: (m.workItems || []).map((item, orderIndex) => ({ id: item.workItemId, ...item, orderIndex })),
       }))
     );
   }, [contract, milestones]);
@@ -235,9 +251,12 @@ export function ClientContractDetails({
       ...formMilestones,
       {
         milestoneId: null,
+        id: null,
         title: `Milestone ${formMilestones.length + 1}`,
         amount: 0,
         dueDate: '',
+        orderIndex: formMilestones.length,
+        workItems: [{ title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex: 0 }],
       }
     ]);
   };
@@ -266,8 +285,20 @@ export function ClientContractDetails({
           milestoneId: m.milestoneId || null,
           title: m.title,
           amount: Number(m.amount),
-          dueDate: m.dueDate ? new Date(m.dueDate).toISOString() : null,
-          sortOrder: idx + 1,
+          dueDate: m.dueDate || null,
+          sortOrder: idx,
+          description: m.description || null,
+          estimatedDuration: m.estimatedDuration || null,
+          deliverables: m.deliverables || null,
+          acceptanceCriteria: m.acceptanceCriteria || null,
+          workItems: (m.workItems || []).map((item: any, workIndex: number) => ({
+            workItemId: item.id || item.workItemId || null,
+            title: item.title,
+            description: item.description || null,
+            deliverables: item.deliverables || null,
+            estimatedDuration: item.estimatedDuration || null,
+            orderIndex: workIndex,
+          })),
         })),
       };
 
@@ -514,7 +545,15 @@ export function ClientContractDetails({
                         {t('contracts.defineMilestonesTermsDesc')}
                       </div>
 
-                      <div className="space-y-4">
+                      <NestedMilestonePlanEditor
+                        value={formMilestones as EditableMilestonePlan[]}
+                        onChange={plans => setFormMilestones(plans.map(plan => ({ ...plan, milestoneId: plan.id || null })))}
+                        showDueDate
+                        title="Contract milestone and Work Breakdown Structure"
+                        description="Counter the final plan before sending it back to the freelancer for confirmation."
+                      />
+
+                      {false && <div className="space-y-4">
                         <div>
                           <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.scopeOfWork')}</label>
                           <textarea
@@ -576,7 +615,7 @@ export function ClientContractDetails({
                             placeholder={t('contracts.disputeTermsPlaceholder')}
                           />
                         </div>
-                      </div>
+                      </div>}
                     </div>
 
                     {/* Milestones schedule form */}
@@ -1311,6 +1350,7 @@ export function ClientContractDetails({
           </motion.div>
         )}
       </AnimatePresence>
+      {!isAdminOverride && <ContractChangeControlPanel contractId={contract.contractsId} contractStatus={contract.status} role="client" milestones={milestones} onApplied={onRefresh} />}
     </AppLayout>
   );
 }

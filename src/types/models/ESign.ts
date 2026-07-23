@@ -93,6 +93,10 @@ export interface ESignDocumentDto {
   expiresAt?: string | null;
   finalizedAt?: string | null;
   exportedPdfUrl?: string | null;
+  currentUserSignerRole: number | null;
+  canCurrentUserSign: boolean;
+  hasFinalArtifact: boolean;
+  finalizedDocumentFileName?: string | null;
   createdAt: string;
   updatedAt?: string | null;
   signatures: ESignSignatureDto[];
@@ -106,10 +110,13 @@ export interface ESignDocumentListItemDto {
   documentType: string;
   title: string;
   documentStatus: ESignDocumentStatus;
-  currentUserSignerRole: number;
+  currentUserSignerRole: number | null;
   currentUserSignedAt?: string | null;
   hasClientSigned: boolean;
   hasFreelancerSigned: boolean;
+  canCurrentUserSign: boolean;
+  hasFinalArtifact: boolean;
+  finalizedDocumentFileName?: string | null;
   signatureCount: number;
   finalizedAt?: string | null;
   exportedPdfUrl?: string | null;

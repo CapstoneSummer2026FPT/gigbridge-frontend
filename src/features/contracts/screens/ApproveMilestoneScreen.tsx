@@ -36,6 +36,7 @@ export default function ApproveMilestoneScreen() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [approvalAction, setApprovalAction] = useState<'pending' | 'approve' | 'reject'>('pending');
   const [approvalNotes, setApprovalNotes] = useState('');
+  const [revisionWorkItemIds, setRevisionWorkItemIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEscrowInfo, setShowEscrowInfo] = useState(true);
 
@@ -93,11 +94,12 @@ export default function ApproveMilestoneScreen() {
     try {
       setIsSubmitting(true);
       setError(null);
-      const response = await contractPostAPI.requestMilestoneRevision(contractId, milestone.id);
+      const response = await contractPostAPI.requestMilestoneRevision(contractId, milestone.id, approvalNotes.trim(), revisionWorkItemIds);
       if (!response.success) throw new Error(response.message || 'Failed to request revisions.');
       setMilestone({ ...milestone, status: MilestoneStatus.InProgress });
       setApprovalAction('pending');
       setApprovalNotes('');
+      setRevisionWorkItemIds([]);
       setSuccessMessage(t('contracts.revisionRequested'));
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : t('contracts.anErrorOccurred'));
@@ -175,6 +177,11 @@ export default function ApproveMilestoneScreen() {
               </div>}
             </section>}
 
+            <section className="approve-milestone-card">
+              <div className="approve-milestone-section-heading"><div><span className="approve-milestone-kicker">Work Breakdown Structure</span><h2>Completed work items</h2></div><span className="approve-milestone-count">{(milestone.workItems || []).length}</span></div>
+              <div className="space-y-2">{(milestone.workItems || []).map((workItem, index) => <div key={workItem.workItemId} className="rounded-lg border border-border p-3 text-sm"><div className="flex justify-between gap-2"><strong>{index + 1}. {workItem.title}</strong><span className="text-xs text-muted-foreground">{workItem.estimatedDuration}</span></div>{workItem.description && <p className="mt-1 text-xs text-muted-foreground">{workItem.description}</p>}{workItem.progressNote && <p className="mt-2 text-xs"><strong>Progress note:</strong> {workItem.progressNote}</p>}</div>)}</div>
+            </section>
+
             <section className="approve-milestone-card" aria-labelledby="deliverables-title">
               <div className="approve-milestone-section-heading">
                 <div><span className="approve-milestone-kicker">{t('contracts.reviewFiles')}</span><h2 id="deliverables-title">{t('contracts.submittedDeliverablesTitle')}</h2></div>
@@ -213,16 +220,20 @@ export default function ApproveMilestoneScreen() {
                   <button type="button" onClick={() => { setApprovalAction('reject'); setApprovalNotes(''); }} className={approvalAction === 'reject' ? 'is-selected is-revision' : ''} aria-pressed={approvalAction === 'reject'}>
                     <RotateCcw size={20} /><span><strong>{t('contracts.requestRevisionOpt')}</strong><small>{t('contracts.sendBackForChanges')}</small></span>
                   </button>
+                  <button type="button" onClick={() => navigate(`/contracts/${contractId}/disputes/create?milestoneId=${milestone.id}`)}>
+                    <AlertCircle size={20} /><span><strong>Open dispute</strong><small>Escalate this submitted milestone</small></span>
+                  </button>
                 </div>
                 {approvalAction !== 'pending' && <div className={`approve-milestone-confirmation approve-milestone-confirmation--${approvalAction}`}>
                   {approvalAction === 'approve' ? <p><strong>{t('contracts.confirmApprovalTitle')}</strong>{t('contracts.confirmApprovalDesc', { amount: formatContractAmount(milestone.amount) })}</p> : <>
                     <label htmlFor="revision-reason">{t('contracts.whatNeedsToBeChanged')} <span>{t('contracts.requiredFieldLabel')}</span></label>
                     <textarea id="revision-reason" value={approvalNotes} maxLength={NOTES_LIMIT + 1} onChange={(event) => setApprovalNotes(event.target.value)} placeholder={t('contracts.describeChangesPlaceholder')} rows={4} aria-describedby="revision-note revision-count" aria-invalid={notesTooLong} />
+                    <fieldset className="mt-3 space-y-2"><legend className="text-xs font-bold">Select work items requiring revision</legend>{(milestone.workItems || []).map(workItem => <label key={workItem.workItemId} className="flex items-start gap-2 text-xs"><input type="checkbox" checked={revisionWorkItemIds.includes(workItem.workItemId)} onChange={event => setRevisionWorkItemIds(ids => event.target.checked ? [...ids, workItem.workItemId] : ids.filter(id => id !== workItem.workItemId))} /><span>{workItem.title}</span></label>)}</fieldset>
                     <div className="approve-milestone-textarea-meta"><small id="revision-note">{t('contracts.validationOnlyNotice')}</small><span id="revision-count" className={notesTooLong ? 'is-over' : ''}>{approvalNotes.length}/{NOTES_LIMIT}</span></div>
                   </>}
                   <div className="approve-milestone-decision-actions">
                     <button type="button" onClick={() => setApprovalAction('pending')} disabled={isSubmitting}>{t('contracts.cancelDecision')}</button>
-                    <button type="button" className={approvalAction === 'approve' ? 'is-approve' : 'is-revision'} onClick={approvalAction === 'approve' ? handleApprove : handleReject} disabled={isSubmitting || notesTooLong || (approvalAction === 'reject' && !approvalNotes.trim())}>
+                    <button type="button" className={approvalAction === 'approve' ? 'is-approve' : 'is-revision'} onClick={approvalAction === 'approve' ? handleApprove : handleReject} disabled={isSubmitting || notesTooLong || (approvalAction === 'reject' && (!approvalNotes.trim() || revisionWorkItemIds.length === 0))}>
                       {isSubmitting ? <span className="approve-milestone-spinner approve-milestone-spinner--small" /> : approvalAction === 'approve' ? <CheckCircle2 size={18} /> : <RotateCcw size={18} />}
                       {isSubmitting ? t('contracts.submittingDecision') : approvalAction === 'approve' ? t('contracts.approveMilestoneBtn') : t('contracts.requestRevisionBtn')}
                     </button>

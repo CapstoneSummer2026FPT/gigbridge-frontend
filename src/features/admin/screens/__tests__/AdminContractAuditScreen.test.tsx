@@ -3,14 +3,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router';
 import AdminContractAuditScreen from '../AdminContractAuditScreen';
-import * as contractAPI from '../../../../api/contractAPI/GET';
+import { adminAPI } from '../../../../api/adminAPI';
 import type { ContractDto } from '../../../../types/models/Contract';
 import { ContractStatus } from '../../../../types/models/Contract';
 
 // Mock the contract API
-vi.mock('../../../../api/contractAPI/GET', () => ({
-  contractGetAPI: {
-    getAllContracts: vi.fn(),
+vi.mock('../../../../api/adminAPI', () => ({
+  adminAPI: {
+    getContracts: vi.fn(),
+    updateContract: vi.fn(),
   },
 }));
 
@@ -49,7 +50,7 @@ describe('AdminContractAuditScreen', () => {
   });
 
   it('renders loading state initially', () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockImplementation(
+    vi.mocked(adminAPI.getContracts).mockImplementation(
       () => new Promise(() => {}) // Never resolves
     );
 
@@ -63,7 +64,7 @@ describe('AdminContractAuditScreen', () => {
   });
 
   it('displays contracts after loading', async () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [mockContract],
       message: 'Success',
@@ -81,7 +82,7 @@ describe('AdminContractAuditScreen', () => {
   });
 
   it('displays correct statistics', async () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [mockContract],
       message: 'Success',
@@ -101,7 +102,7 @@ describe('AdminContractAuditScreen', () => {
   });
 
   it('filters contracts by status', async () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [mockContract],
       message: 'Success',
@@ -130,7 +131,7 @@ describe('AdminContractAuditScreen', () => {
   });
 
   it('searches contracts by title', async () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [mockContract],
       message: 'Success',
@@ -158,7 +159,7 @@ describe('AdminContractAuditScreen', () => {
   });
 
   it('displays compliance score bar', async () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [mockContract],
       message: 'Success',
@@ -191,7 +192,7 @@ describe('AdminContractAuditScreen', () => {
     global.URL.createObjectURL = mockCreateObjectURL;
     global.URL.revokeObjectURL = mockRevokeObjectURL;
 
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [mockContract],
       message: 'Success',
@@ -218,8 +219,8 @@ describe('AdminContractAuditScreen', () => {
     });
   });
 
-  it('falls back to mock contracts when API loading fails', async () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+  it('shows the API error without injecting mock contracts when loading fails', async () => {
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: false,
       message: 'Failed to load contracts',
     });
@@ -231,8 +232,9 @@ describe('AdminContractAuditScreen', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('SaaS Analytics Dashboard Contract')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load contracts')).toBeInTheDocument();
     });
+    expect(screen.queryByText('SaaS Analytics Dashboard Contract')).not.toBeInTheDocument();
   });
 
   it('displays overdue contract alerts', async () => {
@@ -242,7 +244,7 @@ describe('AdminContractAuditScreen', () => {
       endDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // Ended yesterday
     };
 
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [overdueContract],
       message: 'Success',
@@ -266,7 +268,7 @@ describe('AdminContractAuditScreen', () => {
       endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days remaining
     };
 
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [atRiskContract],
       message: 'Success',
@@ -284,7 +286,7 @@ describe('AdminContractAuditScreen', () => {
   });
 
   it('displays compliance checklist when contract is expanded', async () => {
-    vi.mocked(contractAPI.contractGetAPI.getAllContracts).mockResolvedValue({
+    vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
       data: [mockContract],
       message: 'Success',

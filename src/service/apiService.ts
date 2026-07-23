@@ -157,6 +157,29 @@ export const apiService = {
     }
   },
 
+  async download(endpoint: string): Promise<ApiResponse<Blob>> {
+    try {
+      const response = await apiClient.get<Blob>(normalizeEndpoint(endpoint), {
+        responseType: 'blob',
+      });
+
+      return {
+        success: true,
+        statusCode: response.status,
+        message: 'Success',
+        data: response.data,
+      };
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError;
+      return {
+        success: false,
+        statusCode: axiosError.response?.status ?? 500,
+        message: axiosError.message || 'Unable to download file',
+        data: undefined,
+      };
+    }
+  },
+
   async post<T>(endpoint: string, data: any = {}, headers: Record<string, string> = {}): Promise<ApiResponse<T>> {
     try {
       const response = await apiClient.post<ApiResponse<T>>(normalizeEndpoint(endpoint), data, { headers });

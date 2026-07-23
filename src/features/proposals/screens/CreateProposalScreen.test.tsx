@@ -52,9 +52,9 @@ describe('CreateProposalScreen Phase 2', () => {
 
     expect(screen.getByText('Requirement analysis Markdown editor')).toBeInTheDocument();
     expect(screen.getByText('Solution approach Markdown editor')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Work breakdown' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Milestone and payment plan' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Work Breakdown Structure' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add work item/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /milestone, payment plan and work breakdown structure/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add milestone/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save draft/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /submit proposal/i })).toBeInTheDocument();
@@ -64,9 +64,8 @@ describe('CreateProposalScreen Phase 2', () => {
     render(<CreateProposalScreen />);
     await screen.findByRole('heading', { name: 'Project Proposal' });
 
-    fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '12.5' } });
-    const spinButtons = screen.getAllByRole('spinbutton');
-    fireEvent.change(spinButtons[1], { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '12.5' } });
+    fireEvent.change(screen.getByLabelText('Duration'), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
 
     await waitFor(() => expect(createProposalMock).toHaveBeenCalled());
@@ -78,28 +77,28 @@ describe('CreateProposalScreen Phase 2', () => {
     expect(screen.getAllByText(/12\.5 G-coin/i).length).toBeGreaterThan(0);
   });
 
-  it('keeps manual rate and duration overrides while milestones change', async () => {
+  it('keeps budget locked to milestone total while allowing an overall duration override', async () => {
     render(<CreateProposalScreen />);
     await screen.findByRole('heading', { name: 'Project Proposal' });
 
-    fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '100' } });
-    const milestoneDuration = screen.getAllByRole('spinbutton')[1];
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } });
+    const milestoneDuration = screen.getByLabelText('Duration');
     fireEvent.change(milestoneDuration, { target: { value: '5' } });
 
-    fireEvent.change(screen.getByLabelText('Proposed rate'), { target: { value: '999' } });
+    expect(screen.queryByLabelText('Proposed rate')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Overall proposal duration'), { target: { value: '1' } });
     fireEvent.change(screen.getByLabelText('Overall proposal duration unit'), { target: { value: 'months' } });
 
-    fireEvent.change(screen.getByLabelText('Amount *'), { target: { value: '200' } });
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '200' } });
     fireEvent.change(milestoneDuration, { target: { value: '10' } });
 
-    expect(screen.getByLabelText('Proposed rate')).toHaveValue(999);
+    expect(screen.getByLabelText('Calculated proposal budget')).toHaveTextContent('200 G-coin');
     expect(screen.getByLabelText('Overall proposal duration')).toHaveValue(1);
 
     fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
     await waitFor(() => expect(createProposalMock).toHaveBeenCalled());
     expect(createProposalMock.mock.calls[0][0]).toMatchObject({
-      proposedBudget: 999,
+      proposedBudget: 200,
       proposedDuration: '1 month',
       milestonePlans: [expect.objectContaining({ amount: 200, estimatedDuration: '10 weeks' })],
     });
@@ -112,6 +111,6 @@ describe('CreateProposalScreen Phase 2', () => {
     fireEvent.click(screen.getByRole('button', { name: /add milestone/i }));
 
     expect(screen.getByRole('button', { name: /untitled milestone 2/i })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getAllByLabelText('Title *')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Milestone title')).toHaveLength(1);
   });
 });

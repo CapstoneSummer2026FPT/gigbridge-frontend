@@ -25,6 +25,7 @@ import {
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import type { Dispute } from '../../../types/models/Dispute';
+import { ContractChangeControlPanel } from './ContractChangeControlPanel';
 
 interface AuditTrailEntry {
   id: string;
@@ -900,8 +901,23 @@ export function FreelancerContractDetails({
                                           </div>
                                         </div>
 
+                                        {(milestone.description || milestone.deliverables || milestone.acceptanceCriteria) && <div className="grid gap-3 rounded-xl border border-border/40 bg-card/60 p-4 md:grid-cols-2">
+                                          {milestone.description && <div className="md:col-span-2"><strong className="text-[10px] uppercase text-muted-foreground">Scope</strong><p className="mt-1 whitespace-pre-wrap text-foreground">{milestone.description}</p></div>}
+                                          {milestone.deliverables && <div><strong className="text-[10px] uppercase text-muted-foreground">Deliverables</strong><p className="mt-1 whitespace-pre-wrap text-foreground">{milestone.deliverables}</p></div>}
+                                          {milestone.acceptanceCriteria && <div><strong className="text-[10px] uppercase text-muted-foreground">Acceptance criteria</strong><p className="mt-1 whitespace-pre-wrap text-foreground">{milestone.acceptanceCriteria}</p></div>}
+                                        </div>}
+
+                                        <div className="space-y-2">
+                                          <strong className="text-[10px] uppercase tracking-wider text-muted-foreground">Work Breakdown Structure</strong>
+                                          {(milestone.workItems || []).map((workItem, workIndex) => <div key={workItem.workItemId} className="rounded-lg border border-border/40 bg-card/60 p-3">
+                                            <div className="flex justify-between gap-2"><strong>{workIndex + 1}. {workItem.title}</strong><span className="text-muted-foreground">{workItem.estimatedDuration}</span></div>
+                                            {workItem.description && <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{workItem.description}</p>}
+                                            {workItem.deliverables && <p className="mt-1"><strong>Deliverables:</strong> {workItem.deliverables}</p>}
+                                          </div>)}
+                                        </div>
+
                                         {/* Submit deliverables CTA for active milestones */}
-                                        {milestone.status === MilestoneStatus.InProgress && (
+                                        {milestone.status === MilestoneStatus.InProgress && (milestone.workItems || []).every(item => Number(item.status) === 2) && (
                                           <div className="pt-2">
                                             <button
                                               onClick={() => navigate(`/milestones/${milestone.id}/submit`)}
@@ -1338,6 +1354,7 @@ export function FreelancerContractDetails({
           </motion.div>
         )}
       </AnimatePresence>
+      {!isAdminOverride && <ContractChangeControlPanel contractId={contract.contractsId} contractStatus={contract.status} role="freelancer" milestones={milestones} onApplied={onRefresh} />}
     </AppLayout>
   );
 }
