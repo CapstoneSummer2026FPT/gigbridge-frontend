@@ -2,24 +2,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   AlertCircle,
+  BellRing,
   Bot,
+  Bug,
   CheckCircle,
   ChevronRight,
+  Headphones,
   LoaderCircle,
+  Mail,
   Mic,
-  Play,
   RotateCcw,
   Send,
   Square,
-  Star,
   Video,
-  Volume2,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
+import { useTranslation } from '../../../hooks/useTranslation';
 import {
   aiInterviewAPI,
-  type AiInterviewFeedback,
   type AiInterviewQuestionResponse,
 } from '../../../api/externalAPI/aiInterviewAPI';
 import '../styles/ai-interview-screen.css';
@@ -31,6 +32,7 @@ type TtsState = 'idle' | 'streaming' | 'ready' | 'playing' | 'failed';
 interface InterviewRouteState {
   jobPostId?: string;
   jobTitle?: string;
+  interviewDefinitionId?: string | null;
   job?: {
     id?: string;
     jobPostsId?: string;
@@ -47,6 +49,109 @@ const responseValue = <T,>(
 const formatDuration = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
+const splitSubtitleCues = (text: string) => {
+  const displayText = text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .trim();
+  const sentences = displayText
+    .split(/(?<=[.!?…])\s+/)
+    .map(sentence => sentence.trim())
+    .filter(Boolean) ?? [];
+
+  return sentences.length ? sentences : displayText ? [displayText] : [];
+};
+
+const subtitleCueWeight = (cue: string) => {
+  const words = cue.match(/[\p{L}\p{N}]+(?:[.'\u2019-][\p{L}\p{N}]+)*/gu) ?? [];
+  const spokenWeight = words.reduce(
+    (total, word) => total + .72 + Math.min(word.length, 12) * .045,
+    0
+  );
+  const shortPauseWeight = (cue.match(/[,;:]/g) ?? []).length * .18;
+  const longPauseWeight = (cue.match(/[.!?\u2026]/g) ?? []).length * .34;
+
+  return Math.max(1, spokenWeight + shortPauseWeight + longPauseWeight);
+};
+
+const detectSubtitleCueStarts = async (audioBlob: Blob, cues: string[]) => {
+  if (cues.length < 2) return cues.length ? [0] : [];
+
+  const AudioContextConstructor = window.AudioContext
+    || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) return [];
+
+  const context = new AudioContextConstructor();
+  try {
+    const decoded = await context.decodeAudioData(await audioBlob.arrayBuffer());
+    const frameSeconds = .02;
+    const frameSize = Math.max(1, Math.floor(decoded.sampleRate * frameSeconds));
+    const frameCount = Math.ceil(decoded.length / frameSize);
+    const energy = new Float32Array(frameCount);
+
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const from = frame * frameSize;
+      const to = Math.min(decoded.length, from + frameSize);
+      let sumSquares = 0;
+      let sampleCount = 0;
+      for (let channel = 0; channel < decoded.numberOfChannels; channel += 1) {
+        const samples = decoded.getChannelData(channel);
+        for (let sample = from; sample < to; sample += 4) {
+          sumSquares += samples[sample] * samples[sample];
+          sampleCount += 1;
+        }
+      }
+      energy[frame] = sampleCount ? Math.sqrt(sumSquares / sampleCount) : 0;
+    }
+
+    const weights = cues.map(subtitleCueWeight);
+    const totalWeight = weights.reduce((total, weight) => total + weight, 0) || 1;
+    const starts = [0];
+    let cumulativeWeight = 0;
+
+    for (let cueIndex = 0; cueIndex < cues.length - 1; cueIndex += 1) {
+      cumulativeWeight += weights[cueIndex];
+      const expectedFrame = Math.round((cumulativeWeight / totalWeight) * frameCount);
+      const searchRadius = Math.max(18, Math.min(65, Math.round(frameCount * .09)));
+      const earliestFrame = Math.max(
+        Math.round((starts[starts.length - 1] + .28) / frameSeconds),
+        expectedFrame - searchRadius
+      );
+      const latestFrame = Math.min(frameCount - 2, expectedFrame + searchRadius);
+      let quietestFrame = Math.max(earliestFrame, Math.min(latestFrame, expectedFrame));
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      for (let frame = earliestFrame; frame <= latestFrame; frame += 1) {
+        const smoothedEnergy = (
+          (energy[frame - 1] ?? energy[frame])
+          + energy[frame]
+          + (energy[frame + 1] ?? energy[frame])
+        ) / 3;
+        const distancePenalty = Math.abs(frame - expectedFrame) / Math.max(1, searchRadius) * .012;
+        const score = smoothedEnergy + distancePenalty;
+        if (score < bestScore) {
+          bestScore = score;
+          quietestFrame = frame;
+        }
+      }
+
+      // Move from the middle of the pause to the beginning of the next voice
+      // onset so the new sentence appears when Alex actually starts saying it.
+      const quietThreshold = Math.max(.006, Math.min(.018, energy[quietestFrame] * 2.4));
+      let onsetFrame = quietestFrame;
+      const onsetLimit = Math.min(latestFrame, quietestFrame + 12);
+      while (onsetFrame < onsetLimit && energy[onsetFrame] <= quietThreshold) onsetFrame += 1;
+      starts.push(Math.min(decoded.duration, onsetFrame * frameSeconds));
+    }
+
+    return starts;
+  } catch {
+    return [];
+  } finally {
+    if (context.state !== 'closed') void context.close();
+  }
+};
+
 const preferredRecorderMimeType = () => {
   const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
   return candidates.find(type => MediaRecorder.isTypeSupported(type)) || '';
@@ -58,6 +163,7 @@ export default function AIInterviewScreen() {
   const { jobPostId: routeJobPostId } = useParams<{ jobPostId?: string }>();
   const [searchParams] = useSearchParams();
   const { user } = useApp();
+  const { t, i18n } = useTranslation();
   const routeState = (location.state || {}) as InterviewRouteState;
   const jobPostId = useMemo(() => (
     routeJobPostId
@@ -69,11 +175,13 @@ export default function AIInterviewScreen() {
     || ''
   ), [routeJobPostId, routeState.job?.id, routeState.job?.jobPostsId, routeState.jobPostId, searchParams]);
   const jobTitle = routeState.jobTitle || routeState.job?.title;
+  const interviewDefinitionId = searchParams.get('definitionId') || routeState.interviewDefinitionId;
 
   const [stage, setStage] = useState<InterviewStage>('intro');
   const [sessionId, setSessionId] = useState('');
   const [audioAccessToken, setAudioAccessToken] = useState('');
   const [questionIndex, setQuestionIndex] = useState(1);
+  const [questionCount, setQuestionCount] = useState(3);
   const [questionText, setQuestionText] = useState('');
   const [interviewLanguage, setInterviewLanguage] = useState('auto');
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
@@ -82,10 +190,13 @@ export default function AIInterviewScreen() {
   const [sttConfidence, setSttConfidence] = useState<number | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [ttsState, setTtsState] = useState<TtsState>('idle');
-  const [feedback, setFeedback] = useState<AiInterviewFeedback | null>(null);
+  const [ttsProvider, setTtsProvider] = useState('');
+  const [subtitleCueIndex, setSubtitleCueIndex] = useState(-1);
+  const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState('');
   const [actionError, setActionError] = useState('');
+  const subtitleCues = useMemo(() => splitSubtitleCues(questionText), [questionText]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -95,6 +206,22 @@ export default function AIInterviewScreen() {
   const questionAudioRef = useRef<HTMLAudioElement | null>(null);
   const questionAudioUrlRef = useRef('');
   const questionAudioAbortRef = useRef<AbortController | null>(null);
+  const subtitleFrameRef = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const silenceFrameRef = useRef<number | null>(null);
+  const speechDetectedRef = useRef(false);
+  const silenceStartedAtRef = useRef<number | null>(null);
+  const autoPlayedQuestionRef = useRef(0);
+
+  const stopSilenceDetection = () => {
+    if (silenceFrameRef.current !== null) cancelAnimationFrame(silenceFrameRef.current);
+    silenceFrameRef.current = null;
+    speechDetectedRef.current = false;
+    silenceStartedAtRef.current = null;
+    const context = audioContextRef.current;
+    audioContextRef.current = null;
+    if (context && context.state !== 'closed') void context.close();
+  };
 
   const clearRecordingTimers = () => {
     if (recordingTickerRef.current) clearInterval(recordingTickerRef.current);
@@ -104,12 +231,15 @@ export default function AIInterviewScreen() {
   };
 
   const releaseMicrophone = () => {
+    stopSilenceDetection();
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     mediaStreamRef.current = null;
     mediaRecorderRef.current = null;
   };
 
   const clearQuestionAudio = () => {
+    if (subtitleFrameRef.current !== null) cancelAnimationFrame(subtitleFrameRef.current);
+    subtitleFrameRef.current = null;
     questionAudioAbortRef.current?.abort();
     questionAudioAbortRef.current = null;
     questionAudioRef.current?.pause();
@@ -132,13 +262,14 @@ export default function AIInterviewScreen() {
   useEffect(() => {
     if (stage !== 'interview') return;
     clearQuestionAudio();
+    setSubtitleCueIndex(-1);
     setTtsState(audioAccessToken ? 'idle' : 'failed');
     return clearQuestionAudio;
   }, [audioAccessToken, questionIndex, stage]);
 
   const startInterview = async () => {
     if (!jobPostId) {
-      setStartError('Choose a job before starting an AI interview.');
+      setStartError(t('aiInterview.errors.chooseJob'));
       return;
     }
 
@@ -146,28 +277,35 @@ export default function AIInterviewScreen() {
     setStartError('');
 
     try {
-      const preferredLanguage = user?.preferred_language?.toLowerCase() || '';
+      const preferredLanguage = (
+        i18n.resolvedLanguage
+        || i18n.language
+        || user?.preferred_language
+        || ''
+      ).toLowerCase();
       const language = preferredLanguage.startsWith('vi')
         ? 'vi'
         : preferredLanguage.startsWith('en')
           ? 'en'
           : 'auto';
-      const response = await aiInterviewAPI.start(jobPostId, language);
+      const response = await aiInterviewAPI.start(jobPostId, language, interviewDefinitionId);
       const data = response.data;
 
       if (!response.success || !data) {
-        setStartError(response.message || 'The AI interview could not be started. Please try again.');
+        setStartError(t('aiInterview.errors.startFailed'));
         return;
       }
 
       const nextSessionId = responseValue<string>(data, 'sessionId', 'session_id');
       const nextQuestion = responseValue<string | null>(data, 'questionText', 'question_text');
       const nextQuestionIndex = responseValue<number>(data, 'questionIndex', 'question_index') ?? 1;
+      const nextQuestionCount = responseValue<number>(data, 'questionCount', 'question_count') ?? 3;
       const nextAudioToken = responseValue<string | null>(data, 'audioAccessToken', 'audio_access_token');
+      const nextTtsProvider = responseValue<string | null>(data, 'ttsProvider', 'tts_provider');
       const responseLanguage = data.language || language;
 
       if (!nextSessionId || !nextQuestion) {
-        setStartError('The interview service returned an incomplete session. Please try again.');
+        setStartError(t('aiInterview.errors.incompleteSession'));
         return;
       }
 
@@ -175,11 +313,13 @@ export default function AIInterviewScreen() {
       setAudioAccessToken(nextAudioToken || '');
       setQuestionText(nextQuestion);
       setQuestionIndex(nextQuestionIndex);
+      setQuestionCount(Math.max(nextQuestionIndex, nextQuestionCount));
+      setTtsProvider(nextTtsProvider || 'streaming');
       setInterviewLanguage(responseLanguage || 'auto');
       setAnswerState('idle');
       setStage('interview');
-    } catch (error) {
-      setStartError(error instanceof Error ? error.message : 'The AI interview could not be started. Please try again.');
+    } catch {
+      setStartError(t('aiInterview.errors.startFailed'));
     } finally {
       setIsStarting(false);
     }
@@ -188,7 +328,7 @@ export default function AIInterviewScreen() {
   const transcribeRecording = async (audioBlob: Blob) => {
     const response = await aiInterviewAPI.transcribeAudio(sessionId, audioBlob, interviewLanguage);
     if (!response.success || !response.data) {
-      setActionError(response.message || 'Your answer could not be transcribed. Please record it again.');
+      setActionError(response.message || t('aiInterview.errors.transcriptionFailed'));
       setAnswerState('idle');
       return;
     }
@@ -204,12 +344,13 @@ export default function AIInterviewScreen() {
   const beginAnswer = async () => {
     setActionError('');
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setActionError('This browser does not support microphone recording. Please use a current Chrome, Edge, Firefox, or Safari browser.');
+      setActionError(t('aiInterview.errors.unsupportedRecording'));
       return;
     }
 
     try {
       questionAudioRef.current?.pause();
+      setSubtitleCueIndex(-1);
       if (ttsState === 'playing') setTtsState('ready');
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -231,7 +372,7 @@ export default function AIInterviewScreen() {
       recorder.onerror = () => {
         clearRecordingTimers();
         releaseMicrophone();
-        setActionError('The browser could not record your answer. Please try again.');
+        setActionError(t('aiInterview.errors.recordingFailed'));
         setAnswerState('idle');
       };
       recorder.onstop = () => {
@@ -241,7 +382,7 @@ export default function AIInterviewScreen() {
         });
         releaseMicrophone();
         if (!blob.size) {
-          setActionError('No audio was captured. Please record your answer again.');
+          setActionError(t('aiInterview.errors.noAudioCaptured'));
           setAnswerState('idle');
           return;
         }
@@ -250,7 +391,50 @@ export default function AIInterviewScreen() {
 
       recorder.start(250);
       setRecordingSeconds(0);
+      setSilenceCountdown(null);
       setAnswerState('recording');
+
+      const AudioContextConstructor = window.AudioContext
+        || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioContextConstructor) {
+        const context = new AudioContextConstructor();
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 512;
+        context.createMediaStreamSource(stream).connect(analyser);
+        audioContextRef.current = context;
+        const samples = new Uint8Array(analyser.fftSize);
+
+        const monitorSilence = () => {
+          if (recorder.state !== 'recording') return;
+          analyser.getByteTimeDomainData(samples);
+          let energy = 0;
+          for (const sample of samples) {
+            const normalized = (sample - 128) / 128;
+            energy += normalized * normalized;
+          }
+          const volume = Math.sqrt(energy / samples.length);
+          const now = performance.now();
+
+          if (volume > 0.025) {
+            speechDetectedRef.current = true;
+            silenceStartedAtRef.current = null;
+            setSilenceCountdown(null);
+          } else if (speechDetectedRef.current) {
+            silenceStartedAtRef.current ??= now;
+            const silentFor = now - silenceStartedAtRef.current;
+            setSilenceCountdown(Math.max(0, Math.ceil((3000 - silentFor) / 1000)));
+            if (silentFor >= 3000) {
+              setAnswerState('transcribing');
+              recorder.stop();
+              return;
+            }
+          }
+
+          silenceFrameRef.current = requestAnimationFrame(monitorSilence);
+        };
+        silenceFrameRef.current = requestAnimationFrame(monitorSilence);
+      }
+
       recordingTickerRef.current = setInterval(
         () => setRecordingSeconds(seconds => seconds + 1),
         1000
@@ -266,8 +450,8 @@ export default function AIInterviewScreen() {
       releaseMicrophone();
       setActionError(
         error instanceof DOMException && error.name === 'NotAllowedError'
-          ? 'Microphone permission was denied. Allow microphone access and try again.'
-          : 'The microphone could not be opened. Please check your device and try again.'
+          ? t('aiInterview.errors.microphoneDenied')
+          : t('aiInterview.errors.microphoneUnavailable')
       );
       setAnswerState('idle');
     }
@@ -290,6 +474,7 @@ export default function AIInterviewScreen() {
     releaseMicrophone();
     recordingChunksRef.current = [];
     setRecordingSeconds(0);
+    setSilenceCountdown(null);
     setAnswerState('idle');
   };
 
@@ -304,7 +489,7 @@ export default function AIInterviewScreen() {
   const confirmAnswer = async () => {
     const correctedText = transcript.trim();
     if (!correctedText) {
-      setActionError('Review your transcript and enter an answer before submitting.');
+      setActionError(t('aiInterview.errors.noTranscript'));
       return;
     }
 
@@ -313,14 +498,13 @@ export default function AIInterviewScreen() {
     const response = await aiInterviewAPI.confirmAnswer(sessionId, correctedText);
     const data = response.data;
     if (!response.success || !data) {
-      setActionError(response.message || 'Your answer could not be submitted. Please try again.');
+      setActionError(t('aiInterview.errors.submitFailed'));
       setAnswerState('review');
       return;
     }
 
     const completed = responseValue<boolean>(data, 'isCompleted', 'is_completed') ?? false;
     if (completed) {
-      setFeedback(data.feedback || null);
       setStage('results');
       setAnswerState('idle');
       return;
@@ -328,19 +512,24 @@ export default function AIInterviewScreen() {
 
     const nextQuestion = responseValue<string | null>(data, 'questionText', 'question_text');
     const nextQuestionIndex = responseValue<number>(data, 'questionIndex', 'question_index');
+    const nextQuestionCount = responseValue<number>(data, 'questionCount', 'question_count');
+    const nextTtsProvider = responseValue<string | null>(data, 'ttsProvider', 'tts_provider');
     if (!nextQuestion || !nextQuestionIndex) {
-      setActionError('The interview service did not return the next question. Please try again.');
+      setActionError(t('aiInterview.errors.nextQuestionMissing'));
       setAnswerState('review');
       return;
     }
 
     setQuestionText(nextQuestion);
     setQuestionIndex(nextQuestionIndex);
+    if (nextQuestionCount) setQuestionCount(Math.max(nextQuestionIndex, nextQuestionCount));
+    setTtsProvider(nextTtsProvider || 'streaming');
     setInterviewLanguage(data.language || interviewLanguage);
     setTranscript('');
     setSttProvider('');
     setSttConfidence(null);
     setRecordingSeconds(0);
+    setSilenceCountdown(null);
     setAnswerState('idle');
   };
 
@@ -352,14 +541,14 @@ export default function AIInterviewScreen() {
         await questionAudioRef.current.play();
       } catch {
         setTtsState('failed');
-        setActionError('Question audio could not be replayed. You can continue using the question text.');
+        setActionError(t('aiInterview.errors.replayFailed'));
       }
       return;
     }
 
     if (!audioAccessToken) {
       setTtsState('failed');
-      setActionError('The interview audio token is unavailable. You can continue using the question text.');
+      setActionError(t('aiInterview.errors.voiceUnavailable'));
       return;
     }
 
@@ -368,6 +557,77 @@ export default function AIInterviewScreen() {
     questionAudioAbortRef.current = controller;
     setTtsState('streaming');
 
+    const bindSubtitlePlayback = (player: HTMLAudioElement, detectedCueStarts: number[]) => {
+      const cueWeights = subtitleCues.map(subtitleCueWeight);
+      const totalWeight = cueWeights.reduce((total, weight) => total + weight, 0) || 1;
+      const estimatedDuration = Math.max(2.5, totalWeight / 2.65);
+
+      const stopSubtitleClock = () => {
+        if (subtitleFrameRef.current !== null) cancelAnimationFrame(subtitleFrameRef.current);
+        subtitleFrameRef.current = null;
+      };
+
+      const syncCue = () => {
+        if (detectedCueStarts.length === subtitleCues.length) {
+          const playbackTime = player.currentTime + .025;
+          let detectedCue = 0;
+          for (let index = 1; index < detectedCueStarts.length; index += 1) {
+            if (playbackTime < detectedCueStarts[index]) break;
+            detectedCue = index;
+          }
+          setSubtitleCueIndex(current => current === detectedCue ? current : detectedCue);
+          return;
+        }
+
+        const duration = Number.isFinite(player.duration) && player.duration > 0
+          ? player.duration
+          : estimatedDuration;
+        // MP3s often contain a small encoder delay. Keeping that lead-in and
+        // the final breath outside the cue window prevents cumulative drift.
+        const leadIn = Math.min(.16, duration * .025);
+        const leadOut = Math.min(.14, duration * .02);
+        const spokenDuration = Math.max(.5, duration - leadIn - leadOut);
+        const spokenTime = Math.max(0, Math.min(spokenDuration, player.currentTime - leadIn));
+        const progressWeight = (spokenTime / spokenDuration) * totalWeight;
+        let cumulativeWeight = 0;
+        let nextCue = Math.max(0, subtitleCues.length - 1);
+
+        for (let index = 0; index < cueWeights.length; index += 1) {
+          cumulativeWeight += cueWeights[index];
+          if (progressWeight < cumulativeWeight) {
+            nextCue = index;
+            break;
+          }
+        }
+
+        setSubtitleCueIndex(current => current === nextCue ? current : nextCue);
+      };
+
+      const runSubtitleClock = () => {
+        syncCue();
+        if (!player.paused && !player.ended) {
+          subtitleFrameRef.current = requestAnimationFrame(runSubtitleClock);
+        }
+      };
+
+      player.onplay = () => {
+        stopSubtitleClock();
+        setTtsState('playing');
+        setSubtitleCueIndex(subtitleCues.length ? 0 : -1);
+        subtitleFrameRef.current = requestAnimationFrame(runSubtitleClock);
+      };
+      player.onended = () => {
+        stopSubtitleClock();
+        setSubtitleCueIndex(-1);
+        setTtsState('ready');
+      };
+      player.onerror = () => {
+        stopSubtitleClock();
+        setSubtitleCueIndex(-1);
+        setTtsState('failed');
+      };
+    };
+
     try {
       const response = await aiInterviewAPI.streamQuestionAudio(
         sessionId,
@@ -375,86 +635,43 @@ export default function AIInterviewScreen() {
         audioAccessToken,
         controller.signal
       );
-      if (!response.body) throw new Error('The browser did not expose the audio response stream.');
+      if (!response.body) throw new Error('audio_stream_unavailable');
 
       const contentType = (response.headers.get('Content-Type') || 'audio/mpeg').split(';')[0];
-      const supportsMediaSource = typeof MediaSource !== 'undefined'
-        && MediaSource.isTypeSupported(contentType);
-
-      if (supportsMediaSource) {
-        const mediaSource = new MediaSource();
-        const objectUrl = URL.createObjectURL(mediaSource);
-        questionAudioUrlRef.current = objectUrl;
-        const player = new Audio(objectUrl);
-        player.onplay = () => setTtsState('playing');
-        player.onended = () => setTtsState('ready');
-        player.onerror = () => setTtsState('failed');
-        questionAudioRef.current = player;
-
-        const playPromise = player.play();
-        await new Promise<void>((resolve, reject) => {
-          mediaSource.addEventListener('sourceopen', () => resolve(), { once: true });
-          mediaSource.addEventListener('error', () => reject(new Error('Audio stream could not be opened.')), { once: true });
-        });
-
-        const sourceBuffer = mediaSource.addSourceBuffer(contentType);
-        const reader = response.body.getReader();
-        let receivedAudio = false;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (!value?.byteLength) continue;
-          receivedAudio = true;
-          const audioBytes = value.buffer.slice(
-            value.byteOffset,
-            value.byteOffset + value.byteLength
-          ) as ArrayBuffer;
-          await new Promise<void>((resolve, reject) => {
-            sourceBuffer.addEventListener('updateend', () => resolve(), { once: true });
-            sourceBuffer.addEventListener('error', () => reject(new Error('Audio chunk could not be appended.')), { once: true });
-            sourceBuffer.appendBuffer(audioBytes);
-          });
-        }
-        if (!receivedAudio) throw new Error('The TTS provider returned no audio.');
-        if (mediaSource.readyState === 'open' && !sourceBuffer.updating) mediaSource.endOfStream();
-        await playPromise;
-      } else {
-        // Safari and older browsers without MP3 MediaSource support retain a
-        // complete-file fallback while modern browsers play progressively.
-        const reader = response.body.getReader();
-        const chunks: Uint8Array[] = [];
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value?.byteLength) chunks.push(value);
-        }
-        if (!chunks.length) throw new Error('The TTS provider returned no audio.');
-        const objectUrl = URL.createObjectURL(new Blob(chunks as BlobPart[], { type: contentType }));
-        questionAudioUrlRef.current = objectUrl;
-        const player = new Audio(objectUrl);
-        player.onplay = () => setTtsState('playing');
-        player.onended = () => setTtsState('ready');
-        player.onerror = () => setTtsState('failed');
-        questionAudioRef.current = player;
-        await player.play();
+      // Buffer the complete clip before playback so its real duration is known.
+      // Progressive playback made subtitle timing depend on a guessed duration.
+      const reader = response.body.getReader();
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value?.byteLength) chunks.push(value);
       }
+      if (!chunks.length) throw new Error('audio_stream_empty');
+      const audioBlob = new Blob(chunks as BlobPart[], { type: contentType });
+      const detectedCueStarts = await detectSubtitleCueStarts(audioBlob, subtitleCues);
+      const objectUrl = URL.createObjectURL(audioBlob);
+      questionAudioUrlRef.current = objectUrl;
+      const player = new Audio(objectUrl);
+      player.preload = 'auto';
+      bindSubtitlePlayback(player, detectedCueStarts);
+      questionAudioRef.current = player;
+      await player.play();
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
+      setSubtitleCueIndex(-1);
       setTtsState('failed');
-      setActionError(
-        error instanceof Error
-          ? error.message
-          : 'Question audio could not be streamed. You can continue using the question text.'
-      );
+      setActionError(t('aiInterview.errors.audioStreamFailed'));
     } finally {
       if (questionAudioAbortRef.current === controller) questionAudioAbortRef.current = null;
     }
   };
 
-  const score = feedback?.score ?? 0;
-  const technicalSkills = feedback?.technicalSkills ?? feedback?.technical_skills ?? [];
-  const softSkills = feedback?.softSkills ?? feedback?.soft_skills ?? [];
-  const recommendedHire = feedback?.recommendedHire ?? feedback?.recommended_hire ?? false;
+  useEffect(() => {
+    if (stage !== 'interview' || !audioAccessToken || autoPlayedQuestionRef.current === questionIndex) return;
+    autoPlayedQuestionRef.current = questionIndex;
+    void playQuestion();
+  }, [audioAccessToken, questionIndex, stage]);
 
   return (
     <AppLayout>
@@ -465,25 +682,25 @@ export default function AIInterviewScreen() {
               <div className="w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center animate-orb bg-gradient-to-br from-purple to-cyan">
                 <Video size={40} className="text-background" />
               </div>
-              <h1 className="text-4xl font-black text-primary mb-4">AI Instant Interview</h1>
+              <h1 className="text-4xl font-black text-primary mb-4">{t('aiInterview.intro.title')}</h1>
               <p className="text-lg mb-8 text-secondary">
-                Answer one question at a time. Your microphone is only active while you are recording an answer.
+                {t('aiInterview.intro.description')}
               </p>
 
               {jobTitle && (
                 <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-purple/30 bg-purple/10 px-4 py-2 text-sm text-primary">
                   <Bot size={15} className="text-purple" />
-                  Interviewing for <span className="font-semibold">{jobTitle}</span>
+                  {t('aiInterview.intro.interviewingFor')} <span className="font-semibold">{jobTitle}</span>
                 </div>
               )}
 
               <div className="glass-card p-6 mb-8 text-left">
-                <h2 className="text-primary font-semibold mb-4">How it works</h2>
+                <h2 className="text-primary font-semibold mb-4">{t('aiInterview.intro.howItWorks')}</h2>
                 <div className="space-y-3 text-sm text-secondary">
-                  <p>1. Listen to or read the AI-generated interview question.</p>
-                  <p>2. Press <span className="font-semibold text-primary">Answer question</span> when you are ready.</p>
-                  <p>3. Press <span className="font-semibold text-primary">Finish answer</span> to stop recording and transcribe your response.</p>
-                  <p>4. Review the transcript, then submit it for the next question.</p>
+                  <p>{t('aiInterview.intro.steps.question')}</p>
+                  <p>{t('aiInterview.intro.steps.answer')}</p>
+                  <p>{t('aiInterview.intro.steps.finish')}</p>
+                  <p>{t('aiInterview.intro.steps.review')}</p>
                 </div>
               </div>
 
@@ -500,13 +717,13 @@ export default function AIInterviewScreen() {
                 disabled={isStarting}
               >
                 {isStarting ? <LoaderCircle size={20} className="animate-spin" /> : <Video size={20} />}
-                {isStarting ? 'Starting Interview...' : 'Start AI Interview'}
+                {isStarting ? t('aiInterview.actions.starting') : t('aiInterview.actions.start')}
                 {!isStarting && <ChevronRight size={20} />}
               </button>
 
               {!jobPostId && (
                 <button className="mt-4 text-sm font-semibold text-cyan hover:underline" onClick={() => navigate('/jobs/browse')}>
-                  Browse jobs to choose an interview role
+                  {t('aiInterview.actions.browseToChoose')}
                 </button>
               )}
             </div>
@@ -514,220 +731,221 @@ export default function AIInterviewScreen() {
         )}
 
         {stage === 'interview' && (
-          <div className="flex-1 flex flex-col p-4 md:p-6">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-secondary">AI interview</p>
-                <h1 className="text-xl font-bold text-primary">Question {questionIndex}</h1>
+          <div className="ai-interview-room">
+            <header className="ai-interview-topbar">
+              <div className="ai-interview-heading">
+                <span className="ai-live-dot" aria-hidden="true" />
+                <div>
+                  <p>{t('aiInterview.room.inProgress')}</p>
+                  <h1>{jobTitle || t('aiInterview.room.defaultTitle')}</h1>
+                </div>
               </div>
-              <span className="badge-cyan text-[10px]">Session active</span>
-            </div>
+              <div className="ai-question-progress" aria-label={t('aiInterview.room.questionOf', { current: questionIndex, total: questionCount })}>
+                <div className="ai-question-progress-copy">
+                  <span>{t('aiInterview.room.currentQuestion')}</span>
+                  <strong>{questionIndex}<small> / {questionCount}</small></strong>
+                </div>
+                <div className="ai-question-progress-track" role="progressbar" aria-valuemin={1} aria-valuemax={questionCount} aria-valuenow={questionIndex}>
+                  <span style={{ width: `${Math.min(100, (questionIndex / questionCount) * 100)}%` }} />
+                </div>
+              </div>
+            </header>
 
             {actionError && (
-              <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
-                <AlertCircle size={16} className="shrink-0" />
+              <div role="alert" className="ai-interview-alert">
+                <AlertCircle size={17} />
                 <span>{actionError}</span>
               </div>
             )}
 
-            <div className="grid flex-1 grid-cols-1 gap-5 lg:grid-cols-2">
-              <section className="glass-card flex flex-col overflow-hidden">
-                <div className="relative flex min-h-[220px] flex-1 items-center justify-center bg-gradient-to-br from-purple/10 to-cyan/10 p-8">
-                  <div className={`w-32 h-32 rounded-full flex items-center justify-center bg-gradient-to-br from-purple to-cyan ${ttsState === 'playing' ? 'animate-orb' : ''}`}>
-                    <Bot size={56} className="text-background" />
+            <main className="ai-interview-conversation">
+              <section className={`ai-interviewer-stage ${ttsState === 'playing' ? 'is-speaking' : ''}`} aria-label={t('aiInterview.interviewer.ariaLabel')}>
+                <div className="ai-stage-glow ai-stage-glow-one" />
+                <div className="ai-stage-glow ai-stage-glow-two" />
+                <div className="ai-interviewer-identity">
+                  <span className="ai-online-indicator" />
+                  <span>{t('aiInterview.interviewer.identity')}</span>
+                </div>
+
+                <div className={`ai-avatar-shell ${ttsState === 'playing' ? 'is-speaking' : ''}`}>
+                  <span className="ai-avatar-ring ai-avatar-ring-one" />
+                  <span className="ai-avatar-ring ai-avatar-ring-two" />
+                  <span className="ai-avatar-ring ai-avatar-ring-three" />
+                  <div className="ai-avatar-face">
+                    <Bot size={62} strokeWidth={1.7} />
                   </div>
-                  <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-purple/40 bg-purple/20 px-3 py-1.5">
-                    <Bot size={12} className="text-purple" />
-                    <span className="text-xs font-medium text-primary">GigBridge AI Interviewer</span>
+                  <div className="ai-avatar-audio" aria-hidden="true">
+                    {Array.from({ length: 5 }).map((_, index) => <span key={index} />)}
                   </div>
                 </div>
 
-                <div className="p-5">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-purple">Current question</p>
-                  <p className="text-base font-medium leading-relaxed text-primary">{questionText}</p>
-                  <div className="mt-4 flex items-center gap-3">
-                    <button
-                      onClick={playQuestion}
-                      disabled={ttsState === 'streaming' || ttsState === 'playing' || !audioAccessToken}
-                      className="btn-ghost-cyan flex items-center gap-2 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {ttsState === 'streaming' ? (
-                        <LoaderCircle size={15} className="animate-spin" />
-                      ) : ttsState === 'playing' ? (
-                        <Volume2 size={15} />
-                      ) : (
-                        <Play size={15} />
-                      )}
-                      {ttsState === 'streaming'
-                        ? 'Streaming voice...'
-                        : ttsState === 'playing'
-                          ? 'Playing question'
-                          : ttsState === 'failed'
-                            ? 'Retry voice'
-                            : 'Play question'}
-                    </button>
-                    <span className="text-xs text-secondary">You can replay the question before answering.</span>
+                {ttsState === 'playing' && subtitleCueIndex >= 0 && (
+                  <div key={subtitleCueIndex} className="ai-interviewer-subtitle" role="status" aria-live="polite">
+                    <span>Alex</span>
+                    <p>{subtitleCues[subtitleCueIndex]}</p>
                   </div>
+                )}
+
+                <div className="ai-interviewer-status" aria-live="polite">
+                  <h2>
+                    {ttsState === 'streaming' && t('aiInterview.interviewer.states.preparing')}
+                    {ttsState === 'playing' && t('aiInterview.interviewer.states.speaking')}
+                    {ttsState === 'ready' && t('aiInterview.interviewer.states.yourTurn')}
+                    {ttsState === 'failed' && t('aiInterview.interviewer.states.failed')}
+                    {ttsState === 'idle' && t('aiInterview.interviewer.states.ready')}
+                  </h2>
+                  <p>{t('aiInterview.interviewer.audioOnly')}</p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={playQuestion}
+                  disabled={ttsState === 'streaming' || ttsState === 'playing' || !audioAccessToken}
+                  className="ai-replay-button"
+                >
+                  {ttsState === 'streaming' ? <LoaderCircle size={17} className="animate-spin" /> : <Headphones size={17} />}
+                  {ttsState === 'failed' ? t('aiInterview.actions.retryAudio') : t('aiInterview.actions.hearAgain')}
+                </button>
               </section>
 
-              <section className="glass-card flex flex-col p-5 md:p-6">
-                <div className="mb-5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-cyan">Your answer</p>
-                  <h2 className="mt-1 text-lg font-bold text-primary">
-                    {answerState === 'review' ? 'Review your transcript' : 'Record when you are ready'}
-                  </h2>
+              <section className="ai-answer-panel" aria-label={t('aiInterview.answer.ariaLabel')}>
+                <div className="ai-answer-panel-header">
+                  <div>
+                    <p>{t('aiInterview.answer.yourTurn')}</p>
+                    <h2>
+                      {answerState === 'idle' && t('aiInterview.answer.states.idle')}
+                      {answerState === 'recording' && t('aiInterview.answer.states.recording')}
+                      {answerState === 'transcribing' && t('aiInterview.answer.states.transcribing')}
+                      {answerState === 'review' && t('aiInterview.answer.states.review')}
+                      {answerState === 'submitting' && t('aiInterview.answer.states.submitting')}
+                    </h2>
+                  </div>
+                  <span className={`ai-mic-status ${answerState === 'recording' ? 'is-live' : ''}`}>
+                    <Mic size={13} /> {answerState === 'recording' ? t('aiInterview.answer.micOn') : t('aiInterview.answer.micOff')}
+                  </span>
                 </div>
 
+                <div className="ai-answer-panel-body">
                 {answerState === 'idle' && (
-                  <div className="flex flex-1 flex-col items-center justify-center text-center">
-                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-cyan/30 bg-cyan/10">
-                      <Mic size={30} className="text-cyan" />
-                    </div>
-                    <p className="mb-6 max-w-sm text-sm text-secondary">
-                      Your microphone is currently off. Press the button only when you are ready to answer this question.
-                    </p>
-                    <button onClick={beginAnswer} className="btn-purple flex items-center gap-2 px-8 py-3 text-sm">
-                      <Mic size={17} />
-                      Answer question
+                  <div className="ai-answer-idle">
+                    <button
+                      type="button"
+                      onClick={beginAnswer}
+                      disabled={ttsState === 'streaming' || ttsState === 'playing'}
+                      className="ai-record-button"
+                    >
+                      <span><Mic size={28} /></span>
+                      {t('aiInterview.actions.answerQuestion')}
                     </button>
+                    <p>{t('aiInterview.answer.microphoneHint')}</p>
                   </div>
                 )}
 
                 {answerState === 'recording' && (
-                  <div className="flex flex-1 flex-col items-center justify-center text-center">
-                    <div className="mb-4 flex h-20 w-20 animate-pulse items-center justify-center rounded-full border border-red-500/40 bg-red-500/15">
-                      <Mic size={30} className="text-red-500" />
+                  <div className="ai-recording-state">
+                    <div className="ai-recording-meta">
+                      <span className="ai-recording-pill"><i /> {t('aiInterview.recording.label')}</span>
+                      <time>{formatDuration(recordingSeconds)}</time>
                     </div>
-                    <p className="text-2xl font-black text-primary">{formatDuration(recordingSeconds)}</p>
-                    <p className="mb-6 mt-2 text-sm text-secondary">Recording your answer · 90 seconds maximum</p>
-                    <div className="flex flex-wrap justify-center gap-3">
-                      <button onClick={finishAnswer} className="btn-purple flex items-center gap-2 px-6 py-3 text-sm">
-                        <Square size={15} fill="currentColor" />
-                        Finish answer
-                      </button>
-                      <button onClick={cancelAnswer} className="btn-ghost-cyan px-6 py-3 text-sm">
-                        Cancel
+                    <div className="ai-answer-waveform" aria-hidden="true">
+                      {Array.from({ length: 28 }).map((_, index) => (
+                        <span key={index} style={{ animationDelay: `${(index % 7) * -0.09}s` }} />
+                      ))}
+                    </div>
+                    <p className="ai-silence-hint" aria-live="polite">
+                      {silenceCountdown === null
+                        ? t('aiInterview.recording.finishHint')
+                        : t('aiInterview.recording.silenceCountdown', { count: silenceCountdown })}
+                    </p>
+                    <div className="ai-recording-actions">
+                      <button type="button" onClick={cancelAnswer} className="ai-secondary-action">{t('aiInterview.actions.cancel')}</button>
+                      <button type="button" onClick={finishAnswer} className="ai-primary-action">
+                        <Square size={14} fill="currentColor" /> {t('aiInterview.actions.finishAnswer')}
                       </button>
                     </div>
                   </div>
                 )}
 
                 {answerState === 'transcribing' && (
-                  <div className="flex flex-1 flex-col items-center justify-center text-center">
-                    <LoaderCircle size={38} className="mb-4 animate-spin text-cyan" />
-                    <p className="font-semibold text-primary">Transcribing your answer...</p>
-                    <p className="mt-2 text-sm text-secondary">The speech-to-text service is processing your recording.</p>
+                  <div className="ai-processing-state">
+                    <div className="ai-processing-orb"><LoaderCircle size={30} className="animate-spin" /></div>
+                    <strong>{t('aiInterview.transcribing.title')}</strong>
+                    <p>{t('aiInterview.transcribing.description')}</p>
                   </div>
                 )}
 
                 {answerState === 'review' && (
-                  <div className="flex flex-1 flex-col">
-                    <label htmlFor="interview-transcript" className="mb-2 text-sm font-semibold text-primary">
-                      Transcript
-                    </label>
+                  <div className="ai-review-state">
+                    <div className="ai-transcript-label">
+                      <label htmlFor="interview-transcript">{t('aiInterview.review.whatWeHeard')}</label>
+                      <span>{t('aiInterview.review.readOnly')}</span>
+                    </div>
                     <textarea
                       id="interview-transcript"
                       value={transcript}
-                      onChange={event => setTranscript(event.target.value)}
-                      rows={9}
-                      className="w-full flex-1 resize-none rounded-xl border border-border bg-background/60 p-4 text-sm leading-relaxed text-primary outline-none transition focus:border-cyan"
+                      readOnly
+                      aria-readonly="true"
+                      rows={7}
+                      className="ai-transcript-input"
                     />
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-secondary">
-                      <span>Provider: {sttProvider}</span>
-                      {sttConfidence !== null && <span>· Confidence: {Math.round(sttConfidence * 100)}%</span>}
-                      <span>· Edit any transcription mistakes before submitting.</span>
-                    </div>
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <button onClick={recordAgain} className="btn-ghost-cyan flex items-center gap-2 px-5 py-3 text-sm">
-                        <RotateCcw size={15} />
-                        Record again
+                    <div className="ai-review-actions">
+                      <button type="button" onClick={recordAgain} className="ai-secondary-action">
+                        <RotateCcw size={15} /> {t('aiInterview.actions.speakAgain')}
                       </button>
-                      <button onClick={confirmAnswer} className="btn-purple flex flex-1 items-center justify-center gap-2 px-5 py-3 text-sm">
-                        <Send size={15} />
-                        Submit answer
+                      <button type="button" onClick={confirmAnswer} className="ai-primary-action ai-submit-answer">
+                        {t('aiInterview.actions.submitAnswer')} <Send size={15} />
                       </button>
                     </div>
                   </div>
                 )}
 
                 {answerState === 'submitting' && (
-                  <div className="flex flex-1 flex-col items-center justify-center text-center">
-                    <LoaderCircle size={38} className="mb-4 animate-spin text-purple" />
-                    <p className="font-semibold text-primary">Generating the next question...</p>
-                    <p className="mt-2 text-sm text-secondary">The AI interviewer is reviewing your answer.</p>
+                  <div className="ai-processing-state">
+                    <div className="ai-processing-orb is-purple"><LoaderCircle size={30} className="animate-spin" /></div>
+                    <strong>{t('aiInterview.submitting.title')}</strong>
+                    <p>{t('aiInterview.submitting.description')}</p>
                   </div>
                 )}
+                </div>
+
+                <details className="ai-debug-console">
+                  <summary><Bug size={13} /> {t('aiInterview.debug.title')}</summary>
+                  <dl>
+                    <div><dt>{t('aiInterview.debug.session')}</dt><dd>{sessionId ? `${sessionId.slice(0, 8)}…` : t('aiInterview.debug.notStarted')}</dd></div>
+                    <div><dt>{t('aiInterview.debug.question')}</dt><dd>{questionIndex} / {questionCount}</dd></div>
+                    <div><dt>{t('aiInterview.debug.language')}</dt><dd>{interviewLanguage}</dd></div>
+                    <div><dt>TTS</dt><dd>{ttsProvider || t('aiInterview.debug.pending')} · {t(`aiInterview.debug.ttsStates.${ttsState}`)}</dd></div>
+                    <div><dt>STT</dt><dd>{sttProvider || t('aiInterview.debug.notUsedYet')}</dd></div>
+                    <div><dt>{t('aiInterview.debug.confidence')}</dt><dd>{sttConfidence === null ? '—' : `${Math.round(sttConfidence * 100)}%`}</dd></div>
+                  </dl>
+                </details>
               </section>
-            </div>
+            </main>
           </div>
         )}
 
         {stage === 'results' && (
-          <div className="flex-1 flex items-center justify-center p-6">
-            <div className="max-w-3xl w-full">
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center bg-green/20 border-2 border-green">
-                  <CheckCircle size={36} className="text-green" />
-                </div>
-                <h1 className="text-3xl font-black text-primary mb-2">Interview Complete</h1>
-                <p className="text-secondary">Your answers were evaluated from the completed interview transcript.</p>
+          <div className="ai-interview-complete-page">
+            <section className="ai-interview-complete-card">
+              <div className="ai-complete-icon"><CheckCircle size={34} /></div>
+              <p className="ai-complete-eyebrow">{t('aiInterview.complete.eyebrow')}</p>
+              <h1>{t('aiInterview.complete.title')}</h1>
+              <p className="ai-complete-message">
+                {t('aiInterview.complete.message')}
+              </p>
+
+              {jobTitle && <div className="ai-complete-job"><Bot size={15} /> {jobTitle}</div>}
+
+              <div className="ai-complete-notice">
+                <div><BellRing size={19} /><span><strong>{t('aiInterview.complete.inAppTitle')}</strong><small>{t('aiInterview.complete.inAppDescription')}</small></span></div>
+                <div><Mail size={19} /><span><strong>{t('aiInterview.complete.emailTitle')}</strong><small>{t('aiInterview.complete.emailDescription')}</small></span></div>
               </div>
 
-              <div className="glass-card neon-border-green p-8 mb-6 text-center">
-                <p className="text-sm mb-2 text-secondary">Overall Suitability Score</p>
-                <p className="text-7xl font-black mb-2 text-green">{score}%</p>
-                <p className="text-lg text-primary font-semibold">
-                  {recommendedHire ? 'Recommended candidate' : 'Further review recommended'}
-                </p>
-                <div className="flex items-center justify-center gap-1 mt-2">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <Star
-                      key={index}
-                      size={18}
-                      fill={index < Math.round(score / 20) ? '#F59E0B' : 'none'}
-                      className="text-amber"
-                    />
-                  ))}
-                </div>
+              <div className="ai-complete-actions">
+                <button className="ai-secondary-action" onClick={() => navigate('/jobs/browse')}>{t('aiInterview.actions.browseMoreJobs')}</button>
+                <button className="ai-primary-action" onClick={() => navigate('/freelancer/dashboard')}>{t('aiInterview.actions.goToDashboard')}</button>
               </div>
-
-              <div className="glass-card p-6 mb-6 bg-cyan/5 border border-cyan/15">
-                <div className="flex items-center gap-2 mb-3">
-                  <Bot size={16} className="text-purple" />
-                  <p className="text-primary font-semibold">AI assessment</p>
-                </div>
-                <p className="text-sm leading-relaxed text-secondary">
-                  {feedback?.summary || 'Automated feedback is temporarily unavailable.'}
-                </p>
-              </div>
-
-              {(technicalSkills.length > 0 || softSkills.length > 0) && (
-                <div className="mb-6 grid gap-4 md:grid-cols-2">
-                  <div className="glass-card p-5">
-                    <p className="mb-3 font-semibold text-primary">Technical skills</p>
-                    <div className="flex flex-wrap gap-2">
-                      {technicalSkills.map(skill => <span key={skill} className="badge-cyan">{skill}</span>)}
-                    </div>
-                  </div>
-                  <div className="glass-card p-5">
-                    <p className="mb-3 font-semibold text-primary">Soft skills</p>
-                    <div className="flex flex-wrap gap-2">
-                      {softSkills.map(skill => <span key={skill} className="badge-purple">{skill}</span>)}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-4">
-                <button className="btn-cyan flex-1 py-3 text-sm" onClick={() => navigate('/jobs/browse')}>
-                  Back to Job Search
-                </button>
-                <button className="btn-ghost-cyan flex-1 py-3 text-sm" onClick={() => navigate('/freelancer/dashboard')}>
-                  Go to Dashboard
-                </button>
-              </div>
-            </div>
+            </section>
           </div>
         )}
       </div>

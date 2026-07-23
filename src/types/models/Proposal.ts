@@ -55,7 +55,6 @@ export interface ProposalDto {
   milestoneCount?: number;
   milestoneTotal?: number;
   firstMilestoneAmount?: number | null;
-
   // AI Judging Attributes
   aiScore?: number | null;
   aiSummary?: string | null;
@@ -63,6 +62,12 @@ export interface ProposalDto {
   aiEvaluatedAt?: string | null;
   aiTechnicalSkills?: string[] | null;
   aiSoftSkills?: string[] | null;
+
+  // AI Interview Status Attributes (from remote develop)
+  hasAiInterview?: boolean;
+  aiInterviewCompleted?: boolean;
+  aiInterviewInProgress?: boolean;
+  aiInterviewDefinitionId?: string | null;
 }
 
 export interface ProposalJudgingListDto {

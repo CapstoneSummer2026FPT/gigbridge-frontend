@@ -80,6 +80,7 @@ export interface BulkCreateJobInvitationsRequest {
   freelancerProfileIds: string[];
   message?: string | null;
   expiresAt?: string | null;
+  matchRunId?: string | null;
 }
 
 export interface BulkJobInvitationSkipDto {

@@ -385,6 +385,11 @@ export default function BrowseJobsScreen() {
                           <h2 className="text-primary font-semibold group-hover:text-[#0077FF] transition-colors">{job.title}</h2>
                           {job.isFeatured && <span className="badge-purple text-xs flex-shrink-0">{t('jobs.featured')}</span>}
                           {job.isAiRecommended && <span className="badge-cyan text-xs flex-shrink-0">{t('jobs.aiPick')}</span>}
+                          {job.hasAiInterview && isFreelancer && (
+                            <span className="badge-purple text-xs flex-shrink-0 inline-flex items-center gap-1">
+                              <Bot size={11} /> {t('jobs.aiInterviewTag')}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3 mb-3">

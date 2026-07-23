@@ -82,6 +82,7 @@ describe('AIInterviewScreen initiation', () => {
       success: true,
       data: { status: 'failed' },
     });
+    streamQuestionAudioMock.mockRejectedValue(new Error('Test audio is unavailable.'));
 
     const stopTrack = vi.fn();
     Object.defineProperty(navigator, 'mediaDevices', {
@@ -97,13 +98,14 @@ describe('AIInterviewScreen initiation', () => {
 
   afterEach(() => cleanup());
 
-  it('starts a job-specific session and renders the first AI question', async () => {
+  it('starts a job-specific voice session without exposing the question text', async () => {
     startInterviewMock.mockResolvedValue({
       success: true,
       data: {
         session_id: 'session-123',
         audio_access_token: 'session-audio-token-that-is-long-enough',
         question_index: 1,
+        question_count: 3,
         question_text: 'Tell me about a React performance problem you solved.',
       },
     });
@@ -111,8 +113,10 @@ describe('AIInterviewScreen initiation', () => {
     render(<AIInterviewScreen />);
     fireEvent.click(screen.getByRole('button', { name: /start ai interview/i }));
 
-    await waitFor(() => expect(startInterviewMock).toHaveBeenCalledWith('job-123', 'en'));
-    expect(await screen.findByText('Tell me about a React performance problem you solved.')).toBeInTheDocument();
+    await waitFor(() => expect(startInterviewMock).toHaveBeenCalledWith('job-123', 'en', undefined));
+    expect(await screen.findByLabelText('Question 1 of 3')).toBeInTheDocument();
+    expect(screen.queryByText('Tell me about a React performance problem you solved.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /(hear question again|retry question audio)/i })).toBeInTheDocument();
   });
 
   it('records only after the answer button, transcribes, and submits the reviewed answer', async () => {
@@ -122,6 +126,7 @@ describe('AIInterviewScreen initiation', () => {
         session_id: 'session-123',
         audio_access_token: 'session-audio-token-that-is-long-enough',
         question_index: 1,
+        question_count: 3,
         question_text: 'Describe a difficult React performance issue.',
         language: 'en',
       },
@@ -155,6 +160,7 @@ describe('AIInterviewScreen initiation', () => {
     fireEvent.click(screen.getByRole('button', { name: /start ai interview/i }));
 
     const answerButton = await screen.findByRole('button', { name: /answer question/i });
+    await waitFor(() => expect(answerButton).toBeEnabled());
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     fireEvent.click(answerButton);
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
@@ -166,15 +172,15 @@ describe('AIInterviewScreen initiation', () => {
       'en'
     ));
 
-    expect(await screen.findByDisplayValue('I reduced the bundle size with route-based code splitting.')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('I reduced the bundle size with route-based code splitting.')).toHaveAttribute('readonly');
     fireEvent.click(screen.getByRole('button', { name: /submit answer/i }));
 
     await waitFor(() => expect(confirmAnswerMock).toHaveBeenCalledWith(
       'session-123',
       'I reduced the bundle size with route-based code splitting.'
     ));
-    expect(await screen.findByText('91%')).toBeInTheDocument();
-    expect(screen.getByText('Strong evidence-based technical answer.')).toBeInTheDocument();
+    expect(await screen.findByText('Thank you for using our AI interview')).toBeInTheDocument();
+    expect(screen.getByText(/receive a notification soon if your application is accepted/i)).toBeInTheDocument();
   });
 
   it('requires job context before contacting the interview service', async () => {
