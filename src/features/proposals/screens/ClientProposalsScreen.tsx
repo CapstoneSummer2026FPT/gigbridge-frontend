@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain, Sparkles, FileQuestion, Briefcase, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain, Sparkles, FileQuestion, Briefcase, CheckCircle2, XCircle, Filter } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -501,6 +501,59 @@ export default function ClientProposalsScreen() {
                         This job post is not open for negotiation. Proposal review is read-only.
                       </p>
                     )}
+                  </div>
+                </div>
+
+                {/* Status Filter Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex items-center gap-1 font-bold text-muted-foreground">
+                      <Filter size={14} /> Filter Status:
+                    </span>
+                    <button
+                      onClick={() => setStatusFilter('all')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === 'all' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      All ({proposals.length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('1')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '1' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Pending ({proposals.filter(p => Number(p.status) === 1).length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('2')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '2' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Shortlisted ({proposals.filter(p => Number(p.status) === 2).length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('3')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '3' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Accepted ({proposals.filter(p => Number(p.status) === 3).length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('4')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '4' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Rejected ({proposals.filter(p => Number(p.status) === 4).length})
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={sortBy}
+                      onChange={e => setSortBy(e.target.value as SortBy)}
+                      className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium text-xs text-foreground cursor-pointer"
+                    >
+                      <option value="submittedAt">Sort: Newest</option>
+                      <option value="budget">Sort: Budget</option>
+                      <option value="duration">Sort: Duration</option>
+                      <option value="status">Sort: Status</option>
+                      <option value="milestoneTotal">Sort: Milestone Total</option>
+                    </select>
                   </div>
                 </div>
 
