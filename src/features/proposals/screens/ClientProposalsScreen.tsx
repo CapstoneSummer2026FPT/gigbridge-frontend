@@ -83,15 +83,12 @@ export default function ClientProposalsScreen() {
   const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
 
   const stats = useMemo(() => {
-    const judged = proposals.filter(p => typeof p.aiScore === 'number');
     const totalCount = proposals.length;
-    const judgedCount = judged.length;
-    const unjudgedCount = totalCount - judgedCount;
-    const avgScore = judgedCount > 0 ? Math.round(judged.reduce((sum, p) => sum + (p.aiScore || 0), 0) / judgedCount) : 0;
-    const topScore = judgedCount > 0 ? Math.max(...judged.map(p => p.aiScore || 0)) : 0;
-    const recommendedCount = judged.filter(p => p.aiRecommendedHire).length;
+    const pendingCount = proposals.filter(p => Number(p.status) === ProposalStatus.Pending).length;
+    const shortlistedCount = proposals.filter(p => Number(p.status) === ProposalStatus.Shortlisted).length;
+    const acceptedCount = proposals.filter(p => Number(p.status) === ProposalStatus.Accepted).length;
 
-    return { totalCount, judgedCount, unjudgedCount, avgScore, topScore, recommendedCount };
+    return { totalCount, pendingCount, shortlistedCount, acceptedCount };
   }, [proposals]);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -461,11 +458,11 @@ export default function ClientProposalsScreen() {
                         <div className="flex items-center gap-2">
                           <Briefcase className="h-6 w-6 text-cyan-500" />
                           <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent">
-                            Candidate Proposal Comparison
+                            Freelancer Proposal Comparison
                           </h2>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Ranked candidate evaluations for <strong className="text-foreground">{selectedJob.title}</strong>
+                          Ranked freelancer evaluations for <strong className="text-foreground">{selectedJob.title}</strong>
                         </p>
                       </div>
                     </div>
@@ -475,22 +472,21 @@ export default function ClientProposalsScreen() {
                       <div className="rounded-xl border border-border bg-card/60 p-3.5">
                         <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Total Proposals</span>
                         <span className="text-xl font-extrabold">{stats.totalCount}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">({stats.judgedCount} judged)</span>
                       </div>
 
                       <div className="rounded-xl border border-border bg-card/60 p-3.5">
-                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Average AI Score</span>
-                        <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400">{stats.avgScore}/100</span>
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Pending Review</span>
+                        <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400">{stats.pendingCount}</span>
                       </div>
 
                       <div className="rounded-xl border border-border bg-card/60 p-3.5">
-                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Top Candidate Score</span>
-                        <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.topScore}/100</span>
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Shortlisted</span>
+                        <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.shortlistedCount}</span>
                       </div>
 
                       <div className="rounded-xl border border-border bg-card/60 p-3.5">
-                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Recommended Hires</span>
-                        <span className="text-xl font-extrabold text-emerald-500">{stats.recommendedCount}</span>
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Accepted</span>
+                        <span className="text-xl font-extrabold text-emerald-500">{stats.acceptedCount}</span>
                       </div>
                     </div>
                   </div>
@@ -520,54 +516,47 @@ export default function ClientProposalsScreen() {
 
                 {message && <div role="status" className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
 
-                <div className="overflow-x-auto rounded-xl border border-border bg-card">
-                  <table className="w-full min-w-[980px] text-left text-xs">
-                    <thead className="sticky top-0 bg-muted text-muted-foreground">
-                      <tr>
-                        <th className="w-[18%] p-4">Freelancer</th>
-                        <th className="w-[12%] p-4">AI Score</th>
-                        <th className="w-[10%] p-4">Status</th>
-                        <th className="w-[10%] p-4">Budget</th>
-                        <th className="w-[10%] p-4">Duration</th>
-                        <th className="w-[8%] p-4 text-center">Work items</th>
-                        <th className="w-[8%] p-4 text-center">Milestones</th>
-                        <th className="w-[12%] p-4">Milestone total</th>
-                        <th className="w-[12%] p-4">Submitted</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
-                      ) : pagedVisible.length === 0 ? (
-                        <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
-                      ) : pagedVisible.map(item => {
-                        const status = Number(item.status);
-                        const hasScore = typeof item.aiScore === 'number' && item.aiScore > 0;
-                        return (
-                           <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'userAnswers')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
-                            <td className="p-4 align-middle font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
-                            <td className="p-4 align-middle">
-                              {hasScore ? (
-                                <span className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-black ${item.aiScore! >= 80 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : item.aiScore! >= 60 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
-                                  <Brain size={12} /> {item.aiScore}/100
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">none</span>
-                              )}
-                            </td>
-                            <td className="p-4 align-middle"><span className={`rounded px-2.5 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
-                            <td className="p-4 align-middle font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
-                            <td className="p-4 align-middle">{item.proposedDuration || 'N/A'}</td>
-                            <td className="p-4 text-center align-middle">{item.workItemCount ?? 0}</td>
-                            <td className="p-4 text-center align-middle">{item.milestoneCount ?? 0}</td>
-                            <td className="p-4 align-middle font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
-                            <td className="p-4 align-middle">{formatDate(item.submittedAt)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                {loading ? (
+                  <div className="py-16 text-center text-sm text-muted-foreground">Loading freelancer proposals...</div>
+                ) : pagedVisible.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
+                    No freelancer proposals match the selected filter criteria.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                    <table className="w-full min-w-[980px] text-left text-xs">
+                      <thead className="sticky top-0 bg-muted text-muted-foreground">
+                        <tr>
+                          <th className="w-[22%] p-4">Freelancer</th>
+                          <th className="w-[12%] p-4">Status</th>
+                          <th className="w-[12%] p-4">Budget</th>
+                          <th className="w-[12%] p-4">Duration</th>
+                          <th className="w-[9%] p-4 text-center">Work items</th>
+                          <th className="w-[9%] p-4 text-center">Milestones</th>
+                          <th className="w-[12%] p-4">Milestone total</th>
+                          <th className="w-[12%] p-4">Submitted</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagedVisible.map(item => {
+                          const status = Number(item.status);
+                          return (
+                             <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'userAnswers')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
+                              <td className="p-4 align-middle font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
+                              <td className="p-4 align-middle"><span className={`rounded px-2.5 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
+                              <td className="p-4 align-middle font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
+                              <td className="p-4 align-middle">{item.proposedDuration || 'N/A'}</td>
+                              <td className="p-4 text-center align-middle">{item.workItemCount ?? 0}</td>
+                              <td className="p-4 text-center align-middle">{item.milestoneCount ?? 0}</td>
+                              <td className="p-4 align-middle font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
+                              <td className="p-4 align-middle">{formatDate(item.submittedAt)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 {/* Pagination Controls */}
                 <div className="mt-6 flex items-center justify-center gap-1.5 text-xs">
@@ -639,7 +628,7 @@ export default function ClientProposalsScreen() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold text-foreground truncate">
-                    {detail?.freelancerName || proposals.find(p => p.proposalsId === activeId)?.freelancerName || 'Candidate Proposal'}
+                    {detail?.freelancerName || proposals.find(p => p.proposalsId === activeId)?.freelancerName || 'Freelancer Proposal'}
                   </h3>
                   <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-bold ${badgeClass(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status))}`}>
                     {getStatusLabel(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)}
@@ -697,7 +686,7 @@ export default function ClientProposalsScreen() {
                     rawAnswers.length > 0 ? (
                       <div className="space-y-4">
                         <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2 flex items-center justify-between">
-                          <span>Screening Questions & Candidate Answers</span>
+                          <span>Screening Questions & Freelancer Answers</span>
                           <span className="text-xs font-normal text-muted-foreground">({rawAnswers.length} questions)</span>
                         </h4>
 
@@ -716,7 +705,7 @@ export default function ClientProposalsScreen() {
 
                             <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
                               <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                                Candidate Answer
+                                Freelancer Answer
                               </span>
                               <p className="text-foreground whitespace-pre-wrap leading-relaxed">
                                 {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
@@ -973,7 +962,7 @@ export default function ClientProposalsScreen() {
                         ) : (
                           <div className="rounded-xl border border-border bg-muted/10 p-4 text-xs text-muted-foreground space-y-1">
                             <p className="font-semibold text-foreground">No screening questions evaluated for this proposal.</p>
-                            <p>The candidate was evaluated holistically based on their profile, technical skill match, and overall proposal scope.</p>
+                            <p>The freelancer was evaluated holistically based on their profile, technical skill match, and overall proposal scope.</p>
                           </div>
                         )}
                       </div>
