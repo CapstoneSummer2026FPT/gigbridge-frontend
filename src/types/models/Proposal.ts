@@ -36,6 +36,16 @@ export interface ProposalQueryParams {
   pageSize?: number;
   PageIndex?: number;
   PageSize?: number;
+  status?: number;
+}
+
+export interface ProposalListPageDto {
+  items: ProposalDto[];
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 }
 
 export interface ProposalDto {

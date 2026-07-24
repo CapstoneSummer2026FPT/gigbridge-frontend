@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain, Sparkles, FileQuestion } from 'lucide-react';
+import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain, Sparkles, FileQuestion, Briefcase, CheckCircle2, XCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -45,6 +45,13 @@ const durationScore = (value?: string) => {
   return amount;
 };
 
+const getScoreColorClass = (score?: number | null) => {
+  if (typeof score !== 'number') return 'border-border text-muted-foreground bg-muted/20';
+  if (score >= 80) return 'border-emerald-500/40 text-emerald-600 bg-emerald-500/10 dark:text-emerald-400';
+  if (score >= 60) return 'border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400';
+  return 'border-rose-500/40 text-rose-600 bg-rose-500/10 dark:text-rose-400';
+};
+
 export default function ClientProposalsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -74,6 +81,25 @@ export default function ClientProposalsScreen() {
   const [submittedFrom, setSubmittedFrom] = useState('');
   const [submittedTo, setSubmittedTo] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
+
+  const stats = useMemo(() => {
+    const judged = proposals.filter(p => typeof p.aiScore === 'number');
+    const totalCount = proposals.length;
+    const judgedCount = judged.length;
+    const unjudgedCount = totalCount - judgedCount;
+    const avgScore = judgedCount > 0 ? Math.round(judged.reduce((sum, p) => sum + (p.aiScore || 0), 0) / judgedCount) : 0;
+    const topScore = judgedCount > 0 ? Math.max(...judged.map(p => p.aiScore || 0)) : 0;
+    const recommendedCount = judged.filter(p => p.aiRecommendedHire).length;
+
+    return { totalCount, judgedCount, unjudgedCount, avgScore, topScore, recommendedCount };
+  }, [proposals]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedJobId, statusFilter, sortBy, budgetMin, budgetMax, durationMax, milestoneMin, milestoneMax, submittedFrom, submittedTo, viewMode]);
 
   const refreshProposals = () => {
     if (!selectedJobId) return;
@@ -170,6 +196,12 @@ export default function ClientProposalsScreen() {
       return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
     });
   }, [budgetMax, budgetMin, durationMax, milestoneMax, milestoneMin, proposals, sortBy, statusFilter, submittedFrom, submittedTo]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+  const pagedVisible = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return visible.slice(start, start + pageSize);
+  }, [visible, currentPage, pageSize]);
 
   const resetFilters = () => {
     setStatusFilter('all');
@@ -421,8 +453,50 @@ export default function ClientProposalsScreen() {
                 onRefreshProposals={refreshProposals}
               />
             ) : (
-              <>
-                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+              <div className="space-y-6">
+                {selectedJob && (
+                  <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 via-sky-500/5 to-card p-6 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-cyan-500/10 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-6 w-6 text-cyan-500" />
+                          <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent">
+                            Candidate Proposal Comparison
+                          </h2>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Ranked candidate evaluations for <strong className="text-foreground">{selectedJob.title}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Aggregate Stat Badges */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Total Proposals</span>
+                        <span className="text-xl font-extrabold">{stats.totalCount}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">({stats.judgedCount} judged)</span>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Average AI Score</span>
+                        <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400">{stats.avgScore}/100</span>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Top Candidate Score</span>
+                        <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.topScore}/100</span>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Recommended Hires</span>
+                        <span className="text-xl font-extrabold text-emerald-500">{stats.recommendedCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-end justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="truncate font-bold">{selectedJob?.title || 'Select a project request'}</h2>
                     <p className="text-xs text-muted-foreground">{visible.length} of {proposals.length} proposals shown</p>
@@ -434,67 +508,123 @@ export default function ClientProposalsScreen() {
                   </div>
                 </div>
 
-                <div className="mb-3 grid gap-2 rounded-xl border border-border bg-muted/20 p-3 text-xs sm:grid-cols-2 2xl:grid-cols-4">
-                  <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" placeholder="Budget min" className="rounded border border-border bg-background px-2 py-2" />
-                  <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max" className="rounded border border-border bg-background px-2 py-2" />
-                  <input value={durationMax} onChange={e => setDurationMax(e.target.value)} type="number" placeholder="Max duration days" className="rounded border border-border bg-background px-2 py-2" />
-                  <input value={milestoneMin} onChange={e => setMilestoneMin(e.target.value)} type="number" placeholder="Milestone total min" className="rounded border border-border bg-background px-2 py-2" />
-                  <input value={milestoneMax} onChange={e => setMilestoneMax(e.target.value)} type="number" placeholder="Milestone total max" className="rounded border border-border bg-background px-2 py-2" />
-                  <input value={submittedFrom} onChange={e => setSubmittedFrom(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
-                  <input value={submittedTo} onChange={e => setSubmittedTo(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
+                <div className="grid gap-3 rounded-xl border border-border bg-card p-4 text-xs sm:grid-cols-2 2xl:grid-cols-4">
+                  <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" placeholder="Budget min" className="rounded border border-border bg-background px-3 py-2" />
+                  <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max" className="rounded border border-border bg-background px-3 py-2" />
+                  <input value={durationMax} onChange={e => setDurationMax(e.target.value)} type="number" placeholder="Max duration days" className="rounded border border-border bg-background px-3 py-2" />
+                  <input value={milestoneMin} onChange={e => setMilestoneMin(e.target.value)} type="number" placeholder="Milestone total min" className="rounded border border-border bg-background px-3 py-2" />
+                  <input value={milestoneMax} onChange={e => setMilestoneMax(e.target.value)} type="number" placeholder="Milestone total max" className="rounded border border-border bg-background px-3 py-2" />
+                  <input value={submittedFrom} onChange={e => setSubmittedFrom(e.target.value)} type="date" className="rounded border border-border bg-background px-3 py-2" />
+                  <input value={submittedTo} onChange={e => setSubmittedTo(e.target.value)} type="date" className="rounded border border-border bg-background px-3 py-2" />
                 </div>
 
-                {message && <div role="status" className="mb-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
+                {message && <div role="status" className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
 
                 <div className="overflow-x-auto rounded-xl border border-border bg-card">
                   <table className="w-full min-w-[980px] text-left text-xs">
                     <thead className="sticky top-0 bg-muted text-muted-foreground">
                       <tr>
-                        <th className="w-36 p-3">Freelancer</th>
-                        <th className="p-3">AI Score</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Budget</th>
-                        <th className="p-3">Duration</th>
-                        <th className="p-3 text-center">Work items</th>
-                        <th className="p-3 text-center">Milestones</th>
-                        <th className="p-3">Milestone total</th>
-                        <th className="p-3">Submitted</th>
+                        <th className="w-[18%] p-4">Freelancer</th>
+                        <th className="w-[12%] p-4">AI Score</th>
+                        <th className="w-[10%] p-4">Status</th>
+                        <th className="w-[10%] p-4">Budget</th>
+                        <th className="w-[10%] p-4">Duration</th>
+                        <th className="w-[8%] p-4 text-center">Work items</th>
+                        <th className="w-[8%] p-4 text-center">Milestones</th>
+                        <th className="w-[12%] p-4">Milestone total</th>
+                        <th className="w-[12%] p-4">Submitted</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loading ? (
                         <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
-                      ) : visible.length === 0 ? (
+                      ) : pagedVisible.length === 0 ? (
                         <tr><td colSpan={9} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
-                      ) : visible.map(item => {
+                      ) : pagedVisible.map(item => {
                         const status = Number(item.status);
                         const hasScore = typeof item.aiScore === 'number' && item.aiScore > 0;
                         return (
-                          <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'userAnswers')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
-                            <td className="p-3 align-top font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
-                            <td className="p-3 align-top">
+                           <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'userAnswers')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
+                            <td className="p-4 align-middle font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
+                            <td className="p-4 align-middle">
                               {hasScore ? (
-                                <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-black ${item.aiScore! >= 80 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : item.aiScore! >= 60 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                                <span className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-black ${item.aiScore! >= 80 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : item.aiScore! >= 60 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
                                   <Brain size={12} /> {item.aiScore}/100
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">none</span>
                               )}
                             </td>
-                            <td className="p-3 align-top"><span className={`rounded px-2 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
-                            <td className="p-3 align-top font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
-                            <td className="p-3 align-top">{item.proposedDuration || 'N/A'}</td>
-                            <td className="p-3 text-center align-top">{item.workItemCount ?? 0}</td>
-                            <td className="p-3 text-center align-top">{item.milestoneCount ?? 0}</td>
-                            <td className="p-3 align-top font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
-                            <td className="p-3 align-top">{formatDate(item.submittedAt)}</td>
+                            <td className="p-4 align-middle"><span className={`rounded px-2.5 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
+                            <td className="p-4 align-middle font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
+                            <td className="p-4 align-middle">{item.proposedDuration || 'N/A'}</td>
+                            <td className="p-4 text-center align-middle">{item.workItemCount ?? 0}</td>
+                            <td className="p-4 text-center align-middle">{item.milestoneCount ?? 0}</td>
+                            <td className="p-4 align-middle font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
+                            <td className="p-4 align-middle">{formatDate(item.submittedAt)}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-              </>
+
+                {/* Pagination Controls */}
+                <div className="mt-6 flex items-center justify-center gap-1.5 text-xs">
+                  <button
+                    disabled={currentPage === 1 || loading}
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/40 hover:text-[var(--gb-cyan)] disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
+                  >
+                    &lt;
+                  </button>
+
+                  {(() => {
+                    const pages: (number | string)[] = [];
+                    const range = 1;
+                    for (let i = 1; i <= totalPages; i++) {
+                      if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+                        pages.push(i);
+                      } else if ((i === currentPage - range - 1 && i > 1) || (i === currentPage + range + 1 && i < totalPages)) {
+                        pages.push('...');
+                      }
+                    }
+                    const filteredPages = pages.filter((page, idx) => page !== '...' || pages[idx - 1] !== '...');
+                    return filteredPages.map((page, idx) => {
+                      if (page === '...') {
+                        return (
+                          <span key={idx} className="px-1 text-muted-foreground font-semibold text-xs select-none">
+                            ...
+                          </span>
+                        );
+                      }
+                      const isCurrent = page === currentPage;
+                      return (
+                        <button
+                          key={idx}
+                          disabled={loading}
+                          onClick={() => setCurrentPage(page as number)}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                            isCurrent
+                              ? 'bg-[var(--gb-cyan)] text-white border-none shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                              : 'border border-border bg-background hover:bg-muted/40 hover:text-[var(--gb-cyan)] text-foreground'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    });
+                  })()}
+
+                  <button
+                    disabled={currentPage >= totalPages || loading}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/40 hover:text-[var(--gb-cyan)] disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
+                  >
+                    &gt;
+                  </button>
+                </div>
+              </div>
             )}
           </main>
         </div>

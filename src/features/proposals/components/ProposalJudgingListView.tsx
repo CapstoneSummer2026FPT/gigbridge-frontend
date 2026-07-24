@@ -41,6 +41,13 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
   const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortByOption>('aiScore');
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filterRec, minScoreFilter, sortBy, jobPostId]);
+
   // Batch Judging State
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ processed: number; remaining: number } | null>(null);
@@ -83,6 +90,12 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       return scoreB - scoreA;
     });
   }, [proposals, filterRec, minScoreFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(rankedCandidates.length / pageSize));
+  const pagedCandidates = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return rankedCandidates.slice(start, start + pageSize);
+  }, [rankedCandidates, currentPage, pageSize]);
 
   // Chunked Batch Judging Handler (processes in chunks of 10)
   const handleBatchJudge = async () => {
@@ -262,10 +275,11 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           No candidate proposals match the selected filter criteria.
         </div>
       ) : (
-        <div className="space-y-4">
-          {rankedCandidates.map((candidate, index) => {
+        <div className="space-y-4 font-sans">
+          {pagedCandidates.map((candidate, index) => {
             const hasScore = typeof candidate.aiScore === 'number';
             const status = Number(candidate.status);
+            const rankIndex = (currentPage - 1) * pageSize + index + 1;
 
             return (
               <div
@@ -278,7 +292,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                   <div className="flex items-start gap-4 min-w-0">
                     {/* Rank Badge */}
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 font-black text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                      #{index + 1}
+                      #{rankIndex}
                     </div>
 
                     <div className="min-w-0 space-y-1">
@@ -388,6 +402,61 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           })}
         </div>
       )}
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-center gap-1.5 text-xs mt-6">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/40 hover:text-purple-600 disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
+        >
+          &lt;
+        </button>
+
+        {(() => {
+          const pages: (number | string)[] = [];
+          const range = 1;
+          for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+              pages.push(i);
+            } else if ((i === currentPage - range - 1 && i > 1) || (i === currentPage + range + 1 && i < totalPages)) {
+              pages.push('...');
+            }
+          }
+          const filteredPages = pages.filter((page, idx) => page !== '...' || pages[idx - 1] !== '...');
+          return filteredPages.map((page, idx) => {
+            if (page === '...') {
+              return (
+                <span key={idx} className="px-1 text-muted-foreground font-semibold text-xs select-none">
+                  ...
+                </span>
+              );
+            }
+            const isCurrent = page === currentPage;
+            return (
+              <button
+                key={idx}
+                onClick={() => setCurrentPage(page as number)}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                  isCurrent
+                    ? 'bg-purple-600 text-white border-none shadow-[0_0_10px_rgba(147,51,234,0.3)]'
+                    : 'border border-border bg-background hover:bg-muted/40 hover:text-purple-600 text-foreground'
+                }`}
+              >
+                {page}
+              </button>
+            );
+          });
+        })()}
+
+        <button
+          disabled={currentPage >= totalPages}
+          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/40 hover:text-purple-600 disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
+        >
+          &gt;
+        </button>
+      </div>
     </div>
   );
 };
