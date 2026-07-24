@@ -86,18 +86,22 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
 
   // Chunked Batch Judging Handler (processes in chunks of 10)
   const handleBatchJudge = async () => {
-    if (batchLoading || proposals.length === 0) return;
+    if (batchLoading || proposals.length === 0 || stats.unjudgedCount === 0) return;
 
     setBatchLoading(true);
     setBatchError('');
-    let remaining = stats.unjudgedCount > 0 ? stats.unjudgedCount : proposals.length;
+    let remaining = stats.unjudgedCount;
     let processedTotal = 0;
 
     try {
       while (remaining > 0) {
         const response = await proposalPostAPI.judgeAllProposals(jobPostId, 10);
         if (!response.success || response.data.processedCount === 0) {
-          if (!response.success) setBatchError(response.message || 'Batch evaluation encountered an error.');
+          setBatchError(
+            !response.success
+              ? (response.message || 'Batch evaluation encountered an error.')
+              : 'Evaluation stopped: some proposals could not be processed by the AI.'
+          );
           break;
         }
 
@@ -147,7 +151,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           <div className="flex items-center gap-3">
             <button
               onClick={handleBatchJudge}
-              disabled={batchLoading || proposals.length === 0}
+              disabled={batchLoading || proposals.length === 0 || stats.unjudgedCount === 0}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-500/25 transition hover:brightness-110 disabled:opacity-50"
             >
               {batchLoading ? (
@@ -161,7 +165,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                 <>
                   <Sparkles className="h-4 w-4" />
                   <span>
-                    {stats.unjudgedCount > 0 ? `Judge All (${stats.unjudgedCount} un-judged)` : `Re-Judge All (${proposals.length} proposals)`}
+                    {stats.unjudgedCount > 0 ? `Judge All (${stats.unjudgedCount} un-judged)` : 'All Judged'}
                   </span>
                 </>
               )}
