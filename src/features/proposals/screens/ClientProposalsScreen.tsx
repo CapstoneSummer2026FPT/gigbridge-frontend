@@ -81,6 +81,7 @@ export default function ClientProposalsScreen() {
   const [submittedFrom, setSubmittedFrom] = useState('');
   const [submittedTo, setSubmittedTo] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const stats = useMemo(() => {
     const totalCount = proposals.length;
@@ -96,7 +97,7 @@ export default function ClientProposalsScreen() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedJobId, statusFilter, sortBy, budgetMin, budgetMax, durationMax, milestoneMin, milestoneMax, submittedFrom, submittedTo, viewMode]);
+  }, [selectedJobId, statusFilter, sortBy, budgetMin, budgetMax, durationMax, milestoneMin, milestoneMax, submittedFrom, submittedTo, viewMode, searchTerm]);
 
   const refreshProposals = () => {
     if (!selectedJobId) return;
@@ -164,24 +165,14 @@ export default function ClientProposalsScreen() {
   }, [activeId]);
 
   const visible = useMemo(() => {
-    const minBudget = budgetMin ? Number(budgetMin) : null;
-    const maxBudget = budgetMax ? Number(budgetMax) : null;
-    const maxDuration = durationMax ? Number(durationMax) : null;
-    const minMilestone = milestoneMin ? Number(milestoneMin) : null;
-    const maxMilestone = milestoneMax ? Number(milestoneMax) : null;
-    const from = submittedFrom ? new Date(`${submittedFrom}T00:00:00`).getTime() : null;
-    const to = submittedTo ? new Date(`${submittedTo}T23:59:59`).getTime() : null;
-
     const filtered = proposals.filter(item => {
       if (statusFilter !== 'all' && String(item.status) !== statusFilter) return false;
-      if (minBudget !== null && (item.proposedBudget || 0) < minBudget) return false;
-      if (maxBudget !== null && (item.proposedBudget || 0) > maxBudget) return false;
-      if (maxDuration !== null && durationScore(item.proposedDuration) > maxDuration) return false;
-      if (minMilestone !== null && (item.milestoneTotal || 0) < minMilestone) return false;
-      if (maxMilestone !== null && (item.milestoneTotal || 0) > maxMilestone) return false;
-      const submitted = new Date(item.submittedAt || 0).getTime();
-      if (from !== null && submitted < from) return false;
-      if (to !== null && submitted > to) return false;
+      if (searchTerm.trim() !== '') {
+        const term = searchTerm.toLowerCase();
+        const nameMatch = (item.freelancerName || '').toLowerCase().includes(term);
+        const letterMatch = (item.coverLetter || '').toLowerCase().includes(term);
+        if (!nameMatch && !letterMatch) return false;
+      }
       return true;
     });
 
@@ -192,7 +183,7 @@ export default function ClientProposalsScreen() {
       if (sortBy === 'milestoneTotal') return (a.milestoneTotal || 0) - (b.milestoneTotal || 0);
       return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
     });
-  }, [budgetMax, budgetMin, durationMax, milestoneMax, milestoneMin, proposals, sortBy, statusFilter, submittedFrom, submittedTo]);
+  }, [proposals, sortBy, statusFilter, searchTerm]);
 
   const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
   const pagedVisible = useMemo(() => {
@@ -543,6 +534,13 @@ export default function ClientProposalsScreen() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      type="text"
+                      placeholder="Search freelancer..."
+                      className="rounded border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground w-40 sm:w-48 focus:outline-none focus:border-cyan-500"
+                    />
                     <select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value as SortBy)}
@@ -555,16 +553,6 @@ export default function ClientProposalsScreen() {
                       <option value="milestoneTotal">Sort: Milestone Total</option>
                     </select>
                   </div>
-                </div>
-
-                <div className="grid gap-3 rounded-xl border border-border bg-card p-4 text-xs sm:grid-cols-2 2xl:grid-cols-4">
-                  <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" placeholder="Budget min" className="rounded border border-border bg-background px-3 py-2" />
-                  <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max" className="rounded border border-border bg-background px-3 py-2" />
-                  <input value={durationMax} onChange={e => setDurationMax(e.target.value)} type="number" placeholder="Max duration days" className="rounded border border-border bg-background px-3 py-2" />
-                  <input value={milestoneMin} onChange={e => setMilestoneMin(e.target.value)} type="number" placeholder="Milestone total min" className="rounded border border-border bg-background px-3 py-2" />
-                  <input value={milestoneMax} onChange={e => setMilestoneMax(e.target.value)} type="number" placeholder="Milestone total max" className="rounded border border-border bg-background px-3 py-2" />
-                  <input value={submittedFrom} onChange={e => setSubmittedFrom(e.target.value)} type="date" className="rounded border border-border bg-background px-3 py-2" />
-                  <input value={submittedTo} onChange={e => setSubmittedTo(e.target.value)} type="date" className="rounded border border-border bg-background px-3 py-2" />
                 </div>
 
                 {message && <div role="status" className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
