@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain } from 'lucide-react';
+import { ArrowLeft, Check, Eye, FileText, MessageSquare, X, Brain, Sparkles, FileQuestion, Briefcase, CheckCircle2, XCircle, Filter } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobAPI } from '../../../api/jobAPI';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -9,10 +9,11 @@ import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
-import { ProposalStatus, type ProposalDetailDto, type ProposalDto, type VettingEvaluationResponseDto } from '../../../types/models/Proposal';
+import { ProposalStatus, type ProposalDetailDto, type ProposalDto, type ProposalAnswerDto, type VettingEvaluationResponseDto } from '../../../types/models/Proposal';
 import type { ProposalStatusFilter, ProposalStatusValue } from '../types';
 import { getStatusLabel } from '../utils/statusHelpers';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { ProposalJudgingListView } from '../components/ProposalJudgingListView';
 
 type SortBy = 'submittedAt' | 'status' | 'budget' | 'duration' | 'milestoneTotal';
 type BusyAction = 'shortlist' | 'reject' | 'accept' | 'open';
@@ -44,6 +45,13 @@ const durationScore = (value?: string) => {
   return amount;
 };
 
+const getScoreColorClass = (score?: number | null) => {
+  if (typeof score !== 'number') return 'border-border text-muted-foreground bg-muted/20';
+  if (score >= 80) return 'border-emerald-500/40 text-emerald-600 bg-emerald-500/10 dark:text-emerald-400';
+  if (score >= 60) return 'border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400';
+  return 'border-rose-500/40 text-rose-600 bg-rose-500/10 dark:text-rose-400';
+};
+
 export default function ClientProposalsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -52,6 +60,7 @@ export default function ClientProposalsScreen() {
   const [evalLoading, setEvalLoading] = useState(false);
   const [evalResult, setEvalResult] = useState<VettingEvaluationResponseDto | null>(null);
   const [evalError, setEvalError] = useState('');
+  const [modalTab, setModalTab] = useState<'userAnswers' | 'proposalDetails' | 'aiReport'>('userAnswers');
   const queryJobId = useMemo(() => new URLSearchParams(location.search).get('job'), [location.search]);
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(queryJobId);
@@ -71,6 +80,32 @@ export default function ClientProposalsScreen() {
   const [milestoneMax, setMilestoneMax] = useState('');
   const [submittedFrom, setSubmittedFrom] = useState('');
   const [submittedTo, setSubmittedTo] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const stats = useMemo(() => {
+    const totalCount = proposals.length;
+    const pendingCount = proposals.filter(p => Number(p.status) === ProposalStatus.Pending).length;
+    const shortlistedCount = proposals.filter(p => Number(p.status) === ProposalStatus.Shortlisted).length;
+    const acceptedCount = proposals.filter(p => Number(p.status) === ProposalStatus.Accepted).length;
+
+    return { totalCount, pendingCount, shortlistedCount, acceptedCount };
+  }, [proposals]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedJobId, statusFilter, sortBy, budgetMin, budgetMax, durationMax, milestoneMin, milestoneMax, submittedFrom, submittedTo, viewMode, searchTerm]);
+
+  const refreshProposals = () => {
+    if (!selectedJobId) return;
+    proposalGetAPI.getProposalsByJobPost(selectedJobId, { pageIndex: 1, pageSize: 100 })
+      .then(response => {
+        if (response.data) setProposals(response.data);
+      });
+  };
 
   useEffect(() => {
     let alive = true;
@@ -130,24 +165,14 @@ export default function ClientProposalsScreen() {
   }, [activeId]);
 
   const visible = useMemo(() => {
-    const minBudget = budgetMin ? Number(budgetMin) : null;
-    const maxBudget = budgetMax ? Number(budgetMax) : null;
-    const maxDuration = durationMax ? Number(durationMax) : null;
-    const minMilestone = milestoneMin ? Number(milestoneMin) : null;
-    const maxMilestone = milestoneMax ? Number(milestoneMax) : null;
-    const from = submittedFrom ? new Date(`${submittedFrom}T00:00:00`).getTime() : null;
-    const to = submittedTo ? new Date(`${submittedTo}T23:59:59`).getTime() : null;
-
     const filtered = proposals.filter(item => {
       if (statusFilter !== 'all' && String(item.status) !== statusFilter) return false;
-      if (minBudget !== null && (item.proposedBudget || 0) < minBudget) return false;
-      if (maxBudget !== null && (item.proposedBudget || 0) > maxBudget) return false;
-      if (maxDuration !== null && durationScore(item.proposedDuration) > maxDuration) return false;
-      if (minMilestone !== null && (item.milestoneTotal || 0) < minMilestone) return false;
-      if (maxMilestone !== null && (item.milestoneTotal || 0) > maxMilestone) return false;
-      const submitted = new Date(item.submittedAt || 0).getTime();
-      if (from !== null && submitted < from) return false;
-      if (to !== null && submitted > to) return false;
+      if (searchTerm.trim() !== '') {
+        const term = searchTerm.toLowerCase();
+        const nameMatch = (item.freelancerName || '').toLowerCase().includes(term);
+        const letterMatch = (item.coverLetter || '').toLowerCase().includes(term);
+        if (!nameMatch && !letterMatch) return false;
+      }
       return true;
     });
 
@@ -158,7 +183,13 @@ export default function ClientProposalsScreen() {
       if (sortBy === 'milestoneTotal') return (a.milestoneTotal || 0) - (b.milestoneTotal || 0);
       return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
     });
-  }, [budgetMax, budgetMin, durationMax, milestoneMax, milestoneMin, proposals, sortBy, statusFilter, submittedFrom, submittedTo]);
+  }, [proposals, sortBy, statusFilter, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+  const pagedVisible = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return visible.slice(start, start + pageSize);
+  }, [visible, currentPage, pageSize]);
 
   const resetFilters = () => {
     setStatusFilter('all');
@@ -240,16 +271,36 @@ export default function ClientProposalsScreen() {
     navigate('/messages', { state: { activeConvId: response.data } });
   };
 
+  const [rawAnswers, setRawAnswers] = useState<ProposalAnswerDto[]>([]);
+
   const loadEvaluation = async (proposalId: string) => {
     try {
       setEvalLoading(true);
       setEvalError('');
       setEvalResult(null);
-      const response = await proposalPostAPI.evaluateVettingAnswers(proposalId);
-      if (response.success && response.data) {
-        setEvalResult(response.data);
-      } else {
-        setEvalError(response.message || 'Vetting evaluation failed.');
+      setRawAnswers([]);
+
+      const answersRes = await proposalGetAPI.getProposalAnswers(proposalId).catch(() => null);
+
+      if (answersRes && answersRes.success && answersRes.data) {
+        setRawAnswers(answersRes.data);
+
+        const hasAnswers = answersRes.data.length > 0 && answersRes.data.some(ans => ans.answerText?.trim());
+        if (hasAnswers) {
+          const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, true).catch(() => null);
+          if (evalRes && evalRes.success && evalRes.data) {
+            setEvalResult(evalRes.data);
+            setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
+              ...p,
+              aiScore: evalRes.data.score,
+              aiSummary: evalRes.data.summary,
+              aiRecommendedHire: evalRes.data.recommendedHire,
+              aiTechnicalSkills: evalRes.data.technicalSkills,
+              aiSoftSkills: evalRes.data.softSkills,
+              aiEvaluatedAt: new Date().toISOString()
+            } : p));
+          }
+        }
       }
     } catch (err: any) {
       setEvalError(err.message || 'An error occurred during evaluation.');
@@ -258,14 +309,49 @@ export default function ClientProposalsScreen() {
     }
   };
 
+  const runManualEvaluation = async (proposalId: string) => {
+    try {
+      setEvalLoading(true);
+      setEvalError('');
+      const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, false);
+      if (evalRes && evalRes.success && evalRes.data) {
+        setEvalResult(evalRes.data);
+        setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
+          ...p,
+          aiScore: evalRes.data.score,
+          aiSummary: evalRes.data.summary,
+          aiRecommendedHire: evalRes.data.recommendedHire,
+          aiTechnicalSkills: evalRes.data.technicalSkills,
+          aiSoftSkills: evalRes.data.softSkills,
+          aiEvaluatedAt: new Date().toISOString()
+        } : p));
+      } else {
+        setEvalError(evalRes.message || 'Failed to evaluate proposal.');
+      }
+    } catch (err: any) {
+      setEvalError(err.message || 'An error occurred during evaluation.');
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+  const openProposalModal = (proposalId: string, initialTab: 'userAnswers' | 'proposalDetails' | 'aiReport' = 'userAnswers') => {
+    setActiveId(proposalId);
+    setModalTab(initialTab);
+    setEvalModalOpen(true);
+    loadEvaluation(proposalId);
+  };
+
   const isBusy = (id: string, action: BusyAction) => busyAction === actionKey(id, action);
   const canClientAct = (status: number) => selectedJobCanNegotiate && [ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(status);
   const detailMilestoneTotal = detail?.milestonePlans?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ?? 0;
 
-  const section = (title: string, value?: string | null) => value ? (
-    <section className="rounded-lg border border-border bg-background p-4">
-      <h3 className="mb-2 text-xs font-bold uppercase text-muted-foreground">{title}</h3>
-      <p className="m-0 text-sm leading-6 text-foreground" title={value}>{previewText(value, 110)}</p>
+  const section = (title: string, value?: string | null, fullText: boolean = false) => value ? (
+    <section className="rounded-xl border border-border bg-background p-4 space-y-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      <p className="m-0 text-sm leading-relaxed text-foreground whitespace-pre-wrap bg-muted/20 p-3.5 rounded-xl border border-border/50" title={value}>
+        {fullText ? value : previewText(value, 110)}
+      </p>
     </section>
   ) : null;
 
@@ -287,7 +373,21 @@ export default function ClientProposalsScreen() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1 text-xs">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`rounded-md px-3 py-1.5 font-bold transition ${viewMode === 'table' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Standard Table
+              </button>
+              <button
+                onClick={() => setViewMode('aiJudging')}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${viewMode === 'aiJudging' ? 'bg-purple-600 text-white shadow' : 'text-purple-600 dark:text-purple-400 hover:text-foreground'}`}
+              >
+                <Brain size={14} /> AI Judging Leaderboard
+              </button>
+            </div>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as ProposalStatusFilter)} className="rounded-lg border border-border bg-background px-3 py-2 text-xs">
               <option value="all">All statuses</option>
               <option value="0">Draft</option>
@@ -308,7 +408,7 @@ export default function ClientProposalsScreen() {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)_320px] 2xl:grid-cols-[260px_minmax(0,1fr)_360px]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] 2xl:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="max-h-52 min-w-0 overflow-y-auto border-b border-border bg-background lg:max-h-none lg:border-b-0 lg:border-r">
             <div className="sticky top-0 z-10 border-b border-border bg-background px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Project Requests</div>
             {jobs.length === 0 ? (
@@ -326,369 +426,621 @@ export default function ClientProposalsScreen() {
           </aside>
 
           <main className="min-w-0 overflow-auto p-3 lg:p-4">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="truncate font-bold">{selectedJob?.title || 'Select a project request'}</h2>
-                <p className="text-xs text-muted-foreground">{visible.length} of {proposals.length} proposals shown</p>
-                {selectedJob && !selectedJobCanNegotiate && (
-                  <p className="mt-1 text-xs font-semibold text-amber-600">
-                    This job post is not open for negotiation. Proposal review is read-only.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mb-3 grid gap-2 rounded-xl border border-border bg-muted/20 p-3 text-xs sm:grid-cols-2 2xl:grid-cols-4">
-              <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" placeholder="Budget min" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" placeholder="Budget max" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={durationMax} onChange={e => setDurationMax(e.target.value)} type="number" placeholder="Max duration days" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={milestoneMin} onChange={e => setMilestoneMin(e.target.value)} type="number" placeholder="Milestone total min" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={milestoneMax} onChange={e => setMilestoneMax(e.target.value)} type="number" placeholder="Milestone total max" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={submittedFrom} onChange={e => setSubmittedFrom(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
-              <input value={submittedTo} onChange={e => setSubmittedTo(e.target.value)} type="date" className="rounded border border-border bg-background px-2 py-2" />
-            </div>
-
-            {message && <div role="status" className="mb-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
-
-            <div className="overflow-x-auto rounded-xl border border-border bg-card">
-              <table className="w-full min-w-[980px] text-left text-xs">
-                <thead className="sticky top-0 bg-muted text-muted-foreground">
-                  <tr>
-                    <th className="w-36 p-3">Freelancer</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Budget</th>
-                    <th className="p-3">Duration</th>
-                    <th className="min-w-64 p-3">Analysis summary</th>
-                    <th className="p-3 text-center">Work items</th>
-                    <th className="p-3 text-center">Milestones</th>
-                    <th className="p-3">Milestone total</th>
-                    <th className="p-3">Submitted</th>
-                    <th className="w-44 p-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">Loading proposals...</td></tr>
-                  ) : visible.length === 0 ? (
-                    <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">No proposals found.</td></tr>
-                  ) : visible.map(item => {
-                    const status = Number(item.status);
-                    return (
-                      <tr key={item.proposalsId} onClick={() => setActiveId(item.proposalsId)} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
-                        <td className="p-3 align-top font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
-                        <td className="p-3 align-top"><span className={`rounded px-2 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
-                        <td className="p-3 align-top font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
-                        <td className="p-3 align-top">{item.proposedDuration || 'N/A'}</td>
-                        <td className="p-3 align-top text-muted-foreground"><span className="block truncate leading-5" title={item.analysisSummaryPreview || item.coverLetter || ''}>{previewText(item.analysisSummaryPreview || item.coverLetter, 88) || 'Legacy proposal'}</span></td>
-                        <td className="p-3 text-center align-top">{item.workItemCount ?? 0}</td>
-                        <td className="p-3 text-center align-top">{item.milestoneCount ?? 0}</td>
-                        <td className="p-3 align-top font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
-                        <td className="p-3 align-top">{formatDate(item.submittedAt)}</td>
-                        <td className="p-3 align-top">
-                          <div className="grid grid-cols-2 gap-1">
-                            <button title="View details" onClick={event => { event.stopPropagation(); setActiveId(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-border px-2 py-1.5 font-semibold hover:bg-muted">
-                              <Eye size={14} /> Details
-                            </button>
-                            {status === ProposalStatus.Pending && selectedJobCanNegotiate && (
-                              <button title="Shortlist" disabled={isBusy(item.proposalsId, 'shortlist')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Shortlisted, 'shortlist'); }} className="inline-flex items-center justify-center gap-1 rounded border border-cyan-500/30 px-2 py-1.5 font-semibold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
-                                <Check size={14} /> {isBusy(item.proposalsId, 'shortlist') ? 'Saving' : 'Shortlist'}
-                              </button>
-                            )}
-                            {canClientAct(status) && (
-                              <>
-                                <button title="Start negotiation" disabled={isBusy(item.proposalsId, 'accept')} onClick={event => { event.stopPropagation(); acceptForNegotiation(item.proposalsId); }} className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500/30 px-2 py-1.5 font-semibold text-emerald-600 hover:bg-emerald-500/10 disabled:opacity-50">
-                                  <MessageSquare size={14} /> {isBusy(item.proposalsId, 'accept') ? 'Opening' : 'Negotiate'}
-                                </button>
-                                <button title="Reject" disabled={isBusy(item.proposalsId, 'reject')} onClick={event => { event.stopPropagation(); updateStatus(item.proposalsId, ProposalStatus.Rejected, 'reject'); }} className="inline-flex items-center justify-center gap-1 rounded border border-red-500/30 px-2 py-1.5 font-semibold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
-                                  <X size={14} /> {isBusy(item.proposalsId, 'reject') ? 'Saving' : 'Reject'}
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </main>
-
-          <aside className="min-w-0 overflow-y-auto border-t border-border bg-muted/20 p-4 lg:border-l lg:border-t-0 2xl:p-5">
-            {detailLoading ? (
-              <div className="py-10 text-center text-sm text-muted-foreground">Loading details...</div>
-            ) : !detail ? (
-              <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
-                <FileText size={32} className="mb-2 opacity-40" />
-                <p className="text-sm">Select a proposal to inspect its plan.</p>
-              </div>
+            {viewMode === 'aiJudging' ? (
+              <ProposalJudgingListView
+                jobPostId={selectedJobId || ''}
+                jobTitle={selectedJob?.title || 'Job Post'}
+                proposals={proposals}
+                loading={loading}
+                onSelectProposal={id => openProposalModal(id, 'aiReport')}
+                onOpenAiReport={id => openProposalModal(id, 'aiReport')}
+                onShortlist={id => updateStatus(id, ProposalStatus.Shortlisted, 'shortlist')}
+                onStartNegotiation={id => acceptForNegotiation(id)}
+                onReject={id => updateStatus(id, ProposalStatus.Rejected, 'reject')}
+                canAct={selectedJobCanNegotiate}
+                onRefreshProposals={refreshProposals}
+              />
             ) : (
               <div className="space-y-6">
-                <div className="border-b border-border pb-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="truncate font-bold">{detail.freelancerName || 'Freelancer proposal'}</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">Proposed rate: {formatGigCoin(detail.proposedBudget || 0)} · Milestones: {formatGigCoin(detailMilestoneTotal)} · {detail.proposedDuration || 'Duration not specified'}</p>
-                      {Math.abs((detail.proposedBudget || 0) - detailMilestoneTotal) >= 0.01 && <p className="mt-2 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-600">Manual rate override. Reconcile the final price and milestone total before sending a final offer.</p>}
+                {selectedJob && (
+                  <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 via-sky-500/5 to-card p-6 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-cyan-500/10 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-6 w-6 text-cyan-500" />
+                          <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent">
+                            Freelancer Proposal Comparison
+                          </h2>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Ranked freelancer evaluations for <strong className="text-foreground">{selectedJob.title}</strong>
+                        </p>
+                      </div>
                     </div>
-                    <span className={`shrink-0 rounded px-2 py-1 text-xs font-bold ${badgeClass(Number(detail.status))}`}>{getStatusLabel(detail.status)}</span>
+
+                    {/* Aggregate Stat Badges */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Total Proposals</span>
+                        <span className="text-xl font-extrabold">{stats.totalCount}</span>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Pending Review</span>
+                        <span className="text-xl font-extrabold text-cyan-600 dark:text-cyan-400">{stats.pendingCount}</span>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Shortlisted</span>
+                        <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.shortlistedCount}</span>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-card/60 p-3.5">
+                        <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Accepted</span>
+                        <span className="text-xl font-extrabold text-emerald-500">{stats.acceptedCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="truncate font-bold">{selectedJob?.title || 'Select a project request'}</h2>
+                    <p className="text-xs text-muted-foreground">{visible.length} of {proposals.length} proposals shown</p>
+                    {selectedJob && !selectedJobCanNegotiate && (
+                      <p className="mt-1 text-xs font-semibold text-amber-600">
+                        This job post is not open for negotiation. Proposal review is read-only.
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {section('Introduction', detail.coverLetter)}
-                {section('Analysis', detail.analysisSummary)}
-                {section('Solution approach', detail.solutionApproach)}
-                {section('Overall deliverables', detail.deliverables)}
-                {section('Assumptions', detail.assumptions)}
-                {section('Out of scope', detail.outOfScope)}
-
-                <section>
-                  <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Legacy or unassigned work items</h3>
-                  <div className="space-y-2">
-                    {detail.workBreakdownItems?.filter(item => item.milestoneOrderIndex == null).length ? detail.workBreakdownItems.filter(item => item.milestoneOrderIndex == null).map((item, index) => (
-                      <div key={item.id || index} className="rounded-lg border border-border bg-background p-3">
-                        <div className="flex justify-between gap-3">
-                          <strong className="text-sm">{index + 1}. {item.title || 'Untitled work item'}</strong>
-                          <span className="text-xs text-muted-foreground">{item.estimatedDuration}</span>
-                        </div>
-                        {item.description && <p className="mt-2 truncate text-xs leading-5 text-muted-foreground" title={item.description}>{previewText(item.description, 88)}</p>}
-                        {item.deliverables && <p className="mt-2 truncate text-xs" title={item.deliverables}><strong>Deliverables:</strong> {previewText(item.deliverables, 72)}</p>}
-                      </div>
-                    )) : <p className="text-sm text-muted-foreground">All work items are mapped to milestones.</p>}
+                {/* Status Filter Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex items-center gap-1 font-bold text-muted-foreground">
+                      <Filter size={14} /> Filter Status:
+                    </span>
+                    <button
+                      onClick={() => setStatusFilter('all')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === 'all' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      All ({proposals.length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('1')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '1' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Pending ({proposals.filter(p => Number(p.status) === 1).length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('2')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '2' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Shortlisted ({proposals.filter(p => Number(p.status) === 2).length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('3')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '3' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Accepted ({proposals.filter(p => Number(p.status) === 3).length})
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('4')}
+                      className={`rounded-lg px-3 py-1.5 font-semibold transition cursor-pointer ${statusFilter === '4' ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Rejected ({proposals.filter(p => Number(p.status) === 4).length})
+                    </button>
                   </div>
-                </section>
 
-                <section>
-                  <h3 className="mb-3 text-xs font-bold uppercase text-muted-foreground">Milestone plan</h3>
-                  <div className="space-y-2">
-                    {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (
-                      <div key={item.id || index} className="rounded-lg border border-border bg-background p-3 text-xs">
-                        <div className="flex justify-between gap-3">
-                          <strong>{index + 1}. {item.title || 'Untitled milestone'}</strong>
-                          <span className="font-semibold">{formatGigCoin(item.amount)}</span>
-                        </div>
-                        {item.estimatedDuration && <p className="mt-1 text-muted-foreground">Duration: {item.estimatedDuration}</p>}
-                        {item.dueDate && <p className="mt-1 text-muted-foreground">Deadline: {item.dueDate}</p>}
-                        {item.description && <p className="mt-2 truncate text-muted-foreground" title={item.description}>{previewText(item.description, 88)}</p>}
-                        {item.deliverables && <p className="mt-2 truncate" title={item.deliverables}><strong>Deliverables:</strong> {previewText(item.deliverables, 72)}</p>}
-                        {item.acceptanceCriteria && <p className="mt-2 truncate" title={item.acceptanceCriteria}><strong>Acceptance:</strong> {previewText(item.acceptanceCriteria, 72)}</p>}
-                        <div className="mt-3 space-y-2 border-t border-border pt-2">
-                          <strong className="text-[11px] uppercase text-muted-foreground">Work Breakdown Structure</strong>
-                          {(item.workItems?.length ? item.workItems : detail.workBreakdownItems?.filter(workItem => workItem.milestoneOrderIndex === item.orderIndex) || []).map((workItem, workIndex) => (
-                            <div key={workItem.id || workIndex} className="rounded-md bg-muted/40 p-2">
-                              <div className="flex justify-between gap-2"><strong>{workIndex + 1}. {workItem.title || 'Untitled work item'}</strong><span className="text-muted-foreground">{workItem.estimatedDuration}</span></div>
-                              {workItem.description && <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{workItem.description}</p>}
-                              {workItem.deliverables && <p className="mt-1"><strong>Deliverables:</strong> {workItem.deliverables}</p>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )) : <p className="text-sm text-muted-foreground">Legacy proposal: no milestone plan.</p>}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      type="text"
+                      placeholder="Search freelancer..."
+                      className="rounded border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground w-40 sm:w-48 focus:outline-none focus:border-cyan-500"
+                    />
+                    <select
+                      value={sortBy}
+                      onChange={e => setSortBy(e.target.value as SortBy)}
+                      className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium text-xs text-foreground cursor-pointer"
+                    >
+                      <option value="submittedAt">Sort: Newest</option>
+                      <option value="budget">Sort: Budget</option>
+                      <option value="duration">Sort: Duration</option>
+                      <option value="status">Sort: Status</option>
+                      <option value="milestoneTotal">Sort: Milestone Total</option>
+                    </select>
                   </div>
-                </section>
+                </div>
 
-                <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-                  <button onClick={() => navigate(`/proposals/${detail.proposalId}/answers`)} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted/20">Clarifying answers</button>
+                {message && <div role="status" className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3 text-sm text-cyan-700">{message}</div>}
+
+                {loading ? (
+                  <div className="py-16 text-center text-sm text-muted-foreground">Loading freelancer proposals...</div>
+                ) : pagedVisible.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
+                    No freelancer proposals match the selected filter criteria.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                    <table className="w-full min-w-[980px] text-left text-xs">
+                      <thead className="sticky top-0 bg-muted text-muted-foreground">
+                        <tr>
+                          <th className="w-[22%] p-4">Freelancer</th>
+                          <th className="w-[12%] p-4">Status</th>
+                          <th className="w-[12%] p-4">Budget</th>
+                          <th className="w-[12%] p-4">Duration</th>
+                          <th className="w-[9%] p-4 text-center">Work items</th>
+                          <th className="w-[9%] p-4 text-center">Milestones</th>
+                          <th className="w-[12%] p-4">Milestone total</th>
+                          <th className="w-[12%] p-4">Submitted</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagedVisible.map(item => {
+                          const status = Number(item.status);
+                          return (
+                             <tr key={item.proposalsId} onClick={() => openProposalModal(item.proposalsId, 'userAnswers')} className={`cursor-pointer border-t border-border hover:bg-muted/20 ${activeId === item.proposalsId ? 'bg-cyan-500/5 shadow-[inset_3px_0_0_rgb(6_182_212)]' : ''}`}>
+                              <td className="p-4 align-middle font-semibold"><span className="block max-w-32 truncate">{item.freelancerName || 'Freelancer'}</span></td>
+                              <td className="p-4 align-middle"><span className={`rounded px-2.5 py-1 font-bold ${badgeClass(status)}`}>{getStatusLabel(item.status)}</span></td>
+                              <td className="p-4 align-middle font-semibold">{formatGigCoin(item.proposedBudget || 0)}</td>
+                              <td className="p-4 align-middle">{item.proposedDuration || 'N/A'}</td>
+                              <td className="p-4 text-center align-middle">{item.workItemCount ?? 0}</td>
+                              <td className="p-4 text-center align-middle">{item.milestoneCount ?? 0}</td>
+                              <td className="p-4 align-middle font-semibold">{formatGigCoin(item.milestoneTotal || 0)}</td>
+                              <td className="p-4 align-middle">{formatDate(item.submittedAt)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                <div className="mt-6 flex items-center justify-center gap-1.5 text-xs">
                   <button
-                    onClick={() => {
-                      setEvalModalOpen(true);
-                      void loadEvaluation(detail.proposalId);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2 text-xs font-bold text-purple-600 hover:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20"
+                    disabled={currentPage === 1 || loading}
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/40 hover:text-[var(--gb-cyan)] disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
                   >
-                    <Brain size={13} /> {t('proposalAnswers.judgeAIInterview')}
+                    &lt;
                   </button>
-                  {Number(detail.status) === ProposalStatus.Pending && selectedJobCanNegotiate && (
-                    <button disabled={isBusy(detail.proposalId, 'shortlist')} onClick={() => updateStatus(detail.proposalId, ProposalStatus.Shortlisted, 'shortlist')} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs font-bold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
-                      <Check size={14} /> Shortlist
-                    </button>
-                  )}
-                  {canClientAct(Number(detail.status)) && (
-                    <>
-                      <button disabled={isBusy(detail.proposalId, 'accept')} onClick={() => acceptForNegotiation(detail.proposalId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-                        <MessageSquare size={14} /> Start negotiation
-                      </button>
-                      <button disabled={isBusy(detail.proposalId, 'reject')} onClick={() => updateStatus(detail.proposalId, ProposalStatus.Rejected, 'reject')} className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
-                        <X size={14} /> Reject
-                      </button>
-                    </>
-                  )}
-                  {Number(detail.status) === ProposalStatus.Accepted && selectedJobCanNegotiate && (
-                    <button disabled={isBusy(detail.proposalId, 'open')} onClick={() => openNegotiation(detail.proposalId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
-                      <MessageSquare size={14} /> Open negotiation
-                    </button>
-                  )}
+
+                  {(() => {
+                    const pages: (number | string)[] = [];
+                    const range = 1;
+                    for (let i = 1; i <= totalPages; i++) {
+                      if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+                        pages.push(i);
+                      } else if ((i === currentPage - range - 1 && i > 1) || (i === currentPage + range + 1 && i < totalPages)) {
+                        pages.push('...');
+                      }
+                    }
+                    const filteredPages = pages.filter((page, idx) => page !== '...' || pages[idx - 1] !== '...');
+                    return filteredPages.map((page, idx) => {
+                      if (page === '...') {
+                        return (
+                          <span key={idx} className="px-1 text-muted-foreground font-semibold text-xs select-none">
+                            ...
+                          </span>
+                        );
+                      }
+                      const isCurrent = page === currentPage;
+                      return (
+                        <button
+                          key={idx}
+                          disabled={loading}
+                          onClick={() => setCurrentPage(page as number)}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                            isCurrent
+                              ? 'bg-[var(--gb-cyan)] text-white border-none shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                              : 'border border-border bg-background hover:bg-muted/40 hover:text-[var(--gb-cyan)] text-foreground'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    });
+                  })()}
+
+                  <button
+                    disabled={currentPage >= totalPages || loading}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/40 hover:text-[var(--gb-cyan)] disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
+                  >
+                    &gt;
+                  </button>
                 </div>
               </div>
             )}
-          </aside>
+          </main>
         </div>
       </div>
 
       {evalModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-card shadow-2xl p-6 text-foreground max-h-[85vh] flex flex-col">
+          <div className="relative w-full max-w-4xl rounded-2xl border border-border bg-card shadow-2xl p-6 text-foreground max-h-[90vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <Brain className="text-purple-500 h-5 w-5 animate-pulse" />
-                <h3 className="text-lg font-bold bg-gradient-to-r from-purple-500 to-indigo-500 bg-clip-text text-transparent">
-                  {t('proposalAnswers.aiEvaluationReport')}
-                </h3>
+            <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-foreground truncate">
+                    {detail?.freelancerName || proposals.find(p => p.proposalsId === activeId)?.freelancerName || 'Freelancer Proposal'}
+                  </h3>
+                  <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-bold ${badgeClass(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status))}`}>
+                    {getStatusLabel(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Proposed rate: <strong>{formatGigCoin(detail?.proposedBudget || proposals.find(p => p.proposalsId === activeId)?.proposedBudget || 0)}</strong> · Milestones: {formatGigCoin(detailMilestoneTotal)} · {detail?.proposedDuration || proposals.find(p => p.proposalsId === activeId)?.proposedDuration || 'N/A'}
+                </p>
               </div>
-              <button
-                onClick={() => setEvalModalOpen(false)}
-                className="rounded-lg p-1 hover:bg-muted text-muted-foreground hover:text-foreground transition"
-              >
-                <X size={18} />
-              </button>
+
+              {/* Modal Tabs & Close */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1 text-xs">
+                  <button
+                    onClick={() => setModalTab('userAnswers')}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'userAnswers' ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30 dark:text-amber-400' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    <FileQuestion size={14} /> freelancer  Interview Answer
+                  </button>
+                  <button
+                    onClick={() => setModalTab('proposalDetails')}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'proposalDetails' ? 'bg-cyan-500/20 text-cyan-600 border border-cyan-500/30 dark:text-cyan-400' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    <FileText size={14} /> freelancer Project Proposal
+                  </button>
+                  <button
+                    onClick={() => setModalTab('aiReport')}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-bold transition ${modalTab === 'aiReport' ? 'bg-purple-500/20 text-purple-600 border border-purple-500/30 dark:text-purple-400' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    <Brain size={14} /> AI Evaluation Interview Report
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 scrollbar-thin">
-              {evalLoading && (
-                <div className="flex flex-col items-center justify-center py-16 space-y-4">
-                  <div className="relative flex h-16 w-16 items-center justify-center">
-                    <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping"></div>
-                    <div className="relative rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 p-4 text-white">
-                      <Brain className="h-8 w-8 animate-pulse" />
+              {modalTab === 'userAnswers' && (
+                <>
+                  {evalLoading && (
+                    <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                      <div className="relative flex h-16 w-16 items-center justify-center">
+                        <div className="absolute inset-0 rounded-full bg-amber-500/20 animate-ping"></div>
+                        <div className="relative rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 p-4 text-white">
+                          <FileQuestion className="h-8 w-8 animate-pulse" />
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-muted-foreground animate-pulse">
+                        Loading interview answers...
+                      </p>
                     </div>
-                  </div>
-                  <p className="text-sm font-semibold text-muted-foreground animate-pulse">
-                    {t('proposalAnswers.evaluating')}
-                  </p>
-                </div>
+                  )}
+
+                  {!evalLoading && (
+                    rawAnswers.length > 0 ? (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2 flex items-center justify-between">
+                          <span>Screening Questions & Freelancer Answers</span>
+                          <span className="text-xs font-normal text-muted-foreground">({rawAnswers.length} questions)</span>
+                        </h4>
+
+                        {rawAnswers.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((ans, idx) => (
+                          <div key={ans.proposalAnswersId || idx} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <h5 className="text-sm font-bold text-foreground">
+                                {ans.orderIndex || idx + 1}. {ans.questionText}
+                              </h5>
+                              {ans.isRequired && (
+                                <span className="shrink-0 rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
+                                  Required
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
+                              <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                                Freelancer Answer
+                              </span>
+                              <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                                {ans.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-2">
+                        <FileQuestion size={32} className="mx-auto text-muted-foreground/40" />
+                        <p className="font-semibold text-foreground">No freelancer  Interview Answers available.</p>
+                      </div>
+                    )
+                  )}
+                </>
               )}
 
-              {evalError && (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-center text-red-500 text-sm">
-                  {evalError}
-                </div>
-              )}
-
-              {evalResult && (
+              {modalTab === 'proposalDetails' && (
                 <div className="space-y-6">
-                  {/* Summary Card */}
-                  <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/10 pb-4">
-                      {/* Overall Score */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/10 border border-purple-500/20">
-                          <span className="text-xl font-black text-purple-600 dark:text-purple-400">{evalResult.score}</span>
-                        </div>
-                        <div>
-                          <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t('proposalAnswers.overallScore')}</h4>
-                          <p className="text-sm font-semibold">{t('proposalAnswers.aiScore', { score: evalResult.score })}</p>
-                        </div>
-                      </div>
+                  {detailLoading ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">Loading proposal details...</div>
+                  ) : !detail ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">No proposal details available.</div>
+                  ) : (
+                    <>
+                      {section('Introduction', detail.coverLetter, true)}
+                      {section('Analysis', detail.analysisSummary, true)}
+                      {section('Solution approach', detail.solutionApproach, true)}
+                      {section('Overall deliverables', detail.deliverables, true)}
+                      {section('Assumptions', detail.assumptions, true)}
+                      {section('Out of scope', detail.outOfScope, true)}
 
-                      {/* Recommendation Badge */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{t('proposalAnswers.recommendation')}:</span>
-                        {evalResult.recommendedHire ? (
-                          <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-500">
-                            {t('proposalAnswers.recommended')}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-red-500/15 border border-red-500/30 px-3 py-1 text-xs font-bold text-red-500">
-                            {t('proposalAnswers.notRecommended')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Summary */}
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('proposalAnswers.summary')}</h4>
-                      <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{evalResult.summary}</p>
-                    </div>
-
-                    {/* Skills cloud */}
-                    <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-purple-500/10">
-                      <div>
-                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('proposalAnswers.technicalSkills')}</h5>
-                        <div className="flex flex-wrap gap-1.5">
-                          {evalResult.technicalSkills?.length ? evalResult.technicalSkills.map((s, idx) => (
-                            <span key={idx} className="rounded bg-background border border-border px-2 py-0.5 text-xs text-foreground font-medium">
-                              {s}
-                            </span>
-                          )) : <span className="text-xs text-muted-foreground">N/A</span>}
+                      <section className="space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Milestone plan</h3>
+                        <div className="space-y-3">
+                          {detail.milestonePlans?.length ? detail.milestonePlans.map((item, index) => (
+                            <div key={item.id || index} className="rounded-xl border border-border bg-background p-4 text-xs space-y-3">
+                              <div className="flex justify-between items-center gap-3 border-b border-border pb-2">
+                                <strong className="text-sm font-bold text-foreground">{index + 1}. {item.title || 'Untitled milestone'}</strong>
+                                <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">{formatGigCoin(item.amount)}</span>
+                              </div>
+                              {item.estimatedDuration && (
+                                <div className="text-xs text-muted-foreground">
+                                  <strong>Duration:</strong> {item.estimatedDuration}
+                                </div>
+                              )}
+                              {item.dueDate && (
+                                <div className="text-xs text-muted-foreground">
+                                  <strong>Deadline:</strong> {item.dueDate}
+                                </div>
+                              )}
+                              {item.description && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Description</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.description}</p>
+                                </div>
+                              )}
+                              {item.deliverables && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Deliverables</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.deliverables}</p>
+                                </div>
+                              )}
+                              {item.acceptanceCriteria && (
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">Acceptance Criteria</span>
+                                  <p className="leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50 text-foreground">{item.acceptanceCriteria}</p>
+                                </div>
+                              )}
+                              <div className="mt-3 space-y-2 border-t border-border pt-2">
+                                <strong className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Work Breakdown Structure</strong>
+                                {(item.workItems?.length ? item.workItems : detail.workBreakdownItems?.filter(workItem => workItem.milestoneOrderIndex === item.orderIndex) || []).map((workItem, workIndex) => (
+                                  <div key={workItem.id || workIndex} className="rounded-lg bg-muted/30 p-3 space-y-1">
+                                    <div className="flex justify-between items-center gap-2">
+                                      <strong className="text-xs text-foreground">{workIndex + 1}. {workItem.title || 'Untitled work item'}</strong>
+                                      <span className="text-[10px] font-semibold text-muted-foreground">{workItem.estimatedDuration}</span>
+                                    </div>
+                                    {workItem.description && (
+                                      <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{workItem.description}</p>
+                                    )}
+                                    {workItem.deliverables && (
+                                      <p className="text-xs text-foreground">
+                                        <strong>Deliverables:</strong> {workItem.deliverables}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )) : <p className="text-sm text-muted-foreground">Legacy proposal: no milestone plan.</p>}
                         </div>
-                      </div>
-                      <div>
-                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('proposalAnswers.softSkills')}</h5>
-                        <div className="flex flex-wrap gap-1.5">
-                          {evalResult.softSkills?.length ? evalResult.softSkills.map((s, idx) => (
-                            <span key={idx} className="rounded bg-background border border-border px-2 py-0.5 text-xs text-foreground font-medium">
-                              {s}
-                            </span>
-                          )) : <span className="text-xs text-muted-foreground">N/A</span>}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Holistic Adjustment */}
-                    {evalResult.holisticAdjustment !== 0 && (
-                      <div className="rounded-lg bg-background border border-border p-3 text-xs">
-                        <div className="flex items-center justify-between font-bold text-foreground">
-                          <span>{t('proposalAnswers.holisticAdjustment')}:</span>
-                          <span className={evalResult.holisticAdjustment > 0 ? 'text-emerald-500' : 'text-red-500'}>
-                            {evalResult.holisticAdjustment > 0 ? `+${evalResult.holisticAdjustment}` : evalResult.holisticAdjustment}
-                          </span>
-                        </div>
-                        {evalResult.holisticAdjustmentReason && (
-                          <p className="mt-1 text-muted-foreground">{t('proposalAnswers.adjustmentReason')}: {evalResult.holisticAdjustmentReason}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Question-by-Question Graded Feedback */}
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2">
-                      {t('proposalAnswers.questionBreakdown')}
-                    </h4>
-                    {evalResult.gradedQuestions?.map((q) => (
-                      <div key={q.questionIndex} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <h5 className="text-sm font-bold text-foreground">
-                            {q.questionIndex}. {q.questionText}
-                          </h5>
-                          <span className="shrink-0 rounded bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-bold text-purple-500">
-                            {q.score}/100
-                          </span>
-                        </div>
-
-                        {/* Candidate Answer */}
-                        <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
-                          <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                            {t('proposalAnswers.candidateAnswer')}
-                          </span>
-                          <p className="text-foreground whitespace-pre-wrap leading-relaxed">
-                            {q.candidateAnswer || t('proposalAnswers.noAnswerProvided')}
-                          </p>
-                        </div>
-
-                        {/* AI feedback */}
-                        <div className="rounded-lg bg-purple-500/5 border border-purple-500/10 p-3 text-xs space-y-1">
-                          <span className="block text-[10px] font-black uppercase text-purple-500 dark:text-purple-400 tracking-wider">
-                            {t('proposalAnswers.aiFeedback')}
-                          </span>
-                          <p className="text-muted-foreground leading-relaxed italic">{q.feedback}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      </section>
+                    </>
+                  )}
                 </div>
+              )}
+
+              {modalTab === 'aiReport' && (
+                <>
+                  {evalLoading && (
+                    <div className="flex flex-col items-center justify-center py-16 space-y-4">
+                      <div className="relative flex h-16 w-16 items-center justify-center">
+                        <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping"></div>
+                        <div className="relative rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 p-4 text-white">
+                          <Brain className="h-8 w-8 animate-pulse" />
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-muted-foreground animate-pulse">
+                        Loading AI Evaluation...
+                      </p>
+                    </div>
+                  )}
+
+                  {evalError && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-center text-red-500 text-sm">
+                      {evalError}
+                    </div>
+                  )}
+                   {!evalLoading && (rawAnswers.length === 0 || !evalResult) && (
+                    <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-4">
+                      <Brain size={32} className="mx-auto text-purple-500/60" />
+                      <div>
+                        <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
+                        {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
+                          <p className="text-muted-foreground mt-1">This proposal has not been evaluated by AI yet.</p>
+                        )}
+                      </div>
+                      {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
+                        <button
+                          onClick={() => activeId && runManualEvaluation(activeId)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md cursor-pointer border-none"
+                        >
+                          <Brain size={14} /> Evaluate Proposal with AI
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {!evalLoading && rawAnswers.length > 0 && evalResult && (
+                    <div className="space-y-6">
+                      {/* Summary Card */}
+                      <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-500/10 pb-4">
+                          {/* Overall Score */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-500/10 border border-purple-500/20">
+                              <span className="text-xl font-black text-purple-600 dark:text-purple-400">{evalResult.score}</span>
+                            </div>
+                            <div>
+                              <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t('proposalAnswers.overallScore')}</h4>
+                              <p className="text-sm font-semibold">{t('proposalAnswers.aiScore', { score: evalResult.score })}</p>
+                            </div>
+                          </div>
+
+                          {/* Recommendation Badge */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">{t('proposalAnswers.recommendation')}:</span>
+                            {evalResult.recommendedHire ? (
+                              <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-500">
+                                {t('proposalAnswers.recommended')}
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-red-500/15 border border-red-500/30 px-3 py-1 text-xs font-bold text-red-500">
+                                {t('proposalAnswers.notRecommended')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Summary */}
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{t('proposalAnswers.summary')}</h4>
+                          <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">{evalResult.summary}</p>
+                        </div>
+
+                        {/* Skills cloud */}
+                        <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-purple-500/10">
+                          <div>
+                            <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('proposalAnswers.technicalSkills')}</h5>
+                            <div className="flex flex-wrap gap-1.5">
+                              {evalResult.technicalSkills?.length ? evalResult.technicalSkills.map((s, idx) => (
+                                <span key={idx} className="rounded bg-background border border-border px-2 py-0.5 text-xs text-foreground font-medium">
+                                  {s}
+                                </span>
+                              )) : <span className="text-xs text-muted-foreground">N/A</span>}
+                            </div>
+                          </div>
+                          <div>
+                            <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{t('proposalAnswers.softSkills')}</h5>
+                            <div className="flex flex-wrap gap-1.5">
+                              {evalResult.softSkills?.length ? evalResult.softSkills.map((s, idx) => (
+                                <span key={idx} className="rounded bg-background border border-border px-2 py-0.5 text-xs text-foreground font-medium">
+                                  {s}
+                                </span>
+                              )) : <span className="text-xs text-muted-foreground">N/A</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Holistic Adjustment */}
+                        {evalResult.holisticAdjustment !== 0 && (
+                          <div className="rounded-lg bg-background border border-border p-3 text-xs">
+                            <div className="flex items-center justify-between font-bold text-foreground">
+                              <span>{t('proposalAnswers.holisticAdjustment')}:</span>
+                              <span className={evalResult.holisticAdjustment > 0 ? 'text-emerald-500' : 'text-red-500'}>
+                                {evalResult.holisticAdjustment > 0 ? `+${evalResult.holisticAdjustment}` : evalResult.holisticAdjustment}
+                              </span>
+                            </div>
+                            {evalResult.holisticAdjustmentReason && (
+                              <p className="mt-1 text-muted-foreground">{t('proposalAnswers.adjustmentReason')}: {evalResult.holisticAdjustmentReason}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Question-by-Question Graded Feedback */}
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-foreground tracking-tight border-b border-border pb-2">
+                          {t('proposalAnswers.questionBreakdown')}
+                        </h4>
+
+                        {evalResult.gradedQuestions && evalResult.gradedQuestions.length > 0 ? (
+                          evalResult.gradedQuestions.map((q) => (
+                            <div key={q.questionIndex} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <h5 className="text-sm font-bold text-foreground">
+                                  {q.questionIndex}. {q.questionText}
+                                </h5>
+                                <span className="shrink-0 rounded bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-bold text-purple-500">
+                                  {q.score}/100
+                                </span>
+                              </div>
+
+                              {/* Candidate Answer */}
+                              <div className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
+                                <span className="block text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                                  {t('proposalAnswers.candidateAnswer')}
+                                </span>
+                                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                                  {q.candidateAnswer || t('proposalAnswers.noAnswerProvided')}
+                                </p>
+                              </div>
+
+                              {/* AI feedback */}
+                              <div className="rounded-lg bg-purple-500/5 border border-purple-500/10 p-3 text-xs space-y-1">
+                                <span className="block text-[10px] font-black uppercase text-purple-500 dark:text-purple-400 tracking-wider">
+                                  {t('proposalAnswers.aiFeedback')}
+                                </span>
+                                <p className="text-muted-foreground leading-relaxed italic">{q.feedback}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-xl border border-border bg-muted/10 p-4 text-xs text-muted-foreground space-y-1">
+                            <p className="font-semibold text-foreground">No screening questions evaluated for this proposal.</p>
+                            <p>The freelancer was evaluated holistically based on their profile, technical skill match, and overall proposal scope.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-border pt-3 mt-4 flex justify-end">
+            <div className="border-t border-border pt-4 mt-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                {activeId && Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status) === ProposalStatus.Pending && selectedJobCanNegotiate && (
+                  <button disabled={isBusy(activeId, 'shortlist')} onClick={() => updateStatus(activeId, ProposalStatus.Shortlisted, 'shortlist')} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 px-3 py-2 text-xs font-bold text-cyan-600 hover:bg-cyan-500/10 disabled:opacity-50">
+                    <Check size={14} /> Shortlist
+                  </button>
+                )}
+                {activeId && canClientAct(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)) && (
+                  <>
+                    <button disabled={isBusy(activeId, 'reject')} onClick={() => updateStatus(activeId, ProposalStatus.Rejected, 'reject')} className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-500/10 disabled:opacity-50">
+                      <X size={14} /> Reject
+                    </button>
+                    <button disabled={isBusy(activeId, 'accept')} onClick={() => acceptForNegotiation(activeId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                      <MessageSquare size={14} /> Start negotiation
+                    </button>
+                  </>
+                )}
+                {activeId && Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status) === ProposalStatus.Accepted && selectedJobCanNegotiate && (
+                  <button disabled={isBusy(activeId, 'open')} onClick={() => openNegotiation(activeId)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                    <MessageSquare size={14} /> Open negotiation
+                  </button>
+                )}
+              </div>
+
               <button
                 onClick={() => setEvalModalOpen(false)}
-                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/95 transition"
+                className="rounded-lg bg-muted border border-border px-4 py-2 text-xs font-bold text-foreground hover:bg-muted/80 transition"
               >
                 {t('proposalAnswers.close')}
               </button>

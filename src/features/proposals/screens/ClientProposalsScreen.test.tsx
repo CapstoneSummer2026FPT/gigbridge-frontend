@@ -83,6 +83,7 @@ const detailProposal = (status = ProposalStatus.Pending) => ({
     deliverables: 'Working application shell',
     estimatedDuration: '1 week',
     orderIndex: 0,
+    milestoneOrderIndex: 0,
   }],
   milestonePlans: [{
     id: 'milestone-1',
@@ -127,15 +128,22 @@ describe('ClientProposalsScreen Phase 2', () => {
   });
 
   it('renders the comparison table and the complete proposal plan', async () => {
+    const user = userEvent.setup();
     render(<ClientProposalsScreen />);
 
     expect(screen.getByRole('heading', { name: 'Proposal Comparison' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Analysis summary' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Work items' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Milestone total' })).toBeInTheDocument();
 
     await waitFor(() => expect(screen.getAllByText('Ada Freelancer').length).toBeGreaterThan(0));
-    expect(await screen.findByText('Requirement analysis')).toBeInTheDocument();
+
+    // Open detail modal by clicking row
+    await user.click((await screen.findAllByText('Ada Freelancer'))[0]);
+
+    // Click on the tab 'freelancer Project Proposal'
+    await user.click(await screen.findByRole('button', { name: /freelancer project proposal/i }));
+
+    expect(await screen.findByText('Analysis')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation delivery')).toBeInTheDocument();
     expect(screen.getByText(/Build passes/)).toBeInTheDocument();
@@ -145,15 +153,20 @@ describe('ClientProposalsScreen Phase 2', () => {
     const user = userEvent.setup();
     render(<ClientProposalsScreen />);
 
-    await screen.findByTitle('Shortlist');
-    await user.click(screen.getByTitle('Shortlist'));
+    // Open modal first
+    await user.click(await screen.findByText('Ada Freelancer'));
+
+    const shortlistBtn = await screen.findByRole('button', { name: /shortlist/i });
+    await user.click(shortlistBtn);
     expect(mocks.updateProposalStatus).toHaveBeenCalledWith('proposal-1', { status: ProposalStatus.Shortlisted });
 
-    await user.click(screen.getByTitle('Start negotiation'));
+    const negotiateBtn = screen.getByRole('button', { name: /start negotiation/i });
+    await user.click(negotiateBtn);
     expect(mocks.acceptForNegotiation).toHaveBeenCalledWith('proposal-1');
     expect(mocks.navigate).toHaveBeenCalledWith('/messages', { state: { activeConvId: 'conversation-1' } });
 
-    await user.click(screen.getByTitle('Reject'));
+    const rejectBtn = screen.getByRole('button', { name: /reject/i });
+    await user.click(rejectBtn);
     expect(mocks.updateProposalStatus).toHaveBeenCalledWith('proposal-1', { status: ProposalStatus.Rejected });
   });
 
@@ -163,6 +176,8 @@ describe('ClientProposalsScreen Phase 2', () => {
 
     render(<ClientProposalsScreen />);
 
+    // Open proposal detail modal first
+    await user.click(await screen.findByText('Ada Freelancer'));
     await user.click(await screen.findByRole('button', { name: /open negotiation/i }));
 
     expect(mocks.startNegotiationFromProposal).toHaveBeenCalledWith('proposal-1');
@@ -170,6 +185,7 @@ describe('ClientProposalsScreen Phase 2', () => {
   });
 
   it('keeps proposal actions read-only when the selected job is closed', async () => {
+    const user = userEvent.setup();
     mocks.getMyJobPosts.mockResolvedValueOnce({
       success: true,
       data: [{
@@ -184,8 +200,13 @@ describe('ClientProposalsScreen Phase 2', () => {
     render(<ClientProposalsScreen />);
 
     expect(await screen.findByText(/Proposal review is read-only/i)).toBeInTheDocument();
-    expect(screen.queryByTitle('Shortlist')).not.toBeInTheDocument();
-    expect(screen.queryByTitle('Start negotiation')).not.toBeInTheDocument();
-    expect(screen.queryByTitle('Reject')).not.toBeInTheDocument();
+    
+    // Open detail modal by clicking the row
+    await user.click((await screen.findAllByText('Ada Freelancer'))[0]);
+
+    // Modal buttons should not be present
+    expect(screen.queryByRole('button', { name: /shortlist/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start negotiation/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reject/i })).not.toBeInTheDocument();
   });
 });

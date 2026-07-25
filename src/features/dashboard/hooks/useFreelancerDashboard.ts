@@ -64,7 +64,7 @@ export function useFreelancerDashboard() {
 
     const results = await Promise.allSettled([
       profileGetAPI.getMyFreelancerProfile(),
-      proposalGetAPI.getMyProposals(),
+      proposalGetAPI.getMyProposals({ pageSize: 100 }),
       projectGetAPI.getProjects({ freelancerId: user?.id }),
       jobGetAPI.getPublicJobPosts({ pageSize: 6 }),
       walletGetAPI.getMyWallet(),
@@ -77,7 +77,8 @@ export function useFreelancerDashboard() {
 
     // Proposals
     if (results[1].status === 'fulfilled' && results[1].value.success && results[1].value.data) {
-      setProposals(results[1].value.data);
+      const data = results[1].value.data;
+      setProposals(Array.isArray(data) ? data : (data.items || []));
     }
 
     // Projects (mock still returns plain array)
