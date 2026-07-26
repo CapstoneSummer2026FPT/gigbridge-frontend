@@ -2170,6 +2170,7 @@
     "errors": {
       "chooseJob": "Hãy chọn một công việc trước khi bắt đầu phỏng vấn AI.",
       "startFailed": "Không thể bắt đầu cuộc phỏng vấn AI. Vui lòng thử lại.",
+      "noQuestions": "Không thể bắt đầu cuộc phỏng vấn AI. Vì jobpost này không có câu hỏi phỏng vấn",
       "incompleteSession": "Dịch vụ phỏng vấn trả về phiên không đầy đủ. Vui lòng thử lại.",
       "transcriptionFailed": "Không thể chuyển câu trả lời thành văn bản. Vui lòng ghi âm lại.",
       "unsupportedRecording": "Trình duyệt này không hỗ trợ ghi âm bằng micrô. Vui lòng sử dụng phiên bản Chrome, Edge, Firefox hoặc Safari mới nhất.",
