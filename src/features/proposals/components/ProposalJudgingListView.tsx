@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Brain, Award, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Eye, ChevronRight } from 'lucide-react';
+import { Brain, Award, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Eye, ChevronRight, Search } from 'lucide-react';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
@@ -40,13 +40,14 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
   const [filterRec, setFilterRec] = useState<FilterRec>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortByOption>('aiScore');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [filterRec, minScoreFilter, sortBy, jobPostId]);
+  }, [filterRec, minScoreFilter, sortBy, jobPostId, searchQuery]);
 
   // Batch Judging State
   const [batchLoading, setBatchLoading] = useState(false);
@@ -80,6 +81,24 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       list = list.filter(p => (p.aiScore || 0) >= minScoreFilter);
     }
 
+    // Dynamic search filtering
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      list = list.filter(p => {
+        const name = p.freelancerName?.toLowerCase() || '';
+        const summary = p.aiSummary?.toLowerCase() || '';
+        const techSkills = p.aiTechnicalSkills?.map(s => s.toLowerCase()) || [];
+        const softSkills = p.aiSoftSkills?.map(s => s.toLowerCase()) || [];
+        const duration = p.proposedDuration?.toLowerCase() || '';
+        
+        return name.includes(query) ||
+               summary.includes(query) ||
+               techSkills.some(s => s.includes(query)) ||
+               softSkills.some(s => s.includes(query)) ||
+               duration.includes(query);
+      });
+    }
+
     return list.sort((a, b) => {
       if (sortBy === 'budget') return (a.proposedBudget || 0) - (b.proposedBudget || 0);
       if (sortBy === 'newest') return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
@@ -89,7 +108,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       const scoreB = typeof b.aiScore === 'number' ? b.aiScore : -1;
       return scoreB - scoreA;
     });
-  }, [proposals, filterRec, minScoreFilter, sortBy]);
+  }, [proposals, filterRec, minScoreFilter, sortBy, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(rankedCandidates.length / pageSize));
   const pagedCandidates = useMemo(() => {
@@ -244,10 +263,32 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Dynamic Search Input */}
+          <div className="relative w-40 sm:w-48">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <Search size={13} />
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search freelancer..."
+              className="w-full rounded border border-border bg-background py-1.5 pl-8 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
           <select
             value={minScoreFilter}
             onChange={e => setMinScoreFilter(Number(e.target.value))}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium"
+            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium cursor-pointer"
           >
             <option value={0}>Min Score: Any</option>
             <option value={80}>Score 80+</option>
@@ -258,7 +299,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value as SortByOption)}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium"
+            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium cursor-pointer"
           >
             <option value="aiScore">Sort: Highest AI Score</option>
             <option value="budget">Sort: Proposed Budget</option>
