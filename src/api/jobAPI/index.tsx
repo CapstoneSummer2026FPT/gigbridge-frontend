@@ -19,6 +19,7 @@ export const jobAPI = {
   generateAIDescription: jobPostAPI.generateAIDescription,
   promoteJobPost: jobPostAPI.promoteJobPost,
   uploadJobPromotionImage: jobPostAPI.uploadJobPromotionImage,
+  uploadJobPostAttachment: jobPostAPI.uploadJobPostAttachment,
   trackJobPromotionImpression: jobPostAPI.trackJobPromotionImpression,
   trackJobPromotionClick: jobPostAPI.trackJobPromotionClick,
   createAiInterview: jobPostAPI.createAiInterview,
@@ -30,4 +31,5 @@ export const jobAPI = {
   updateJobPostVisibility: jobPatchAPI.updateJobPostVisibility,
   deleteEmptyDraftJobPost: jobDeleteAPI.deleteEmptyDraftJobPost,
   deleteJobPostQuestion: jobDeleteAPI.deleteJobPostQuestion,
+  deleteJobPostAttachment: jobDeleteAPI.deleteJobPostAttachment,
 };

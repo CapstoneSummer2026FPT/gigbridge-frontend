@@ -6,6 +6,7 @@ const navigateMock = vi.fn();
 const {
   getQuestionsMock,
   getAnswersMock,
+  getProposalDetailMock,
   startQuestionTimerMock,
   completeQuestionTimerMock,
   startInterviewReviewMock,
@@ -15,6 +16,7 @@ const {
 } = vi.hoisted(() => ({
   getQuestionsMock: vi.fn(),
   getAnswersMock: vi.fn(),
+  getProposalDetailMock: vi.fn(),
   startQuestionTimerMock: vi.fn(),
   completeQuestionTimerMock: vi.fn(),
   startInterviewReviewMock: vi.fn(),
@@ -42,7 +44,10 @@ vi.mock('../../../api/jobAPI/GET', () => ({
 }));
 
 vi.mock('../../../api/proposalAPI/GET', () => ({
-  proposalGetAPI: { getProposalAnswers: getAnswersMock },
+  proposalGetAPI: {
+    getProposalAnswers: getAnswersMock,
+    getProposalDetail: getProposalDetailMock,
+  },
 }));
 
 vi.mock('../../../api/proposalAPI/POST', () => ({
@@ -74,6 +79,18 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
       }],
     });
     getAnswersMock.mockResolvedValue({ success: true, data: [] });
+    getProposalDetailMock.mockResolvedValue({
+      success: true,
+      data: {
+        proposalId: 'proposal-1',
+        jobPostId: 'job-1',
+        freelancerProfileId: 'freelancer-1',
+        status: 0,
+        coverLetter: 'A'.repeat(50),
+        analysisSummary: 'B'.repeat(50),
+        solutionApproach: 'B'.repeat(50),
+      },
+    });
     startQuestionTimerMock.mockResolvedValue({
       success: true,
       data: {
@@ -121,5 +138,28 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
     expect(copyEvent.defaultPrevented).toBe(false);
     expect(pasteEvent.defaultPrevented).toBe(false);
   });
-});
 
+  it('blocks the timed interview when legacy draft narrative is too short', async () => {
+    getProposalDetailMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        proposalId: 'proposal-1',
+        jobPostId: 'job-1',
+        freelancerProfileId: 'freelancer-1',
+        status: 0,
+        coverLetter: 'A'.repeat(49),
+        analysisSummary: 'B'.repeat(50),
+        solutionApproach: 'B'.repeat(50),
+      },
+    });
+
+    render(<ScreenProposalAnswerQuestion />);
+
+    expect(await screen.findByText('Introduction must be at least 50 characters.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start interview/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /edit proposal details/i }));
+    expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-1/edit');
+    expect(startQuestionTimerMock).not.toHaveBeenCalled();
+  });
+});

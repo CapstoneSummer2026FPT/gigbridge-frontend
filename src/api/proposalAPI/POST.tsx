@@ -50,10 +50,10 @@ export const proposalPostAPI = {
     return apiService.post<string>(`${proposalsUrl}/${proposalId}/accept-for-negotiation`);
   },
 
-  evaluateVettingAnswers: async (
+  evaluateProposalAnswers: async (
     proposalId: string
   ): Promise<ApiResponse<VettingEvaluationResponseDto>> => {
-    const response = await apiService.post<any>(`${proposalsUrl}/${proposalId}/ai-interview-judging`);
+    const response = await apiService.post<any>(`${proposalsUrl}/${proposalId}/answer-evaluation`);
     if (response.success && response.data) {
       const raw = response.data;
       const mapped: VettingEvaluationResponseDto = {

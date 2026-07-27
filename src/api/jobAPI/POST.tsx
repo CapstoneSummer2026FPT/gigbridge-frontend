@@ -11,6 +11,7 @@ import type {
   CreateAiInterviewRequest,
   AiInterviewDefinitionDto,
   JobPostQuestionDto,
+  JobPostAttachmentDto,
 } from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
@@ -58,6 +59,15 @@ export const jobPostAPI = {
     const form = new FormData();
     form.append('file', file);
     return apiService.post<string>(`${jobPostsUrl}/promotion-image`, form);
+  },
+
+  uploadJobPostAttachment: async (
+    jobPostId: string,
+    file: File,
+  ): Promise<ApiResponse<JobPostAttachmentDto>> => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiService.post<JobPostAttachmentDto>(`${jobPostsUrl}/${jobPostId}/attachments`, form);
   },
 
   createAiInterview: async (

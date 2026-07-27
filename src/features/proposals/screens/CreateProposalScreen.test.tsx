@@ -111,4 +111,17 @@ describe('CreateProposalScreen Phase 2', () => {
     expect(screen.getByRole('button', { name: /untitled milestone 2/i })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getAllByLabelText('Milestone title')).toHaveLength(1);
   });
+
+  it('does not continue with an introduction shorter than the backend submission rule', async () => {
+    render(<CreateProposalScreen />);
+    await screen.findByRole('heading', { name: 'Project Proposal' });
+
+    fireEvent.change(screen.getByLabelText('Introduction'), {
+      target: { value: 'A'.repeat(49) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /submit proposal/i }));
+
+    expect(await screen.findByText('Introduction must be at least 50 characters.')).toBeInTheDocument();
+    expect(createProposalMock).not.toHaveBeenCalled();
+  });
 });

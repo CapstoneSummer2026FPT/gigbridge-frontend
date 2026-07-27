@@ -11,9 +11,9 @@ import { useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee } from '../../../shared/utils/serviceFee';
+import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { useMessages } from '../hooks/useMessages';
 import { MESSAGE_ROOMS } from '../messageRooms';
 import { ReportDetailModal, useReportContract } from '../../report-contracts';
@@ -202,14 +202,6 @@ export default function MessagesScreen() {
     clearSelectedReport();
   };
 
-  const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
-    if (!isLatestOffer) return 'Đề xuất cũ';
-    if (status === 'pending_freelancer') return 'Đang chờ freelancer';
-    if (status === 'agreed') return 'Đã đồng ý ✓';
-    if (status === 'declined') return 'Đã từ chối';
-    if (status === 'pending_client') return 'Đang chờ cập nhật';
-    return 'Đang đồng bộ';
-  };
   const canNegotiateActiveJob = activeConv?.canNegotiate !== false;
   const jobDetailPath = activeConv
     ? isClient
@@ -435,7 +427,7 @@ export default function MessagesScreen() {
               </div>
             </div>
 
-            {/* Agreed Deal Banner (freelancer: navigate to contract) */}
+            {/* Agreed deal banner: both parties can inspect the contract workflow. */}
             {dealStatus === 'agreed' && isNegotiationConversation && (
               <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
@@ -448,6 +440,7 @@ export default function MessagesScreen() {
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={handleOpenAcceptedContract}
                   className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
@@ -656,96 +649,18 @@ export default function MessagesScreen() {
                         </div>
 
                       ) : msg.type === 'deal' ? (
-                        /* ── Deal Proposal Bubble ─────────────────────────── */
-                        <div className="msg-deal-bubble my-1">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)]">
-                              <CreditCard size={20} />
-                            </div>
-                            <div>
-                              <h3 className="text-sm text-foreground font-bold">Thỏa thuận giá (Deal)</h3>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                {getDealStatusLabel(dealBubbleStatus, isLatestDealOffer)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="bg-muted/50 rounded-xl p-3.5 mb-4 border border-border/50">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Đề xuất mức giá</span>
-                            <div className="text-2xl font-black text-[var(--gb-cyan)] mt-1 flex items-center gap-1">
-                              <GCoinIcon size={24} />
-                              {msg.content}
-                            </div>
-                          </div>
-
-                          {msg.offerDetail?.milestones?.length ? (
-                            <div className="mb-4 space-y-2 rounded-xl border border-border bg-background p-3">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Milestone snapshot</p>
-                              {msg.offerDetail.milestones.map((milestone, milestoneIndex) => (
-                                <div key={milestone.id || milestoneIndex} className="border-t border-border/60 pt-2 first:border-t-0 first:pt-0">
-                                  <div className="flex justify-between gap-3 text-xs">
-                                    <strong>{milestoneIndex + 1}. {milestone.title || 'Untitled milestone'}</strong>
-                                    <span className="font-bold text-[var(--gb-cyan)]">{milestone.amount} G-coin</span>
-                                  </div>
-                                  {milestone.estimatedDuration && <p className="mt-1 text-[11px] text-muted-foreground">Duration: {milestone.estimatedDuration}</p>}
-                                  {milestone.description && <p className="mt-1 whitespace-pre-wrap text-[11px] text-muted-foreground">{milestone.description}</p>}
-                                  {milestone.deliverables && <p className="mt-1 text-[11px]"><strong>Deliverables:</strong> {milestone.deliverables}</p>}
-                                  {milestone.acceptanceCriteria && <p className="mt-1 text-[11px]"><strong>Acceptance:</strong> {milestone.acceptanceCriteria}</p>}
-                                  {milestone.workItems?.length ? <div className="mt-2 space-y-1 border-t border-border/60 pt-2">
-                                    <strong className="text-[10px] uppercase text-muted-foreground">Work Breakdown Structure</strong>
-                                    {milestone.workItems.map((workItem, workIndex) => <div key={workItem.id || workIndex} className="rounded bg-muted/50 p-2 text-[11px]"><strong>{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-muted-foreground">{workItem.description}</p>}</div>)}
-                                  </div> : null}
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-
-                          {!isLatestDealOffer ? (
-                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                              Đề xuất này không còn là đề xuất hiện tại.
-                            </div>
-                          ) : dealBubbleStatus === 'pending_freelancer' ? (
-                            !canNegotiateActiveJob ? (
-                              <div className="text-xs text-center text-amber-700 font-medium bg-amber-500/10 p-2 rounded-lg">
-                                This job post is no longer open for negotiation.
-                              </div>
-                            ) : !mine ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleAcceptDeal(
-                                    msg.negotiationOfferId,
-                                    Number(msg.content.replace(/,/g, ''))
-                                  )}
-                                  className="flex-1 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                                >
-                                  Đồng ý
-                                </button>
-                                <button
-                                  onClick={() => handleDeclineDeal(msg.negotiationOfferId)}
-                                  className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                                >
-                                  Từ chối
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                                Đang đợi phản hồi từ đối tác...
-                              </div>
-                            )
-                          ) : dealBubbleStatus === 'agreed' ? (
-                            <div className="text-xs text-emerald-600 bg-emerald-500/10 p-2.5 rounded-lg text-center font-bold">
-                              Mức giá đã được thống nhất
-                            </div>
-                          ) : dealBubbleStatus === 'declined' ? (
-                            <div className="text-xs text-red-500 bg-red-500/10 p-2.5 rounded-lg text-center font-bold">
-                              Đề xuất đã bị từ chối
-                            </div>
-                          ) : (
-                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                              Đang đồng bộ trạng thái đề xuất...
-                            </div>
-                          )}
-                        </div>
+                        <NegotiationDealCard
+                          offerId={msg.negotiationOfferId}
+                          amount={Number(msg.content.replace(/,/g, '')) || 0}
+                          detail={msg.offerDetail}
+                          status={dealBubbleStatus}
+                          isLatestOffer={isLatestDealOffer}
+                          canRespond={!mine}
+                          canNegotiate={canNegotiateActiveJob}
+                          actionBusy={isAcceptingDeal}
+                          onAccept={handleAcceptDeal}
+                          onDecline={handleDeclineDeal}
+                        />
 
                       ) : (
                         /* ── Text message ───────────────────────────────────── */

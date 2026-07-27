@@ -14,6 +14,7 @@ import {
   type QuestionTimerStateDto,
 } from '../../../types/models/Proposal';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
+import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
 
 type AnswerRouteState = {
   proposalId?: string;
@@ -50,6 +51,7 @@ export default function ScreenProposalAnswerQuestion() {
   const [saving, setSaving] = useState(false);
   const [timerLoading, setTimerLoading] = useState(false);
   const [error, setError] = useState('');
+  const [proposalReadinessError, setProposalReadinessError] = useState('');
   const [interviewStarted, setInterviewStarted] = useState(false);
   const completingQuestionRef = useRef(false);
   const completingReviewRef = useRef(false);
@@ -86,15 +88,24 @@ export default function ScreenProposalAnswerQuestion() {
         setLoading(true);
         setError('');
 
-        const [questionsResponse, answersResponse] = await Promise.all([
+        const [questionsResponse, answersResponse, proposalResponse] = await Promise.all([
           jobGetAPI.getJobPostQuestions(jobPostId),
           proposalGetAPI.getProposalAnswers(proposalId),
+          proposalGetAPI.getProposalDetail(proposalId),
         ]);
 
         if (!questionsResponse.success) {
           setError(questionsResponse.message || 'Questions could not be loaded.');
           return;
         }
+        if (!proposalResponse.success || !proposalResponse.data) {
+          setProposalReadinessError(
+            proposalResponse.message || 'Proposal details could not be verified. Return to the proposal and save it again.'
+          );
+          return;
+        }
+
+        setProposalReadinessError(getProposalNarrativeValidationError(proposalResponse.data));
 
         const loadedQuestions = questionsResponse.data || [];
         setQuestions(loadedQuestions);
@@ -166,10 +177,14 @@ export default function ScreenProposalAnswerQuestion() {
   }, [lockedQuestionIds, markQuestionLocked, proposalId, sortedQuestions]);
 
   const handleStartInterview = useCallback(() => {
+    if (proposalReadinessError) {
+      setError(proposalReadinessError);
+      return;
+    }
     setError('');
     setInterviewStarted(true);
     void startQuestionAtIndex(activeQuestionIndex);
-  }, [activeQuestionIndex, startQuestionAtIndex]);
+  }, [activeQuestionIndex, proposalReadinessError, startQuestionAtIndex]);
 
   const completeQuestion = useCallback(async (reason: QuestionTimerLockedReason) => {
     if (!proposalId || !activeQuestion || completingQuestionRef.current) {
@@ -375,6 +390,11 @@ export default function ScreenProposalAnswerQuestion() {
   };
 
   const handleSubmit = async () => {
+    if (proposalReadinessError) {
+      setError(proposalReadinessError);
+      return;
+    }
+
     if (!allQuestionsLocked) {
       setError('Complete or time out all questions before submitting.');
       return;
@@ -435,6 +455,12 @@ export default function ScreenProposalAnswerQuestion() {
               <p className="mt-2 text-sm text-secondary">
                 Each question has a three-minute answer window. The timer starts only after you continue.
               </p>
+              {proposalReadinessError ? (
+                <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-left text-sm text-red-500">
+                  <p>{proposalReadinessError}</p>
+                  <p className="mt-1 text-xs">Update the proposal details before starting the timed interview.</p>
+                </div>
+              ) : null}
               <div className="mt-5 flex justify-center gap-3">
                 <button
                   type="button"
@@ -444,14 +470,24 @@ export default function ScreenProposalAnswerQuestion() {
                   <ArrowLeft size={16} />
                   Back
                 </button>
-                <button
-                  type="button"
-                  onClick={handleStartInterview}
-                  className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-                >
-                  <Play size={16} />
-                  Start interview
-                </button>
+                {proposalReadinessError ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/proposals/${proposalId}/edit`)}
+                    className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+                  >
+                    Edit proposal details
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStartInterview}
+                    className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+                  >
+                    <Play size={16} />
+                    Start interview
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -36,6 +36,23 @@ export enum ContractWorkItemStatus {
   RevisionRequired = 3,
 }
 
+export interface ContractEscrowDto {
+  contractEscrowId: string;
+  requiredAmount: number;
+  requiredTokens: number;
+  fundingFeeRate: number;
+  fundingFeeVnd: number;
+  fundingFeeTokens: number;
+  totalDebitTokens: number;
+  fundedAmount: number;
+  releasedAmount: number;
+  requiredPercentage: number;
+  currency: string;
+  status: number;
+  createdAt: string;
+  fundedAt?: string | null;
+}
+
 export interface ContractWorkItem {
   workItemId: string;
   milestoneId: string;
@@ -99,6 +116,7 @@ export interface ContractDto {
   canReview?: boolean;
   hasReviewedByCurrentUser?: boolean;
   revisionNumber?: number;
+  escrow?: ContractEscrowDto | null;
 }
 
 export interface CreateContractDto {

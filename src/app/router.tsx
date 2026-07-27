@@ -1,5 +1,5 @@
 import { lazy, type ReactNode } from 'react';
-import { createBrowserRouter, Navigate, useParams } from 'react-router';
+import { createBrowserRouter, Navigate, useLocation, useParams } from 'react-router';
 import { useApp } from './providers/AppProvider';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute';
 import { RootLayout } from './layouts/RootLayout';
@@ -12,18 +12,10 @@ const ResetPasswordScreen = lazy(() => import('../features/auth/screens/ResetPas
 const ProfileSetupScreen = lazy(() => import('../features/onboarding/screens/ProfileSetupScreen'));
 const ClientDashboardScreen = lazy(() => import('../features/dashboard/screens/ClientDashboardScreen'));
 const FreelancerDashboardScreen = lazy(() => import('../features/dashboard/screens/FreelancerDashboardScreen'));
-const PostJobScreen = lazy(() => import('../features/jobs/screens/PostJobScreen'));
-const PostJobDetailsScreen = lazy(() =>
-  import('../features/jobs/screens/PostJobDetailsScreen').then(module => ({
-    default: module.PostJobDetailsScreen,
-  }))
-);
-const PostJobQuestionsScreen = lazy(() =>
-  import('../features/jobs/screens/PostJobQuestionsScreen').then(module => ({
-    default: module.PostJobQuestionsScreen,
-  }))
-);
+const PostJobStepBasicInfo = lazy(() => import('../features/jobs/screens/PostJobStepBasicInfo'));
+const PostJobMilestonesScreen = lazy(() => import('../features/jobs/screens/PostJobMilestonesScreen'));
 const PostJobPreGuideScreen = lazy(() => import('../features/jobs/screens/PostJobPreGuideScreen'));
+const PostJobReviewScreen = lazy(() => import('../features/jobs/screens/PostJobReviewScreen'));
 const CreatePostJobContractScreen = lazy(() => import('../features/jobs/screens/CreatePostJobContractScreen'));
 const CreatePostJobEsignScreen = lazy(() => import('../features/jobs/screens/CreatePostJobEsignScreen'));
 const BrowseJobsScreen = lazy(() => import('../features/jobs/screens/BrowseJobsScreen'));
@@ -96,6 +88,11 @@ import { getProposalCreatePath } from '../features/proposals/utils/proposalRoute
 
 const CLIENT_ONLY_ROLES = [UserRole.Client] as const;
 const FREELANCER_ONLY_ROLES = [UserRole.Freelancer] as const;
+
+function LegacyJobPostRedirect({ to }: { to: '/jobs/post' | '/jobs/post/plan' }) {
+  const location = useLocation();
+  return <Navigate to={to} replace state={location.state} />;
+}
 
 function NotFound() {
   return (
@@ -216,9 +213,12 @@ export const router = createBrowserRouter([
 
       // Jobs - requires authentication
       { path: 'jobs/post/guide', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><PostJobPreGuideScreen /></ProtectedRoute> },
-      { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><PostJobScreen /></ProtectedRoute> },
-      { path: 'jobs/post/details', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><PostJobDetailsScreen /></ProtectedRoute> },
-      { path: 'jobs/post/questions', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><PostJobQuestionsScreen /></ProtectedRoute> },
+      { path: 'jobs/post', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><PostJobStepBasicInfo /></ProtectedRoute> },
+      { path: 'jobs/post/plan', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><PostJobMilestonesScreen /></ProtectedRoute> },
+      { path: 'jobs/post/scope', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><LegacyJobPostRedirect to="/jobs/post" /></ProtectedRoute> },
+      { path: 'jobs/post/questions', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><LegacyJobPostRedirect to="/jobs/post/plan" /></ProtectedRoute> },
+      { path: 'jobs/post/milestones', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><LegacyJobPostRedirect to="/jobs/post/plan" /></ProtectedRoute> },
+      { path: 'jobs/post/review', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><PostJobReviewScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><CreatePostJobContractScreen /></ProtectedRoute> },
       { path: 'jobs/post/esign', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><CreatePostJobEsignScreen /></ProtectedRoute> },
       { path: 'jobs/post/contract/esign', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><CreatePostJobEsignScreen /></ProtectedRoute> },

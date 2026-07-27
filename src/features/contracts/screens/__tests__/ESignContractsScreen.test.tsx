@@ -155,6 +155,40 @@ describe('ESignContractsScreen', () => {
     });
   });
 
+  it('opens the exact document requested by the deep-link query', async () => {
+    vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [{ ...signedDocumentItem, documentId: 'different-document' }],
+        pageNumber: 1,
+        totalPages: 1,
+        totalCount: 1,
+        hasPreviousPage: false,
+        hasNextPage: false,
+      },
+    });
+    vi.mocked(esignGetAPI.getDocumentById).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: signedDocumentDetail,
+    });
+
+    renderScreen('/contracts/esign?document=doc-1');
+
+    await waitFor(() => {
+      expect(esignGetAPI.getDocumentById).toHaveBeenCalledWith('doc-1');
+    });
+    expect(esignGetAPI.getDocumentById).not.toHaveBeenCalledWith('different-document');
+    expect(await screen.findByTitle('Read-only e-sign contract document')).toHaveAttribute(
+      'srcdoc',
+      signedDocumentDetail.renderedHtmlContent
+    );
+    expect(screen.getByRole('button', { name: 'Download DOCX' })).toBeInTheDocument();
+  });
+
   it('opens a read-only preview without signing or editing controls', async () => {
     vi.mocked(esignGetAPI.getMyDocuments).mockResolvedValue({
       success: true,

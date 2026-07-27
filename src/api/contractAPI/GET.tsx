@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest } from '../../types/models/Contract';
+import type { ContractDto, ContractEscrowDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
 
@@ -73,6 +73,39 @@ interface BackendContractResponse {
   HasReviewedByCurrentUser?: boolean;
   revisionNumber?: number;
   RevisionNumber?: number;
+  escrow?: BackendContractEscrowResponse | null;
+  Escrow?: BackendContractEscrowResponse | null;
+}
+
+interface BackendContractEscrowResponse {
+  contractEscrowId?: string;
+  ContractEscrowId?: string;
+  requiredAmount?: number;
+  RequiredAmount?: number;
+  requiredTokens?: number;
+  RequiredTokens?: number;
+  fundingFeeRate?: number;
+  FundingFeeRate?: number;
+  fundingFeeVnd?: number;
+  FundingFeeVnd?: number;
+  fundingFeeTokens?: number;
+  FundingFeeTokens?: number;
+  totalDebitTokens?: number;
+  TotalDebitTokens?: number;
+  fundedAmount?: number;
+  FundedAmount?: number;
+  releasedAmount?: number;
+  ReleasedAmount?: number;
+  requiredPercentage?: number;
+  RequiredPercentage?: number;
+  currency?: string;
+  Currency?: string;
+  status?: number;
+  Status?: number;
+  createdAt?: string;
+  CreatedAt?: string;
+  fundedAt?: string | null;
+  FundedAt?: string | null;
 }
 
 interface BackendMilestoneResponse {
@@ -159,8 +192,32 @@ const getValue = <T,>(source: Record<string, unknown>, ...keys: string[]): T | u
   return undefined;
 };
 
-const normalizeContract = (contract: BackendContractResponse): ContractDto => {
+const normalizeContractEscrow = (
+  escrow: BackendContractEscrowResponse
+): ContractEscrowDto => {
+  const source = escrow as Record<string, unknown>;
+
+  return {
+    contractEscrowId: String(getValue(source, 'contractEscrowId', 'ContractEscrowId') ?? ''),
+    requiredAmount: Number(getValue(source, 'requiredAmount', 'RequiredAmount') ?? 0),
+    requiredTokens: Number(getValue(source, 'requiredTokens', 'RequiredTokens') ?? 0),
+    fundingFeeRate: Number(getValue(source, 'fundingFeeRate', 'FundingFeeRate') ?? 0),
+    fundingFeeVnd: Number(getValue(source, 'fundingFeeVnd', 'FundingFeeVnd') ?? 0),
+    fundingFeeTokens: Number(getValue(source, 'fundingFeeTokens', 'FundingFeeTokens') ?? 0),
+    totalDebitTokens: Number(getValue(source, 'totalDebitTokens', 'TotalDebitTokens') ?? 0),
+    fundedAmount: Number(getValue(source, 'fundedAmount', 'FundedAmount') ?? 0),
+    releasedAmount: Number(getValue(source, 'releasedAmount', 'ReleasedAmount') ?? 0),
+    requiredPercentage: Number(getValue(source, 'requiredPercentage', 'RequiredPercentage') ?? 0),
+    currency: String(getValue(source, 'currency', 'Currency') ?? 'VND'),
+    status: Number(getValue(source, 'status', 'Status') ?? 0),
+    createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? ''),
+    fundedAt: getValue<string | null>(source, 'fundedAt', 'FundedAt') ?? null,
+  };
+};
+
+export const normalizeContract = (contract: BackendContractResponse): ContractDto => {
   const source = contract as Record<string, unknown>;
+  const escrow = getValue<BackendContractEscrowResponse | null>(source, 'escrow', 'Escrow');
 
   return {
     contractsId: String(getValue(source, 'contractsId', 'ContractsId', 'contractId', 'ContractId') ?? ''),
@@ -188,6 +245,7 @@ const normalizeContract = (contract: BackendContractResponse): ContractDto => {
     canReview: Boolean(getValue<boolean>(source, 'canReview', 'CanReview') ?? false),
     hasReviewedByCurrentUser: Boolean(getValue<boolean>(source, 'hasReviewedByCurrentUser', 'HasReviewedByCurrentUser') ?? false),
     revisionNumber: Number(getValue(source, 'revisionNumber', 'RevisionNumber') ?? 1),
+    escrow: escrow ? normalizeContractEscrow(escrow) : null,
   };
 };
 

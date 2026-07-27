@@ -20,4 +20,13 @@ export const jobDeleteAPI = {
   ): Promise<ApiResponse<boolean>> => {
     return apiService.delete<boolean>(`${jobPostsUrl}/${jobPostId}/questions/${questionId}`);
   },
+
+  deleteJobPostAttachment: async (
+    jobPostId: string,
+    attachmentId: string,
+  ): Promise<ApiResponse<boolean>> => {
+    return apiService.delete<boolean>(
+      `${jobPostsUrl}/${jobPostId}/attachments/${attachmentId}`,
+    );
+  },
 };

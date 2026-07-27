@@ -26,7 +26,7 @@ interface MarkdownEditorProps extends MarkdownPreviewProps {
 
 const previewClass = 'prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-pre:overflow-x-auto';
 
-function MarkdownPreview({ value, className = '' }: MarkdownPreviewProps) {
+export function MarkdownPreview({ value, className = '' }: MarkdownPreviewProps) {
   if (!value?.trim()) return null;
   return (
     <div className={`${previewClass} ${className}`}>

@@ -20,6 +20,7 @@ import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../sha
 import { useTranslation } from '../../../hooks/useTranslation';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { getMessageRoom } from '../messageRooms';
+import { getContractWorkflowRoute } from '../contractWorkflowRoute';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -220,31 +221,6 @@ function getEventValue(event: unknown, ...keys: string[]): string | null {
   }
 
   return null;
-}
-
-function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { path?: string; waitMessage?: string } {
-  const contractPath = `/contracts/${contract.contractsId}`;
-
-  switch (contract.status) {
-    case ContractStatus.PendingContractDetails:
-      return isClient
-        ? { path: `${contractPath}/milestones?mode=contract-edit` }
-        : { waitMessage: 'The client is updating milestone terms. You can review them once submitted.' };
-    case ContractStatus.PendingContractConfirmation:
-      return isClient
-        ? { waitMessage: 'Waiting for the freelancer to review the milestone terms.' }
-        : { path: contractPath };
-    case ContractStatus.PendingSignature:
-      return { path: contractPath };
-    case ContractStatus.PendingEscrow:
-      return isClient
-        ? { path: contractPath }
-        : { path: `/workspace/${contract.contractsId}` };
-    case ContractStatus.Active:
-      return { path: `/workspace/${contract.contractsId}` };
-    default:
-      return { path: contractPath };
-  }
 }
 
 export function useMessages() {
@@ -1014,7 +990,7 @@ export function useMessages() {
     hubConnection.on('ContractDraftUpdated', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
-    hubConnection.on('ContractFullySigned', handleContractWorkflowUpdate);
+    hubConnection.on('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
     hubConnection.on('ContractMilestonesAccepted', handleContractWorkflowUpdate);
     hubConnection.on('WorkspaceOpened', handleContractWorkflowUpdate);
     hubConnection.on('ScheduleMeetingChanged', handleMeetingChanged);
@@ -1029,7 +1005,7 @@ export function useMessages() {
       hubConnection.off('ContractDraftUpdated', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
-      hubConnection.off('ContractFullySigned', handleContractWorkflowUpdate);
+      hubConnection.off('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
       hubConnection.off('ContractMilestonesAccepted', handleContractWorkflowUpdate);
       hubConnection.off('WorkspaceOpened', handleContractWorkflowUpdate);
       hubConnection.off('ScheduleMeetingChanged', handleMeetingChanged);
@@ -1363,8 +1339,8 @@ export function useMessages() {
           return;
         }
 
-        if (activeConv?.proposalId) {
-          const contractRes = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+        if (activeConv?.job.id) {
+          const contractRes = await contractGetAPI.getContractByJobPost(activeConv.job.id);
           if (contractRes.success && contractRes.data?.contractsId) {
             navigate(`/contracts/${contractRes.data.contractsId}`);
             return;
@@ -1431,20 +1407,27 @@ export function useMessages() {
       return;
     }
 
-    if (!activeConv?.proposalId) {
-      console.error('Cannot open contract: active conversation has no contractId or proposalId.');
+    if (!activeConv?.job.id) {
+      const message = 'Cannot open contract because this conversation has no project reference.';
+      setAnchorNotice(message);
+      console.error(message);
       return;
     }
 
     try {
-      const res = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+      // ContractDraftUpdated and the refreshed conversation normally provide
+      // contractId. Resolve by JobPost as a race-safe fallback while SignalR and
+      // the conversation list are still synchronizing.
+      const res = await contractGetAPI.getContractByJobPost(activeConv.job.id);
       if (res.success && res.data?.contractsId) {
         openContract(res.data);
         return;
       }
 
-      console.error('Cannot open contract from proposal:', res);
+      setAnchorNotice(res.message || 'The contract is still being prepared. Please try again.');
+      console.error('Cannot open contract from project:', res);
     } catch (err) {
+      setAnchorNotice('Unable to open the contract. Please try again.');
       console.error('Failed to open accepted contract:', err);
     }
   };

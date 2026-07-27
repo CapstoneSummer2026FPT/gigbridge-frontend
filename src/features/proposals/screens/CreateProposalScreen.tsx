@@ -30,6 +30,7 @@ import {
   calculateProposalDuration,
   parseProposalDuration,
 } from '../utils/proposalTotals';
+import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
 
 const emptyWorkItem = (orderIndex: number): ProposalWorkBreakdownItemDto => ({
   title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex, milestoneOrderIndex: 0,
@@ -152,8 +153,12 @@ export default function CreateProposalScreen() {
 
   const validateForSubmit = () => {
     setMilestoneErrors({});
-    if (coverLetter.trim().length < 30) return 'Introduction must be at least 30 characters.';
-    if (proposalApproach.trim().length < 30) return 'Your proposal approach must be at least 30 characters.';
+    const narrativeError = getProposalNarrativeValidationError({
+      coverLetter,
+      analysisSummary: proposalApproach,
+      solutionApproach: proposalApproach,
+    });
+    if (narrativeError) return narrativeError;
     if (!workItems.length || workItems.some(item => !item.title?.trim() || !item.description?.trim())) return 'Every work breakdown item needs a title and description.';
     if (!milestones.length) return 'Add at least one milestone before submitting.';
     if (workItems.some(item => item.milestoneOrderIndex == null)) return 'Every work item must belong to a milestone.';
@@ -314,6 +319,9 @@ export default function CreateProposalScreen() {
               onExpandedChange={setExpandedMilestone}
               errors={milestoneErrors}
               showDueDate
+              milestoneTitleMaxLength={200}
+              workItemTitleMaxLength={200}
+              durationMaxLength={100}
               durationUnits={MILESTONE_DURATION_UNITS.map(unit => ({
                 value: unit,
                 label: unit.charAt(0).toUpperCase() + unit.slice(1),
