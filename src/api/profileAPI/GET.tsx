@@ -1,5 +1,26 @@
 import { apiService } from '../../service/apiService';
-import type { ClientProfileDetailDto, FreelancerProfileDetailDto } from '../../types/models/Profile';
+import type {
+  ClientProfileDetailDto,
+  FreelancerDirectoryQuery,
+  FreelancerProfileDetailDto,
+  FreelancerSummaryDto,
+  PaginatedList,
+} from '../../types/models/Profile';
+
+const buildFreelancerDirectoryQuery = (query: FreelancerDirectoryQuery): string => {
+  const params = new URLSearchParams({
+    page: String(query.page ?? 1),
+    pageSize: String(query.pageSize ?? 20),
+    sort: query.sort ?? 'featured',
+  });
+
+  if (query.search) params.set('search', query.search);
+  if (query.availabilityStatus) params.set('availabilityStatus', query.availabilityStatus);
+  if (query.minRating !== undefined) params.set('minRating', String(query.minRating));
+  query.skills?.forEach(skill => params.append('skills', skill));
+
+  return params.toString();
+};
 
 export const profileGetAPI = {
   getFreelancerProfile: async (userId: string) => {
@@ -18,8 +39,11 @@ export const profileGetAPI = {
     return await apiService.get<ClientProfileDetailDto>(`profile/client/${userId}`);
   },
 
-  getAllFreelancers: async (filters?: { skills?: string[]; availabilityStatus?: string; minRating?: number }) => {
-    return await apiService.get<FreelancerProfileDetailDto[]>('profile/freelancer', filters || {});
+  getFreelancers: async (query: FreelancerDirectoryQuery = {}) => {
+    const queryString = buildFreelancerDirectoryQuery(query);
+    return await apiService.get<PaginatedList<FreelancerSummaryDto>>(
+      `profile/freelancers?${queryString}`,
+    );
   },
 
   getCompanySizes: async () => {

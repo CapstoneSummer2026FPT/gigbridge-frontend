@@ -60,4 +60,3 @@ export default function About() {
     </div>
   );
 }
-export { About };

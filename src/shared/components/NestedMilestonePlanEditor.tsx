@@ -59,6 +59,7 @@ interface Props {
   fieldHints?: MilestonePlanFieldCopy;
   fieldPlaceholders?: MilestonePlanFieldCopy;
   durationUnits?: readonly MilestoneDurationUnitOption[];
+  simplified?: boolean;
 }
 
 const normalize = (items: EditableMilestonePlan[]) => items.map((item, orderIndex) => ({
@@ -111,6 +112,7 @@ export function NestedMilestonePlanEditor({
   fieldHints = {},
   fieldPlaceholders = {},
   durationUnits,
+  simplified = false,
 }: Props) {
   const editorId = useId();
   const [internalExpanded, setInternalExpanded] = useState<number | null>(value.length ? 0 : null);
@@ -181,7 +183,7 @@ export function NestedMilestonePlanEditor({
               <button type="button" onClick={() => setExpanded(isExpanded ? null : index)} aria-expanded={isExpanded} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{index + 1}</span>
-                <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{milestone.title?.trim() || `Untitled milestone ${index + 1}`}</strong><span className="text-xs text-muted-foreground">{formatGigCoin(Number(milestone.amount) || 0)} · {milestone.workItems.length} work item(s)</span></span>
+                <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{milestone.title?.trim() || `Untitled milestone ${index + 1}`}</strong><span className="text-xs text-muted-foreground">{formatGigCoin(Number(milestone.amount) || 0)}{simplified ? '' : ` · ${milestone.workItems.length} work item(s)`}</span></span>
               </button>
               {!readOnly && <div className="flex shrink-0 gap-1">
                 <button type="button" title="Move up" disabled={index === 0} onClick={() => moveMilestone(index, -1)} className="rounded p-2 hover:bg-muted disabled:opacity-30"><ArrowUp size={15} /></button>
@@ -210,12 +212,12 @@ export function NestedMilestonePlanEditor({
                   {errorFor('estimatedDuration') && <span className="mt-1 block text-xs text-red-500">{errorFor('estimatedDuration')}</span>}
                 </label>
                 {showDueDate && <label className="text-xs font-semibold">Deadline<input data-milestone-field={`${index}.dueDate`} disabled={readOnly} type="date" value={milestone.dueDate || ''} onChange={e => updateMilestone(index, { dueDate: e.target.value || null })} aria-describedby={describedBy(`${index}-deadline`, fieldHints.deadline)} className={`${fieldClass('dueDate')} mt-1`} />{renderHint(`${index}-deadline`, fieldHints.deadline)}{errorFor('dueDate') && <span className="mt-1 block text-xs text-red-500">{errorFor('dueDate')}</span>}</label>}
-                <label className="text-xs font-semibold md:col-span-2">Description<textarea disabled={readOnly} value={milestone.description || ''} onChange={e => updateMilestone(index, { description: e.target.value })} placeholder={fieldPlaceholders.description} aria-describedby={describedBy(`${index}-description`, fieldHints.description)} rows={2} className={`${inputClass} mt-1`} />{renderHint(`${index}-description`, fieldHints.description)}</label>
-                <label className="text-xs font-semibold">Deliverables<textarea data-milestone-field={`${index}.deliverables`} disabled={readOnly} value={milestone.deliverables || ''} onChange={e => updateMilestone(index, { deliverables: e.target.value })} placeholder={fieldPlaceholders.deliverables} aria-describedby={describedBy(`${index}-deliverables`, fieldHints.deliverables)} rows={3} className={`${fieldClass('deliverables')} mt-1`} />{renderHint(`${index}-deliverables`, fieldHints.deliverables)}{errorFor('deliverables') && <span className="mt-1 block text-xs text-red-500">{errorFor('deliverables')}</span>}</label>
-                <label className="text-xs font-semibold">Acceptance criteria<textarea data-milestone-field={`${index}.acceptanceCriteria`} disabled={readOnly} value={milestone.acceptanceCriteria || ''} onChange={e => updateMilestone(index, { acceptanceCriteria: e.target.value })} placeholder={fieldPlaceholders.acceptanceCriteria} aria-describedby={describedBy(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)} rows={3} className={`${fieldClass('acceptanceCriteria')} mt-1`} />{renderHint(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)}{errorFor('acceptanceCriteria') && <span className="mt-1 block text-xs text-red-500">{errorFor('acceptanceCriteria')}</span>}</label>
+                {!simplified && <label className="text-xs font-semibold md:col-span-2">Description<textarea disabled={readOnly} value={milestone.description || ''} onChange={e => updateMilestone(index, { description: e.target.value })} placeholder={fieldPlaceholders.description} aria-describedby={describedBy(`${index}-description`, fieldHints.description)} rows={2} className={`${inputClass} mt-1`} />{renderHint(`${index}-description`, fieldHints.description)}</label>}
+                {!simplified && <><label className="text-xs font-semibold">Deliverables<textarea data-milestone-field={`${index}.deliverables`} disabled={readOnly} value={milestone.deliverables || ''} onChange={e => updateMilestone(index, { deliverables: e.target.value })} placeholder={fieldPlaceholders.deliverables} aria-describedby={describedBy(`${index}-deliverables`, fieldHints.deliverables)} rows={3} className={`${fieldClass('deliverables')} mt-1`} />{renderHint(`${index}-deliverables`, fieldHints.deliverables)}{errorFor('deliverables') && <span className="mt-1 block text-xs text-red-500">{errorFor('deliverables')}</span>}</label>
+                <label className="text-xs font-semibold">Acceptance criteria<textarea data-milestone-field={`${index}.acceptanceCriteria`} disabled={readOnly} value={milestone.acceptanceCriteria || ''} onChange={e => updateMilestone(index, { acceptanceCriteria: e.target.value })} placeholder={fieldPlaceholders.acceptanceCriteria} aria-describedby={describedBy(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)} rows={3} className={`${fieldClass('acceptanceCriteria')} mt-1`} />{renderHint(`${index}-acceptance-criteria`, fieldHints.acceptanceCriteria)}{errorFor('acceptanceCriteria') && <span className="mt-1 block text-xs text-red-500">{errorFor('acceptanceCriteria')}</span>}</label></>}
               </div>
 
-              <div className="space-y-3 rounded-lg border border-border bg-card p-3">
+              {!simplified && <div className="space-y-3 rounded-lg border border-border bg-card p-3">
                 <div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-bold">Work Breakdown Structure</h3>{renderHint(`${index}-work-breakdown`, fieldHints.workBreakdown)}</div>{!readOnly && <button type="button" onClick={() => updateMilestone(index, { workItems: [...milestone.workItems, newWorkItem(milestone.workItems.length)] })} className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-2 py-1 text-xs font-semibold"><Plus size={13} /> Add work item</button>}</div>
                 {milestone.workItems.map((workItem, workIndex) => <div key={workItem.id || workIndex} className="grid gap-2 rounded-lg border border-border p-3 md:grid-cols-2">
                   <div className="flex items-center justify-between md:col-span-2"><strong className="text-xs">Work item {workIndex + 1}</strong>{!readOnly && <button type="button" title="Delete work item" onClick={() => updateMilestone(index, { workItems: milestone.workItems.filter((_, itemIndex) => itemIndex !== workIndex).map((item, orderIndex) => ({ ...item, orderIndex })) })} className="p-1 text-red-500"><Trash2 size={13} /></button>}</div>
@@ -224,7 +226,7 @@ export function NestedMilestonePlanEditor({
                   <label className="text-xs font-semibold">Task description<textarea disabled={readOnly} value={workItem.description || ''} onChange={e => updateWorkItem(index, workIndex, { description: e.target.value })} placeholder={fieldPlaceholders.workItemDescription || 'Task description'} aria-label={`Work item ${workIndex + 1} description`} aria-describedby={describedBy(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)} rows={2} className={`${inputClass} mt-1`} />{renderHint(`${index}-${workIndex}-work-description`, fieldHints.workItemDescription)}</label>
                   <label className="text-xs font-semibold">Work item deliverables<textarea disabled={readOnly} value={workItem.deliverables || ''} onChange={e => updateWorkItem(index, workIndex, { deliverables: e.target.value })} placeholder={fieldPlaceholders.workItemDeliverables || 'Work item deliverables'} aria-describedby={describedBy(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)} rows={2} className={`${inputClass} mt-1`} />{renderHint(`${index}-${workIndex}-work-deliverables`, fieldHints.workItemDeliverables)}</label>
                 </div>)}
-              </div>
+              </div>}
             </div>}
           </article>
         );

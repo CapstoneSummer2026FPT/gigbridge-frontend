@@ -6,6 +6,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   requireSetup?: boolean;
+  allowedRoles?: readonly UserRole[];
 }
 
 /**
@@ -19,7 +20,8 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ 
   children, 
   requireAuth = false,
-  requireSetup = false 
+  requireSetup = false,
+  allowedRoles,
 }: ProtectedRouteProps) {
   let appContext;
   try {
@@ -43,6 +45,16 @@ export function ProtectedRoute({
     // User needs to complete setup
     if (!hasCompletedSetup && requireSetup) {
       return <Navigate to="/onboarding/profile-setup" replace />;
+    }
+
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+      const dashboardPath = user.role === UserRole.Admin
+        ? '/admin'
+        : user.role === UserRole.Client
+          ? '/client/dashboard'
+          : '/freelancer/dashboard';
+
+      return <Navigate to={dashboardPath} replace />;
     }
 
     // User is setup, render the page

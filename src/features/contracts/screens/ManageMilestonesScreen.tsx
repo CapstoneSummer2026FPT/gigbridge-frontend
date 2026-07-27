@@ -14,8 +14,6 @@ import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import { MilestoneStatus, ContractStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
-
 import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
 import { toast } from 'sonner';
 import '../styles/manage-milestones-screen.css';
@@ -252,6 +250,7 @@ export default function ManageMilestonesScreen() {
         due_date: formData.due_date,
         status: MilestoneStatus.Pending,
         paid_at: null,
+        workItems: [],
       };
 
       setMilestones(prev => [...prev, nextMilestone]);
@@ -419,48 +418,6 @@ export default function ManageMilestonesScreen() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit details');
       toast.error(err instanceof Error ? err.message : 'Failed to submit details');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleMilestoneWorkflowAction = async (
-    milestoneId: string,
-    action: 'start' | 'approve' | 'request-revision' | 'withdraw'
-  ) => {
-    if (!contractId) return;
-
-    try {
-      setError(null);
-      setIsSubmitting(true);
-
-      const response = action === 'start'
-        ? await contractPostAPI.startMilestone(contractId, milestoneId)
-        : action === 'approve'
-          ? await contractPostAPI.approveMilestone(contractId, milestoneId)
-          : action === 'request-revision'
-            ? await contractPostAPI.requestMilestoneRevision(contractId, milestoneId)
-            : await contractPostAPI.withdrawMilestone(contractId, milestoneId);
-
-      if (!response.success) {
-        throw new Error(response.message || 'Milestone action failed.');
-      }
-
-      const message = action === 'start'
-        ? 'Milestone started.'
-        : action === 'approve'
-          ? 'Milestone approved.'
-          : action === 'request-revision'
-            ? 'Revision requested.'
-            : 'Milestone payout released.';
-
-      toast.success(message);
-      setSuccessMessage(message);
-      setTimeout(() => setSuccessMessage(null), 3000);
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update milestone workflow');
-      toast.error(err instanceof Error ? err.message : 'Failed to update milestone workflow');
     } finally {
       setIsSubmitting(false);
     }
@@ -821,17 +778,6 @@ export default function ManageMilestonesScreen() {
                                     <div className="p-3 bg-secondary/10 border border-border/20 rounded-lg text-left flex flex-col gap-2">
                                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.workflow')}</span>
                                       <div className="flex flex-wrap gap-1.5">
-                                        {isClient && milestone.status === MilestoneStatus.Pending && (
-                                          <button
-                                            type="button"
-                                            disabled={isSubmitting}
-                                            onClick={() => handleMilestoneWorkflowAction(milestone.id, 'start')}
-                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                                          >
-                                            <Clock size={10} />
-                                            {t('contracts.startWork')}
-                                          </button>
-                                        )}
                                         {isFreelancer && milestone.status === MilestoneStatus.InProgress && (
                                           <button
                                             type="button"
@@ -843,36 +789,14 @@ export default function ManageMilestonesScreen() {
                                           </button>
                                         )}
                                         {isClient && milestone.status === MilestoneStatus.Submitted && (
-                                          <>
-                                            <button
-                                              type="button"
-                                              disabled={isSubmitting}
-                                              onClick={() => handleMilestoneWorkflowAction(milestone.id, 'approve')}
-                                              className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                                            >
-                                              <CheckCircle2 size={10} />
-                                              {t('contracts.approve')}
-                                            </button>
-                                            <button
-                                              type="button"
-                                              disabled={isSubmitting}
-                                              onClick={() => handleMilestoneWorkflowAction(milestone.id, 'request-revision')}
-                                              className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                                            >
-                                              <X size={10} />
-                                              {t('contracts.requestRevision')}
-                                            </button>
-                                          </>
-                                        )}
-                                        {isFreelancer && milestone.status === MilestoneStatus.Approved && (
                                           <button
                                             type="button"
                                             disabled={isSubmitting}
-                                            onClick={() => handleMilestoneWorkflowAction(milestone.id, 'withdraw')}
-                                            className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                            onClick={() => navigate(`/contracts/${contractId}/milestones/${milestone.id}/approve`)}
+                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                           >
-                                            <GigCoinLogo size={10} />
-                                            {t('contracts.withdraw')}
+                                            <Eye size={10} />
+                                            {t('contracts.reviewSubmittedWork')}
                                           </button>
                                         )}
                                       </div>

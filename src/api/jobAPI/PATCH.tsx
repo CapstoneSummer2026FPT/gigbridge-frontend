@@ -3,7 +3,6 @@ import type { ApiResponse } from '../../types/common';
 import type {
   JobPostQuestionDto,
   UpdateBulkJobPostQuestionsRequest,
-  UpdateJobPostQuestionRequest,
   UpdateJobPostQuestionRequiredRequest,
   UpdateJobPostStatusRequest,
   UpdateJobPostVisibilityRequest,
@@ -12,17 +11,6 @@ import type {
 const jobPostsUrl = 'JobPosts';
 
 export const jobPatchAPI = {
-  /**
-   * PATCH /api/JobPosts/{jobPostId}/questions/{questionId}
-   */
-  updateJobPostQuestion: async (
-    jobPostId: string,
-    questionId: string,
-    data: UpdateJobPostQuestionRequest
-  ): Promise<ApiResponse<JobPostQuestionDto>> => {
-    return apiService.patch<JobPostQuestionDto>(`${jobPostsUrl}/${jobPostId}/questions/${questionId}`, data);
-  },
-
   /**
    * PATCH /api/JobPosts/{jobPostId}/questions/{questionId}/required
    */

@@ -1,11 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePostJob } from '../usePostJob';
+import { usePostJob, type PostJobRouteState } from '../usePostJob';
 import { jobAPI } from '../../../../api/jobAPI';
 import { JobPostStatus } from '../../../../types/models/Job';
+import type { ApiResponse } from '../../../../types/common';
 
-let mockLocationState: any = null;
+let mockLocationState: PostJobRouteState | null = null;
 const mockNavigate = vi.fn();
+
+const successResponse = <T,>(data?: T): ApiResponse<T> => ({
+  success: true,
+  statusCode: 200,
+  message: 'OK',
+  ...(data === undefined ? {} : { data }),
+});
 
 vi.mock('react-router', () => ({
   useNavigate: () => mockNavigate,
@@ -23,15 +31,39 @@ vi.mock('sonner', () => ({
 
 vi.mock('../../../../api/jobAPI', () => ({
   jobAPI: {
-    getMajors: vi.fn().mockResolvedValue({ success: true, data: [] }),
-    getCategoriesByMajor: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    getMajors: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: [],
+    }),
+    getCategoriesByMajor: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: [],
+    }),
     getSkillsByCategory: vi.fn(),
     getMyJobPostById: vi.fn(),
     getJobPostQuestions: vi.fn(),
     generateAIDescription: vi.fn(),
-    createDraftJobPost: vi.fn().mockResolvedValue({ success: true, data: { jobPostId: 'job-1' } }),
-    saveDraftJobPost: vi.fn().mockResolvedValue({ success: true }),
-    updateJobPostStatus: vi.fn().mockResolvedValue({ success: true, data: true }),
+    createDraftJobPost: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: { jobPostId: 'job-1', status: 0 },
+    }),
+    saveDraftJobPost: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+    }),
+    updateJobPostStatus: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: true,
+    }),
   },
 }));
 
@@ -40,9 +72,12 @@ describe('usePostJob hook skills conversion', () => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
     mockLocationState = null;
-    vi.mocked(jobAPI.createDraftJobPost).mockResolvedValue({ success: true, data: { jobPostId: 'job-1' } } as any);
-    vi.mocked(jobAPI.saveDraftJobPost).mockResolvedValue({ success: true } as any);
-    vi.mocked(jobAPI.updateJobPostStatus).mockResolvedValue({ success: true, data: true } as any);
+    vi.mocked(jobAPI.createDraftJobPost).mockResolvedValue(successResponse({
+      jobPostId: 'job-1',
+      status: JobPostStatus.Draft,
+    }));
+    vi.mocked(jobAPI.saveDraftJobPost).mockResolvedValue(successResponse());
+    vi.mocked(jobAPI.updateJobPostStatus).mockResolvedValue(successResponse(true));
   });
 
   it('keeps matching skills and converts mismatching skills to custom skills', async () => {
@@ -57,9 +92,9 @@ describe('usePostJob hook skills conversion', () => {
 
     vi.mocked(jobAPI.getSkillsByCategory).mockImplementation((categoryId) => {
       if (categoryId === 'category-1') {
-        return Promise.resolve({ success: true, data: mockSkillsCategory1 });
+        return Promise.resolve(successResponse(mockSkillsCategory1));
       }
-      return Promise.resolve({ success: true, data: mockSkillsCategory2 });
+      return Promise.resolve(successResponse(mockSkillsCategory2));
     });
 
     const initialJobData = {
@@ -115,7 +150,7 @@ describe('usePostJob hook skills conversion', () => {
   });
 
   it('publishes directly without requiring clarifying questions', async () => {
-    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue({ success: true, data: [] });
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
 
     const { result } = renderHook(() => usePostJob());
 

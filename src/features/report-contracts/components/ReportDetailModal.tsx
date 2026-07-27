@@ -8,7 +8,7 @@ import {
 } from '../../../types/models/ReportContract';
 import {
   AlertCircle, X, Loader2, CheckCircle, XCircle,
-  ExternalLink, FileText, Image, Film, Archive,
+  FileText, Image, Film, Archive,
   Upload, Download
 } from 'lucide-react';
 import '../styles/report-contract.css';

@@ -42,8 +42,7 @@ export interface PostJobFormState {
   description: string;
   skillIds: string[];
   customSkillNames: string[];
-  budgetMin: string;
-  budgetMax: string;
+  budget: string;
   currency: string;
   estimatedDurationValue: string;
   estimatedDurationUnit: JobDurationUnit;
@@ -168,8 +167,7 @@ const formFromJobDetail = (job: GetMyJobPostDetailDto): PostJobFormState => ({
   categoryId: job.categoryId || '',
   skillIds: job.skills?.map(skill => skill.skillsId.toLowerCase()) || [],
   customSkillNames: job.customSkillNames || [],
-  budgetMin: toStringValue(job.budgetMin),
-  budgetMax: toStringValue(job.budgetMax),
+  budget: toStringValue(job.budgetMin ?? job.budgetMax),
   currency: job.currency || GIGCOIN_CURRENCY_CODE,
   location: job.location || '',
   visibility: String(job.visibility ?? JobPostVisibility.Public),
@@ -188,8 +186,7 @@ const initialFormFromState = (initialJobData?: PostJobRouteJobData | null): Post
     description: initialJobData?.description || '',
     skillIds: (initialJobData?.skillIds || []).map(id => id.toLowerCase()),
     customSkillNames: [...(initialJobData?.customSkillNames || initialJobData?.customSkills || [])],
-    budgetMin: toStringValue(initialJobData?.budgetMin),
-    budgetMax: toStringValue(initialJobData?.budgetMax),
+    budget: toStringValue(initialJobData?.budgetMin ?? initialJobData?.budgetMax),
     currency: initialJobData?.currency || GIGCOIN_CURRENCY_CODE,
     estimatedDurationValue: duration.value,
     estimatedDurationUnit: duration.unit,
@@ -261,9 +258,9 @@ export function usePostJob() {
   useEffect(() => {
     if (milestonePlans.length === 0) return;
     const fixedBudget = milestonePlanTotal > 0 ? String(milestonePlanTotal) : '';
-    setForm(current => current.budgetMin === fixedBudget && current.budgetMax === fixedBudget
+    setForm(current => current.budget === fixedBudget
       ? current
-      : { ...current, budgetMin: fixedBudget, budgetMax: fixedBudget });
+      : { ...current, budget: fixedBudget });
   }, [milestonePlanTotal, milestonePlans.length]);
 
   const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
@@ -277,8 +274,7 @@ export function usePostJob() {
     return !isDefaultDraftTitle(form.title) ||
       Boolean(form.description.trim()) ||
       Boolean(form.majorCategoryId) ||
-      Boolean(form.budgetMin) ||
-      Boolean(form.budgetMax) ||
+      Boolean(form.budget) ||
       Boolean(form.currency.trim() && form.currency.trim().toUpperCase() !== GIGCOIN_CURRENCY_CODE) ||
       Boolean(form.estimatedDurationValue.trim()) ||
       Boolean(form.location.trim()) ||
@@ -731,7 +727,8 @@ export function usePostJob() {
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
         currency: prev.currency || GIGCOIN_CURRENCY_CODE,
-        estimatedDuration: prev.estimatedDuration || '2-4 weeks',
+        estimatedDurationValue: prev.estimatedDurationValue || '2',
+        estimatedDurationUnit: prev.estimatedDurationUnit || 'weeks',
         location: prev.location || 'Remote',
         visibility: String(JobPostVisibility.Public),
         deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -766,12 +763,10 @@ export function usePostJob() {
     if (!form.majorCategoryId || !form.categoryId) return 'Category is required.';
     if (!form.description.trim()) return 'Requirement details are required.';
 
-    const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
-    const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
-
-    if (budgetMin !== null && (Number.isNaN(budgetMin) || budgetMin < 0)) return 'Budget min must be greater than or equal to 0.';
-    if (budgetMax !== null && (Number.isNaN(budgetMax) || budgetMax < 0)) return 'Budget max must be greater than or equal to 0.';
-    if (budgetMin !== null && budgetMax !== null && budgetMax < budgetMin) return 'Budget max must be greater than or equal to budget min.';
+    const budgetValue = form.budget ? Number(form.budget) : null;
+    if (budgetValue !== null && (Number.isNaN(budgetValue) || budgetValue < 0)) {
+      return 'Budget must be greater than or equal to 0.';
+    }
     if (!isValidJobDurationValue(form.estimatedDurationValue)) return 'Estimated duration must be a positive whole number.';
 
     if (form.deadline) {
@@ -848,15 +843,14 @@ export function usePostJob() {
   };
 
   const buildDraftRequest = (): SaveDraftJobPostRequest => {
-    const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
-    const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
+    const budgetValue = form.budget ? Number(form.budget) : null;
 
     return {
       title: form.title.trim() || null,
       description: form.description.trim() || null,
       majorCategoryId: form.majorCategoryId || null,
-      budgetMin: budgetMin !== null && Number.isNaN(budgetMin) ? null : budgetMin,
-      budgetMax: budgetMax !== null && Number.isNaN(budgetMax) ? null : budgetMax,
+      budgetMin: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
+      budgetMax: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       currency: form.currency.trim() || GIGCOIN_CURRENCY_CODE,
       estimatedDuration: formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit),
       location: form.location.trim() || null,
@@ -931,6 +925,7 @@ export function usePostJob() {
         showValidationError(questionValidationError);
         return;
       }
+
       const planValidationError = validateMilestonePlans();
       if (planValidationError) {
         showValidationError(planValidationError);

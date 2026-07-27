@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import {
-  Sparkles, PenTool, HelpCircle, CheckCircle,
+  Sparkles, PenTool, CheckCircle,
   Lightbulb, ChevronRight, MessageSquare, BookOpen,
   ArrowRight, ShieldAlert, BadgeInfo, LockKeyhole
 } from 'lucide-react';

@@ -150,41 +150,6 @@ export function LanguageSwitcher({
 }
 
 /**
- * Compact Language Switcher
- *
- * A minimal version showing only language codes (EN/VI)
- *
- * @example
- * ```tsx
- * <CompactLanguageSwitcher />
- * ```
- */
-export function CompactLanguageSwitcher({ className = '' }: { className?: string }) {
-  const { currentLanguage, changeLanguage, availableLanguages } = useLanguage();
-
-  return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      {availableLanguages.map((lng) => (
-        <button
-          key={lng}
-          onClick={() => changeLanguage(lng)}
-          className={`
-            px-3 py-1.5 rounded-md text-xs font-bold uppercase transition-all
-            ${
-              currentLanguage === lng
-                ? 'bg-cyan text-background'
-                : 'text-secondary hover:text-primary hover:bg-surface'
-            }
-          `}
-        >
-          {lng}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/**
  * Combined Theme and Language Switcher
  *
  * A compact component that combines theme selection and language selection

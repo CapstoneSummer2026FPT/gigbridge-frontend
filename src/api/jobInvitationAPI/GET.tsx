@@ -12,11 +12,6 @@ export const jobInvitationGetAPI = {
     return unwrapJobInvitationResponse(response, [], 'Sent job invitations could not be loaded.');
   },
 
-  getInvitationsForJob: async (jobPostId: string): Promise<JobInvitationDto[]> => {
-    const response = await apiService.get<JobInvitationDto[]>(`${jobInvitationsUrl}/job/${jobPostId}`);
-    return unwrapJobInvitationResponse(response, [], 'Job invitations could not be loaded.');
-  },
-
   getMyInvitations: async (
     params: Omit<JobInvitationQueryParams, 'jobPostId'> = {}
   ): Promise<JobInvitationDto[]> => {

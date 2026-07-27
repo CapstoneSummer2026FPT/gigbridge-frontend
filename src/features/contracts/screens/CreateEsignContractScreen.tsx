@@ -7,7 +7,6 @@ import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import type { CreateContractDto } from '../../../types/models/Contract';
-import { ContractStatus } from '../../../types/models/Contract';
 import '../styles/create-esign-contract-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -55,7 +54,7 @@ export default function CreateEsignContractScreen() {
       dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     },
   ]);
-  const isPremiumClient = Boolean((user as any)?.isPremium || user?.role === 'Client');
+  const isPremiumClient = Boolean(user?.is_premium);
 
   // Validation
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -131,7 +130,7 @@ export default function CreateEsignContractScreen() {
       errors.startDate = 'Start date is required';
     }
 
-    if (formData.endDate) {
+    if (formData.startDate && formData.endDate) {
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
 
@@ -620,7 +619,7 @@ export default function CreateEsignContractScreen() {
                 <div className="summary-grid">
                   <div>
                     <span>{t('contracts.client')}</span>
-                    <strong>{user?.fullName || t('contracts.clientYou')}</strong>
+                    <strong>{user?.full_name || t('contracts.clientYou')}</strong>
                   </div>
                   <div>
                     <span>{t('contracts.freelancer')}</span>
@@ -636,7 +635,7 @@ export default function CreateEsignContractScreen() {
                   </div>
                   <div>
                     <span>{t('contracts.startDate')}</span>
-                    <strong>{new Date(formData.startDate).toLocaleDateString()}</strong>
+                    <strong>{formData.startDate ? new Date(formData.startDate).toLocaleDateString() : 'N/A'}</strong>
                   </div>
                   <div>
                     <span>{t('contracts.endDate')}</span>

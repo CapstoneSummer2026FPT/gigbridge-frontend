@@ -4,14 +4,13 @@
  * Provides type-safe translation hooks with enhanced functionality:
  * - useTranslation: Main hook for translations
  * - useLanguage: Hook for language switching
- * - useTranslationText: Simplified hook for text-only translations
  *
  * @module hooks/useTranslation
  */
 
 import { useTranslation as useI18nTranslation, UseTranslationOptions } from 'react-i18next';
 import { useCallback } from 'react';
-import type { SupportedLanguage } from '../i18n';
+import { SUPPORTED_LANGUAGES, type SupportedLanguage } from '../i18n';
 
 /**
  * Main translation hook
@@ -33,7 +32,7 @@ import type { SupportedLanguage } from '../i18n';
  * return <h1>{t('common.welcome', { name: 'John' })}</h1>;
  * ```
  */
-export function useTranslation(ns?: string | string[], options?: UseTranslationOptions) {
+export function useTranslation(ns?: string | string[], options?: UseTranslationOptions<undefined>) {
   return useI18nTranslation(ns || 'common', options);
 }
 
@@ -79,9 +78,12 @@ export function useLanguage() {
   /**
    * Get list of available languages
    */
-  const availableLanguages = i18n.options.supportedLngs?.filter(
-    (lng) => lng !== 'cimode'
-  ) as SupportedLanguage[];
+  const configuredLanguages = i18n.options.supportedLngs;
+  const availableLanguages = (
+    Array.isArray(configuredLanguages)
+      ? configuredLanguages
+      : Object.keys(SUPPORTED_LANGUAGES)
+  ).filter((lng: string) => lng !== 'cimode') as SupportedLanguage[];
 
   /**
    * Check if a language is currently active
@@ -97,39 +99,4 @@ export function useLanguage() {
     availableLanguages,
     isLanguageActive,
   };
-}
-
-/**
- * Simplified translation hook for text-only use cases
- *
- * Returns just the translation function without additional utilities
- *
- * @param ns - Namespace to use (default: 'common')
- *
- * @example
- * ```tsx
- * const t = useTranslationText();
- * const loginButton = t('auth.login');
- * const welcomeMessage = t('common.welcome', { name: userName });
- * ```
- */
-export function useTranslationText(ns?: string) {
-  const { t } = useI18nTranslation(ns || 'common');
-  return t;
-}
-
-/**
- * Hook to check if translations are ready
- *
- * Useful for showing loading states while translations load
- *
- * @example
- * ```tsx
- * const isReady = useTranslationsReady();
- * if (!isReady) return <Loader />;
- * ```
- */
-export function useTranslationsReady() {
-  const { ready } = useI18nTranslation();
-  return ready;
 }

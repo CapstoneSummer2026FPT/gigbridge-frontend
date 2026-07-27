@@ -65,18 +65,4 @@ export const proposalGetAPI = {
   ): Promise<ApiResponse<ProposalAnswerDto[]>> => {
     return apiService.get<ProposalAnswerDto[]>(`${proposalsUrl}/${proposalId}/answers`);
   },
-
-  // Backward-compatible helpers for older screens.
-  getProposals: async (filters?: { jobId?: string; freelancerId?: string; clientId?: string }) => {
-    if (filters?.jobId) {
-      return proposalGetAPI.getProposalsByJobPost(filters.jobId);
-    }
-
-    return proposalGetAPI.getAllProposals();
-  },
-
-  getProposalById: async (id: string) => {
-    const response = await proposalGetAPI.getProposalDetail(id);
-    return response.data;
-  },
 };

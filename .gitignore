@@ -47,6 +47,7 @@ coverage/
 .parcel-cache/
 dist-ssr/
 *.local
+repomix-output.*
 
 # OS
 Thumbs.db
@@ -57,3 +58,5 @@ taste-skill/
 
 SKILL.md
 
+.env.example
+*.md

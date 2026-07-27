@@ -1,12 +1,5 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type {
-  AdminCheatingEventsResponse,
-  AdminCheatingViolationDetailDto,
-  AdminCheatingViolationsResponse,
-  GetAdminCheatingEventsParams,
-  GetAdminCheatingViolationsParams,
-} from '../../types/models/Cheating';
 import type { FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { GetUsersParams, PaginatedUsersResponse } from '../../types/models/User';
 import type { WithdrawalResponse, WithdrawalStatus } from '../../types/models/Financial';
@@ -103,26 +96,6 @@ export const adminGetAPI = {
     return apiService.get<FAQCategoryDto[]>(`${Admin_Api_Base_Url}/faq/categories`);
   },
 
-  getCheatingEvents: async (
-    params: GetAdminCheatingEventsParams = {}
-  ): Promise<ApiResponse<AdminCheatingEventsResponse>> => {
-    return apiService.get<AdminCheatingEventsResponse>(`${Admin_Api_Base_Url}/cheating/events`, params);
-  },
-
-  getCheatingViolations: async (
-    params: GetAdminCheatingViolationsParams = {}
-  ): Promise<ApiResponse<AdminCheatingViolationsResponse>> => {
-    return apiService.get<AdminCheatingViolationsResponse>(`${Admin_Api_Base_Url}/cheating/violations`, params);
-  },
-
-  getCheatingViolationDetail: async (
-    violationId: string
-  ): Promise<ApiResponse<AdminCheatingViolationDetailDto>> => {
-    return apiService.get<AdminCheatingViolationDetailDto>(
-      `${Admin_Api_Base_Url}/cheating/violations/${violationId}`
-    );
-  },
-
   getWithdrawals: async (
     params: { status?: WithdrawalStatus | 'all'; limit?: number } = {}
   ): Promise<ApiResponse<WithdrawalResponse[]>> => {
@@ -132,10 +105,6 @@ export const adminGetAPI = {
     };
 
     return apiService.get<WithdrawalResponse[]>(`${Admin_Api_Base_Url}/withdrawals`, query);
-  },
-
-  getWithdrawalDetail: async (withdrawalId: string): Promise<ApiResponse<WithdrawalResponse>> => {
-    return apiService.get<WithdrawalResponse>(`${Admin_Api_Base_Url}/withdrawals/${withdrawalId}`);
   },
 
   getWalletBalance: async (userId: string): Promise<ApiResponse<any>> => {
@@ -150,20 +119,12 @@ export const adminGetAPI = {
     return apiService.get<any>(`JobPosts/admin/${jobPostId}`);
   },
 
-  getProposalDetail: async (proposalId: string): Promise<ApiResponse<any>> => {
-    return apiService.get<any>(`Proposals/admin/${proposalId}`);
-  },
-
   getContracts: async (params?: { status?: number; jobPostId?: string }): Promise<ApiResponse<any[]>> => {
     return apiService.get<any[]>(`${Admin_Api_Base_Url}/contracts`, params || {});
   },
 
   getTemplates: async (): Promise<ApiResponse<any[]>> => {
     return apiService.get<any[]>(`${Admin_Api_Base_Url}/templates`);
-  },
-
-  getTemplateById: async (templateId: string): Promise<ApiResponse<any>> => {
-    return apiService.get<any>(`${Admin_Api_Base_Url}/templates/${templateId}`);
   },
 
   getAssets: async (params?: {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, Ban, Send, Plus, AlertTriangle,
+  ArrowLeft, Ban, Send, AlertTriangle,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
   Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole
@@ -29,6 +29,8 @@ import {
   type ReportSystemMessageMetadata,
 } from '../utils/reportSystemMessage';
 
+type Translate = ReturnType<typeof useTranslation>['t'];
+
 const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
   const url = handoff.sourceType === ContractProductHandoffSourceType.Link
     ? handoff.externalUrl
@@ -37,7 +39,7 @@ const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string |
   return url?.trim() || null;
 };
 
-const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: any): string =>
+const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: Translate): string =>
   handoff.sourceType === ContractProductHandoffSourceType.Link
     ? t('workspace.workMaterialsLink')
     : handoff.fileName || t('workspace.workMaterialsFile');
@@ -66,7 +68,7 @@ const REPORT_STATUS_KEYS: Record<number, string> = {
   [ContractReportStatus.Escalated]: 'workspace.reportStatusEscalated',
 };
 
-const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: any): string => {
+const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: Translate): string => {
   const actor = event.actorName || event.actorRole || t('workspace.reportParticipant');
   if (event.eventType === 'created') return t('workspace.reportSystemCreatedSummary', { actor });
   if (event.eventType === 'resolved') return t('workspace.reportSystemResolvedSummary');
@@ -112,8 +114,6 @@ export default function ProjectWorkspaceScreen() {
   const [isLoadingEndProjectBalance, setIsLoadingEndProjectBalance] = useState(false);
   const [isEndingProject, setIsEndingProject] = useState(false);
   const [endProjectError, setEndProjectError] = useState<string | null>(null);
-  const [isClaimingPayout, setIsClaimingPayout] = useState(false);
-  const [claimPayoutError, setClaimPayoutError] = useState<string | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productMode, setProductMode] = useState<'file' | 'link'>('file');
   const [productNote, setProductNote] = useState('');
@@ -159,10 +159,8 @@ export default function ProjectWorkspaceScreen() {
     handleSimulateAttachment,
     handleRequestMilestoneUnlock,
     handleUpdateWorkItem,
-    handleWithdrawMilestone,
     handleRespondEarlyStart,
     handleEndProject,
-    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,
@@ -187,9 +185,6 @@ export default function ProjectWorkspaceScreen() {
     clearSelectedReport,
   } = useReportContract();
   const workspaceContractId = activeProjectId || contractId || '';
-  const approvedMilestoneCount = project.milestones.filter(milestone => milestone.status === 'approved').length;
-  const requiredApprovedForWithdraw = Math.ceil(project.milestones.length * 0.5);
-  const hasEnoughApprovedForWithdraw = project.milestones.length > 0 && approvedMilestoneCount >= requiredApprovedForWithdraw;
   const allMilestonesSubmittedOrApproved = project.milestones.length > 0 &&
     project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved');
   const allMilestonesApproved = project.milestones.length > 0 &&
@@ -197,21 +192,12 @@ export default function ProjectWorkspaceScreen() {
   const showEndProjectButton = isClient &&
     activeContract?.status === ContractStatus.Active &&
     allMilestonesSubmittedOrApproved;
-  const allMilestonesReleased = project.milestones.length > 0 &&
-    project.milestones.every(milestone => milestone.releasedAmount >= milestone.amount);
-  const projectReleasedInFull = project.totalBudget > 0
-    ? project.paidAmount >= project.totalBudget
-    : allMilestonesReleased;
   const isContractDisputed = activeContract?.status === ContractStatus.Disputed;
   const isWorkspaceViewOnly = activeContract?.status === ContractStatus.Completed;
   const isWorkspaceLocked = isWorkspaceViewOnly || isContractDisputed;
   const showFreelancerPayoutCard = !isClient &&
     activeContract?.status === ContractStatus.Completed &&
     allMilestonesApproved;
-  const remainingEscrowAmount = Math.max(
-    0,
-    project.milestones.reduce((sum, milestone) => sum + Math.max(0, milestone.amount - milestone.releasedAmount), 0)
-  );
   const completedJobAmount = project.milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
   const endProjectServiceFee = calculateServiceFee(completedJobAmount);
 
@@ -420,19 +406,6 @@ export default function ProjectWorkspaceScreen() {
     setMilestoneActionPendingId(null);
   };
 
-  const handleWithdrawApprovedMilestone = async (milestoneId: string) => {
-    setMilestoneActionPendingId(milestoneId);
-    setMilestoneActionError(null);
-    const result = await handleWithdrawMilestone(milestoneId);
-    if (!result.success) {
-      setMilestoneActionError({
-        milestoneId,
-        message: result.message || t('workspace.failedWithdrawFundsError'),
-      });
-    }
-    setMilestoneActionPendingId(null);
-  };
-
   const handleToggleReportList = useCallback(() => {
     if (reportListOpen) {
       setReportListOpen(false);
@@ -579,16 +552,6 @@ export default function ProjectWorkspaceScreen() {
     setIsEndingProject(false);
     setEndProjectModalOpen(false);
     window.dispatchEvent(new Event('gigbridge-wallet-updated'));
-  };
-
-  const handleClaimPayout = async () => {
-    setIsClaimingPayout(true);
-    setClaimPayoutError(null);
-    const result = await handleClaimFinalPayout();
-    if (!result.success) {
-      setClaimPayoutError(result.message || t('workspace.failedClaimPayoutError'));
-    }
-    setIsClaimingPayout(false);
   };
 
   return (
@@ -812,26 +775,16 @@ export default function ProjectWorkspaceScreen() {
                   <Wallet size={22} />
                 </div>
                 <div className="workspace-receive-money-copy">
-                  <span>{projectReleasedInFull ? t('workspace.paidInFull') : t('workspace.finalPayoutReady')}</span>
-                  <h3>
-                    {projectReleasedInFull
-                      ? t('workspace.escrowReleasedFully')
-                      : t('workspace.claimRemainingEscrow')}
-                  </h3>
-                  <p>
-                    {projectReleasedInFull ? t('workspace.youReceived') : t('workspace.availableToClaim')}
-                    <GigCoinAmount amount={projectReleasedInFull ? project.paidAmount : remainingEscrowAmount} />
-                    {projectReleasedInFull ? t('workspace.forThisContract') : '.'}
-                  </p>
-                  {claimPayoutError && <p className="text-red-600">{claimPayoutError}</p>}
+                  <span>{t('workspace.automaticPayout')}</span>
+                  <h3>{t('workspace.payoutReconciliation')}</h3>
+                  <p>{t('workspace.automaticPayoutNotice')}</p>
                 </div>
                 <button
                   type="button"
-                  onClick={projectReleasedInFull ? () => navigate('/wallet/history') : handleClaimPayout}
-                  disabled={isClaimingPayout}
+                  onClick={() => navigate('/wallet/history')}
                   className="workspace-receive-money-button"
                 >
-                  {projectReleasedInFull ? t('workspace.viewWalletHistory') : isClaimingPayout ? t('workspace.claiming') : t('workspace.claimPayout')}
+                  {t('workspace.viewWalletHistory')}
                 </button>
               </div>
             )}
@@ -848,17 +801,12 @@ export default function ProjectWorkspaceScreen() {
                   const isInProgress = milestone.status === 'in_progress';
                   const isSubmitted = milestone.status === 'submitted';
                   const isPending = milestone.status === 'pending';
-                  const withdrawableAmount = Math.max(0, milestone.amount * 0.8 - milestone.releasedAmount);
                   const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
                   const workItems = milestone.workItems || [];
                   const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
                   const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress && allWorkItemsCompleted;
                   const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
                   const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
-                  const showFreelancerWithdraw = !isClient &&
-                    activeContract?.status === ContractStatus.Active &&
-                    isCompleted &&
-                    withdrawableAmount > 0;
                   const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
                   const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
 
@@ -941,14 +889,10 @@ export default function ProjectWorkspaceScreen() {
                         })}
                       </div>
 
-                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || showFreelancerWithdraw || (!isClient && isCompleted && isReleasedInFull)) && (
+                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || (!isClient && isCompleted && isReleasedInFull)) && (
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                           <div className="flex-1 max-w-xs">
-                            {showFreelancerWithdraw ? (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                {t('workspace.withdrawableBeforeEnd')} <GigCoinAmount amount={withdrawableAmount} />
-                              </span>
-                            ) : !isClient && isCompleted && isReleasedInFull ? (
+                            {!isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                                 {t('workspace.releasedInFull')}
                               </span>
@@ -991,15 +935,6 @@ export default function ProjectWorkspaceScreen() {
                               >
                                 {isMilestoneActionPending ? t('workspace.requesting') : 'Request early start'}
                               </button>
-                            ) : showFreelancerWithdraw ? (
-                              <button
-                                onClick={() => handleWithdrawApprovedMilestone(milestone.id)}
-                                disabled={isMilestoneActionPending || !hasEnoughApprovedForWithdraw}
-                                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                                title={hasEnoughApprovedForWithdraw ? t('workspace.withdrawTooltip') : t('workspace.withdrawNotAllowedTooltip')}
-                              >
-                                {isMilestoneActionPending ? t('workspace.withdrawing') : t('workspace.withdraw')}
-                              </button>
                             ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                                 {t('workspace.releasedInFull')}
@@ -1015,11 +950,6 @@ export default function ProjectWorkspaceScreen() {
                       {milestoneActionError?.milestoneId === milestone.id && (
                         <div className="mt-3 text-[11px] font-semibold text-red-500">
                           {milestoneActionError.message}
-                        </div>
-                      )}
-                      {showFreelancerWithdraw && !hasEnoughApprovedForWithdraw && (
-                        <div className="mt-3 text-[11px] font-semibold text-amber-600">
-                          {t('workspace.withdrawThresholdWarning')}
                         </div>
                       )}
                       {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}

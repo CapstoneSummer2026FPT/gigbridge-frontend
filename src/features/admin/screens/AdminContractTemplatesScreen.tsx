@@ -28,55 +28,24 @@ interface ContractTemplate {
   content: string;
   category: 'standard' | 'premium' | 'custom';
   version: number;
-  isDefault: boolean;
   createdDate: string;
   updatedDate: string;
   isActive: boolean;
 }
 
-const REQUIRED_TEMPLATE_CLAUSES = ['scope', 'budget', 'timeline', 'ip'];
+interface AdminESignTemplateDto {
+  esignTemplatesId: string;
+  name: string;
+  description?: string | null;
+  htmlContent: string;
+  templateCode: string;
+  version: number;
+  isActive: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
 
-const MOCK_TEMPLATES: ContractTemplate[] = [
-  {
-    id: 'tpl-01',
-    name: 'Standard Project Contract',
-    description: 'Baseline fixed-price agreement with delivery, payment, IP, and acceptance terms.',
-    content:
-      'STANDARD PROJECT AGREEMENT\n\nScope\nThe Freelancer will deliver the agreed project scope described in the statement of work.\n\nBudget\nThe Client will fund the approved budget into escrow before work begins.\n\nTimeline\nMilestones, review windows, and final delivery dates must follow the approved timeline.\n\nIP\nAll intellectual property created for the project transfers to the Client after final payment.',
-    category: 'standard',
-    version: 2,
-    isDefault: true,
-    createdDate: '2024-01-15',
-    updatedDate: '2024-02-20',
-    isActive: true,
-  },
-  {
-    id: 'tpl-02',
-    name: 'Fixed Scope Contract',
-    description: 'Reusable terms for fixed project scope, milestone delivery, and client review.',
-    content:
-      'FIXED SCOPE AGREEMENT\n\nScope\nWork is performed according to the approved project scope and milestone deliverables.\n\nBudget\nThe fixed project budget is funded into escrow before work begins, with change requests approved separately.\n\nTimeline\nMilestones are submitted according to the agreed delivery schedule and reviewed within three business days.\n\nIP\nProject work product and related IP transfer after the approved milestone or final payment is paid.',
-    category: 'standard',
-    version: 1,
-    isDefault: false,
-    createdDate: '2024-01-20',
-    updatedDate: '2024-01-20',
-    isActive: true,
-  },
-  {
-    id: 'tpl-03',
-    name: 'Premium Enterprise Contract',
-    description: 'Enhanced enterprise template with stronger confidentiality, audit, and acceptance controls.',
-    content:
-      'PREMIUM ENTERPRISE AGREEMENT\n\nScope\nThe scope includes deliverables, acceptance criteria, security expectations, and reporting cadence.\n\nBudget\nEscrow, change requests, and overage approvals must stay inside the approved budget policy.\n\nTimeline\nThe timeline includes milestone gates, stakeholder sign-off, and escalation paths.\n\nIP\nAll IP, derivative works, and source materials transfer after verified payment, subject to confidentiality obligations.',
-    category: 'premium',
-    version: 1,
-    isDefault: false,
-    createdDate: '2024-02-01',
-    updatedDate: '2024-02-01',
-    isActive: true,
-  },
-];
+const REQUIRED_TEMPLATE_CLAUSES = ['scope', 'budget', 'timeline', 'ip'];
 
 const filterTemplates = (
   source: ContractTemplate[],
@@ -113,7 +82,7 @@ const getCoveragePercent = (content: string) => {
   return Math.round((coverage.filter(item => item.met).length / coverage.length) * 100);
 };
 
-const mapEsignTemplateToContractTemplate = (t: any): ContractTemplate => ({
+const mapEsignTemplateToContractTemplate = (t: AdminESignTemplateDto): ContractTemplate => ({
   id: t.esignTemplatesId,
   name: t.name,
   description: t.description || '',
@@ -121,7 +90,6 @@ const mapEsignTemplateToContractTemplate = (t: any): ContractTemplate => ({
   category: t.templateCode === 'CONTRACT_PREMIUM' ? 'premium' :
             t.templateCode === 'CONTRACT_CUSTOM' ? 'custom' : 'standard',
   version: t.version,
-  isDefault: t.isActive,
   createdDate: t.createdAt ? t.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
   updatedDate: t.updatedAt ? t.updatedAt.split('T')[0] : (t.createdAt ? t.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
   isActive: t.isActive,
@@ -129,11 +97,10 @@ const mapEsignTemplateToContractTemplate = (t: any): ContractTemplate => ({
 
 export default function AdminContractTemplatesScreen() {
   const [templates, setTemplates] = useState<ContractTemplate[]>([]);
-  const isApiUnimplemented = false;
   const [searchQuery, setSearchQuery] = useState('');
 
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'standard' | 'premium' | 'custom'>('all');
-  const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>('tpl-01');
+  const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,7 +140,6 @@ export default function AdminContractTemplatesScreen() {
       total: templates.length,
       active: templates.filter(template => template.isActive).length,
       premium: templates.filter(template => template.category === 'premium').length,
-      defaultCount: templates.filter(template => template.isDefault).length,
     }),
     [templates]
   );
@@ -304,17 +270,6 @@ export default function AdminContractTemplatesScreen() {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const handleSetAsDefault = (id: string) => {
-    setTemplates(current =>
-      current.map(template => ({
-        ...template,
-        isDefault: template.id === id,
-      }))
-    );
-    setSuccessMessage('Default template updated');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
   const handleCopyTemplate = (template: ContractTemplate) => {
     setFormData({
       name: `${template.name} (Copy)`,
@@ -378,11 +333,6 @@ export default function AdminContractTemplatesScreen() {
             <div className="stat-icon stat-premium"><Crown size={20} /></div>
             <span>Premium</span>
             <strong>{templateStats.premium}</strong>
-          </div>
-          <div className="template-stat-card">
-            <div className="stat-icon stat-default"><ShieldCheck size={20} /></div>
-            <span>Default Route</span>
-            <strong>{templateStats.defaultCount}</strong>
           </div>
         </section>
 
@@ -554,9 +504,7 @@ export default function AdminContractTemplatesScreen() {
               <AlertCircle size={48} />
               <p className="empty-title">No templates found</p>
               <p className="empty-subtitle">
-                {isApiUnimplemented
-                  ? "API endpoint not implemented yet. Contract template features will be integrated in Step 3."
-                  : "Try another category or create a new baseline template."}
+                Try another category or create a new baseline template.
               </p>
             </div>
           ) : (
@@ -577,7 +525,6 @@ export default function AdminContractTemplatesScreen() {
                           <span className={getCategoryBadgeClass(template.category)}>
                             {template.category.toUpperCase()}
                           </span>
-                          {template.isDefault && <span className="badge-default">DEFAULT</span>}
                           {!template.isActive && <span className="badge-inactive">INACTIVE</span>}
                         </div>
                       </div>
@@ -639,10 +586,6 @@ export default function AdminContractTemplatesScreen() {
                             <span className="detail-label">Updated</span>
                             <span className="detail-value">{template.updatedDate}</span>
                           </div>
-                          <div className="detail-row">
-                            <span className="detail-label">Default</span>
-                            <span className="detail-value">{template.isDefault ? 'Yes' : 'No'}</span>
-                          </div>
                         </div>
 
                         <div className="template-content-panel">
@@ -655,12 +598,6 @@ export default function AdminContractTemplatesScreen() {
                       </div>
 
                       <div className="card-actions">
-                        {!template.isDefault && (
-                          <button onClick={() => handleSetAsDefault(template.id)} className="action-btn action-default">
-                            <CheckCircle2 size={16} />
-                            Set as Default
-                          </button>
-                        )}
                         <button onClick={() => handleCopyTemplate(template)} className="action-btn action-copy">
                           <Copy size={16} />
                           Duplicate
@@ -672,7 +609,6 @@ export default function AdminContractTemplatesScreen() {
                         <button
                           onClick={() => handleDeleteTemplate(template.id)}
                           className="action-btn action-delete"
-                          disabled={template.isDefault}
                         >
                           <Trash2 size={16} />
                           Delete

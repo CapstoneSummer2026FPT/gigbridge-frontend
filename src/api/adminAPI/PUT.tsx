@@ -24,20 +24,6 @@ export const adminPutAPI = {
     });
   },
 
-  /**
-   * Convenience: ban a user by setting IsActive = false.
-   */
-  banUser: async (email: string): Promise<ApiResponse<AdminUserDto>> => {
-    return adminPutAPI.updateUser(email, { isActive: false });
-  },
-
-  /**
-   * Convenience: unban a user by setting IsActive = true.
-   */
-  unbanUser: async (email: string): Promise<ApiResponse<AdminUserDto>> => {
-    return adminPutAPI.updateUser(email, { isActive: true });
-  },
-
   updateFAQ: async (id: number, payload: UpdateFAQPayload): Promise<ApiResponse<FAQDto>> => {
     return apiService.put<FAQDto>(`${Admin_Api_Base_Url}/faq/${id}`, payload);
   },

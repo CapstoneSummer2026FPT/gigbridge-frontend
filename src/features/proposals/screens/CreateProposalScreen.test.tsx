@@ -50,8 +50,7 @@ describe('CreateProposalScreen Phase 2', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Project Proposal' })).toBeInTheDocument());
 
-    expect(screen.getByText('Requirement analysis Markdown editor')).toBeInTheDocument();
-    expect(screen.getByText('Solution approach Markdown editor')).toBeInTheDocument();
+    expect(screen.getByText('Your Proposal Approach Markdown editor')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Work Breakdown Structure' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add work item/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /milestone, payment plan and work breakdown structure/i })).toBeInTheDocument();
@@ -77,7 +76,7 @@ describe('CreateProposalScreen Phase 2', () => {
     expect(screen.getAllByText(/12\.5 G-coin/i).length).toBeGreaterThan(0);
   });
 
-  it('keeps budget locked to milestone total while allowing an overall duration override', async () => {
+  it('keeps budget and overall duration synchronized with the milestone plan', async () => {
     render(<CreateProposalScreen />);
     await screen.findByRole('heading', { name: 'Project Proposal' });
 
@@ -86,20 +85,19 @@ describe('CreateProposalScreen Phase 2', () => {
     fireEvent.change(milestoneDuration, { target: { value: '5' } });
 
     expect(screen.queryByLabelText('Proposed rate')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Overall proposal duration'), { target: { value: '1' } });
-    fireEvent.change(screen.getByLabelText('Overall proposal duration unit'), { target: { value: 'months' } });
+    expect(screen.getByLabelText('Overall proposal duration')).toHaveTextContent('5 weeks');
 
     fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '200' } });
     fireEvent.change(milestoneDuration, { target: { value: '10' } });
 
     expect(screen.getByLabelText('Calculated proposal budget')).toHaveTextContent('200 G-coin');
-    expect(screen.getByLabelText('Overall proposal duration')).toHaveValue(1);
+    expect(screen.getByLabelText('Overall proposal duration')).toHaveTextContent('10 weeks');
 
     fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
     await waitFor(() => expect(createProposalMock).toHaveBeenCalled());
     expect(createProposalMock.mock.calls[0][0]).toMatchObject({
       proposedBudget: 200,
-      proposedDuration: '1 month',
+      proposedDuration: '10 weeks',
       milestonePlans: [expect.objectContaining({ amount: 200, estimatedDuration: '10 weeks' })],
     });
   });

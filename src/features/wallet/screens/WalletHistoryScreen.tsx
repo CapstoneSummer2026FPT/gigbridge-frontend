@@ -1,9 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router';
 import {
   History,
   Search,
-  Download,
   Eye,
   ArrowUpRight,
   ArrowDownRight,
@@ -22,7 +20,6 @@ import { useTranslation } from '../../../hooks/useTranslation';
 
 export default function WalletHistoryScreen() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<WalletTransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);

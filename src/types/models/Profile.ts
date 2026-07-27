@@ -88,32 +88,57 @@ export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
   eloPoints?: number;
   showProVerifiedBadge?: boolean;
   premiumUntil?: string | null;
-  premiumTierName?: string | null;
-  premiumTierProgress?: number | null;
+  tierName?: string | null;
+  tierProgress?: number | null;
   skills: FreelancerSkillDto[];
   portfolioItems: PortfolioItemDto[];
   workExperiences: WorkExperienceDto[];
-  cheatingViolationCount?: number;
-  cheatingPenaltyLogs?: CheatingPenaltyLogDto[];
 }
 
-export interface CheatingPenaltyLogDto {
-  violationId: string;
-  proposalId: string;
-  jobPostId: string;
-  jobTitle: string;
-  violationNumber: number;
-  totalEventCount: number;
-  copyCount: number;
-  pasteCount: number;
-  tabSwitchCount: number;
-  screenshotAttemptCount: number;
-  focusLossCount: number;
-  fullscreenExitCount: number;
-  action: number;
-  eloDelta: number;
-  suspendedUntil?: string | null;
+export type FreelancerDirectorySort = 'featured' | 'rating' | 'elo' | 'newest';
+
+export interface FreelancerDirectoryQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  skills?: readonly string[];
+  availabilityStatus?: string;
+  minRating?: number;
+  sort?: FreelancerDirectorySort;
+}
+
+export interface PaginatedList<T> {
+  items: T[];
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export interface FreelancerSummaryDto {
+  freelancerProfilesId: string;
+  userId: string;
+  userFullName?: string | null;
+  userAvatar?: string | null;
+  title?: string | null;
+  bio?: string | null;
+  availability?: number | null;
+  location?: string | null;
+  majorId?: string | null;
+  majorName?: string | null;
+  rating: number;
+  eloPoints: number;
+  isPremium: boolean;
+  isIdentityVerified: boolean;
+  showProVerifiedBadge: boolean;
+  premiumUntil?: string | null;
+  tierName?: string | null;
+  tierProgress: number;
   createdAt: string;
+  updatedAt?: string | null;
+  skills: FreelancerSkillDto[];
+  categories: FreelancerProfileCategoryDto[];
 }
 
 export interface UpdateClientProfileDto {

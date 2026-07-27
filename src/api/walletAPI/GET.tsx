@@ -1,9 +1,5 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import {
-  BankAccountStatus,
-  WithdrawalStatus,
-} from '../../types/models/Financial';
 import type {
   BankAccountResponse,
   FinancialOverviewPeriod,
@@ -56,14 +52,6 @@ export const walletGetAPI = {
    */
   getWithdrawals: async (limit = 50): Promise<ApiResponse<WithdrawalResponse[]>> => {
     return apiService.get<WithdrawalResponse[]>(`${walletUrl}/withdrawals`, { limit });
-  },
-
-  /**
-   * GET /api/wallet/withdrawals/{id}
-   * Fetch one freelancer withdrawal with provider references.
-   */
-  getWithdrawalDetail: async (withdrawalId: string): Promise<ApiResponse<WithdrawalResponse>> => {
-    return apiService.get<WithdrawalResponse>(`${walletUrl}/withdrawals/${withdrawalId}`);
   },
 
   /**

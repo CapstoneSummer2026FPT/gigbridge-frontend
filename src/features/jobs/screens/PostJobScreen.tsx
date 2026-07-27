@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import {
   Sparkles, X, Plus, ChevronRight,
   Bold, Italic, Underline, List, ListOrdered, Check, Save,
-  GripVertical, Trash2, FileText, Clock,
-  Lightbulb, MessageSquare, Crown
+  FileText, Clock,
+  MessageSquare, Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { jobAPI } from '../../../api/jobAPI';
@@ -16,7 +16,6 @@ import { JOB_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
 import { JobPostGuide } from '../components/JobPostGuide';
 import { PromptSectionModal } from '../components/PromptSectionModal';
 import { AIGenJobGuide } from '../components/AIGenJobGuide';
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { LiquidLoading } from '../../../shared/components/LiquidLoading';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import '../styles/PostJobScreen.css';
@@ -30,8 +29,8 @@ export default function PostJobScreen() {
   const { role } = useApp();
   const premiumStatus = usePremiumStatus(role);
   const [isGuideActive, setIsGuideActive] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
-  const [isBudgetGuideOpen, setIsBudgetGuideOpen] = useState(false);
   const [drafts, setDrafts] = useState<GetMyJobPostDto[]>([]);
   const [isDraftsLoading, setIsDraftsLoading] = useState(false);
   const [draftsError, setDraftsError] = useState<string | null>(null);
@@ -52,9 +51,6 @@ export default function PostJobScreen() {
     setIsInstantJobMode,
     isJobDetailsGenerated,
     isGeneratingInstant,
-    draggedIndex,
-    questions,
-    setQuestions,
     milestonePlans,
     setMilestonePlans,
     milestoneErrors,
@@ -76,17 +72,12 @@ export default function PostJobScreen() {
     addSkill,
     removeOfficialSkill,
     removeCustomSkill,
-    updateQuestion,
-    handleDragStart,
-    handleDragOver,
-    handleDragEnd,
     handleGenerateInstantJob,
     handleLeaveSaveDraft,
     handleLeaveDiscardDraft,
     cancelBlockedNavigation,
     submitDraftFlow,
     renderSubmitLabel,
-    MAX_QUESTION_LENGTH,
     setForm,
   } = usePostJob();
 
@@ -96,7 +87,6 @@ export default function PostJobScreen() {
     }
   }, [isInstantJobMode, premiumStatus.isPremium, premiumStatus.loading, setIsInstantJobMode]);
 
-  const [detailsHeight, setDetailsHeight] = useState<number | null>(null);
 
   const loadDrafts = async () => {
     setIsDraftModalOpen(true);
@@ -133,28 +123,6 @@ export default function PostJobScreen() {
     navigate('/jobs/post', { replace: true, state: null });
   };
 
-  useEffect(() => {
-    const detailsEl = document.getElementById('guide-job-details-panel');
-    if (!detailsEl) return;
-
-    const updateHeight = () => {
-      if (window.innerWidth >= 1024) {
-        setDetailsHeight(detailsEl.getBoundingClientRect().height);
-      } else {
-        setDetailsHeight(null);
-      }
-    };
-
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(detailsEl);
-    window.addEventListener('resize', updateHeight);
-    updateHeight();
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', updateHeight);
-    };
-  }, []);
 
   return (
     <AppLayout mainClassName={isInstantJobMode && !isJobDetailsGenerated ? 'ai-guide-active-layout' : ''}>
@@ -264,7 +232,7 @@ export default function PostJobScreen() {
           isInstantJobMode && !isJobDetailsGenerated ? 'hidden' : ''
         }`}>
           {/* LEFT: Project Requirement (col-span-7) */}
-          <div id="guide-job-details-panel" className={`lg:col-span-7 order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
+          <div id="guide-job-details-panel" className={`lg:col-span-12 order-1 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
             isJobDetailsGenerated ? 'panels-fade-in' : ''
           }`}>
             <h2 className="text-lg font-bold border-b border-border pb-4 mb-2 text-foreground">{t('postJob.step1Label')}</h2>
@@ -295,7 +263,7 @@ export default function PostJobScreen() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.major')}</label>
                   <select
@@ -323,20 +291,6 @@ export default function PostJobScreen() {
                     {categories.map(category => (
                       <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
                     ))}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.visibility')}</label>
-                  <select
-                    value={form.visibility}
-                    onChange={event => setForm({ ...form, visibility: event.target.value })}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
-                  >
-                    <option value={JobPostVisibility.Public}>{t('postJob.public')}</option>
-                    <option value={JobPostVisibility.Private}>{t('postJob.private')}</option>
-                    <option value={JobPostVisibility.InviteOnly}>{t('postJob.inviteOnly')}</option>
                   </select>
                 </div>
               </div>
@@ -443,66 +397,13 @@ export default function PostJobScreen() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.budgetMin')}</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.expectedBudget')}</label>
                   <input
                     type="number"
                     min="0"
-                    placeholder={t('postJob.budgetMinPlaceholder')}
-                    value={form.budgetMin}
-                    onChange={event => setForm({ ...form, budgetMin: event.target.value })}
-                    disabled={isInstantJobMode && !isJobDetailsGenerated}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.budgetMax')}</label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setIsBudgetGuideOpen(!isBudgetGuideOpen)}
-                        className="w-5 h-5 rounded-full bg-[var(--gb-cyan)]/20 border border-[var(--gb-cyan)]/40 text-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)] hover:text-white flex items-center justify-center text-xs font-extrabold transition-all cursor-pointer shadow-[0_0_10px_rgba(0,119,255,0.2)]"
-                        title="Currency guide"
-                      >
-                        ?
-                      </button>
-                      {isBudgetGuideOpen && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setIsBudgetGuideOpen(false)} />
-                          <div className="absolute right-0 bottom-7 w-72 bg-card border border-border rounded-2xl p-4 shadow-2xl z-50 text-left select-text">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)]" />
-                            <h4 className="text-xs font-extrabold text-foreground mb-1.5 flex items-center gap-1.5">
-                              <span className="w-4.5 h-4.5 rounded-full bg-[var(--gb-cyan)]/15 text-[var(--gb-cyan)] flex items-center justify-center text-[10px] font-black">?</span>
-                              {t('postJob.budgetGuideTitle')}
-                            </h4>
-                            <p
-                              className="text-[11px] text-muted-foreground leading-relaxed mb-3"
-                              dangerouslySetInnerHTML={{ __html: t('postJob.budgetGuideDesc') }}
-                            />
-                            
-                            <div className="bg-muted/40 rounded-xl p-2.5 border border-border/60 flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-1.5">
-                                <GigCoinLogo size={16} />
-                                <span className="text-xs font-bold text-foreground">1 G-coin</span>
-                              </div>
-                              <span className="text-muted-foreground text-[10px] font-bold">⇄</span>
-                              <span className="text-xs font-black text-brand">{t('postJob.budgetGuideRate')}</span>
-                            </div>
-
-                            <p className="text-[10px] text-muted-foreground leading-relaxed">
-                              {t('postJob.budgetGuideNote')}
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder={t('postJob.budgetMaxPlaceholder')}
-                    value={form.budgetMax}
-                    onChange={event => setForm({ ...form, budgetMax: event.target.value })}
+                    placeholder={t('postJob.budgetPlaceholder')}
+                    value={form.budget}
+                    onChange={event => setForm({ ...form, budget: event.target.value })}
                     disabled={isInstantJobMode && !isJobDetailsGenerated}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                   />
@@ -546,128 +447,51 @@ export default function PostJobScreen() {
                   />
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* RIGHT: Clarifying Questions (col-span-5) */}
-          <div
-            className={`lg:col-span-5 order-2 flex flex-col gap-4 sm:gap-6 bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-sm ${
-              isJobDetailsGenerated ? 'panels-fade-in-delay' : ''
-            }`}
-            style={{ maxHeight: detailsHeight ? `${detailsHeight}px` : undefined }}
-          >
-            <div className="flex items-center justify-between border-b border-border pb-4 mb-2">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="text-[var(--gb-purple)]" size={20} />
-                <h2 className="text-lg font-bold text-foreground">{t('postJob.questionsForInterview')}</h2>
-              </div>
-            </div>
-
-            {/* Clarifying Questions Guide */}
-            <div className="rounded-xl border border-[var(--gb-purple)]/20 bg-gradient-to-br from-[var(--gb-purple)]/6 to-transparent p-4 -mt-2 mb-1">
-              <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-lg bg-[var(--gb-purple)]/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <Lightbulb className="text-[var(--gb-purple)]" size={14} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground mb-1">{t('postJob.questionsGuideTitle')}</p>
-                  <p
-                    className="text-xs text-muted-foreground leading-relaxed mb-2"
-                    dangerouslySetInnerHTML={{ __html: t('postJob.questionsGuideDesc') }}
-                  />
-                  <div className="flex flex-col gap-1">
-                    {(['questionsExample1', 'questionsExample2', 'questionsExample3'] as const).map((key, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <span className="text-[var(--gb-purple)] mt-0.5 shrink-0 font-black text-xs">›</span>
-                        <span className="text-[11px] text-muted-foreground italic">{t(`postJob.${key}`)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 lg:flex-grow lg:overflow-y-auto lg:min-h-0 lg:pr-1">
-              {questions.map((question, index) => (
-                <div
-                  key={index}
-                  draggable
-                  onDragStart={e => handleDragStart(e, index)}
-                  onDragOver={e => handleDragOver(e, index)}
-                  onDragEnd={handleDragEnd}
-                  className={`bg-background border rounded-xl p-4 transition-all duration-200 ${
-                    draggedIndex === index
-                      ? 'border-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 opacity-50 scale-[0.98]'
-                      : 'border-border hover:border-muted-foreground/30'
-                  }`}
+              {/* Advanced Settings (collapsible) */}
+              <div className="border border-border rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer bg-transparent border-none"
                 >
-                  <div className="flex items-center justify-between mb-2 select-none">
-                    <div className="flex items-center gap-2">
-                      <div className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted flex items-center justify-center">
-                        <GripVertical size={14} />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                        {t('postJob.question', { number: index + 1 })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-wider cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={question.isRequired}
-                          onChange={event => updateQuestion(index, { isRequired: event.target.checked })}
-                          className="rounded border-border text-[var(--gb-cyan)] focus:ring-[var(--gb-cyan)]"
-                        />
-                        {t('postJob.required')}
-                      </label>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = questions.filter((_, idx) => idx !== index);
-                          setQuestions(updated);
-                        }}
-                        className="text-muted-foreground hover:text-red-500 p-1 rounded hover:bg-muted transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
-                        title={t('postJob.deleteQuestion')}
+                  <span>{t('postJob.advancedSettings')}</span>
+                  <ChevronRight size={14} className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+                </button>
+                {showAdvanced && (
+                  <div className="px-4 pb-4 pt-2 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.visibility')}</label>
+                      <select
+                        value={form.visibility}
+                        onChange={event => setForm({ ...form, visibility: event.target.value })}
+                        disabled={isInstantJobMode && !isJobDetailsGenerated}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
                       >
-                        <Trash2 size={13} />
-                      </button>
+                        <option value={JobPostVisibility.Public}>{t('postJob.public')}</option>
+                        <option value={JobPostVisibility.Private}>{t('postJob.private')}</option>
+                        <option value={JobPostVisibility.InviteOnly}>{t('postJob.inviteOnly')}</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('postJob.location')}</label>
+                      <input
+                        type="text"
+                        placeholder={t('postJob.locationPlaceholder')}
+                        value={form.location}
+                        onChange={event => setForm({ ...form, location: event.target.value })}
+                        disabled={isInstantJobMode && !isJobDetailsGenerated}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground disabled:opacity-50 disabled:bg-muted/30 disabled:cursor-not-allowed"
+                      />
                     </div>
                   </div>
-
-                  <textarea
-                    value={question.questionText}
-                    maxLength={MAX_QUESTION_LENGTH}
-                    onChange={event => updateQuestion(index, { questionText: event.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-border rounded-lg bg-card focus:outline-none focus:ring-1 focus:ring-[var(--gb-cyan)] text-foreground"
-                    rows={3}
-                    placeholder={t('postJob.questionPlaceholder')}
-                  />
-                  <div className="text-right mt-1 text-[10px] text-muted-foreground">
-                    {question.questionText.length}/{MAX_QUESTION_LENGTH}
-                  </div>
-                </div>
-              ))}
-
-              {questions.length === 0 && (
-                <div className="text-center py-8 border border-dashed border-border rounded-xl text-muted-foreground text-xs">
-                  {t('postJob.noQuestions')}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-3 mt-2">
-              <button
-                type="button"
-                onClick={() => setQuestions([...questions, { questionText: '', isRequired: false }])}
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-dashed border-border hover:border-[var(--gb-cyan)] hover:text-[var(--gb-cyan)] bg-background text-xs font-bold transition-all cursor-pointer"
-              >
-                <Plus size={14} /> {t('postJob.addQuestion')}
-              </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+
 
         {!(isInstantJobMode && !isJobDetailsGenerated) && (
           <div className="mx-auto mt-8 max-w-[1440px] rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
@@ -679,6 +503,7 @@ export default function PostJobScreen() {
               }}
               optional
               showDueDate
+              simplified
               title="Baseline milestone and Work Breakdown Structure"
               description="Give freelancers a starting plan. They can review and propose changes in their proposal before any contract is created."
               expandedIndex={expandedMilestone}
@@ -734,6 +559,15 @@ export default function PostJobScreen() {
                 className="px-6 py-3 rounded-full font-bold text-sm border border-border bg-background text-foreground hover:bg-muted transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
               >
                 <Save size={16} /> {renderSubmitLabel('draft', t('postJob.saveAsDraft'))}
+              </button>
+              <button
+                type="button"
+                onClick={() => submitDraftFlow('questions')}
+                disabled={isActionDisabled}
+                className="px-6 py-3 rounded-full font-bold text-sm border border-[var(--gb-purple)] text-[var(--gb-purple)] hover:bg-[var(--gb-purple)]/10 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
+              >
+                <MessageSquare size={16} /> {t('postJob.clarifyingQuestions')}
+                <ChevronRight size={16} />
               </button>
               <button
                 type="button"

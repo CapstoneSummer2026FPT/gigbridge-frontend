@@ -135,6 +135,10 @@ export interface Milestone {
   amount: number;
   due_date: string;
   status: MilestoneStatus;
+  sortOrder?: number | null;
+  startedAt?: string | null;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
   paid_at: string | null;
   releasedAmount?: number;
   lastReleasedAt?: string | null;
@@ -142,6 +146,7 @@ export interface Milestone {
   estimatedDuration?: string | null;
   deliverables?: string | null;
   acceptanceCriteria?: string | null;
+  submissionDescription?: string | null;
   workItems: ContractWorkItem[];
 }
 
@@ -231,17 +236,6 @@ export interface ContractAmendmentDetailDto {
   milestones: ContractAmendmentMilestoneDto[];
 }
 
-export interface WithdrawMilestoneResponse {
-  contractId: string;
-  milestoneId: string;
-  escrowId: string;
-  releasedAmountVnd: number;
-  releasedTokens: number;
-  milestoneReleasedAmountVnd: number;
-  escrowReleasedAmountVnd: number;
-  escrowStatus: number;
-}
-
 export interface EndProjectResponse {
   contractId: string;
   contractStatus: ContractStatus;
@@ -249,16 +243,6 @@ export interface EndProjectResponse {
   releasedTokens: number;
   escrowReleasedAmountVnd: number;
   completedAt?: string | null;
-}
-
-export interface ClaimFinalPayoutResponse {
-  contractId: string;
-  releasedAmountVnd: number;
-  releasedTokens: number;
-  escrowReleasedAmountVnd: number;
-  escrowStatus: number;
-  alreadyClaimed: boolean;
-  claimedAt?: string | null;
 }
 
 export interface ContractProductHandoffResponse {

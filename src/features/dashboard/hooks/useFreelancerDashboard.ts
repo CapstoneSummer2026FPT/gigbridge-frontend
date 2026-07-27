@@ -1,147 +1,211 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
-import { projectGetAPI } from '../../../api/projectAPI/GET';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
 import { ProposalStatus, type ProposalDto } from '../../../types/models/Proposal';
-import type { Job } from '../../../types/models/Job';
+import type { JobPostSummaryDto } from '../../../types/models/Job';
+import {
+  type FinancialOverviewResponse,
+  type WalletResponse,
+} from '../../../types/models/Financial';
+import { ContractStatus, type ContractDto } from '../../../types/models/Contract';
 
-// ── Static/derived chart data ─────────────────────────────────
-const MONTHLY_EARNINGS_FALLBACK = [
-  { id: 'freelancer-oct', month: 'Oct', earned: 0 },
-  { id: 'freelancer-nov', month: 'Nov', earned: 0 },
-  { id: 'freelancer-dec', month: 'Dec', earned: 0 },
-  { id: 'freelancer-jan', month: 'Jan', earned: 0 },
-  { id: 'freelancer-feb', month: 'Feb', earned: 0 },
-  { id: 'freelancer-mar', month: 'Mar', earned: 0 },
-  { id: 'freelancer-apr', month: 'Apr', earned: 0 },
-];
+interface DashboardProject {
+  id: string;
+  title: string;
+  status: string;
+  totalBudget: number;
+  clientName: string;
+}
 
-const RECENT_ACTIVITY_STATIC = [
-  { id: 'fl_act_1', text: 'Client approved Milestone 2 — payment released', time: '1h ago', color: 'border-success' },
-  { id: 'fl_act_2', text: 'New AI job match found for your profile', time: '3h ago', color: 'border-brand' },
-  { id: 'fl_act_3', text: 'Proposal viewed by a potential client', time: '6h ago', color: 'border-brand' },
-  { id: 'fl_act_4', text: 'Profile strength score updated', time: '1d ago', color: 'border-brand' },
-];
+interface DashboardRecommendedJob {
+  id: string;
+  title: string;
+  description: string;
+  categoryName: string;
+  budgetMin: number;
+  budgetMax: number;
+  skills: string[];
+  createdAt: string;
+  hasAiInterview: boolean;
+}
 
-/**
- * Custom hook for all data fetching, state management, and derived logic
- * for the Freelancer Dashboard Screen.
- *
- * API Integrations:
- * - GET /api/Profile/freelancer/me           → freelancer profile + profile strength
- * - GET /api/Proposals/my-proposals          → active/pending proposal count
- * - GET /api/projects (mock)                 → active projects tracker
- * - GET /api/JobPosts/public                 → recommended jobs list
- * - GET /api/wallet                          → wallet balance
- */
+const toDashboardProject = (contract: ContractDto): DashboardProject => ({
+  id: contract.contractsId,
+  title: contract.title || contract.jobTitle || 'Untitled contract',
+  status: ContractStatus[contract.status] || 'Unknown',
+  totalBudget: contract.totalBudget,
+  clientName: contract.clientName || 'Client not provided',
+});
+
+const toRecommendedJob = (job: JobPostSummaryDto): DashboardRecommendedJob => {
+  const skills = [...job.skillNames, ...job.customSkillNames]
+    .map(skill => skill.trim())
+    .filter(Boolean);
+
+  return {
+    id: job.jobPostsId,
+    title: job.title,
+    description: job.descriptionPreview || '',
+    categoryName: job.categoryName || job.majorName || 'Uncategorized',
+    budgetMin: job.budgetMin ?? 0,
+    budgetMax: job.budgetMax ?? 0,
+    skills: [...new Set(skills)],
+    createdAt: job.createdAt,
+    hasAiInterview: Boolean(job.hasAiInterview),
+  };
+};
+
 export function useFreelancerDashboard() {
   const navigate = useNavigate();
   const { user, theme } = useApp();
   const { t } = useTranslation();
-
-  // ── UI state ─────────────────────────────────────────────────
   const [chartPeriod, setChartPeriod] = useState<'monthly' | 'yearly'>('monthly');
-
-  // ── Remote data state ────────────────────────────────────────
   const [profile, setProfile] = useState<FreelancerProfileDetailDto | null>(null);
   const [proposals, setProposals] = useState<ProposalDto[]>([]);
-  const [projects, setProjects] = useState<{ id: string; title: string; status: string; progress: number; milestones: { title: string; amount: number; status: string }[] }[]>([]);
-  const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [contracts, setContracts] = useState<ContractDto[]>([]);
+  const [recommendedJobs, setRecommendedJobs] = useState<DashboardRecommendedJob[]>([]);
+  const [wallet, setWallet] = useState<WalletResponse | null>(null);
+  const [financialOverview, setFinancialOverview] = useState<FinancialOverviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFinancialLoading, setIsFinancialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [financialError, setFinancialError] = useState<string | null>(null);
 
-  // ── Fetch all dashboard data ──────────────────────────────────
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    const results = await Promise.allSettled([
+    const [
+      profileResult,
+      proposalsResult,
+      contractsResult,
+      jobsResult,
+      walletResult,
+    ] = await Promise.allSettled([
       profileGetAPI.getMyFreelancerProfile(),
-      proposalGetAPI.getMyProposals(),
-      projectGetAPI.getProjects({ freelancerId: user?.id }),
+      proposalGetAPI.getMyProposals({ pageSize: 100 }),
+      contractGetAPI.getMyContracts({ pageSize: 100 }),
       jobGetAPI.getPublicJobPosts({ pageSize: 6 }),
       walletGetAPI.getMyWallet(),
     ]);
 
-    // Profile
-    if (results[0].status === 'fulfilled' && results[0].value.success && results[0].value.data) {
-      setProfile(results[0].value.data);
+    let hasFailure = false;
+
+    if (
+      profileResult.status === 'fulfilled'
+      && profileResult.value.success
+      && profileResult.value.data
+    ) {
+      setProfile(profileResult.value.data);
+    } else {
+      setProfile(null);
+      hasFailure = true;
     }
 
-    // Proposals
-    if (results[1].status === 'fulfilled' && results[1].value.success && results[1].value.data) {
-      setProposals(results[1].value.data);
+    if (proposalsResult.status === 'fulfilled' && proposalsResult.value.success) {
+      setProposals(proposalsResult.value.data ?? []);
+    } else {
+      setProposals([]);
+      hasFailure = true;
     }
 
-    // Projects (mock still returns plain array)
-    if (results[2].status === 'fulfilled') {
-      const raw = results[2].value as any;
-      const arr = Array.isArray(raw) ? raw : (raw?.data ?? []);
-      setProjects(arr);
+    if (contractsResult.status === 'fulfilled' && contractsResult.value.success) {
+      setContracts(contractsResult.value.data ?? []);
+    } else {
+      setContracts([]);
+      hasFailure = true;
     }
 
-    // Recommended jobs — take first 3 from public list
-    if (results[3].status === 'fulfilled' && results[3].value.success && results[3].value.data) {
-      const legacyJobs: Job[] = results[3].value.data.slice(0, 3).map((j: any) => ({
-        id: j.jobPostsId,
-        clientId: '',
-        title: j.title,
-        description: j.descriptionPreview || '',
-        category: 'All',
-        skills: j.skillNames || [],
-        budgetMin: j.budgetMin ?? 0,
-        budgetMax: j.budgetMax ?? 0,
-        jobType: 'fixed' as const,
-        status: 'open' as const,
-        proposalCount: 0,
-        viewCount: 0,
-        postedAt: '',
-        isRemote: true,
-        gigcoin_cost: 0,
-        aiMatchScore: Math.floor(Math.random() * 10 + 88), // 88–97%
-      }));
-      setRecommendedJobs(legacyJobs);
+    if (jobsResult.status === 'fulfilled' && jobsResult.value.success) {
+      setRecommendedJobs((jobsResult.value.data ?? []).slice(0, 3).map(toRecommendedJob));
+    } else {
+      setRecommendedJobs([]);
+      hasFailure = true;
     }
 
-    // Wallet
-    if (results[4].status === 'fulfilled' && results[4].value.success && results[4].value.data) {
-      setWalletBalance(results[4].value.data.availableVnd ?? null);
+    if (
+      walletResult.status === 'fulfilled'
+      && walletResult.value.success
+      && walletResult.value.data
+    ) {
+      setWallet(walletResult.value.data);
+    } else {
+      setWallet(null);
+      hasFailure = true;
     }
 
+    setError(hasFailure ? 'Some dashboard data could not be loaded.' : null);
     setIsLoading(false);
-  }, [user?.id]);
+  }, []);
 
   useEffect(() => {
-    fetchDashboardData();
+    void fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // ── Derived / memoized values ─────────────────────────────────
-  const profileStrength = useMemo(() =>
-    profile?.profileCompletionScore ?? 94
-  , [profile]);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadFinancialOverview = async () => {
+      setIsFinancialLoading(true);
+      setFinancialError(null);
+      const period = chartPeriod === 'monthly' ? 'month' : 'year';
+      const response = await walletGetAPI.getFinancialOverview(period);
+      if (cancelled) return;
+
+      if (!response.success || !response.data) {
+        setFinancialOverview(null);
+        setFinancialError(response.message || 'Financial overview could not be loaded.');
+        setIsFinancialLoading(false);
+        return;
+      }
+
+      setFinancialOverview(response.data);
+      setIsFinancialLoading(false);
+    };
+
+    void loadFinancialOverview();
+    return () => {
+      cancelled = true;
+    };
+  }, [chartPeriod]);
+
+  const profileStrength = useMemo(() => {
+    const score = Number(profile?.profileCompletionScore ?? 0);
+    return Math.min(100, Math.max(0, Number.isFinite(score) ? score : 0));
+  }, [profile]);
+
+  const rating = useMemo(() => {
+    const value = Number(profile?.rating ?? 0);
+    return Math.min(5, Math.max(0, Number.isFinite(value) ? value : 0));
+  }, [profile]);
 
   const userName = user?.full_name || user?.first_name || profile?.userFullName || 'Freelancer';
 
-  const rating = useMemo(() =>
-    profile?.rating ?? 4.9
-  , [profile]);
+  const pendingProposalsCount = useMemo(
+    () => proposals.filter(proposal => Number(proposal.status) === ProposalStatus.Pending).length,
+    [proposals],
+  );
 
-  const pendingProposalsCount = useMemo(() =>
-    proposals.filter(p => p.status === ProposalStatus.Pending || p.status === 1).length
-  , [proposals]);
+  const projects = useMemo(
+    () => contracts
+      .filter(contract => Number(contract.status) === ContractStatus.Active)
+      .map(toDashboardProject),
+    [contracts],
+  );
 
-  const activeProjects = useMemo(() => projects.length, [projects]);
+  const completedProjectsCount = useMemo(
+    () => contracts.filter(contract => Number(contract.status) === ContractStatus.Completed).length,
+    [contracts],
+  );
 
-  const profileTitle = useMemo(() =>
-    profile?.title?.split(' ').slice(0, 3).join(' ') ?? 'Developer'
-  , [profile]);
+  const profileTitle = profile?.title?.trim() || '';
 
   const greeting = useMemo(() => {
     const hours = new Date().getHours();
@@ -150,61 +214,48 @@ export function useFreelancerDashboard() {
     return t('dashboard.goodEvening', 'Good evening,');
   }, [t]);
 
-  const earningsData = useMemo(() => {
-    if (chartPeriod === 'yearly') {
-      return [
-        { id: 'y-2022', month: '2022', earned: 42000 },
-        { id: 'y-2023', month: '2023', earned: 78000 },
-        { id: 'y-2024', month: '2024', earned: 112000 },
-        { id: 'y-2025', month: '2025', earned: 135000 },
-        { id: 'y-2026', month: '2026 YTD', earned: walletBalance ? Math.floor(walletBalance / 24000) : 59000 },
-      ];
-    }
-    return MONTHLY_EARNINGS_FALLBACK;
-  }, [chartPeriod, walletBalance]);
+  const earningsData = useMemo(
+    () => (financialOverview?.trendPoints ?? []).map(point => ({
+      id: point.periodStartUtc,
+      month: point.period,
+      earned: point.paidOrReceivedAmount,
+    })),
+    [financialOverview],
+  );
 
-  // SVG gauge dimensions
   const gaugeR = 76;
   const gaugeCircumference = 2 * Math.PI * gaugeR;
   const gaugeOffset = gaugeCircumference * (1 - profileStrength / 100);
 
   return {
-    // Auth / user
     user,
     theme,
     userName,
     greeting,
     t,
     navigate,
-
-    // Loading & error
     isLoading,
+    isFinancialLoading,
     error,
+    financialError,
     refetch: fetchDashboardData,
-
-    // Profile
     profile,
     profileStrength,
     rating,
     profileTitle,
-    walletBalance,
-
-    // Chart
+    skillsCount: profile?.skills.length ?? 0,
+    portfolioCount: profile?.portfolioItems.length ?? 0,
+    majorName: profile?.majorName?.trim() || '',
+    wallet,
+    financialOverview,
     chartPeriod,
     setChartPeriod,
     earningsData,
-
-    // Counts
     pendingProposalsCount,
-    activeProjects,
-
-    // Collections
-    proposals,
+    activeProjects: projects.length,
+    completedProjectsCount,
     projects,
     recommendedJobs,
-    recentActivity: RECENT_ACTIVITY_STATIC,
-
-    // Gauge maths (ready for SVG)
     gaugeR,
     gaugeCircumference,
     gaugeOffset,

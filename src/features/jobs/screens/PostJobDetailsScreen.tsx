@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bold, ChevronRight, Italic, List, ListOrdered, Plus, Save, Underline, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { JobPostVisibility } from '../../../types/models/Job';
@@ -41,6 +42,8 @@ export function PostJobDetailsScreen() {
     submitDraftFlow,
     renderSubmitLabel,
   } = usePostJob();
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
     <AppLayout>
@@ -101,7 +104,7 @@ export function PostJobDetailsScreen() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Major *</label>
                 <select
@@ -129,19 +132,6 @@ export function PostJobDetailsScreen() {
                   {categories.map(category => (
                     <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>
                   ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visibility</label>
-                <select
-                  value={form.visibility}
-                  onChange={event => setForm({ ...form, visibility: event.target.value })}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground"
-                >
-                  <option value={JobPostVisibility.Public}>Public</option>
-                  <option value={JobPostVisibility.Private}>Private</option>
-                  <option value={JobPostVisibility.InviteOnly}>Invite Only</option>
                 </select>
               </div>
             </div>
@@ -244,30 +234,17 @@ export function PostJobDetailsScreen() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Budget Min</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected Budget</label>
                 <input
                   type="number"
                   min="0"
-                  placeholder="Minimum budget"
-                  value={form.budgetMin}
-                  onChange={event => setForm({ ...form, budgetMin: event.target.value })}
+                  step="0.01"
+                  placeholder="e.g. 5000"
+                  value={form.budget}
+                  onChange={event => setForm({ ...form, budget: event.target.value })}
                   className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Budget Max</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Maximum budget"
-                  value={form.budgetMax}
-                  onChange={event => setForm({ ...form, budgetMax: event.target.value })}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm text-foreground"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Estimated Duration</label>
                 <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-3">
@@ -291,6 +268,9 @@ export function PostJobDetailsScreen() {
                   </select>
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">End Date</label>
                 <input
@@ -300,6 +280,33 @@ export function PostJobDetailsScreen() {
                   className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground"
                 />
               </div>
+            </div>
+
+            <div className="border border-border rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(current => !current)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors bg-card cursor-pointer border-none"
+              >
+                <span>Advanced Settings</span>
+                <ChevronRight size={14} className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+              </button>
+              {showAdvanced && (
+                <div className="px-4 pb-4 pt-2 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visibility</label>
+                    <select
+                      value={form.visibility}
+                      onChange={event => setForm({ ...form, visibility: event.target.value })}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25 focus:border-[var(--gb-cyan)] transition-all shadow-sm cursor-pointer text-foreground"
+                    >
+                      <option value={JobPostVisibility.Public}>Public</option>
+                      <option value={JobPostVisibility.Private}>Private</option>
+                      <option value={JobPostVisibility.InviteOnly}>Invite Only</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

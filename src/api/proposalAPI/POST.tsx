@@ -1,13 +1,9 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
-  CreateProposalAnswerRequest,
   CreateProposalRequest,
-  CheatingEventLogResponse,
   CompleteQuestionTimerRequest,
   InterviewReviewSessionDto,
-  LogProposalCheatingEventRequest,
-  ProposalAnswerDto,
   QuestionTimerStateDto,
   VettingEvaluationResponseDto,
 } from '../../types/models/Proposal';
@@ -21,23 +17,6 @@ export const proposalPostAPI = {
    */
   createProposal: async (data: CreateProposalRequest): Promise<ApiResponse<string>> => {
     return apiService.post<string>(proposalsUrl, data);
-  },
-
-  /**
-   * POST /api/Proposals/{proposalId}/answers
-   */
-  createProposalAnswer: async (
-    proposalId: string,
-    data: CreateProposalAnswerRequest
-  ): Promise<ApiResponse<ProposalAnswerDto>> => {
-    return apiService.post<ProposalAnswerDto>(`${proposalsUrl}/${proposalId}/answers`, data);
-  },
-
-  logCheatingEvent: async (
-    proposalId: string,
-    data: LogProposalCheatingEventRequest
-  ): Promise<ApiResponse<CheatingEventLogResponse>> => {
-    return apiService.post<CheatingEventLogResponse>(`${proposalsUrl}/${proposalId}/cheating-events`, data);
   },
 
   startQuestionTimer: async (

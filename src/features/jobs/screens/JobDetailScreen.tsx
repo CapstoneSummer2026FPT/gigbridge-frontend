@@ -1,5 +1,5 @@
 import {
-  Clock, Users, Globe, Star, CheckCircle,
+  Clock, Users, Globe, CheckCircle,
   Bot, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText,
   Briefcase, ArrowUpRight, Lock,
 } from 'lucide-react';
@@ -355,38 +355,27 @@ export default function JobDetailScreen() {
                 <h3 className="jd-section-title">{t('jobDetail.aboutClient')}</h3>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="jd-avatar-ring">
-                    <div className="jd-avatar-inner">{client?.full_name?.charAt(0) || '?'}</div>
+                    <div className="jd-avatar-inner">{client?.fullName.charAt(0) || '?'}</div>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-text-primary font-black text-sm truncate">{client?.full_name || 'Client'}</p>
-                    <p className="text-[10px] text-text-muted font-medium truncate">{clientProfile?.company_name || 'Company'}</p>
+                    <p className="text-text-primary font-black text-sm truncate">{client?.fullName || 'Client'}</p>
+                    <p className="text-[10px] text-text-muted font-medium truncate">{clientProfile?.companyName || 'Company not provided'}</p>
                   </div>
                 </div>
                 <div className="space-y-0.5">
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.rating')}</span>
-                    <div className="flex items-center gap-1">
-                      <Star size={11} fill="#F59E0B" className="text-warning" />
-                      <span className="text-xs font-black text-text-primary">{clientProfile?.rating ?? '—'}</span>
-                      <span className="text-[10px] text-text-muted">({clientProfile?.reviewCount ?? 0})</span>
+                  {clientProfile?.industry && (
+                    <div className="jd-client-row">
+                      <span className="text-[11px] text-text-muted font-semibold">Industry</span>
+                      <span className="text-xs font-black text-text-primary">{clientProfile.industry}</span>
                     </div>
-                  </div>
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.totalSpent')}</span>
-                    <span className="text-xs font-black text-text-primary"><GigCoinAmount amount={clientProfile?.totalSpent || 0} /></span>
-                  </div>
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.jobsPosted')}</span>
-                    <span className="text-xs font-black text-text-primary">{clientProfile?.postedJobs ?? '—'}</span>
-                  </div>
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.hireRate')}</span>
-                    <span className="text-xs font-black text-success">82%</span>
-                  </div>
+                  )}
+                  {clientProfile?.location && (
+                    <div className="jd-client-row">
+                      <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.location')}</span>
+                      <span className="text-xs font-black text-text-primary">{clientProfile.location}</span>
+                    </div>
+                  )}
                 </div>
-                {clientProfile?.isVerifiedClient && (
-                  <div className="jd-verified"><CheckCircle size={12} />{t('jobDetail.paymentVerified')}</div>
-                )}
                 <button className="jd-btn-secondary mt-3" onClick={() => navigate(`/profile/client/${client?.id || job.clientId}`)}>{t('jobDetail.viewClientProfile')}</button>
               </div>
             )}

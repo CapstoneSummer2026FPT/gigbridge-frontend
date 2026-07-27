@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import '../styles/prompt-section-modal.css';
 
 interface PromptSectionModalProps {
@@ -17,7 +17,7 @@ export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating, 
     const [isVisible, setIsVisible] = useState(false);
 
     const openTimeRef = useRef(0);
-    const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Reset prompt and trigger visibility transition on mount
     useEffect(() => {
@@ -119,6 +119,14 @@ export function PromptSectionModal({ isOpen, onClose, onGenerate, isGenerating, 
                 onSubmit={handleSubmit}
                 className={`prompt-modal-container ${isVisible ? 'is-visible' : ''} ${isScrolledToBottom ? 'hidden-bottom' : ''} ${isAnimating ? 'animating' : ''}`}
             >
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close AI job prompt"
+                    className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    <X size={16} />
+                </button>
                 <textarea
                     id="guide-prompt-textarea"
                     className="prompt-textarea"

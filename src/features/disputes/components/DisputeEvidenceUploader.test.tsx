@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { disputePostAPI } from '../../../api/disputeAPI';
+import type { DisputeEvidence } from '../../../types/models/Dispute';
 import { DisputeEvidenceUploader } from './DisputeEvidenceUploader';
 
 vi.mock('../../../api/disputeAPI', () => ({
@@ -11,9 +12,22 @@ describe('DisputeEvidenceUploader', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns newly persisted evidence immediately after upload', async () => {
-    const evidence = [{
+    const evidence: DisputeEvidence[] = [{
       id: 'evidence-1', uploadedById: 'client-1', fileName: 'invoice.pdf',
       fileSize: 4, description: null, createdAt: '2026-07-18T00:00:00.000Z',
+      isRequestedByAdmin: false,
+      requestGroupId: null,
+      requestedByAdminId: null,
+      requestedAt: null,
+      deadline: null,
+      requestTarget: null,
+      isRequestFulfilled: false,
+      reviewedByAdminId: null,
+      reviewedAt: null,
+      reviewNote: null,
+      uploadedByName: 'Client',
+      requestedByAdminName: null,
+      reviewedByAdminName: null,
     }];
     vi.mocked(disputePostAPI.addEvidence).mockResolvedValue({
       success: true, data: evidence, message: '', statusCode: 201,

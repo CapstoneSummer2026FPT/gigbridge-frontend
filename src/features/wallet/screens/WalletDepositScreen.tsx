@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router';
 import {
   AlertCircle,
   ArrowRight,
-  Building2,
   CheckCircle,
-  CreditCard,
   Loader2,
   QrCode,
 } from 'lucide-react';

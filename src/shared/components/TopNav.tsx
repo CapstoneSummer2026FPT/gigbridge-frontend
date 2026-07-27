@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown } from 'lucide-react';
-import { useWindowScroll } from 'react-use';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -62,7 +61,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   });
 
   // Wallet and notification data
-  const { notifications, unreadCount, markAsRead } = useUserNotifications(user, {
+  const notificationUser = location.pathname === '/notifications' ? null : user;
+  const { notifications, unreadCount, markAsRead } = useUserNotifications(notificationUser, {
     pageSize: 8,
     pollMs: 45000,
   });
@@ -105,9 +105,17 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [isIndicatorActive, setIsIndicatorActive] = useState(false);
   const audioElementRef = useRef<HTMLAudioElement>(null);
   const navContainerRef = useRef<HTMLDivElement>(null);
-  const { y: currentScrollY } = useWindowScroll();
+  const [currentScrollY, setCurrentScrollY] = useState(() =>
+    typeof window === 'undefined' ? 0 : window.scrollY
+  );
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => setCurrentScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleAudioIndicator = () => {
     setIsAudioPlaying((prev) => !prev);
@@ -117,7 +125,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   useEffect(() => {
     if (audioElementRef.current) {
       if (isAudioPlaying) {
-        audioElementRef.current.play().catch((err) => console.log('Audio autoplay blocked:', err));
+        audioElementRef.current.play().catch(() => undefined);
       } else {
         audioElementRef.current.pause();
       }
@@ -303,15 +311,15 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       {/* Nav Links (Guest) */}
       {isLanding && (
         <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
-          {['How It Works', 'Browse Jobs', 'Market Insights'].map(link => (
-            <span key={link}
+          {[
+            { label: 'How It Works', path: '/guide' },
+            { label: 'Browse Jobs', path: '/jobs/browse' },
+          ].map(link => (
+            <span key={link.path}
               className="text-sm cursor-pointer transition-colors text-secondary hover:text-cyan"
-              onClick={() => {
-                if (link === 'Browse Jobs') navigate('/jobs/browse');
-                if (link === 'Market Insights') navigate('/market-insights');
-              }}
+              onClick={() => navigate(link.path)}
             >
-              {link}
+              {link.label}
             </span>
           ))}
         </nav>

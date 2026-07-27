@@ -161,7 +161,6 @@ export default function MessagesScreen() {
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,
-    totalUnread,
     formatTime,
     showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
     scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,
@@ -654,46 +653,6 @@ export default function MessagesScreen() {
                               <Download size={13} className="cursor-pointer hover:text-[var(--gb-cyan)]" />
                             </div>
                           </div>
-                        </div>
-
-                      ) : msg.type === 'negotiation_request' ? (
-                        /* ── Negotiation Request bubble ────────────────────── */
-                        <div className="msg-deal-bubble my-1 border-teal-500/30">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-500">
-                              <ArrowRightLeft size={20} />
-                            </div>
-                            <div>
-                              <h3 className="text-sm text-foreground font-bold">Yêu cầu vào vòng đàm phán</h3>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                {msg.negotiationStatus === 'pending'
-                                  ? 'Đang chờ phản hồi'
-                                  : msg.negotiationStatus === 'accepted'
-                                  ? 'Đã chấp nhận ✓'
-                                  : 'Đã từ chối'}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                            Client muốn chuyển cuộc trò chuyện này sang <strong className="text-foreground">vòng đàm phán</strong> để thảo luận chi tiết về giá cả và phạm vi công việc.
-                          </p>
-
-                          {msg.negotiationStatus === 'pending' && !mine && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleAcceptNegotiation(msg.id)}
-                                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                              >
-                                Đồng ý
-                              </button>
-                              <button
-                                onClick={() => handleDeclineNegotiation(msg.id)}
-                                className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                              >
-                                Từ chối
-                              </button>
-                            </div>
-                          )}
                         </div>
 
                       ) : msg.type === 'deal' ? (

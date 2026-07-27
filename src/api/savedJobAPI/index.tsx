@@ -1,7 +1,3 @@
-export { savedJobGetAPI } from './GET';
-export { savedJobPostAPI } from './POST';
-export { savedJobDeleteAPI } from './DELETE';
-
 import { savedJobGetAPI } from './GET';
 import { savedJobPostAPI } from './POST';
 import { savedJobDeleteAPI } from './DELETE';

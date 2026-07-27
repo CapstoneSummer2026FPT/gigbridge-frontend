@@ -23,7 +23,6 @@ export default function ForgotPasswordScreen() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
@@ -67,7 +66,7 @@ export default function ForgotPasswordScreen() {
           setError(getErrorMessage(response));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
@@ -92,7 +91,8 @@ export default function ForgotPasswordScreen() {
     try {
       const response = await authAPI.verifyOtp({
         email,
-        otp: otpCode
+        otp: otpCode,
+        purpose: 'password_reset'
       });
       if (response.success) {
         if (isMounted.current) {
@@ -105,7 +105,7 @@ export default function ForgotPasswordScreen() {
           setError(getErrorMessage(response));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }

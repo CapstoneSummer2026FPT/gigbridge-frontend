@@ -758,11 +758,8 @@ export function useMessages() {
   useEffect(() => {
     if (!hubConnection || !activeConvId) return;
 
-    hubConnection
+    void hubConnection
       .invoke('JoinConversation', activeConvId)
-      .then(() => {
-        console.log(`✓ Joined SignalR conversation group: ${activeConvId}`);
-      })
       .catch(err => {
         console.error(`✗ Failed to join SignalR conversation group: ${activeConvId}`, err);
       });
@@ -779,6 +776,10 @@ export function useMessages() {
     const handleReceiveMessage = (m: any) => {
       const mapped = { ...mapBackendMessage(m), sendStatus: 'sent' as const };
       const targetConvId = mapped.conversationId;
+      if (!targetConvId) {
+        console.warn('[ChatHub] Ignored a message without a conversation ID.');
+        return;
+      }
       if (mapped.schedule && targetConvId === activeConvIdRef.current) {
         setHasOngoingSchedule(mapped.schedule.status === 0 && new Date(mapped.schedule.scheduledAtUtc).getTime() > Date.now());
       }
@@ -883,7 +884,8 @@ export function useMessages() {
           return {
             ...prev,
             [conversationId]: list.map(m => {
-              if (m.id === messageId || new Date(m.createdAt).getTime() <= new Date().getTime()) {
+              const sentAt = m.createdAt ? new Date(m.createdAt).getTime() : Number.POSITIVE_INFINITY;
+              if (m.id === messageId || sentAt <= Date.now()) {
                 return { ...m, isRead: true };
               }
               return m;
@@ -1587,10 +1589,8 @@ export function useMessages() {
     setScheduleError(scheduleConflict.remainingEdits === 1 ? 'Retry confirmed. Saving will consume the final shared edit.' : 'Retry confirmed against the latest schedule version.');
   };
 
-  const isMe = (senderId: string) =>
+  const isMe = (senderId?: string) =>
     senderId === (user?.id ?? 'current_user') || senderId === 'current_user';
-
-  const totalUnread = conversationsState.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return {
     user,
@@ -1659,7 +1659,6 @@ export function useMessages() {
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,
-    totalUnread,
     formatTime,
     showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
     scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,

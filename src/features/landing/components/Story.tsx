@@ -123,4 +123,3 @@ export default function Story() {
     </div>
   );
 }
-export { Story };

@@ -81,4 +81,3 @@ export default function VideoPreview({ children }: VideoPreviewProps) {
     </section>
   );
 }
-export { VideoPreview };

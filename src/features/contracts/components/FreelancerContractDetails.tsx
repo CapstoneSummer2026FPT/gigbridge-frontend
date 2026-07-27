@@ -19,8 +19,7 @@ import {
   getContractStatusClass,
   formatContractAmount,
   formatContractDate,
-  getMilestoneStatusLabel,
-  getMilestoneStatusClass
+  getMilestoneStatusLabel
 } from '../../../shared/utils/contractUtils';
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';

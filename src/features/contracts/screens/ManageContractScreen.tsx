@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Filter, Eye, AlertCircle, ChevronDown, Calendar, 
   User, CheckCircle2, Clock, PenTool, ListChecks, 
-  Star, ShieldAlert, X, ChevronRight, TrendingUp, Award, Layers
+  Star, ShieldAlert, X, ChevronRight, TrendingUp, Layers
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { ContractDto, ContractQueryParams, Milestone } from '../../../types/models/Contract';
@@ -32,7 +31,6 @@ interface MilestoneDisplay extends Milestone {
 
 interface ContractWithMilestones extends ContractDto {
   milestones?: MilestoneDisplay[];
-  freelancerName?: string;
 }
 
 const CONTRACT_STATUSES = [
@@ -141,28 +139,6 @@ export default function ManageContractScreen() {
     setFilteredContracts(result);
     setCurrentPage(1); // Reset to first page when filtering
   }, [contracts, selectedStatus, searchQuery]);
-
-  const handleStatusChange = async (contractId: string, newStatus: ContractStatus) => {
-    try {
-      const response = await contractPutAPI.updateContractStatus(contractId, newStatus);
-      
-      if (response.success) {
-        setContracts(prev =>
-          prev.map(c =>
-            c.contractsId === contractId
-              ? { ...c, status: newStatus }
-              : c
-          )
-        );
-        setSuccessMessage(t('contracts.statusUpdatedSuccess'));
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        setError(response.message || t('contracts.statusUpdatedError'));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('contracts.anErrorOccurred'));
-    }
-  };
 
   const getStatusBadgeClass = (status: ContractStatus) => {
     return `status-badge ${getContractStatusClass(status)}`;

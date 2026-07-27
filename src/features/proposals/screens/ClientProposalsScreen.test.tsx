@@ -27,6 +27,12 @@ vi.mock('../../../shared/components/MarkdownEditor', () => ({
   MarkdownPreview: ({ value }: { value: string }) => <div>{value}</div>,
 }));
 
+vi.mock('../../../hooks/useTranslation', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 vi.mock('../../../api/jobAPI', () => ({
   jobAPI: {
     getMyJobPosts: mocks.getMyJobPosts,

@@ -203,7 +203,7 @@ export const normalizeESignDocument = (
   };
 };
 
-export const normalizeESignDocumentListItem = (
+const normalizeESignDocumentListItem = (
   document: BackendESignDocumentListItemResponse
 ): ESignDocumentListItemDto => {
   const source = document as Record<string, unknown>;
@@ -257,13 +257,6 @@ const normalizeDocumentResponse = (
 ): ApiResponse<ESignDocumentDto> => ({
   ...response,
   data: response.data ? normalizeESignDocument(response.data) : undefined,
-});
-
-const normalizeSignatureResponse = (
-  response: ApiResponse<BackendESignSignatureResponse>
-): ApiResponse<ESignSignatureDto> => ({
-  ...response,
-  data: response.data ? normalizeESignSignature(response.data) : undefined,
 });
 
 const normalizeSignaturesResponse = (
@@ -327,20 +320,6 @@ export const esignGetAPI = {
     return normalizeDocumentResponse(response);
   },
 
-  /**
-   * GET /api/ESign/documents/my-signed
-   * Get signed documents for current user
-   */
-  getMySignedDocuments: async (
-    params: ESignDocumentListQueryParams = {}
-  ): Promise<ApiResponse<ESignDocumentListPageDto>> => {
-    const response = await apiService.get<BackendPaginatedESignDocumentsResponse>(
-      `${esignUrl}/documents/my-signed`,
-      params
-    );
-    return normalizeDocumentListResponse(response);
-  },
-
   /** GET /api/ESign/documents/my */
   getMyDocuments: async (
     params: ESignDocumentListQueryParams = {}
@@ -368,17 +347,6 @@ export const esignGetAPI = {
     apiService.download(`${esignUrl}/documents/${documentId}/download`),
 
   /**
-   * GET /api/ESign/signatures/{signatureId}
-   * Get signature details
-   */
-  getSignatureById: async (
-    signatureId: string
-  ): Promise<ApiResponse<ESignSignatureDto>> => {
-    const response = await apiService.get<BackendESignSignatureResponse>(`${esignUrl}/signatures/${signatureId}`);
-    return normalizeSignatureResponse(response);
-  },
-
-  /**
    * GET /api/ESign/documents/{documentId}/signatures
    * Get all signatures for a document
    */
@@ -389,14 +357,6 @@ export const esignGetAPI = {
       `${esignUrl}/documents/${documentId}/signatures`
     );
     return normalizeSignaturesResponse(response);
-  },
-
-  /**
-   * GET /api/ESign/signatures/pending
-   * Get pending signatures for current user
-   */
-  getPendingSignatures: async (): Promise<ApiResponse<ESignSignatureDto[]>> => {
-    return apiService.get<ESignSignatureDto[]>(`${esignUrl}/signatures/pending`);
   },
 
   /**
@@ -411,15 +371,4 @@ export const esignGetAPI = {
     );
   },
 
-  /**
-   * GET /api/ESign/signatures/{signatureId}/audit-trail
-   * Get audit trail for signature
-   */
-  getSignatureAuditTrail: async (
-    signatureId: string
-  ): Promise<ApiResponse<SignatureAuditTrail[]>> => {
-    return apiService.get<SignatureAuditTrail[]>(
-      `${esignUrl}/signatures/${signatureId}/audit-trail`
-    );
-  },
 };

@@ -20,7 +20,10 @@ import '../styles/dispute-detail-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
   [DisputeStatus.Open]: 'Open',
+  [DisputeStatus.WaitingAdmin]: 'Waiting for Admin',
   [DisputeStatus.UnderReview]: 'Under Review',
+  [DisputeStatus.WaitingEvidence]: 'Waiting for Evidence',
+  [DisputeStatus.DecisionPending]: 'Decision Pending',
   [DisputeStatus.Resolved]: 'Resolved',
   [DisputeStatus.Closed]: 'Closed',
 };
@@ -151,7 +154,7 @@ export default function DisputeDetailScreen() {
 
         {loading ? (
           <section className="dispute-detail-state"><LoaderCircle className="dispute-detail-spinner" size={38} /><h1>Loading dispute case</h1></section>
-        ) : error || !dispute || !contract ? (
+        ) : error || !dispute || !contract || !contractId || !disputeId ? (
           <section className="dispute-detail-state dispute-detail-error">
             <AlertCircle size={42} /><h1>{errorTitle(error?.status ?? 500)}</h1><p>{error?.message ?? 'The dispute is unavailable.'}</p>
             <div className="dispute-detail-state-actions"><button onClick={() => setReloadKey(value => value + 1)}><RefreshCw size={17} /> Retry</button><button onClick={() => navigate('/contracts')}>View contracts</button></div>

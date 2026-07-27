@@ -1,6 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { DB } from '../../../mock_backend';
-import { SEED_CLIENT_PROFILES } from '../../../mock_backend/database/seed';
+import { useState, useEffect } from 'react';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
 import type { Review } from '../../../types/models/Job';
@@ -29,63 +27,86 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
   createdAt: review.createdAt,
 });
 
-const resolveEloPoints = (data: any): number => {
-  const raw = data?.profile?.eloPoints ?? data?.profile?.EloPoints ?? data?.user?.elo_points ?? data?.user?.eloPoints ?? data?.user?.EloPoints;
+const resolveEloPoints = (data: {
+  profile?: { eloPoints?: unknown };
+  user?: { elo_points?: unknown };
+}): number => {
+  const raw = data.profile?.eloPoints ?? data.user?.elo_points;
   const value = Number(raw);
   return Number.isFinite(value) ? value : 100;
 };
 
-export function useClientProfile(targetId: string, currentUser: any) {
-  const [profileData, setProfileData] = useState({
-    user: DB.getUserById(targetId) || DB.getUserById('u_client_1')!,
-    profile: SEED_CLIENT_PROFILES.find(p => p.user_id === targetId) || SEED_CLIENT_PROFILES[0],
-  });
+const emptyProfileData = (targetId: string) => ({
+  user: {
+    id: targetId,
+    full_name: '',
+    avatar: '',
+    email: '',
+    phone_number: '',
+    elo_points: 100,
+  },
+  profile: {
+    user_id: targetId,
+    company_name: '',
+    company_website: '',
+    company_size: 0,
+    industry: '',
+    company_description: '',
+    location: '',
+    avatar: '',
+    eloPoints: 100,
+    createdAt: '',
+  },
+});
+
+export function useClientProfile(targetId: string) {
+  const [profileData, setProfileData] = useState(() => emptyProfileData(targetId));
 
   const [loading, setLoading] = useState(true);
-  const [isSaved, setIsSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Dynamic reviews list state
   const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
 
-  // Create Review popup states
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewAnonymous, setReviewAnonymous] = useState(false);
-
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
+        setError(null);
         const res = await profileGetAPI.getClientProfile(targetId);
         if (res.success && res.data) {
           const apiData = res.data;
           setProfileData({
             user: {
               id: apiData.userId,
-              full_name: apiData.userFullName || 'Client User',
-              avatar: apiData.userAvatar,
+              full_name: apiData.userFullName || '',
+              avatar: apiData.userAvatar || '',
               email: apiData.userEmail || '',
               phone_number: '',
               elo_points: apiData.eloPoints ?? 100,
             },
             profile: {
               user_id: apiData.userId,
-              company_name: apiData.companyName || 'Company Name',
-              company_website: apiData.companyWebsite,
-              company_size: apiData.companySize,
-              industry: apiData.industry || 'Technology',
+              company_name: apiData.companyName || '',
+              company_website: apiData.companyWebsite || '',
+              company_size: apiData.companySize ?? 0,
+              industry: apiData.industry || '',
               company_description: apiData.companyDescription || '',
-              location: apiData.location || 'San Francisco, CA',
-              avatar: apiData.userAvatar,
+              location: apiData.location || '',
+              avatar: apiData.userAvatar || '',
               eloPoints: apiData.eloPoints ?? 100,
+              createdAt: apiData.createdAt,
             }
           });
+        } else {
+          setProfileData(emptyProfileData(targetId));
+          setError(res.message || 'Client profile could not be loaded.');
         }
-      } catch (err) {
-        console.warn('API getClientProfile fallback to mock:', err);
+      } catch (err: unknown) {
+        setProfileData(emptyProfileData(targetId));
+        setError(err instanceof Error ? err.message : 'Client profile could not be loaded.');
       } finally {
         setLoading(false);
       }
@@ -96,31 +117,23 @@ export function useClientProfile(targetId: string, currentUser: any) {
   // Sync reviews list on targetId load
   useEffect(() => {
     const fetchReviews = async (): Promise<void> => {
-      const response = await reviewGetAPI.getReviewsByUser(targetId);
-      const reviews = response.success && response.data ? response.data : [];
-      setReviewsList(
-        reviews
-          .map(toReviewViewModel)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      );
-      setCurrentPage(1);
+      try {
+        const response = await reviewGetAPI.getReviewsByUser(targetId);
+        const reviews = response.success && response.data ? response.data : [];
+        setReviewsList(
+          reviews
+            .map(toReviewViewModel)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        );
+      } catch {
+        setReviewsList([]);
+      } finally {
+        setCurrentPage(1);
+      }
     };
 
     fetchReviews();
   }, [targetId]);
-
-  const handleSaveClient = () => {
-    setIsSaved(!isSaved);
-  };
-
-  const handleAddReview = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    window.alert('Please submit reviews from a completed contract so the review can be linked to ELO correctly.');
-    setReviewComment('');
-    setReviewRating(5);
-    setReviewAnonymous(false);
-    setShowReviewModal(false);
-  };
 
   const averageRating = reviewsList.length
     ? reviewsList.reduce((sum, review) => sum + review.rating, 0) / reviewsList.length
@@ -136,36 +149,23 @@ export function useClientProfile(targetId: string, currentUser: any) {
   const totalPages = Math.max(1, Math.ceil(reviewsList.length / reviewsPerPage));
   const paginatedReviews = reviewsList.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
 
-  const jobs = DB.getJobsByClient(targetId);
   const eloPoints = resolveEloPoints(profileData);
   const eloRingPercent = Math.min(100, Math.max(0, (eloPoints / 300) * 100));
 
   return {
     loading,
+    error,
     profileData,
     eloPoints,
     eloRingPercent,
-    isSaved,
     showMoreMenu,
     currentPage,
     reviewsList,
-    showReviewModal,
-    reviewRating,
-    reviewComment,
-    reviewAnonymous,
     averageRating,
     distribution,
     totalPages,
     paginatedReviews,
-    jobs,
-    setIsSaved,
     setShowMoreMenu,
     setCurrentPage,
-    setReviewRating,
-    setReviewComment,
-    setReviewAnonymous,
-    setShowReviewModal,
-    handleSaveClient,
-    handleAddReview,
   };
 }

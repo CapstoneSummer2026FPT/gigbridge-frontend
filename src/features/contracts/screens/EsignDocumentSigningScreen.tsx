@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, FileText, Signature, Check, AlertCircle, Clock,
   Copy, Download, Shield, Loader, PenTool, Type,
-  Camera, X, ChevronRight, CheckCircle, Zap
+  ChevronRight, CheckCircle, Zap
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
@@ -12,7 +12,7 @@ import { esignPostAPI } from '../../../api/esignAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { ContractDto } from '../../../types/models/Contract';
 import type { ESignSignatureDto, ESignDocumentDto, SignatureAuditTrail } from '../../../types/models/ESign';
-import { ESignDocumentStatus, SignatureStatus, SignatureType } from '../../../types/models/ESign';
+import { SignatureStatus, SignatureType } from '../../../types/models/ESign';
 import '../styles/esign-document-signing-screen.css';
 
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -90,15 +90,15 @@ export default function EsignDocumentSigningScreen() {
           throw new Error('Failed to load document');
         }
         setDocument(docResponse.data);
-        if (![ESignDocumentStatus.Sent, ESignDocumentStatus.Draft].includes(docResponse.data.status)) {
-          setError('You have already signed this document');
+        if (!docResponse.data.canCurrentUserSign) {
+          setError('This document is not available for your signature');
         }
 
         // Load existing signatures for this document
         const sigsResponse = await esignGetAPI.getDocumentSignatures(documentId);
         if (sigsResponse.success && sigsResponse.data) {
           const userSignature = sigsResponse.data.find(
-            sig => sig.signerId === user?.id
+            sig => sig.userId === user?.id
           );
           if (userSignature) {
             setSignature(userSignature);
@@ -284,7 +284,6 @@ export default function EsignDocumentSigningScreen() {
       // Record completion
       await esignPostAPI.recordAuditTrailEntry(documentId, 'Document Signed', {
         signerId: user.id,
-        timestamp: new Date().toISOString(),
         ...systemInfo,
       });
 
@@ -305,6 +304,10 @@ export default function EsignDocumentSigningScreen() {
 
   const handleDeclineSignature = async () => {
     try {
+      if (!documentId) {
+        setError('Missing document ID');
+        return;
+      }
       if (window.confirm('Are you sure you want to decline signing this document?')) {
         setSubmitting(true);
         // Record decline action
@@ -322,8 +325,8 @@ export default function EsignDocumentSigningScreen() {
   };
 
   const handleCopyDocumentId = () => {
-    if (document?.id) {
-      navigator.clipboard.writeText(document.id);
+    if (document?.documentId) {
+      navigator.clipboard.writeText(document.documentId);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     }
@@ -383,7 +386,7 @@ export default function EsignDocumentSigningScreen() {
             </button>
             <div className="header-info">
               <h1>{t('contracts.documentSigning')}</h1>
-              <p className="subtitle">{document.title}</p>
+              <p className="subtitle">{document.documentCode || contract.title}</p>
             </div>
             {successMessage && (
               <div className="success-alert">
@@ -425,8 +428,8 @@ export default function EsignDocumentSigningScreen() {
                   <div className="document-info">
                     <FileText size={32} className="doc-icon" />
                     <div className="info-text">
-                      <h3>{document.title}</h3>
-                      {document.description && <p>{document.description}</p>}
+                      <h3>{document.documentCode || contract.title}</h3>
+                      {contract.description && <p>{contract.description}</p>}
                     </div>
                   </div>
 
@@ -434,11 +437,11 @@ export default function EsignDocumentSigningScreen() {
                     <div className="meta-item">
                       <label>{t('contracts.documentId')}</label>
                       <div className="meta-value-with-copy">
-                        <code>{document.id}</code>
+                        <code>{document.documentId}</code>
                         <button
                           onClick={handleCopyDocumentId}
                           className="btn-copy-small"
-                          title="Copy"
+                          title={copySuccess ? 'Copied' : 'Copy'}
                         >
                           <Copy size={14} />
                         </button>
@@ -460,10 +463,10 @@ export default function EsignDocumentSigningScreen() {
                     )}
                   </div>
 
-                  {document.documentUrl && (
+                  {document.exportedPdfUrl && (
                     <div className="document-preview">
                       <a
-                        href={document.documentUrl}
+                        href={document.exportedPdfUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="btn-view-document"
