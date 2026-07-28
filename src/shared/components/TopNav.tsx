@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -51,6 +51,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const logout = appContext?.logout || (() => { });
   const isAuthenticated = appContext?.isAuthenticated || false;
   const premiumStatus = usePremiumStatus(user ? role : null);
+  const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
 
   const localizedNavItems = navItems.map(item => {
     if (item.label === 'Browse Jobs') return { ...item, label: t('nav.browseJobs') };
@@ -330,13 +331,21 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
           <button
             type="button"
             className="become-premium-button"
-            onClick={() => navigate(role === 0
-              ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
-              : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing')}
+            onClick={() => {
+              if (premiumStatusUnavailable) {
+                void premiumStatus.refresh();
+                return;
+              }
+              navigate(role === 0
+                ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
+                : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing');
+            }}
           >
-            <Crown size={15} />
-            <span className="hidden sm:inline">{premiumStatus.isPremium ? 'Premium active' : 'Become Premium'}</span>
-            <span className="sm:hidden">Premium</span>
+            {premiumStatusUnavailable ? <RotateCw size={15} /> : <Crown size={15} />}
+            <span className="hidden sm:inline">
+              {premiumStatusUnavailable ? 'Retry Premium status' : premiumStatus.isPremium ? 'Premium active' : 'Become Premium'}
+            </span>
+            <span className="sm:hidden">{premiumStatusUnavailable ? 'Retry' : 'Premium'}</span>
           </button>
         )}
         {/* Wallet Balance Dropdown */}

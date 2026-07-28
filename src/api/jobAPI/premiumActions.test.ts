@@ -38,4 +38,10 @@ describe('Premium client job actions', () => {
       language: 'vi', mode: 'voice', questionCount: 7,
     });
   });
+
+  it('ends a client job promotion through the owning job post', async () => {
+    await jobPostAPI.endJobPromotion('job-1');
+
+    expect(post).toHaveBeenCalledWith('JobPosts/job-1/promotion/end');
+  });
 });

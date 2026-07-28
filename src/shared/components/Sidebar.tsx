@@ -281,6 +281,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
   const [showPremiumTeaser, setShowPremiumTeaser] = useState(false);
   const premiumStatus = usePremiumStatus(role);
+  const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
 
   const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
   const adminSections = role === 2 ? getAdminNavSections(t, openReportCount) : [];
@@ -343,7 +344,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="sidebar-profile-info">
             <p className="sidebar-profile-name">{user.first_name}</p>
             <p className="sidebar-profile-role">{role === 0 ? t('projects.client') : role === 1 ? t('projects.freelancer') : t('nav.admin')}</p>
-            {(role === 0 || role === 1) && !premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} compact />}
+            {(role === 0 || role === 1) && !premiumStatus.loading && !premiumStatusUnavailable && (
+              <PremiumStatusBadge active={premiumStatus.isPremium} compact />
+            )}
           </div>
           <ChevronRight size={14} className="sidebar-profile-chevron" />
         </div>
@@ -427,14 +430,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="sidebar-pro-badge">
           <div className="sidebar-pro-header">
             <Zap size={14} className="sidebar-pro-icon" />
-            <span className="sidebar-pro-title">{t(premiumStatus.isPremium ? 'nav.premiumActive' : role === 0 ? 'nav.clientPremium' : 'nav.freelancerPremium')}</span>
+            <span className="sidebar-pro-title">
+              {t(premiumStatusUnavailable
+                ? 'nav.premiumUnavailable'
+                : premiumStatus.isPremium
+                  ? 'nav.premiumActive'
+                  : role === 0
+                    ? 'nav.clientPremium'
+                    : 'nav.freelancerPremium')}
+            </span>
           </div>
-          <p className="sidebar-pro-desc">{t('nav.proBadgeDesc')}</p>
+          <p className="sidebar-pro-desc">{t(premiumStatusUnavailable ? 'nav.premiumUnavailableDesc' : 'nav.proBadgeDesc')}</p>
           <button className="btn-cyan sidebar-pro-button" disabled={premiumStatus.loading} onClick={() => {
+            if (premiumStatusUnavailable) {
+              void premiumStatus.refresh();
+              return;
+            }
             if (role === 0) handleNavigate(premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing');
             else if (premiumStatus.isPremium) handleNavigate('/premium/freelancer');
             else setShowPremiumTeaser(true);
-          }}>{t(premiumStatus.isPremium ? 'nav.openHub' : 'nav.upgrade')}</button>
+          }}>{t(premiumStatusUnavailable ? 'nav.retryPremium' : premiumStatus.isPremium ? 'nav.openHub' : 'nav.upgrade')}</button>
         </div>
       )}
 
