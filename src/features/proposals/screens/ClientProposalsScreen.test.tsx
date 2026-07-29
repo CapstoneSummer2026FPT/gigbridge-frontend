@@ -261,7 +261,7 @@ const arrangeProposal = (status = ProposalStatus.Pending) => {
 };
 
 const openProposal = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click((await screen.findAllByRole('button', { name: /view details/i }))[0]);
+  await user.click((await screen.findAllByRole('button', { name: /ada freelancer proposal/i }))[0]);
   return screen.findByRole('dialog', { name: /ada freelancer/i });
 };
 
@@ -309,13 +309,17 @@ describe('ClientProposalsScreen', () => {
     expect(screen.getByRole('columnheader', { name: 'Delivery plan' })).toBeInTheDocument();
     expect(mocks.getProposalDetail).not.toHaveBeenCalled();
 
-    const drawer = await openProposal(user);
+    const modal = await openProposal(user);
     expect(mocks.getProposalDetail).toHaveBeenCalledWith('proposal-1');
-    expect(within(drawer).getByText('Requirement analysis')).toBeInTheDocument();
-
-    await user.click(within(drawer).getByRole('tab', { name: 'Delivery plan' }));
-    expect(within(drawer).getByText(/Foundation delivery/)).toBeInTheDocument();
-    expect(within(drawer).getByText(/Build passes/)).toBeInTheDocument();
+    
+    // Switch to Project Proposal tab
+    await user.click(within(modal).getByRole('button', { name: /freelancer Project Proposal/i }));
+    expect(within(modal).getByText('Introduction')).toBeInTheDocument();
+    expect(await within(modal).findByText(/Experienced marketplace developer/i)).toBeInTheDocument();
+    expect(await within(modal).findByText(/Requirement analysis/i)).toBeInTheDocument();
+    expect(await within(modal).findByText(/Incremental delivery/i)).toBeInTheDocument();
+    expect(await within(modal).findByText(/^1\.\s+Foundation$/)).toBeInTheDocument();
+    expect(await within(modal).findByText(/^1\.\s+Foundation delivery$/)).toBeInTheDocument();
   });
 
   it('renders project requests as a sorted sidebar instead of the legacy selector', async () => {
@@ -480,12 +484,12 @@ describe('ClientProposalsScreen', () => {
   it('shows no AI action when the job has no screening questions', async () => {
     const user = userEvent.setup();
     render(<ClientProposalsScreen />);
-    const drawer = await openProposal(user);
+    const modal = await openProposal(user);
 
-    await user.click(within(drawer).getByRole('tab', { name: 'Screening' }));
+    expect(await within(modal).findByText(/No freelancer Interview Answers available/i)).toBeInTheDocument();
 
-    expect(await within(drawer).findByText('No screening questions')).toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: 'Evaluate answers with AI' })).not.toBeInTheDocument();
+    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
+    expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();
     expect(mocks.evaluateProposalAnswers).not.toHaveBeenCalled();
   });
 
@@ -503,12 +507,10 @@ describe('ClientProposalsScreen', () => {
       }],
     });
     render(<ClientProposalsScreen />);
-    const drawer = await openProposal(user);
+    const modal = await openProposal(user);
 
-    await user.click(within(drawer).getByRole('tab', { name: 'Screening' }));
-
-    expect(await within(drawer).findByText('No completed answers available')).toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: 'Evaluate answers with AI' })).not.toBeInTheDocument();
+    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
+    expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();
   });
 
   it('evaluates substantive clarifying answers without presenting them as an AI interview', async () => {
@@ -524,32 +526,47 @@ describe('ClientProposalsScreen', () => {
         answerText: 'I would ship in small, reviewed increments.',
       }],
     });
-    render(<ClientProposalsScreen />);
-    const drawer = await openProposal(user);
-    await user.click(within(drawer).getByRole('tab', { name: 'Screening' }));
+    mocks.evaluateProposalAnswers
+      .mockResolvedValueOnce({ success: false, data: null })
+      .mockResolvedValueOnce({
+        success: true,
+        data: {
+          score: 84,
+          summary: 'Strong written responses.',
+          technicalSkills: ['React'],
+          softSkills: ['Communication'],
+          recommendedHire: true,
+          holisticAdjustment: 0,
+          holisticAdjustmentReason: '',
+          gradedQuestions: [],
+        },
+      });
 
-    const evaluate = await within(drawer).findByRole('button', { name: 'Evaluate answers with AI' });
+    render(<ClientProposalsScreen />);
+    const modal = await openProposal(user);
+
+    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
+    const evaluate = await within(modal).findByRole('button', { name: 'Evaluate Proposal with AI' });
     expect(screen.queryByText(/AI Interview/i)).not.toBeInTheDocument();
     await user.click(evaluate);
 
     expect(mocks.evaluateProposalAnswers).toHaveBeenCalledWith('proposal-1', true);
-    expect(await screen.findByRole('dialog', { name: 'Answer evaluation report' })).toBeInTheDocument();
-    expect(screen.getByText('Strong written responses.')).toBeInTheDocument();
+    expect(await within(modal).findByText('Strong written responses.')).toBeInTheDocument();
   });
 
-  it('keeps proposal actions in the drawer and confirms rejection', async () => {
+  it('keeps proposal actions in the modal and confirms rejection', async () => {
     const user = userEvent.setup();
     render(<ClientProposalsScreen />);
     expect(screen.queryByRole('button', { name: 'Shortlist' })).not.toBeInTheDocument();
-    const drawer = await openProposal(user);
+    const modal = await openProposal(user);
 
-    await user.click(within(drawer).getByRole('button', { name: 'Shortlist' }));
+    await user.click(within(modal).getByRole('button', { name: 'Shortlist' }));
     expect(mocks.updateProposalStatus).toHaveBeenCalledWith('proposal-1', { status: ProposalStatus.Shortlisted });
 
-    await user.click(within(drawer).getByRole('button', { name: 'Start negotiation' }));
+    await user.click(within(modal).getByRole('button', { name: 'Start negotiation' }));
     expect(mocks.acceptForNegotiation).toHaveBeenCalledWith('proposal-1');
 
-    await user.click(within(drawer).getByRole('button', { name: 'Reject' }));
+    await user.click(within(modal).getByRole('button', { name: 'Reject' }));
     expect(screen.getByRole('alertdialog', { name: 'Reject this proposal?' })).toBeInTheDocument();
     expect(mocks.updateProposalStatus).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('button', { name: 'Reject proposal' }));
@@ -560,9 +577,9 @@ describe('ClientProposalsScreen', () => {
     const user = userEvent.setup();
     arrangeProposal(ProposalStatus.Accepted);
     render(<ClientProposalsScreen />);
-    const drawer = await openProposal(user);
+    const modal = await openProposal(user);
 
-    await user.click(within(drawer).getByRole('button', { name: 'Open negotiation' }));
+    await user.click(within(modal).getByRole('button', { name: 'Open negotiation' }));
 
     expect(mocks.startNegotiationFromProposal).toHaveBeenCalledWith('proposal-1');
     expect(mocks.navigate).toHaveBeenCalledWith('/messages', { state: { activeConvId: 'conversation-2' } });
@@ -583,10 +600,10 @@ describe('ClientProposalsScreen', () => {
     render(<ClientProposalsScreen />);
 
     expect(await screen.findAllByText(/Proposal review is read-only/i)).not.toHaveLength(0);
-    const drawer = await openProposal(user);
-    expect(within(drawer).queryByRole('button', { name: 'Shortlist' })).not.toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: 'Start negotiation' })).not.toBeInTheDocument();
-    expect(within(drawer).queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument();
+    const modal = await openProposal(user);
+    expect(within(modal).queryByRole('button', { name: 'Shortlist' })).not.toBeInTheDocument();
+    expect(within(modal).queryByRole('button', { name: 'Start negotiation' })).not.toBeInTheDocument();
+    expect(within(modal).queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument();
   });
 
   it('renders the AI Leaderboard and the evaluation modal with tabs', async () => {
