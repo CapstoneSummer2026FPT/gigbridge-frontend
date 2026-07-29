@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, Briefcase, Code, ChevronRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle, Briefcase, Code, ChevronRight, AlertCircle } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { authAPI } from '../../../api/authAPI';
@@ -10,6 +10,7 @@ import { useGSAP } from '@gsap/react';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { getGoogleOAuth2, type GoogleCodeClient } from '../googleIdentity';
 
 
 type SignupStep = 'role' | 'form';
@@ -33,7 +34,7 @@ export default function SignupScreen() {
   const isLoading = isEmailLoading || isGoogleLoading;
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [googleClient, setGoogleClient] = useState<any>(null);
+  const [googleClient, setGoogleClient] = useState<GoogleCodeClient | null>(null);
   const [googleError, setGoogleError] = useState('');
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
 
@@ -46,6 +47,7 @@ export default function SignupScreen() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [verificationTicket, setVerificationTicket] = useState('');
   const [countdown, setCountdown] = useState(0);
 
   const [formData, setFormData] = useState({ 
@@ -65,18 +67,18 @@ export default function SignupScreen() {
 
   // Google GIS Client Initialization
   useEffect(() => {
-    let client: any = null;
     const interval = setInterval(() => {
-      if (window.google) {
+      const googleOAuth2 = getGoogleOAuth2();
+      if (googleOAuth2) {
         clearInterval(interval);
 
-        client = window.google.accounts.oauth2.initCodeClient({
+        const client = googleOAuth2.initCodeClient({
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
           scope: "openid email profile",
           ux_mode: "popup",
-          callback: async (response: any) => {
+          callback: response => {
             if (response.code) {
-              handleGoogleSignup(response.code);
+              void handleGoogleSignup(response.code);
             }
           },
         });
@@ -114,7 +116,7 @@ export default function SignupScreen() {
 
       // Google Sign Up redirects new user directly to onboarding profile setup
       navigate('/onboarding/profile-setup');
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setGoogleError(getErrorMessage(err));
       }
@@ -154,9 +156,14 @@ export default function SignupScreen() {
     
     setError('');
     setSuccessMessage('');
+    setVerificationTicket('');
+    setIsOtpVerified(false);
     setIsSendingOtp(true);
     try {
-      const response = await authAPI.sendOtp({ email: formData.email });
+      const response = await authAPI.sendOtp({
+        email: formData.email,
+        purpose: 'signup'
+      });
       if (response.success) {
         if (isMounted.current) {
           setSuccessMessage(response.message || 'Verification code sent successfully!');
@@ -167,7 +174,7 @@ export default function SignupScreen() {
           setError(getErrorMessage(response));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
@@ -190,20 +197,23 @@ export default function SignupScreen() {
     try {
       const response = await authAPI.verifyOtp({
         email: formData.email,
-        otp: formData.otpCode
+        otp: formData.otpCode,
+        purpose: 'signup'
       });
       
-      if (response.success) {
+      const ticket = response.data?.verificationTicket;
+      if (response.success && ticket) {
         if (isMounted.current) {
           setSuccessMessage(response.message || 'Email verified successfully!');
           setIsOtpVerified(true);
+          setVerificationTicket(ticket);
         }
       } else {
         if (isMounted.current) {
           setError(getErrorMessage(response));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
@@ -217,7 +227,7 @@ export default function SignupScreen() {
   let appContext: ReturnType<typeof useApp> | null;
   try {
     appContext = useApp();
-  } catch (e) {
+  } catch {
     appContext = null;
   }
 
@@ -260,7 +270,7 @@ export default function SignupScreen() {
         return;
       }
 
-      if (!isOtpVerified) {
+      if (!isOtpVerified || !verificationTicket) {
         if (isMounted.current) {
           setError('Please verify your email address first.');
           setIsEmailLoading(false);
@@ -268,7 +278,13 @@ export default function SignupScreen() {
         return;
       }
 
-      await signup(formData.email, formData.password, formData.fullName, selectedRole);
+      await signup(
+        formData.email,
+        formData.password,
+        formData.fullName,
+        selectedRole,
+        verificationTicket,
+      );
       
       toast.success('Registration successful! Welcome to GigBridge.', {
         style: {
@@ -282,7 +298,7 @@ export default function SignupScreen() {
       });
 
       navigate('/onboarding/profile-setup');
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
@@ -546,6 +562,7 @@ export default function SignupScreen() {
                       setFormData({ ...formData, email: e.target.value });
                       if (isOtpVerified) {
                         setIsOtpVerified(false);
+                        setVerificationTicket('');
                         setSuccessMessage('');
                       }
                     }}
@@ -561,6 +578,7 @@ export default function SignupScreen() {
                         setFormData({ ...formData, otpCode: e.target.value });
                         if (isOtpVerified) {
                           setIsOtpVerified(false);
+                          setVerificationTicket('');
                           setSuccessMessage('');
                         }
                       }}

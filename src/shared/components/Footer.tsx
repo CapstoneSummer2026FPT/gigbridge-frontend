@@ -13,7 +13,6 @@ export function Footer() {
       links: [
         { label: 'Browse Jobs', path: '/jobs/browse' },
         { label: 'How It Works', path: '/guide' },
-        { label: 'Market Insights', path: '/market-insights' },
       ]
     },
     {

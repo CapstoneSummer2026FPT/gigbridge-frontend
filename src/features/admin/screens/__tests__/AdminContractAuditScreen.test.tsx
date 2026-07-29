@@ -66,6 +66,7 @@ describe('AdminContractAuditScreen', () => {
   it('displays contracts after loading', async () => {
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [mockContract],
       message: 'Success',
     });
@@ -84,6 +85,7 @@ describe('AdminContractAuditScreen', () => {
   it('displays correct statistics', async () => {
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [mockContract],
       message: 'Success',
     });
@@ -104,6 +106,7 @@ describe('AdminContractAuditScreen', () => {
   it('filters contracts by status', async () => {
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [mockContract],
       message: 'Success',
     });
@@ -133,6 +136,7 @@ describe('AdminContractAuditScreen', () => {
   it('searches contracts by title', async () => {
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [mockContract],
       message: 'Success',
     });
@@ -161,6 +165,7 @@ describe('AdminContractAuditScreen', () => {
   it('displays compliance score bar', async () => {
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [mockContract],
       message: 'Success',
     });
@@ -189,11 +194,13 @@ describe('AdminContractAuditScreen', () => {
   it('exports contracts as CSV', async () => {
     const mockCreateObjectURL = vi.fn(() => 'blob:mock-url');
     const mockRevokeObjectURL = vi.fn();
-    global.URL.createObjectURL = mockCreateObjectURL;
-    global.URL.revokeObjectURL = mockRevokeObjectURL;
+    const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    window.URL.createObjectURL = mockCreateObjectURL;
+    window.URL.revokeObjectURL = mockRevokeObjectURL;
 
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [mockContract],
       message: 'Success',
     });
@@ -216,12 +223,16 @@ describe('AdminContractAuditScreen', () => {
     // Verify blob was created
     await waitFor(() => {
       expect(mockCreateObjectURL).toHaveBeenCalled();
+      expect(anchorClickSpy).toHaveBeenCalled();
     });
+
+    anchorClickSpy.mockRestore();
   });
 
   it('shows the API error without injecting mock contracts when loading fails', async () => {
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: false,
+      statusCode: 500,
       message: 'Failed to load contracts',
     });
 
@@ -246,6 +257,7 @@ describe('AdminContractAuditScreen', () => {
 
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [overdueContract],
       message: 'Success',
     });
@@ -270,6 +282,7 @@ describe('AdminContractAuditScreen', () => {
 
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [atRiskContract],
       message: 'Success',
     });
@@ -288,6 +301,7 @@ describe('AdminContractAuditScreen', () => {
   it('displays compliance checklist when contract is expanded', async () => {
     vi.mocked(adminAPI.getContracts).mockResolvedValue({
       success: true,
+      statusCode: 200,
       data: [mockContract],
       message: 'Success',
     });
@@ -312,6 +326,10 @@ describe('AdminContractAuditScreen', () => {
       expect(screen.getByText('Compliance Requirements (BR-51, BR-52)')).toBeInTheDocument();
       expect(screen.getByText('Scope Defined')).toBeInTheDocument();
       expect(screen.getByText('Budget Specified')).toBeInTheDocument();
+      expect(
+        screen.getByText('Contract audit history is unavailable because no audit-history endpoint is connected.')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Contract Created')).not.toBeInTheDocument();
     });
   });
 });

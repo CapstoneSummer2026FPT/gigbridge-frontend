@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Search, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { jobInvitationAPI } from '../../../api/jobInvitationAPI';
-import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
+import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 
 interface InviteFreelancersAfterPostModalProps {
   jobPostId: string;
@@ -11,10 +11,10 @@ interface InviteFreelancersAfterPostModalProps {
   onClose: () => void;
 }
 
-const getFreelancerProfileId = (freelancer: FreelancerProfileDetailDto): string =>
-  freelancer.freelancerProfilesId ?? freelancer.freelancerProfileId ?? '';
+const getFreelancerProfileId = (freelancer: FreelancerSummaryDto): string =>
+  freelancer.freelancerProfilesId;
 
-const getFreelancerName = (freelancer: FreelancerProfileDetailDto): string =>
+const getFreelancerName = (freelancer: FreelancerSummaryDto): string =>
   freelancer.userFullName || freelancer.title || 'Freelancer';
 
 export function InviteFreelancersAfterPostModal({
@@ -22,7 +22,7 @@ export function InviteFreelancersAfterPostModal({
   jobTitle,
   onClose,
 }: InviteFreelancersAfterPostModalProps) {
-  const [freelancers, setFreelancers] = useState<FreelancerProfileDetailDto[]>([]);
+  const [freelancers, setFreelancers] = useState<FreelancerSummaryDto[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [message, setMessage] = useState('');
@@ -38,13 +38,20 @@ export function InviteFreelancersAfterPostModal({
       try {
         setLoading(true);
         setError(null);
-        const response = await profileGetAPI.getAllFreelancers();
+        const response = await profileGetAPI.getFreelancers({
+          page: 1,
+          pageSize: 50,
+          search: query.trim() || undefined,
+          sort: 'featured',
+        });
         if (!response.success || !response.data) {
           throw new Error(response.message || 'Unable to load freelancer profiles.');
         }
 
         if (isMounted) {
-          setFreelancers(response.data.filter(freelancer => getFreelancerProfileId(freelancer)));
+          setFreelancers(
+            response.data.items.filter(freelancer => getFreelancerProfileId(freelancer)),
+          );
         }
       } catch (err) {
         if (!isMounted) return;
@@ -55,24 +62,15 @@ export function InviteFreelancersAfterPostModal({
       }
     };
 
-    loadFreelancers();
+    const timeoutId = window.setTimeout(() => {
+      void loadFreelancers();
+    }, query.trim() ? 250 : 0);
 
     return () => {
       isMounted = false;
+      window.clearTimeout(timeoutId);
     };
-  }, []);
-
-  const filteredFreelancers = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return freelancers;
-
-    return freelancers.filter(freelancer => [
-      freelancer.userFullName,
-      freelancer.title,
-      freelancer.location,
-      ...(freelancer.skills || []).map(skill => skill.skillName),
-    ].join(' ').toLowerCase().includes(normalized));
-  }, [freelancers, query]);
+  }, [query]);
 
   const toggleFreelancer = (freelancerProfileId: string) => {
     setSelectedIds(prev =>
@@ -154,13 +152,13 @@ export function InviteFreelancersAfterPostModal({
                 <AlertCircle size={16} />
                 {error}
               </div>
-            ) : filteredFreelancers.length === 0 ? (
+            ) : freelancers.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-background p-8 text-center text-sm text-muted-foreground">
                 No freelancers found.
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredFreelancers.map(freelancer => {
+                {freelancers.map(freelancer => {
                   const freelancerProfileId = getFreelancerProfileId(freelancer);
                   const checked = selectedIds.includes(freelancerProfileId);
                   const skillNames = (freelancer.skills || []).map(skill => skill.skillName).filter(Boolean);

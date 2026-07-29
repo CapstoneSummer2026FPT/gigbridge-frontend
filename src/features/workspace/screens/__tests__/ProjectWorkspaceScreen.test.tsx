@@ -2,14 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectWorkspaceScreen from '../ProjectWorkspaceScreen';
 import { ContractProductHandoffSourceType, ContractStatus } from '../../../../types/models/Contract';
+import { UserRole, type User } from '../../../../types/models/User';
 import { useProjectWorkspace } from '../../hooks/useProjectWorkspace';
 
 const navigateMock = vi.fn();
-const handleStartMilestoneMock = vi.fn();
 const handleRequestMilestoneUnlockMock = vi.fn();
-const handleWithdrawMilestoneMock = vi.fn();
 const handleEndProjectMock = vi.fn();
-const handleClaimFinalPayoutMock = vi.fn();
+
+type ProjectWorkspaceHookState = ReturnType<typeof useProjectWorkspace>;
+type WorkspaceMilestoneFixture = ProjectWorkspaceHookState['project']['milestones'][number];
+type WorkspaceProjectListItemFixture = ProjectWorkspaceHookState['currentProjData'];
 
 vi.mock('../../../../hooks/useTranslation', () => ({
   useTranslation: () => ({
@@ -22,11 +24,10 @@ vi.mock('../../../../hooks/useTranslation', () => ({
         'workspace.endProject': 'End project',
         'workspace.approveAllTooltip': 'Approve all milestones to end project',
         'workspace.releaseEscrowTooltip': 'Release escrow',
-        'workspace.paidInFull': 'Paid in full',
-        'workspace.escrowReleasedFully': 'Escrow has been fully released to your wallet',
-        'workspace.finalPayoutReady': 'Final payout is ready',
+        'workspace.automaticPayout': 'Automatic payout',
+        'workspace.payoutReconciliation': 'Payout reconciliation',
+        'workspace.automaticPayoutNotice': 'Approved milestone payouts are reconciled automatically.',
         'workspace.viewWalletHistory': 'View wallet history',
-        'workspace.claimPayout': 'Nhận tiền',
         'workspace.viewOnlyNotice': 'Workspace is view-only',
         'workspace.releasedInFull': 'Released in full',
         'serviceFee.endProject.confirmationDescription': 'Final payout available to freelancer',
@@ -62,26 +63,60 @@ vi.mock('react-router', () => ({
 }));
 
 const setActiveProjectIdMock = vi.fn();
-const pendingMilestone = {
+const pendingMilestone: WorkspaceMilestoneFixture = {
   id: 'milestone-2',
   title: 'Milestone 2',
   amount: 20,
   releasedAmount: 0,
   dueDate: 'Not set',
-  status: 'pending' as const,
+  status: 'pending',
+  workItems: [],
 };
+
+const createMockUser = (isClient: boolean): User => ({
+  id: isClient ? 'client-user-1' : 'freelancer-user-1',
+  email: isClient ? 'client@example.com' : 'freelancer@example.com',
+  first_name: isClient ? 'Client' : 'Freelancer',
+  last_name: 'User',
+  full_name: isClient ? 'Client User' : 'Freelancer User',
+  phone_number: null,
+  role: isClient ? UserRole.Client : UserRole.Freelancer,
+  is_email_verified: true,
+  is_active: true,
+  is_setup: true,
+  preferred_language: 'en',
+  last_login_at: null,
+  login_failed_time: null,
+  access_failed_count: 0,
+  elo_points: 0,
+  gigcoin_balance: 0,
+  created_at: '2026-07-01T00:00:00.000Z',
+  updated_at: '2026-07-01T00:00:00.000Z',
+});
 
 const mockWorkspaceHook = (options: {
   isClient?: boolean;
-  milestones?: typeof pendingMilestone[];
+  milestones?: WorkspaceMilestoneFixture[];
   contractStatus?: ContractStatus;
   paidAmount?: number;
   totalBudget?: number;
 } = {}): void => {
   const isClient = options.isClient ?? true;
+  const currentProject: WorkspaceProjectListItemFixture = {
+    id: 'contract-1',
+    title: 'Workspace',
+    titleLong: 'Workspace',
+    partnerName: 'Freelancer',
+    partnerAvatar: 'https://example.com/avatar.png',
+    latestMessage: 'Workspace is open.',
+    time: 'Just now',
+    unread: false,
+    online: true,
+    status: options.contractStatus ?? ContractStatus.Active,
+  };
 
   vi.mocked(useProjectWorkspace).mockReturnValue({
-    user: { id: 'client-user-1' },
+    user: createMockUser(isClient),
     isClient,
     activeProjectId: 'contract-1',
     setActiveProjectId: setActiveProjectIdMock,
@@ -89,13 +124,10 @@ const mockWorkspaceHook = (options: {
     setShowInfo: vi.fn(),
     messageInput: '',
     setMessageInput: vi.fn(),
-    aiMessage: '',
-    setAiMessage: vi.fn(),
     isFavorited: false,
     setIsFavorited: vi.fn(),
     isBlocked: false,
     setIsBlocked: vi.fn(),
-    aiChat: [],
     project: {
       id: 'contract-1',
       contractId: 'contract-1',
@@ -156,17 +188,7 @@ const mockWorkspaceHook = (options: {
       },
     ],
     workspaceProjects: [],
-    currentProjData: {
-      id: 'contract-1',
-      title: 'Workspace',
-      titleLong: 'Workspace',
-      partnerName: 'Freelancer',
-      partnerAvatar: 'https://example.com/avatar.png',
-      latestMessage: 'Workspace is open.',
-      time: 'Just now',
-      unread: false,
-      online: true,
-    },
+    currentProjData: currentProject,
     partnerName: 'Freelancer',
     partnerAvatar: 'https://example.com/avatar.png',
     partnerTitle: isClient ? 'Freelancer' : 'Client',
@@ -174,14 +196,12 @@ const mockWorkspaceHook = (options: {
     isPartnerOnline: true,
     projectMessages: [],
     handleSendMessage: vi.fn(),
-    handleSendAiMessage: vi.fn(),
     handleSimulateAttachment: vi.fn(),
-    handleCreateMockMilestone: vi.fn(),
-    handleStartMilestone: handleStartMilestoneMock,
+    handleOpenMilestoneEditor: vi.fn(),
     handleRequestMilestoneUnlock: handleRequestMilestoneUnlockMock,
-    handleWithdrawMilestone: handleWithdrawMilestoneMock,
+    handleUpdateWorkItem: vi.fn(),
+    handleRespondEarlyStart: vi.fn(),
     handleEndProject: handleEndProjectMock,
-    handleClaimFinalPayout: handleClaimFinalPayoutMock,
     handleSubmitMilestoneDeliverable: vi.fn(),
     handleSubmitProductHandoff: vi.fn(),
     chatEndRef: { current: null },
@@ -191,11 +211,8 @@ const mockWorkspaceHook = (options: {
 describe('ProjectWorkspaceScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    handleStartMilestoneMock.mockResolvedValue({ success: true });
     handleRequestMilestoneUnlockMock.mockResolvedValue({ success: true });
-    handleWithdrawMilestoneMock.mockResolvedValue({ success: true });
     handleEndProjectMock.mockResolvedValue({ success: true });
-    handleClaimFinalPayoutMock.mockResolvedValue({ success: true });
     mockWorkspaceHook();
     vi.spyOn(window, 'open').mockImplementation(() => null);
   });
@@ -222,7 +239,6 @@ describe('ProjectWorkspaceScreen', () => {
 
     expect(screen.queryByRole('button', { name: /start milestone/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /propose milestone/i })).not.toBeInTheDocument();
-    expect(handleStartMilestoneMock).not.toHaveBeenCalled();
   });
 
   it('lets freelancers request an early start with a reason', async () => {
@@ -291,10 +307,9 @@ describe('ProjectWorkspaceScreen', () => {
     expect(screen.queryByRole('button', { name: /end project/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /withdraw/i })).not.toBeInTheDocument();
     expect(screen.getAllByText(/released in full/i)).toHaveLength(2);
-    expect(handleWithdrawMilestoneMock).not.toHaveBeenCalled();
   });
 
-  it('shows paid in full for freelancers after claim and opens wallet history', () => {
+  it('shows automatic payout status for freelancers and opens wallet history', () => {
     mockWorkspaceHook({
       isClient: false,
       contractStatus: ContractStatus.Completed,
@@ -310,12 +325,11 @@ describe('ProjectWorkspaceScreen', () => {
 
     expect(screen.queryByRole('button', { name: /withdraw/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /end project/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/escrow has been fully released to your wallet/i)).toBeInTheDocument();
+    expect(screen.getByText(/approved milestone payouts are reconciled automatically/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /view wallet history/i }));
 
     expect(navigateMock).toHaveBeenCalledWith('/wallet/history');
-    expect(handleClaimFinalPayoutMock).not.toHaveBeenCalled();
   });
 
   it('does not show Receive Money for clients after project completion', () => {
@@ -334,7 +348,7 @@ describe('ProjectWorkspaceScreen', () => {
     expect(screen.queryByRole('button', { name: /nhận tiền/i })).not.toBeInTheDocument();
   });
 
-  it('claims the remaining payout when a completed project still has escrow', async () => {
+  it('does not expose a manual claim when automatic payout reconciliation is pending', () => {
     mockWorkspaceHook({
       isClient: false,
       contractStatus: ContractStatus.Completed,
@@ -347,9 +361,10 @@ describe('ProjectWorkspaceScreen', () => {
 
     render(<ProjectWorkspaceScreen />);
 
-    expect(screen.getByText(/final payout is ready/i)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /nhận tiền/i }));
-    await waitFor(() => expect(handleClaimFinalPayoutMock).toHaveBeenCalled());
+    expect(screen.getByText(/payout reconciliation/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /nhận tiền/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /view wallet history/i }));
+    expect(navigateMock).toHaveBeenCalledWith('/wallet/history');
     expect(screen.queryByPlaceholderText(/type your message/i)).not.toBeInTheDocument();
     expect(screen.getByText(/workspace is view-only/i)).toBeInTheDocument();
   });

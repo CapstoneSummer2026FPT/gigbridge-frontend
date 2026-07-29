@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, CheckCircle, Briefcase, Users, TrendingUp, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, X, Bookmark } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
+import { Star, MapPin, Briefcase, Users, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useClientProfile } from '../hooks/useClientProfile';
 import { ReportUserModal } from '../components/ReportUserModal';
-import { getCompanySizeLabel, CLIENT_TRUST_BADGES } from '../utils/profileUtils';
+import { getCompanySizeLabel } from '../utils/profileUtils';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
 
@@ -17,36 +16,24 @@ export default function ClientProfileScreen() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
 
-  const targetId = id || 'u_client_1';
+  const targetId = id || currentUser?.id || '';
 
   const {
     loading,
+    error,
     profileData,
     eloPoints,
     eloRingPercent,
-    isSaved,
     showMoreMenu,
     currentPage,
     reviewsList,
-    showReviewModal,
-    reviewRating,
-    reviewComment,
-    reviewAnonymous,
     averageRating,
     distribution,
     totalPages,
     paginatedReviews,
-    jobs,
-    setIsSaved,
     setShowMoreMenu,
     setCurrentPage,
-    setReviewRating,
-    setReviewComment,
-    setReviewAnonymous,
-    setShowReviewModal,
-    handleSaveClient,
-    handleAddReview,
-  } = useClientProfile(targetId, currentUser);
+  } = useClientProfile(targetId);
 
   if (loading) {
     return (
@@ -58,8 +45,28 @@ export default function ClientProfileScreen() {
     );
   }
 
+  if (error || !targetId) {
+    return (
+      <AppLayout>
+        <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
+          <h1 className="text-2xl font-bold">Client profile unavailable</h1>
+          <p className="text-muted-foreground">{error || 'No client profile was selected.'}</p>
+          <button type="button" onClick={() => navigate(-1)} className="rounded-lg bg-[var(--gb-cyan)] px-4 py-2 font-semibold text-white">
+            Go back
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const user = profileData.user;
   const profile = profileData.profile;
+  const initials = user.full_name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || '?';
 
   return (
     <AppLayout>
@@ -82,31 +89,37 @@ export default function ClientProfileScreen() {
           <header className="flex flex-col lg:flex-row justify-between items-start gap-6 mb-12">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="w-24 h-24 md:w-32 md:h-32 rounded-full p-1 bg-surface-container-lowest shadow-sm flex-shrink-0">
-                <img 
-                  alt={`Profile picture of ${user.full_name}`} 
-                  className="w-full h-full rounded-full object-cover" 
-                  src={user.avatar || profile?.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop"} 
-                />
+                {user.avatar || profile.avatar ? (
+                  <img
+                    alt={`Profile picture of ${user.full_name}`}
+                    className="w-full h-full rounded-full object-cover"
+                    src={user.avatar || profile.avatar}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-full bg-surface-container-high text-2xl font-bold text-on-surface-variant">
+                    {initials}
+                  </div>
+                )}
               </div>
               <div>
                 <h1 className="font-display-lg text-display-lg text-on-surface mb-1">{user.full_name}</h1>
                 <p className="font-headline-sm text-headline-sm text-on-surface-variant mb-2">
-                  {profile?.company_name || 'Company Name'}
+                  {profile.company_name || 'Company name not provided'}
                 </p>
-                <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--gb-cyan)] text-white font-label-md text-[12px] font-bold tracking-wide shadow-sm mb-4">
-                  <CheckCircle size={14} className="text-white fill-current" />
-                  Payment Verified
-                </div>
                 
                 <div className="flex flex-wrap items-center gap-6 text-on-surface-variant">
-                  <div className="flex items-center gap-1.5">
-                    <MapPin size={18} className="text-[var(--gb-cyan)]" />
-                    <span className="font-label-md text-label-md">{profile?.location || 'San Francisco, CA'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Globe size={18} className="text-[var(--gb-cyan)]" />
-                    <span className="font-label-md text-label-md">{profile?.company_website || 'website.com'}</span>
-                  </div>
+                  {profile.location && (
+                    <div className="flex items-center gap-1.5">
+                      <MapPin size={18} className="text-[var(--gb-cyan)]" />
+                      <span className="font-label-md text-label-md">{profile.location}</span>
+                    </div>
+                  )}
+                  {profile.company_website && (
+                    <div className="flex items-center gap-1.5">
+                      <Globe size={18} className="text-[var(--gb-cyan)]" />
+                      <span className="font-label-md text-label-md">{profile.company_website}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1.5 text-yellow-500">
                     <Star size={18} className="fill-current text-yellow-500" />
                     <span className="font-label-md text-label-md text-on-surface">
@@ -119,21 +132,6 @@ export default function ClientProfileScreen() {
             </div>
 
             <div className="flex flex-col gap-4 w-full lg:w-auto">
-              <div className="flex flex-wrap gap-4 w-full lg:w-auto">
-                <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex flex-col items-center justify-center min-w-[120px]">
-                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Total Spent</p>
-                  <p className="font-display-lg text-[32px] text-[var(--gb-cyan)] font-bold">$50K+</p>
-                </div>
-                <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex flex-col items-center justify-center min-w-[120px]">
-                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Jobs Posted</p>
-                  <p className="font-display-lg text-[32px] text-[var(--gb-cyan)] font-bold">{jobs.length}</p>
-                </div>
-                <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex flex-col items-center justify-center min-w-[120px]">
-                  <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Hire Rate</p>
-                  <p className="font-display-lg text-[32px] text-[var(--gb-cyan)] font-bold">82%</p>
-                </div>
-              </div>
-
               {/* Action Buttons */}
               <div className="flex flex-row flex-nowrap gap-3 overflow-x-auto scrollbar-hide justify-start lg:justify-end items-center w-full lg:w-auto py-1">
                 {currentUser?.id === targetId ? (
@@ -144,17 +142,7 @@ export default function ClientProfileScreen() {
                     <Edit3 size={18} />
                     Edit Profile
                   </button>
-                ) : (
-                  <>
-                    <button 
-                      onClick={handleSaveClient} 
-                      className={`glass-overlay font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2 hover:bg-surface/80 transition-colors cursor-pointer flex-shrink-0 ${isSaved ? 'text-[var(--gb-cyan)] border-[var(--gb-cyan)]/50' : 'text-on-surface-variant'}`}
-                    >
-                      <Bookmark size={18} fill={isSaved ? 'currentColor' : 'none'} />
-                      {isSaved ? 'Saved' : 'Save'}
-                    </button>
-                  </>
-                )}
+                ) : null}
 
                 {currentUser?.id !== user.id && (
                   <button
@@ -205,7 +193,7 @@ export default function ClientProfileScreen() {
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-12 flex flex-col justify-start">
               <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">About</h2>
               <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-                {profile?.company_description || 'We are a growing tech startup focused on building innovative solutions. We work with talented developers and designers to create world-class products.'}
+                {profile.company_description || 'No company description provided.'}
               </p>
             </div>
 
@@ -217,16 +205,20 @@ export default function ClientProfileScreen() {
                   <MapPin size={16} className="text-[var(--gb-cyan)] flex-shrink-0" />
                   <div>
                     <p className="text-[11px] font-label-md uppercase tracking-wider text-on-surface-variant/70">Location</p>
-                    <p className="font-body-md text-body-md text-on-surface font-medium">{profile?.location || 'Remote'}</p>
+                    <p className="font-body-md text-body-md text-on-surface font-medium">{profile.location || 'Not provided'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 py-1 text-on-surface-variant">
                   <Globe size={16} className="text-[var(--gb-cyan)] flex-shrink-0" />
                   <div>
                     <p className="text-[11px] font-label-md uppercase tracking-wider text-on-surface-variant/70">Website</p>
-                    <a href={profile?.company_website || '#'} target="_blank" rel="noopener noreferrer" className="font-body-md text-body-md text-[var(--gb-cyan)] hover:underline font-medium break-all">
-                      {profile?.company_website || 'website.com'}
-                    </a>
+                    {profile.company_website ? (
+                      <a href={profile.company_website} target="_blank" rel="noopener noreferrer" className="font-body-md text-body-md text-[var(--gb-cyan)] hover:underline font-medium break-all">
+                        {profile.company_website}
+                      </a>
+                    ) : (
+                      <p className="font-body-md text-body-md text-on-surface font-medium">Not provided</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 py-1 text-on-surface-variant">
@@ -240,7 +232,7 @@ export default function ClientProfileScreen() {
                   <Briefcase size={16} className="text-[var(--gb-cyan)] flex-shrink-0" />
                   <div>
                     <p className="text-[11px] font-label-md uppercase tracking-wider text-on-surface-variant/70">Industry</p>
-                    <p className="font-body-md text-body-md text-on-surface font-medium">{profile?.industry || 'Technology'}</p>
+                    <p className="font-body-md text-body-md text-on-surface font-medium">{profile.industry || 'Not provided'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 py-1 text-on-surface-variant">
@@ -287,121 +279,10 @@ export default function ClientProfileScreen() {
               </div>
             </div>
 
-            {/* Company Stats */}
-            <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col justify-between h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">Company Stats</h2>
-              <div className="flex flex-col gap-4 flex-1">
-                <div className="flex justify-between items-center pb-4 border-b border-outline-variant">
-                  <span className="font-body-md text-body-md text-on-surface-variant">Total Spent</span>
-                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">$50K+</span>
-                </div>
-                <div className="flex justify-between items-center pb-4 border-b border-outline-variant">
-                  <span className="font-body-md text-body-md text-on-surface-variant">Hire Rate</span>
-                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">82%</span>
-                </div>
-                <div className="flex justify-between items-center pb-4 border-b border-outline-variant">
-                  <span className="font-body-md text-body-md text-on-surface-variant">Active Jobs</span>
-                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">{jobs.length}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-body-md text-body-md text-on-surface-variant">Member Since</span>
-                  <span className="font-headline-sm text-headline-sm text-[var(--gb-cyan)]">Jan 2024</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Active Jobs */}
-            <div className="bento-card col-span-1 md:col-span-6 lg:col-span-8 p-8 flex flex-col h-full">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
-                  <Briefcase size={20} className="text-[var(--gb-cyan)]" />
-                  Active Jobs
-                </h2>
-                {currentUser?.id === targetId && (
-                  <button 
-                    onClick={() => navigate('/jobs/create')}
-                    className="text-xs font-semibold text-primary hover:underline cursor-pointer font-label-md"
-                  >
-                    Post a Job
-                  </button>
-                )}
-              </div>
-              
-              {jobs.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                  {jobs.slice(0, 6).map(job => (
-                    <div 
-                      key={job.id} 
-                      onClick={() => navigate(`/jobs/${job.id}`)}
-                      className="border border-outline-variant bg-surface-container-lowest rounded-xl p-5 flex justify-between items-center transition-all hover:border-[var(--gb-cyan)]/50 hover:shadow-md cursor-pointer"
-                    >
-                      <div className="flex-1 min-w-0 pr-4">
-                        <p className="font-headline-sm text-headline-sm text-on-surface truncate" title={job.title}>
-                          {job.title}
-                        </p>
-                        <p className="font-body-md text-body-md text-on-surface-variant mt-2 mb-3 line-clamp-2">
-                          {job.description || 'No description provided.'}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
-                          <span className="text-[var(--gb-cyan)] font-bold">
-                            ${job.budgetMin.toLocaleString()}–${job.budgetMax.toLocaleString()}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            job.status === 'open' 
-                              ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
-                              : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                          }`}>
-                            {job.status}
-                          </span>
-                          <span className="text-on-surface-variant font-medium">
-                            {job.proposalCount} proposals
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 text-[var(--gb-cyan)]">
-                        <TrendingUp size={18} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center bg-surface-container-low rounded-2xl border border-outline-variant">
-                  <Briefcase size={32} className="mx-auto mb-3 opacity-50 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No active jobs posted yet</p>
-                </div>
-              )}
-            </div>
-
-            {/* Trust Badges */}
-            <div className="bento-card col-span-1 md:col-span-3 lg:col-span-4 flex flex-col justify-start h-full">
-              <h2 className="font-headline-sm text-headline-sm text-on-surface mb-4">Trust & Verification</h2>
-              <div className="grid grid-cols-2 gap-3 flex-1">
-                {CLIENT_TRUST_BADGES.map(badge => (
-                  <div 
-                    key={badge.label} 
-                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-outline-variant bg-surface-container-lowest text-center hover:border-[var(--gb-cyan)]/30 transition-colors"
-                  >
-                    <div className={`w-9 h-9 rounded-full bg-surface-container-low flex items-center justify-center mb-2 ${badge.styleClass}`}>
-                      {badge.icon}
-                    </div>
-                    <span className="font-label-md text-[10px] text-on-surface font-bold break-words w-full">{badge.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Freelancer Reviews */}
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-12 p-8">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="font-headline-sm text-headline-sm text-on-surface">Freelancer Reviews</h2>
-                {false && currentUser?.role === 1 && (
-                  <button 
-                    onClick={() => setShowReviewModal(true)}
-                    className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer"
-                  >
-                    Leave a Review
-                  </button>
-                )}
               </div>
 
               {reviewsList.length > 0 ? (
@@ -523,95 +404,6 @@ export default function ClientProfileScreen() {
         </div>
       </main>
 
-      {/* Write a Review Modal */}
-      <AnimatePresence>
-        {showReviewModal && (
-          <div className="invite-freelancer-overlay" onClick={() => setShowReviewModal(false)}>
-            <div className="invite-freelancer-modal animate-in fade-in zoom-in duration-200 shadow-xl" onClick={event => event.stopPropagation()}>
-              <button className="invite-freelancer-close cursor-pointer" onClick={() => setShowReviewModal(false)}>
-                <X size={18} />
-              </button>
-              <div className="invite-freelancer-header">
-                <div className="invite-freelancer-title-group">
-                  <div className="invite-freelancer-icon">
-                    <Star size={24} className="fill-current" />
-                  </div>
-                  <div>
-                    <h2>Write a Review</h2>
-                    <p>Share your experience with {user.full_name}</p>
-                  </div>
-                </div>
-              </div>
-
-              <form onSubmit={handleAddReview} className="invite-freelancer-content">
-                {/* Rating Input */}
-                <div className="invite-section">
-                  <h3 className="invite-section-title">Rating</h3>
-                  <div className="flex gap-2.5 py-1">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setReviewRating(star)}
-                        className="text-yellow-500 hover:scale-110 transition-transform cursor-pointer"
-                      >
-                        <Star 
-                          size={32} 
-                          className={star <= reviewRating ? 'fill-current text-yellow-500' : 'text-outline-variant'} 
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Comment Input */}
-                <div className="invite-section">
-                  <h3 className="invite-section-title">Review Comment</h3>
-                  <textarea 
-                    value={reviewComment} 
-                    onChange={event => setReviewComment(event.target.value)} 
-                    placeholder="Write details of your experience working with this client..."
-                    required
-                    rows={4}
-                    className="invite-textarea"
-                  />
-                </div>
-
-                {/* Anonymous Checkbox */}
-                <div className="flex items-center gap-2 pb-2">
-                  <input 
-                    type="checkbox"
-                    id="anonymous-review"
-                    checked={reviewAnonymous}
-                    onChange={event => setReviewAnonymous(event.target.checked)}
-                    className="w-4 h-4 text-[var(--gb-cyan)] rounded border-outline-variant focus:ring-[var(--gb-cyan)] cursor-pointer"
-                  />
-                  <label htmlFor="anonymous-review" className="font-body-md text-on-surface-variant cursor-pointer select-none">
-                    Submit review anonymously
-                  </label>
-                </div>
-
-                {/* Actions Footer inside Content Container */}
-                <div className="flex gap-3 pt-6 border-t border-outline-variant mt-auto">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowReviewModal(false)}
-                    className="invite-btn cancel-btn"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit"
-                    className="invite-btn submit-btn"
-                  >
-                    Submit Review
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
       {showReportModal && (
         <ReportUserModal
           userId={user.id}

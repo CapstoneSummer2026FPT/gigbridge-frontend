@@ -13,7 +13,7 @@ import '../styles/browse-jobs-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
-import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
+import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 import { premiumAPI } from '../../premium/api';
 import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
 
@@ -59,7 +59,7 @@ export default function BrowseJobsScreen() {
   const [categoryOptions, setCategoryOptions] = useState<string[]>(['All']);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [topFreelancers, setTopFreelancers] = useState<FreelancerProfileDetailDto[]>([]);
+  const [topFreelancers, setTopFreelancers] = useState<FreelancerSummaryDto[]>([]);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [isPromotionActive, setIsPromotionActive] = useState(false);
   const [page, setPage] = useState(1);
@@ -149,8 +149,8 @@ export default function BrowseJobsScreen() {
 
   useEffect(() => {
     let isMounted = true;
-    profileGetAPI.getAllFreelancers().then(response => {
-      if (isMounted && response.success && response.data) setTopFreelancers(response.data.slice(0, 5));
+    profileGetAPI.getFreelancers({ page: 1, pageSize: 5, sort: 'elo' }).then(response => {
+      if (isMounted && response.success && response.data) setTopFreelancers(response.data.items);
     }).catch(() => {
       if (isMounted) setTopFreelancers([]);
     });

@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Search, Filter, Eye, Download, AlertCircle, CheckCircle2, Clock,
-  ChevronDown, FileText, MoreVertical, TrendingUp, AlertTriangle, BarChart3, Calendar, Edit, XCircle
+  ChevronDown, FileText, TrendingUp, AlertTriangle, BarChart3, Calendar, Edit, XCircle
 } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminAPI } from '../../../api/adminAPI';
-import type { ContractDto, ContractQueryParams } from '../../../types/models/Contract';
+import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { formatContractAmount, formatContractDate, getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { ContractAreaTabs } from '../../contracts/components/ContractAreaTabs';
@@ -19,34 +19,14 @@ interface ComplianceRequirement {
   description: string;
 }
 
-interface AuditTrailEntry {
-  timestamp: string;
-  action: string;
-  user: string;
-  details: string;
-}
-
 interface ContractAuditData extends ContractDto {
   complianceStatus?: 'compliant' | 'warning' | 'violation';
   complianceScore?: number;
   complianceRequirements?: ComplianceRequirement[];
-  auditTrail?: AuditTrailEntry[];
   isOverdue?: boolean;
   isAtRisk?: boolean;
   lastUpdatedBy?: string;
   auditNotes?: string;
-}
-
-interface AuditFilter {
-  status?: ContractStatus;
-  complianceStatus?: string;
-  searchTerm?: string;
-  dateRange?: {
-    from: string;
-    to: string;
-  };
-  showOverdueOnly?: boolean;
-  showAtRiskOnly?: boolean;
 }
 
 export default function AdminContractAuditScreen() {
@@ -81,17 +61,12 @@ export default function AdminContractAuditScreen() {
   const [showAtRiskOnly, setShowAtRiskOnly] = useState(false);
   const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
 
-  // Pagination
-  const [pageIndex, setPageIndex] = useState(0);
-  const pageSize = 20;
-
   const buildAuditContracts = (source: ContractDto[]): ContractAuditData[] =>
     source.map(c => ({
       ...c,
       complianceStatus: getComplianceStatus(c),
       complianceScore: calculateComplianceScore(c),
       complianceRequirements: getComplianceRequirements(c),
-      auditTrail: generateAuditTrail(c),
       isOverdue: isContractOverdue(c),
       isAtRisk: isContractAtRisk(c),
     }));
@@ -169,11 +144,11 @@ export default function AdminContractAuditScreen() {
   // Load contracts
   useEffect(() => {
     loadContractsList();
-  }, [pageIndex]);
+  }, []);
 
   // Get compliance status based on contract data
   const getComplianceStatus = (contract: ContractDto): 'compliant' | 'warning' | 'violation' => {
-    // Simulate compliance checks
+    // Derive the visible status only from persisted contract fields.
     if (!contract.esignContractPdfUrl) {
       return 'violation'; // Missing contract PDF
     }
@@ -259,30 +234,6 @@ export default function AdminContractAuditScreen() {
     return daysRemaining < 7 && daysRemaining >= 0 && contract.status === ContractStatus.Active;
   };
 
-  // Generate mock audit trail
-  const generateAuditTrail = (contract: ContractDto): AuditTrailEntry[] => {
-    return [
-      {
-        timestamp: contract.createdAt || new Date().toISOString(),
-        action: 'Contract Created',
-        user: 'System',
-        details: `Contract created from proposal`
-      },
-      {
-        timestamp: new Date(new Date(contract.createdAt).getTime() + 3600000).toISOString(),
-        action: 'Status Changed',
-        user: contract.clientProfilesId,
-        details: `Status changed to ${getContractStatusLabel(contract.status)}`
-      },
-      ...(contract.updatedAt ? [{
-        timestamp: contract.updatedAt,
-        action: 'Contract Updated',
-        user: 'System',
-        details: 'Contract details updated'
-      }] : [])
-    ];
-  };
-
   // Filter contracts
   useEffect(() => {
     let result = contracts;
@@ -313,7 +264,7 @@ export default function AdminContractAuditScreen() {
       result = result.filter(c =>
         c.title.toLowerCase().includes(query) ||
         c.clientProfilesId.toLowerCase().includes(query) ||
-        c.freelancerProfilesId.toLowerCase().includes(query)
+        (c.freelancerProfilesId?.toLowerCase().includes(query) ?? false)
       );
     }
 
@@ -729,7 +680,7 @@ ${idx + 1}. ${c.title}
                 >
                   <div className="row-header">
                     <div className="contract-rank">
-                      <span>#{index + 1 + pageIndex * pageSize}</span>
+                      <span>#{index + 1}</span>
                     </div>
 
                     <div className="row-content">
@@ -886,22 +837,12 @@ ${idx + 1}. ${c.title}
                         )}
                       </div>
 
-                      {/* Audit Trail */}
-                      {contract.auditTrail && contract.auditTrail.length > 0 && (
-                        <div className="audit-trail-section">
-                          <h5 className="section-title">Audit Trail</h5>
-                          <div className="audit-trail-items">
-                            {contract.auditTrail.map((entry, idx) => (
-                              <div key={idx} className="audit-trail-item">
-                                <div className="trail-timestamp">{formatContractDate(entry.timestamp)}</div>
-                                <div className="trail-action">{entry.action}</div>
-                                <div className="trail-user">by {entry.user}</div>
-                                <div className="trail-details">{entry.details}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <div className="audit-trail-section">
+                        <h5 className="section-title">Audit Trail</h5>
+                        <p className="description-text">
+                          Contract audit history is unavailable because no audit-history endpoint is connected.
+                        </p>
+                      </div>
 
                       {/* Compliance Notes */}
                       <div className="audit-notes-section">

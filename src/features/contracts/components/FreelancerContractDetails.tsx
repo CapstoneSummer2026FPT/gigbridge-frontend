@@ -1,15 +1,15 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import {
   Lock, AlertCircle, CheckCircle, Clock,
-  User, FileText, Calendar, Download, ArrowLeft, Shield,
+  User, FileText, Calendar, ArrowLeft, Shield,
   Mail, ListChecks, Copy, Check, FileCheck, ChevronDown,
   Star, ShieldAlert, Edit3, XCircle, LoaderCircle, RefreshCw
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
@@ -19,13 +19,17 @@ import {
   getContractStatusClass,
   formatContractAmount,
   formatContractDate,
-  getMilestoneStatusLabel,
-  getMilestoneStatusClass
+  getMilestoneStatusLabel
 } from '../../../shared/utils/contractUtils';
 import '../styles/view-contract-details-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ContractChangeControlPanel } from './ContractChangeControlPanel';
+import { ContractLegalCard } from './ContractLegalCard';
+import {
+  contractStatusMayHaveESignDocument,
+  useContractESignDocument,
+} from '../hooks/useContractESignDocument';
 
 interface AuditTrailEntry {
   id: string;
@@ -74,7 +78,10 @@ export function FreelancerContractDetails({
   const [changeRequestReason, setChangeRequestReason] = useState('');
   const [showMilestoneChangeModal, setShowMilestoneChangeModal] = useState(false);
   const [milestoneChangeReason, setMilestoneChangeReason] = useState('');
-  const [currentUserSignedESign, setCurrentUserSignedESign] = useState(false);
+  const esignDocumentState = useContractESignDocument(
+    contract?.contractsId,
+    contractStatusMayHaveESignDocument(contract.status)
+  );
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
@@ -90,46 +97,15 @@ export function FreelancerContractDetails({
   const freelancerEmail = freelancerProfile?.email || contract.freelancerEmail || '';
   const freelancerHeadline = freelancerProfile?.headline || '';
   const freelancerAvatar = freelancerProfile?.profileImageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(freelancerName)}`;
+  const currentUserSignedESign = Boolean(
+    esignDocumentState.document?.signatures.some(
+      signature => signature.userId === user?.id && signature.status === SignatureStatus.Signed
+    )
+  );
   const hasSignedESignContract =
     currentUserSignedESign ||
     contract.status === ContractStatus.PendingEscrow ||
     contract.status >= ContractStatus.Active;
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadESignStatus = async () => {
-      if (!contract?.contractsId || !user?.id) {
-        setCurrentUserSignedESign(false);
-        return;
-      }
-
-      try {
-        const response = await esignGetAPI.getDocumentByContract(contract.contractsId);
-        if (isCancelled) {
-          return;
-        }
-
-        const hasSigned = Boolean(
-          response.success &&
-          response.data?.signatures.some(
-            signature => signature.userId === user.id && signature.status === SignatureStatus.Signed
-          )
-        );
-        setCurrentUserSignedESign(hasSigned);
-      } catch (error) {
-        if (!isCancelled) {
-          setCurrentUserSignedESign(false);
-        }
-      }
-    };
-
-    void loadESignStatus();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [contract?.contractsId, user?.id]);
 
   // Stepper: PendingContractConfirmation -> PendingSignature -> PendingEscrow -> Active
   let currentStep = 1;
@@ -149,17 +125,18 @@ export function FreelancerContractDetails({
     }
   };
 
-  const handleDownloadPDF = () => {
-    if (contract?.esignContractPdfUrl) {
-      window.open(contract.esignContractPdfUrl, '_blank');
-    }
-  };
-
   const handleScrollToReview = () => {
     reviewContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleViewESignContract = () => {
+    if (esignDocumentState.document?.documentId) {
+      navigate(
+        `/contracts/esign?document=${encodeURIComponent(esignDocumentState.document.documentId)}`
+      );
+      return;
+    }
+
     navigate(`/contracts/${contract.contractsId}/sign`);
   };
 
@@ -169,39 +146,39 @@ export function FreelancerContractDetails({
     try {
       const res = await contractPostAPI.confirmDetails(contract.contractsId);
       if (res.success) {
-        alert(t('contracts.alerts.confirmed'));
+        toast.success(t('contracts.alerts.confirmed'));
         onRefresh();
       } else {
-        alert(res.message || t('contracts.alerts.failedConfirm'));
+        toast.error(res.message || t('contracts.alerts.failedConfirm'));
       }
     } catch (err) {
       console.error(err);
-      alert(t('contracts.alerts.errorOccurred'));
+      toast.error(t('contracts.alerts.errorOccurred'));
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Request change for contract terms
+  // Request changes to the project plan
   const handleRequestChange = async () => {
     if (!changeRequestReason.trim()) {
-      alert(t('contracts.alerts.reasonRequired'));
+      toast.warning(t('contracts.alerts.reasonRequired'));
       return;
     }
     setActionLoading(true);
     try {
       const res = await contractPostAPI.requestChange(contract.contractsId, changeRequestReason.trim());
       if (res.success) {
-        alert(t('contracts.alerts.changeSubmitted'));
+        toast.success(t('contracts.alerts.changeSubmitted'));
         setShowChangeRequestModal(false);
         setChangeRequestReason('');
         onRefresh();
       } else {
-        alert(res.message || t('contracts.alerts.failedChange'));
+        toast.error(res.message || t('contracts.alerts.failedChange'));
       }
     } catch (err) {
       console.error(err);
-      alert(t('contracts.alerts.errorOccurred'));
+      toast.error(t('contracts.alerts.errorOccurred'));
     } finally {
       setActionLoading(false);
     }
@@ -210,83 +187,27 @@ export function FreelancerContractDetails({
   // Request milestone change
   const handleRequestMilestoneChange = async () => {
     if (!milestoneChangeReason.trim()) {
-      alert(t('contracts.alerts.milestoneReasonRequired'));
+      toast.warning(t('contracts.alerts.milestoneReasonRequired'));
       return;
     }
     setActionLoading(true);
     try {
       const res = await contractPostAPI.requestMilestoneChange(contract.contractsId, milestoneChangeReason.trim());
       if (res.success) {
-        alert(t('contracts.alerts.milestoneChangeSubmitted'));
+        toast.success(t('contracts.alerts.milestoneChangeSubmitted'));
         setShowMilestoneChangeModal(false);
         setMilestoneChangeReason('');
         onRefresh();
       } else {
-        alert(res.message || t('contracts.alerts.failedMilestoneChange'));
+        toast.error(res.message || t('contracts.alerts.failedMilestoneChange'));
       }
     } catch (err) {
       console.error(err);
-      alert(t('contracts.alerts.errorOccurred'));
+      toast.error(t('contracts.alerts.errorOccurred'));
     } finally {
       setActionLoading(false);
     }
   };
-
-  // Helper for rendering terms read-only
-  const renderViewOnlyTerms = () => (
-    <div className="glass-card p-8 md:p-10 space-y-6">
-      <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
-        <FileText size={20} className="text-primary" />
-        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.contractTerms')}</h2>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.scopeOfWork')}</span>
-          <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-            {contract?.scopeOfWork || t('contracts.noScopeDefined')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.paymentTerms')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.paymentTerms || t('contracts.noPaymentTerms')}
-            </p>
-          </div>
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.intellectualProperty')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.intellectualPropertyTerms || t('contracts.noIpTerms')}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.confidentiality')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.confidentialityTerms || t('contracts.noNdaTerms')}
-            </p>
-          </div>
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.cancellationPolicy')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.cancellationTerms || t('contracts.noCancellationPolicy')}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.disputeResolution')}</span>
-          <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-            {contract?.disputeTerms || t('contracts.noDisputeTerms')}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderViewOnlyMilestones = () => (
     <div className="glass-card p-8 md:p-10 relative">
@@ -367,7 +288,7 @@ export function FreelancerContractDetails({
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-cyan-500/20" />
             <div className="flex items-center gap-4 overflow-x-auto pb-1 no-scrollbar whitespace-nowrap">
               {[
-                { number: 1, label: t('contracts.reviewContractTerms') },
+                { number: 1, label: t('contracts.reviewProjectPlan') },
                 { number: 2, label: t('contracts.esignContractDocument') },
                 { number: 3, label: t('contracts.waitingEscrowFunding') },
                 { number: 4, label: t('contracts.status.7') },
@@ -456,6 +377,10 @@ export function FreelancerContractDetails({
                       </div>
                     </div>
 
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
                     {renderViewOnlyMilestones()}
                   </>
                 )}
@@ -467,13 +392,13 @@ export function FreelancerContractDetails({
                     <div className="glass-card p-8 md:p-10 space-y-6">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
                         <Shield size={20} className="text-primary" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.reviewContractTerms')}</h2>
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.reviewProjectPlan')}</h2>
                       </div>
 
                       <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 p-4 rounded-2xl text-xs font-medium leading-relaxed flex items-start gap-3">
                         <AlertCircle size={16} className="shrink-0 mt-0.5" />
                         <div>
-                          {t('contracts.reviewContractTermsDesc')}
+                          {t('contracts.reviewProjectPlanDesc')}
                         </div>
                       </div>
 
@@ -485,7 +410,7 @@ export function FreelancerContractDetails({
                           className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold cursor-pointer transition-all shadow-md flex items-center justify-center gap-2 border-none"
                         >
                           <CheckCircle size={17} />
-                          {t('contracts.confirmAcceptTerms')}
+                          {t('contracts.confirmProjectPlan')}
                         </button>
                         <button
                           disabled={actionLoading}
@@ -498,7 +423,10 @@ export function FreelancerContractDetails({
                       </div>
                     </div>
 
-                    {renderViewOnlyTerms()}
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
                     {renderViewOnlyMilestones()}
                   </>
                 )}
@@ -583,49 +511,13 @@ export function FreelancerContractDetails({
                             {t('contracts.requestMilestoneChanges')}
                           </button>
                         )}
-                        <button
-                          onClick={hasSignedESignContract ? handleViewESignContract : () => navigate(`/contracts/${contract.contractsId}/sign`)}
-                          className={hasSignedESignContract
-                            ? "px-8 py-3 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-sm font-bold text-foreground transition-all cursor-pointer inline-flex items-center justify-center gap-2"
-                            : "btn-primary-custom px-8 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2"}
-                        >
-                          {hasSignedESignContract ? <FileText size={18} /> : <FileCheck size={18} />}
-                          {hasSignedESignContract ? t('contracts.viewEsignContract') : t('contracts.proceedToEsign')}
-                        </button>
                       </div>
                     </div>
 
-                    {contract.esignContractPdfUrl && (
-                      <section className="glass-card p-8 md:p-10 relative overflow-hidden">
-                        <div className="flex items-center gap-2.5 border-b border-border/50 pb-4 mb-5">
-                          <FileCheck size={20} className="text-primary" />
-                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">{t('contracts.esignContractDocument')}</h2>
-                        </div>
-
-                        <div className="flex flex-col md:flex-row items-center gap-4 bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                            <FileText size={24} />
-                          </div>
-                          <div className="flex-1 min-w-0 text-left">
-                            <h4 className="text-sm font-bold text-foreground truncate">
-                              {contract.title.replace(/\s+/g, '_')}_ESign_Document.pdf
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
-                              {t('contracts.esignStatusLabel')}: <span className="text-amber-500 font-bold">{t('contracts.esignAwaitingSignatures')}</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-                            <button
-                              onClick={handleDownloadPDF}
-                              className="px-4 py-2 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center gap-1.5"
-                            >
-                              <Download size={13} />
-                              {t('contracts.downloadDraftPdf')}
-                            </button>
-                          </div>
-                        </div>
-                      </section>
-                    )}
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
 
                     <div ref={reviewContentRef} className="scroll-mt-6 space-y-6">
                       <div className="glass-card p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -688,7 +580,10 @@ export function FreelancerContractDetails({
                       </div>
                     </div>
 
-                    {renderViewOnlyTerms()}
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
                     {renderViewOnlyMilestones()}
                   </>
                 )}
@@ -764,39 +659,10 @@ export function FreelancerContractDetails({
                       )}
                     </section>
 
-                    {renderViewOnlyTerms()}
-
-                    {contract.esignContractPdfUrl && (
-                      <section className="glass-card p-8 md:p-10 relative overflow-hidden">
-                        <div className="flex items-center gap-2.5 border-b border-border/50 pb-4 mb-5">
-                          <FileCheck size={20} className="text-primary" />
-                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">{t('contracts.esignContractDocument')}</h2>
-                        </div>
-
-                        <div className="flex flex-col md:flex-row items-center gap-4 bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                            <FileText size={24} />
-                          </div>
-                          <div className="flex-1 min-w-0 text-left">
-                            <h4 className="text-sm font-bold text-foreground truncate">
-                              {contract.title.replace(/\s+/g, '_')}_ESign_Document.pdf
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
-                              {t('contracts.esignStatusLabel')}: <span className="text-emerald-500 font-bold">{t('contracts.esignFullySigned')}</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-                            <button
-                              onClick={handleDownloadPDF}
-                              className="px-4 py-2 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center gap-1.5"
-                            >
-                              <Download size={13} />
-                              {t('contracts.downloadSignedPdf')}
-                            </button>
-                          </div>
-                        </div>
-                      </section>
-                    )}
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
 
                     {/* Milestones Accordions */}
                     {milestones.length > 0 && (
@@ -1090,7 +956,7 @@ export function FreelancerContractDetails({
                     </motion.button>
                   )}
 
-                  {/* Review terms action in PendingContractConfirmation */}
+                  {/* Project-plan review action */}
                   {contract.status === ContractStatus.PendingSignature && hasSignedESignContract && (
                     <motion.button
                       whileHover={{ y: -2 }}
@@ -1113,18 +979,6 @@ export function FreelancerContractDetails({
                     >
                       <Edit3 size={17} />
                       {t('contracts.requestMilestoneChanges')}
-                    </motion.button>
-                  )}
-
-                  {contract.esignContractPdfUrl && (
-                    <motion.button 
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleDownloadPDF} 
-                      className="w-full py-3 bg-secondary/50 hover:bg-secondary border border-border/60 rounded-xl font-bold text-sm text-foreground cursor-pointer transition-all flex items-center justify-center gap-2"
-                    >
-                      <Download size={17} />
-                      {t('contracts.downloadPdf')}
                     </motion.button>
                   )}
 
@@ -1276,7 +1130,7 @@ export function FreelancerContractDetails({
                 value={changeRequestReason}
                 onChange={(e) => setChangeRequestReason(e.target.value)}
                 className="w-full h-32 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                placeholder="e.g., Please clarify the scope in milestone 2, update payment terms to net-30..."
+                placeholder={t('contracts.projectPlanChangePlaceholder')}
               />
 
               <div className="flex justify-end gap-3 mt-5">

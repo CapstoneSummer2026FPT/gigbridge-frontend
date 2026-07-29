@@ -1,6 +1,5 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { AdminCheatingViolationDto, ReviewCheatingViolationRequest } from '../../types/models/Cheating';
 import type { AdminUserDto } from '../../types/models/User';
 import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
 import type { DisputeStatus } from '../../types/models/Dispute';
@@ -37,18 +36,6 @@ export const adminPatchAPI = {
     });
   },
 
-  suspendUser: async (
-    email: string,
-    suspendedUntil: string,
-    reason?: string
-  ): Promise<ApiResponse<AdminUserDto>> => {
-    return apiService.patch<AdminUserDto>(`${Admin_Api_Base_Url}/users/suspend`, {
-      email,
-      suspendedUntil,
-      reason,
-    });
-  },
-
   clearUserSuspension: async (email: string): Promise<ApiResponse<AdminUserDto>> => {
     return apiService.patch<AdminUserDto>(`${Admin_Api_Base_Url}/users/clear-suspension`, {
       email,
@@ -63,13 +50,4 @@ export const adminPatchAPI = {
     return apiService.patch<object>(`${Admin_Api_Base_Url}/faq/categories/${id}/toggle-activity`);
   },
 
-  reviewCheatingViolation: async (
-    violationId: string,
-    data: ReviewCheatingViolationRequest
-  ): Promise<ApiResponse<AdminCheatingViolationDto>> => {
-    return apiService.patch<AdminCheatingViolationDto>(
-      `${Admin_Api_Base_Url}/cheating/violations/${violationId}/review`,
-      data
-    );
-  },
 };

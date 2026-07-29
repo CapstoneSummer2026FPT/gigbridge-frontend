@@ -12,12 +12,6 @@
   box-shadow: 0 8px 30px rgba(84, 112, 235, 0.12), 0 0 0 1px rgba(84,112,235,0.08);
 }
 
-/* Negotiation request bubble – teal border variant */
-.msg-deal-bubble.border-teal-500\/30 {
-  border-color: rgba(20, 184, 166, 0.3);
-}
-
-
 .messages-page {
   --messages-border: rgba(255, 255, 255, 0.08);
   --messages-accent: #00f0ff;
@@ -155,14 +149,10 @@
   background: rgba(84, 112, 235, 0.08);
 }
 
-/* Deal bubble */
-.msg-deal-bubble {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 1rem;
-  max-width: 380px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+/* Compact final-offer card. Full contract scope is rendered in a modal. */
+.msg-deal-card {
+  width: 360px;
+  max-width: min(360px, calc(100vw - 8rem));
 }
 
 /* custom-scrollbar (same as workspace) */
@@ -258,9 +248,9 @@
     max-width: 94% !important;
   }
 
-  .msg-deal-bubble {
+  .msg-deal-card {
+    width: min(360px, calc(100vw - 5.5rem));
     max-width: 100%;
-    padding: 0.875rem;
   }
 
   .msg-conv-settings-menu {

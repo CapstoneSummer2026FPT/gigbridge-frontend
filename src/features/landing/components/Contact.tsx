@@ -72,4 +72,3 @@ export default function Contact() {
     </div>
   );
 }
-export { Contact };

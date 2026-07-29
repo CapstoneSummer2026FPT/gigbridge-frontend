@@ -264,7 +264,6 @@ export interface CreateJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  location?: string | null;
   visibility?: number | null;
   endDate?: string | null;
   skillIds: string[];
@@ -284,7 +283,6 @@ export interface UpdateJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  location?: string | null;
   visibility: JobPostVisibility | number;
   endDate?: string | null;
   skillIds: string[];
@@ -305,7 +303,6 @@ export interface SaveDraftJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  location?: string | null;
   visibility?: JobPostVisibility | number | null;
   endDate?: string | null;
   isAigenerated?: boolean | null;

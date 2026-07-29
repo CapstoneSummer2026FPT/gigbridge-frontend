@@ -30,7 +30,7 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
 import { JobPostStatus } from '../../../types/models/Job';
-import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
+import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 import type { SavedFreelancerDto } from '../../../types/savedFreelancer';
 import type { AiTalentMatch } from '../../../types/talentMatching';
 import { UserRole } from '../../../types/models/User';
@@ -52,8 +52,7 @@ interface InviteTarget {
 const savedProfileId = (item: SavedFreelancerDto) =>
   item.freelancerProfileId ?? item.freelancerProfilesId ?? '';
 
-const freelancerProfileId = (item: FreelancerProfileDetailDto) =>
-  item.freelancerProfilesId ?? item.freelancerProfileId ?? '';
+const freelancerProfileId = (item: FreelancerSummaryDto) => item.freelancerProfilesId;
 
 const initials = (name?: string | null) =>
   (name || 'Freelancer')
@@ -114,7 +113,7 @@ export default function SmartTalentMatchingScreen() {
   const requestSequence = useRef(0);
   const [activeStage, setActiveStage] = useState<ViewStage>('browse');
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
-  const [freelancers, setFreelancers] = useState<FreelancerProfileDetailDto[]>([]);
+  const [freelancers, setFreelancers] = useState<FreelancerSummaryDto[]>([]);
   const [selectedJobId, setSelectedJobId] = useState('');
   const [saved, setSaved] = useState<SavedFreelancerDto[]>([]);
   const [matches, setMatches] = useState<AiTalentMatch[]>([]);
@@ -154,7 +153,7 @@ export default function SmartTalentMatchingScreen() {
     setBrowseError(null);
     const [jobsResponse, freelancersResponse, savedResult] = await Promise.allSettled([
       jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 }),
-      profileGetAPI.getAllFreelancers(),
+      profileGetAPI.getFreelancers({ page: 1, pageSize: 50, sort: 'featured' }),
       savedFreelancerAPI.getMySavedFreelancers(),
     ]);
 
@@ -186,7 +185,7 @@ export default function SmartTalentMatchingScreen() {
       );
     } else {
       setFreelancers(
-        (freelancersResponse.value.data || []).filter(item => freelancerProfileId(item)),
+        (freelancersResponse.value.data?.items || []).filter(item => freelancerProfileId(item)),
       );
     }
 

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
-import { ArrowLeft, Briefcase, MapPin, Clock, Users, Code, Palette, BarChart2, Shield } from 'lucide-react';
+import { ArrowLeft, Briefcase, MapPin, Clock, Code, Palette, BarChart2, Shield } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 
 const JOB_OPENINGS = [

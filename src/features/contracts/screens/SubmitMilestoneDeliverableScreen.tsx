@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
-  ChevronRight,
   FileUp,
   ArrowLeft,
 } from 'lucide-react';
@@ -38,6 +37,35 @@ interface SubmissionState {
   submitting: boolean;
 }
 
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set([
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'ppt',
+  'pptx',
+  'txt',
+  'csv',
+  'json',
+  'zip',
+  'rar',
+  '7z',
+  'tar',
+  'gz',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'mp3',
+  'wav',
+  'mp4',
+  'webm',
+]);
+const FILE_ACCEPT = Array.from(ALLOWED_EXTENSIONS, extension => `.${extension}`).join(',');
+
 export default function SubmitMilestoneDeliverableScreen() {
   const navigate = useNavigate();
   const { contractId, milestoneId } = useParams<{
@@ -59,41 +87,6 @@ export default function SubmitMilestoneDeliverableScreen() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB (BR-55)
-  const ALLOWED_EXTENSIONS = [
-    'pdf',
-    'doc',
-    'docx',
-    'xls',
-    'xlsx',
-    'ppt',
-    'pptx',
-    'zip',
-    'rar',
-    '7z',
-    'jpg',
-    'jpeg',
-    'png',
-    'gif',
-    'bmp',
-    'mp4',
-    'mov',
-    'avi',
-    'mkv',
-    'cs',
-    'ts',
-    'js',
-    'tsx',
-    'jsx',
-    'java',
-    'py',
-    'cpp',
-    'c',
-    'h',
-    'txt',
-    'md',
-  ];
 
   // Load milestone and contract details
   useEffect(() => {
@@ -128,7 +121,7 @@ export default function SubmitMilestoneDeliverableScreen() {
         }
 
         // Load milestone
-        const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
+        const milestoneResponse = await contractGetAPI.getMilestoneById(contractId, milestoneId);
         if (!milestoneResponse.success || !milestoneResponse.data) {
           throw new Error(milestoneResponse.message || t('contracts.loadingMilestone', { defaultValue: 'Failed to load milestone details' }));
         }
@@ -167,23 +160,21 @@ export default function SubmitMilestoneDeliverableScreen() {
   }, [contractId, milestoneId, user?.id]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
+    const selectedFile = e.target.files?.[0];
     setState((prev) => ({ ...prev, error: null }));
+
+    if (!selectedFile) return;
 
     const validationErrors: string[] = [];
 
-    selectedFiles.forEach((file) => {
-      // Check file size
-      if (file.size > MAX_FILE_SIZE) {
-        validationErrors.push(t('contracts.fileSizeError', { name: file.name, defaultValue: `MSG49: ${file.name} must be under 100MB` }));
-      }
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      validationErrors.push(t('contracts.fileSizeError', { name: selectedFile.name, defaultValue: `MSG49: ${selectedFile.name} must be under 100MB` }));
+    }
 
-      // Check file extension
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
-        validationErrors.push(t('contracts.fileTypeError', { name: file.name, defaultValue: `${file.name} has unsupported file type` }));
-      }
-    });
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+    if (!ext || !ALLOWED_EXTENSIONS.has(ext)) {
+      validationErrors.push(t('contracts.fileTypeError', { name: selectedFile.name, defaultValue: `${selectedFile.name} has unsupported file type` }));
+    }
 
     if (validationErrors.length > 0) {
       setState((prev) => ({
@@ -195,7 +186,7 @@ export default function SubmitMilestoneDeliverableScreen() {
 
     setState((prev) => ({
       ...prev,
-      files: [...prev.files, ...selectedFiles],
+      files: [selectedFile],
     }));
 
     // Reset input
@@ -250,7 +241,7 @@ export default function SubmitMilestoneDeliverableScreen() {
     try {
       setState((prev) => ({ ...prev, submitting: true }));
 
-      if (!state.milestone) {
+      if (!state.milestone || !contractId) {
         throw new Error(t('contracts.milestoneNotFound'));
       }
 
@@ -259,13 +250,11 @@ export default function SubmitMilestoneDeliverableScreen() {
       formData.append('description', state.description);
       formData.append('deliveryDate', new Date().toISOString());
 
-      // Add files
-      state.files.forEach((file) => {
-        formData.append('files', file);
-      });
+      formData.append('files', state.files[0]);
 
       // Submit deliverables
-      const response = await contractPostAPI.submitMilestoneDeliverables(
+      const response = await contractPostAPI.submitMilestone(
+        contractId,
         state.milestone.id,
         formData
       );
@@ -483,7 +472,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                         ref={fileInputRef}
                         type="file"
                         id="files"
-                        multiple
+                        accept={FILE_ACCEPT}
                         onChange={handleFileSelect}
                         className="file-input-hidden"
                         disabled={state.submitting}
@@ -498,8 +487,7 @@ export default function SubmitMilestoneDeliverableScreen() {
                         <span className="upload-text">
                           {state.files.length === 0
                             ? 'Click to upload or drag & drop'
-                            : `${state.files.length} file${state.files.length !== 1 ? 's' : ''
-                            } selected`}
+                            : state.files[0].name}
                         </span>
                         <span className="upload-hint">
                           {t('contracts.max100Mb')}
@@ -555,7 +543,6 @@ export default function SubmitMilestoneDeliverableScreen() {
                         <span className="format-badge">{t('contracts.images')}</span>
                         <span className="format-badge">{t('contracts.videos')}</span>
                         <span className="format-badge">{t('contracts.archives')}</span>
-                        <span className="format-badge">{t('contracts.sourceCode')}</span>
                       </div>
                     </div>
                   </div>

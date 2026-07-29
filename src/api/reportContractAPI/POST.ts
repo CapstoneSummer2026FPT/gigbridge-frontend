@@ -2,7 +2,6 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
   ConfirmResolutionInput,
-  ContractReportResolutionAction,
   ReportContract,
   RespondToReportInput,
 } from '../../types/models/ReportContract';

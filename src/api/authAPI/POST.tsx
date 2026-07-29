@@ -5,12 +5,11 @@ import type {
   RegisterRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
-  EmailResendConfirmationRequest,
-  ValidateResetTokenRequest,
   LoginResponse,
   UserDTO,
   SendOtpRequest,
   VerifyOtpRequest,
+  VerifyOtpResponse,
   ChangePasswordProfileRequest,
 } from '../../types/models/Auth';
 
@@ -35,14 +34,6 @@ export const authPostAPI = {
   },
 
   /**
-   * Refresh access token
-   * POST /v1/auth/refresh
-   */
-  refreshToken: async (accessToken: string): Promise<ApiResponse<LoginResponse>> => {
-    return apiService.post<LoginResponse>(`${authUrl}/refresh`, { accessToken });
-  },
-
-  /**
    * Forgot password - send reset email
    * POST /v1/auth/forgot-password
    */
@@ -56,22 +47,6 @@ export const authPostAPI = {
    */
   resetPassword: async (data: ResetPasswordRequest): Promise<ApiResponse<null>> => {
     return apiService.post<null>(`${authUrl}/password-reset`, data);
-  },
-
-  /**
-   * Resend email confirmation
-   * POST /v1/auth/resend-email
-   */
-  resendEmailConfirmation: async (data: EmailResendConfirmationRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authUrl}/resend-email`, data);
-  },
-
-  /**
-   * Validate reset token
-   * POST /v1/auth/validate-reset-token
-   */
-  validateResetToken: async (data: ValidateResetTokenRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authUrl}/validate-reset-token`, data);
   },
 
   /**
@@ -94,8 +69,8 @@ export const authPostAPI = {
    * Verify OTP verification code
    * POST /auth/verify-otp
    */
-  verifyOtp: async (data: VerifyOtpRequest): Promise<ApiResponse<null>> => {
-    return apiService.post<null>(`${authUrl}/verify-otp`, data);
+  verifyOtp: async (data: VerifyOtpRequest): Promise<ApiResponse<VerifyOtpResponse>> => {
+    return apiService.post<VerifyOtpResponse>(`${authUrl}/verify-otp`, data);
   },
 
   /**

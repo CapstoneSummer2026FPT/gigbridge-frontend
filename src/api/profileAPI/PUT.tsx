@@ -21,12 +21,4 @@ export const profilePutAPI = {
   updateFreelancerProfile: async (data: UpdateFreelancerProfileDto): Promise<ApiResponse<FreelancerProfileResponseDto>> => {
     return apiService.put<FreelancerProfileResponseDto>(`${profileUrl}/freelancer`, data);
   },
-
-  /**
-   * Mark user setup as complete
-   * PUT /v1/profile/setup-complete
-   */
-  markSetupComplete: async (): Promise<ApiResponse<any>> => {
-    return apiService.put<any>(`${profileUrl}/setup-complete`, {});
-  },
 };

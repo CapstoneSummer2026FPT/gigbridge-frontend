@@ -2,16 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Lock, CheckCircle, Clock,
-  User, FileText, Calendar, Download, ArrowLeft,
-  Mail, ShieldAlert, ListChecks, Copy, Check, ChevronDown, Star, LoaderCircle, RefreshCw
+  CheckCircle, Clock,
+  User, FileText, Calendar, ArrowLeft,
+  Mail, ShieldAlert, ListChecks, Copy, Check, ChevronDown, Star, LoaderCircle, RefreshCw,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
-import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
 import { ESignerRole, ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import {
@@ -28,6 +26,12 @@ import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ContractChangeControlPanel } from './ContractChangeControlPanel';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
+import { ContractLegalCard } from './ContractLegalCard';
+import { ClientEscrowFundingCard } from './ClientEscrowFundingCard';
+import {
+  contractStatusMayHaveESignDocument,
+  useContractESignDocument,
+} from '../hooks/useContractESignDocument';
 
 interface AuditTrailEntry {
   id: string;
@@ -70,18 +74,13 @@ export function ClientContractDetails({
   const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [isFullySignedPendingEscrow, setIsFullySignedPendingEscrow] = useState(false);
   const [hasClientSignedContract, setHasClientSignedContract] = useState(false);
-  const [showEscrowSuccess, setShowEscrowSuccess] = useState(false);
 
-  // Form states (pre-populated from props)
-  const [scopeOfWork, setScopeOfWork] = useState(contract.scopeOfWork || '');
-  const [paymentTerms, setPaymentTerms] = useState(contract.paymentTerms || '');
-  const [intellectualPropertyTerms, setIntellectualPropertyTerms] = useState(contract.intellectualPropertyTerms || '');
-  const [confidentialityTerms, setConfidentialityTerms] = useState(contract.confidentialityTerms || '');
-  const [cancellationTerms, setCancellationTerms] = useState(contract.cancellationTerms || '');
-  const [disputeTerms, setDisputeTerms] = useState(contract.disputeTerms || '');
+  const esignDocumentState = useContractESignDocument(
+    contract?.contractsId,
+    contractStatusMayHaveESignDocument(contract.status)
+  );
   const [formMilestones, setFormMilestones] = useState<any[]>(
     milestones.map(m => ({
       milestoneId: m.id,
@@ -100,12 +99,6 @@ export function ClientContractDetails({
 
   // Sync state if contract/milestones props update
   useEffect(() => {
-    setScopeOfWork(contract.scopeOfWork || '');
-    setPaymentTerms(contract.paymentTerms || '');
-    setIntellectualPropertyTerms(contract.intellectualPropertyTerms || '');
-    setConfidentialityTerms(contract.confidentialityTerms || '');
-    setCancellationTerms(contract.cancellationTerms || '');
-    setDisputeTerms(contract.disputeTerms || '');
     setFormMilestones(
       milestones.map(m => ({
         milestoneId: m.id,
@@ -132,59 +125,46 @@ export function ClientContractDetails({
         setHasClientSignedContract(false);
         return;
       }
+      if (esignDocumentState.isLoading) {
+        return;
+      }
 
-      try {
-        const response = await esignGetAPI.getDocumentByContract(contract.contractsId);
+      const contractDocument = esignDocumentState.document;
+      const isContractFullySigned = contractDocument?.status === ESignDocumentStatus.FullySigned;
+      const hasClientContractSignature = Boolean(
+        contractDocument?.signatures.some(
+          signature =>
+            signature.signerRole === ESignerRole.Client &&
+            signature.status === SignatureStatus.Signed
+        )
+      );
+      const hasFreelancerContractSignature = Boolean(
+        contractDocument?.signatures.some(
+          signature =>
+            signature.signerRole === ESignerRole.Freelancer &&
+            signature.status === SignatureStatus.Signed
+        )
+      );
+
+      let isClientJobPostSigned = false;
+      const jobPostId = String(contract.jobPostsId || contract.jobPostId || '');
+      if (!isContractFullySigned && !hasClientContractSignature && jobPostId) {
+        const jobPostDocumentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
         if (isCancelled) {
           return;
         }
 
-        const contractDocument = response.success ? response.data : null;
-        const isContractFullySigned = contractDocument?.status === ESignDocumentStatus.FullySigned;
-        const hasClientContractSignature = Boolean(
-          contractDocument?.signatures.some(
-            signature =>
-              signature.signerRole === ESignerRole.Client &&
-              signature.status === SignatureStatus.Signed
-          )
+        isClientJobPostSigned = Boolean(
+          jobPostDocumentResponse.success &&
+          jobPostDocumentResponse.data?.status === ESignDocumentStatus.FullySigned
         );
-        const hasFreelancerContractSignature = Boolean(
-          contractDocument?.signatures.some(
-            signature =>
-              signature.signerRole === ESignerRole.Freelancer &&
-              signature.status === SignatureStatus.Signed
-          )
-        );
-
-        let isClientJobPostSigned = false;
-        const jobPostId = String(contract.jobPostsId || contract.jobPostId || '');
-        if (!isContractFullySigned && !hasClientContractSignature && jobPostId) {
-          try {
-            const jobPostDocumentResponse = await esignGetAPI.getDocumentByJob(jobPostId);
-            if (isCancelled) {
-              return;
-            }
-
-            isClientJobPostSigned = Boolean(
-              jobPostDocumentResponse.success &&
-              jobPostDocumentResponse.data?.status === ESignDocumentStatus.FullySigned
-            );
-          } catch (error) {
-            isClientJobPostSigned = false;
-          }
-        }
-
-        const hasClientSignature = hasClientContractSignature || isClientJobPostSigned;
-        setHasClientSignedContract(hasClientSignature);
-        setIsFullySignedPendingEscrow(
-          isContractFullySigned || (hasFreelancerContractSignature && hasClientSignature)
-        );
-      } catch (error) {
-        if (!isCancelled) {
-          setIsFullySignedPendingEscrow(false);
-          setHasClientSignedContract(false);
-        }
       }
+
+      const hasClientSignature = hasClientContractSignature || isClientJobPostSigned;
+      setHasClientSignedContract(hasClientSignature);
+      setIsFullySignedPendingEscrow(
+        isContractFullySigned || (hasFreelancerContractSignature && hasClientSignature)
+      );
     };
 
     void loadESignStatus();
@@ -192,32 +172,25 @@ export function ClientContractDetails({
     return () => {
       isCancelled = true;
     };
-  }, [contract?.contractsId, contract?.jobPostId, contract?.jobPostsId, contract.status]);
+  }, [
+    contract?.contractsId,
+    contract?.jobPostId,
+    contract?.jobPostsId,
+    contract.status,
+    esignDocumentState.document,
+    esignDocumentState.isLoading,
+  ]);
 
   const effectiveStatus =
     contract.status === ContractStatus.PendingSignature && isFullySignedPendingEscrow
       ? ContractStatus.PendingEscrow
       : contract.status;
-  const escrowFundingAmount = Number(contract.totalBudget || 0);
-
-  // Fetch Wallet Balance if in PendingEscrow status
-  useEffect(() => {
-    if (effectiveStatus === ContractStatus.PendingEscrow) {
-      walletGetAPI.getMyWallet().then(res => {
-        if (res.success && res.data) {
-          setWalletBalance(res.data.availableTokens);
-        }
-      });
-    } else {
-      setWalletBalance(null);
-    }
-  }, [effectiveStatus]);
 
   const milestonesTotal = milestones.reduce((sum, m) => sum + m.amount, 0);
   const milestonesApproved = milestones.filter(m => m.status === MilestoneStatus.Approved).length;
   const milestonesPaid = milestones.filter(m => (m.releasedAmount ?? 0) >= m.amount).length;
 
-  // Stepper: Terms Setup -> Review & Confirm -> Escrow Funding
+  // Stepper: Project plan -> Review & Confirm -> Escrow Funding
   // (Client already e-signed during job post session — no separate signature step)
   let currentStep = 1;
   if (effectiveStatus === ContractStatus.PendingContractConfirmation) {
@@ -237,12 +210,6 @@ export function ClientContractDetails({
       navigator.clipboard.writeText(contract.contractsId);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
-    }
-  };
-
-  const handleDownloadPDF = () => {
-    if (contract?.esignContractPdfUrl) {
-      window.open(contract.esignContractPdfUrl, '_blank');
     }
   };
 
@@ -275,12 +242,6 @@ export function ClientContractDetails({
     setActionLoading(true);
     try {
       const payload = {
-        scopeOfWork,
-        paymentTerms,
-        intellectualPropertyTerms,
-        confidentialityTerms,
-        cancellationTerms,
-        disputeTerms,
         milestones: formMilestones.map((m, idx) => ({
           milestoneId: m.milestoneId || null,
           title: m.title,
@@ -333,79 +294,6 @@ export function ClientContractDetails({
       setActionLoading(false);
     }
   };
-
-  const handleFundEscrow = async () => {
-    setActionLoading(true);
-    try {
-      const res = await contractPostAPI.fundEscrow(contract.contractsId);
-      if (res.success) {
-        setShowEscrowSuccess(true);
-        onRefresh();
-      } else {
-        alert(res.message || 'Failed to fund escrow.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('An error occurred while funding escrow.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const renderViewOnlyTerms = () => (
-    <div className="glass-card p-8 md:p-10 space-y-6">
-      <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
-        <FileText size={20} className="text-primary" />
-        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.contractTerms')}</h2>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.scopeOfWork')}</span>
-          <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-            {contract?.scopeOfWork || t('contracts.noScopeDefined')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.paymentTerms')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.paymentTerms || t('contracts.noPaymentTerms')}
-            </p>
-          </div>
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.intellectualProperty')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.intellectualPropertyTerms || t('contracts.noIpTerms')}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.confidentiality')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.confidentialityTerms || t('contracts.noNdaTerms')}
-            </p>
-          </div>
-          <div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.cancellationPolicy')}</span>
-            <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-              {contract?.cancellationTerms || t('contracts.noCancellationPolicy')}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5">{t('contracts.disputeResolution')}</span>
-          <p className="pl-4 border-l-2 border-primary/60 leading-relaxed text-sm text-foreground bg-secondary/10 py-3 pr-3 rounded-r-xl whitespace-pre-wrap">
-            {contract?.disputeTerms || t('contracts.noDisputeTerms')}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderViewOnlyMilestones = () => (
     <div className="glass-card p-8 md:p-10 relative">
@@ -486,7 +374,7 @@ export function ClientContractDetails({
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20" />
             <div className="flex items-center gap-4 overflow-x-auto pb-1 no-scrollbar whitespace-nowrap">
               {[
-                { number: 1, label: t('contracts.defineMilestonesTerms') },
+                { number: 1, label: t('contracts.defineProjectPlan') },
                 { number: 2, label: t('contracts.freelancerReview') },
                 { number: 3, label: t('contracts.secureProjectEscrow') },
               ].map((step, idx) => {
@@ -532,17 +420,17 @@ export function ClientContractDetails({
             >
               <div className="flex-1 lg:overflow-y-auto pr-0 lg:pr-2 custom-scrollbar space-y-6">
                 
-                {/* 1. Setup terms step */}
+                {/* 1. Set up the project plan */}
                 {contract.status === ContractStatus.PendingContractDetails && (
                   <>
                     <div className="glass-card p-8 md:p-10 space-y-6">
                       <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
                         <FileText size={20} className="text-primary" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.defineMilestonesTerms')}</h2>
+                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.defineProjectPlan')}</h2>
                       </div>
                       
                       <div className="bg-primary/10 text-primary border border-primary/20 p-4 rounded-2xl text-xs font-medium leading-relaxed">
-                        {t('contracts.defineMilestonesTermsDesc')}
+                        {t('contracts.defineProjectPlanDesc')}
                       </div>
 
                       <NestedMilestonePlanEditor
@@ -553,69 +441,6 @@ export function ClientContractDetails({
                         description="Counter the final plan before sending it back to the freelancer for confirmation."
                       />
 
-                      {false && <div className="space-y-4">
-                        <div>
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.scopeOfWork')}</label>
-                          <textarea
-                            value={scopeOfWork}
-                            onChange={(e) => setScopeOfWork(e.target.value)}
-                            className="w-full h-32 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                            placeholder={t('contracts.detailedScopePlaceholder')}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.paymentTerms')}</label>
-                            <textarea
-                              value={paymentTerms}
-                              onChange={(e) => setPaymentTerms(e.target.value)}
-                              className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder={t('contracts.paymentTermsPlaceholder')}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.intellectualProperty')}</label>
-                            <textarea
-                              value={intellectualPropertyTerms}
-                              onChange={(e) => setIntellectualPropertyTerms(e.target.value)}
-                              className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder={t('contracts.ipTermsPlaceholder')}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.confidentiality')}</label>
-                            <textarea
-                              value={confidentialityTerms}
-                              onChange={(e) => setConfidentialityTerms(e.target.value)}
-                              className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder={t('contracts.ndaTermsPlaceholder')}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.cancellationPolicy')}</label>
-                            <textarea
-                              value={cancellationTerms}
-                              onChange={(e) => setCancellationTerms(e.target.value)}
-                              className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                              placeholder={t('contracts.cancellationTermsPlaceholder')}
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-2">{t('contracts.disputeResolution')}</label>
-                          <textarea
-                            value={disputeTerms}
-                            onChange={(e) => setDisputeTerms(e.target.value)}
-                            className="w-full h-24 px-4 py-3 bg-secondary/25 border border-border/40 hover:border-border-hover focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl text-sm text-foreground transition-all duration-300 outline-none resize-none font-medium"
-                            placeholder={t('contracts.disputeTermsPlaceholder')}
-                          />
-                        </div>
-                      </div>}
                     </div>
 
                     {/* Milestones schedule form */}
@@ -711,6 +536,10 @@ export function ClientContractDetails({
                         </button>
                       </div>
                     </div>
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
                   </>
                 )}
 
@@ -723,7 +552,10 @@ export function ClientContractDetails({
                         {t('contracts.waitingFreelancerReview')}
                       </div>
                     </div>
-                    {renderViewOnlyTerms()}
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
                     {renderViewOnlyMilestones()}
                   </>
                 )}
@@ -738,17 +570,11 @@ export function ClientContractDetails({
                           ? t('contracts.waitingFreelancerSign')
                           : t('contracts.readyForEsign')}
                       </div>
-                      {!hasClientSignedContract && (
-                        <button
-                          onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                          className="btn-primary-custom px-6 py-3 rounded-xl text-sm font-bold cursor-pointer inline-flex items-center justify-center gap-2"
-                        >
-                          <FileText size={18} />
-                          {t('contracts.proceedToEsign')}
-                        </button>
-                      )}
                     </div>
-                    {renderViewOnlyTerms()}
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
                     {renderViewOnlyMilestones()}
                   </>
                 )}
@@ -756,73 +582,16 @@ export function ClientContractDetails({
                 {/* 4. Escrow Funding Step */}
                 {effectiveStatus === ContractStatus.PendingEscrow && (
                   <>
-                    <div className="glass-card p-8 md:p-10 space-y-6">
-                      <div className="flex items-center gap-2.5 border-b border-border/50 pb-4">
-                        <Lock size={20} className="text-primary" />
-                        <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-extrabold font-zentry">{t('contracts.secureContractEscrow')}</h2>
-                      </div>
-
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {t('contracts.escrowFundingDesc')}
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">{t('contracts.budget')}</span>
-                          <span className="text-2xl font-bold text-foreground mt-1.5 block">
-                            {formatContractAmount(contract.totalBudget)}
-                          </span>
-                        </div>
-                        <div className="bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">{t('contracts.requiredEscrow')}</span>
-                          <span className="text-2xl font-bold text-primary mt-1.5 block">
-                            {formatContractAmount(escrowFundingAmount)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between p-5 bg-secondary/10 border border-border/20 rounded-2xl">
-                        <div>
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">{t('contracts.yourWalletBalance')}</span>
-                          <span className="text-xl font-bold text-foreground mt-1 block">
-                            {walletBalance !== null ? `${walletBalance} G-coin` : 'Loading...'}
-                          </span>
-                        </div>
-                        
-                        {walletBalance !== null && walletBalance < escrowFundingAmount && (
-                          <div className="text-right shrink-0">
-                            <span className="text-xs font-bold text-destructive block mb-1">
-                              {t('contracts.shortOf', { amount: escrowFundingAmount - walletBalance })}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {walletBalance !== null && walletBalance < escrowFundingAmount ? (
-                        <div className="space-y-4">
-                          <div className="bg-destructive/10 text-destructive border border-destructive/20 p-4 rounded-2xl text-xs font-medium">
-                            {t('contracts.insufficientTokensDesc')}
-                          </div>
-                          <button
-                            onClick={() => navigate('/wallet/deposit')}
-                            className="btn-primary-custom w-full py-3 rounded-xl text-sm font-bold cursor-pointer transition-all flex items-center justify-center gap-2"
-                          >
-                            <GigCoinLogo size={17} />
-                            {t('contracts.topUpWallet')}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          disabled={actionLoading || walletBalance === null}
-                          onClick={handleFundEscrow}
-                          className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold cursor-pointer transition-all shadow-md flex items-center justify-center gap-2 border-none"
-                        >
-                          <Lock size={17} />
-                          {t('contracts.fundEscrowNow')}
-                        </button>
-                      )}
-                    </div>
-                    {renderViewOnlyTerms()}
+                    <ClientEscrowFundingCard
+                      contractId={contract.contractsId}
+                      escrow={contract.escrow}
+                      onFunded={onRefresh}
+                      onRetryQuote={onRefresh}
+                    />
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
                     {renderViewOnlyMilestones()}
                   </>
                 )}
@@ -902,39 +671,10 @@ export function ClientContractDetails({
                       )}
                     </section>
 
-                    {renderViewOnlyTerms()}
-
-                    {contract.esignContractPdfUrl && (
-                      <section className="glass-card p-8 md:p-10 relative overflow-hidden">
-                        <div className="flex items-center gap-2.5 border-b border-border/50 pb-4 mb-5">
-                          <FileCheck size={20} className="text-primary" />
-                          <h2 className="text-xl font-bold text-foreground uppercase tracking-tight font-zentry">{t('contracts.esignContractDocument')}</h2>
-                        </div>
-
-                        <div className="flex flex-col md:flex-row items-center gap-4 bg-secondary/15 border border-border/25 rounded-2xl p-5">
-                          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                            <FileText size={24} />
-                          </div>
-                          <div className="flex-1 min-w-0 text-left">
-                            <h4 className="text-sm font-bold text-foreground truncate">
-                              {contract.title.replace(/\s+/g, '_')}_ESign_Document.pdf
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-semibold">
-                              {t('contracts.esignStatusLabel')}: <span className="text-emerald-500 font-bold">{t('contracts.esignFullySigned')}</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-                            <button
-                              onClick={handleDownloadPDF}
-                              className="px-4 py-2 bg-secondary/60 hover:bg-secondary border border-border/50 rounded-xl text-xs font-bold text-foreground transition-all cursor-pointer flex items-center gap-1.5"
-                            >
-                              <Download size={13} />
-                              {t('contracts.downloadSignedPdf')}
-                            </button>
-                          </div>
-                        </div>
-                      </section>
-                    )}
+                    <ContractLegalCard
+                      contractId={contract.contractsId}
+                      documentState={esignDocumentState}
+                    />
 
                     {/* Milestones Accordions */}
                     {milestones.length > 0 && (
@@ -1182,18 +922,6 @@ export function ClientContractDetails({
                     {t('contracts.manageMilestones')}
                   </motion.button>
 
-                  {contract.esignContractPdfUrl && (
-                    <motion.button 
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleDownloadPDF} 
-                      className="w-full py-3 bg-secondary/50 hover:bg-secondary border border-border/60 rounded-xl font-bold text-sm text-foreground cursor-pointer transition-all flex items-center justify-center gap-2"
-                    >
-                      <Download size={17} />
-                      {t('contracts.downloadPdf')}
-                    </motion.button>
-                  )}
-
                   {contract.canReview && (
                     <motion.button
                       whileHover={{ y: -2 }}
@@ -1300,56 +1028,6 @@ export function ClientContractDetails({
         </div>
       </div>
 
-      <AnimatePresence>
-        {showEscrowSuccess && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="escrow-success-title"
-          >
-            <motion.div
-              className="w-full max-w-md rounded-2xl border border-emerald-500/25 bg-card p-7 text-center shadow-2xl"
-              initial={{ opacity: 0, y: 16, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.97 }}
-            >
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
-                <CheckCircle size={30} />
-              </div>
-              <h2 id="escrow-success-title" className="text-xl font-bold text-foreground">
-                {t('contracts.escrowFundedTitle', { defaultValue: 'Escrow funded successfully' })}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {t('contracts.escrowFundedMessage', { defaultValue: 'The project funds are secured and your workspace is ready.' })}
-              </p>
-              <div className="mt-5 rounded-xl border border-border/40 bg-secondary/20 p-4">
-                <span className="block text-[10px] font-black uppercase text-muted-foreground">{t('contracts.fundedAmount', { defaultValue: 'Funded amount' })}</span>
-                <span className="mt-1 block text-2xl font-bold text-emerald-500">{formatContractAmount(escrowFundingAmount)}</span>
-              </div>
-              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() => setShowEscrowSuccess(false)}
-                  className="flex-1 rounded-xl border border-border/50 bg-secondary/50 px-5 py-3 text-sm font-bold text-foreground cursor-pointer"
-                >
-                  {t('common.close', { defaultValue: 'Close' })}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/workspace/${contract.contractsId}`)}
-                  className="btn-primary-custom flex-1 rounded-xl px-5 py-3 text-sm font-bold cursor-pointer"
-                >
-                  {t('proposals.goToWorkspace', { defaultValue: 'Go to Workspace' })}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       {!isAdminOverride && <ContractChangeControlPanel contractId={contract.contractsId} contractStatus={contract.status} role="client" milestones={milestones} onApplied={onRefresh} />}
     </AppLayout>
   );

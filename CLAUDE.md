@@ -349,4 +349,4 @@ API endpoints call the backend at `{VITE_API_BASE_URL}/{endpoint}` (e.g., `http:
 | `messageAPI` | `Messages/` | Conversations, messages |
 | `profileAPI` | `Profiles/` | client/freelancer profiles |
 | `notificationAPI` | `Notifications/` | user notifications |
-| `adminAPI` | `Admin/` | users, jobs, cheating, reports |
+| `adminAPI` | `Admin/` | users, jobs, reports |

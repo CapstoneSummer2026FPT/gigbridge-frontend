@@ -8,9 +8,10 @@ import { contractGetAPI } from '../../../api/contractAPI/GET';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
-import GCoinIcon from '../../../shared/components/GCoinIcon';
 
-const getStatusLabel = (status: ContractStatus, t: any): string => {
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+const getStatusLabel = (status: ContractStatus, t: Translate): string => {
   switch (status) {
     case ContractStatus.Active:
       return t('projects.statusActive') || 'active';

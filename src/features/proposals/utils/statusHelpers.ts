@@ -12,19 +12,6 @@ export const getStatusLabel = (status: ProposalViewModel['status'] | string | nu
   return 'Unknown';
 };
 
-export const getStatusClass = (status: ProposalViewModel['status'] | string | null | undefined) => {
-  const label = getStatusLabel(status).toLowerCase();
-  if (label === 'draft') return 'proposal-status proposal-status-pending';
-  if (label === 'shortlisted') return 'proposal-status proposal-status-shortlisted';
-  if (label === 'accepted') return 'proposal-status proposal-status-accepted';
-  if (label === 'rejected') return 'proposal-status proposal-status-rejected';
-  if (label === 'withdrawn') return 'proposal-status proposal-status-withdrawn';
-  return 'proposal-status proposal-status-pending';
-};
-
-export const canSubmitDraftProposal = (status: number | string | null | undefined) =>
-  Number(status) === ProposalStatus.Draft;
-
 export const canWithdrawProposal = (status: number | string | null | undefined) => {
   const value = Number(status);
   return value === ProposalStatus.Pending;

@@ -190,6 +190,7 @@ describe('ApproveMilestoneScreen', () => {
         due_date: '2026-07-10',
         status: MilestoneStatus.Approved,
         paid_at: null,
+        workItems: [],
       },
     });
 

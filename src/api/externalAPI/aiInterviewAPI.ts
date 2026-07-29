@@ -36,23 +36,6 @@ export interface AiInterviewQuestionResponse {
   feedback?: AiInterviewFeedback | null;
 }
 
-export interface AiInterviewQuestionAudioResponse {
-  sessionId?: string;
-  session_id?: string;
-  questionIndex?: number;
-  question_index?: number;
-  status: 'missing' | 'pending' | 'ready' | 'failed' | string;
-  audioBase64?: string | null;
-  audio_base64?: string | null;
-  audioMimeType?: string | null;
-  audio_mime_type?: string | null;
-  ttsProvider?: string | null;
-  tts_provider?: string | null;
-  fallbackUsed?: boolean;
-  fallback_used?: boolean;
-  error?: string | null;
-}
-
 export interface AiInterviewDraftResponse {
   sessionId?: string;
   session_id?: string;
@@ -95,14 +78,6 @@ export const aiInterviewAPI = {
       sessionId,
       correctedText: correctedText || null,
     });
-  },
-
-  getQuestionAudio(sessionId: string, questionIndex: number, audioAccessToken: string) {
-    return apiService.get<AiInterviewQuestionAudioResponse>(
-      `ai-interviews/${encodeURIComponent(sessionId)}/questions/${questionIndex}/audio`,
-      {},
-      { 'X-Session-Token': audioAccessToken }
-    );
   },
 
   async streamQuestionAudio(

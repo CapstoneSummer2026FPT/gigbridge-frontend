@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
+  ChevronRight,
   FileText,
   Save,
   Send,
@@ -25,15 +26,11 @@ import { MarkdownEditor } from '../../../shared/components/MarkdownEditor';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import {
   MILESTONE_DURATION_UNITS,
-  PROPOSAL_DURATION_UNITS,
   calculateProposalBudget,
   calculateProposalDuration,
-  formatProposalDuration,
   parseProposalDuration,
-  proposalDurationsEqual,
-  roundProposalAmount,
-  type ProposalDurationUnit,
 } from '../utils/proposalTotals';
+import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
 
 const emptyWorkItem = (orderIndex: number): ProposalWorkBreakdownItemDto => ({
   title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex, milestoneOrderIndex: 0,
@@ -52,20 +49,15 @@ export default function CreateProposalScreen() {
   const [jobPost, setJobPost] = useState<JobPostDetailDto | null>(null);
   const [proposal, setProposal] = useState<ProposalDetailDto | null>(null);
   const [coverLetter, setCoverLetter] = useState('');
-  const [analysisSummary, setAnalysisSummary] = useState('');
-  const [solutionApproach, setSolutionApproach] = useState('');
+  const [proposalApproach, setProposalApproach] = useState('');
   const [deliverables, setDeliverables] = useState('');
   const [assumptions, setAssumptions] = useState('');
   const [outOfScope, setOutOfScope] = useState('');
   const [workItems, setWorkItems] = useState<ProposalWorkBreakdownItemDto[]>([emptyWorkItem(0)]);
   const [milestones, setMilestones] = useState<ProposalMilestonePlanDto[]>([emptyMilestone(0)]);
-  const [budgetMode, setBudgetMode] = useState<'auto' | 'manual'>('auto');
-  const [manualBudget, setManualBudget] = useState('');
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(0);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
-  const [durationMode, setDurationMode] = useState<'auto' | 'manual'>('auto');
-  const [durationAmount, setDurationAmount] = useState('');
-  const [durationUnit, setDurationUnit] = useState<ProposalDurationUnit>('weeks');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -75,25 +67,16 @@ export default function CreateProposalScreen() {
   const draftProposalId = proposal?.proposalId || proposalId || '';
   const isDraft = !proposal || canEditProposal(proposal.status);
   const milestoneTotal = useMemo(() => calculateProposalBudget(milestones.map(item => item.amount)), [milestones]);
-  const calculatedDuration = useMemo(
+  const proposedDuration = useMemo(
     () => calculateProposalDuration(milestones.map(item => item.estimatedDuration)),
     [milestones]
   );
-  const automaticDuration = parseProposalDuration(calculatedDuration);
-  const proposedBudget = budgetMode === 'auto'
-    ? (milestoneTotal > 0 ? milestoneTotal : null)
-    : (manualBudget.trim() ? roundProposalAmount(Number(manualBudget)) : null);
-  const proposedDuration = durationMode === 'auto'
-    ? calculatedDuration
-    : (Number.isInteger(Number(durationAmount)) && Number(durationAmount) > 0
-        ? formatProposalDuration(Number(durationAmount), durationUnit)
-        : null);
+  const proposedBudget = milestoneTotal > 0 ? milestoneTotal : null;
 
   const hydrateProposal = (loaded: ProposalDetailDto) => {
     setProposal(loaded);
     setCoverLetter(loaded.coverLetter || '');
-    setAnalysisSummary(loaded.analysisSummary || '');
-    setSolutionApproach(loaded.solutionApproach || '');
+    setProposalApproach(loaded.analysisSummary || loaded.solutionApproach || '');
     setDeliverables(loaded.deliverables || '');
     setAssumptions(loaded.assumptions || '');
     setOutOfScope(loaded.outOfScope || '');
@@ -105,20 +88,6 @@ export default function CreateProposalScreen() {
       ? normalizeOrder(loaded.milestonePlans)
       : [emptyMilestone(0)];
     setMilestones(loadedMilestones);
-
-    const loadedMilestoneTotal = calculateProposalBudget(loadedMilestones.map(item => item.amount));
-    const hasBudgetOverride = loaded.proposedBudget != null
-      && roundProposalAmount(loaded.proposedBudget) !== loadedMilestoneTotal;
-    setBudgetMode(hasBudgetOverride ? 'manual' : 'auto');
-    setManualBudget(loaded.proposedBudget != null ? String(loaded.proposedBudget) : '');
-
-    const loadedCalculatedDuration = calculateProposalDuration(loadedMilestones.map(item => item.estimatedDuration));
-    const parsed = parseProposalDuration(loaded.proposedDuration);
-    const hasDurationOverride = Boolean(loaded.proposedDuration)
-      && !proposalDurationsEqual(loaded.proposedDuration, loadedCalculatedDuration);
-    setDurationMode(hasDurationOverride ? 'manual' : 'auto');
-    setDurationAmount(parsed ? String(parsed.amount) : '');
-    setDurationUnit(parsed?.unit ?? 'weeks');
   };
 
   useEffect(() => {
@@ -169,8 +138,8 @@ export default function CreateProposalScreen() {
     coverLetter: coverLetter.trim(),
     proposedBudget,
     proposedDuration,
-    analysisSummary: analysisSummary.trim(),
-    solutionApproach: solutionApproach.trim(),
+    analysisSummary: proposalApproach.trim(),
+    solutionApproach: proposalApproach.trim(),
     deliverables: deliverables.trim(),
     assumptions: assumptions.trim(),
     outOfScope: outOfScope.trim(),
@@ -184,9 +153,12 @@ export default function CreateProposalScreen() {
 
   const validateForSubmit = () => {
     setMilestoneErrors({});
-    if (coverLetter.trim().length < 50) return 'Introduction must be at least 50 characters.';
-    if (analysisSummary.trim().length < 50) return 'Requirement analysis must be at least 50 characters.';
-    if (solutionApproach.trim().length < 50) return 'Solution approach must be at least 50 characters.';
+    const narrativeError = getProposalNarrativeValidationError({
+      coverLetter,
+      analysisSummary: proposalApproach,
+      solutionApproach: proposalApproach,
+    });
+    if (narrativeError) return narrativeError;
     if (!workItems.length || workItems.some(item => !item.title?.trim() || !item.description?.trim())) return 'Every work breakdown item needs a title and description.';
     if (!milestones.length) return 'Add at least one milestone before submitting.';
     if (workItems.some(item => item.milestoneOrderIndex == null)) return 'Every work item must belong to a milestone.';
@@ -286,8 +258,6 @@ export default function CreateProposalScreen() {
       milestoneOrderIndex: milestoneIndex,
       orderIndex,
     }))));
-    setBudgetMode('auto');
-    setManualBudget('');
     setMilestoneErrors({});
   };
 
@@ -319,12 +289,24 @@ export default function CreateProposalScreen() {
               <label className="block text-sm font-semibold">Introduction
                 <textarea value={coverLetter} onChange={e => setCoverLetter(e.target.value)} rows={4} className={`${inputClass} mt-2`} placeholder="Introduce your relevant experience and why your approach fits." />
               </label>
-              <MarkdownEditor label="Requirement analysis" value={analysisSummary} onChange={setAnalysisSummary} rows={6} placeholder="Summarize the problem, constraints, risks, and baseline requirements." />
-              <MarkdownEditor label="Solution approach" value={solutionApproach} onChange={setSolutionApproach} rows={6} placeholder="Describe the implementation strategy, architecture, and validation plan." />
-              <div className="grid gap-4 md:grid-cols-3">
-                <MarkdownEditor label="Overall deliverables" value={deliverables} onChange={setDeliverables} rows={4} />
-                <MarkdownEditor label="Assumptions" value={assumptions} onChange={setAssumptions} rows={4} />
-                <MarkdownEditor label="Out of scope" value={outOfScope} onChange={setOutOfScope} rows={4} />
+              <MarkdownEditor label="Your Proposal Approach" value={proposalApproach} onChange={setProposalApproach} rows={6} placeholder="Summarize the problem, constraints, risks, and baseline requirements." />
+
+              <div className="border border-border rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors bg-card cursor-pointer border-none"
+                >
+                  <span>Additional Details</span>
+                  <ChevronRight size={14} className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+                </button>
+                {showAdvanced && (
+                  <div className="px-4 pb-4 pt-2 border-t border-border grid gap-4 md:grid-cols-3">
+                    <MarkdownEditor label="Overall deliverables" value={deliverables} onChange={setDeliverables} rows={4} />
+                    <MarkdownEditor label="Assumptions" value={assumptions} onChange={setAssumptions} rows={4} />
+                    <MarkdownEditor label="Out of scope" value={outOfScope} onChange={setOutOfScope} rows={4} />
+                  </div>
+                )}
               </div>
             </section>
 
@@ -337,6 +319,9 @@ export default function CreateProposalScreen() {
               onExpandedChange={setExpandedMilestone}
               errors={milestoneErrors}
               showDueDate
+              milestoneTitleMaxLength={200}
+              workItemTitleMaxLength={200}
+              durationMaxLength={100}
               durationUnits={MILESTONE_DURATION_UNITS.map(unit => ({
                 value: unit,
                 label: unit.charAt(0).toUpperCase() + unit.slice(1),
@@ -352,12 +337,10 @@ export default function CreateProposalScreen() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold">Calculated proposal budget</span><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase text-emerald-600">Milestone total</span></div>
                 <div aria-label="Calculated proposal budget" className={`${inputClass} mt-2 min-w-0 font-bold`}>{formatGigCoin(proposedBudget || 0)}</div>
-                {budgetMode === 'manual' && <p className="mt-2 text-xs text-amber-600">Legacy draft budget is preserved until you edit the milestone plan.</p>}
               </div>
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold">Overall proposal duration</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${durationMode === 'manual' ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>{durationMode === 'manual' ? 'Manual override' : 'Synced to milestones'}</span></div>
-                <div className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2"><input aria-label="Overall proposal duration" type="number" min="1" step="1" value={durationMode === 'auto' ? (automaticDuration?.amount ?? '') : durationAmount} onChange={e => { setDurationMode('manual'); setDurationAmount(e.target.value); }} className={`${inputClass} min-w-0`} /><select aria-label="Overall proposal duration unit" value={durationMode === 'auto' ? (automaticDuration?.unit ?? 'weeks') : durationUnit} onChange={e => { setDurationMode('manual'); setDurationUnit(e.target.value as ProposalDurationUnit); }} className={`${inputClass} min-w-0`}>{PROPOSAL_DURATION_UNITS.map(unit => <option key={unit}>{unit}</option>)}</select></div>
-                {durationMode === 'manual' && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs"><span className={proposalDurationsEqual(proposedDuration, calculatedDuration) ? 'text-emerald-600' : 'text-amber-600'}>Milestone duration: {calculatedDuration || 'incomplete'}</span><button type="button" onClick={() => { setDurationMode('auto'); setDurationAmount(''); }} className="font-semibold text-[var(--gb-cyan)] hover:underline">Use milestone duration</button></div>}
+                <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold">Overall proposal duration</span><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase text-emerald-600">Synced to milestones</span></div>
+                <div aria-label="Overall proposal duration" className={`${inputClass} mt-2 min-w-0 font-bold`}>{proposedDuration || 'incomplete'}</div>
               </div>
             </section>
 

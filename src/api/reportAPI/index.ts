@@ -3,7 +3,6 @@ import type { ApiResponse } from '../../types/common';
 import type {
   CreateReportPayload,
   GetReportsParams,
-  ReportDto,
   ReportsResponse,
   ReportStatus,
   ReportSummaryDto,
@@ -15,9 +14,6 @@ export const reportAPI = {
 
   getAdminReports: (params: GetReportsParams = {}): Promise<ApiResponse<ReportsResponse>> =>
     apiService.get<ReportsResponse>('/reports/admin', params),
-
-  getAdminReport: (reportId: string): Promise<ApiResponse<ReportDto>> =>
-    apiService.get<ReportDto>(`/reports/admin/${reportId}`),
 
   getAdminSummary: (): Promise<ApiResponse<ReportSummaryDto>> =>
     apiService.get<ReportSummaryDto>('/reports/admin/summary'),

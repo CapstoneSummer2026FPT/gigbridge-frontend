@@ -194,20 +194,9 @@ export interface UpdateProposalStatusRequest {
   status: ProposalStatus | number;
 }
 
-export interface CheatingPenaltyResultDto {
-  applied: boolean;
-  violationId: string;
-  violationNumber: number;
-  eloDelta: number;
-  action: number;
-  suspendedUntil?: string | null;
-  message: string;
-}
-
 export interface UpdateProposalStatusResponse {
   success: boolean;
   status: ProposalStatus | number;
-  cheatingPenalty?: CheatingPenaltyResultDto | null;
 }
 
 export enum QuestionTimerLockedReason {
@@ -238,29 +227,6 @@ export interface InterviewReviewSessionDto {
   isLocked: boolean;
   reviewableQuestionCount: number;
   reviewableQuestionIds: string[];
-}
-
-export type CheatingEventType = 0 | 1 | 2 | 3 | 4 | 5;
-
-export interface LogProposalCheatingEventRequest {
-  eventType: CheatingEventType;
-  jobPostQuestionId?: string | null;
-  clientEventId: string;
-  occurredAt?: string | null;
-  metadata?: Record<string, string | null>;
-}
-
-export interface CheatingEventLogResponse {
-  proposalId: string;
-  eventType: CheatingEventType;
-  totalSessionEventCount: number;
-  copyCount: number;
-  pasteCount: number;
-  tabSwitchCount: number;
-  screenshotAttemptCount: number;
-  focusLossCount: number;
-  fullscreenExitCount: number;
-  warningMessage: string;
 }
 
 export interface ProposalAnswerDto {

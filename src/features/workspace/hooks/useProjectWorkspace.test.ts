@@ -5,11 +5,11 @@ import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { ContractStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 
 const signalRMock = vi.hoisted(() => {
   const handlers = new Map<string, (payload: Record<string, unknown>) => void>();
   let reconnectedHandler: (() => void) | undefined;
-  let closeHandler: ((error?: Error) => void) | undefined;
   const connection = {
     state: 'Connected',
     start: vi.fn().mockResolvedValue(undefined),
@@ -18,7 +18,7 @@ const signalRMock = vi.hoisted(() => {
     on: vi.fn((eventName: string, handler: (payload: Record<string, unknown>) => void) => handlers.set(eventName, handler)),
     off: vi.fn((eventName: string) => handlers.delete(eventName)),
     onreconnected: vi.fn((handler: () => void) => { reconnectedHandler = handler; }),
-    onclose: vi.fn((handler: (error?: Error) => void) => { closeHandler = handler; }),
+    onclose: vi.fn(),
   };
   const builder = {
     configureLogging: vi.fn(),
@@ -35,19 +35,21 @@ const signalRMock = vi.hoisted(() => {
     connection,
     builder,
     getReconnectedHandler: () => reconnectedHandler,
-    resetCallbacks: () => { reconnectedHandler = undefined; closeHandler = undefined; },
+    resetCallbacks: () => { reconnectedHandler = undefined; },
   };
 });
 
 vi.mock('@microsoft/signalr', () => ({
-  HubConnectionBuilder: vi.fn(() => signalRMock.builder),
+  HubConnectionBuilder: vi.fn(function HubConnectionBuilderMock() {
+    return signalRMock.builder;
+  }),
   HubConnectionState: { Connected: 'Connected' },
   LogLevel: { Warning: 'Warning' },
 }));
 
 vi.mock('react-router', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('../../../app/providers/AppProvider', () => ({
-  useApp: () => ({ user: { id: 'client-user-1' }, role: 'client' }),
+  useApp: () => ({ user: { id: 'client-user-1' }, role: UserRole.Client }),
 }));
 vi.mock('../../../api/contractAPI/GET', () => ({
   contractGetAPI: {
@@ -59,9 +61,7 @@ vi.mock('../../../api/contractAPI/GET', () => ({
 }));
 vi.mock('../../../api/contractAPI/POST', () => ({
   contractPostAPI: {
-    withdrawMilestone: vi.fn(),
     endProject: vi.fn(),
-    claimFinalPayout: vi.fn(),
   },
 }));
 vi.mock('../../../api/messageAPI/GET', () => ({

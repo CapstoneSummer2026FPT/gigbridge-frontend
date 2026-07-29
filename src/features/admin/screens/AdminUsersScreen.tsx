@@ -1020,7 +1020,7 @@ export default function AdminUsersScreen() {
                           <p className="text-muted mb-1">Phone Number</p>
                           <p className="text-primary flex items-center gap-1">
                             <Phone size={12} className="text-cyan" />
-                            {previewUser.phone || 'Not provided'}
+                            {previewUser.phone_number || 'Not provided'}
                           </p>
                         </div>
                         <div>

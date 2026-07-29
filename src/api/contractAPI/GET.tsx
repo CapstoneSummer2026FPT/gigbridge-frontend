@@ -1,9 +1,8 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest } from '../../types/models/Contract';
+import type { ContractDto, ContractEscrowDto, ContractProductHandoffResponse, ContractQueryParams, ContractWorkItem, Milestone, MilestoneAttachment, MilestoneEarlyStartRequest } from '../../types/models/Contract';
 
 const contractsUrl = 'Contracts';
-const milestonesUrl = 'Milestones';
 
 interface BackendContractResponse {
   contractsId?: string;
@@ -34,6 +33,14 @@ interface BackendContractResponse {
   TotalBudget?: number;
   status?: number;
   Status?: number;
+  sortOrder?: number | null;
+  SortOrder?: number | null;
+  startedAt?: string | null;
+  StartedAt?: string | null;
+  submittedAt?: string | null;
+  SubmittedAt?: string | null;
+  approvedAt?: string | null;
+  ApprovedAt?: string | null;
   startDate?: string | null;
   StartDate?: string | null;
   endDate?: string | null;
@@ -66,6 +73,39 @@ interface BackendContractResponse {
   HasReviewedByCurrentUser?: boolean;
   revisionNumber?: number;
   RevisionNumber?: number;
+  escrow?: BackendContractEscrowResponse | null;
+  Escrow?: BackendContractEscrowResponse | null;
+}
+
+interface BackendContractEscrowResponse {
+  contractEscrowId?: string;
+  ContractEscrowId?: string;
+  requiredAmount?: number;
+  RequiredAmount?: number;
+  requiredTokens?: number;
+  RequiredTokens?: number;
+  fundingFeeRate?: number;
+  FundingFeeRate?: number;
+  fundingFeeVnd?: number;
+  FundingFeeVnd?: number;
+  fundingFeeTokens?: number;
+  FundingFeeTokens?: number;
+  totalDebitTokens?: number;
+  TotalDebitTokens?: number;
+  fundedAmount?: number;
+  FundedAmount?: number;
+  releasedAmount?: number;
+  ReleasedAmount?: number;
+  requiredPercentage?: number;
+  RequiredPercentage?: number;
+  currency?: string;
+  Currency?: string;
+  status?: number;
+  Status?: number;
+  createdAt?: string;
+  CreatedAt?: string;
+  fundedAt?: string | null;
+  FundedAt?: string | null;
 }
 
 interface BackendMilestoneResponse {
@@ -101,6 +141,8 @@ interface BackendMilestoneResponse {
   Deliverables?: string | null;
   acceptanceCriteria?: string | null;
   AcceptanceCriteria?: string | null;
+  submissionDescription?: string | null;
+  SubmissionDescription?: string | null;
   workItems?: ContractWorkItem[];
   WorkItems?: ContractWorkItem[];
 }
@@ -150,8 +192,32 @@ const getValue = <T,>(source: Record<string, unknown>, ...keys: string[]): T | u
   return undefined;
 };
 
-const normalizeContract = (contract: BackendContractResponse): ContractDto => {
+const normalizeContractEscrow = (
+  escrow: BackendContractEscrowResponse
+): ContractEscrowDto => {
+  const source = escrow as Record<string, unknown>;
+
+  return {
+    contractEscrowId: String(getValue(source, 'contractEscrowId', 'ContractEscrowId') ?? ''),
+    requiredAmount: Number(getValue(source, 'requiredAmount', 'RequiredAmount') ?? 0),
+    requiredTokens: Number(getValue(source, 'requiredTokens', 'RequiredTokens') ?? 0),
+    fundingFeeRate: Number(getValue(source, 'fundingFeeRate', 'FundingFeeRate') ?? 0),
+    fundingFeeVnd: Number(getValue(source, 'fundingFeeVnd', 'FundingFeeVnd') ?? 0),
+    fundingFeeTokens: Number(getValue(source, 'fundingFeeTokens', 'FundingFeeTokens') ?? 0),
+    totalDebitTokens: Number(getValue(source, 'totalDebitTokens', 'TotalDebitTokens') ?? 0),
+    fundedAmount: Number(getValue(source, 'fundedAmount', 'FundedAmount') ?? 0),
+    releasedAmount: Number(getValue(source, 'releasedAmount', 'ReleasedAmount') ?? 0),
+    requiredPercentage: Number(getValue(source, 'requiredPercentage', 'RequiredPercentage') ?? 0),
+    currency: String(getValue(source, 'currency', 'Currency') ?? 'VND'),
+    status: Number(getValue(source, 'status', 'Status') ?? 0),
+    createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? ''),
+    fundedAt: getValue<string | null>(source, 'fundedAt', 'FundedAt') ?? null,
+  };
+};
+
+export const normalizeContract = (contract: BackendContractResponse): ContractDto => {
   const source = contract as Record<string, unknown>;
+  const escrow = getValue<BackendContractEscrowResponse | null>(source, 'escrow', 'Escrow');
 
   return {
     contractsId: String(getValue(source, 'contractsId', 'ContractsId', 'contractId', 'ContractId') ?? ''),
@@ -179,6 +245,7 @@ const normalizeContract = (contract: BackendContractResponse): ContractDto => {
     canReview: Boolean(getValue<boolean>(source, 'canReview', 'CanReview') ?? false),
     hasReviewedByCurrentUser: Boolean(getValue<boolean>(source, 'hasReviewedByCurrentUser', 'HasReviewedByCurrentUser') ?? false),
     revisionNumber: Number(getValue(source, 'revisionNumber', 'RevisionNumber') ?? 1),
+    escrow: escrow ? normalizeContractEscrow(escrow) : null,
   };
 };
 
@@ -200,7 +267,7 @@ export const normalizeMilestoneAttachment = (
   };
 };
 
-const normalizeMilestone = (milestone: BackendMilestoneResponse): Milestone => {
+export const normalizeMilestone = (milestone: unknown): Milestone => {
   const source = milestone as Record<string, unknown>;
   const id = String(getValue(source, 'id', 'milestoneId', 'MilestoneId', 'milestonesId', 'MilestonesId') ?? '');
   const contractId = String(getValue(source, 'contract_id', 'contractId', 'ContractId', 'contractsId', 'ContractsId') ?? '');
@@ -214,6 +281,10 @@ const normalizeMilestone = (milestone: BackendMilestoneResponse): Milestone => {
     amount: Number(getValue(source, 'amount', 'Amount') ?? 0),
     due_date: getValue<string | undefined>(source, 'due_date', 'dueDate', 'DueDate') ?? '',
     status,
+    sortOrder: getValue<number | null>(source, 'sortOrder', 'SortOrder') ?? null,
+    startedAt: getValue<string | null>(source, 'startedAt', 'StartedAt') ?? null,
+    submittedAt: getValue<string | null>(source, 'submittedAt', 'SubmittedAt') ?? null,
+    approvedAt: getValue<string | null>(source, 'approvedAt', 'ApprovedAt') ?? null,
     paid_at: paidAt ?? null,
     releasedAmount: Number(getValue(source, 'releasedAmount', 'ReleasedAmount') ?? 0),
     lastReleasedAt: paidAt ?? null,
@@ -221,6 +292,11 @@ const normalizeMilestone = (milestone: BackendMilestoneResponse): Milestone => {
     estimatedDuration: getValue<string | null>(source, 'estimatedDuration', 'EstimatedDuration') ?? null,
     deliverables: getValue<string | null>(source, 'deliverables', 'Deliverables') ?? null,
     acceptanceCriteria: getValue<string | null>(source, 'acceptanceCriteria', 'AcceptanceCriteria') ?? null,
+    submissionDescription: getValue<string | null>(
+      source,
+      'submissionDescription',
+      'SubmissionDescription',
+    ) ?? null,
     workItems: (getValue<ContractWorkItem[]>(source, 'workItems', 'WorkItems') || []).map(item => ({
       ...item,
       workItemId: String((item as any).workItemId ?? (item as any).WorkItemId ?? ''),
@@ -232,16 +308,6 @@ const normalizeMilestone = (milestone: BackendMilestoneResponse): Milestone => {
 };
 
 export const contractGetAPI = {
-  /**
-   * GET /api/Contracts/all
-   * Admin-only contracts list with filters
-   */
-  getAllContracts: async (
-    params: ContractQueryParams = {}
-  ): Promise<ApiResponse<ContractDto[]>> => {
-    return apiService.get<ContractDto[]>(`${contractsUrl}/all`, params);
-  },
-
   /**
    * GET /api/Contracts/my-contracts
    * User contracts list (client or freelancer) via conversation lookups
@@ -357,35 +423,16 @@ export const contractGetAPI = {
   },
 
   /**
-   * GET /api/Contracts/client/{clientId}
-   * Get client contracts
-   */
-  getClientContracts: async (
-    clientId: string,
-    params: ContractQueryParams = {}
-  ): Promise<ApiResponse<ContractDto[]>> => {
-    return apiService.get<ContractDto[]>(`${contractsUrl}/client/${clientId}`, params);
-  },
-
-  /**
-   * GET /api/Contracts/freelancer/{freelancerId}
-   * Get freelancer contracts
-   */
-  getFreelancerContracts: async (
-    freelancerId: string,
-    params: ContractQueryParams = {}
-  ): Promise<ApiResponse<ContractDto[]>> => {
-    return apiService.get<ContractDto[]>(`${contractsUrl}/freelancer/${freelancerId}`, params);
-  },
-
-  /**
-   * GET /api/Milestones/{milestoneId}
-   * Get milestone details by ID
+   * GET /api/contracts/{contractId}/milestones/{milestoneId}
+   * Get milestone details by ID within its contract.
    */
   getMilestoneById: async (
+    contractId: string,
     milestoneId: string
   ): Promise<ApiResponse<Milestone>> => {
-    const response = await apiService.get<BackendMilestoneResponse>(`${milestonesUrl}/${milestoneId}`);
+    const response = await apiService.get<BackendMilestoneResponse>(
+      `contracts/${contractId}/milestones/${milestoneId}`
+    );
     return {
       ...response,
       data: response.data ? normalizeMilestone(response.data) : undefined,
@@ -393,13 +440,15 @@ export const contractGetAPI = {
   },
 
   /**
-   * GET /api/Milestones/contract/{contractId}
-   * Get all milestones for a contract
+   * GET /api/contracts/{contractId}/milestones
+   * Get all milestones for a contract.
    */
   getMilestonesByContract: async (
     contractId: string
   ): Promise<ApiResponse<Milestone[]>> => {
-    const response = await apiService.get<BackendMilestoneResponse[]>(`${milestonesUrl}/contract/${contractId}`);
+    const response = await apiService.get<BackendMilestoneResponse[]>(
+      `contracts/${contractId}/milestones`
+    );
     return {
       ...response,
       data: response.data ? response.data.map(normalizeMilestone) : [],
@@ -407,29 +456,20 @@ export const contractGetAPI = {
   },
 
   /**
-   * GET /api/Milestones/{milestoneId}/attachments
-   * Get milestone attachments
+   * GET /api/contracts/{contractId}/milestones/{milestoneId}/attachments
+   * Get milestone attachments within their contract.
    */
   getMilestoneAttachments: async (
+    contractId: string,
     milestoneId: string
   ): Promise<ApiResponse<MilestoneAttachment[]>> => {
-    const response = await apiService.get<BackendMilestoneAttachmentResponse[]>(`${milestonesUrl}/${milestoneId}/attachments`);
+    const response = await apiService.get<BackendMilestoneAttachmentResponse[]>(
+      `contracts/${contractId}/milestones/${milestoneId}/attachments`
+    );
     return {
       ...response,
       data: response.data ? response.data.map(normalizeMilestoneAttachment) : [],
     };
-  },
-
-  /**
-   * GET /api/contracts/{contractId}/product-handoffs/current
-   * Get current client-provided product/work materials.
-   */
-  getCurrentProductHandoff: async (
-    contractId: string
-  ): Promise<ApiResponse<ContractProductHandoffResponse | null>> => {
-    return apiService.get<ContractProductHandoffResponse | null>(
-      `contracts/${contractId}/product-handoffs/current`
-    );
   },
 
   /**

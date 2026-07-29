@@ -1,9 +1,9 @@
-export const PROPOSAL_DURATION_UNITS = ['days', 'weeks', 'months', 'years'] as const;
+const PROPOSAL_DURATION_UNITS = ['days', 'weeks', 'months', 'years'] as const;
 export const MILESTONE_DURATION_UNITS = ['weeks', 'months', 'years'] as const;
 
-export type ProposalDurationUnit = typeof PROPOSAL_DURATION_UNITS[number];
+type ProposalDurationUnit = typeof PROPOSAL_DURATION_UNITS[number];
 
-export interface ProposalDurationParts {
+interface ProposalDurationParts {
   amount: number;
   unit: ProposalDurationUnit;
 }
@@ -42,7 +42,7 @@ export const parseProposalDuration = (value?: string | null): ProposalDurationPa
   return { amount, unit: normalizeUnit(match[2]) };
 };
 
-export const formatProposalDuration = (amount: number, unit: ProposalDurationUnit): string => {
+const formatProposalDuration = (amount: number, unit: ProposalDurationUnit): string => {
   const singular = unit.slice(0, -1);
   return `${amount} ${amount === 1 ? singular : unit}`;
 };
@@ -74,7 +74,7 @@ export const proposalDurationsEqual = (left?: string | null, right?: string | nu
   return parsedLeft.amount * UNIT_DAYS[parsedLeft.unit] === parsedRight.amount * UNIT_DAYS[parsedRight.unit];
 };
 
-export const roundProposalAmount = (value: number): number =>
+const roundProposalAmount = (value: number): number =>
   Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 
 export const calculateProposalBudget = (amounts: Array<number | null | undefined>): number =>

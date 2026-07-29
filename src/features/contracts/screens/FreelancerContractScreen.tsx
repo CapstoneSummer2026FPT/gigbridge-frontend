@@ -5,7 +5,6 @@ import {
   Eye,
   Calendar,
   User,
-  FileUp,
   PenTool,
   TrendingUp,
   Award,
@@ -13,7 +12,6 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  MoreVertical,
   Zap,
   ChevronDown,
   ChevronRight,
@@ -35,7 +33,6 @@ import {
 } from '../../../shared/utils/contractUtils';
 import { MilestoneDetailCard } from '../components/MilestoneDetailCard';
 import '../styles/freelancer-contract-screen.css';
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
 
 interface MilestoneDisplay extends Milestone {

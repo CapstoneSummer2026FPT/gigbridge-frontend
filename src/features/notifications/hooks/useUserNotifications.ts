@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { notificationGetAPI, notificationPutAPI } from '../../../api/notificationAPI';
-import { DB } from '../../../mock_backend';
-import { MOCK_TOP_NAV_NOTIFICATIONS } from '../mock/data-for-TopNav';
 import type { User } from '../../../types/models/User';
 import * as signalR from '@microsoft/signalr';
 import { getNotificationHubUrl } from '../../../service/apiService';
@@ -20,10 +18,16 @@ export type UiNotificationType =
   | 'review'
   | 'ai_suggestion'
   | 'system'
-  | 'schedule';
+  | 'schedule'
+  | 'subscription'
+  | 'promotion'
+  | 'rank_protection'
+  | 'report';
 
 export interface UiNotification {
   id: string;
+  source: 'personal' | 'broadcast';
+  readTargetId: string;
   userId?: string;
   type: UiNotificationType;
   title: string;
@@ -31,6 +35,7 @@ export interface UiNotification {
   isRead: boolean;
   createdAt: string;
   actionUrl?: string;
+  referenceType?: string;
   revision?: number;
   schedule?: {
     schemaVersion: number; scheduleId: string; conversationId: string; scheduleMessageId: string;
@@ -41,6 +46,11 @@ export interface UiNotification {
 interface PaginatedNotificationResponse {
   items?: unknown[];
   Items?: unknown[];
+}
+
+interface UnreadCountResponse {
+  unreadCount?: number;
+  UnreadCount?: number;
 }
 
 const getField = <T,>(source: any, ...keys: string[]): T | undefined => {
@@ -68,8 +78,15 @@ const normalizeType = (type: unknown): UiNotificationType => {
       9: 'review',
       10: 'system',
       11: 'ai_suggestion',
-      12: 'payment',
+      12: 'subscription',
       13: 'schedule',
+      14: 'subscription',
+      15: 'subscription',
+      16: 'promotion',
+      17: 'promotion',
+      18: 'rank_protection',
+      19: 'rank_protection',
+      20: 'report',
     };
 
     return numericTypes[type] ?? 'system';
@@ -80,22 +97,35 @@ const normalizeType = (type: unknown): UiNotificationType => {
   if (normalized.includes('proposal')) return 'proposal';
   if (normalized.includes('contract')) return 'contract';
   if (normalized.includes('milestone')) return 'milestone';
-  if (normalized.includes('payment') || normalized.includes('subscription')) return 'payment';
+  if (normalized.includes('payment')) return 'payment';
   if (normalized.includes('chat') || normalized.includes('message')) return 'message';
   if (normalized.includes('dispute')) return 'dispute';
   if (normalized.includes('review')) return 'review';
   if (normalized.includes('ai')) return 'ai_suggestion';
   if (normalized.includes('job')) return 'job';
   if (normalized.includes('schedule')) return 'schedule';
+  if (normalized.includes('subscription')) return 'subscription';
+  if (normalized.includes('promotion')) return 'promotion';
+  if (normalized.includes('rankprotection') || normalized.includes('rank_protection')) {
+    return 'rank_protection';
+  }
+  if (normalized.includes('report')) return 'report';
 
   return normalized === 'custom' || normalized === 'system' ? 'system' : 'system';
 };
 
-const getActionUrl = (notification: any, type: UiNotificationType): string | undefined => {
+const getActionUrl = (
+  notification: any,
+  type: UiNotificationType,
+  userRole?: number,
+): string | undefined => {
   const explicitUrl = getField<string>(notification, 'actionUrl', 'ActionUrl');
   if (explicitUrl) return explicitUrl;
 
   const referenceId = getField<string>(notification, 'referenceId', 'ReferenceId');
+  const referenceType = String(
+    getField<string>(notification, 'referenceType', 'ReferenceType') ?? '',
+  ).toLowerCase();
   const metadataRaw = getField<any>(notification, 'metadata', 'Metadata');
   let metadata: any;
   try { metadata = typeof metadataRaw === 'string' ? JSON.parse(metadataRaw) : metadataRaw; } catch { metadata = null; }
@@ -106,27 +136,61 @@ const getActionUrl = (notification: any, type: UiNotificationType): string | und
     case 'proposal':
       return '/proposals';
     case 'contract':
-    case 'milestone':
       return referenceId ? `/contracts/${referenceId}` : '/contracts';
+    case 'milestone':
+      return referenceId && referenceType === 'contract'
+        ? `/contracts/${referenceId}`
+        : '/contracts';
     case 'payment':
       return '/wallet/history';
     case 'message':
       return referenceId ? `/workspace/${referenceId}` : '/projects';
     case 'dispute':
-      return '/admin/disputes';
+      return userRole === 2 ? '/admin/disputes' : '/contracts';
     case 'review':
       return referenceId ? `/reviews/create?contractId=${referenceId}` : '/reviews/create';
     case 'schedule':
       return metadata?.schemaVersion >= 1 && metadata.conversationId && metadata.scheduleMessageId
         ? `/messages?conversationId=${metadata.conversationId}&messageId=${metadata.scheduleMessageId}`
         : '/messages';
+    case 'subscription':
+      return userRole === 0 ? '/premium/client' : '/premium/freelancer';
+    case 'promotion':
+      return '/premium/freelancer/promotions';
+    case 'rank_protection':
+      return '/premium/freelancer/rank-protection';
+    case 'report':
+      return userRole === 2
+        ? '/admin/reports'
+        : referenceId
+          ? `/contracts/${referenceId}`
+          : '/contracts';
     default:
       return '/notifications';
   }
 };
 
-const normalizeNotification = (notification: any): UiNotification => {
+export const normalizeNotification = (notification: any, userRole?: number): UiNotification => {
   const type = normalizeType(getField(notification, 'type', 'Type'));
+  const id = String(
+    getField(notification, 'id', 'Id', 'notificationId', 'NotificationId')
+      ?? crypto.randomUUID(),
+  );
+  const broadcastRecipientId = getField<string>(
+    notification,
+    'broadcastRecipientId',
+    'BroadcastRecipientId',
+  );
+  const sourceValue = String(getField(notification, 'source', 'Source') ?? '').toLowerCase();
+  const source = sourceValue === 'broadcast' || broadcastRecipientId
+    ? 'broadcast'
+    : 'personal';
+  const readTargetId = String(
+    getField(notification, 'readTargetId', 'ReadTargetId')
+      ?? broadcastRecipientId
+      ?? getField(notification, 'notificationId', 'NotificationId')
+      ?? id,
+  );
   let title = getField<string>(notification, 'title', 'Title') ?? 'Notification';
   let body = getField<string>(notification, 'body', 'message', 'content', 'Message', 'Content') ?? '';
   if (title.trim().toLowerCase() === 'freelancer premium activated') {
@@ -143,55 +207,61 @@ const normalizeNotification = (notification: any): UiNotification => {
   } catch { schedule = undefined; }
 
   return {
-    id: String(getField(notification, 'id', 'Id', 'notificationId', 'NotificationId') ?? crypto.randomUUID()),
+    id,
+    source,
+    readTargetId,
     userId: getField<string>(notification, 'userId', 'user_id', 'UserId'),
     type,
     title,
     body,
     isRead: Boolean(getField<boolean>(notification, 'isRead', 'is_read', 'IsRead')),
     createdAt,
-    actionUrl: getActionUrl(notification, type),
+    actionUrl: getActionUrl(notification, type, userRole),
+    referenceType: getField<string>(notification, 'referenceType', 'ReferenceType'),
     revision: getField<number>(notification, 'revision', 'Revision'),
     schedule,
   };
 };
 
-const getMockNotifications = (userId: string): UiNotification[] => {
-  const dbNotifications = DB.getNotificationsByUser(userId).map(normalizeNotification);
-  const topNavNotifications = MOCK_TOP_NAV_NOTIFICATIONS
-    .filter(notification => notification.userId === userId)
-    .map(normalizeNotification);
-
-  const notifications = dbNotifications.length > 0 ? dbNotifications : topNavNotifications;
-
-  return notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-};
-
 export function useUserNotifications(user: User | null, options: { pageSize?: number; pollMs?: number } = {}) {
   const { pageSize = 20, pollMs = 60000 } = options;
   const [notifications, setNotifications] = useState<UiNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const seenNotificationIds = useRef(new Set<string>());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
     if (!user) {
       setNotifications([]);
+      setUnreadCount(0);
+      seenNotificationIds.current.clear();
       setIsLoading(false);
       setError(null);
       return;
     }
 
     setIsLoading(true);
-    const response = await notificationGetAPI.getUserNotifications({ page: 1, pageSize });
+    const [response, unreadResponse] = await Promise.all([
+      notificationGetAPI.getUserNotifications({ page: 1, pageSize }),
+      notificationGetAPI.getUnreadCount(),
+    ]);
 
     if (response.success && response.data) {
       const data = response.data as PaginatedNotificationResponse;
       const items = data.items ?? data.Items ?? [];
-      setNotifications(items.map(normalizeNotification));
+      const normalizedItems = items.map(item => normalizeNotification(item, user.role));
+      seenNotificationIds.current = new Set(normalizedItems.map(item => item.id));
+      setNotifications(normalizedItems);
       setError(null);
     } else {
-      setNotifications(getMockNotifications(user.id));
-      setError(response.message || 'Notifications are using local demo data.');
+      setNotifications([]);
+      setError(response.message || 'Notifications could not be loaded.');
+    }
+
+    if (unreadResponse.success && unreadResponse.data) {
+      const unreadData = unreadResponse.data as UnreadCountResponse;
+      setUnreadCount(unreadData.unreadCount ?? unreadData.UnreadCount ?? 0);
     }
 
     setIsLoading(false);
@@ -217,7 +287,10 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
       accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
     }).withAutomaticReconnect().build();
     connection.on('ReceiveNotification', raw => {
-      const incoming = normalizeNotification(raw);
+      const incoming = normalizeNotification(raw, user.role);
+      const isNew = !seenNotificationIds.current.has(incoming.id);
+      seenNotificationIds.current.add(incoming.id);
+      if (isNew && !incoming.isRead) setUnreadCount(count => count + 1);
       setNotifications(previous => [incoming, ...previous.filter(item => item.id !== incoming.id)]
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       if (incoming.type === 'schedule' && incoming.title.toLowerCase().includes('meeting time reached') &&
@@ -237,11 +310,6 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
     return () => { void connection.stop(); };
   }, [user]);
 
-  const unreadCount = useMemo(
-    () => notifications.filter(notification => !notification.isRead).length,
-    [notifications]
-  );
-
   const markAsRead = useCallback(async (notificationId: string) => {
     const target = notifications.find(notification => notification.id === notificationId);
     setNotifications(prev =>
@@ -250,16 +318,24 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
       )
     );
 
-    const result = await notificationPutAPI.markNotificationRead(notificationId, target?.revision);
-    if (!result.success && result.statusCode === 409) await loadNotifications();
+    if (!target) return;
+    if (!target.isRead) setUnreadCount(previous => Math.max(0, previous - 1));
+
+    const result = target.source === 'broadcast'
+      ? await notificationPutAPI.markBroadcastNotificationRead(target.readTargetId)
+      : await notificationPutAPI.markNotificationRead(target.readTargetId, target.revision);
+
+    if (!result.success) await loadNotifications();
   }, [notifications, loadNotifications]);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
 
     setNotifications(prev => prev.map(notification => ({ ...notification, isRead: true })));
-    await notificationPutAPI.markAllRead();
-  }, [user]);
+    setUnreadCount(0);
+    const result = await notificationPutAPI.markAllRead();
+    if (!result.success) await loadNotifications();
+  }, [user, loadNotifications]);
 
   return {
     notifications,

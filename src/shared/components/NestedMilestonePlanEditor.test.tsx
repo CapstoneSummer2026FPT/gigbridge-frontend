@@ -78,4 +78,40 @@ describe('NestedMilestonePlanEditor field guidance', () => {
     expect(document.getElementById(deadline!.getAttribute('aria-describedby')!))
       .toHaveTextContent('Final submission date.');
   });
+
+  it('keeps every field required for publication visible', () => {
+    render(
+      <NestedMilestonePlanEditor
+        value={plan}
+        onChange={vi.fn()}
+        showDueDate
+      />,
+    );
+
+    expect(screen.getByText('Deliverables')).toBeInTheDocument();
+    expect(screen.getByText('Acceptance criteria')).toBeInTheDocument();
+    expect(screen.getByText('Work Breakdown Structure')).toBeInTheDocument();
+    expect(screen.getByLabelText('Work item 1 title')).toBeInTheDocument();
+    expect(screen.getByLabelText('Work item 1 description')).toBeInTheDocument();
+  });
+
+  it('matches proposal plan input limits enforced by the database', () => {
+    const { container } = render(
+      <NestedMilestonePlanEditor
+        value={plan}
+        onChange={vi.fn()}
+        showDueDate
+        milestoneTitleMaxLength={200}
+        workItemTitleMaxLength={200}
+        durationMaxLength={100}
+      />,
+    );
+
+    expect(container.querySelector('[data-milestone-field="0.title"]'))
+      .toHaveAttribute('maxlength', '200');
+    expect(screen.getByLabelText('Work item 1 title'))
+      .toHaveAttribute('maxlength', '200');
+    expect(screen.getByLabelText('Estimated duration'))
+      .toHaveAttribute('maxlength', '100');
+  });
 });

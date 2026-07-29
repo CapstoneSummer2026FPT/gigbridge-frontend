@@ -8,8 +8,6 @@ import type { JobPostQuestionDto } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
 
-const DRAFT_RULE_MESSAGE = 'Only draft project requests can update clarifying questions.';
-
 type QuestionDraft = JobPostQuestionDto & {
   isNew?: boolean;
 };
@@ -17,7 +15,7 @@ type QuestionDraft = JobPostQuestionDto & {
 const orderQuestions = (questions: JobPostQuestionDto[]) =>
   [...questions].sort((a, b) => a.orderIndex - b.orderIndex);
 
-const toDraft = (question: JobPostQuestionDto): QuestionDraft => ({ ...question });
+const toDraft = (question: JobPostQuestionDto): QuestionDraft => ({ ...question, isRequired: true });
 
 const isDraftRuleFailure = (message?: string) =>
   (message || '').toLowerCase().includes('questions can only be modified');
@@ -95,7 +93,7 @@ export default function ManageJobPostQuestionsScreen() {
           jobPostsId: jobPostId,
           questionText: '',
           orderIndex: prev.length,
-          isRequired: false,
+          isRequired: true,
           createdAt: new Date().toISOString(),
           updatedAt: null,
           isNew: true,
@@ -124,24 +122,6 @@ export default function ManageJobPostQuestionsScreen() {
     await loadQuestions();
   };
 
-  const handleToggleRequired = async (question: QuestionDraft, isRequired: boolean) => {
-    updateQuestion(question.jobPostQuestionsId, { isRequired });
-
-    if (question.isNew) return;
-
-    const response = await jobAPI.updateJobPostQuestionRequired(jobPostId, question.jobPostQuestionsId, { isRequired });
-    if (!response.success || !response.data) {
-      updateQuestion(question.jobPostQuestionsId, { isRequired: question.isRequired });
-      toast.error(isDraftRuleFailure(response.message) ? DRAFT_RULE_MESSAGE : response.message || t('manageQuestions.unableToUpdateRequired'));
-      return;
-    }
-
-    updateQuestion(question.jobPostQuestionsId, response.data);
-    setOriginalQuestions(prev =>
-      prev.map(item => item.jobPostQuestionsId === response.data?.jobPostQuestionsId ? response.data : item)
-    );
-  };
-
   const validateQuestion = (question: QuestionDraft) => {
     if (!question.questionText.trim()) return t('manageQuestions.textRequired');
     if (question.questionText.length > 1000) return t('manageQuestions.textMaxLength');
@@ -164,7 +144,7 @@ export default function ManageJobPostQuestionsScreen() {
       const response = await jobAPI.createJobPostQuestion(jobPostId, {
         questionText: question.questionText.trim(),
         orderIndex: question.orderIndex,
-        isRequired: question.isRequired,
+        isRequired: true,
       });
 
       if (!response.success) {
@@ -178,7 +158,7 @@ export default function ManageJobPostQuestionsScreen() {
       jobPostQuestionsId: question.jobPostQuestionsId,
       questionText: question.questionText.trim(),
       orderIndex: question.orderIndex,
-      isRequired: question.isRequired,
+      isRequired: true,
     }));
 
     if (changed.length > 0) {
@@ -251,14 +231,9 @@ export default function ManageJobPostQuestionsScreen() {
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('manageQuestions.questionNum', { num: index + 1 })}</span>
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                        <input
-                           type="checkbox"
-                          checked={question.isRequired}
-                          onChange={event => handleToggleRequired(question, event.target.checked)}
-                        />
+                      <span className="text-xs font-bold text-[var(--gb-cyan)]">
                         {t('manageQuestions.required')}
-                      </label>
+                      </span>
                       <button
                         type="button"
                         onClick={() => handleDeleteQuestion(question)}

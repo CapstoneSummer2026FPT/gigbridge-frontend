@@ -116,30 +116,6 @@ const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
   gigcoin_cost: 0,
 });
 
-const toLegacyJobFromMyJobDetail = (job: GetMyJobPostDetailDto): Job => ({
-  id: job.jobPostsId,
-  clientId: job.clientProfilesId,
-  title: job.title,
-  description: job.description,
-  category: job.categoryName || 'All',
-  majorName: job.majorName,
-  categoryName: job.categoryName,
-  customSkillNames: job.customSkillNames || [],
-  skills: mergeSkillNames(job.skills?.map(skill => skill.skillName), job.customSkillNames),
-  budgetMin: job.budgetMin ?? 0,
-  budgetMax: job.budgetMax ?? 0,
-  jobType: 'fixed',
-  deadline: job.endDate ?? undefined,
-  status: toLegacyStatusFromJobPost(job.status),
-  proposalCount: job.proposalCount,
-  viewCount: 0,
-  postedAt: formatPostedAt(job.createdAt),
-  createdAt: job.createdAt,
-  isRemote: !job.location || job.location.toLowerCase().includes('remote'),
-  gigcoin_cost: 0,
-  milestonePlans: job.milestonePlans || [],
-});
-
 const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   id: job.jobPostsId,
   clientId: job.clientProfilesId,
@@ -284,16 +260,6 @@ export const jobGetAPI = {
   },
 
   /**
-   * GET /api/JobPosts/my-applications
-   * Freelancer-only job posts the current user applied to.
-   */
-  getMyAppliedJobPosts: async (
-    params: JobPostQueryParams = {}
-  ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
-    return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/my-applications`, params);
-  },
-
-  /**
    * GET /api/JobPosts/my-applications/{jobPostId}
    * Freelancer-only job post detail for jobs the current user applied to or was invited to.
    */
@@ -352,20 +318,6 @@ export const jobGetAPI = {
 
     return {
       job: toLegacyJobFromDetail(response.data),
-      client: null,
-      clientProfile: null,
-    };
-  },
-
-  getClientJobById: async (id: string): Promise<{ job: Job; client: null; clientProfile: null }> => {
-    const response = await jobGetAPI.getMyJobPostById(id);
-
-    if (!response.data) {
-      throw new Error(response.message || 'Job post not found');
-    }
-
-    return {
-      job: toLegacyJobFromMyJobDetail(response.data),
       client: null,
       clientProfile: null,
     };

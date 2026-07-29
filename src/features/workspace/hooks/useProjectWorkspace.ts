@@ -176,18 +176,31 @@ const mapContractListItem = (contract: ContractDto, isClient: boolean): Workspac
   };
 };
 
-const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
-  const messageType = Number(message.messageType ?? message.MessageType ?? 0);
-  const firstAttachment = Array.isArray(message.attachments) ? message.attachments[0] as Record<string, unknown> | undefined : undefined;
+const getObjectValue = (source: unknown, ...keys: string[]): unknown => {
+  if (typeof source !== 'object' || source === null) return undefined;
+
+  for (const key of keys) {
+    if (key in source) return Reflect.get(source, key);
+  }
+
+  return undefined;
+};
+
+const mapWorkspaceMessage = (message: unknown): Message => {
+  const messageType = Number(getObjectValue(message, 'messageType', 'MessageType') ?? 0);
+  const attachments = getObjectValue(message, 'attachments', 'Attachments');
+  const firstAttachment = Array.isArray(attachments) ? attachments[0] : undefined;
+  const clientMessageId = getObjectValue(message, 'clientMessageId', 'ClientMessageId');
+  const metadata = getObjectValue(message, 'metadata', 'Metadata');
+  const fileUrl = getObjectValue(firstAttachment, 'fileUrl', 'FileUrl');
+  const fileName = getObjectValue(firstAttachment, 'fileName', 'FileName');
 
   return {
-    id: String(message.messageId ?? message.MessageId ?? message.id ?? crypto.randomUUID()),
-    clientMessageId: typeof (message.clientMessageId ?? message.ClientMessageId) === 'string'
-      ? String(message.clientMessageId ?? message.ClientMessageId)
-      : null,
-    conversationId: String(message.conversationId ?? message.ConversationId ?? ''),
-    senderId: String(message.senderUserId ?? message.SenderUserId ?? message.senderId ?? ''),
-    content: String(message.content ?? message.Content ?? ''),
+    id: String(getObjectValue(message, 'messageId', 'MessageId', 'id') ?? crypto.randomUUID()),
+    clientMessageId: typeof clientMessageId === 'string' ? clientMessageId : null,
+    conversationId: String(getObjectValue(message, 'conversationId', 'ConversationId') ?? ''),
+    senderId: String(getObjectValue(message, 'senderUserId', 'SenderUserId', 'senderId') ?? ''),
+    content: String(getObjectValue(message, 'content', 'Content') ?? ''),
     type: messageType === 1
       ? 'image'
       : messageType === 2
@@ -196,13 +209,11 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
           ? 'system'
           : 'text',
     messageType,
-    metadata: typeof (message.metadata ?? message.Metadata) === 'string'
-      ? String(message.metadata ?? message.Metadata)
-      : null,
-    createdAt: String(message.sentAt ?? message.SentAt ?? message.createdAt ?? new Date().toISOString()),
+    metadata: typeof metadata === 'string' ? metadata : null,
+    createdAt: String(getObjectValue(message, 'sentAt', 'SentAt', 'createdAt') ?? new Date().toISOString()),
     isRead: true,
-    fileUrl: typeof firstAttachment?.fileUrl === 'string' ? firstAttachment.fileUrl : undefined,
-    fileName: typeof firstAttachment?.fileName === 'string' ? firstAttachment.fileName : undefined,
+    fileUrl: typeof fileUrl === 'string' ? fileUrl : undefined,
+    fileName: typeof fileName === 'string' ? fileName : undefined,
   };
 };
 
@@ -217,8 +228,7 @@ const isContractLocked = (status?: ContractStatus): boolean =>
 export function useProjectWorkspace(initialContractId: string) {
   const navigate = useNavigate();
   const { user, role } = useApp();
-  const roleValue = role as UserRole | string | null;
-  const isClient = roleValue === UserRole.Client || roleValue === 'client';
+  const isClient = role === UserRole.Client;
 
   const [activeProjectId, setActiveProjectId] = useState(initialContractId);
   const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
@@ -292,7 +302,7 @@ export function useProjectWorkspace(initialContractId: string) {
         if (nextContract.conversationId) {
           const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
           if (current && messagesResponse.success && messagesResponse.data) {
-            setProjectMessages(messagesResponse.data.map(message => mapWorkspaceMessage(message as Record<string, unknown>)));
+            setProjectMessages(messagesResponse.data.map(mapWorkspaceMessage));
           }
         } else {
           setProjectMessages([]);
@@ -501,7 +511,7 @@ export function useProjectWorkspace(initialContractId: string) {
         setProjectMessages(prev =>
           prev.map(message =>
             message.id === clientMessageId
-              ? { ...mapWorkspaceMessage(response.data as Record<string, unknown>), sendStatus: 'sent' }
+              ? { ...mapWorkspaceMessage(response.data), sendStatus: 'sent' }
               : message
           )
         );
@@ -558,7 +568,7 @@ export function useProjectWorkspace(initialContractId: string) {
       if (nextContract.conversationId) {
         const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
         if (messagesResponse.success && messagesResponse.data) {
-          setProjectMessages(messagesResponse.data.map(message => mapWorkspaceMessage(message as Record<string, unknown>)));
+          setProjectMessages(messagesResponse.data.map(mapWorkspaceMessage));
         }
       }
     }
@@ -589,21 +599,6 @@ export function useProjectWorkspace(initialContractId: string) {
 
     if (!response.success) {
       return { success: false, message: response.message || 'Failed to submit deliverable.' };
-    }
-
-    await reloadActiveWorkspace();
-    return { success: true, message: response.message };
-  };
-
-  const handleStartMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || isContractLocked(activeContract?.status)) {
-      return { success: false, message: 'Missing contract ID.' };
-    }
-
-    const response = await contractPostAPI.startMilestone(activeProjectId, milestoneId);
-
-    if (!response.success) {
-      return { success: false, message: response.message || 'Failed to start milestone.' };
     }
 
     await reloadActiveWorkspace();
@@ -642,21 +637,6 @@ export function useProjectWorkspace(initialContractId: string) {
     return { success: true, message: response.message };
   };
 
-  const handleWithdrawMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || isContractLocked(activeContract?.status)) {
-      return { success: false, message: 'Missing contract ID.' };
-    }
-
-    const response = await contractPostAPI.withdrawMilestone(activeProjectId, milestoneId);
-
-    if (!response.success) {
-      return { success: false, message: response.message || 'Failed to withdraw milestone funds.' };
-    }
-
-    await reloadActiveWorkspace();
-    return { success: true, message: response.message };
-  };
-
   const handleEndProject = async (): Promise<WorkspaceActionResult> => {
     if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
@@ -669,21 +649,6 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     await reloadActiveWorkspace();
-    return { success: true, message: response.message };
-  };
-
-  const handleClaimFinalPayout = async (): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || isClient || activeContract?.status !== ContractStatus.Completed) {
-      return { success: false, message: 'Final payout is not available.' };
-    }
-
-    const response = await contractPostAPI.claimFinalPayout(activeProjectId);
-    if (!response.success) {
-      return { success: false, message: response.message || 'Failed to claim final payout.' };
-    }
-
-    await reloadActiveWorkspace();
-    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     return { success: true, message: response.message };
   };
 
@@ -749,12 +714,10 @@ export function useProjectWorkspace(initialContractId: string) {
     handleSendMessage,
     handleSimulateAttachment,
     handleOpenMilestoneEditor,
-    handleStartMilestone,
     handleRequestMilestoneUnlock,
     handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,
-    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,

@@ -3,7 +3,7 @@ import type { User } from '../../types/models/User';
 import { UserRole } from '../../types/models/User';
 import type { ClientProfile, FreelancerProfile } from '../../types/models/Profile';
 import type { ApiResponse } from '../../types/common';
-import type { LoginResponse, UserDTO } from '../../types/models/Auth';
+import type { LoginResponse, RegisterRequest, UserDTO } from '../../types/models/Auth';
 import { authAPI } from '../../api/authAPI';
 
 export type AppTheme = 'black' | 'white';
@@ -21,7 +21,13 @@ interface AppContextValue {
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
   login: (email: string, password: string) => Promise<UserRole>;
-  signup: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
+  signup: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    verificationTicket: string,
+  ) => Promise<void>;
   googleLogin: (authCode: string, role?: UserRole, isFromSignIn?: boolean) => Promise<UserRole>;
   logout: (redirectPath?: string) => void;
   completeOnboarding: (profileData: any) => Promise<void>;
@@ -196,18 +202,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, fullName: string, role: UserRole) => {
+  const signup = useCallback(async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    verificationTicket: string,
+  ) => {
     try {
-      const registerData = {
+      const registerData: RegisterRequest = {
         email,
         password,
         confirmPassword: password,
         fullName,
-        role 
-
+        role,
+        verificationTicket,
       };
-      const response = await (authAPI.register as (data: any) => Promise<ApiResponse<UserDTO>>)(registerData);
-      const apiResponse = response as unknown as ApiResponse<UserDTO>;
+      const apiResponse = await authAPI.register(registerData);
 
       if (!apiResponse.success || !apiResponse.data) {
         const err = new Error(apiResponse.message || 'Registration failed') as any;

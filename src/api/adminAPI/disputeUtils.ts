@@ -37,7 +37,7 @@ const normalizeParty = (raw: unknown): AdminDisputeParty => {
   };
 };
 
-export const normalizeAdminDisputeListItem = (raw: unknown): AdminDisputeListItem => {
+const normalizeAdminDisputeListItem = (raw: unknown): AdminDisputeListItem => {
   const source = (raw ?? {}) as UnknownRecord;
   return {
     id: String(valueOf(source, 'disputeId', 'DisputeId') ?? ''),

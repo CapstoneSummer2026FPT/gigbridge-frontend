@@ -69,10 +69,17 @@ const chooseClient = () => {
   fireEvent.click(screen.getByRole('button', { name: /I'm a Client/i }));
 };
 
+const verificationTicket =
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.sendOtp.mockResolvedValue({ success: true, message: 'OTP sent' });
-  mocks.verifyOtp.mockResolvedValue({ success: true, message: 'OTP verified' });
+  mocks.verifyOtp.mockResolvedValue({
+    success: true,
+    message: 'OTP verified',
+    data: { verificationTicket },
+  });
   mocks.signup.mockResolvedValue(undefined);
 
   Object.defineProperty(globalThis, 'localStorage', {
@@ -136,11 +143,18 @@ describe('SignupScreen policy acceptance', () => {
     fireEvent.change(screen.getByPlaceholderText('Mật khẩu'), { target: { value: 'Password123!' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Gửi OTP' }));
-    await waitFor(() => expect(mocks.sendOtp).toHaveBeenCalledWith({ email: 'a@example.com' }));
+    await waitFor(() => expect(mocks.sendOtp).toHaveBeenCalledWith({
+      email: 'a@example.com',
+      purpose: 'signup'
+    }));
 
     fireEvent.change(screen.getByPlaceholderText('Mã OTP'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: /Xác thực OTP/ }));
-    await waitFor(() => expect(mocks.verifyOtp).toHaveBeenCalledWith({ email: 'a@example.com', otp: '123456' }));
+    await waitFor(() => expect(mocks.verifyOtp).toHaveBeenCalledWith({
+      email: 'a@example.com',
+      otp: '123456',
+      purpose: 'signup'
+    }));
 
     const submitButton = screen.getByRole('button', { name: 'Tạo tài khoản' });
     await waitFor(() => expect(submitButton).toBeEnabled());
@@ -151,6 +165,7 @@ describe('SignupScreen policy acceptance', () => {
       'Password123!',
       'Nguyễn Văn A',
       0,
+      verificationTicket,
     ));
   });
 });

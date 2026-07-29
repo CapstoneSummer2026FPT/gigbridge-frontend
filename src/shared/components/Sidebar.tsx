@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, ShieldAlert, Layers, Banknote
+  ChevronDown, Wallet, Layers, Banknote
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -58,7 +58,7 @@ function getClientNavItems(t: any): NavItem[] {
       label: t('nav.work'),
       icon: <Flag size={18} />,
       children: [
-        { id: 'proposals', label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals', badge: '5', badgeType: 'purple' },
+        { id: 'proposals', label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals' },
         { id: 'contracts', label: t('nav.contracts'), icon: <FileText size={18} />, path: '/contracts' },
         { id: 'projects', label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
       ],
@@ -77,8 +77,6 @@ function getClientNavItems(t: any): NavItem[] {
       label: t('nav.messages'),
       icon: <MessageSquare size={18} />,
       path: '/messages',
-      badge: '3',
-      badgeType: 'cyan',
     },
     {
       id: 'ai-assistant',
@@ -97,12 +95,6 @@ function getClientNavItems(t: any): NavItem[] {
         { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
         { id: 'financial-overview', label: t('nav.financialOverview'), icon: <BarChart2 size={18} />, path: '/financial-overview' },
       ],
-    },
-    {
-      id: 'market-insights',
-      label: t('nav.marketInsights'),
-      icon: <TrendingUp size={18} />,
-      path: '/market-insights',
     },
   ];
 }
@@ -140,8 +132,6 @@ function getFreelancerNavItems(t: any): NavItem[] {
       label: t('nav.messages'),
       icon: <MessageSquare size={18} />,
       path: '/messages',
-      badge: '1',
-      badgeType: 'cyan',
     },
     {
       id: 'ai-assistant',
@@ -161,12 +151,6 @@ function getFreelancerNavItems(t: any): NavItem[] {
         { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
     },
-    {
-      id: 'market-insights',
-      label: t('nav.marketInsights'),
-      icon: <TrendingUp size={18} />,
-      path: '/market-insights',
-    },
   ];
 }
 
@@ -176,7 +160,6 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
       title: t('dashboard.overview') || 'Overview',
       items: [
         { label: t('nav.dashboard'), icon: <LayoutDashboard size={18} />, path: '/admin' },
-        { label: t('nav.analytics') || 'Analytics', icon: <BarChart2 size={18} />, path: '/admin/analytics' },
       ],
     },
     {
@@ -193,9 +176,6 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
         { label: 'Assets Library', icon: <Layers size={18} />, path: '/admin/assets' },
         { label: t('nav.disputeManagement') || 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
         { label: t('nav.faqManagement') || 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
-        { label: t('nav.adsPackages') || 'Ads & Packages', icon: <Zap size={18} />, path: '/admin/ads-packages' },
-        { label: t('nav.userFeedback') || 'User Feedback', icon: <MessageSquare size={18} />, path: '/admin/feedback' },
-        { label: t('nav.cheatingManagement') || 'Cheating Management', icon: <ShieldAlert size={18} />, path: '/admin/cheating' },
         {
           label: t('nav.reports') || 'Reports',
           icon: <Flag size={18} />,
@@ -215,9 +195,7 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
     {
       title: t('nav.financial') || 'Financial',
       items: [
-        { label: t('nav.revenue') || 'Revenue', icon: <TrendingUp size={18} />, path: '/admin/revenue' },
         { label: t('nav.withdrawals') || 'Withdrawals', icon: <Banknote size={18} />, path: '/admin/withdrawals' },
-        { label: t('nav.systemFinance') || 'System Finance', icon: <BarChart2 size={18} />, path: '/admin/system-finance' },
       ],
     },
     {
@@ -225,12 +203,6 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
       items: [
         { label: t('nav.systemTracking') || 'System Tracking', icon: <Activity size={18} />, path: '/admin/system-tracking', badge: 'LIVE', badgeType: 'green' },
         { label: t('nav.notifications'), icon: <Bell size={18} />, path: '/admin/notifications' },
-      ],
-    },
-    {
-      title: t('nav.insights') || 'Insights',
-      items: [
-        { label: t('nav.marketInsights'), icon: <TrendingUp size={18} />, path: '/market-insights' },
       ],
     },
   ];

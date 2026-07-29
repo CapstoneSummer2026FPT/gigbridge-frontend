@@ -11,6 +11,7 @@ import { UserRole } from '../../../types/models/User';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ClientContractDetails } from '../components/ClientContractDetails';
 import { FreelancerContractDetails } from '../components/FreelancerContractDetails';
+import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
 
 interface AuditTrailEntry {
   id: string;
@@ -47,12 +48,6 @@ interface ContractDetailsData extends ContractDto {
   freelancerProfile?: FreelancerProfile;
   milestones?: Milestone[];
   auditTrail?: AuditTrailEntry[];
-  scopeOfWork?: string;
-  paymentTerms?: string;
-  intellectualPropertyTerms?: string;
-  confidentialityTerms?: string;
-  cancellationTerms?: string;
-  disputeTerms?: string;
 }
 
 type ContractUserRole = 'client' | 'freelancer' | 'admin' | 'none';
@@ -163,6 +158,12 @@ export default function ViewContractDetailsScreen() {
   useEffect(() => {
     loadContractDetails();
   }, [loadContractDetails]);
+
+  useContractReadyForEscrowEvent(
+    contractId,
+    userRole === 'client' && contract?.status === ContractStatus.PendingSignature,
+    loadContractDetails
+  );
 
   // Generate audit trail entries from contract metadata
   const generateAuditTrail = (contractData: ContractDetailsData) => {

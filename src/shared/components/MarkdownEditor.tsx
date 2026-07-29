@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Bold,
   Code,
@@ -35,17 +37,18 @@ export function MarkdownPreview({ value, className = '' }: MarkdownPreviewProps)
 
 export function MarkdownEditor({ label, value = '', placeholder, rows = 6, onChange, className = '' }: MarkdownEditorProps) {
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
+  const editorValue = value ?? '';
 
   const wrapSelection = (before: string, after = before) => {
     const active = document.activeElement as HTMLTextAreaElement | null;
     if (!active || active.tagName !== 'TEXTAREA') {
-      onChange(`${value}${before}${after}`);
+      onChange(`${editorValue}${before}${after}`);
       return;
     }
     const start = active.selectionStart;
     const end = active.selectionEnd;
-    const selected = value.slice(start, end);
-    const next = `${value.slice(0, start)}${before}${selected || 'text'}${after}${value.slice(end)}`;
+    const selected = editorValue.slice(start, end);
+    const next = `${editorValue.slice(0, start)}${before}${selected || 'text'}${after}${editorValue.slice(end)}`;
     onChange(next);
     requestAnimationFrame(() => {
       active.focus();
@@ -56,12 +59,12 @@ export function MarkdownEditor({ label, value = '', placeholder, rows = 6, onCha
   const prefixLine = (prefix: string) => {
     const active = document.activeElement as HTMLTextAreaElement | null;
     if (!active || active.tagName !== 'TEXTAREA') {
-      onChange(`${value}${value.endsWith('\n') || !value ? '' : '\n'}${prefix}`);
+      onChange(`${editorValue}${editorValue.endsWith('\n') || !editorValue ? '' : '\n'}${prefix}`);
       return;
     }
     const start = active.selectionStart;
-    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-    onChange(`${value.slice(0, lineStart)}${prefix}${value.slice(lineStart)}`);
+    const lineStart = editorValue.lastIndexOf('\n', start - 1) + 1;
+    onChange(`${editorValue.slice(0, lineStart)}${prefix}${editorValue.slice(lineStart)}`);
     requestAnimationFrame(() => active.focus());
   };
 
@@ -98,7 +101,7 @@ export function MarkdownEditor({ label, value = '', placeholder, rows = 6, onCha
             ))}
           </div>
           <textarea
-            value={value}
+            value={editorValue}
             onChange={event => onChange(event.target.value)}
             rows={rows}
             placeholder={placeholder}
@@ -107,7 +110,7 @@ export function MarkdownEditor({ label, value = '', placeholder, rows = 6, onCha
         </div>
       ) : (
         <div className="min-h-36 rounded-lg border border-border bg-background p-3 text-sm">
-          {value?.trim() ? <MarkdownPreview value={value} /> : <p className="text-muted-foreground">Nothing to preview.</p>}
+          {editorValue.trim() ? <MarkdownPreview value={editorValue} /> : <p className="text-muted-foreground">Nothing to preview.</p>}
         </div>
       )}
     </div>

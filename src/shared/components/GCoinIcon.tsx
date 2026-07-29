@@ -6,7 +6,7 @@ interface GCoinIconProps {
   style?: React.CSSProperties;
 }
 
-export const GCoinIcon: FC<GCoinIconProps> = ({ size = 16, className = '', style }) => {
+const GCoinIcon: FC<GCoinIconProps> = ({ size = 16, className = '', style }) => {
   return (
     <img
       src="/icons/G-coin.png"

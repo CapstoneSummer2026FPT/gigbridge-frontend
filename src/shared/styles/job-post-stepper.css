@@ -1,0 +1,35 @@
+.job-post-stepper { width: 100%; }
+.job-post-stepper__inner { display: flex; flex-direction: column; gap: .35rem; }
+.job-post-stepper__step { display: grid; grid-template-columns: 2rem 1fr; gap: .75rem; min-height: 3.3rem; position: relative; }
+.job-post-stepper__indicator-wrapper { display: contents; }
+.job-post-stepper__indicator {
+  display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: .7rem;
+  border: 1px solid var(--border); background: var(--surface-muted); color: var(--text-muted);
+  font-size: .75rem; font-weight: 800; transition: .2s ease;
+}
+.job-post-stepper__label { align-self: center; margin-top: -1.25rem; color: var(--text-muted); font-size: .78rem; font-weight: 650; }
+.job-post-stepper__connector {
+  position: absolute; top: 2.1rem; bottom: -.15rem; left: .98rem; width: 1px; background: var(--border);
+}
+.step--active .job-post-stepper__indicator {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
+  background: color-mix(in srgb, var(--brand) 12%, var(--surface)); color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 8%, transparent);
+}
+.step--active .job-post-stepper__label { color: var(--text-primary); font-weight: 800; }
+.step--completed .job-post-stepper__indicator { border-color: var(--success); background: var(--success); color: #fff; }
+.connector--completed { background: var(--success); }
+.job-post-stepper__mobile { display: none; }
+
+@media (max-width: 899px) {
+  .job-post-stepper__inner { display: none; }
+  .job-post-stepper__mobile { display: grid; grid-template-columns: 1fr auto; gap: .3rem .75rem; }
+  .job-post-stepper__mobile span { color: var(--text-muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+  .job-post-stepper__mobile strong { color: var(--text-primary); font-size: .78rem; }
+  .job-post-stepper__mobile-track { grid-column: 1 / -1; height: 4px; overflow: hidden; border-radius: 999px; background: var(--surface-muted); }
+  .job-post-stepper__mobile-track span { display: block; height: 100%; border-radius: inherit; background: var(--brand); transition: width .25s ease; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-post-stepper *, .job-post-stepper *::before, .job-post-stepper *::after { transition: none !important; }
+}

@@ -1,10 +1,8 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
-  CreateBulkJobPostQuestionsRequest,
   CreateDraftJobPostResponse,
   CreateJobPostQuestionRequest,
-  CreateJobPostRequest,
   GenerateJobDescriptionRequest,
   GenerateJobDescriptionResponse,
   JobPostPromotionDto,
@@ -13,19 +11,12 @@ import type {
   CreateAiInterviewRequest,
   AiInterviewDefinitionDto,
   JobPostQuestionDto,
+  JobPostAttachmentDto,
 } from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
 
 export const jobPostAPI = {
-  /**
-   * POST /api/JobPosts
-   * Client-only create job post.
-   */
-  createJobPost: async (data: CreateJobPostRequest): Promise<ApiResponse<string>> => {
-    return apiService.post<string>(jobPostsUrl, data);
-  },
-
   /**
    * POST /api/JobPosts/draft
    * Client-only draft-first job post creation.
@@ -43,22 +34,6 @@ export const jobPostAPI = {
     data: CreateJobPostQuestionRequest
   ): Promise<ApiResponse<JobPostQuestionDto>> => {
     return apiService.post<JobPostQuestionDto>(`${jobPostsUrl}/${jobPostId}/questions`, data);
-  },
-
-  /**
-   * POST /api/JobPosts/{jobPostId}/questions/bulk
-   * Client-only bulk create questions for a draft job post.
-   */
-  createBulkJobPostQuestions: async (
-    jobPostId: string,
-    data: CreateBulkJobPostQuestionsRequest
-  ): Promise<ApiResponse<JobPostQuestionDto[]>> => {
-    return apiService.post<JobPostQuestionDto[]>(`${jobPostsUrl}/${jobPostId}/questions/bulk`, data);
-  },
-
-  // Backward-compatible alias for older screens/forms.
-  createJob: async (data: CreateJobPostRequest): Promise<ApiResponse<string>> => {
-    return jobPostAPI.createJobPost(data);
   },
 
   generateAIDescription: async (
@@ -86,17 +61,19 @@ export const jobPostAPI = {
     return apiService.post<string>(`${jobPostsUrl}/promotion-image`, form);
   },
 
+  uploadJobPostAttachment: async (
+    jobPostId: string,
+    file: File,
+  ): Promise<ApiResponse<JobPostAttachmentDto>> => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiService.post<JobPostAttachmentDto>(`${jobPostsUrl}/${jobPostId}/attachments`, form);
+  },
+
   createAiInterview: async (
     jobPostId: string,
     data: CreateAiInterviewRequest,
   ): Promise<ApiResponse<AiInterviewDefinitionDto>> =>
     apiService.post<AiInterviewDefinitionDto>(`${jobPostsUrl}/${jobPostId}/ai-interviews`, data),
 
-  applyJob: async (): Promise<ApiResponse<never>> => {
-    return {
-      success: false,
-      statusCode: 501,
-      message: 'Apply is handled by ProposalsController, not JobPostsController.',
-    };
-  },
 };

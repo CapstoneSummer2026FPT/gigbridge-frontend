@@ -27,7 +27,7 @@ export const SUPPORTED_LANGUAGES = {
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
 // Default fallback language (Vietnamese)
-export const DEFAULT_LANGUAGE: SupportedLanguage = 'vi';
+const DEFAULT_LANGUAGE: SupportedLanguage = 'vi';
 
 /**
  * Language detection configuration
@@ -102,20 +102,9 @@ i18n
     // Language detector options
     detection: languageDetectorOptions,
 
-    // Interpolation options
+    // React already escapes interpolated values.
     interpolation: {
-      // React already escapes values, so we don't need to escape again
       escapeValue: false,
-
-      // Format values (e.g., numbers, dates)
-      format: (value, format, lng) => {
-        if (format === 'uppercase') return value.toUpperCase();
-        if (format === 'lowercase') return value.toLowerCase();
-        if (value instanceof Date) {
-          return new Intl.DateTimeFormat(lng).format(value);
-        }
-        return value;
-      },
     },
 
     // React options
@@ -150,5 +139,3 @@ i18n.on('languageChanged', (lng) => {
 if (i18n.language) {
   document.documentElement.lang = i18n.language;
 }
-
-export default i18n;

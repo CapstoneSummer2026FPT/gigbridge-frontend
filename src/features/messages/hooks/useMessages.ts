@@ -20,6 +20,7 @@ import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../sha
 import { useTranslation } from '../../../hooks/useTranslation';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { getMessageRoom } from '../messageRooms';
+import { getContractWorkflowRoute } from '../contractWorkflowRoute';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -220,31 +221,6 @@ function getEventValue(event: unknown, ...keys: string[]): string | null {
   }
 
   return null;
-}
-
-function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { path?: string; waitMessage?: string } {
-  const contractPath = `/contracts/${contract.contractsId}`;
-
-  switch (contract.status) {
-    case ContractStatus.PendingContractDetails:
-      return isClient
-        ? { path: `${contractPath}/milestones?mode=contract-edit` }
-        : { waitMessage: 'The client is updating milestone terms. You can review them once submitted.' };
-    case ContractStatus.PendingContractConfirmation:
-      return isClient
-        ? { waitMessage: 'Waiting for the freelancer to review the milestone terms.' }
-        : { path: contractPath };
-    case ContractStatus.PendingSignature:
-      return { path: contractPath };
-    case ContractStatus.PendingEscrow:
-      return isClient
-        ? { path: contractPath }
-        : { path: `/workspace/${contract.contractsId}` };
-    case ContractStatus.Active:
-      return { path: `/workspace/${contract.contractsId}` };
-    default:
-      return { path: contractPath };
-  }
 }
 
 export function useMessages() {
@@ -758,11 +734,8 @@ export function useMessages() {
   useEffect(() => {
     if (!hubConnection || !activeConvId) return;
 
-    hubConnection
+    void hubConnection
       .invoke('JoinConversation', activeConvId)
-      .then(() => {
-        console.log(`✓ Joined SignalR conversation group: ${activeConvId}`);
-      })
       .catch(err => {
         console.error(`✗ Failed to join SignalR conversation group: ${activeConvId}`, err);
       });
@@ -779,6 +752,10 @@ export function useMessages() {
     const handleReceiveMessage = (m: any) => {
       const mapped = { ...mapBackendMessage(m), sendStatus: 'sent' as const };
       const targetConvId = mapped.conversationId;
+      if (!targetConvId) {
+        console.warn('[ChatHub] Ignored a message without a conversation ID.');
+        return;
+      }
       if (mapped.schedule && targetConvId === activeConvIdRef.current) {
         setHasOngoingSchedule(mapped.schedule.status === 0 && new Date(mapped.schedule.scheduledAtUtc).getTime() > Date.now());
       }
@@ -883,7 +860,8 @@ export function useMessages() {
           return {
             ...prev,
             [conversationId]: list.map(m => {
-              if (m.id === messageId || new Date(m.createdAt).getTime() <= new Date().getTime()) {
+              const sentAt = m.createdAt ? new Date(m.createdAt).getTime() : Number.POSITIVE_INFINITY;
+              if (m.id === messageId || sentAt <= Date.now()) {
                 return { ...m, isRead: true };
               }
               return m;
@@ -1012,7 +990,7 @@ export function useMessages() {
     hubConnection.on('ContractDraftUpdated', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
-    hubConnection.on('ContractFullySigned', handleContractWorkflowUpdate);
+    hubConnection.on('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
     hubConnection.on('ContractMilestonesAccepted', handleContractWorkflowUpdate);
     hubConnection.on('WorkspaceOpened', handleContractWorkflowUpdate);
     hubConnection.on('ScheduleMeetingChanged', handleMeetingChanged);
@@ -1027,7 +1005,7 @@ export function useMessages() {
       hubConnection.off('ContractDraftUpdated', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
-      hubConnection.off('ContractFullySigned', handleContractWorkflowUpdate);
+      hubConnection.off('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
       hubConnection.off('ContractMilestonesAccepted', handleContractWorkflowUpdate);
       hubConnection.off('WorkspaceOpened', handleContractWorkflowUpdate);
       hubConnection.off('ScheduleMeetingChanged', handleMeetingChanged);
@@ -1361,8 +1339,8 @@ export function useMessages() {
           return;
         }
 
-        if (activeConv?.proposalId) {
-          const contractRes = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+        if (activeConv?.job.id) {
+          const contractRes = await contractGetAPI.getContractByJobPost(activeConv.job.id);
           if (contractRes.success && contractRes.data?.contractsId) {
             navigate(`/contracts/${contractRes.data.contractsId}`);
             return;
@@ -1429,20 +1407,27 @@ export function useMessages() {
       return;
     }
 
-    if (!activeConv?.proposalId) {
-      console.error('Cannot open contract: active conversation has no contractId or proposalId.');
+    if (!activeConv?.job.id) {
+      const message = 'Cannot open contract because this conversation has no project reference.';
+      setAnchorNotice(message);
+      console.error(message);
       return;
     }
 
     try {
-      const res = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+      // ContractDraftUpdated and the refreshed conversation normally provide
+      // contractId. Resolve by JobPost as a race-safe fallback while SignalR and
+      // the conversation list are still synchronizing.
+      const res = await contractGetAPI.getContractByJobPost(activeConv.job.id);
       if (res.success && res.data?.contractsId) {
         openContract(res.data);
         return;
       }
 
-      console.error('Cannot open contract from proposal:', res);
+      setAnchorNotice(res.message || 'The contract is still being prepared. Please try again.');
+      console.error('Cannot open contract from project:', res);
     } catch (err) {
+      setAnchorNotice('Unable to open the contract. Please try again.');
       console.error('Failed to open accepted contract:', err);
     }
   };
@@ -1587,10 +1572,8 @@ export function useMessages() {
     setScheduleError(scheduleConflict.remainingEdits === 1 ? 'Retry confirmed. Saving will consume the final shared edit.' : 'Retry confirmed against the latest schedule version.');
   };
 
-  const isMe = (senderId: string) =>
+  const isMe = (senderId?: string) =>
     senderId === (user?.id ?? 'current_user') || senderId === 'current_user';
-
-  const totalUnread = conversationsState.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return {
     user,
@@ -1659,7 +1642,6 @@ export function useMessages() {
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,
-    totalUnread,
     formatTime,
     showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
     scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,

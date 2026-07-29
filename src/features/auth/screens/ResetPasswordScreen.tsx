@@ -24,8 +24,8 @@ export default function ResetPasswordScreen() {
   const location = useLocation();
   const state = location.state as { email?: string; otp?: string } | null;
 
-  const [email, setEmail] = useState(state?.email || '');
-  const [otp, setOtp] = useState(state?.otp || '');
+  const [email] = useState(state?.email || '');
+  const [otp] = useState(state?.otp || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -58,8 +58,12 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    const meetsPasswordPolicy =
+      /^(?=\S{8,}$)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).*$/.test(newPassword);
+    if (!meetsPasswordPolicy) {
+      setError(
+        'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.',
+      );
       return;
     }
 
@@ -87,7 +91,7 @@ export default function ResetPasswordScreen() {
           setError(getErrorMessage(response));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
