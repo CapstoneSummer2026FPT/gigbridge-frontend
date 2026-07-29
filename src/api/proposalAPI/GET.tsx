@@ -4,6 +4,20 @@ import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalQueryPa
 
 const proposalsUrl = 'Proposals';
 
+interface PaginatedProposalResponse {
+  items?: ProposalDto[];
+  Items?: ProposalDto[];
+}
+
+export const normalizeProposalList = (data: unknown): ProposalDto[] => {
+  if (Array.isArray(data)) return data as ProposalDto[];
+  if (!data || typeof data !== 'object') return [];
+
+  const page = data as PaginatedProposalResponse;
+  const items = page.items ?? page.Items;
+  return Array.isArray(items) ? items : [];
+};
+
 export const proposalGetAPI = {
   /**
    * GET /api/Proposals/admin/all
@@ -22,7 +36,15 @@ export const proposalGetAPI = {
   getMyProposals: async (
     params: ProposalQueryParams = {}
   ): Promise<ApiResponse<ProposalDto[]>> => {
-    return apiService.get<ProposalDto[]>(`${proposalsUrl}/my-proposals`, params);
+    const response = await apiService.get<ProposalDto[] | PaginatedProposalResponse>(
+      `${proposalsUrl}/my-proposals`,
+      params,
+    );
+
+    return {
+      ...response,
+      data: normalizeProposalList(response.data),
+    };
   },
 
   /**
