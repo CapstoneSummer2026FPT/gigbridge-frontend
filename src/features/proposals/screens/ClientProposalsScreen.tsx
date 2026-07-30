@@ -752,7 +752,7 @@ export default function ClientProposalsScreen() {
                       </tr>
                     </thead>
                     <tbody>
-                      {visible.map(item => (
+                      {pagedVisible.map(item => (
                         <ProposalTableRow key={item.proposalsId} item={item} t={t} onOpen={id => openProposalModal(id, 'userAnswers')} />
                       ))}
                     </tbody>
@@ -760,10 +760,65 @@ export default function ClientProposalsScreen() {
                 </div>
 
                 <div className="grid gap-3 p-3 md:hidden">
-                  {visible.map(item => (
+                  {pagedVisible.map(item => (
                     <ProposalCard key={item.proposalsId} item={item} t={t} onOpen={id => openProposalModal(id, 'userAnswers')} />
                   ))}
                 </div>
+
+                {/* Pagination Controls */}
+                <div className="p-4 border-t border-border bg-transparent flex items-center justify-center gap-1.5 shrink-0">
+                    <button
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/45 hover:text-cyan-600 disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
+                    >
+                      &lt;
+                    </button>
+
+                    {(() => {
+                      const pages: (number | string)[] = [];
+                      const range = 1;
+                      for (let i = 1; i <= totalPages; i++) {
+                        if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+                          pages.push(i);
+                        } else if ((i === currentPage - range - 1 && i > 1) || (i === currentPage + range + 1 && i < totalPages)) {
+                          pages.push('...');
+                        }
+                      }
+                      const filteredPages = pages.filter((page, idx) => page !== '...' || pages[idx - 1] !== '...');
+                      return filteredPages.map((page, idx) => {
+                        if (page === '...') {
+                          return (
+                            <span key={idx} className="px-1 text-muted-foreground font-semibold text-xs select-none">
+                              ...
+                            </span>
+                          );
+                        }
+                        const isCurrent = page === currentPage;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentPage(page as number)}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                              isCurrent
+                                ? 'bg-cyan-600 text-white border-none shadow-[0_0_10px_rgba(8,145,178,0.3)]'
+                                : 'border border-border bg-background hover:bg-muted/45 hover:text-cyan-600 text-foreground'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      });
+                    })()}
+
+                    <button
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/45 hover:text-cyan-600 disabled:opacity-40 disabled:hover:bg-background disabled:hover:text-muted-foreground transition-all cursor-pointer font-bold text-sm"
+                    >
+                      &gt;
+                    </button>
+                  </div>
               </>
             )}
 
