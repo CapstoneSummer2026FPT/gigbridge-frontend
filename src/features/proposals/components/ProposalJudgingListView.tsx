@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Brain, Award, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Eye, ChevronRight, Search } from 'lucide-react';
+import { Brain, Award, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Eye, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
@@ -41,6 +41,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
   const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortByOption>('aiScore');
   const [searchQuery, setSearchQuery] = useState('');
+  const [extraFiltersOpen, setExtraFiltersOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
@@ -237,75 +238,121 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       </div>
 
       {/* 2. Filter & Sort Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1 font-bold text-muted-foreground">
-            <Filter size={14} /> Filter:
-          </span>
-          <button
-            onClick={() => setFilterRec('all')}
-            className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'all' ? 'bg-purple-500/15 text-purple-600 border border-purple-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
-          >
-            All Candidates ({proposals.length})
-          </button>
-          <button
-            onClick={() => setFilterRec('recommended')}
-            className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'recommended' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
-          >
-            Recommended Only ({stats.recommendedCount})
-          </button>
-          <button
-            onClick={() => setFilterRec('unjudged')}
-            className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'unjudged' ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
-          >
-            Un-judged ({stats.unjudgedCount})
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Dynamic Search Input */}
-          <div className="relative w-40 sm:w-48">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <Search size={13} />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs overflow-x-auto whitespace-nowrap">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="flex items-center gap-1 font-bold text-muted-foreground">
+              <Filter size={14} /> Filter:
             </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search freelancer..."
-              className="w-full rounded border border-border bg-background py-1.5 pl-8 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X size={12} />
-              </button>
-            )}
+            <button
+              onClick={() => setFilterRec('all')}
+              className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'all' ? 'bg-purple-500/15 text-purple-600 border border-purple-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+            >
+              All Candidates ({proposals.length})
+            </button>
+            <button
+              onClick={() => setFilterRec('recommended')}
+              className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'recommended' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+            >
+              Recommended Only ({stats.recommendedCount})
+            </button>
+            <button
+              onClick={() => setFilterRec('unjudged')}
+              className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'unjudged' ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+            >
+              Un-judged ({stats.unjudgedCount})
+            </button>
           </div>
 
-          <select
-            value={minScoreFilter}
-            onChange={e => setMinScoreFilter(Number(e.target.value))}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium cursor-pointer"
-          >
-            <option value={0}>Min Score: Any</option>
-            <option value={80}>Score 80+</option>
-            <option value={70}>Score 70+</option>
-            <option value={60}>Score 60+</option>
-          </select>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Dynamic Search Input */}
+            <div className="relative w-40 sm:w-48">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <Search size={13} />
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search freelancer..."
+                className="w-full rounded border border-border bg-background py-1.5 pl-8 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
 
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as SortByOption)}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium cursor-pointer"
-          >
-            <option value="aiScore">Sort: Highest AI Score</option>
-            <option value="budget">Sort: Proposed Budget</option>
-            <option value="newest">Sort: Newest Submitted</option>
-          </select>
+            <button
+              type="button"
+              onClick={() => setExtraFiltersOpen(prev => !prev)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-semibold transition ${extraFiltersOpen || minScoreFilter > 0 || sortBy !== 'aiScore' ? 'border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300' : 'border-border bg-background hover:bg-muted/50'} cursor-pointer`}
+            >
+              <Filter size={13} />
+              Filters
+              {(minScoreFilter > 0 || sortBy !== 'aiScore') && (
+                <span className="rounded-full bg-purple-600 px-1.5 py-0.5 text-[10px] text-white font-bold leading-none flex items-center justify-center h-4 min-w-4">
+                  {(minScoreFilter > 0 ? 1 : 0) + (sortBy !== 'aiScore' ? 1 : 0)}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
+
+        {extraFiltersOpen && (
+          <div className="rounded-xl border border-border bg-muted/25 p-4 mt-3">
+            <div className="flex items-center justify-between gap-3 mb-3 text-xs">
+              <h3 className="flex items-center gap-1.5 font-bold text-foreground">
+                <SlidersHorizontal size={14} className="text-purple-600" />
+                Advanced Filters & Sorting
+              </h3>
+              {(minScoreFilter > 0 || sortBy !== 'aiScore') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinScoreFilter(0);
+                    setSortBy('aiScore');
+                  }}
+                  className="text-xs font-semibold text-purple-600 hover:underline cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 text-xs">
+                <label className="block font-semibold text-muted-foreground">Minimum AI Score</label>
+                <select
+                  value={minScoreFilter}
+                  onChange={e => setMinScoreFilter(Number(e.target.value))}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground cursor-pointer focus:outline-none focus:border-purple-500"
+                >
+                  <option value={0}>Any Score</option>
+                  <option value={80}>Score 80+</option>
+                  <option value={70}>Score 70+</option>
+                  <option value={60}>Score 60+</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5 text-xs">
+                <label className="block font-semibold text-muted-foreground">Sort Candidates By</label>
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as SortByOption)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground cursor-pointer focus:outline-none focus:border-purple-500"
+                >
+                  <option value="aiScore">Highest AI Score</option>
+                  <option value="budget">Proposed Budget</option>
+                  <option value="newest">Newest Submitted</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Ranked Candidate Cards Leaderboard */}
