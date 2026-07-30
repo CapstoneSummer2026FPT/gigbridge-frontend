@@ -565,7 +565,7 @@ export default function ClientProposalsScreen() {
               <h1 className="truncate text-2xl font-bold tracking-tight">{t('proposalReview.title')}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{t('proposalReview.subtitle')}</p>
             </div>
-            <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1 text-xs">
+            <div className="ml-auto flex items-center rounded-lg border border-border bg-muted/40 p-1 text-xs">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
