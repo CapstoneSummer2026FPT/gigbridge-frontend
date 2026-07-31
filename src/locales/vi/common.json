@@ -1,4 +1,14 @@
 {
+  "proposalMilestoneEditor": {
+    "title": "Milestone và kế hoạch thanh toán",
+    "description": "Xác định kết quả bàn giao cho từng đợt thanh toán. WBS chi tiết là tùy chọn.",
+    "advancedDetails": "Chi tiết nâng cao",
+    "derivedDuration": "Thời lượng",
+    "acceptanceCriteria": "Tiêu chí nghiệm thu",
+    "workBreakdown": "Cấu trúc phân rã công việc",
+    "addWorkItem": "Thêm hạng mục",
+    "defaultAcceptanceCriteria": "Client nghiệm thu khi kết quả bàn giao hoàn thành và đáp ứng yêu cầu project."
+  },
   "app": {
     "name": "GigBridge",
     "tagline": "Nền Tảng Freelance Được Hỗ Trợ Bởi AI"
@@ -70,7 +80,7 @@
     "resetPassword": "Đặt lại mật khẩu",
     "resetPasswordSubtitle": "Chọn mật khẩu bảo mật mới của bạn",
     "signOut": "Đăng Xuất",
-    "policyAgreement": "Tôi đã đọc và đồng ý với Bộ chính sách GigBridge phiên bản 1.0-DATN",
+    "policyAgreement": "Tôi đã đọc và đồng ý với Bộ chính sách GigBridge ",
     "policyAcceptanceRequired": "Bạn cần đồng ý với Bộ chính sách GigBridge trước khi đăng ký."
   },
   "policy": {
@@ -1200,9 +1210,9 @@
     "backToJobDetails": "Quay lại thông tin công việc",
     "milestoneSetupStep": "Bước 2 / 2",
     "milestoneSetupTitle": "Thiết Lập Milestone",
-    "milestoneSetupDescription": "Bạn có thể thiết lập kế hoạch milestone và cấu trúc công việc trước khi đăng tin.",
-    "baselineMilestoneTitle": "Milestone nền tảng và Cấu trúc phân rã công việc",
-    "baselineMilestoneDescription": "Cung cấp kế hoạch khởi đầu để freelancer xem xét và đề xuất điều chỉnh trước khi tạo hợp đồng.",
+    "milestoneSetupDescription": "Bạn có thể thiết lập các milestone thanh toán trước khi đăng tin. Freelancer sẽ bổ sung phần phân rã công việc chi tiết trong proposal.",
+    "baselineMilestoneTitle": "Kế hoạch milestone nền tảng",
+    "baselineMilestoneDescription": "Xác định các giai đoạn thanh toán và tiêu chí nghiệm thu. Freelancer có thể bổ sung phần phân rã công việc chi tiết trong proposal.",
     "loadingDraft": "Đang tải bản nháp...",
     "retry": "Thử lại",
     "nextContractSetup": "Đăng Project Request",
@@ -1315,7 +1325,7 @@
         "addMilestone": "Thêm milestone",
         "fixedProjectBudget": "Ngân sách cố định từ các milestone",
         "noBaselinePlan": "Chưa có kế hoạch milestone",
-        "noBaselinePlanDescription": "Freelancer có thể đề xuất đầy đủ milestone và cấu trúc công việc.",
+        "noBaselinePlanDescription": "Freelancer có thể đề xuất đầy đủ kế hoạch milestone.",
         "addFirstMilestone": "Thêm milestone đầu tiên",
         "untitledMilestone": "Milestone chưa đặt tên",
         "workItems": "hạng mục công việc",

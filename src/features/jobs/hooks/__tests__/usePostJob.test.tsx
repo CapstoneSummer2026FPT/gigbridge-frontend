@@ -390,7 +390,7 @@ describe('usePostJob hook skills conversion', () => {
     }));
   });
 
-  it('publishes a complete milestone without sending an untouched blank work item', async () => {
+  it('publishes a client baseline milestone without sending work breakdown items', async () => {
     vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
     const futureDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
       .toISOString()
@@ -418,10 +418,10 @@ describe('usePostJob hook skills conversion', () => {
         acceptanceCriteria: 'A vendor can complete every onboarding step',
         orderIndex: 0,
         workItems: [{
-          title: '',
-          description: '',
-          deliverables: '',
-          estimatedDuration: '',
+          title: 'Implement onboarding form',
+          description: 'Build the vendor-facing form',
+          deliverables: 'Working form',
+          estimatedDuration: '1 week',
           orderIndex: 0,
         }],
       }]);

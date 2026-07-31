@@ -25,16 +25,16 @@ import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { MarkdownEditor } from '../../../shared/components/MarkdownEditor';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import {
-  MILESTONE_DURATION_UNITS,
   calculateProposalBudget,
   calculateProposalDuration,
-  parseProposalDuration,
 } from '../utils/proposalTotals';
 import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
-
-const emptyWorkItem = (orderIndex: number): ProposalWorkBreakdownItemDto => ({
-  title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex, milestoneOrderIndex: 0,
-});
+import { useTranslation } from '../../../hooks/useTranslation';
+import {
+  currentLocalDate,
+  extractCustomWorkItems,
+  resolveProposalMilestonePlan,
+} from '../utils/proposalMilestonePlan';
 
 const emptyMilestone = (orderIndex: number): ProposalMilestonePlanDto => ({
   title: '', description: '', amount: 0, estimatedDuration: '', dueDate: null, deliverables: '', acceptanceCriteria: '', orderIndex,
@@ -45,6 +45,7 @@ const normalizeOrder = <T extends { orderIndex: number }>(items: T[]) =>
 
 export default function CreateProposalScreen() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { jobPostId, proposalId } = useParams<{ jobPostId?: string; proposalId?: string }>();
   const [jobPost, setJobPost] = useState<JobPostDetailDto | null>(null);
   const [proposal, setProposal] = useState<ProposalDetailDto | null>(null);
@@ -53,9 +54,10 @@ export default function CreateProposalScreen() {
   const [deliverables, setDeliverables] = useState('');
   const [assumptions, setAssumptions] = useState('');
   const [outOfScope, setOutOfScope] = useState('');
-  const [workItems, setWorkItems] = useState<ProposalWorkBreakdownItemDto[]>([emptyWorkItem(0)]);
+  const [workItems, setWorkItems] = useState<ProposalWorkBreakdownItemDto[]>([]);
   const [milestones, setMilestones] = useState<ProposalMilestonePlanDto[]>([emptyMilestone(0)]);
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(0);
+  const [advancedMilestoneIndexes, setAdvancedMilestoneIndexes] = useState<number[]>([]);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -66,10 +68,22 @@ export default function CreateProposalScreen() {
   const resolvedJobPostId = proposal?.jobPostId || jobPostId || '';
   const draftProposalId = proposal?.proposalId || proposalId || '';
   const isDraft = !proposal || canEditProposal(proposal.status);
-  const milestoneTotal = useMemo(() => calculateProposalBudget(milestones.map(item => item.amount)), [milestones]);
+  const today = useMemo(() => currentLocalDate(), []);
+  const defaultAcceptanceCriteria = t('proposalMilestoneEditor.defaultAcceptanceCriteria');
+  const resolvedPlan = useMemo(() => resolveProposalMilestonePlan(
+    milestones,
+    workItems,
+    defaultAcceptanceCriteria,
+    jobPost?.endDate,
+    today,
+  ), [defaultAcceptanceCriteria, jobPost?.endDate, milestones, today, workItems]);
+  const milestoneTotal = useMemo(
+    () => calculateProposalBudget(resolvedPlan.milestonePlans.map(item => item.amount)),
+    [resolvedPlan.milestonePlans],
+  );
   const proposedDuration = useMemo(
-    () => calculateProposalDuration(milestones.map(item => item.estimatedDuration)),
-    [milestones]
+    () => calculateProposalDuration(resolvedPlan.milestonePlans.map(item => item.estimatedDuration)),
+    [resolvedPlan.milestonePlans],
   );
   const proposedBudget = milestoneTotal > 0 ? milestoneTotal : null;
 
@@ -80,14 +94,22 @@ export default function CreateProposalScreen() {
     setDeliverables(loaded.deliverables || '');
     setAssumptions(loaded.assumptions || '');
     setOutOfScope(loaded.outOfScope || '');
-    const loadedWorkItems = loaded.workBreakdownItems?.length
-      ? loaded.workBreakdownItems
-      : (loaded.milestonePlans || []).flatMap(milestone => (milestone.workItems || []).map(item => ({ ...item, milestoneOrderIndex: milestone.orderIndex })));
-    setWorkItems(loadedWorkItems.length ? normalizeOrder(loadedWorkItems) : [emptyWorkItem(0)]);
     const loadedMilestones = loaded.milestonePlans?.length
       ? normalizeOrder(loaded.milestonePlans)
       : [emptyMilestone(0)];
+    const loadedWorkItems = loaded.workBreakdownItems?.length
+      ? loaded.workBreakdownItems
+      : loadedMilestones.flatMap((milestone, milestoneIndex) =>
+        (milestone.workItems || []).map((item, orderIndex) => ({
+          ...item,
+          milestoneOrderIndex: milestoneIndex,
+          orderIndex,
+        })));
+    const editableItems = extractCustomWorkItems(loadedMilestones, loadedWorkItems);
+    setWorkItems(editableItems.customWorkItems);
+    setAdvancedMilestoneIndexes(editableItems.customMilestoneIndexes);
     setMilestones(loadedMilestones);
+    setExpandedMilestone(editableItems.customMilestoneIndexes[0] ?? 0);
   };
 
   useEffect(() => {
@@ -118,14 +140,10 @@ export default function CreateProposalScreen() {
         } else if (jobResponse.data.milestonePlans?.length) {
           const baseline = normalizeOrder(jobResponse.data.milestonePlans.map(item => ({ ...item, workItems: undefined })));
           setMilestones(baseline);
-          setWorkItems(jobResponse.data.milestonePlans.flatMap((milestone, milestoneIndex) =>
-            (milestone.workItems || []).map((item, itemIndex) => ({
-              ...item,
-              milestoneOrderIndex: milestoneIndex,
-              orderIndex: itemIndex,
-            }))));
+          setWorkItems([]);
+          setAdvancedMilestoneIndexes([]);
           setExpandedMilestone(0);
-          setNotice('The client baseline has been copied. Review and adjust milestones and work items before submitting.');
+          setNotice('The client baseline has been copied. Review the milestone outcomes before submitting.');
         }
       } finally {
         setLoading(false);
@@ -143,12 +161,8 @@ export default function CreateProposalScreen() {
     deliverables: deliverables.trim(),
     assumptions: assumptions.trim(),
     outOfScope: outOfScope.trim(),
-    workBreakdownItems: normalizeOrder(workItems),
-    milestonePlans: normalizeOrder(milestones.map(item => ({
-      ...item,
-      amount: Number(item.amount) || 0,
-      workItems: normalizeOrder(workItems.filter(workItem => workItem.milestoneOrderIndex === item.orderIndex)),
-    }))),
+    workBreakdownItems: resolvedPlan.workBreakdownItems,
+    milestonePlans: resolvedPlan.milestonePlans,
   });
 
   const validateForSubmit = () => {
@@ -159,21 +173,22 @@ export default function CreateProposalScreen() {
       solutionApproach: proposalApproach,
     });
     if (narrativeError) return narrativeError;
-    if (!workItems.length || workItems.some(item => !item.title?.trim() || !item.description?.trim())) return 'Every work breakdown item needs a title and description.';
+    const invalidWorkItem = workItems.find(item => !item.title?.trim() || !item.description?.trim());
+    if (invalidWorkItem) {
+      const milestoneIndex = invalidWorkItem.milestoneOrderIndex ?? 0;
+      setExpandedMilestone(milestoneIndex);
+      setAdvancedMilestoneIndexes(indexes => indexes.includes(milestoneIndex)
+        ? indexes
+        : [...indexes, milestoneIndex].sort((left, right) => left - right));
+      return 'Every custom work breakdown item needs a title and description.';
+    }
     if (!milestones.length) return 'Add at least one milestone before submitting.';
-    if (workItems.some(item => item.milestoneOrderIndex == null)) return 'Every work item must belong to a milestone.';
-    if (milestones.some(item => !workItems.some(workItem => workItem.milestoneOrderIndex === item.orderIndex))) return 'Every milestone needs at least one work item.';
     const errors: Record<string, string> = {};
-    const today = new Date().toISOString().slice(0, 10);
     const proposalClosingDate = jobPost?.endDate?.split('T')[0] || null;
     let previousDueDate: string | null = null;
     milestones.forEach((item, index) => {
       if (!item.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
       if (Number(item.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
-      const parsedDuration = parseProposalDuration(item.estimatedDuration);
-      if (!parsedDuration || parsedDuration.unit === 'days') {
-        errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in weeks, months or years.';
-      }
       if (!item.dueDate) {
         errors[`${index}.dueDate`] = 'Deadline is required.';
       } else {
@@ -187,7 +202,6 @@ export default function CreateProposalScreen() {
         previousDueDate = item.dueDate;
       }
       if (!item.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
-      if (!item.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = 'Acceptance criteria are required.';
     });
     const firstErrorKey = Object.keys(errors)[0];
     if (firstErrorKey) {
@@ -246,10 +260,10 @@ export default function CreateProposalScreen() {
     navigate('/proposals', { state: { submittedProposalId: savedId } });
   };
 
-  const nestedMilestones = useMemo<EditableMilestonePlan[]>(() => milestones.map(milestone => ({
+  const nestedMilestones = useMemo<EditableMilestonePlan[]>(() => resolvedPlan.milestonePlans.map(milestone => ({
     ...milestone,
     workItems: workItems.filter(item => item.milestoneOrderIndex === milestone.orderIndex),
-  })), [milestones, workItems]);
+  })), [resolvedPlan.milestonePlans, workItems]);
   const updateNestedPlan = (plans: EditableMilestonePlan[]) => {
     setMilestones(normalizeOrder(plans.map(({ workItems: _workItems, ...milestone }) => milestone)));
     setWorkItems(plans.flatMap((milestone, milestoneIndex) => milestone.workItems.map((item, orderIndex) => ({
@@ -258,6 +272,10 @@ export default function CreateProposalScreen() {
       milestoneOrderIndex: milestoneIndex,
       orderIndex,
     }))));
+    setAdvancedMilestoneIndexes(indexes => Array.from(new Set([
+      ...indexes.filter(index => index < plans.length),
+      ...plans.flatMap((milestone, index) => milestone.workItems.length > 0 ? [index] : []),
+    ])).sort((left, right) => left - right));
     setMilestoneErrors({});
   };
 
@@ -313,22 +331,27 @@ export default function CreateProposalScreen() {
             <NestedMilestonePlanEditor
               value={nestedMilestones}
               onChange={updateNestedPlan}
-              title="Milestone, payment plan and Work Breakdown Structure"
-              description="Start from the client baseline, then propose the payable outcomes and work items you can commit to."
+              title={t('proposalMilestoneEditor.title')}
+              description={t('proposalMilestoneEditor.description')}
               expandedIndex={expandedMilestone}
               onExpandedChange={setExpandedMilestone}
+              advancedIndexes={advancedMilestoneIndexes}
+              onAdvancedIndexesChange={setAdvancedMilestoneIndexes}
               errors={milestoneErrors}
               showDueDate
+              simplifiedMilestoneFields
               milestoneTitleMaxLength={200}
               workItemTitleMaxLength={200}
               durationMaxLength={100}
-              durationUnits={MILESTONE_DURATION_UNITS.map(unit => ({
-                value: unit,
-                label: unit.charAt(0).toUpperCase() + unit.slice(1),
-              }))}
               fieldHints={{
-                duration: 'Estimated completion time after this milestone starts.',
                 deadline: 'Final date to complete and submit this milestone.',
+              }}
+              uiCopy={{
+                advancedDetails: t('proposalMilestoneEditor.advancedDetails'),
+                derivedDuration: t('proposalMilestoneEditor.derivedDuration'),
+                acceptanceCriteria: t('proposalMilestoneEditor.acceptanceCriteria'),
+                workBreakdown: t('proposalMilestoneEditor.workBreakdown'),
+                addWorkItem: t('proposalMilestoneEditor.addWorkItem'),
               }}
             />
 

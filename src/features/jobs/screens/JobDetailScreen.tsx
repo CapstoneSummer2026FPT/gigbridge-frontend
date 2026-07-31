@@ -224,8 +224,9 @@ export default function JobDetailScreen() {
                   onChange={() => undefined}
                   readOnly
                   showDueDate
-                  title="Client baseline milestone and WBS"
-                  description="Review this baseline before preparing your proposal. You can propose changes to milestones and work items."
+                  showWorkItems={job.milestonePlans.some(milestone => milestone.workItems.length > 0)}
+                  title="Client baseline milestone plan"
+                  description="Review the payable outcomes and acceptance criteria before preparing your proposal."
                 />
               </div>
             ) : null}

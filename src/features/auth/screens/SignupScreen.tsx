@@ -18,6 +18,7 @@ type SignupStep = 'role' | 'form';
 export default function SignupScreen() {
   const { t } = useTranslation();
   const isMounted = useRef(true);
+  const policyAcceptanceRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -37,6 +38,8 @@ export default function SignupScreen() {
   const [googleClient, setGoogleClient] = useState<GoogleCodeClient | null>(null);
   const [googleError, setGoogleError] = useState('');
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+  const [policyError, setPolicyError] = useState('');
+  const policyAcceptanceRequiredMessage = t('auth.policyAcceptanceRequired');
 
   const selectedRoleRef = useRef<UserRole | null>(null);
   useEffect(() => {
@@ -127,10 +130,21 @@ export default function SignupScreen() {
     }
   };
 
+  const focusPolicyAcceptance = (): void => {
+    const policyAcceptance = policyAcceptanceRef.current;
+    if (policyAcceptance === null) {
+      return;
+    }
+
+    policyAcceptance.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    policyAcceptance.focus({ preventScroll: true });
+  };
+
   const handleGoogleSignupClick = () => {
     setGoogleError('');
     if (!acceptedPolicy) {
-      setGoogleError(t('auth.policyAcceptanceRequired'));
+      setPolicyError(policyAcceptanceRequiredMessage);
+      focusPolicyAcceptance();
       return;
     }
 
@@ -142,6 +156,17 @@ export default function SignupScreen() {
       return;
     }
     googleClient?.requestCode();
+  };
+
+  const handlePolicyAcceptanceChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const isAccepted = event.target.checked;
+    setAcceptedPolicy(isAccepted);
+
+    if (!isAccepted) {
+      return;
+    }
+
+    setPolicyError('');
   };
 
   const isValidEmail = (email: string) => {
@@ -255,10 +280,12 @@ export default function SignupScreen() {
     setError('');
 
     if (!acceptedPolicy) {
-      setError(t('auth.policyAcceptanceRequired'));
+      setPolicyError(policyAcceptanceRequiredMessage);
+      focusPolicyAcceptance();
       return;
     }
 
+    setPolicyError('');
     setIsEmailLoading(true);
 
     try {
@@ -478,34 +505,9 @@ export default function SignupScreen() {
                 {t('auth.registeringAs', { role: selectedRole === UserRole.Client ? t('projects.client') : t('projects.freelancer') })}
               </p>
 
-              <div className="mb-4 flex items-start gap-3 auth-form-animate">
-                <input
-                  id="policy-acceptance"
-                  type="checkbox"
-                  checked={acceptedPolicy}
-                  onChange={(event) => setAcceptedPolicy(event.target.checked)}
-                  disabled={isLoading}
-                  className="mt-1 h-4 w-4 shrink-0 accent-cyan-500"
-                />
-                <div className="text-sm leading-5 text-secondary">
-                  <label htmlFor="policy-acceptance" className="cursor-pointer">
-                    {t('auth.policyAgreement')}
-                  </label>
-                  <div className="mt-1 flex flex-wrap gap-x-2">
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
-                      {t('footer.termsOfService')}
-                    </a>
-                    <span aria-hidden="true">·</span>
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
-                      {t('footer.privacyPolicy')}
-                    </a>
-                  </div>
-                </div>
-              </div>
-
               <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn auth-form-animate"
                 onClick={handleGoogleSignupClick}
-                disabled={isLoading || !googleClient || !acceptedPolicy}
+                disabled={isLoading || !googleClient}
                 type="button">
                 {isGoogleLoading ? (
                   <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -521,7 +523,7 @@ export default function SignupScreen() {
               </button>
 
               {googleError && (
-                <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left auth-form-animate">
+                <div role="alert" className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left auth-form-animate">
                   <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
                   <span>
                     {googleError}
@@ -537,7 +539,7 @@ export default function SignupScreen() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                  <div className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+                  <div role="alert" className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
                     {error}
                   </div>
                 )}
@@ -642,7 +644,41 @@ export default function SignupScreen() {
                   </button>
                 </div>
 
-                <button type="submit" disabled={isLoading || !isOtpVerified || !formData.fullName || !formData.password || !acceptedPolicy}
+                <div className={`auth-policy-consent flex items-start gap-3 auth-form-animate${policyError ? ' auth-policy-consent--error' : ''}`}>
+                  <input
+                    ref={policyAcceptanceRef}
+                    id="policy-acceptance"
+                    type="checkbox"
+                    checked={acceptedPolicy}
+                    onChange={handlePolicyAcceptanceChange}
+                    disabled={isLoading}
+                    aria-invalid={policyError ? 'true' : undefined}
+                    aria-describedby={policyError ? 'policy-acceptance-error' : undefined}
+                    className="auth-policy-checkbox mt-1 h-4 w-4 shrink-0 accent-cyan-500"
+                  />
+                  <div className="text-sm leading-5 text-secondary">
+                    <label htmlFor="policy-acceptance" className="cursor-pointer">
+                      {t('auth.policyAgreement')}
+                    </label>
+                    <div className="mt-1 flex flex-wrap gap-x-2">
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
+                        {t('footer.termsOfService')}
+                      </a>
+                      <span aria-hidden="true">·</span>
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
+                        {t('footer.privacyPolicy')}
+                      </a>
+                    </div>
+                    {policyError ? (
+                      <div id="policy-acceptance-error" role="alert" className="auth-policy-error">
+                        <AlertCircle size={15} aria-hidden="true" />
+                        <span>{policyError}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <button type="submit" disabled={isLoading || !isOtpVerified || !formData.fullName || !formData.password}
                   className="btn-cyan w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed auth-form-animate hover:scale-[1.01] transition-transform">
                   {isLoading ? (
                     <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />

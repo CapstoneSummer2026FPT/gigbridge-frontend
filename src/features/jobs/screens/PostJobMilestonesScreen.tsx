@@ -111,6 +111,7 @@ export default function PostJobMilestonesScreen() {
               }}
               optional
               showDueDate
+              showWorkItems={false}
               title={t('postJob.baselineMilestoneTitle')}
               description={t('postJob.baselineMilestoneDescription')}
               expandedIndex={expandedMilestone}

@@ -154,9 +154,33 @@ export default function PostJobReviewScreen() {
             ) : (
               <div className="mt-2 grid gap-2">
                 {milestonePlans.map((milestone, index) => (
-                  <article key={milestone.id || index} className="rounded-xl border border-border bg-background p-3">
-                    <div className="flex justify-between gap-3"><strong className="text-sm">{index + 1}. {milestone.title}</strong><strong className="text-sm text-[var(--brand)]">{formatGigCoin(Number(milestone.amount))}</strong></div>
-                    <p className="mt-1 text-xs text-muted-foreground">{milestone.deliverables}</p>
+                  <article key={milestone.id || index} className="rounded-xl border border-border bg-background p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <strong className="text-sm">{index + 1}. {optional(milestone.title)}</strong>
+                      <strong className="text-sm text-[var(--brand)]">{formatGigCoin(Number(milestone.amount))}</strong>
+                    </div>
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2">
+                      <div>
+                        <dt className="job-post-field__label">{t('postJobWizard.plan.milestoneCopy.duration')}</dt>
+                        <dd className="mt-1 whitespace-pre-wrap">{optional(milestone.estimatedDuration)}</dd>
+                      </div>
+                      <div>
+                        <dt className="job-post-field__label">{t('postJobWizard.plan.milestoneCopy.deadline')}</dt>
+                        <dd className="mt-1 whitespace-pre-wrap">{optional(milestone.dueDate)}</dd>
+                      </div>
+                      <div className="md:col-span-2">
+                        <dt className="job-post-field__label">{t('postJobWizard.plan.milestoneCopy.description')}</dt>
+                        <dd className="mt-1 whitespace-pre-wrap leading-6">{optional(milestone.description)}</dd>
+                      </div>
+                      <div>
+                        <dt className="job-post-field__label">{t('postJobWizard.plan.milestoneCopy.deliverables')}</dt>
+                        <dd className="mt-1 whitespace-pre-wrap leading-6">{optional(milestone.deliverables)}</dd>
+                      </div>
+                      <div>
+                        <dt className="job-post-field__label">{t('postJobWizard.plan.milestoneCopy.acceptanceCriteria')}</dt>
+                        <dd className="mt-1 whitespace-pre-wrap leading-6">{optional(milestone.acceptanceCriteria)}</dd>
+                      </div>
+                    </dl>
                   </article>
                 ))}
               </div>
@@ -169,7 +193,14 @@ export default function PostJobReviewScreen() {
             ) : (
               <ol className="mt-2 grid gap-2">
                 {answeredQuestions.map((question, index) => (
-                  <li key={index} className="rounded-xl bg-muted/50 p-3 text-sm">{index + 1}. {question.questionText}</li>
+                  <li key={index} className="flex flex-wrap items-start justify-between gap-3 rounded-xl bg-muted/50 p-3 text-sm">
+                    <span className="min-w-0 flex-1 whitespace-pre-wrap">{index + 1}. {question.questionText}</span>
+                    {question.isRequired && (
+                      <span className="rounded-full bg-[var(--brand)]/10 px-2 py-1 text-[10px] font-bold uppercase text-[var(--brand)]">
+                        {t('postJob.required')}
+                      </span>
+                    )}
+                  </li>
                 ))}
               </ol>
             )}

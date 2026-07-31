@@ -14,7 +14,6 @@ import {
   type JobPostQuestionDto,
   type SaveDraftJobPostRequest,
   type JobPostMilestonePlanDto,
-  type JobPostWorkItemDto,
   type JobPostAttachmentDto,
 } from '../../../types/models/Job';
 import {
@@ -124,12 +123,12 @@ const createDraftJobPostOnce = async (): Promise<string> => {
 
 const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: true });
 
-const hasWorkItemContent = (workItem: JobPostWorkItemDto): boolean => [
-  workItem.title,
-  workItem.description,
-  workItem.deliverables,
-  workItem.estimatedDuration,
-].some(value => Boolean(value?.trim()));
+const withoutWorkBreakdownItems = (
+  milestones: readonly JobPostMilestonePlanDto[],
+): JobPostMilestonePlanDto[] => milestones.map(milestone => ({
+  ...milestone,
+  workItems: [],
+}));
 
 const normalizeSkillName = (value: string): string => value.trim().toLowerCase()
   .replaceAll('#', 'sharp').replaceAll('+', 'plus').replaceAll('&', 'and')
@@ -267,7 +266,8 @@ export function usePostJob() {
 
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
-  const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() => initialJobData?.milestonePlans || []);
+  const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
+    withoutWorkBreakdownItems(initialJobData?.milestonePlans || []));
   const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
@@ -405,7 +405,7 @@ export function usePostJob() {
           majorName: job.majorName || '',
           categoryName: job.categoryName || '',
         });
-        setMilestonePlans(job.milestonePlans || []);
+        setMilestonePlans(withoutWorkBreakdownItems(job.milestonePlans || []));
         setAttachments(job.attachments || []);
         setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
         setSkillNameById(prev => {
@@ -844,8 +844,6 @@ export function usePostJob() {
     const errors: Record<string, string> = {};
     const today = new Date().toISOString().slice(0, 10);
     let previousDueDate: string | null = null;
-    let workItemError: string | null = null;
-
     for (const [index, milestone] of milestonePlans.entries()) {
       if (!milestone.title?.trim()) errors[`${index}.title`] = t('postJobWizard.validation.milestoneTitleRequired');
       if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = t('postJobWizard.validation.milestoneAmountInvalid');
@@ -866,10 +864,6 @@ export function usePostJob() {
       }
       if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = t('postJobWizard.validation.milestoneDeliverablesRequired');
       if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = t('postJobWizard.validation.milestoneAcceptanceRequired');
-      const enteredWorkItems = (milestone.workItems || []).filter(hasWorkItemContent);
-      if (enteredWorkItems.some(item => !item.title?.trim() || !item.description?.trim())) {
-        workItemError ??= t('postJobWizard.validation.workItemIncomplete', { number: index + 1 });
-      }
     }
 
     const firstErrorKey = Object.keys(errors)[0];
@@ -885,7 +879,7 @@ export function usePostJob() {
       return t('postJobWizard.validation.milestoneIncomplete');
     }
 
-    return workItemError;
+    return null;
   };
 
   const showValidationError = (message: string): void => {
@@ -936,9 +930,7 @@ export function usePostJob() {
         ...milestone,
         amount: Number(milestone.amount) || 0,
         orderIndex,
-        workItems: (milestone.workItems || [])
-          .filter(hasWorkItemContent)
-          .map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
+        workItems: [],
       })),
     };
   };

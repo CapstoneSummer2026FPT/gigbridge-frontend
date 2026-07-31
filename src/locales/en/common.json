@@ -1,4 +1,14 @@
 {
+  "proposalMilestoneEditor": {
+    "title": "Milestones and payment plan",
+    "description": "Define each payable outcome. Detailed work breakdown is optional.",
+    "advancedDetails": "Advanced details",
+    "derivedDuration": "Duration",
+    "acceptanceCriteria": "Acceptance criteria",
+    "workBreakdown": "Work Breakdown Structure",
+    "addWorkItem": "Add work item",
+    "defaultAcceptanceCriteria": "The client accepts this milestone when its deliverable is complete and meets the project requirements."
+  },
   "app": {
     "name": "GigBridge",
     "tagline": "AI-Powered Freelance Marketplace"
@@ -1202,9 +1212,9 @@
     "backToJobDetails": "Back to Job Details",
     "milestoneSetupStep": "Step 2 of 2",
     "milestoneSetupTitle": "Milestone Setup",
-    "milestoneSetupDescription": "Optionally define a baseline milestone plan and work breakdown before publishing.",
-    "baselineMilestoneTitle": "Baseline milestone and Work Breakdown Structure",
-    "baselineMilestoneDescription": "Give freelancers a starting plan. They can review and propose changes in their proposal before any contract is created.",
+    "milestoneSetupDescription": "Optionally define payment milestones before publishing. The freelancer adds the detailed task breakdown in their proposal.",
+    "baselineMilestoneTitle": "Baseline milestone plan",
+    "baselineMilestoneDescription": "Define payment stages and acceptance criteria. The freelancer can add the detailed task breakdown in their proposal.",
     "loadingDraft": "Loading draft...",
     "retry": "Retry",
     "nextContractSetup": "Publish Project Request",
@@ -1322,7 +1332,7 @@
         "addMilestone": "Add milestone",
         "fixedProjectBudget": "Fixed project budget from milestones",
         "noBaselinePlan": "No baseline plan",
-        "noBaselinePlanDescription": "Freelancers can propose the complete milestone and WBS plan.",
+        "noBaselinePlanDescription": "Freelancers can propose the complete milestone plan.",
         "addFirstMilestone": "Add first milestone",
         "untitledMilestone": "Untitled milestone",
         "workItems": "work item(s)",
