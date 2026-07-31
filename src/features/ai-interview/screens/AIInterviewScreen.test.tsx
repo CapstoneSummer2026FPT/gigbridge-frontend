@@ -217,4 +217,18 @@ describe('AIInterviewScreen initiation', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Choose a job before starting an AI interview.');
     expect(startInterviewMock).not.toHaveBeenCalled();
   });
+
+  it('displays custom error when job post has no predefined questions', async () => {
+    startInterviewMock.mockResolvedValue({
+      success: false,
+      message: 'This job post does not have any predefined questions.',
+      data: null,
+    });
+
+    render(<AIInterviewScreen />);
+    fireEvent.click(screen.getByRole('button', { name: /start ai interview/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('aiInterview.errors.noQuestions');
+  });
 });
+

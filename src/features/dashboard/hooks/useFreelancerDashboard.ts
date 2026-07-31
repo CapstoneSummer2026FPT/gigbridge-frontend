@@ -109,8 +109,9 @@ export function useFreelancerDashboard() {
       hasFailure = true;
     }
 
-    if (proposalsResult.status === 'fulfilled' && proposalsResult.value.success) {
-      setProposals(proposalsResult.value.data ?? []);
+    if (proposalsResult.status === 'fulfilled' && proposalsResult.value.success && proposalsResult.value.data) {
+      const data = proposalsResult.value.data;
+      setProposals(data.items ?? []);
     } else {
       setProposals([]);
       hasFailure = true;

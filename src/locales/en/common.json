@@ -2581,6 +2581,7 @@
     "errors": {
       "chooseJob": "Choose a job before starting an AI interview.",
       "startFailed": "The AI interview could not be started. Please try again.",
+      "noQuestions": "Cannot start AI interview. Because this job post does not have interview questions.",
       "incompleteSession": "The interview service returned an incomplete session. Please try again.",
       "transcriptionFailed": "Your answer could not be transcribed. Please record it again.",
       "unsupportedRecording": "This browser does not support microphone recording. Please use a current Chrome, Edge, Firefox, or Safari browser.",

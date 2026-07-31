@@ -292,7 +292,11 @@ export default function AIInterviewScreen() {
       const data = response.data;
 
       if (!response.success || !data) {
-        setStartError(t('aiInterview.errors.startFailed'));
+        if (response.message?.includes("does not have any predefined questions")) {
+          setStartError(t('aiInterview.errors.noQuestions'));
+        } else {
+          setStartError(t('aiInterview.errors.startFailed'));
+        }
         return;
       }
 

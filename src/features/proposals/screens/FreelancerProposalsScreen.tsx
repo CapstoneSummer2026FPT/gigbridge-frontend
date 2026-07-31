@@ -31,6 +31,11 @@ export default function FreelancerProposalsScreen() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [openingNegotiationId, setOpeningNegotiationId] = useState<string | null>(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 10;
+
   useEffect(() => {
     const fetchProposals = async () => {
       if (!user) return;
@@ -38,18 +43,27 @@ export default function FreelancerProposalsScreen() {
       try {
         setLoading(true);
         setMessage('');
-        const response = await proposalGetAPI.getMyProposals();
-        if (!response.success) {
+        const response = await proposalGetAPI.getMyProposals({
+          pageIndex: currentPage,
+          pageSize: pageSize,
+          status: statusFilter === 'all' ? undefined : Number(statusFilter),
+        });
+        if (!response.success || !response.data) {
           setMessage(response.message || 'Proposals could not be loaded.');
           setProposals([]);
+          setTotalPages(1);
+          setTotalCount(0);
           return;
         }
 
-        const loadedProposals = (response.data || []).map(proposal => ({
+        const loadedProposals = (response.data.items || []).map(proposal => ({
           ...proposal,
           updatedAt: proposal.reviewedAt || proposal.submittedAt,
         }));
         setProposals(loadedProposals);
+        setTotalPages(response.data.totalPages || 1);
+        setTotalCount(response.data.totalCount || 0);
+
         if (submittedProposalId) {
           const submittedProposal = loadedProposals.find(
             proposal => proposal.proposalsId === submittedProposalId
@@ -67,17 +81,18 @@ export default function FreelancerProposalsScreen() {
     };
 
     fetchProposals();
-  }, [submittedProposalId, t, user]);
+  }, [submittedProposalId, t, user, currentPage, statusFilter]);
+
+  const handleStatusFilterChange = (status: ProposalStatusFilter) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  };
 
   const filteredProposals = useMemo(() => {
-    const items = statusFilter === 'all'
-      ? proposals
-      : proposals.filter(proposal => String(proposal.status) === statusFilter);
-
-    return [...items].sort((a, b) =>
+    return [...proposals].sort((a, b) =>
       new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime()
     );
-  }, [proposals, statusFilter]);
+  }, [proposals]);
 
   useEffect(() => {
     if (filteredProposals.length === 0) {
@@ -170,7 +185,7 @@ export default function FreelancerProposalsScreen() {
               <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-bold">Applications</span>
               <select
                 value={statusFilter}
-                onChange={event => setStatusFilter(event.target.value as ProposalStatusFilter)}
+                onChange={event => handleStatusFilterChange(event.target.value as ProposalStatusFilter)}
                 className="bg-background border border-border rounded-lg text-[10px] px-2 py-1 focus:outline-none cursor-pointer text-foreground font-bold"
               >
                 <option value="all">All</option>
@@ -210,6 +225,62 @@ export default function FreelancerProposalsScreen() {
                   );
                 })
               )}
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="p-4 border-t border-border bg-transparent flex items-center justify-center gap-1.5 shrink-0">
+              <button
+                disabled={currentPage === 1 || loading}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/45 hover:text-[var(--gb-cyan)] disabled:opacity-40 disabled:hover:text-muted-foreground disabled:hover:bg-background transition-all cursor-pointer font-bold text-sm"
+              >
+                &lt;
+              </button>
+
+              {(() => {
+                const pages: (number | string)[] = [];
+                const range = 1;
+                for (let i = 1; i <= totalPages; i++) {
+                  if (i === 1 || i === totalPages || (i >= currentPage - range && i <= currentPage + range)) {
+                    pages.push(i);
+                  } else if ((i === currentPage - range - 1 && i > 1) || (i === currentPage + range + 1 && i < totalPages)) {
+                    pages.push('...');
+                  }
+                }
+                const filteredPages = pages.filter((page, idx) => page !== '...' || pages[idx - 1] !== '...');
+                return filteredPages.map((page, idx) => {
+                  if (page === '...') {
+                    return (
+                      <span key={idx} className="px-1 text-muted-foreground font-semibold text-xs select-none">
+                        ...
+                      </span>
+                    );
+                  }
+                  const isCurrent = page === currentPage;
+                  return (
+                    <button
+                      key={idx}
+                      disabled={loading}
+                      onClick={() => setCurrentPage(page as number)}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                        isCurrent
+                          ? 'bg-[var(--gb-cyan)] text-white border-none shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                          : 'border border-border bg-background hover:bg-muted/45 hover:text-[var(--gb-cyan)] text-foreground'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                });
+              })()}
+
+              <button
+                disabled={currentPage >= totalPages || loading}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background hover:bg-muted/45 hover:text-[var(--gb-cyan)] disabled:opacity-40 disabled:hover:text-muted-foreground disabled:hover:bg-background transition-all cursor-pointer font-bold text-sm"
+              >
+                &gt;
+              </button>
             </div>
           </section>
 
@@ -336,33 +407,6 @@ export default function FreelancerProposalsScreen() {
             )}
           </section>
 
-          <section className="w-80 border-l border-border flex flex-col bg-card p-6 overflow-y-auto custom-scrollbar">
-            {activeProposal ? (
-              <div className="flex flex-col gap-5">
-                <div className="pb-4 border-b border-border">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider text-muted-foreground mb-1">Proposal Status</h3>
-                  <div className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(activeProposal.status)}`}>
-                    {getStatusLabel(activeProposal.status)}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-background p-4 text-xs text-muted-foreground leading-relaxed">
-                  {Number(activeProposal.status) === ProposalStatus.Accepted
-                    ? 'Accepted proposals stay in this proposal workspace for status and answer review.'
-                    : Number(activeProposal.status) === ProposalStatus.Draft
-                    ? 'Draft proposals can be edited and submitted when ready.'
-                    : Number(activeProposal.status) === ProposalStatus.Withdrawn
-                    ? 'This proposal has been withdrawn.'
-                    : 'Use the available actions to manage this proposal.'}
-                </div>
-              </div>
-            ) : (
-              <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground">
-                <Send size={30} className="opacity-25 mb-2" />
-                <p className="text-xs">No proposal selected.</p>
-              </div>
-            )}
-          </section>
         </div>
       </div>
     </AppLayout>
