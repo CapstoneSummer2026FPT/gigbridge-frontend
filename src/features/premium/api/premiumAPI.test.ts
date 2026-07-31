@@ -12,7 +12,7 @@ vi.mock('../../../api/walletAPI', () => ({
   walletGetAPI: { getMyWallet: vi.fn(), getTransactions: vi.fn() },
 }));
 
-import { clientPremiumAPI } from './premiumAPI';
+import { clientPremiumAPI, premiumAPI } from './premiumAPI';
 
 describe('client Premium API', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -38,5 +38,24 @@ describe('client Premium API', () => {
       planId: 'plan-1',
       idempotencyKey: 'purchase-1',
     });
+  });
+});
+
+describe('freelancer promotion API', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('supports boosting and ending an active promotion', async () => {
+    await premiumAPI.boostPromotion('promotion-1', 5, 'boost-1');
+    await premiumAPI.endPromotion('promotion-1');
+
+    expect(post).toHaveBeenNthCalledWith(
+      1,
+      'freelancer/premium/promotions/promotion-1/boost',
+      { tokenAmount: 5, idempotencyKey: 'boost-1' },
+    );
+    expect(post).toHaveBeenNthCalledWith(
+      2,
+      'freelancer/premium/promotions/promotion-1/end',
+    );
   });
 });

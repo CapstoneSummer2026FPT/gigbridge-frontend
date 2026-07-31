@@ -5,6 +5,7 @@
   background: linear-gradient(135deg, rgba(159, 75, 255, 0.08), var(--surface), rgba(0, 119, 255, 0.04));
   box-shadow: 0 10px 30px rgba(159, 75, 255, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 }
 
 /* Gradient border wrapper using pseudo-element */
@@ -24,11 +25,11 @@
   transition: opacity 0.3s ease;
 }
 
-.ai-mode-card:hover::before {
+.ai-mode-card:not(:disabled):hover::before {
   opacity: 1;
 }
 
-.ai-mode-card:hover {
+.ai-mode-card:not(:disabled):hover {
   /* Keep background identical, do not modify background color on hover */
   background: linear-gradient(135deg, rgba(159, 75, 255, 0.08), var(--surface), rgba(0, 119, 255, 0.04)) !important;
   border-color: transparent;
@@ -36,7 +37,7 @@
 }
 
 /* Heading/Text gradient change on hover */
-.ai-mode-card:hover h2 {
+.ai-mode-card:not(:disabled):hover h2 {
   background: linear-gradient(135deg, var(--gb-purple), var(--mint));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -54,17 +55,22 @@
   background: linear-gradient(135deg, #5470EB, var(--mint));
 }
 
-.white .ai-mode-card:hover {
+.white .ai-mode-card:not(:disabled):hover {
   background: linear-gradient(135deg, rgba(84, 112, 235, 0.05), var(--surface), rgba(159, 75, 255, 0.03)) !important;
   border-color: transparent;
   box-shadow: 0 12px 35px rgba(84, 112, 235, 0.08);
 }
 
-.white .ai-mode-card:hover h2 {
+.white .ai-mode-card:not(:disabled):hover h2 {
   background: linear-gradient(135deg, #5470EB, var(--mint));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.ai-mode-card:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 /* Brand-to-mint gradient orb with white icon */
@@ -129,6 +135,6 @@
   }
 }
 
-.group:hover {
+.ai-mode-card:not(:disabled):hover {
   animation: pulseGlow 2.5s infinite ease-in-out;
 }

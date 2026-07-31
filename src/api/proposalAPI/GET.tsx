@@ -4,6 +4,20 @@ import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalJudging
 
 const proposalsUrl = 'Proposals';
 
+interface PaginatedProposalResponse {
+  items?: ProposalDto[];
+  Items?: ProposalDto[];
+}
+
+export const normalizeProposalList = (data: unknown): ProposalDto[] => {
+  if (Array.isArray(data)) return data as ProposalDto[];
+  if (!data || typeof data !== 'object') return [];
+
+  const page = data as PaginatedProposalResponse;
+  const items = page.items ?? page.Items;
+  return Array.isArray(items) ? items : [];
+};
+
 export const proposalGetAPI = {
   /**
    * GET /api/Proposals/admin/all
