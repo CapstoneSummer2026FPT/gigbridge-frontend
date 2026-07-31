@@ -5,7 +5,7 @@ import {
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
-  Plus, Trash2, ShieldAlert,
+  ShieldAlert,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
@@ -14,6 +14,7 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
+import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { useMessages } from '../hooks/useMessages';
 import { MESSAGE_ROOMS } from '../messageRooms';
 import { ReportDetailModal, useReportContract } from '../../report-contracts';
@@ -162,17 +163,15 @@ export default function MessagesScreen() {
     setShowInfo,
     showDealPrice,
     setShowDealPrice,
-    dealPriceInput,
-    setDealPriceInput,
-    dealPriceMode,
-    resetDealPriceToMilestones,
     dealMilestones,
+    updateDealMilestones,
+    dealAdvancedIndexes,
+    setDealAdvancedIndexes,
+    dealMilestoneErrors,
     dealMilestonesLoading,
     dealMilestonesSaving,
     dealMilestoneTotal,
-    updateDealMilestone,
-    addDealMilestone,
-    removeDealMilestone,
+    dealOverallDuration,
     handleSaveDealMilestones,
     messageInput,
     setMessageInput,
@@ -252,9 +251,6 @@ export default function MessagesScreen() {
     : '/jobs/browse';
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed' && canNegotiateActiveJob;
   const isNegotiationConversation = activeConv?.roomType === 'invited' || activeConv?.roomType === 'negotiation';
-  const dealPriceNumber = Number(dealPriceInput) || 0;
-  const dealPriceValid = dealPriceNumber > 0 && dealPriceNumber <= 9999999999999999.99 && Math.round(dealPriceNumber * 100) / 100 === dealPriceNumber;
-  const dealMilestonesMatchPrice = dealPriceValid && Math.abs(dealMilestoneTotal - dealPriceNumber) < 0.01;
   const sharedAttachments = Array.from(new Map(
     activeMessages.flatMap(message => message.attachments || []).map(attachment => [attachment.messageAttachmentId, attachment])
   ).values());
@@ -776,102 +772,20 @@ export default function MessagesScreen() {
 
                 {/* Deal Price Popup */}
                 {showDealPrice && canProposeDeal && (
-                  <div role="dialog" aria-modal="true" aria-label="Create final offer" className="fixed left-1/2 top-1/2 z-[120] max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in fade-in zoom-in-95 sm:p-5">
-                    <div className="flex min-w-0 flex-col gap-3">
-                      <div className="sticky top-0 z-10 flex justify-between items-center gap-3 bg-card pb-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('messages.proposeDealPrice')}</span>
-                        <button onClick={() => setShowDealPrice(false)} className="text-muted-foreground hover:text-foreground cursor-pointer border-none bg-transparent p-0">
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <input
-                        type="number"
-                        id="input-deal-price"
-                        placeholder={t('messages.enterProposedPrice')}
-                        value={dealPriceInput}
-                        onChange={e => setDealPriceInput(e.target.value)}
-                        min="0.01"
-                        step="0.01"
-                        max="9999999999999999.99"
-                        className="min-w-0 max-w-full w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
-                      />
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs">
-                        <span className={dealMilestonesMatchPrice ? 'text-emerald-600' : 'text-amber-600'}>Proposed rate: {dealPriceNumber || 0} · Milestone total: {dealMilestoneTotal} G-coin</span>
-                        {dealPriceMode === 'manual' && <button type="button" onClick={resetDealPriceToMilestones} className="font-bold text-[var(--gb-cyan)] hover:underline">Use milestone total</button>}
-                      </div>
-                      <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Milestone plan</p>
-                            <p className={`mt-1 text-[11px] font-semibold ${dealMilestonesMatchPrice ? 'text-emerald-600' : 'text-amber-600'}`}>
-                              Total {dealMilestoneTotal} / Final price {dealPriceNumber || 0} G-coin
-                            </p>
-                          </div>
-                          <button type="button" onClick={addDealMilestone} className="rounded-lg border border-border p-2 text-[var(--gb-cyan)]" title="Add milestone">
-                            <Plus size={14} />
-                          </button>
-                        </div>
-                        {dealMilestonesLoading ? (
-                          <p className="text-xs text-muted-foreground">Loading milestone draft...</p>
-                        ) : dealMilestones.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No milestone draft yet. Add one before sending a final offer.</p>
-                        ) : (
-                          <div className="space-y-3 pr-1">
-                            {dealMilestones.map((milestone, index) => (
-                              <div key={milestone.id || index} className="space-y-2 rounded-lg border border-border bg-background p-3">
-                                <div className="flex items-center justify-between gap-2">
-                                  <strong className="text-xs">Milestone {index + 1}</strong>
-                                  <button type="button" onClick={() => removeDealMilestone(index)} className="rounded-md p-1 text-red-500 hover:bg-red-500/10" title="Remove milestone">
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
-                                <input value={milestone.title || ''} onChange={e => updateDealMilestone(index, { title: e.target.value })} placeholder="Title" className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <textarea value={milestone.description || ''} onChange={e => updateDealMilestone(index, { description: e.target.value })} placeholder="Description" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-                                  <input type="number" min="0" step="0.01" max="9999999999999999.99" value={milestone.amount || ''} onChange={e => updateDealMilestone(index, { amount: Number(e.target.value) })} placeholder="Amount" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                  <input value={milestone.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { estimatedDuration: e.target.value })} placeholder="Duration" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                </div>
-                                <input type="date" value={milestone.dueDate || ''} onChange={e => updateDealMilestone(index, { dueDate: e.target.value || null })} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" aria-label="Milestone deadline" />
-                                <textarea value={milestone.deliverables || ''} onChange={e => updateDealMilestone(index, { deliverables: e.target.value })} placeholder="Deliverables" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <textarea value={milestone.acceptanceCriteria || ''} onChange={e => updateDealMilestone(index, { acceptanceCriteria: e.target.value })} placeholder="Acceptance criteria" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <div className="space-y-2 rounded-lg border border-border bg-card p-2">
-                                  <div className="flex items-center justify-between"><strong className="text-[11px] uppercase text-muted-foreground">Work Breakdown Structure</strong><button type="button" onClick={() => updateDealMilestone(index, { workItems: [...(milestone.workItems || []), { title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex: milestone.workItems?.length || 0 }] })} className="rounded border border-border p-1" title="Add work item"><Plus size={12} /></button></div>
-                                  {(milestone.workItems || []).map((workItem, workIndex) => <div key={workItem.id || workIndex} className="grid gap-2 rounded border border-border p-2 sm:grid-cols-2">
-                                    <input value={workItem.title || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, title: e.target.value } : item) })} placeholder="Work item title" className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                                    <input value={workItem.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, estimatedDuration: e.target.value } : item) })} placeholder="Duration" className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                                    <textarea value={workItem.description || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, description: e.target.value } : item) })} placeholder="Description" rows={2} className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                                    <div className="flex gap-2"><textarea value={workItem.deliverables || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, deliverables: e.target.value } : item) })} placeholder="Deliverables" rows={2} className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs" /><button type="button" onClick={() => updateDealMilestone(index, { workItems: milestone.workItems.filter((_, itemIndex) => itemIndex !== workIndex) })} className="self-start p-1 text-red-500" title="Remove work item"><Trash2 size={12} /></button></div>
-                                  </div>)}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <button type="button" disabled={dealMilestonesSaving} onClick={handleSaveDealMilestones} className="w-full rounded-lg border border-border px-3 py-2 text-xs font-bold disabled:opacity-60">
-                          {dealMilestonesSaving ? 'Saving...' : 'Save milestone draft'}
-                        </button>
-                      </div>
-                      <p className="text-[11px] leading-5 text-muted-foreground">
-                        {t('messages.proposeDealNote')}
-                      </p>
-                      <div className="sticky bottom-0 z-10 flex justify-between gap-2 border-t border-border bg-card pt-3">
-                        <button
-                          onClick={() => setShowDealPrice(false)}
-                          className="flex-1 py-2 text-xs font-bold text-muted-foreground hover:bg-muted rounded-lg transition-colors uppercase tracking-widest cursor-pointer border-none bg-transparent"
-                        >
-                          {t('messages.cancel')}
-                        </button>
-                        <button
-                          onClick={handleProposeDeal}
-                          id="btn-propose-deal"
-                          disabled={!dealPriceInput.trim() || dealMilestonesSaving || !dealMilestonesMatchPrice}
-                          className="min-w-0 flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {t('messages.send')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <FinalOfferEditor
+                    milestones={dealMilestones}
+                    milestoneTotal={dealMilestoneTotal}
+                    overallDuration={dealOverallDuration}
+                    advancedIndexes={dealAdvancedIndexes}
+                    errors={dealMilestoneErrors}
+                    loading={dealMilestonesLoading}
+                    saving={dealMilestonesSaving}
+                    onMilestonesChange={updateDealMilestones}
+                    onAdvancedIndexesChange={setDealAdvancedIndexes}
+                    onSaveDraft={() => void handleSaveDealMilestones()}
+                    onSubmit={() => void handleProposeDeal()}
+                    onClose={() => setShowDealPrice(false)}
+                  />
                 )}
 
                 <textarea

@@ -22,6 +22,14 @@ import { disputeGetAPI } from '../../../api/disputeAPI';
 import { getMessageRoom } from '../messageRooms';
 import { getContractWorkflowRoute } from '../contractWorkflowRoute';
 import { useOngoingScheduleStatus } from './useOngoingScheduleStatus';
+import {
+  calculateNegotiationBudget,
+  calculateNegotiationDuration,
+  normalizeNegotiationMilestones,
+  prepareNegotiationMilestonesForEditing,
+  resolveNegotiationMilestones,
+  validateNegotiationMilestones,
+} from '../negotiationMilestonePlan';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
@@ -302,9 +310,9 @@ export function useMessages() {
   // ── UI state ─────────────────────────────────────────────────────────────
   const [showInfo, setShowInfo] = useState(true);
   const [showDealPrice, setShowDealPrice] = useState(false);
-  const [dealPriceInput, setDealPriceInputState] = useState('');
-  const [dealPriceMode, setDealPriceMode] = useState<'auto' | 'manual'>('auto');
   const [dealMilestones, setDealMilestones] = useState<NegotiationMilestoneDto[]>([]);
+  const [dealAdvancedIndexes, setDealAdvancedIndexes] = useState<number[]>([]);
+  const [dealMilestoneErrors, setDealMilestoneErrors] = useState<Record<string, string>>({});
   const [dealMilestonesLoading, setDealMilestonesLoading] = useState(false);
   const [dealMilestonesSaving, setDealMilestonesSaving] = useState(false);
   const [messageInput, setMessageInput] = useState('');
@@ -381,67 +389,33 @@ export function useMessages() {
   const [loading, setLoading] = useState(true);
 
   const negStatus = activeConv?.roomId === 'room_negotiation' ? 'accepted' : 'idle';
+  const resolvedDealMilestones = useMemo(
+    () => resolveNegotiationMilestones(
+      dealMilestones,
+      t('proposalMilestoneEditor.defaultAcceptanceCriteria'),
+    ),
+    [dealMilestones, t],
+  );
   const dealMilestoneTotal = useMemo(
-    () => dealMilestones.reduce((total, item) => total + (Number(item.amount) || 0), 0),
-    [dealMilestones]
+    () => calculateNegotiationBudget(resolvedDealMilestones),
+    [resolvedDealMilestones],
+  );
+  const dealOverallDuration = useMemo(
+    () => calculateNegotiationDuration(resolvedDealMilestones),
+    [resolvedDealMilestones],
+  );
+  const dealEditorMilestones = useMemo(
+    () => dealMilestones.map((milestone, index) => ({
+      ...milestone,
+      estimatedDuration: resolvedDealMilestones[index]?.estimatedDuration || milestone.estimatedDuration,
+    })),
+    [dealMilestones, resolvedDealMilestones],
   );
 
-  const normalizeDealMilestones = useCallback((items: NegotiationMilestoneDto[]) =>
-    items.map((item, orderIndex) => ({
-      ...item,
-      amount: Math.round((Number(item.amount) || 0) * 100) / 100,
-      orderIndex,
-      workItems: (item.workItems || []).map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
-    })),
-  []);
-
-  const getDealMilestoneTotal = useCallback((items: NegotiationMilestoneDto[]) =>
-    Math.round(items.reduce((total, item) => total + (Number(item.amount) || 0), 0) * 100) / 100,
-  []);
-
-  const setDealPriceInput = useCallback((value: string) => {
-    setDealPriceMode('manual');
-    setDealPriceInputState(value);
+  const updateDealMilestones = useCallback((milestones: NegotiationMilestoneDto[]) => {
+    setDealMilestones(normalizeNegotiationMilestones(milestones));
+    setDealMilestoneErrors({});
   }, []);
-
-  const resetDealPriceToMilestones = useCallback(() => {
-    setDealPriceMode('auto');
-    setDealPriceInputState(dealMilestoneTotal > 0 ? String(dealMilestoneTotal) : '');
-  }, [dealMilestoneTotal]);
-
-  const updateDealMilestone = useCallback((index: number, patch: Partial<NegotiationMilestoneDto>) => {
-    setDealMilestones(items => {
-      const next = normalizeDealMilestones(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
-      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
-      return next;
-    });
-  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
-
-  const addDealMilestone = useCallback(() => {
-    setDealMilestones(items => {
-      const next = normalizeDealMilestones([...items, {
-        title: '',
-        description: '',
-        amount: 0,
-        estimatedDuration: '',
-        dueDate: null,
-        deliverables: '',
-        acceptanceCriteria: '',
-        orderIndex: items.length,
-        workItems: [{ title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex: 0 }],
-      }]);
-      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
-      return next;
-    });
-  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
-
-  const removeDealMilestone = useCallback((index: number) => {
-    setDealMilestones(items => {
-      const next = normalizeDealMilestones(items.filter((_, itemIndex) => itemIndex !== index));
-      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
-      return next;
-    });
-  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
 
   const refreshGoogleMeetStatus = useCallback(async () => {
     setGoogleMeetStatusLoading(true);
@@ -536,8 +510,8 @@ export function useMessages() {
   useEffect(() => {
     if (!activeConvId || activeConv?.roomType !== 'negotiation') {
       setDealMilestones([]);
-      setDealPriceInputState('');
-      setDealPriceMode('auto');
+      setDealAdvancedIndexes([]);
+      setDealMilestoneErrors({});
       return;
     }
 
@@ -545,19 +519,17 @@ export function useMessages() {
     setDealMilestonesLoading(true);
     messageGetAPI.getNegotiationMilestonePlan(activeConvId).then(response => {
       if (!active) return;
-      const normalized = normalizeDealMilestones(response.data || []);
-      const milestoneTotal = getDealMilestoneTotal(normalized);
-      const suggestedPrice = Number(activeConv?.proposedPrice) || milestoneTotal;
-      setDealMilestones(normalized);
-      setDealPriceInputState(suggestedPrice > 0 ? String(suggestedPrice) : '');
-      setDealPriceMode(suggestedPrice > 0 && Math.abs(suggestedPrice - milestoneTotal) >= 0.01 ? 'manual' : 'auto');
+      const prepared = prepareNegotiationMilestonesForEditing(response.data || []);
+      setDealMilestones(prepared.milestones);
+      setDealAdvancedIndexes(prepared.advancedIndexes);
+      setDealMilestoneErrors({});
       setDealMilestonesLoading(false);
     }).catch(() => {
       if (active) setDealMilestonesLoading(false);
     });
 
     return () => { active = false; };
-  }, [activeConv?.proposedPrice, activeConv?.roomType, activeConvId, getDealMilestoneTotal, normalizeDealMilestones]);
+  }, [activeConv?.roomType, activeConvId]);
 
   // Fetch conversations on mount
   const loadConversations = useCallback(async () => {
@@ -708,74 +680,110 @@ export function useMessages() {
   // Connect to SignalR
   useEffect(() => {
     const hubUrl = getChatHubUrl();
-    const token = localStorage.getItem('access_token');
-
-    if (!token) {
-      setSignalRStatus('disconnected');
-      console.warn('[ChatHub] skipped connection: no access token found');
-      return;
-    }
-
     let disposed = false;
-    setSignalRStatus('connecting');
-    console.info('[ChatHub] connecting:', hubUrl);
+    let retryAttempt = 0;
+    let retryTimer: number | null = null;
+    let currentConnection: signalR.HubConnection | null = null;
 
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(hubUrl, {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const clearRetryTimer = () => {
+      if (retryTimer === null) return;
+      window.clearTimeout(retryTimer);
+      retryTimer = null;
+    };
 
-    connection.onreconnecting(err => {
-      if (disposed) return;
+    const scheduleFreshConnection = () => {
+      if (disposed || retryTimer !== null) return;
+      const delay = Math.min(1_000 * (2 ** retryAttempt), 15_000);
+      retryAttempt += 1;
       setSignalRStatus('reconnecting');
-      console.warn('[ChatHub] reconnecting:', err);
-    });
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        void connect();
+      }, delay);
+    };
 
-    connection.onreconnected(() => {
+    const connect = async () => {
       if (disposed) return;
-      setSignalRStatus('connected');
-      console.info('[ChatHub] reconnected');
-      if (activeConvIdRef.current) {
-        connection.invoke('JoinConversation', activeConvIdRef.current)
-          .then(() => {
-            console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
-          })
-          .catch(err => {
-            console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
-          });
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setSignalRStatus('disconnected');
+        console.warn('[ChatHub] waiting for an access token before connecting');
+        scheduleFreshConnection();
+        return;
       }
-    });
 
-    connection.onclose(err => {
-      if (disposed) return;
-      setSignalRStatus('disconnected');
-      setHubConnection(null);
-      console.warn('[ChatHub] disconnected:', err);
-    });
+      setSignalRStatus(retryAttempt > 0 ? 'reconnecting' : 'connecting');
+      console.info('[ChatHub] connecting:', hubUrl);
 
-    connection
-      .start()
-      .then(() => {
-        if (disposed) {
-          connection.stop().catch(() => {});
+      const connection = new signalR.HubConnectionBuilder()
+        .configureLogging(signalR.LogLevel.Warning)
+        .withUrl(hubUrl, {
+          accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+        })
+        .withAutomaticReconnect([0, 2_000, 5_000, 10_000])
+        .build();
+      currentConnection = connection;
+
+      connection.onreconnecting(err => {
+        if (disposed || currentConnection !== connection) return;
+        setSignalRStatus('reconnecting');
+        console.warn('[ChatHub] reconnecting:', err);
+      });
+
+      connection.onreconnected(() => {
+        if (disposed || currentConnection !== connection) return;
+        retryAttempt = 0;
+        setSignalRStatus('connected');
+        console.info('[ChatHub] reconnected');
+        if (activeConvIdRef.current) {
+          connection.invoke('JoinConversation', activeConvIdRef.current)
+            .then(() => {
+              console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
+            })
+            .catch(err => {
+              console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
+            });
+        }
+      });
+
+      connection.onclose(err => {
+        if (disposed || currentConnection !== connection) return;
+        currentConnection = null;
+        setHubConnection(existing => existing === connection ? null : existing);
+        setSignalRStatus('disconnected');
+        console.warn('[ChatHub] disconnected:', err);
+        scheduleFreshConnection();
+      });
+
+      try {
+        await connection.start();
+        if (disposed || currentConnection !== connection) {
+          await connection.stop().catch(() => undefined);
           return;
         }
+        retryAttempt = 0;
         setSignalRStatus('connected');
-        console.info('[ChatHub] connected');
         setHubConnection(connection);
-      })
-      .catch(err => {
-        if (disposed) return;
+        console.info('[ChatHub] connected');
+      } catch (err) {
+        if (disposed || currentConnection !== connection) return;
+        currentConnection = null;
+        setHubConnection(existing => existing === connection ? null : existing);
         setSignalRStatus('failed');
         console.error('[ChatHub] connection failed:', err);
-      });
+        await connection.stop().catch(() => undefined);
+        scheduleFreshConnection();
+      }
+    };
+
+    void connect();
 
     return () => {
       disposed = true;
-      connection.stop().catch(() => {});
+      clearRetryTimer();
+      const connection = currentConnection;
+      currentConnection = null;
+      connection?.stop().catch(() => undefined);
     };
   }, []);
 
@@ -1233,43 +1241,55 @@ export function useMessages() {
     }
   };
 
+  const validateDealMilestoneDraft = () => {
+    const validation = validateNegotiationMilestones(dealMilestones);
+    if (validation.valid) return true;
+
+    const translatedErrors = Object.fromEntries(Object.entries(validation.errors).map(([field, code]) => [
+      field,
+      t(`messages.finalOfferEditor.validation.${code}`),
+    ]));
+    setDealMilestoneErrors(translatedErrors);
+    if (validation.advancedIndexes.length > 0) {
+      setDealAdvancedIndexes(indexes => Array.from(new Set([
+        ...indexes,
+        ...validation.advancedIndexes,
+      ])).sort((left, right) => left - right));
+    }
+    setAnchorNotice(t(`messages.finalOfferEditor.validation.${validation.firstError || 'milestoneRequired'}`));
+    const firstField = Object.keys(validation.errors)[0];
+    if (firstField) {
+      const parts = firstField.split('.');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const selector = parts[1] === 'workItems'
+          ? `[data-work-item-field="${parts[0]}.${parts[2]}.${parts[3]}"]`
+          : `[data-milestone-field="${parts[0]}.${parts[1]}"]`;
+        const target = document.querySelector<HTMLElement>(selector);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.focus();
+      }));
+    }
+    return false;
+  };
+
   const handleProposeDeal = async () => {
-    if (!dealPriceInput.trim() || !activeConvId) return;
+    if (!activeConvId) return;
     if (!ensureActiveNegotiationEligible()) return;
-    const price = parseFloat(dealPriceInput);
-    if (!Number.isFinite(price) || price <= 0 || price > 9999999999999999.99 || Math.round(price * 100) / 100 !== price) {
-      setAnchorNotice('Final price must be positive and use at most 2 decimal places.');
-      return;
-    }
-    const normalizedMilestones = normalizeDealMilestones(dealMilestones);
-    if (normalizedMilestones.length === 0) {
-      setAnchorNotice('Add at least one milestone before sending a final offer.');
-      return;
-    }
-    if (normalizedMilestones.some(item => !item.title?.trim() || !item.deliverables?.trim() || !item.acceptanceCriteria?.trim() || Number(item.amount) <= 0)) {
-      setAnchorNotice('Each milestone needs title, amount, deliverables, and acceptance criteria.');
-      return;
-    }
-    if (normalizedMilestones.some(item => !item.workItems.length || item.workItems.some(workItem => !workItem.title?.trim() || !workItem.description?.trim()))) {
-      setAnchorNotice('Each milestone needs at least one work item with title and description.');
-      return;
-    }
-    if (Math.abs(normalizedMilestones.reduce((sum, item) => sum + item.amount, 0) - price) >= 0.01) {
-      setAnchorNotice('Milestone total must match the final offer price.');
-      return;
-    }
+    if (!validateDealMilestoneDraft()) return;
+    const normalizedMilestones = resolvedDealMilestones;
+    const price = dealMilestoneTotal;
 
     try {
       setDealMilestonesSaving(true);
       const res = await messagePostAPI.createFinalOffer({
         conversationId: activeConvId,
         finalPrice: price,
-        scopeSummary: 'Proposed price',
+        scopeSummary: t('messages.finalOfferEditor.scopeSummary'),
         milestones: normalizedMilestones,
       });
       setDealMilestonesSaving(false);
       if (!res.success || !res.data) {
-        throw new Error(res.message || 'Failed to create final offer.');
+        throw new Error(res.message || t('messages.finalOfferEditor.submitFailed'));
       }
 
       const offerId = String(res.data);
@@ -1290,13 +1310,12 @@ export function useMessages() {
         )
       );
       setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'pending_freelancer' }));
-      setDealPriceInputState('');
-      setDealPriceMode('auto');
+      setDealMilestoneErrors({});
       setShowDealPrice(false);
       loadConversations();
     } catch (err) {
       setDealMilestonesSaving(false);
-      const message = err instanceof Error ? err.message : 'Failed to propose deal.';
+      const message = err instanceof Error ? err.message : t('messages.finalOfferEditor.submitFailed');
       setAnchorNotice(message);
       console.error('Failed to propose deal:', err);
     }
@@ -1305,16 +1324,25 @@ export function useMessages() {
   const handleSaveDealMilestones = async () => {
     if (!activeConvId) return;
     if (!ensureActiveNegotiationEligible()) return;
+    if (!validateDealMilestoneDraft()) return;
     setDealMilestonesSaving(true);
-    const normalized = normalizeDealMilestones(dealMilestones);
-    const response = await messagePutAPI.updateNegotiationMilestonePlan(activeConvId, { milestones: normalized });
-    setDealMilestonesSaving(false);
-    if (!response.success) {
-      setAnchorNotice(response.message || 'Could not save milestone plan.');
-      return;
+    const normalized = resolvedDealMilestones;
+    try {
+      const response = await messagePutAPI.updateNegotiationMilestonePlan(activeConvId, { milestones: normalized });
+      if (!response.success) {
+        setAnchorNotice(response.message || t('messages.finalOfferEditor.saveFailed'));
+        return;
+      }
+      const prepared = prepareNegotiationMilestonesForEditing(response.data || normalized);
+      setDealMilestones(prepared.milestones);
+      setDealAdvancedIndexes(prepared.advancedIndexes);
+      setDealMilestoneErrors({});
+      setAnchorNotice(t('messages.finalOfferEditor.saved'));
+    } catch (error) {
+      setAnchorNotice(error instanceof Error ? error.message : t('messages.finalOfferEditor.saveFailed'));
+    } finally {
+      setDealMilestonesSaving(false);
     }
-    setDealMilestones(normalizeDealMilestones(response.data || normalized));
-    setAnchorNotice('Milestone plan saved.');
   };
 
   const handleAcceptDeal = async (negotiationOfferId?: string | null, offeredAmount?: number) => {
@@ -1708,17 +1736,15 @@ export function useMessages() {
     setShowInfo,
     showDealPrice,
     setShowDealPrice,
-    dealPriceInput,
-    setDealPriceInput,
-    dealPriceMode,
-    resetDealPriceToMilestones,
-    dealMilestones,
+    dealMilestones: dealEditorMilestones,
+    updateDealMilestones,
+    dealAdvancedIndexes,
+    setDealAdvancedIndexes,
+    dealMilestoneErrors,
     dealMilestonesLoading,
     dealMilestonesSaving,
     dealMilestoneTotal,
-    updateDealMilestone,
-    addDealMilestone,
-    removeDealMilestone,
+    dealOverallDuration,
     handleSaveDealMilestones,
     messageInput,
     setMessageInput,
