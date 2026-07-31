@@ -317,7 +317,7 @@ export default function MyJobsScreen() {
               </div>
             </div>
 
-            <div 
+            <div
               style={{ marginTop: 10, fontSize: 12, color: '#9ca3af', fontWeight: 500 }}
               dangerouslySetInnerHTML={{ __html: t('myJobs.showingJobs', { count: filteredJobs.length, total: jobs.length }) }}
             />
@@ -461,14 +461,14 @@ export default function MyJobsScreen() {
                               <button
                                 onClick={event => {
                                   event.currentTarget.closest('details')?.removeAttribute('open');
-                                  openPremiumPath(() => setPromoteTarget({ job }));
+                                  if (job.isFeatured) setPromoteTarget({ job });
+                                  else openPremiumPath(() => setPromoteTarget({ job }));
                                 }}
-                                disabled={Boolean(job.isFeatured)}
                                 className="mj-action-btn mj-btn-cyan"
                               >
                                 <Megaphone size={14} /> {job.isFeatured
-                                  ? `Promoted until ${job.featuredUntil ? formatDate(job.featuredUntil) : ''}`
-                                  : 'Promote'} {!premiumStatus.isPremium && <Crown size={12} />}
+                                  ? `Manage promotion · ends ${job.featuredUntil ? formatDate(job.featuredUntil) : ''}`
+                                  : 'Promote'} {!premiumStatus.isPremium && !job.isFeatured && <Crown size={12} />}
                               </button>
                               <button
                                 onClick={event => {
@@ -550,6 +550,9 @@ export default function MyJobsScreen() {
       )}
       {promoteTarget && <div className="premium-modal" onClick={() => setPromoteTarget(undefined)}><div className="premium-modal-box premium-modal-box-wide" onClick={event => event.stopPropagation()}><JobPromotionStudio entitled={premiumStatus.isPremium} initialJob={promoteTarget.job} onComplete={promotion => {
         setJobs(current => current.map(job => job.jobPostsId === promotion.jobPostId ? { ...job, isFeatured: true, featuredUntil: promotion.featuredUntil } : job));
+        setPromoteTarget(undefined);
+      }} onDeactivated={promotion => {
+        setJobs(current => current.map(job => job.jobPostsId === promotion.jobPostId ? { ...job, isFeatured: false, featuredUntil: promotion.featuredUntil } : job));
         setPromoteTarget(undefined);
       }} /><div className="premium-modal-actions"><button className="premium-button secondary" onClick={() => setPromoteTarget(undefined)}>Close</button></div></div></div>}
     </AppLayout>
