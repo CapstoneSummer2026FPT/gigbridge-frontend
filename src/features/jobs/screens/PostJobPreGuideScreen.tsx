@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router';
 import {
   Sparkles, PenTool, CheckCircle,
   Lightbulb, ChevronRight, MessageSquare, BookOpen,
-  ArrowRight, ShieldAlert, BadgeInfo, LockKeyhole
+  ArrowRight, ShieldAlert, BadgeInfo, LoaderCircle, LockKeyhole, RotateCw
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -17,8 +17,14 @@ export default function PostJobPreGuideScreen() {
   const { t } = useTranslation('common');
   const { role } = useApp();
   const premiumStatus = usePremiumStatus(role);
+  const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
 
   const handleStartMode = (instantJobMode: boolean) => {
+    if (instantJobMode && premiumStatus.loading) return;
+    if (instantJobMode && premiumStatusUnavailable) {
+      void premiumStatus.refresh();
+      return;
+    }
     if (instantJobMode && !premiumStatus.isPremium) {
       navigate('/premium/client/pricing');
       return;
@@ -52,14 +58,22 @@ export default function PostJobPreGuideScreen() {
           <button
             type="button"
             onClick={() => handleStartMode(true)}
-            className="ai-mode-card group relative text-left overflow-hidden rounded-2xl p-8 shadow-lg transition-all duration-300 hover:scale-[1.02] focus:outline-none cursor-pointer"
+            disabled={premiumStatus.loading}
+            aria-busy={premiumStatus.loading}
+            className="ai-mode-card group relative text-left overflow-hidden rounded-2xl p-8 shadow-lg transition-all duration-300 focus:outline-none"
           >
             <div className="flex items-start justify-between mb-6">
               <div className="ai-select-orb w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg">
                 <Sparkles className="ai-select-sparkles-icon animate-pulse" size={26} />
               </div>
               <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[var(--gb-purple)] to-[var(--gb-cyan)] text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
-                {premiumStatus.isPremium ? t('postJobGuide.recommended') : 'Premium'}
+                {premiumStatus.loading
+                  ? t('postJobGuide.checkingAccess')
+                  : premiumStatusUnavailable
+                    ? t('postJobGuide.accessUnavailable')
+                    : premiumStatus.isPremium
+                      ? t('postJobGuide.recommended')
+                      : 'Premium'}
               </span>
             </div>
 
@@ -72,10 +86,26 @@ export default function PostJobPreGuideScreen() {
             </p>
 
             <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--gb-cyan)]">
-              {!premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} compact />}
-              {!premiumStatus.isPremium && <LockKeyhole size={13} />}
-              <span>{premiumStatus.isPremium ? t('postJobGuide.aiModeStart') : 'View Client Premium'}</span>
-              <ChevronRight size={14} />
+              {premiumStatus.loading ? (
+                <>
+                  <LoaderCircle size={14} className="animate-spin" />
+                  <span>{t('postJobGuide.checkingPremium')}</span>
+                </>
+              ) : premiumStatusUnavailable ? (
+                <>
+                  <ShieldAlert size={14} />
+                  <span>{t('postJobGuide.premiumCheckFailed')}</span>
+                  <RotateCw size={13} />
+                  <span>{t('postJobGuide.retry')}</span>
+                </>
+              ) : (
+                <>
+                  <PremiumStatusBadge active={premiumStatus.isPremium} compact />
+                  {!premiumStatus.isPremium && <LockKeyhole size={13} />}
+                  <span>{premiumStatus.isPremium ? t('postJobGuide.aiModeStart') : t('postJobGuide.viewPremium')}</span>
+                  <ChevronRight size={14} />
+                </>
+              )}
             </div>
           </button>
 

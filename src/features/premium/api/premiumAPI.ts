@@ -28,6 +28,12 @@ export const premiumAPI = {
   promotionManager: () => apiService.get<PromotionManager>(`${premium}/promotions/manager`),
   purchasePromotion: (tokenAmount: number, idempotencyKey: string, card: PromotionCardInput) =>
     apiService.post<Promotion>(`${premium}/promotions`, { tokenAmount, idempotencyKey, ...card }),
+  boostPromotion: (promotionId: string, tokenAmount: number, idempotencyKey: string) =>
+    apiService.post<Promotion>(`${premium}/promotions/${promotionId}/boost`, {
+      tokenAmount, idempotencyKey,
+    }),
+  endPromotion: (promotionId: string) =>
+    apiService.post<Promotion>(`${premium}/promotions/${promotionId}/end`),
   promotionFeed: (limit?: number) => apiService.get<PublicPromotionCard[]>('promotions/feed', limit ? { limit } : {}),
   trackPromotionImpression: (promotionId: string, visitorKey: string) =>
     apiService.post<PromotionInteractionResult>(`promotions/${promotionId}/impression`, {}, { 'X-Promotion-Visitor': visitorKey }),

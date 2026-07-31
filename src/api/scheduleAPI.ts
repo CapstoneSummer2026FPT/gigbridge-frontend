@@ -37,6 +37,10 @@ export interface ScheduleEvent {
   agreementStatus: number;
   counterProposalCreatedAtUtc?: string | null;
   counterProposalEditExpiresAtUtc?: string | null;
+  proposedScheduledAtUtc?: string | null;
+  proposedTimeZoneId?: string | null;
+  rescheduleRequestCount?: number;
+  remainingRescheduleRequests?: number;
   canAccept: boolean;
   canReject: boolean;
   canProposeTime: boolean;
@@ -56,7 +60,7 @@ export interface ScheduleMutationResult { schedule: ScheduleResponse; message: M
 export interface OngoingScheduleResponse { hasOngoingSchedule: boolean; scheduleId?: string | null; scheduledAtUtc?: string | null; }
 
 export const scheduleAPI = {
-  create: (payload: { conversationId: string; title: string; details?: string; scheduledAt: string; timeZoneId: string; addGoogleMeet?: boolean }) =>
+  create: (payload: { conversationId: string; title: string; details?: string; scheduledAt: string; timeZoneId: string; addGoogleMeet?: boolean; sendEmailNotification?: boolean }) =>
     apiService.post<ScheduleMutationResult>('schedules', payload),
   get: (id: string) => apiService.get<ScheduleResponse>(`schedules/${id}`),
   getOngoing: (conversationId: string) => apiService.get<OngoingScheduleResponse>(`schedules/conversation/${conversationId}/ongoing`),

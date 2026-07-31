@@ -40,10 +40,12 @@ export function JobPromotionStudio({
   entitled,
   initialJob,
   onComplete,
+  onDeactivated,
 }: {
   entitled: boolean;
   initialJob?: GetMyJobPostDto;
   onComplete?: (promotion: JobPostPromotionDto) => void;
+  onDeactivated?: (promotion: JobPostPromotionDto) => void;
 }) {
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>(initialJob ? [initialJob] : []);
   const [selectedJobId, setSelectedJobId] = useState(initialJob?.jobPostsId || '');
@@ -56,6 +58,7 @@ export function JobPromotionStudio({
   const [title, setTitle] = useState(initialJob?.title || '');
   const [description, setDescription] = useState(initialJob?.description || '');
   const [busy, setBusy] = useState(false);
+  const [endingJobId, setEndingJobId] = useState<string>();
 
   useEffect(() => {
     void jobAPI.getJobPromotionPolicy().then(response => response.data && setPolicy(response.data));
@@ -123,8 +126,28 @@ export function JobPromotionStudio({
     } finally { setBusy(false); }
   };
 
+  const endPromotion = async (job: GetMyJobPostDto) => {
+    if (!window.confirm('End this job promotion now? Spent GigCoin will not be refunded.')) return;
+    setEndingJobId(job.jobPostsId);
+    try {
+      const response = await jobAPI.endJobPromotion(job.jobPostsId);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Unable to end this job promotion.');
+      }
+      setJobs(current => current.map(item => item.jobPostsId === job.jobPostsId
+        ? { ...item, isFeatured: false, featuredUntil: response.data!.featuredUntil }
+        : item));
+      toast.success('Job promotion ended.');
+      onDeactivated?.(response.data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to end this job promotion.');
+    } finally {
+      setEndingJobId(undefined);
+    }
+  };
+
   return <div className="job-promotion-studio">
-    <section className="premium-card promotion-builder">
+    {!selectedJob?.isFeatured && <section className="premium-card promotion-builder">
       <div className="premium-eyebrow"><Megaphone size={16} /> Job promotion studio</div>
       <h3>Design your promoted-job card</h3>
       {!initialJob && <label>Job<select className="premium-input" value={selectedJobId} onChange={event => selectJob(event.target.value)}><option value="">Select an open job</option>{jobs.map(job => <option key={job.jobPostsId} value={job.jobPostsId} disabled={job.isFeatured}>{job.title}{job.isFeatured ? ' — promotion active' : ''}</option>)}</select></label>}
@@ -139,10 +162,10 @@ export function JobPromotionStudio({
       <label>Promotion description<textarea className="premium-input" rows={4} maxLength={1000} value={description} onChange={event => setDescription(event.target.value)} /></label>
       <div className="premium-row"><span>Promotion price</span>{policy ? <GigCoinAmount amount={policy.tokenCost} /> : <strong>Loading…</strong>}</div>
       <button className="premium-button" disabled={busy || !entitled || !policy || !selectedJob || selectedJob.isFeatured || !file || !title.trim() || !description.trim()} onClick={() => void promote()}>{busy ? 'Cropping and promoting…' : 'Activate promotion'}</button>
-    </section>
-    <div className="job-promotion-preview">
+    </section>}
+    {!selectedJob?.isFeatured && <div className="job-promotion-preview">
       {sourceUrl ? <PromotedJobCard card={previewCard} carouselCount={1} carouselIndex={0} preview imageStyle={{ transform: `scale(${zoom})`, transformOrigin: `${cropX}% ${cropY}%`, objectPosition: `${cropX}% ${cropY}%` }} /> : <div className="premium-card job-promotion-preview-empty"><ImagePlus size={32} /><strong>Your live preview appears here</strong><span>Choose an image to start designing the card.</span></div>}
-    </div>
-    {!initialJob && <section className="premium-card job-promotion-active"><h3>Ongoing promotions</h3>{activeJobs.length ? activeJobs.map(job => <div className="premium-row" key={job.jobPostsId}><div><strong>{job.title}</strong><div className="premium-muted">Featured until {job.featuredUntil ? new Date(job.featuredUntil).toLocaleDateString() : '—'}</div></div><span className="promotion-status ongoing">Ongoing</span></div>) : <p className="premium-muted">No job promotion is currently running.</p>}</section>}
+    </div>}
+    {(!initialJob || activeJobs.length > 0) && <section className="premium-card job-promotion-active"><h3>Ongoing promotions</h3>{activeJobs.length ? activeJobs.map(job => <div className="premium-row" key={job.jobPostsId}><div><strong>{job.title}</strong><div className="premium-muted">Featured until {job.featuredUntil ? new Date(job.featuredUntil).toLocaleDateString() : '—'}</div></div><div className="job-promotion-active-actions"><span className="promotion-status ongoing">Ongoing</span><button type="button" className="premium-button danger" disabled={Boolean(endingJobId)} onClick={() => void endPromotion(job)}>{endingJobId === job.jobPostsId ? 'Ending…' : 'End promotion now'}</button></div></div>) : <p className="premium-muted">No job promotion is currently running.</p>}</section>}
   </div>;
 }

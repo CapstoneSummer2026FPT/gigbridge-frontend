@@ -49,6 +49,9 @@ export const jobPostAPI = {
   promoteJobPost: async (jobPostId: string, data: PromoteJobPostRequest): Promise<ApiResponse<JobPostPromotionDto>> =>
     apiService.post<JobPostPromotionDto>(`${jobPostsUrl}/${jobPostId}/promote`, data),
 
+  endJobPromotion: async (jobPostId: string): Promise<ApiResponse<JobPostPromotionDto>> =>
+    apiService.post<JobPostPromotionDto>(`${jobPostsUrl}/${jobPostId}/promotion/end`),
+
   trackJobPromotionImpression: async (promotionId: string): Promise<ApiResponse<JobPromotionInteractionDto>> =>
     apiService.post<JobPromotionInteractionDto>(`job-promotions/${promotionId}/impression`),
 
