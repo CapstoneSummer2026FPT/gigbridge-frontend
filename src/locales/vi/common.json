@@ -1193,14 +1193,15 @@
     "questionsForInterview": "Câu Hỏi Phỏng Vấn",
     "optional": "Tùy chọn",
     "questionsGuideTitle": "Câu hỏi phỏng vấn là tùy chọn",
-    "questionsGuideDesc": "Bạn có thể đăng tin mà không cần câu hỏi phỏng vấn. Mọi câu hỏi đã thêm đều bắt buộc freelancer trả lời.",
+    "questionsGuideDesc": "Bạn có thể đăng tin mà không cần câu hỏi phỏng vấn. Hãy chọn từng câu là bắt buộc hoặc tùy chọn.",
     "questionsExample1": "\"Hãy chia sẻ 1–2 dự án freelance bạn đã hoàn thành gần đây có liên quan đến yêu cầu này.\"",
     "questionsExample2": "\"Bạn dự kiến hoàn thành công việc trong bao lâu và kế hoạch triển khai như thế nào?\"",
     "questionsExample3": "\"Nếu gặp vấn đề kỹ thuật không giải quyết được một mình, bạn xử lý như thế nào?\"",
     "question": "Câu Hỏi {{number}}",
     "required": "Bắt Buộc Trả Lời",
+    "requiredStatus": "Trạng thái bắt buộc của câu hỏi {{number}}",
     "deleteQuestion": "Xóa Câu Hỏi",
-    "questionPlaceholder": "Nhập câu hỏi freelancer bắt buộc phải trả lời...",
+    "questionPlaceholder": "Nhập câu hỏi dành cho freelancer...",
     "noQuestions": "Chưa có câu hỏi phỏng vấn. Bạn vẫn có thể đăng tin mà không cần câu hỏi.",
     "addQuestion": "Thêm Câu Hỏi Phỏng Vấn",
     "reorderQuestion": "Kéo để sắp xếp câu hỏi",
@@ -1316,7 +1317,7 @@
     },
     "plan": {
       "title": "Xây dựng kế hoạch tuyển dụng",
-      "subtitle": "Thêm kế hoạch milestone nền tảng và các câu hỏi freelancer bắt buộc trả lời.",
+      "subtitle": "Thêm kế hoạch milestone nền tảng và các câu hỏi phỏng vấn bắt buộc hoặc tùy chọn.",
       "milestones": "Milestone nền tảng",
       "milestonesHint": "Xác định kết quả thanh toán và tiêu chí nghiệm thu. Freelancer vẫn có thể đề xuất điều chỉnh.",
       "questionsAdded": "câu hỏi đã thêm",
@@ -1358,7 +1359,10 @@
       "terms": "Ngân sách & thời gian",
       "termsHint": "Điều kiện thương mại và thời hạn nhận proposal.",
       "hiringPlan": "Kế hoạch tuyển dụng",
-      "hiringPlanHint": "Milestone tùy chọn và câu hỏi phỏng vấn bắt buộc."
+      "hiringPlanHint": "Milestone tùy chọn và câu hỏi phỏng vấn bắt buộc.",
+      "done": "Xong",
+      "savingInline": "Đang lưu...",
+      "removeSkill": "Xóa {{name}}"
     },
     "validation": {
       "skillLimit": "Bạn chỉ có thể chọn tối đa 10 kỹ năng.",
@@ -2091,6 +2095,7 @@
     "editAnswers": "Sửa câu trả lời",
     "noAnswers": "Không có câu trả lời đề xuất nào.",
     "required": "Bắt buộc",
+    "optional": "Tùy chọn",
     "noAnswerProvided": "Chưa cung cấp câu trả lời.",
     "proposal": "Đề xuất",
     "unknown": "Không xác định",
@@ -2110,6 +2115,12 @@
     "close": "Đóng",
     "holisticAdjustment": "Điều chỉnh Tổng thể",
     "adjustmentReason": "Lý do"
+  },
+  "proposalQuestions": {
+    "required": "Bắt buộc",
+    "optional": "Tùy chọn",
+    "continueInterview": "Tiếp tục phỏng vấn",
+    "skipAndContinue": "Bỏ qua & tiếp tục"
   },
   "proposalReview": {
     "back": "Quay lại bảng điều khiển client",

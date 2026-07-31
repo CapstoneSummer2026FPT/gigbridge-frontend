@@ -188,6 +188,62 @@ describe('usePostJob hook skills conversion', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/jobs/post/contract', expect.anything());
   });
 
+  it('returns the project field that blocks publication', async () => {
+    const { result } = renderHook(() => usePostJob());
+    let submissionResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+
+    await act(async () => {
+      submissionResult = await result.current.submitDraftFlow('publish');
+    });
+
+    expect(submissionResult).toEqual({
+      status: 'validation-error',
+      section: 'project',
+      fieldSelector: '#job-title',
+    });
+    expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+  });
+
+  it('returns the milestone field that blocks publication', async () => {
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+    const { result } = renderHook(() => usePostJob());
+
+    act(() => {
+      result.current.setForm(prev => ({
+        ...prev,
+        title: 'Build vendor onboarding portal',
+        majorId: 'major-1',
+        majorCategoryId: 'major-category-1',
+        categoryId: 'category-1',
+        description: 'We need a portal for vendors to submit documents and track approval status.',
+        estimatedDurationValue: '3',
+      }));
+      result.current.setMilestonePlans([{
+        title: '',
+        description: '',
+        amount: 12,
+        estimatedDuration: '2 weeks',
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        deliverables: 'Working onboarding workflow',
+        acceptanceCriteria: 'A vendor can complete every onboarding step',
+        orderIndex: 0,
+        workItems: [],
+      }]);
+    });
+
+    let submissionResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+    await act(async () => {
+      submissionResult = await result.current.submitDraftFlow('publish');
+    });
+
+    expect(submissionResult).toEqual({
+      status: 'validation-error',
+      section: 'hiringPlan',
+      fieldSelector: '[data-milestone-field="0.title"]',
+    });
+    expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+  });
+
   it('saves the first step before navigating to milestone setup', async () => {
     vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
 
@@ -356,7 +412,7 @@ describe('usePostJob hook skills conversion', () => {
     expect(result.current.attachmentError).toBeTruthy();
   });
 
-  it('sends every entered interview question as required', async () => {
+  it('preserves the selected required status in the draft payload', async () => {
     vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
 
     const { result } = renderHook(() => usePostJob());
@@ -385,9 +441,27 @@ describe('usePostJob hook skills conversion', () => {
       questions: [{
         questionText: 'How would you approach the onboarding workflow?',
         orderIndex: 0,
-        isRequired: true,
+        isRequired: false,
       }],
     }));
+  });
+
+  it('preserves optional questions from route state', () => {
+    mockLocationState = {
+      jobData: {
+        interviewQuestions: [{
+          questionText: 'Share any additional context if useful.',
+          isRequired: false,
+        }],
+      },
+    };
+
+    const { result } = renderHook(() => usePostJob());
+
+    expect(result.current.questions).toEqual([{
+      questionText: 'Share any additional context if useful.',
+      isRequired: false,
+    }]);
   });
 
   it('publishes a client baseline milestone without sending work breakdown items', async () => {

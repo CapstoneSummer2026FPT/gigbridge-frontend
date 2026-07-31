@@ -110,7 +110,7 @@ export function useFreelancerDashboard() {
     }
 
     if (proposalsResult.status === 'fulfilled' && proposalsResult.value.success) {
-      setProposals(proposalsResult.value.data ?? []);
+      setProposals(proposalsResult.value.data?.items ?? []);
     } else {
       setProposals([]);
       hasFailure = true;

@@ -249,7 +249,7 @@ export default function CreateProposalScreen() {
     if (!savedId || !resolvedJobPostId) return setSubmitting(false);
     const questionsResponse = await jobGetAPI.getJobPostQuestions(resolvedJobPostId);
     if (!questionsResponse.success) { setSubmitting(false); return setError(questionsResponse.message || 'Clarifying questions could not be loaded.'); }
-    if ((questionsResponse.data || []).some(question => question.isRequired)) {
+    if ((questionsResponse.data || []).length > 0) {
       setSubmitting(false);
       navigate(`/proposals/create/${resolvedJobPostId}/questions`, { state: { proposalId: savedId, jobPostId: resolvedJobPostId } });
       return;

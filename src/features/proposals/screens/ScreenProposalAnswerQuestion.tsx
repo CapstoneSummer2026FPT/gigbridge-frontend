@@ -15,6 +15,7 @@ import {
 } from '../../../types/models/Proposal';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
 import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 type AnswerRouteState = {
   proposalId?: string;
@@ -29,6 +30,7 @@ const formatRemainingTime = (seconds: number) => {
 };
 
 export default function ScreenProposalAnswerQuestion() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { jobPostId: routeJobPostId } = useParams<{ jobPostId: string }>();
@@ -107,7 +109,10 @@ export default function ScreenProposalAnswerQuestion() {
 
         setProposalReadinessError(getProposalNarrativeValidationError(proposalResponse.data));
 
-        const loadedQuestions = questionsResponse.data || [];
+        const loadedQuestions = (questionsResponse.data || []).map(question => ({
+          ...question,
+          isRequired: question.isRequired ?? true,
+        }));
         setQuestions(loadedQuestions);
 
         const answerMap: Record<string, string> = {};
@@ -563,11 +568,9 @@ export default function ScreenProposalAnswerQuestion() {
                         <span>
                           {question.orderIndex}. {question.questionText}
                         </span>
-                        {question.isRequired && (
-                          <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                            Required
-                          </span>
-                        )}
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${question.isRequired ? 'bg-red-500/10 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+                          {t(question.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
+                        </span>
                       </span>
                       <textarea
                         rows={5}
@@ -603,11 +606,9 @@ export default function ScreenProposalAnswerQuestion() {
                     <span>
                       {activeQuestion.orderIndex}. {activeQuestion.questionText}
                     </span>
-                    {activeQuestion.isRequired && (
-                      <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                        Required
-                      </span>
-                    )}
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${activeQuestion.isRequired ? 'bg-red-500/10 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+                      {t(activeQuestion.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
+                    </span>
                   </span>
                   <textarea
                     rows={7}
@@ -647,7 +648,9 @@ export default function ScreenProposalAnswerQuestion() {
                   className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground hover:bg-muted/20 disabled:opacity-60"
                 >
                   <CheckCircle2 size={16} />
-                  Continue Interview
+                  {t(!activeQuestion.isRequired && !(answers[activeQuestion.jobPostQuestionsId] || '').trim()
+                    ? 'proposalQuestions.skipAndContinue'
+                    : 'proposalQuestions.continueInterview')}
                 </button>
               ) : null}
               <button

@@ -1195,14 +1195,15 @@
     "questionsForInterview": "Interview Questions",
     "optional": "Optional",
     "questionsGuideTitle": "Interview questions are optional",
-    "questionsGuideDesc": "You may publish without interview questions. Every question you add requires an answer from the freelancer.",
+    "questionsGuideDesc": "You may publish without interview questions. Mark each question as required or optional.",
     "questionsExample1": "\"Please share 1–2 recent freelance projects you completed related to this requirement.\"",
     "questionsExample2": "\"How long do you expect to complete the work and what is your implementation plan?\"",
     "questionsExample3": "\"If you encounter a technical problem you cannot solve alone, how do you handle it?\"",
     "question": "Question {{number}}",
     "required": "Required answer",
+    "requiredStatus": "Required answer for question {{number}}",
     "deleteQuestion": "Delete Question",
-    "questionPlaceholder": "Enter a question the freelancer must answer...",
+    "questionPlaceholder": "Enter a question for the freelancer...",
     "noQuestions": "No interview questions added. You can publish without questions.",
     "addQuestion": "Add Interview Question",
     "reorderQuestion": "Drag to reorder question",
@@ -1323,7 +1324,7 @@
     },
     "plan": {
       "title": "Build the hiring plan",
-      "subtitle": "Add an optional baseline milestone plan and the questions freelancers must answer.",
+      "subtitle": "Add an optional baseline milestone plan and required or optional interview questions.",
       "milestones": "Baseline milestones",
       "milestonesHint": "Define payable outcomes and acceptance criteria. Freelancers can propose adjustments.",
       "questionsAdded": "questions added",
@@ -1365,7 +1366,10 @@
       "terms": "Budget & timeline",
       "termsHint": "Commercial expectations and proposal availability.",
       "hiringPlan": "Hiring plan",
-      "hiringPlanHint": "Optional milestones and required interview questions."
+      "hiringPlanHint": "Optional milestones and required interview questions.",
+      "done": "Done",
+      "savingInline": "Saving...",
+      "removeSkill": "Remove {{name}}"
     },
     "validation": {
       "skillLimit": "You can select up to 10 skills in total.",
@@ -2098,6 +2102,7 @@
     "editAnswers": "Edit Answers",
     "noAnswers": "No proposal answers are available.",
     "required": "Required",
+    "optional": "Optional",
     "noAnswerProvided": "No answer provided.",
     "proposal": "Proposal",
     "unknown": "Unknown",
@@ -2117,6 +2122,12 @@
     "close": "Close",
     "holisticAdjustment": "Holistic Adjustment",
     "adjustmentReason": "Reason"
+  },
+  "proposalQuestions": {
+    "required": "Required",
+    "optional": "Optional",
+    "continueInterview": "Continue Interview",
+    "skipAndContinue": "Skip & Continue"
   },
   "proposalReview": {
     "back": "Back to client dashboard",

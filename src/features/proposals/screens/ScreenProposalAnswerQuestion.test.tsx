@@ -103,6 +103,15 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
         lockedReason: null,
       },
     });
+    startInterviewReviewMock.mockResolvedValue({
+      success: true,
+      data: {
+        proposalId: 'proposal-1',
+        reviewableQuestionIds: [],
+        remainingSeconds: 180,
+        isLocked: false,
+      },
+    });
   });
 
   it('starts the timer explicitly without requesting fullscreen', async () => {
@@ -161,5 +170,47 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
     fireEvent.click(screen.getByRole('button', { name: /edit proposal details/i }));
     expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-1/edit');
     expect(startQuestionTimerMock).not.toHaveBeenCalled();
+  });
+
+  it('allows an optional question to be skipped with a blank answer', async () => {
+    getQuestionsMock.mockResolvedValueOnce({
+      success: true,
+      data: [{
+        jobPostQuestionsId: 'question-1',
+        questionText: 'Share any additional context if useful.',
+        orderIndex: 1,
+        isRequired: false,
+      }],
+    });
+    completeQuestionTimerMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        proposalId: 'proposal-1',
+        jobPostQuestionId: 'question-1',
+        remainingSeconds: 0,
+        isLocked: true,
+        lockedReason: 0,
+      },
+    });
+
+    render(<ScreenProposalAnswerQuestion />);
+    fireEvent.click(await screen.findByRole('button', { name: /start interview/i }));
+    const skipButton = await screen.findByRole('button', { name: /skip & continue/i });
+    fireEvent.click(skipButton);
+
+    await waitFor(() => expect(completeQuestionTimerMock).toHaveBeenCalledWith(
+      'proposal-1',
+      'question-1',
+      { answerText: '', lockedReason: 0 },
+    ));
+  });
+
+  it('does not allow a required question to continue with a blank answer', async () => {
+    render(<ScreenProposalAnswerQuestion />);
+    fireEvent.click(await screen.findByRole('button', { name: /start interview/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /continue interview/i }));
+
+    expect(await screen.findByText('Answer is required for question 1.')).toBeInTheDocument();
+    expect(completeQuestionTimerMock).not.toHaveBeenCalled();
   });
 });

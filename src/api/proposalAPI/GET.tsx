@@ -1,6 +1,7 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
+import type { PaginatedList } from '../../types/models/Profile';
 
 const proposalsUrl = 'Proposals';
 
@@ -17,12 +18,12 @@ export const proposalGetAPI = {
 
   /**
    * GET /api/Proposals/my-proposals
-   * Freelancer-only proposal list.
+   * Freelancer-only proposal list (paginated).
    */
   getMyProposals: async (
     params: ProposalQueryParams = {}
-  ): Promise<ApiResponse<ProposalDto[]>> => {
-    return apiService.get<ProposalDto[]>(`${proposalsUrl}/my-proposals`, params);
+  ): Promise<ApiResponse<PaginatedList<ProposalDto>>> => {
+    return apiService.get<PaginatedList<ProposalDto>>(`${proposalsUrl}/my-proposals`, params);
   },
 
   /**

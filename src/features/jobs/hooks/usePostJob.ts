@@ -92,7 +92,18 @@ export interface PostJobRouteState {
 
 export type PostJobSubmitMode = 'draft' | 'plan' | 'review' | 'publish';
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type PostJobReviewSection = 'project' | 'terms' | 'hiringPlan';
+export type PostJobSubmitResult =
+  | { status: 'success' }
+  | { status: 'validation-error'; section: PostJobReviewSection; fieldSelector?: string }
+  | { status: 'error' };
 type LeaveAction = 'save' | 'discard' | null;
+
+interface PostJobValidationIssue {
+  message: string;
+  section: PostJobReviewSection;
+  fieldSelector?: string;
+}
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
   JobPostId?: string;
@@ -146,7 +157,7 @@ const toStringValue = (value: string | number | null | undefined): string => (
 const initialQuestionsFromState = (initialJobData?: PostJobRouteJobData | null): QuestionInput[] => {
   const initialQuestions = initialJobData?.interviewQuestions?.map(question => ({
     questionText: question.questionText || question.question || '',
-    isRequired: true,
+    isRequired: question.isRequired ?? true,
   })) || [];
 
   return initialQuestions.length > 0 ? initialQuestions : [emptyQuestion()];
@@ -157,7 +168,7 @@ const questionsFromDtos = (questions: JobPostQuestionDto[]): QuestionInput[] => 
     .sort((left, right) => left.orderIndex - right.orderIndex)
     .map(question => ({
       questionText: question.questionText || '',
-      isRequired: true,
+      isRequired: question.isRequired ?? true,
     }));
 
   return mapped.length > 0 ? mapped : [emptyQuestion()];
@@ -806,41 +817,52 @@ export function usePostJob() {
     }
   };
 
-  const validateForm = () => {
-    if (!form.title.trim()) return t('postJobWizard.validation.titleRequired');
-    if (form.title.trim().length > 200) return t('postJobWizard.validation.titleTooLong');
-    if (!form.majorId) return t('postJobWizard.validation.majorRequired');
-    if (!form.majorCategoryId || !form.categoryId) return t('postJobWizard.validation.categoryRequired');
-    if (!form.description.trim()) return t('postJobWizard.validation.descriptionRequired');
+  const validateForm = (): PostJobValidationIssue | null => {
+    if (!form.title.trim()) return { message: t('postJobWizard.validation.titleRequired'), section: 'project', fieldSelector: '#job-title' };
+    if (form.title.trim().length > 200) return { message: t('postJobWizard.validation.titleTooLong'), section: 'project', fieldSelector: '#job-title' };
+    if (!form.majorId) return { message: t('postJobWizard.validation.majorRequired'), section: 'project', fieldSelector: '#job-major' };
+    if (!form.majorCategoryId || !form.categoryId) return { message: t('postJobWizard.validation.categoryRequired'), section: 'project', fieldSelector: '#job-category' };
+    if (!form.description.trim()) return { message: t('postJobWizard.validation.descriptionRequired'), section: 'project', fieldSelector: '#job-description' };
 
     const budgetValue = form.budget ? Number(form.budget) : null;
     if (budgetValue !== null && (Number.isNaN(budgetValue) || budgetValue < 0)) {
-      return t('postJobWizard.validation.budgetInvalid');
+      return { message: t('postJobWizard.validation.budgetInvalid'), section: 'terms', fieldSelector: '#job-budget' };
     }
-    if (!isValidJobDurationValue(form.estimatedDurationValue)) return t('postJobWizard.validation.durationInvalid');
+    if (!isValidJobDurationValue(form.estimatedDurationValue)) {
+      return { message: t('postJobWizard.validation.durationInvalid'), section: 'terms', fieldSelector: '#job-duration' };
+    }
 
     if (form.deadline) {
       const endDate = new Date(`${form.deadline}T23:59:59`);
-      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) return t('postJobWizard.validation.deadlineInvalid');
+      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
+        return { message: t('postJobWizard.validation.deadlineInvalid'), section: 'terms', fieldSelector: '#job-deadline' };
+      }
     }
 
     return null;
   };
 
-  const validateQuestions = (): string | null => {
+  const validateQuestions = (): PostJobValidationIssue | null => {
     const nonEmptyQuestions = questionsWithOrder.filter(question => question.questionText.trim());
     const orderIndexes = nonEmptyQuestions.map(question => question.orderIndex);
-    if (new Set(orderIndexes).size !== orderIndexes.length) return t('postJobWizard.validation.questionOrderUnique');
+    if (new Set(orderIndexes).size !== orderIndexes.length) {
+      return { message: t('postJobWizard.validation.questionOrderUnique'), section: 'hiringPlan' };
+    }
 
     for (const question of nonEmptyQuestions) {
-      if (question.questionText.length > MAX_QUESTION_LENGTH) return t('postJobWizard.validation.questionTooLong');
-      if (!Number.isInteger(question.orderIndex) || question.orderIndex < 0) return t('postJobWizard.validation.questionOrderInvalid');
+      const fieldSelector = `[data-question-index="${question.orderIndex}"]`;
+      if (question.questionText.length > MAX_QUESTION_LENGTH) {
+        return { message: t('postJobWizard.validation.questionTooLong'), section: 'hiringPlan', fieldSelector };
+      }
+      if (!Number.isInteger(question.orderIndex) || question.orderIndex < 0) {
+        return { message: t('postJobWizard.validation.questionOrderInvalid'), section: 'hiringPlan', fieldSelector };
+      }
     }
 
     return null;
   };
 
-  const validateMilestonePlans = (): string | null => {
+  const validateMilestonePlans = (): PostJobValidationIssue | null => {
     const errors: Record<string, string> = {};
     const today = new Date().toISOString().slice(0, 10);
     let previousDueDate: string | null = null;
@@ -876,7 +898,11 @@ export function usePostJob() {
         target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         target?.focus();
       });
-      return t('postJobWizard.validation.milestoneIncomplete');
+      return {
+        message: t('postJobWizard.validation.milestoneIncomplete'),
+        section: 'hiringPlan',
+        fieldSelector: `[data-milestone-field="${index}.${field}"]`,
+      };
     }
 
     return null;
@@ -887,20 +913,13 @@ export function usePostJob() {
     toast.error(message);
   };
 
-  const focusFirstDetailError = (message: string): void => {
-    const fieldByMessage = new Map<string, string>([
-      [t('postJobWizard.validation.titleRequired'), 'job-title'],
-      [t('postJobWizard.validation.titleTooLong'), 'job-title'],
-      [t('postJobWizard.validation.majorRequired'), 'job-major'],
-      [t('postJobWizard.validation.categoryRequired'), 'job-category'],
-      [t('postJobWizard.validation.descriptionRequired'), 'job-description'],
-      [t('postJobWizard.validation.budgetInvalid'), 'job-budget'],
-      [t('postJobWizard.validation.durationInvalid'), 'job-duration'],
-      [t('postJobWizard.validation.deadlineInvalid'), 'job-deadline'],
-    ]);
-    const fieldId = fieldByMessage.get(message);
-    if (!fieldId) return;
-    requestAnimationFrame(() => document.getElementById(fieldId)?.focus());
+  const focusValidationIssue = (issue: PostJobValidationIssue): void => {
+    if (!issue.fieldSelector) return;
+    requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(issue.fieldSelector!);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target?.focus();
+    });
   };
 
   const buildDraftRequest = (): SaveDraftJobPostRequest => {
@@ -924,7 +943,7 @@ export function usePostJob() {
         .map(question => ({
           questionText: question.questionText.trim(),
           orderIndex: question.orderIndex,
-          isRequired: true,
+          isRequired: question.isRequired,
         })),
     milestonePlans: milestonePlans.map((milestone, orderIndex) => ({
         ...milestone,
@@ -1112,29 +1131,42 @@ export function usePostJob() {
     }
   };
 
-  const submitDraftFlow = async (mode: PostJobSubmitMode): Promise<void> => {
+  const submitDraftFlow = async (mode: PostJobSubmitMode): Promise<PostJobSubmitResult> => {
     if (mode === 'plan' || mode === 'review' || mode === 'publish') {
-      const detailValidationError = validateForm();
-      if (detailValidationError) {
-        showValidationError(detailValidationError);
-        focusFirstDetailError(detailValidationError);
-        return;
+      const detailValidationIssue = validateForm();
+      if (detailValidationIssue) {
+        showValidationError(detailValidationIssue.message);
+        focusValidationIssue(detailValidationIssue);
+        return {
+          status: 'validation-error',
+          section: detailValidationIssue.section,
+          fieldSelector: detailValidationIssue.fieldSelector,
+        };
       }
     }
 
     if (mode === 'review' || mode === 'publish') {
-      const planValidationError = validateMilestonePlans();
-      if (planValidationError) {
-        showValidationError(planValidationError);
-        return;
+      const planValidationIssue = validateMilestonePlans();
+      if (planValidationIssue) {
+        showValidationError(planValidationIssue.message);
+        return {
+          status: 'validation-error',
+          section: planValidationIssue.section,
+          fieldSelector: planValidationIssue.fieldSelector,
+        };
       }
     }
 
     if (mode === 'review' || mode === 'publish') {
-      const questionValidationError = validateQuestions();
-      if (questionValidationError) {
-        showValidationError(questionValidationError);
-        return;
+      const questionValidationIssue = validateQuestions();
+      if (questionValidationIssue) {
+        showValidationError(questionValidationIssue.message);
+        focusValidationIssue(questionValidationIssue);
+        return {
+          status: 'validation-error',
+          section: questionValidationIssue.section,
+          fieldSelector: questionValidationIssue.fieldSelector,
+        };
       }
     }
 
@@ -1148,13 +1180,13 @@ export function usePostJob() {
       if (mode === 'plan') {
         allowNextNavigation();
         navigate('/jobs/post/plan', { state: navigationState });
-        return;
+        return { status: 'success' };
       }
 
       if (mode === 'review') {
         allowNextNavigation();
         navigate('/jobs/post/review', { state: navigationState });
-        return;
+        return { status: 'success' };
       }
 
       if (mode === 'publish') {
@@ -1163,16 +1195,18 @@ export function usePostJob() {
         toast.success(t('postJobWizard.messages.published'));
         allowNextNavigation();
         navigate('/jobs/my-jobs');
-        return;
+        return { status: 'success' };
       }
 
       toast.success(t('postJobWizard.messages.draftSaved'));
       allowNextNavigation();
       navigate('/jobs/my-jobs');
+      return { status: 'success' };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Project request could not be saved.';
       setErrorMessage(message);
       toast.error(message);
+      return { status: 'error' };
     } finally {
       setSubmitMode(null);
     }

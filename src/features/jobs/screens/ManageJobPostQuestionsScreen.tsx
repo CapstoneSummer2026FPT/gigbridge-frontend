@@ -7,6 +7,7 @@ import { jobAPI } from '../../../api/jobAPI';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
 import '../styles/PostJobScreen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 
 type QuestionDraft = JobPostQuestionDto & {
   isNew?: boolean;
@@ -15,7 +16,10 @@ type QuestionDraft = JobPostQuestionDto & {
 const orderQuestions = (questions: JobPostQuestionDto[]) =>
   [...questions].sort((a, b) => a.orderIndex - b.orderIndex);
 
-const toDraft = (question: JobPostQuestionDto): QuestionDraft => ({ ...question, isRequired: true });
+const toDraft = (question: JobPostQuestionDto): QuestionDraft => ({
+  ...question,
+  isRequired: question.isRequired ?? true,
+});
 
 const isDraftRuleFailure = (message?: string) =>
   (message || '').toLowerCase().includes('questions can only be modified');
@@ -144,7 +148,7 @@ export default function ManageJobPostQuestionsScreen() {
       const response = await jobAPI.createJobPostQuestion(jobPostId, {
         questionText: question.questionText.trim(),
         orderIndex: question.orderIndex,
-        isRequired: true,
+        isRequired: question.isRequired,
       });
 
       if (!response.success) {
@@ -158,7 +162,7 @@ export default function ManageJobPostQuestionsScreen() {
       jobPostQuestionsId: question.jobPostQuestionsId,
       questionText: question.questionText.trim(),
       orderIndex: question.orderIndex,
-      isRequired: true,
+      isRequired: question.isRequired,
     }));
 
     if (changed.length > 0) {
@@ -231,9 +235,11 @@ export default function ManageJobPostQuestionsScreen() {
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('manageQuestions.questionNum', { num: index + 1 })}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-[var(--gb-cyan)]">
-                        {t('manageQuestions.required')}
-                      </span>
+                      <QuestionRequiredToggle
+                        isRequired={question.isRequired}
+                        questionNumber={index + 1}
+                        onChange={isRequired => updateQuestion(question.jobPostQuestionsId, { isRequired, orderIndex: index })}
+                      />
                       <button
                         type="button"
                         onClick={() => handleDeleteQuestion(question)}

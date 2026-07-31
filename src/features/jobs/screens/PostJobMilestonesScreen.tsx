@@ -8,6 +8,7 @@ import {
 } from '../../../shared/components/NestedMilestonePlanEditor';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
+import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
 
@@ -47,7 +48,7 @@ export default function PostJobMilestonesScreen() {
   ).length;
   const completionParts = [
     milestonePlans.length === 0 || completeMilestones === milestonePlans.length,
-    questions.every(question => !question.questionText.trim() || question.isRequired),
+    questions.every(question => question.questionText.length <= MAX_QUESTION_LENGTH),
   ];
 
   return (
@@ -201,19 +202,26 @@ export default function PostJobMilestonesScreen() {
                 onDragEnd={handleDragEnd}
                 className={`rounded-xl border p-4 ${draggedIndex === index ? 'border-[var(--brand)] opacity-60' : 'border-border bg-background'}`}
               >
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
                     <GripVertical size={14} />{t('postJob.question', { number: index + 1 })}
-                    <em className="not-italic text-[var(--brand)]">{t('postJob.required')}</em>
                   </span>
-                  <button type="button" onClick={() => setQuestions(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={t('postJob.deleteQuestion')}><Trash2 size={14} /></button>
+                  <div className="flex items-center gap-3">
+                    <QuestionRequiredToggle
+                      isRequired={question.isRequired}
+                      questionNumber={index + 1}
+                      onChange={isRequired => updateQuestion(index, { isRequired })}
+                    />
+                    <button type="button" onClick={() => setQuestions(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={t('postJob.deleteQuestion')}><Trash2 size={14} /></button>
+                  </div>
                 </div>
                 <textarea
+                  data-question-index={index}
                   className="job-post-input"
                   rows={3}
                   maxLength={MAX_QUESTION_LENGTH}
                   value={question.questionText}
-                  onChange={event => updateQuestion(index, { questionText: event.target.value, isRequired: true })}
+                  onChange={event => updateQuestion(index, { questionText: event.target.value })}
                   placeholder={t('postJob.questionPlaceholder')}
                 />
                 <div className="mt-1 text-right text-[10px] text-muted-foreground">{question.questionText.length}/{MAX_QUESTION_LENGTH}</div>

@@ -45,7 +45,7 @@ export default function FreelancerProposalsScreen() {
           return;
         }
 
-        const loadedProposals = (response.data || []).map(proposal => ({
+        const loadedProposals = (response.data?.items || []).map(proposal => ({
           ...proposal,
           updatedAt: proposal.reviewedAt || proposal.submittedAt,
         }));

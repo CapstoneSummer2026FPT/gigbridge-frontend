@@ -327,4 +327,33 @@ describe('CreateProposalScreen milestone experience', () => {
       workItems: [expect.objectContaining({ title: 'Discovery' })],
     });
   });
+
+  it('opens the interview flow when the project only has optional questions', async () => {
+    getJobPostQuestionsMock.mockResolvedValueOnce({
+      success: true,
+      data: [{
+        jobPostQuestionsId: 'question-1',
+        questionText: 'Share any additional context if useful.',
+        orderIndex: 0,
+        isRequired: false,
+      }],
+    });
+    render(<CreateProposalScreen />);
+    await screen.findByRole('heading', { name: 'Project Proposal' });
+
+    fireEvent.change(screen.getByLabelText('Introduction'), {
+      target: { value: 'A'.repeat(60) },
+    });
+    fireEvent.change(screen.getByLabelText('Your Proposal Approach'), {
+      target: { value: 'B'.repeat(60) },
+    });
+    fillCoreMilestone();
+    fireEvent.click(screen.getByRole('button', { name: /submit proposal/i }));
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith(
+      '/proposals/create/job-1/questions',
+      { state: { proposalId: 'proposal-1', jobPostId: 'job-1' } },
+    ));
+    expect(updateProposalStatusMock).not.toHaveBeenCalled();
+  });
 });
