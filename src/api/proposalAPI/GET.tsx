@@ -1,7 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalQueryParams } from '../../types/models/Proposal';
-import type { PaginatedList } from '../../types/models/Profile';
+import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalJudgingListDto, ProposalQueryParams, ProposalListPageDto } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
 
@@ -36,8 +35,28 @@ export const proposalGetAPI = {
    */
   getMyProposals: async (
     params: ProposalQueryParams = {}
-  ): Promise<ApiResponse<PaginatedList<ProposalDto>>> => {
-    return apiService.get<PaginatedList<ProposalDto>>(`${proposalsUrl}/my-proposals`, params);
+  ): Promise<ApiResponse<ProposalListPageDto>> => {
+    const response = await apiService.get<any>(`${proposalsUrl}/my-proposals`, params);
+    return {
+      ...response,
+      data: response.data
+        ? {
+            items: response.data.items || [],
+            pageNumber: response.data.pageNumber || 1,
+            totalPages: response.data.totalPages || 1,
+            totalCount: response.data.totalCount || 0,
+            hasPreviousPage: !!response.data.hasPreviousPage,
+            hasNextPage: !!response.data.hasNextPage,
+          }
+        : {
+            items: [],
+            pageNumber: 1,
+            totalPages: 1,
+            totalCount: 0,
+            hasPreviousPage: false,
+            hasNextPage: false,
+          },
+    };
   },
 
   /**
@@ -69,6 +88,17 @@ export const proposalGetAPI = {
     params: ProposalQueryParams = {}
   ): Promise<ApiResponse<ProposalDto[]>> => {
     return apiService.get<ProposalDto[]>(`${proposalsUrl}/job/${jobPostId}/proposals`, params);
+  },
+
+  /**
+   * GET /api/Proposals/job/{jobPostId}/ai-judging-list
+   * Client-only ranked AI proposal judging list and summary stats for a job post.
+   */
+  getProposalJudgingList: async (
+    jobPostId: string,
+    params: { recommendedOnly?: boolean; minScore?: number; sortBy?: string } = {}
+  ): Promise<ApiResponse<ProposalJudgingListDto>> => {
+    return apiService.get<ProposalJudgingListDto>(`${proposalsUrl}/job/${jobPostId}/ai-judging-list`, params);
   },
 
   /**

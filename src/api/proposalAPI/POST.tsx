@@ -1,6 +1,8 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
+  BatchJudgeResultDto,
+  CreateProposalAnswerRequest,
   CreateProposalRequest,
   CompleteQuestionTimerRequest,
   InterviewReviewSessionDto,
@@ -50,10 +52,19 @@ export const proposalPostAPI = {
     return apiService.post<string>(`${proposalsUrl}/${proposalId}/accept-for-negotiation`);
   },
 
-  evaluateProposalAnswers: async (
-    proposalId: string
+  judgeAllProposals: async (
+    jobPostId: string,
+    batchSize: number = 10
+  ): Promise<ApiResponse<BatchJudgeResultDto>> => {
+    return apiService.post<BatchJudgeResultDto>(`${proposalsUrl}/job/${jobPostId}/ai-judge-all?batchSize=${batchSize}`);
+  },
+
+  evaluateVettingAnswers: async (
+    proposalId: string,
+    onlyIfCached: boolean = false
   ): Promise<ApiResponse<VettingEvaluationResponseDto>> => {
-    const response = await apiService.post<any>(`${proposalsUrl}/${proposalId}/answer-evaluation`);
+    const url = `${proposalsUrl}/${proposalId}/ai-interview-judging${onlyIfCached ? '?onlyIfCached=true' : ''}`;
+    const response = await apiService.post<any>(url);
     if (response.success && response.data) {
       const raw = response.data;
       const mapped: VettingEvaluationResponseDto = {

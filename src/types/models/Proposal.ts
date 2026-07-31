@@ -36,6 +36,16 @@ export interface ProposalQueryParams {
   pageSize?: number;
   PageIndex?: number;
   PageSize?: number;
+  status?: number;
+}
+
+export interface ProposalListPageDto {
+  items: ProposalDto[];
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 }
 
 export interface ProposalDto {
@@ -55,10 +65,38 @@ export interface ProposalDto {
   milestoneCount?: number;
   milestoneTotal?: number;
   firstMilestoneAmount?: number | null;
+  // AI Judging Attributes
+  aiScore?: number | null;
+  aiSummary?: string | null;
+  aiRecommendedHire?: boolean | null;
+  aiEvaluatedAt?: string | null;
+  aiTechnicalSkills?: string[] | null;
+  aiSoftSkills?: string[] | null;
+
+  // AI Interview Status Attributes (from remote develop)
   hasAiInterview?: boolean;
   aiInterviewCompleted?: boolean;
   aiInterviewInProgress?: boolean;
   aiInterviewDefinitionId?: string | null;
+}
+
+export interface ProposalJudgingListDto {
+  jobPostId: string;
+  jobPostTitle: string;
+  totalProposalsCount: number;
+  judgedCount: number;
+  unjudgedCount: number;
+  averageScore: number;
+  topScore: number;
+  recommendedCount: number;
+  rankedProposals: ProposalDto[];
+}
+
+export interface BatchJudgeResultDto {
+  processedCount: number;
+  remainingCount: number;
+  isCompleted: boolean;
+  processedProposals: ProposalDto[];
 }
 
 export interface ProposalAttachmentViewModel {
@@ -241,4 +279,3 @@ export interface VettingEvaluationResponseDto {
   holisticAdjustmentReason: string;
   gradedQuestions: GradedQuestionDto[];
 }
-
