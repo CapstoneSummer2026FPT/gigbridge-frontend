@@ -440,9 +440,10 @@ export interface UpdateJobPostVisibilityRequest {
 export interface Review {
   reviewId?: string;
   id?: string;
-  contractId?: string;
-  jobPostId?: string;
-  jobId?: string;
+    contractId?: string;
+    jobPostId?: string;
+    jobId?: string;
+    projectTitle?: string;
   reviewerId: string;
   reviewerName?: string | null;
   revieweeId: string;

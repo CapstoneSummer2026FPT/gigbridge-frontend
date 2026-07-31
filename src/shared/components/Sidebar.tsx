@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, Settings, Shield, Users, Flag,
   TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, Layers, Banknote
+  ChevronDown, Wallet, Layers, Banknote, Star
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -61,6 +61,7 @@ function getClientNavItems(t: any): NavItem[] {
         { id: 'proposals', label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals' },
         { id: 'contracts', label: t('nav.contracts'), icon: <FileText size={18} />, path: '/contracts' },
         { id: 'projects', label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'reviews', label: t('nav.reviews'), icon: <Star size={18} />, path: '/reviews' },
       ],
     },
     {
@@ -125,6 +126,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
         { id: 'my-proposals', label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
         { id: 'contracts', label: t('nav.contracts'), icon: <FileText size={18} />, path: '/contracts' },
         { id: 'projects', label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'reviews', label: t('nav.reviews'), icon: <Star size={18} />, path: '/reviews' },
       ],
     },
     {
@@ -176,6 +178,7 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
         { label: 'Assets Library', icon: <Layers size={18} />, path: '/admin/assets' },
         { label: t('nav.disputeManagement') || 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
         { label: t('nav.faqManagement') || 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
+        { label: t('nav.reviewManagement') || 'Review Management', icon: <Star size={18} />, path: '/admin/reviews' },
         {
           label: t('nav.reports') || 'Reports',
           icon: <Flag size={18} />,

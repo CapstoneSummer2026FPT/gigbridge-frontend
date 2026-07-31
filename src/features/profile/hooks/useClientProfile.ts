@@ -9,7 +9,11 @@ type ReviewViewModel = {
   reviewerId: string;
   reviewerName: string;
   revieweeId: string;
+  projectTitle: string;
   rating: number;
+  communicationRating: number | null;
+  qualityRating: number | null;
+  timelinessRating: number | null;
   comment: string;
   isAnonymous: boolean;
   createdAt: string;
@@ -21,7 +25,11 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
   reviewerId: review.reviewerId,
   reviewerName: review.reviewerName ?? 'Anonymous Reviewer',
   revieweeId: review.revieweeId,
+  projectTitle: review.projectTitle ?? '',
   rating: review.rating,
+  communicationRating: review.communicationRating ?? null,
+  qualityRating: review.qualityRating ?? null,
+  timelinessRating: review.timelinessRating ?? null,
   comment: review.comment ?? '',
   isAnonymous: Boolean(review.isAnonymous),
   createdAt: review.createdAt,

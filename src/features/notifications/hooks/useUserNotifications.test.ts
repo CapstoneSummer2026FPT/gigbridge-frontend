@@ -9,6 +9,7 @@ describe('normalizeNotification', () => {
     [17, 'promotion', '/premium/freelancer/promotions'],
     [18, 'rank_protection', '/premium/freelancer/rank-protection'],
     [19, 'rank_protection', '/premium/freelancer/rank-protection'],
+    [21, 'review', '/reviews/create'],
   ] as const)('maps backend type %i to %s', (type, expectedType, expectedUrl) => {
     const result = normalizeNotification(
       { notificationId: `notification-${type}`, type, title: 'Title', content: 'Body' },
@@ -32,6 +33,19 @@ describe('normalizeNotification', () => {
 
     expect(result.type).toBe('report');
     expect(result.actionUrl).toBe('/contracts/contract-id');
+  });
+
+  it.each([9, 21])('routes review notification type %i to the referenced contract review', type => {
+    const result = normalizeNotification({
+      notificationId: `review-${type}`,
+      type,
+      referenceId: 'contract-id',
+      referenceType: 'Contract',
+      title: 'Review project partner',
+    });
+
+    expect(result.type).toBe('review');
+    expect(result.actionUrl).toBe('/reviews/create?contractId=contract-id');
   });
 
   it('uses the broadcast recipient as the read target', () => {

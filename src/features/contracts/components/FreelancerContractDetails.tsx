@@ -990,8 +990,14 @@ export function FreelancerContractDetails({
                       className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl font-bold text-sm cursor-pointer transition-all flex items-center justify-center gap-2"
                     >
                       <Star size={17} />
-                      {t('contracts.leaveReview')}
+                      {t('reviews.leaveForClient')}
                     </motion.button>
+                  )}
+                  {contract.hasReviewedByCurrentUser && contract.status === ContractStatus.Completed && (
+                    <div className="w-full py-3 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                      <CheckCircle size={17} />
+                      {t('reviews.reviewed')}
+                    </div>
                   )}
 
                   {!isAdminOverride && activeDisputeLoading && (

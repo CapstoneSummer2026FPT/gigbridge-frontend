@@ -44,6 +44,7 @@ const AdminJobsScreen = lazy(() => import('../features/admin/screens/AdminJobsSc
 const AdminSystemTrackingScreen = lazy(() => import('../features/admin/screens/AdminSystemTrackingScreen'));
 const AdminWithdrawalsScreen = lazy(() => import('../features/admin/screens/AdminWithdrawalsScreen'));
 const AdminReportsScreen = lazy(() => import('../features/admin/screens/AdminReportsScreen'));
+const AdminReviewsScreen = lazy(() => import('../features/admin/screens/AdminReviewsScreen'));
 const AdminNotificationsScreen = lazy(() => import('../features/admin/screens/AdminNotificationsScreen'));
 const AdminContractAuditScreen = lazy(() => import('../features/admin/screens/AdminContractAuditScreen'));
 const AdminContractTemplatesScreen = lazy(() => import('../features/admin/screens/AdminContractTemplatesScreen'));
@@ -53,6 +54,7 @@ const AdminDisputeManagementScreen = lazy(() => import('../features/admin/screen
 const DisputeDetailScreen = lazy(() => import('../features/disputes/screens/DisputeDetailScreen'));
 const NotificationsScreen = lazy(() => import('../features/notifications/screens/NotificationsScreen'));
 const CreateReviewScreen = lazy(() => import('../features/reviews/screens/CreateReviewScreen'));
+const MyReviewsScreen = lazy(() => import('../features/reviews/screens/MyReviewsScreen'));
 const SmartTalentMatchingScreen = lazy(() => import('../features/talent-matching/screens/SmartTalentMatchingScreen'));
 const AboutScreen = lazy(() => import('../features/company/screens/AboutScreen'));
 const CareersScreen = lazy(() => import('../features/company/screens/CareersScreen'));
@@ -88,6 +90,7 @@ import { getProposalCreatePath } from '../features/proposals/utils/proposalRoute
 
 const CLIENT_ONLY_ROLES = [UserRole.Client] as const;
 const FREELANCER_ONLY_ROLES = [UserRole.Freelancer] as const;
+const PARTICIPANT_ROLES = [UserRole.Client, UserRole.Freelancer] as const;
 
 function LegacyJobPostRedirect({ to }: { to: '/jobs/post' | '/jobs/post/plan' }) {
   const location = useLocation();
@@ -293,6 +296,7 @@ export const router = createBrowserRouter([
       { path: 'admin/faq-management', element: <AdminRoute><AdminFAQManagementScreen /></AdminRoute> },
       { path: 'admin/disputes', element: <AdminRoute><AdminDisputeManagementScreen /></AdminRoute> },
       { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
+      { path: 'admin/reviews', element: <AdminRoute><AdminReviewsScreen /></AdminRoute> },
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/withdrawals', element: <AdminRoute><AdminWithdrawalsScreen /></AdminRoute> },
       { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
@@ -300,6 +304,7 @@ export const router = createBrowserRouter([
       // Notifications - requires authentication
       { path: 'notifications', element: <ProtectedRoute requireAuth><NotificationsScreen /></ProtectedRoute> },
       { path: 'reviews/create', element: <ProtectedRoute requireAuth requireSetup><CreateReviewScreen /></ProtectedRoute> },
+      { path: 'reviews', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><MyReviewsScreen /></ProtectedRoute> },
 
       // Company Pages - public
       { path: 'about', element: <AboutScreen /> },

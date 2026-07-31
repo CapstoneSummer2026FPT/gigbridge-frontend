@@ -8,6 +8,8 @@ import { useProjectWorkspace } from '../../hooks/useProjectWorkspace';
 const navigateMock = vi.fn();
 const handleRequestMilestoneUnlockMock = vi.fn();
 const handleEndProjectMock = vi.fn();
+const clearReviewPromptMock = vi.fn();
+const refreshWorkspaceMock = vi.fn();
 
 type ProjectWorkspaceHookState = ReturnType<typeof useProjectWorkspace>;
 type WorkspaceMilestoneFixture = ProjectWorkspaceHookState['project']['milestones'][number];
@@ -33,6 +35,16 @@ vi.mock('../../../../hooks/useTranslation', () => ({
         'serviceFee.endProject.confirmationDescription': 'Final payout available to freelancer',
         'serviceFee.confirm': 'End project',
         'serviceFee.confirmAriaLabel': 'End project',
+        'reviews.title': 'Review project partner',
+        'reviews.subtitle': 'Share feedback after project completion',
+        'reviews.leaveForFreelancer': 'Review freelancer',
+        'reviews.leaveForClient': 'Review client',
+        'reviews.reviewed': 'Reviewed',
+        'reviews.reviewFreelancer': 'Freelancer',
+        'reviews.reviewClient': 'Client',
+        'reviews.project': 'Project',
+        'common.close': 'Close',
+        'common.cancel': 'Cancel',
       };
       return labels[key] || key;
     },
@@ -100,6 +112,9 @@ const mockWorkspaceHook = (options: {
   contractStatus?: ContractStatus;
   paidAmount?: number;
   totalBudget?: number;
+  canReview?: boolean;
+  hasReviewed?: boolean;
+  reviewPromptContractId?: string | null;
 } = {}): void => {
   const isClient = options.isClient ?? true;
   const currentProject: WorkspaceProjectListItemFixture = {
@@ -148,6 +163,10 @@ const mockWorkspaceHook = (options: {
       totalBudget: options.totalBudget ?? 100,
       status: options.contractStatus ?? ContractStatus.Active,
       createdAt: '2026-07-02T01:00:00.000Z',
+      clientName: 'Client User',
+      freelancerName: 'Freelancer User',
+      canReview: options.canReview ?? false,
+      hasReviewedByCurrentUser: options.hasReviewed ?? false,
     },
     currentProductHandoff: null,
     earlyStartRequests: [],
@@ -204,6 +223,9 @@ const mockWorkspaceHook = (options: {
     handleEndProject: handleEndProjectMock,
     handleSubmitMilestoneDeliverable: vi.fn(),
     handleSubmitProductHandoff: vi.fn(),
+    reviewPromptContractId: options.reviewPromptContractId ?? null,
+    clearReviewPrompt: clearReviewPromptMock,
+    refreshWorkspace: refreshWorkspaceMock,
     chatEndRef: { current: null },
   });
 };
@@ -213,6 +235,8 @@ describe('ProjectWorkspaceScreen', () => {
     vi.clearAllMocks();
     handleRequestMilestoneUnlockMock.mockResolvedValue({ success: true });
     handleEndProjectMock.mockResolvedValue({ success: true });
+    refreshWorkspaceMock.mockResolvedValue(undefined);
+    sessionStorage.clear();
     mockWorkspaceHook();
     vi.spyOn(window, 'open').mockImplementation(() => null);
   });
@@ -367,5 +391,42 @@ describe('ProjectWorkspaceScreen', () => {
     expect(navigateMock).toHaveBeenCalledWith('/wallet/history');
     expect(screen.queryByPlaceholderText(/type your message/i)).not.toBeInTheDocument();
     expect(screen.getByText(/workspace is view-only/i)).toBeInTheDocument();
+  });
+
+  it('opens the freelancer review prompt once and keeps a persistent review CTA', () => {
+    mockWorkspaceHook({
+      isClient: false,
+      contractStatus: ContractStatus.Completed,
+      canReview: true,
+      reviewPromptContractId: 'contract-1',
+    });
+    const { rerender } = render(<ProjectWorkspaceScreen />);
+
+    expect(screen.getByRole('dialog', { name: 'Review project partner' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(clearReviewPromptMock).toHaveBeenCalled();
+    expect(sessionStorage.getItem('gigbridge-review-prompt-dismissed:freelancer-user-1:contract-1')).toBe('1');
+    expect(screen.getByRole('button', { name: 'Review client' })).toBeInTheDocument();
+
+    mockWorkspaceHook({
+      isClient: false,
+      contractStatus: ContractStatus.Completed,
+      canReview: true,
+      reviewPromptContractId: 'contract-1',
+    });
+    rerender(<ProjectWorkspaceScreen />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows reviewed status instead of the review CTA after submission state reloads', () => {
+    mockWorkspaceHook({
+      contractStatus: ContractStatus.Completed,
+      hasReviewed: true,
+    });
+    render(<ProjectWorkspaceScreen />);
+
+    expect(screen.getByText('Reviewed')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Review freelancer' })).not.toBeInTheDocument();
   });
 });

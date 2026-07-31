@@ -732,8 +732,14 @@ export default function ManageContractScreen() {
                                   className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <Star size={13} />
-                                  {t('contracts.leaveReview')}
+                                  {t('reviews.leaveForFreelancer')}
                                 </button>
+                              )}
+                              {contract.hasReviewedByCurrentUser && contract.status === ContractStatus.Completed && (
+                                <span className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+                                  <CheckCircle2 size={13} />
+                                  {t('reviews.reviewed')}
+                                </span>
                               )}
                               
                               {contract.status === ContractStatus.Disputed && (

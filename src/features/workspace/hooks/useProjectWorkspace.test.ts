@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProjectWorkspace } from './useProjectWorkspace';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { ContractStatus } from '../../../types/models/Contract';
@@ -186,7 +187,7 @@ describe('useProjectWorkspace realtime chat', () => {
   it('reloads workspace data on matching ContractCompleted realtime event', async () => {
     const walletUpdatedHandler = vi.fn();
     window.addEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
-    renderHook(() => useProjectWorkspace('contract-1'));
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
     await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(1));
 
     act(() => {
@@ -207,7 +208,21 @@ describe('useProjectWorkspace realtime chat', () => {
 
     await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(walletUpdatedHandler).toHaveBeenCalledTimes(1));
+    expect(result.current.reviewPromptContractId).toBe('contract-1');
     window.removeEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+  });
+
+  it('opens the client review prompt after ending the project successfully', async () => {
+    vi.mocked(contractPostAPI.endProject).mockResolvedValue(success({}) as never);
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(result.current.activeContract?.contractsId).toBe('contract-1'));
+
+    await act(async () => {
+      expect(await result.current.handleEndProject()).toMatchObject({ success: true });
+    });
+
+    expect(contractPostAPI.endProject).toHaveBeenCalledWith('contract-1');
+    expect(result.current.reviewPromptContractId).toBe('contract-1');
   });
 
   it('reloads workspace and wallet on matching FinalPayoutClaimed event', async () => {

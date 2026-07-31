@@ -87,6 +87,7 @@ const normalizeType = (type: unknown): UiNotificationType => {
       18: 'rank_protection',
       19: 'rank_protection',
       20: 'report',
+      21: 'review',
     };
 
     return numericTypes[type] ?? 'system';

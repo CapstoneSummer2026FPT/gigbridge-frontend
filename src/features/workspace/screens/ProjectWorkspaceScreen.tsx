@@ -4,12 +4,13 @@ import {
   ArrowLeft, Ban, Send, AlertTriangle,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
 import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
@@ -28,6 +29,8 @@ import {
   parseReportSystemMessageMetadata,
   type ReportSystemMessageMetadata,
 } from '../utils/reportSystemMessage';
+import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
+import '../../reviews/styles/reviews-screen.css';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
@@ -114,6 +117,7 @@ export default function ProjectWorkspaceScreen() {
   const [isLoadingEndProjectBalance, setIsLoadingEndProjectBalance] = useState(false);
   const [isEndingProject, setIsEndingProject] = useState(false);
   const [endProjectError, setEndProjectError] = useState<string | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productMode, setProductMode] = useState<'file' | 'link'>('file');
   const [productNote, setProductNote] = useState('');
@@ -155,6 +159,9 @@ export default function ProjectWorkspaceScreen() {
     partnerCompany,
     isPartnerOnline,
     projectMessages,
+    reviewPromptContractId,
+    clearReviewPrompt,
+    refreshWorkspace,
     handleSendMessage,
     handleSimulateAttachment,
     handleRequestMilestoneUnlock,
@@ -200,6 +207,17 @@ export default function ProjectWorkspaceScreen() {
     allMilestonesApproved;
   const completedJobAmount = project.milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
   const endProjectServiceFee = calculateServiceFee(completedJobAmount);
+  const reviewRole = isClient ? UserRole.Client : UserRole.Freelancer;
+
+  useEffect(() => {
+    if (endProjectModalOpen || !reviewPromptContractId || !activeContract?.canReview || !user?.id) return;
+    if (reviewPromptContractId !== activeContract.contractsId) return;
+
+    const dismissedKey = `gigbridge-review-prompt-dismissed:${user.id}:${reviewPromptContractId}`;
+    if (sessionStorage.getItem(dismissedKey) !== '1') {
+      setReviewDialogOpen(true);
+    }
+  }, [activeContract, endProjectModalOpen, reviewPromptContractId, user?.id]);
 
   useEffect(() => {
     setRaiseIssueModalOpen(false);
@@ -527,6 +545,23 @@ export default function ProjectWorkspaceScreen() {
     setEndProjectModalOpen(false);
   };
 
+  const closeReviewDialog = () => {
+    if (activeContract?.contractsId && user?.id) {
+      sessionStorage.setItem(
+        `gigbridge-review-prompt-dismissed:${user.id}:${activeContract.contractsId}`,
+        '1',
+      );
+    }
+    setReviewDialogOpen(false);
+    clearReviewPrompt();
+  };
+
+  const handleReviewSubmitted = () => {
+    setReviewDialogOpen(false);
+    clearReviewPrompt();
+    void refreshWorkspace();
+  };
+
   const handleConfirmEndProject = async () => {
     if (endProjectBalance === null) return;
     if (endProjectBalance < endProjectServiceFee) {
@@ -737,6 +772,21 @@ export default function ProjectWorkspaceScreen() {
                     <CheckCircle size={16} />
                     <span>{t('workspace.endProject')}</span>
                   </button>
+                )}
+                {activeContract?.canReview && (
+                  <button
+                    type="button"
+                    onClick={() => setReviewDialogOpen(true)}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Star size={16} />
+                    <span>{t(isClient ? 'reviews.leaveForFreelancer' : 'reviews.leaveForClient')}</span>
+                  </button>
+                )}
+                {activeContract?.hasReviewedByCurrentUser && activeContract.status === ContractStatus.Completed && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600">
+                    <CheckCircle size={15} /> {t('reviews.reviewed')}
+                  </span>
                 )}
                 <button
                   onClick={() => setShowInfo(!showInfo)}
@@ -1397,6 +1447,14 @@ export default function ProjectWorkspaceScreen() {
           setEndProjectModalOpen(false);
           navigate('/wallet/deposit');
         }}
+      />
+
+      <ProjectReviewDialog
+        open={reviewDialogOpen}
+        contract={activeContract}
+        role={reviewRole}
+        onClose={closeReviewDialog}
+        onSubmitted={handleReviewSubmitted}
       />
 
       {submitModal && (

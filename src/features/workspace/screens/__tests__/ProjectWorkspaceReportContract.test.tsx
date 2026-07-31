@@ -178,6 +178,9 @@ const mockWorkspace = (
     handleEndProject: vi.fn(),
     handleSubmitMilestoneDeliverable: vi.fn(),
     handleSubmitProductHandoff: vi.fn(),
+    reviewPromptContractId: null,
+    clearReviewPrompt: vi.fn(),
+    refreshWorkspace: vi.fn().mockResolvedValue(undefined),
     chatEndRef: { current: null },
   };
   vi.mocked(useProjectWorkspace).mockReturnValue(workspaceValue);

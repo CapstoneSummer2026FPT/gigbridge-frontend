@@ -6,10 +6,12 @@ import { useApp } from '../../../app/providers/AppProvider';
 import { useClientProfile } from '../hooks/useClientProfile';
 import { ReportUserModal } from '../components/ReportUserModal';
 import { getCompanySizeLabel } from '../utils/profileUtils';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/freelancer-profile-redesign.css';
 
 export default function ClientProfileScreen() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useApp();
@@ -282,7 +284,7 @@ export default function ClientProfileScreen() {
             {/* Freelancer Reviews */}
             <div className="bento-card col-span-1 md:col-span-6 lg:col-span-12 p-8">
               <div className="flex justify-between items-center mb-8">
-                <h2 className="font-headline-sm text-headline-sm text-on-surface">Freelancer Reviews</h2>
+                <h2 className="font-headline-sm text-headline-sm text-on-surface">{t('reviews.clientProfileSection')}</h2>
               </div>
 
               {reviewsList.length > 0 ? (
@@ -303,7 +305,7 @@ export default function ClientProfileScreen() {
                         />
                       ))}
                     </div>
-                    <p className="font-body-md text-body-md text-on-surface-variant mb-8">Based on {reviewsList.length} reviews</p>
+                    <p className="font-body-md text-body-md text-on-surface-variant mb-8">{t('reviews.basedOnReviews', { count: reviewsList.length })}</p>
                     
                     <div className="w-full flex flex-col gap-3">
                       {distribution.map(({ star, count, percentage }) => (
@@ -332,11 +334,14 @@ export default function ClientProfileScreen() {
                             </div>
                             <div>
                               <h4 className="font-label-md text-[16px] text-on-surface font-bold">
-                                {review.isAnonymous ? 'Anonymous Reviewer' : review.reviewerName}
+                                {review.isAnonymous ? t('reviews.anonymousReviewer') : review.reviewerName}
                               </h4>
                               <p className="font-body-md text-[13px] text-on-surface-variant mt-0.5">
                                 {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
+                              {review.projectTitle && (
+                                <p className="profile-review-project">{t('reviews.projectContext', { project: review.projectTitle })}</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center text-yellow-500 bg-surface-container-lowest px-2 py-1 rounded-full border border-outline-variant">
@@ -349,9 +354,14 @@ export default function ClientProfileScreen() {
                             ))}
                           </div>
                         </div>
-                        <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
-                          "{review.comment}"
-                        </p>
+                        <div className="profile-review-criteria">
+                          {review.communicationRating && <span>{t('reviews.communication')} <strong>{review.communicationRating}/5</strong></span>}
+                          {review.qualityRating && <span>{t('reviews.requirementClarity')} <strong>{review.qualityRating}/5</strong></span>}
+                          {review.timelinessRating && <span>{t('reviews.approvalPaymentTimeliness')} <strong>{review.timelinessRating}/5</strong></span>}
+                        </div>
+                        {review.comment && (
+                          <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">"{review.comment}"</p>
+                        )}
                       </div>
                     ))}
 
@@ -395,7 +405,7 @@ export default function ClientProfileScreen() {
               ) : (
                 <div className="py-12 text-center bg-surface-container-low rounded-2xl border border-outline-variant">
                   <Star size={32} className="mx-auto mb-3 opacity-50 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No reviews yet</p>
+                  <p className="text-sm text-muted-foreground">{t('reviews.noReviews')}</p>
                 </div>
               )}
             </div>

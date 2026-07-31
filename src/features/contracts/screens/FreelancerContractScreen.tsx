@@ -458,10 +458,18 @@ export default function FreelancerContractScreen() {
                               <button
                                 onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
                                 className="p-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-xl flex items-center justify-center text-amber-500 transition-all duration-200 cursor-pointer"
-                                title={t('contracts.leaveReview')}
+                                title={t('reviews.leaveForClient')}
                               >
                                 <Star size={16} />
                               </button>
+                            )}
+                            {contract.hasReviewedByCurrentUser && contract.status === ContractStatus.Completed && (
+                              <span
+                                className="p-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center justify-center text-emerald-600"
+                                title={t('reviews.reviewed')}
+                              >
+                                <CheckCircle2 size={16} />
+                              </span>
                             )}
                           </div>
                         </div>

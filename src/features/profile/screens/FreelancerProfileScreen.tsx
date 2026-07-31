@@ -418,11 +418,14 @@ export default function FreelancerProfileScreen() {
                             </div>
                             <div>
                               <h4 className="font-label-md text-[16px] text-on-surface font-bold">
-                                {review.isAnonymous ? (t('common.search') === 'Search' ? 'Anonymous Reviewer' : 'Người đánh giá ẩn danh') : review.reviewerName}
+                                {review.isAnonymous ? t('reviews.anonymousReviewer') : review.reviewerName}
                               </h4>
                               <p className="font-body-md text-[13px] text-on-surface-variant mt-0.5">
                                 {new Date(review.createdAt).toLocaleDateString(t('common.search') === 'Search' ? 'en-US' : 'vi-VN', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
+                              {review.projectTitle && (
+                                <p className="profile-review-project">{t('reviews.projectContext', { project: review.projectTitle })}</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center text-yellow-500 bg-surface-container-lowest px-2 py-1 rounded-full border border-outline-variant">
@@ -435,9 +438,14 @@ export default function FreelancerProfileScreen() {
                             ))}
                           </div>
                         </div>
-                        <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">
-                          "{review.comment}"
-                        </p>
+                        <div className="profile-review-criteria">
+                          {review.communicationRating && <span>{t('reviews.communication')} <strong>{review.communicationRating}/5</strong></span>}
+                          {review.qualityRating && <span>{t('reviews.workQuality')} <strong>{review.qualityRating}/5</strong></span>}
+                          {review.timelinessRating && <span>{t('reviews.onTimeDelivery')} <strong>{review.timelinessRating}/5</strong></span>}
+                        </div>
+                        {review.comment && (
+                          <p className="font-body-lg text-body-lg text-on-surface leading-relaxed">"{review.comment}"</p>
+                        )}
                       </div>
                     ))}
 
@@ -480,7 +488,7 @@ export default function FreelancerProfileScreen() {
               ) : (
                 <div className="py-12 text-center bg-surface-container-low rounded-2xl border border-outline-variant">
                   <Star size={32} className="mx-auto mb-3 opacity-50 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">{t('common.search') === 'Search' ? 'No reviews yet' : 'Chưa có đánh giá nào'}</p>
+                  <p className="text-sm text-muted-foreground">{t('reviews.noReviews')}</p>
                 </div>
               )}
             </div>

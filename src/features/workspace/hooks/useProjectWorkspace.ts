@@ -242,6 +242,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [projectMessages, setProjectMessages] = useState<Message[]>([]);
+  const [reviewPromptContractId, setReviewPromptContractId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
   const conversationIdRef = useRef<string | null>(null);
@@ -384,7 +385,9 @@ export function useProjectWorkspace(initialContractId: string) {
     const handleContractCompleted = (payload: Record<string, unknown>): void => {
       const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
       if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
-      void reloadActiveWorkspace().finally(() => {
+      void reloadActiveWorkspace().then(() => {
+        setReviewPromptContractId(eventContractId || activeProjectIdRef.current);
+      }).finally(() => {
         window.dispatchEvent(new Event('gigbridge-wallet-updated'));
       });
     };
@@ -649,6 +652,7 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     await reloadActiveWorkspace();
+    setReviewPromptContractId(activeProjectId);
     return { success: true, message: response.message };
   };
 
@@ -711,6 +715,9 @@ export function useProjectWorkspace(initialContractId: string) {
     partnerCompany,
     isPartnerOnline,
     projectMessages,
+    reviewPromptContractId,
+    clearReviewPrompt: () => setReviewPromptContractId(null),
+    refreshWorkspace: reloadActiveWorkspace,
     handleSendMessage,
     handleSimulateAttachment,
     handleOpenMilestoneEditor,
