@@ -3,7 +3,7 @@ import type { ApiResponse } from '../../types/common';
 import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
 import type { WithdrawalResponse } from '../../types/models/Financial';
-import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
+import type { AdminDisputeDetail, UserViolationType } from '../../types/models/AdminDispute';
 import type { DisputeEvidence, DisputeMilestoneOutcome, DisputeResolution, EvidenceRequestTarget } from '../../types/models/Dispute';
 import { normalizeAdminDisputeDetail } from './disputeUtils';
 import { normalizeEvidence } from '../disputeAPI/utils';
@@ -26,13 +26,24 @@ export interface AdminResolveDisputePayload {
   resolution: DisputeResolution;
   resolutionNote: string;
   internalNotes?: string;
-  milestoneDecisions: {
+  milestoneAllocations: {
     milestoneId: string;
     outcome: DisputeMilestoneOutcome;
-    additionalReleaseToFreelancer: number;
-    refundToClient: number;
+    freelancerAward: number;
+    clientRefund: number;
+    penaltyAmount: number;
+    reason?: string | null;
   }[];
   contractAction: number;
+  clientViolation: AdminViolationPayload;
+  freelancerViolation: AdminViolationPayload;
+}
+
+export interface AdminViolationPayload {
+  isViolation: boolean;
+  violationType: UserViolationType | null;
+  reason: string | null;
+  description: string | null;
 }
 
 export const adminPostAPI = {

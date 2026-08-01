@@ -527,6 +527,30 @@
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
 }
 
+.admin-dispute-modal-wide {
+  width: min(1120px, 100%);
+  max-height: 94vh;
+  overflow-y: auto;
+}
+
+.resolve-dialog-grid,
+.admin-violation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.admin-violation-toggle {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.admin-violation-toggle input {
+  width: auto;
+  min-height: auto;
+}
+
 .admin-dispute-modal-header {
   display: flex;
   align-items: flex-start;
@@ -716,6 +740,11 @@
   .disputes-layout,
   .dispute-detail-grid,
   .resolve-row {
+    grid-template-columns: 1fr;
+  }
+
+  .resolve-dialog-grid,
+  .admin-violation-grid {
     grid-template-columns: 1fr;
   }
 
