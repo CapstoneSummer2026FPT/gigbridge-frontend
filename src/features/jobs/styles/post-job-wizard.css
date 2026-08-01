@@ -118,3 +118,289 @@
 @media (prefers-reduced-motion: reduce) {
   .job-post-wizard *, .job-post-ai * { animation: none !important; transition: none !important; }
 }
+
+/* AI Job Post Review Modal Styles */
+.job-post-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.job-post-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  animation: fade-in 0.25s ease-out;
+}
+
+.job-post-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 650px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+  animation: modal-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 310;
+}
+
+.job-post-modal-accent-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #4f46e5, #ec4899, #f43f5e);
+  width: 100%;
+}
+
+.job-post-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.job-post-modal-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.job-post-modal-icon-sparkle {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+}
+
+.job-post-modal-header-title h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.job-post-modal-header-title p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
+}
+
+.job-post-modal-close-btn {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  transition: background-color 0.15s;
+}
+.job-post-modal-close-btn:hover {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.job-post-modal-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.job-post-review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.job-post-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.job-post-review-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+}
+
+.job-post-review-value {
+  padding: 0.65rem 0.85rem;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.job-post-review-value.title-value {
+  font-size: 1rem;
+  font-weight: 750;
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--border));
+}
+
+.job-post-skills-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.job-post-skill-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.job-post-skill-badge.system {
+  background: color-mix(in srgb, var(--brand) 10%, var(--card));
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, var(--border));
+}
+.job-post-skill-badge.custom {
+  background: color-mix(in srgb, var(--warning) 10%, var(--card));
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 20%, var(--border));
+}
+
+.job-post-review-desc-container {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--background);
+  padding: 0.85rem 1rem;
+}
+
+.job-post-review-desc-text {
+  font-family: inherit;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.job-post-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.job-post-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 750;
+  color: #fff;
+  background: var(--brand);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 25%, transparent);
+  transition: transform 0.15s, opacity 0.15s;
+}
+.job-post-btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+.job-post-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  background: var(--card);
+  transition: background-color 0.15s;
+}
+.job-post-btn-secondary:hover {
+  background-color: var(--background);
+}
+
+/* Fullscreen Plan Generation Overlay */
+.job-post-plan-spinner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  animation: fade-in 0.3s ease-out;
+}
+
+.job-post-spinner-logo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+}
+
+.job-post-spinner-ring {
+  position: absolute;
+  inset: -8px;
+  border: 3px solid transparent;
+  border-top-color: #6366f1;
+  border-right-color: #ec4899;
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+}
+
+.job-post-plan-spinner-overlay h2 {
+  font-size: 1.45rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  margin: 0;
+  background: linear-gradient(90deg, #a5b4fc, #fbcfe8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.job-post-plan-spinner-overlay p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0.5rem 0 0;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.92) translateY(15px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

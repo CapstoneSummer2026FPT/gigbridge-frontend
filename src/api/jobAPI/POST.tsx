@@ -5,6 +5,9 @@ import type {
   CreateJobPostQuestionRequest,
   GenerateJobDescriptionRequest,
   GenerateJobDescriptionResponse,
+  GenerateJobDescriptionDetailsResponse,
+  GenerateJobHiringPlanRequest,
+  GenerateJobHiringPlanResponse,
   JobPostPromotionDto,
   PromoteJobPostRequest,
   JobPromotionInteractionDto,
@@ -44,6 +47,18 @@ export const jobPostAPI = {
       : vettingQuestions;
 
     return apiService.post<GenerateJobDescriptionResponse>(`${jobPostsUrl}/ai/generate`, data);
+  },
+
+  generateAIDetails: async (
+    data: GenerateJobDescriptionRequest
+  ): Promise<ApiResponse<GenerateJobDescriptionDetailsResponse>> => {
+    return apiService.post<GenerateJobDescriptionDetailsResponse>(`${jobPostsUrl}/ai/generate/details`, data);
+  },
+
+  generateAIHiringPlan: async (
+    data: GenerateJobHiringPlanRequest
+  ): Promise<ApiResponse<GenerateJobHiringPlanResponse>> => {
+    return apiService.post<GenerateJobHiringPlanResponse>(`${jobPostsUrl}/ai/generate/hiring-plan`, data);
   },
 
   promoteJobPost: async (jobPostId: string, data: PromoteJobPostRequest): Promise<ApiResponse<JobPostPromotionDto>> =>

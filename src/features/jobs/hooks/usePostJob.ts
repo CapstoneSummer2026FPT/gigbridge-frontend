@@ -254,6 +254,16 @@ export function usePostJob() {
   const [isGeneratingInstant, setIsGeneratingInstant] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  const [aiClientPrompt, setAiClientPrompt] = useState<string>(() => {
+    return (location.state as any)?.aiClientPrompt ?? '';
+  });
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [pendingGeneratedDetails, setPendingGeneratedDetails] = useState<GenerateJobDescriptionDetailsResponse | null>(null);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [isHiringPlanGenerated, setIsHiringPlanGenerated] = useState(() => {
+    return (location.state as any)?.hiringPlanGenerated ?? false;
+  });
+
   const [majors, setMajors] = useState<MajorDto[]>([]);
   const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
   const [availableSkills, setAvailableSkills] = useState<SkillOptionDto[]>([]);
@@ -737,7 +747,7 @@ export function usePostJob() {
     setErrorMessage(null);
     setIsGeneratingInstant(true);
     try {
-      const response = await jobAPI.generateAIDescription({ clientPrompt: promptText });
+      const response = await jobAPI.generateAIDetails({ clientPrompt: promptText });
       if (!response.success || !response.data) {
         const errorMsg = response.message || 'Job details could not be generated.';
         toast.error(errorMsg);
@@ -745,9 +755,27 @@ export function usePostJob() {
         return;
       }
 
-      const generatedData = response.data;
+      setAiClientPrompt(promptText);
+      setPendingGeneratedDetails(response.data);
+      setIsReviewModalOpen(true);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
+      toast.error(errorMsg);
+      setErrorMessage(errorMsg);
+    } finally {
+      setIsGeneratingInstant(false);
+    }
+  };
 
-      // 1. Fetch categories and skills in parallel based on AI recommendations
+  const handleApproveDetails = async () => {
+    if (!pendingGeneratedDetails) return;
+    const generatedData = pendingGeneratedDetails;
+
+    setIsReviewModalOpen(false);
+    setIsInstantJobMode(true);
+    setIsHiringPlanGenerated(false);
+
+    try {
       const [categoriesResponse, skillsResponse] = await Promise.all([
         generatedData.majorId ? jobAPI.getCategoriesByMajor(generatedData.majorId) : null,
         generatedData.categoryId ? jobAPI.getSkillsByCategory(generatedData.categoryId) : null
@@ -768,7 +796,6 @@ export function usePostJob() {
         });
       }
 
-      // 2. Add AI system skills name map entries so they display as selected chips/badges
       const generatedSkillIds = generatedData.skills.map(skill => skill.skillsId.toLowerCase());
       setSkillNameById(prev => {
         const next = { ...prev };
@@ -778,7 +805,11 @@ export function usePostJob() {
         return next;
       });
 
-      // 3. Update the form state with all AI recommendations
+      setTaxonomyDisplayNames({
+        majorName: generatedData.majorName || '',
+        categoryName: generatedData.categoryName || '',
+      });
+
       setForm(prev => ({
         ...prev,
         title: generatedData.title || prev.title,
@@ -796,25 +827,18 @@ export function usePostJob() {
         isAigenerated: true,
       }));
 
-      // 4. Update the questions state with generated recruitment questions
-      if (generatedData.questionRecruitment && generatedData.questionRecruitment.length > 0) {
-        setQuestions(
-          generatedData.questionRecruitment.map(qText => ({
-            questionText: qText,
-            isRequired: true,
-          }))
-        );
-      }
-
       setIsJobDetailsGenerated(true);
+      setPendingGeneratedDetails(null);
       toast.success(t('postJobWizard.messages.aiGenerated'));
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
-      toast.error(errorMsg);
-      setErrorMessage(errorMsg);
-    } finally {
-      setIsGeneratingInstant(false);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to prefill job post taxonomies.');
     }
+  };
+
+  const handleCancelDetails = () => {
+    setIsReviewModalOpen(false);
+    setPendingGeneratedDetails(null);
   };
 
   const validateForm = (): PostJobValidationIssue | null => {
@@ -922,8 +946,14 @@ export function usePostJob() {
     });
   };
 
-  const buildDraftRequest = (): SaveDraftJobPostRequest => {
+  const buildDraftRequest = (overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): SaveDraftJobPostRequest => {
     const budgetValue = form.budget ? Number(form.budget) : null;
+    const finalQuestions = overrides?.questions || questions;
+    const finalMilestones = overrides?.milestonePlans || milestonePlans;
+    const questionsWithOrderOverrides = finalQuestions.map((question, index) => ({ ...question, orderIndex: index }));
 
     return {
       title: form.title.trim() || null,
@@ -938,14 +968,14 @@ export function usePostJob() {
       isAigenerated: form.isAigenerated,
       skillIds: form.skillIds,
       customSkillNames: form.customSkillNames,
-      questions: questionsWithOrder
+      questions: questionsWithOrderOverrides
         .filter(question => question.questionText.trim())
         .map(question => ({
           questionText: question.questionText.trim(),
           orderIndex: question.orderIndex,
           isRequired: question.isRequired,
         })),
-    milestonePlans: milestonePlans.map((milestone, orderIndex) => ({
+      milestonePlans: finalMilestones.map((milestone, orderIndex) => ({
         ...milestone,
         amount: Number(milestone.amount) || 0,
         orderIndex,
@@ -954,21 +984,27 @@ export function usePostJob() {
     };
   };
 
-  const buildRouteJobData = (): PostJobRouteJobData => ({
-    ...buildDraftRequest(),
+  const buildRouteJobData = (overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): PostJobRouteJobData => ({
+    ...buildDraftRequest(overrides),
     majorId: form.majorId,
     majorName: selectedMajorName,
     categoryId: form.categoryId,
     categoryName: selectedCategoryName,
     deadline: form.deadline,
     skillNameById,
-    interviewQuestions: questionsWithOrder,
+    interviewQuestions: (overrides?.questions || questions).map((question, index) => ({ ...question, orderIndex: index })),
     attachments,
   });
 
-  const buildNavigationState = (currentJobPostId: string | null = jobPostId): PostJobRouteState => ({
+  const buildNavigationState = (currentJobPostId: string | null = jobPostId, overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): PostJobRouteState => ({
     jobPostId: currentJobPostId,
-    jobData: buildRouteJobData(),
+    jobData: buildRouteJobData(overrides),
   });
 
   const ensureDraftJobPostId = async (): Promise<string> => {
@@ -1044,8 +1080,11 @@ export function usePostJob() {
     }
   };
 
-  const saveDraftPartial = async (): Promise<string> => {
-    const payload = buildDraftRequest();
+  const saveDraftPartial = async (overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): Promise<string> => {
+    const payload = buildDraftRequest(overrides);
     const signature = JSON.stringify(payload);
     latestDraftSignatureRef.current = signature;
     setAutosaveStatus('saving');
@@ -1174,14 +1213,73 @@ export function usePostJob() {
     setErrorMessage(null);
 
     try {
-      const currentJobPostId = await saveDraftPartial();
-      const navigationState = buildNavigationState(currentJobPostId);
-
       if (mode === 'plan') {
+        let finalMilestones = milestonePlans;
+        let finalQuestions = questions;
+
+        if (isInstantJobMode && !isHiringPlanGenerated) {
+          setIsGeneratingPlan(true);
+          try {
+            const planResponse = await jobAPI.generateAIHiringPlan({
+              clientPrompt: aiClientPrompt,
+              title: form.title,
+              description: form.description
+            });
+
+            if (!planResponse.success || !planResponse.data) {
+              throw new Error(planResponse.message || 'Failed to generate hiring plan.');
+            }
+
+            const planData = planResponse.data;
+            const rawMilestones = planData.milestones || (planData as any).milestonePlans || (planData as any).milestone_plans;
+            const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
+
+            if (rawMilestones && rawMilestones.length > 0) {
+              const mappedMilestones = withoutWorkBreakdownItems(rawMilestones);
+              setMilestonePlans(mappedMilestones);
+              finalMilestones = mappedMilestones;
+            }
+            if (rawQuestions && rawQuestions.length > 0) {
+              const mappedQuestions = rawQuestions.map((qText: string) => ({
+                questionText: qText,
+                isRequired: true,
+              }));
+              setQuestions(mappedQuestions);
+              finalQuestions = mappedQuestions;
+            }
+            setIsHiringPlanGenerated(true);
+          } catch (planError) {
+            const planErrorMsg = planError instanceof Error ? planError.message : 'An error occurred generating hiring plan.';
+            toast.error(planErrorMsg);
+            throw planError;
+          } finally {
+            setIsGeneratingPlan(false);
+          }
+        }
+
+        const currentJobPostId = await saveDraftPartial({
+          milestonePlans: finalMilestones,
+          questions: finalQuestions
+        });
+        const navigationState = buildNavigationState(currentJobPostId, {
+          milestonePlans: finalMilestones,
+          questions: finalQuestions
+        });
+
         allowNextNavigation();
-        navigate('/jobs/post/plan', { state: navigationState });
+        navigate('/jobs/post/plan', {
+          state: {
+            ...navigationState,
+            instantJobMode: isInstantJobMode,
+            aiClientPrompt,
+            hiringPlanGenerated: true
+          }
+        });
         return { status: 'success' };
       }
+
+      const currentJobPostId = await saveDraftPartial();
+      const navigationState = buildNavigationState(currentJobPostId);
 
       if (mode === 'review') {
         allowNextNavigation();
@@ -1341,5 +1439,10 @@ export function usePostJob() {
     isJobDetailsGenerated,
     isGeneratingInstant,
     handleGenerateInstantJob,
+    isReviewModalOpen,
+    pendingGeneratedDetails,
+    isGeneratingPlan,
+    handleApproveDetails,
+    handleCancelDetails,
   };
 }

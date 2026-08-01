@@ -17,6 +17,8 @@ export const jobAPI = {
   createDraftJobPost: jobPostAPI.createDraftJobPost,
   createJobPostQuestion: jobPostAPI.createJobPostQuestion,
   generateAIDescription: jobPostAPI.generateAIDescription,
+  generateAIDetails: jobPostAPI.generateAIDetails,
+  generateAIHiringPlan: jobPostAPI.generateAIHiringPlan,
   promoteJobPost: jobPostAPI.promoteJobPost,
   endJobPromotion: jobPostAPI.endJobPromotion,
   uploadJobPromotionImage: jobPostAPI.uploadJobPromotionImage,
