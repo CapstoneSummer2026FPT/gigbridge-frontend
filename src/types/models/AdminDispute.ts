@@ -61,7 +61,7 @@ export interface AdminEscrowSummary { escrowId: string | null; originalEscrow: n
 export interface AdminConversationReferences { workspaceConversationId: string | null; disputeConversationId: string | null; }
 export interface AdminAuditEvent { auditId: string; adminId: string; action: string; oldValues: string | null; newValues: string | null; createdAt: string; }
 export interface AdminMilestoneDecision { decisionId: string; milestoneId: string; outcome: number; milestoneAmount: number; releasedBeforeDecision: number; additionalRelease: number; refund: number; penalty: number; reason: string | null; decidedByAdminId: string; createdAt: string; }
-export interface AdminDisputePenalty { penaltyId: string; milestoneId: string; violatingUserId: string | null; amount: number; reason: string; walletTransactionId: string | null; escrowTransactionId: string | null; status: number; createdAt: string; }
+export interface AdminDisputePenalty { penaltyId: string; milestoneId: string; violatingUserId: string | null; amount: number; reason: string; clientDebitWalletTransactionId: string | null; escrowTransactionId: string | null; status: number; createdAt: string; }
 
 export interface AdminDisputeDetail {
   id: string;
