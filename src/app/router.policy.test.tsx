@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { UserRole } from '../types';
 
 let router: typeof import('./router').router;
 
@@ -41,5 +42,11 @@ describe('public policy routes', () => {
     const retiredRoute = rootRoute?.children?.find((route) => route.path === 'admin/cheating');
 
     expect(retiredRoute).toBeUndefined();
+  });
+
+  it('allows clients and freelancers to open milestone details', () => {
+    const milestoneRoute = getPolicyElement('contracts/:contractId/milestones');
+
+    expect(milestoneRoute.props.allowedRoles).toEqual([UserRole.Client, UserRole.Freelancer]);
   });
 });

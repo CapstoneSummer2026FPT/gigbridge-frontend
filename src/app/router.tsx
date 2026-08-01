@@ -256,7 +256,7 @@ export const router = createBrowserRouter([
       { path: 'contracts/:contractId/disputes/:disputeId', element: <ProtectedRoute requireAuth requireSetup><DisputeDetailScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/sign', element: <ProtectedRoute requireAuth requireSetup><SignatureWorkflowScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/documents/:documentId/sign', element: <ProtectedRoute requireAuth requireSetup><EsignDocumentSigningScreen /></ProtectedRoute> },
-      { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><ManageMilestonesScreen /></ProtectedRoute> },
+      { path: 'contracts/:contractId/milestones', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><ManageMilestonesScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/milestones/:milestoneId/approve', element: <ProtectedRoute requireAuth requireSetup allowedRoles={CLIENT_ONLY_ROLES}><ApproveMilestoneScreen /></ProtectedRoute> },
       { path: 'contracts/:contractId/deliverables/:milestoneId', element: <ProtectedRoute requireAuth requireSetup allowedRoles={FREELANCER_ONLY_ROLES}><SubmitMilestoneDeliverableScreen /></ProtectedRoute> },
 

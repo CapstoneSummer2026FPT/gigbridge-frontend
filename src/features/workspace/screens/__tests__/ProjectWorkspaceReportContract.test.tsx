@@ -173,6 +173,7 @@ const mockWorkspace = (
     handleSimulateAttachment: vi.fn(),
     handleOpenMilestoneEditor: vi.fn(),
     handleRequestMilestoneUnlock: vi.fn(),
+    handleWithdrawMilestone: vi.fn(),
     handleUpdateWorkItem: vi.fn(),
     handleRespondEarlyStart: vi.fn(),
     handleEndProject: vi.fn(),
