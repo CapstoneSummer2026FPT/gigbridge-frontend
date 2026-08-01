@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { adminGetAPI } from '../../../../api/adminAPI/GET';
 import { jobGetAPI } from '../../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../../api/proposalAPI/GET';
@@ -70,12 +71,17 @@ describe('admin screens without telemetry or history APIs', () => {
     expect(screen.queryByRole('button', { name: 'Create Notification' })).not.toBeInTheDocument();
   });
 
-  it('shows unavailable AI telemetry instead of generated usage charts', () => {
-    render(<AdminSystemTrackingScreen />);
+  it('redirects legacy system tracking to real audit logs', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/system-tracking']}>
+        <Routes>
+          <Route path="/admin/system-tracking" element={<AdminSystemTrackingScreen />} />
+          <Route path="/admin/audit-logs" element={<div>Admin Audit Logs</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: 'AI Usage' }));
-
-    expect(screen.getByText('AI usage telemetry unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Admin Audit Logs')).toBeInTheDocument();
     expect(screen.queryByText('1,890')).not.toBeInTheDocument();
     expect(screen.queryByText('$212.3')).not.toBeInTheDocument();
   });

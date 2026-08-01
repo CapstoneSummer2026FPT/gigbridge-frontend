@@ -1,0 +1,24 @@
+.admin-phase { padding: 28px; max-width: 1440px; margin: 0 auto; color: var(--text-primary); }
+.admin-phase__header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:24px; }
+.admin-phase__header h1 { margin:0 0 6px; font-size:30px; }
+.admin-phase__panel { background:var(--bg-secondary, rgba(255,255,255,.04)); border:1px solid var(--border-color, rgba(255,255,255,.12)); border-radius:14px; padding:18px; margin-bottom:18px; }
+.admin-phase__grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+.admin-phase__stat { padding:14px; border-radius:10px; background:rgba(127,127,127,.08); }
+.admin-phase__stat small,.admin-phase td small { display:block; color:var(--text-secondary); }
+.admin-phase table { width:100%; border-collapse:collapse; }
+.admin-phase th,.admin-phase td { padding:11px; border-bottom:1px solid var(--border-color, rgba(255,255,255,.1)); text-align:left; vertical-align:top; }
+.admin-phase__filters,.admin-phase__actions { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+.admin-phase input,.admin-phase select,.admin-phase textarea { padding:9px 11px; border-radius:8px; border:1px solid var(--border-color, #555); background:var(--bg-primary, #111); color:inherit; }
+.admin-phase button,.admin-phase__link { padding:9px 13px; border-radius:8px; border:1px solid var(--border-color, #555); background:transparent; color:inherit; cursor:pointer; text-decoration:none; }
+.admin-phase button.primary { background:#0ea5e9; border-color:#0ea5e9; color:#fff; }
+.admin-phase button.danger { background:#b91c1c; border-color:#b91c1c; color:#fff; }
+.admin-phase button:disabled { opacity:.45; cursor:not-allowed; }
+.admin-phase__badge { display:inline-flex; padding:3px 8px; border-radius:999px; background:rgba(14,165,233,.16); font-size:12px; }
+.admin-phase__error { border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:9px; margin-bottom:14px; }
+.admin-phase__tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.admin-phase__tabs button.active { background:#0ea5e9; color:#fff; }
+.admin-phase pre { white-space:pre-wrap; word-break:break-word; font-size:12px; }
+.admin-phase__modal { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:16px; background:rgba(0,0,0,.6); }
+.admin-phase__modal>.admin-phase__panel { width:min(620px,100%); max-height:90vh; overflow:auto; display:grid; gap:12px; }
+.admin-phase__modal textarea { min-height:110px; }
+@media(max-width:760px){.admin-phase{padding:16px}.admin-phase__header{display:block}.admin-phase table{display:block;overflow:auto}}

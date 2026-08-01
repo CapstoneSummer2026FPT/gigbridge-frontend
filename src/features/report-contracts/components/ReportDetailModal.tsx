@@ -14,6 +14,7 @@ import {
 import '../styles/report-contract.css';
 import { DisputeEscalationModal } from './DisputeEscalationModal';
 import { DisputeCreationModal } from './DisputeCreationModal';
+import { reportContractGetAPI } from '../../../api/reportContractAPI/GET';
 
 const STATUS_KEYS: Record<number, string> = {
   [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
@@ -58,10 +59,6 @@ function getFileIcon(contentType: string) {
   return <FileText size={16} />;
 }
 
-function isImageType(contentType: string): boolean {
-  return contentType.startsWith('image/');
-}
-
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -70,25 +67,16 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function AttachmentItem({ attachment }: { attachment: ReportContractAttachment }) {
+function AttachmentItem({ attachment, onDownload }: { attachment: ReportContractAttachment; onDownload: (attachment: ReportContractAttachment) => void }) {
   return (
-    <a
+    <button
+      type="button"
       key={attachment.reportContractAttachmentId}
-      href={attachment.fileUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+      onClick={() => onDownload(attachment)}
       className="rc-attachment-item"
     >
       <span className="rc-attachment-icon">
-        {isImageType(attachment.contentType) ? (
-          <img
-            src={attachment.fileUrl}
-            alt={attachment.fileName}
-            className="rc-attachment-thumb"
-          />
-        ) : (
-          getFileIcon(attachment.contentType)
-        )}
+        {getFileIcon(attachment.contentType)}
       </span>
       <span className="rc-attachment-name" title={attachment.fileName}>
         {attachment.fileName}
@@ -102,7 +90,7 @@ function AttachmentItem({ attachment }: { attachment: ReportContractAttachment }
         )}
       </span>
       <Download size={14} className="rc-attachment-download" />
-    </a>
+    </button>
   );
 }
 
@@ -156,6 +144,13 @@ export function ReportDetailModal({
     setRejectReason('');
     setRespondentFiles([]);
     setError(null);
+  };
+
+  const downloadAttachment = async (attachment: ReportContractAttachment) => {
+    setError(null);
+    const response = await reportContractGetAPI.getAttachmentDownload(report.contractId, report.id, attachment.reportContractAttachmentId);
+    if (response.success && response.data) window.open(response.data.downloadUrl, '_blank', 'noopener,noreferrer');
+    else setError(response.message || 'Unable to download this attachment.');
   };
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
@@ -332,7 +327,7 @@ export function ReportDetailModal({
               </h4>
               <div className="rc-attachment-list">
                 {reporterAttachments.map((att) => (
-                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} />
+                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} onDownload={downloadAttachment} />
                 ))}
               </div>
             </div>
@@ -346,7 +341,7 @@ export function ReportDetailModal({
               </h4>
               <div className="rc-attachment-list">
                 {respondentAttachments.map((att) => (
-                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} />
+                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} onDownload={downloadAttachment} />
                 ))}
               </div>
             </div>

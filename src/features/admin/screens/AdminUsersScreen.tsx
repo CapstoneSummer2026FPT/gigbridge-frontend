@@ -53,6 +53,11 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
     role: dto.role as UserRole,
     is_email_verified: dto.isEmailVerified,
     is_active: dto.isActive,
+    account_status: dto.accountStatus,
+    is_flagged: dto.isFlagged,
+    violation_count: dto.violationCount,
+    banned_at: dto.bannedAt ?? null,
+    ban_reason: dto.banReason ?? null,
     suspended_until: dto.suspendedUntil ?? null,
     suspended_at: dto.suspendedAt ?? null,
     suspension_reason: dto.suspensionReason ?? null,
@@ -615,15 +620,17 @@ export default function AdminUsersScreen() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className={`text-sm font-semibold ${user.is_currently_reported ? 'text-red' : 'text-primary'}`}>
+                              <button className={`text-sm font-semibold bg-transparent border-0 p-0 cursor-pointer ${user.is_currently_reported ? 'text-red' : 'text-primary'}`} onClick={() => navigate(`/admin/users/${user.id}`)}>
                                 {user.full_name}
-                              </p>
+                              </button>
                               {user.is_currently_reported && (
                                 <span className="badge-red text-xs inline-flex items-center gap-1" title="Open user reports">
                                   <Flag size={12} /> {user.open_report_count || 0}
                                 </span>
                               )}
                               {user.is_premium && <span className="admin-premium-badge" title={user.premium_until ? `Premium through ${new Date(user.premium_until).toLocaleDateString()}` : 'Premium user'}><Crown size={11} /> Premium</span>}
+                              {user.role === UserRole.Admin && <span className="badge-cyan text-xs">Protected Admin</span>}
+                              {user.is_flagged && <span className="badge-red text-xs">Flagged · {user.violation_count ?? 0}</span>}
                             </div>
                             <p className="text-xs text-secondary">{user.id}</p>
                           </div>

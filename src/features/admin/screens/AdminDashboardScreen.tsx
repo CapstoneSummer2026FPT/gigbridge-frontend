@@ -29,7 +29,7 @@ const ADMIN_LINKS: readonly AdminLink[] = [
   { label: 'Disputes', description: 'Review active reports and dispute evidence', path: '/admin/disputes', icon: Shield },
   { label: 'Notifications', description: 'Publish and manage admin notifications', path: '/admin/notifications', icon: Bell },
   { label: 'Withdrawals', description: 'Review and reconcile withdrawal requests', path: '/admin/withdrawals', icon: Wallet },
-  { label: 'System Tracking', description: 'Inspect operational health and audit events', path: '/admin/system-tracking', icon: Activity },
+  { label: 'Audit Logs', description: 'Review recorded administrative actions', path: '/admin/audit-logs', icon: Activity },
   { label: 'FAQ Management', description: 'Maintain public help content', path: '/admin/faq-management', icon: HelpCircle },
 ] as const;
 

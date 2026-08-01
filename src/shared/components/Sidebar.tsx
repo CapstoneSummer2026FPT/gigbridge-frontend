@@ -174,6 +174,7 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
       title: t('nav.contentManagement') || 'Content Management',
       items: [
         { label: t('nav.jobPosts') || 'Job Posts', icon: <Briefcase size={18} />, path: '/admin/jobs' },
+        { label: t('nav.proposals') || 'Proposals', icon: <FileText size={18} />, path: '/admin/proposals' },
         { label: t('nav.contractsCompliance') || 'Contracts & Compliance', icon: <Shield size={18} />, path: '/admin/contracts' },
         { label: 'Assets Library', icon: <Layers size={18} />, path: '/admin/assets' },
         { label: t('nav.disputeManagement') || 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
@@ -204,7 +205,9 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
     {
       title: t('nav.systemMonitoring') || 'System & Monitoring',
       items: [
-        { label: t('nav.systemTracking') || 'System Tracking', icon: <Activity size={18} />, path: '/admin/system-tracking', badge: 'LIVE', badgeType: 'green' },
+        { label: 'Account Reports', icon: <Flag size={18} />, path: '/admin/reports/accounts' },
+        { label: 'Contract Reports', icon: <Shield size={18} />, path: '/admin/reports/contracts' },
+        { label: 'Audit Logs', icon: <Activity size={18} />, path: '/admin/audit-logs' },
         { label: t('nav.notifications'), icon: <Bell size={18} />, path: '/admin/notifications' },
       ],
     },
