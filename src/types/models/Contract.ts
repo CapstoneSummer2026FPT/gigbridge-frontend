@@ -263,6 +263,17 @@ export interface EndProjectResponse {
   completedAt?: string | null;
 }
 
+export interface WithdrawMilestoneResponse {
+  contractId: string;
+  milestoneId: string;
+  escrowId: string;
+  releasedAmountVnd: number;
+  releasedTokens: number;
+  milestoneReleasedAmountVnd: number;
+  escrowReleasedAmountVnd: number;
+  escrowStatus: number;
+}
+
 export interface ContractProductHandoffResponse {
   contractProductHandoffId: string;
   contractId: string;

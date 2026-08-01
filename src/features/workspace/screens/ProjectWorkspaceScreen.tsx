@@ -4,7 +4,7 @@ import {
   ArrowLeft, Ban, Send, AlertTriangle,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -23,8 +23,11 @@ import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
+import { EarlyWithdrawalDialog } from '../../../shared/components/EarlyWithdrawalDialog';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
 import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
+import { toast } from 'sonner';
 import {
   parseReportSystemMessageMetadata,
   type ReportSystemMessageMetadata,
@@ -111,6 +114,11 @@ export default function ProjectWorkspaceScreen() {
   const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
   const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
   const [milestoneActionError, setMilestoneActionError] = useState<{ milestoneId: string; message: string } | null>(null);
+  const [withdrawDialogMilestone, setWithdrawDialogMilestone] = useState<{
+    milestoneId: string;
+    title: string;
+    availableAmount: number;
+  } | null>(null);
   const [endProjectModalOpen, setEndProjectModalOpen] = useState(false);
   const [endProjectFeeMode, setEndProjectFeeMode] = useState<'confirmation' | 'insufficient'>('confirmation');
   const [endProjectBalance, setEndProjectBalance] = useState<number | null>(null);
@@ -131,6 +139,7 @@ export default function ProjectWorkspaceScreen() {
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
   const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
   const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const withdrawalRequestInFlightRef = useRef(false);
   const submitFileInputRef = useRef<HTMLInputElement>(null);
   const productFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -164,7 +173,9 @@ export default function ProjectWorkspaceScreen() {
     refreshWorkspace,
     handleSendMessage,
     handleSimulateAttachment,
+    handleOpenMilestoneEditor,
     handleRequestMilestoneUnlock,
+    handleWithdrawMilestone,
     handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,
@@ -192,6 +203,7 @@ export default function ProjectWorkspaceScreen() {
     clearSelectedReport,
   } = useReportContract();
   const workspaceContractId = activeProjectId || contractId || '';
+  const isFreelancer = user?.role === UserRole.Freelancer;
   const allMilestonesSubmittedOrApproved = project.milestones.length > 0 &&
     project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved');
   const allMilestonesApproved = project.milestones.length > 0 &&
@@ -422,6 +434,49 @@ export default function ProjectWorkspaceScreen() {
       });
     }
     setMilestoneActionPendingId(null);
+  };
+
+  const openWithdrawDialog = (milestoneId: string, title: string, availableAmount: number) => {
+    setMilestoneActionError(null);
+    setWithdrawDialogMilestone({ milestoneId, title, availableAmount });
+  };
+
+  const closeWithdrawDialog = () => {
+    if (milestoneActionPendingId === withdrawDialogMilestone?.milestoneId) return;
+    setWithdrawDialogMilestone(null);
+  };
+
+  const confirmMilestoneWithdrawal = async () => {
+    if (!withdrawDialogMilestone || milestoneActionPendingId || withdrawalRequestInFlightRef.current) return;
+
+    const { milestoneId } = withdrawDialogMilestone;
+    withdrawalRequestInFlightRef.current = true;
+    setMilestoneActionPendingId(milestoneId);
+    setMilestoneActionError(null);
+    try {
+      const result = await handleWithdrawMilestone(milestoneId);
+
+      if (result.success) {
+        setWithdrawDialogMilestone(null);
+        toast.success(result.message || t('earlyWithdrawal.success'));
+      } else {
+        setMilestoneActionError({
+          milestoneId,
+          message: result.message || t('workspace.failedWithdrawFundsError'),
+        });
+        if (result.statusCode === 409) {
+          setWithdrawDialogMilestone(null);
+        }
+      }
+    } catch {
+      setMilestoneActionError({
+        milestoneId,
+        message: t('workspace.failedWithdrawFundsError'),
+      });
+    } finally {
+      withdrawalRequestInFlightRef.current = false;
+      setMilestoneActionPendingId(null);
+    }
   };
 
   const handleToggleReportList = useCallback(() => {
@@ -762,6 +817,14 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleOpenMilestoneEditor}
+                  className="bg-card hover:bg-muted border border-border text-foreground font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <ListChecks size={15} />
+                  <span>{t('workspace.milestoneDetails')}</span>
+                </button>
                 {showEndProjectButton && (
                   <button
                     onClick={openEndProjectDialog}
@@ -825,9 +888,9 @@ export default function ProjectWorkspaceScreen() {
                   <Wallet size={22} />
                 </div>
                 <div className="workspace-receive-money-copy">
-                  <span>{t('workspace.automaticPayout')}</span>
-                  <h3>{t('workspace.payoutReconciliation')}</h3>
-                  <p>{t('workspace.automaticPayoutNotice')}</p>
+                  <span>{t('workspace.finalPayout')}</span>
+                  <h3>{t('workspace.finalPayoutReconciliation')}</h3>
+                  <p>{t('workspace.finalPayoutNotice')}</p>
                 </div>
                 <button
                   type="button"
@@ -851,7 +914,21 @@ export default function ProjectWorkspaceScreen() {
                   const isInProgress = milestone.status === 'in_progress';
                   const isSubmitted = milestone.status === 'submitted';
                   const isPending = milestone.status === 'pending';
-                  const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
+                  const isReleasedInFull = milestone.amount > 0 && milestone.releasedAmount >= milestone.amount;
+                  const withdrawalEligibility = getEarlyWithdrawalEligibility(
+                    project.milestones,
+                    milestone,
+                    activeContract?.status,
+                    isFreelancer,
+                  );
+                  const showFreelancerWithdraw = isFreelancer &&
+                    withdrawalEligibility.isContractActive &&
+                    withdrawalEligibility.isApproved &&
+                    !withdrawalEligibility.isAtCap;
+                  const showEarlyWithdrawalCap = isFreelancer &&
+                    withdrawalEligibility.isApproved &&
+                    withdrawalEligibility.isAtCap &&
+                    !isReleasedInFull;
                   const workItems = milestone.workItems || [];
                   const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
                   const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress && allWorkItemsCompleted;
@@ -939,12 +1016,20 @@ export default function ProjectWorkspaceScreen() {
                         })}
                       </div>
 
-                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || (!isClient && isCompleted && isReleasedInFull)) && (
+                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || showFreelancerWithdraw || showEarlyWithdrawalCap || (!isClient && isCompleted && isReleasedInFull)) && (
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                           <div className="flex-1 max-w-xs">
-                            {!isClient && isCompleted && isReleasedInFull ? (
+                            {showFreelancerWithdraw ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {t('earlyWithdrawal.availableBeforeEnd')} <GigCoinAmount amount={withdrawalEligibility.availableAmount} />
+                              </span>
+                            ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                                 {t('workspace.releasedInFull')}
+                              </span>
+                            ) : showEarlyWithdrawalCap ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('earlyWithdrawal.maximumReached')}
                               </span>
                             ) : (isInProgress || isSubmitted) ? (
                               <>
@@ -985,9 +1070,28 @@ export default function ProjectWorkspaceScreen() {
                               >
                                 {isMilestoneActionPending ? t('workspace.requesting') : 'Request early start'}
                               </button>
+                            ) : showFreelancerWithdraw ? (
+                              <button
+                                type="button"
+                                onClick={() => openWithdrawDialog(milestone.id, milestone.title, withdrawalEligibility.availableAmount)}
+                                disabled={isMilestoneActionPending || !withdrawalEligibility.meetsApprovalThreshold}
+                                title={withdrawalEligibility.meetsApprovalThreshold
+                                  ? t('earlyWithdrawal.actionTooltip')
+                                  : t('earlyWithdrawal.thresholdTooltip', {
+                                      approved: withdrawalEligibility.approvedMilestones,
+                                      required: withdrawalEligibility.requiredApprovedMilestones,
+                                    })}
+                                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                              >
+                                {isMilestoneActionPending ? t('earlyWithdrawal.submitting') : t('earlyWithdrawal.action')}
+                              </button>
                             ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                                 {t('workspace.releasedInFull')}
+                              </span>
+                            ) : showEarlyWithdrawalCap ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('earlyWithdrawal.maximumReached')}
                               </span>
                             ) : (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -1000,6 +1104,14 @@ export default function ProjectWorkspaceScreen() {
                       {milestoneActionError?.milestoneId === milestone.id && (
                         <div className="mt-3 text-[11px] font-semibold text-red-500">
                           {milestoneActionError.message}
+                        </div>
+                      )}
+                      {showFreelancerWithdraw && !withdrawalEligibility.meetsApprovalThreshold && (
+                        <div className="mt-3 text-[11px] font-semibold text-amber-600">
+                          {t('earlyWithdrawal.thresholdWarning', {
+                            approved: withdrawalEligibility.approvedMilestones,
+                            required: withdrawalEligibility.requiredApprovedMilestones,
+                          })}
                         </div>
                       )}
                       {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
@@ -1430,6 +1542,18 @@ export default function ProjectWorkspaceScreen() {
           </aside>
         </div>
       </div>
+
+      <EarlyWithdrawalDialog
+        open={Boolean(withdrawDialogMilestone)}
+        milestoneTitle={withdrawDialogMilestone?.title || ''}
+        availableAmount={withdrawDialogMilestone?.availableAmount || 0}
+        submitting={Boolean(withdrawDialogMilestone && milestoneActionPendingId === withdrawDialogMilestone.milestoneId)}
+        error={withdrawDialogMilestone && milestoneActionError?.milestoneId === withdrawDialogMilestone.milestoneId
+          ? milestoneActionError.message
+          : null}
+        onConfirm={confirmMilestoneWithdrawal}
+        onCancel={closeWithdrawDialog}
+      />
 
       <ServiceFeeDialog
         open={endProjectModalOpen}

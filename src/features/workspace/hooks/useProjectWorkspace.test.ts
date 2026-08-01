@@ -40,6 +40,8 @@ const signalRMock = vi.hoisted(() => {
   };
 });
 
+const appProviderMock = vi.hoisted(() => ({ role: 0, userId: 'client-user-1' }));
+
 vi.mock('@microsoft/signalr', () => ({
   HubConnectionBuilder: vi.fn(function HubConnectionBuilderMock() {
     return signalRMock.builder;
@@ -50,7 +52,7 @@ vi.mock('@microsoft/signalr', () => ({
 
 vi.mock('react-router', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('../../../app/providers/AppProvider', () => ({
-  useApp: () => ({ user: { id: 'client-user-1' }, role: UserRole.Client }),
+  useApp: () => ({ user: { id: appProviderMock.userId }, role: appProviderMock.role }),
 }));
 vi.mock('../../../api/contractAPI/GET', () => ({
   contractGetAPI: {
@@ -63,6 +65,7 @@ vi.mock('../../../api/contractAPI/GET', () => ({
 vi.mock('../../../api/contractAPI/POST', () => ({
   contractPostAPI: {
     endProject: vi.fn(),
+    withdrawMilestone: vi.fn(),
   },
 }));
 vi.mock('../../../api/messageAPI/GET', () => ({
@@ -77,6 +80,8 @@ const success = <T,>(data: T) => ({ success: true, statusCode: 200, message: 'Su
 describe('useProjectWorkspace realtime chat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    appProviderMock.role = UserRole.Client;
+    appProviderMock.userId = 'client-user-1';
     signalRMock.handlers.clear();
     signalRMock.resetCallbacks();
     signalRMock.connection.state = 'Connected';
@@ -223,6 +228,59 @@ describe('useProjectWorkspace realtime chat', () => {
 
     expect(contractPostAPI.endProject).toHaveBeenCalledWith('contract-1');
     expect(result.current.reviewPromptContractId).toBe('contract-1');
+  });
+
+  it('withdraws an approved milestone, reloads workspace data, and refreshes the wallet', async () => {
+    appProviderMock.role = UserRole.Freelancer;
+    appProviderMock.userId = 'freelancer-user-1';
+    vi.mocked(contractPostAPI.withdrawMilestone).mockResolvedValue(success({
+      contractId: 'contract-1',
+      milestoneId: 'milestone-1',
+      escrowId: 'escrow-1',
+      releasedAmountVnd: 80,
+      releasedTokens: 80,
+      milestoneReleasedAmountVnd: 80,
+      escrowReleasedAmountVnd: 80,
+      escrowStatus: 1,
+    }) as never);
+    const walletUpdatedHandler = vi.fn();
+    window.addEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(result.current.activeContract?.status).toBe(ContractStatus.Active));
+    const initialLoadCount = vi.mocked(contractGetAPI.getContractById).mock.calls.length;
+
+    await act(async () => {
+      expect(await result.current.handleWithdrawMilestone('milestone-1')).toMatchObject({ success: true });
+    });
+
+    expect(contractPostAPI.withdrawMilestone).toHaveBeenCalledWith('contract-1', 'milestone-1');
+    expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(initialLoadCount + 1);
+    expect(walletUpdatedHandler).toHaveBeenCalledTimes(1);
+    window.removeEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+  });
+
+  it('reloads stale milestone data after a duplicate withdrawal conflict', async () => {
+    appProviderMock.role = UserRole.Freelancer;
+    appProviderMock.userId = 'freelancer-user-1';
+    vi.mocked(contractPostAPI.withdrawMilestone).mockResolvedValue({
+      success: false,
+      statusCode: 409,
+      message: 'Milestone has already reached the early withdrawal limit.',
+    });
+
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(result.current.activeContract?.status).toBe(ContractStatus.Active));
+    const initialLoadCount = vi.mocked(contractGetAPI.getContractById).mock.calls.length;
+
+    await act(async () => {
+      expect(await result.current.handleWithdrawMilestone('milestone-1')).toMatchObject({
+        success: false,
+        statusCode: 409,
+      });
+    });
+
+    expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(initialLoadCount + 1);
   });
 
   it('reloads workspace and wallet on matching FinalPayoutClaimed event', async () => {

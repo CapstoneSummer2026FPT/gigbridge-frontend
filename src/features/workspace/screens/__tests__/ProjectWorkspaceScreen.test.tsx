@@ -7,6 +7,8 @@ import { useProjectWorkspace } from '../../hooks/useProjectWorkspace';
 
 const navigateMock = vi.fn();
 const handleRequestMilestoneUnlockMock = vi.fn();
+const handleWithdrawMilestoneMock = vi.fn();
+const handleOpenMilestoneEditorMock = vi.fn();
 const handleEndProjectMock = vi.fn();
 const clearReviewPromptMock = vi.fn();
 const refreshWorkspaceMock = vi.fn();
@@ -20,18 +22,39 @@ vi.mock('../../../../hooks/useTranslation', () => ({
     t: (key: string, values?: Record<string, unknown>) => {
       if (values?.defaultValue) return String(values.defaultValue);
       if (key === 'workspace.version') return `Version ${values?.version}`;
+      if (key === 'earlyWithdrawal.thresholdWarning') {
+        return `${values?.approved}/${values?.required} required milestones have been approved.`;
+      }
+      if (key === 'earlyWithdrawal.thresholdTooltip') {
+        return `${values?.approved} of ${values?.required} required milestones are approved`;
+      }
       const labels: Record<string, string> = {
         'workspace.sharedFiles': 'Shared files',
         'workspace.workMaterialsLink': 'Work materials link',
         'workspace.endProject': 'End project',
+        'workspace.milestoneDetails': 'Milestone details',
         'workspace.approveAllTooltip': 'Approve all milestones to end project',
         'workspace.releaseEscrowTooltip': 'Release escrow',
-        'workspace.automaticPayout': 'Automatic payout',
-        'workspace.payoutReconciliation': 'Payout reconciliation',
-        'workspace.automaticPayoutNotice': 'Approved milestone payouts are reconciled automatically.',
+        'workspace.finalPayout': 'Final payout',
+        'workspace.finalPayoutReconciliation': 'Payout reconciliation',
+        'workspace.finalPayoutNotice': 'The remaining escrow was reconciled when the project ended.',
         'workspace.viewWalletHistory': 'View wallet history',
         'workspace.viewOnlyNotice': 'Workspace is view-only',
         'workspace.releasedInFull': 'Released in full',
+        'workspace.failedWithdrawFundsError': 'Failed to withdraw milestone funds.',
+        'earlyWithdrawal.action': 'Withdraw early',
+        'earlyWithdrawal.actionTooltip': 'Withdraw the available amount',
+        'earlyWithdrawal.availableBeforeEnd': 'Available before project completion:',
+        'earlyWithdrawal.confirmTitle': 'Confirm early withdrawal',
+        'earlyWithdrawal.confirmDescription': 'Move the available amount to your GigCoin wallet now.',
+        'earlyWithdrawal.milestone': 'Milestone',
+        'earlyWithdrawal.availableAmount': 'Available amount',
+        'earlyWithdrawal.maximumNotice': 'You can withdraw up to 80% of an approved milestone before the project ends.',
+        'earlyWithdrawal.maximumReached': 'Maximum 80% withdrawn',
+        'earlyWithdrawal.confirm': 'Confirm withdrawal',
+        'earlyWithdrawal.cancel': 'Cancel',
+        'earlyWithdrawal.submitting': 'Withdrawing...',
+        'earlyWithdrawal.success': 'Milestone funds were added to your GigCoin wallet.',
         'serviceFee.endProject.confirmationDescription': 'Final payout available to freelancer',
         'serviceFee.confirm': 'End project',
         'serviceFee.confirmAriaLabel': 'End project',
@@ -216,8 +239,9 @@ const mockWorkspaceHook = (options: {
     projectMessages: [],
     handleSendMessage: vi.fn(),
     handleSimulateAttachment: vi.fn(),
-    handleOpenMilestoneEditor: vi.fn(),
+    handleOpenMilestoneEditor: handleOpenMilestoneEditorMock,
     handleRequestMilestoneUnlock: handleRequestMilestoneUnlockMock,
+    handleWithdrawMilestone: handleWithdrawMilestoneMock,
     handleUpdateWorkItem: vi.fn(),
     handleRespondEarlyStart: vi.fn(),
     handleEndProject: handleEndProjectMock,
@@ -234,6 +258,7 @@ describe('ProjectWorkspaceScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     handleRequestMilestoneUnlockMock.mockResolvedValue({ success: true });
+    handleWithdrawMilestoneMock.mockResolvedValue({ success: true, statusCode: 200 });
     handleEndProjectMock.mockResolvedValue({ success: true });
     refreshWorkspaceMock.mockResolvedValue(undefined);
     sessionStorage.clear();
@@ -317,7 +342,7 @@ describe('ProjectWorkspaceScreen', () => {
     });
   });
 
-  it('shows released state without a manual withdraw action', () => {
+  it('shows the 80% cap separately from a fully released milestone', () => {
     mockWorkspaceHook({
       isClient: false,
       milestones: [
@@ -329,11 +354,94 @@ describe('ProjectWorkspaceScreen', () => {
     render(<ProjectWorkspaceScreen />);
 
     expect(screen.queryByRole('button', { name: /end project/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /withdraw/i })).not.toBeInTheDocument();
-    expect(screen.getAllByText(/released in full/i)).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: /withdraw early/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/released in full/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/maximum 80% withdrawn/i).length).toBeGreaterThan(0);
   });
 
-  it('shows automatic payout status for freelancers and opens wallet history', () => {
+  it('opens the shared milestone details screen for workspace participants', () => {
+    mockWorkspaceHook({ isClient: false });
+    render(<ProjectWorkspaceScreen />);
+
+    fireEvent.click(screen.getByRole('button', { name: /milestone details/i }));
+
+    expect(handleOpenMilestoneEditorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirms an eligible early withdrawal without displaying a service fee', async () => {
+    mockWorkspaceHook({
+      isClient: false,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved milestone', status: 'approved', amount: 100, releasedAmount: 20 },
+        { ...pendingMilestone, id: 'milestone-2', title: 'Pending milestone', status: 'pending', amount: 100, releasedAmount: 0 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    fireEvent.click(screen.getByRole('button', { name: /withdraw early/i }));
+    const withdrawalDialog = screen.getByRole('alertdialog', { name: /confirm early withdrawal/i });
+    expect(withdrawalDialog).toBeInTheDocument();
+    expect(withdrawalDialog).toHaveTextContent('Approved milestone');
+    expect(screen.getByText(/up to 80%/i)).toBeInTheDocument();
+    expect(screen.queryByText(/service fee/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm withdrawal/i }));
+    await waitFor(() => expect(handleWithdrawMilestoneMock).toHaveBeenCalledTimes(1));
+    expect(handleWithdrawMilestoneMock).toHaveBeenCalledWith('milestone-1');
+  });
+
+  it('surfaces a duplicate-withdrawal conflict without sending a second request', async () => {
+    handleWithdrawMilestoneMock.mockResolvedValue({
+      success: false,
+      statusCode: 409,
+      message: 'Maximum 80% already withdrawn.',
+    });
+    mockWorkspaceHook({
+      isClient: false,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved milestone', status: 'approved', amount: 100, releasedAmount: 0 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+    fireEvent.click(screen.getByRole('button', { name: /withdraw early/i }));
+    fireEvent.click(screen.getByRole('button', { name: /confirm withdrawal/i }));
+
+    await waitFor(() => expect(screen.getByText(/maximum 80% already withdrawn/i)).toBeInTheDocument());
+    expect(handleWithdrawMilestoneMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('never offers milestone early withdrawal to clients', () => {
+    mockWorkspaceHook({
+      isClient: true,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved milestone', status: 'approved', amount: 100, releasedAmount: 0 },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    expect(screen.queryByRole('button', { name: /withdraw early/i })).not.toBeInTheDocument();
+  });
+
+  it('disables early withdrawal until half of all milestones are approved', () => {
+    mockWorkspaceHook({
+      isClient: false,
+      milestones: [
+        { ...pendingMilestone, id: 'milestone-1', title: 'Approved milestone', status: 'approved', amount: 100, releasedAmount: 0 },
+        { ...pendingMilestone, id: 'milestone-2', status: 'pending' },
+        { ...pendingMilestone, id: 'milestone-3', status: 'pending' },
+      ],
+    });
+
+    render(<ProjectWorkspaceScreen />);
+
+    expect(screen.getByRole('button', { name: /withdraw early/i })).toBeDisabled();
+    expect(screen.getByText(/1\/2 required milestones/i)).toBeInTheDocument();
+  });
+
+  it('shows final payout status for freelancers and opens wallet history', () => {
     mockWorkspaceHook({
       isClient: false,
       contractStatus: ContractStatus.Completed,
@@ -349,7 +457,7 @@ describe('ProjectWorkspaceScreen', () => {
 
     expect(screen.queryByRole('button', { name: /withdraw/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /end project/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/approved milestone payouts are reconciled automatically/i)).toBeInTheDocument();
+    expect(screen.getByText(/remaining escrow was reconciled when the project ended/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /view wallet history/i }));
 

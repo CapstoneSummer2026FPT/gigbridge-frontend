@@ -66,6 +66,7 @@ interface SubmitMilestoneDeliverableResult {
 interface WorkspaceActionResult {
   success: boolean;
   message?: string;
+  statusCode?: number;
 }
 
 interface SubmitProductHandoffPayload {
@@ -546,7 +547,9 @@ export function useProjectWorkspace(initialContractId: string) {
 
   const handleOpenMilestoneEditor = (): void => {
     if (!activeProjectId) return;
-    navigate(`/contracts/${activeProjectId}/milestones?mode=contract-edit`);
+    navigate(isClient
+      ? `/contracts/${activeProjectId}/milestones?mode=contract-edit`
+      : `/contracts/${activeProjectId}/milestones`);
   };
 
   const reloadActiveWorkspace = async (): Promise<void> => {
@@ -621,6 +624,35 @@ export function useProjectWorkspace(initialContractId: string) {
 
     await reloadActiveWorkspace();
     return { success: true, message: response.message };
+  };
+
+  const handleWithdrawMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+    if (role !== UserRole.Freelancer) {
+      return { success: false, message: 'Only the freelancer can withdraw milestone funds.' };
+    }
+    if (activeContract?.status !== ContractStatus.Active) {
+      return { success: false, message: 'Contract is not active.' };
+    }
+
+    const response = await contractPostAPI.withdrawMilestone(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      if (response.statusCode === 409) {
+        await reloadActiveWorkspace();
+      }
+      return {
+        success: false,
+        statusCode: response.statusCode,
+        message: response.message || 'Failed to withdraw milestone funds.',
+      };
+    }
+
+    await reloadActiveWorkspace();
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    return { success: true, statusCode: response.statusCode, message: response.message };
   };
 
   const handleUpdateWorkItem = async (milestoneId: string, workItemId: string, status: number, progressNote?: string): Promise<WorkspaceActionResult> => {
@@ -722,6 +754,7 @@ export function useProjectWorkspace(initialContractId: string) {
     handleSimulateAttachment,
     handleOpenMilestoneEditor,
     handleRequestMilestoneUnlock,
+    handleWithdrawMilestone,
     handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,

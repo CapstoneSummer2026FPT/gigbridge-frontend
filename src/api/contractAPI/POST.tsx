@@ -1,6 +1,6 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ContractProductHandoffResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest } from '../../types/models/Contract';
+import type { ContractProductHandoffResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
 import { normalizeMilestone } from './GET';
 
 const contractsUrl = 'Contracts';
@@ -113,6 +113,18 @@ export const contractPostAPI = {
       `contracts/${contractId}/milestones/early-start-requests/${requestId}/respond`,
       { approve, note },
     ),
+
+  /**
+   * POST /api/contracts/{contractId}/milestones/{milestoneId}/withdraw
+   */
+  withdrawMilestone: async (
+    contractId: string,
+    milestoneId: string
+  ): Promise<ApiResponse<WithdrawMilestoneResponse>> => {
+    return apiService.post<WithdrawMilestoneResponse>(
+      `contracts/${contractId}/milestones/${milestoneId}/withdraw`
+    );
+  },
 
   /**
    * POST /api/contracts/{contractId}/end-project
