@@ -22,6 +22,7 @@ const getApiRootUrl = () => API_BASE_URL.replace(/\/api\/?$/i, '').replace(/\/$/
 
 export const getChatHubUrl = () => `${getApiRootUrl()}/hubs/chat`;
 export const getNotificationHubUrl = () => `${getApiRootUrl()}/hubs/notification`;
+export const getSystemTrackingHubUrl = () => `${getApiRootUrl()}/hubs/system-tracking`;
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -203,19 +204,21 @@ export const apiService = {
     endpoint: string,
     params: unknown = {},
     headers: Record<string, string> = {},
+    signal?: AbortSignal,
   ): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.get<unknown>(normalizeEndpoint(endpoint), { params, headers });
+      const response = await apiClient.get<unknown>(normalizeEndpoint(endpoint), { params, headers, signal });
       return handleResponse<T>(response);
     } catch (error: unknown) {
       return handleFailure<T>(error);
     }
   },
 
-  async download(endpoint: string): Promise<ApiResponse<Blob>> {
+  async download(endpoint: string, params: unknown = {}): Promise<ApiResponse<Blob>> {
     try {
       const response = await apiClient.get<Blob>(normalizeEndpoint(endpoint), {
         responseType: 'blob',
+        params,
       });
 
       return {

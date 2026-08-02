@@ -10,6 +10,7 @@ import type {
 } from '../../types/models/AdminDispute';
 import type { DisputeEvidenceDownload } from '../../types/models/Dispute';
 import type { ConversationMessageResponse } from '../messageAPI/GET';
+import type { SystemTrackingSnapshot } from '../../types/systemTracking';
 import {
   normalizeAdminDisputeDetail,
   normalizeAdminDisputeListResult,
@@ -18,6 +19,10 @@ import {
 const Admin_Api_Base_Url = '/admin';
 
 export const adminGetAPI = {
+  getSystemTracking: async (limit = 100): Promise<ApiResponse<SystemTrackingSnapshot>> => {
+    return apiService.get<SystemTrackingSnapshot>(`${Admin_Api_Base_Url}/system-tracking`, { limit });
+  },
+
   getDisputes: async (
     params: AdminDisputeListParams = {}
   ): Promise<ApiResponse<AdminDisputeListResult>> => {

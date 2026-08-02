@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Cpu, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import * as signalR from '@microsoft/signalr';
+import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -8,6 +9,8 @@ import type { ApiResponse } from '../../../types/common';
 import type { AdminUserDto, PaginatedUsersResponse } from '../../../types/models/User';
 import type { JobPostSummaryDto } from '../../../types/models/Job';
 import type { ProposalDto } from '../../../types/models/Proposal';
+import type { SystemTrackingSnapshot } from '../../../types/systemTracking';
+import { getSystemTrackingHubUrl } from '../../../service/apiService';
 import '../styles/admin-users-screen.css';
 
 type TabType = 'overview' | 'audit' | 'errors' | 'alerts' | 'ai-usage';
@@ -163,6 +166,49 @@ export default function AdminSystemTrackingScreen() {
   const [apiLogPage, setApiLogPage] = useState(1);
   const apiLogsPerPage = 5;
 
+  const applyTrackingSnapshot = useCallback((snapshot: SystemTrackingSnapshot) => {
+    setApiLogs(snapshot.requests.map(request => ({
+      id: request.id,
+      timestamp: request.timestamp,
+      method: request.method,
+      status: request.statusCode,
+      url: request.path,
+      ip: '-',
+      duration: request.durationMs,
+      user: null,
+      application: 'GigBridge API',
+    })));
+    setErrorLogs(snapshot.errors.map(error => ({
+      id: error.id,
+      timestamp: error.timestamp,
+      level: error.level,
+      service: error.service,
+      message: error.message,
+      stackTrace: null,
+      userId: null,
+      requestId: error.requestId,
+      count: error.count,
+    })));
+    setAlerts(snapshot.alerts.map(alert => ({
+      id: alert.id,
+      timestamp: alert.firstObservedAt,
+      title: alert.title,
+      description: alert.description,
+      severity: alert.severity,
+      service: 'backend-api',
+      metric: alert.metric,
+      value: alert.value,
+      threshold: alert.threshold,
+    })));
+  }, []);
+
+  const loadRealtimeSnapshot = useCallback(async () => {
+    const response = await adminGetAPI.getSystemTracking(100);
+    if (response.success && response.data) {
+      applyTrackingSnapshot(response.data);
+    }
+  }, [applyTrackingSnapshot]);
+
   const loadSystemTrackingData = async () => {
     setIsLoadingTracking(true);
 
@@ -234,12 +280,42 @@ export default function AdminSystemTrackingScreen() {
     setErrorLogs(failures);
     setAlerts(activeAlerts);
     setApiLogs(requestLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+    await loadRealtimeSnapshot();
     setIsLoadingTracking(false);
   };
 
   useEffect(() => {
     loadSystemTrackingData();
   }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    let refreshTimer: number | undefined;
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(getSystemTrackingHubUrl(), {
+        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+      })
+      .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
+      .build();
+
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        if (!disposed) void loadRealtimeSnapshot();
+      }, 300);
+    };
+
+    connection.on('SystemTrackingUpdated', scheduleRefresh);
+    connection.onreconnected(scheduleRefresh);
+    void connection.start().catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(refreshTimer);
+      connection.off('SystemTrackingUpdated', scheduleRefresh);
+      void connection.stop();
+    };
+  }, [loadRealtimeSnapshot]);
 
   const stats = useMemo(() => {
     const auditCount = auditLogs.length;
@@ -470,34 +546,7 @@ export default function AdminSystemTrackingScreen() {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="glass-card p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Cpu size={18} className="text-cyan" />
-                    <h3 className="font-semibold text-primary">Tracked Endpoints</h3>
-                  </div>
-                  <div className="space-y-3">
-                    {apiLogs.map(log => (
-                      <div key={log.id} className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          {log.status >= 200 && log.status < 400 ? (
-                            <CheckCircle size={14} className="text-green" />
-                          ) : (
-                            <XCircle size={14} className="text-red" />
-                          )}
-                          <span className="text-sm text-secondary truncate">{log.url}</span>
-                        </div>
-                        <span className={`text-sm font-semibold ${getStatusColor(log.status)}`}>
-                          {log.status || 'Failed'} · {log.duration}ms
-                        </span>
-                      </div>
-                    ))}
-                    {!isLoadingTracking && apiLogs.length === 0 && (
-                      <p className="text-sm text-secondary">No endpoint probes are available.</p>
-                    )}
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="glass-card p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Database size={18} className="text-purple" />

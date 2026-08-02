@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -41,13 +41,17 @@ const getSavedJobPostId = (job: SavedJobDto): string => job.jobPostId ?? job.job
 export default function BrowseJobsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const { user, role } = useApp();
   const [search, setSearch] = useState(sanitizeSearch(params.get('q') || ''));
+  const [committedSearch, setCommittedSearch] = useState(sanitizeSearch(params.get('q') || ''));
   const [category, setCategory] = useState(params.get('cat') || 'All');
   const [skills, setSkills] = useState('');
   const [budgetMin, setBudgetMin] = useState('');
   const [budgetMax, setBudgetMax] = useState('');
+  const [committedSkills, setCommittedSkills] = useState('');
+  const [committedBudgetMin, setCommittedBudgetMin] = useState('');
+  const [committedBudgetMax, setCommittedBudgetMax] = useState('');
   const [workType, setWorkType] = useState('All');
   const [datePosted, setDatePosted] = useState('Any time');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
@@ -62,7 +66,9 @@ export default function BrowseJobsScreen() {
   const [topFreelancers, setTopFreelancers] = useState<FreelancerSummaryDto[]>([]);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [isPromotionActive, setIsPromotionActive] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => Math.max(1, Number(params.get('page')) || 1));
+  const [totalResults, setTotalResults] = useState(0);
+  const [searchEventId, setSearchEventId] = useState<string | null>(null);
   const isFreelancer = role === UserRole.Freelancer;
 
   useEffect(() => {
@@ -126,26 +132,72 @@ export default function BrowseJobsScreen() {
   }, [isFreelancer, user]);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setCommittedSearch(sanitizeSearch(search).trim());
+      setPage(1);
+      setSearchEventId(null);
+      setParams(current => {
+        const next = new URLSearchParams(current);
+        if (search.trim()) next.set('q', sanitizeSearch(search).trim()); else next.delete('q');
+        next.set('page', '1');
+        return next;
+      }, { replace: true });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [search, setParams]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setCommittedSkills(skills.trim());
+      setCommittedBudgetMin(budgetMin);
+      setCommittedBudgetMax(budgetMax);
+      setPage(1);
+      setSearchEventId(null);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [budgetMax, budgetMin, skills]);
+
+  useEffect(() => {
+    const controller = new AbortController();
     const fetchJobs = async () => {
       try {
         setLoading(true);
         setLoadError(null);
-        const data = await jobGetAPI.getAllPublicJobs();
-        setAllJobs(data.map(job => ({
+        const result = await jobGetAPI.searchPublicJobs({
+          pageIndex: page,
+          pageSize: PAGE_SIZE,
+          search: committedSearch || undefined,
+          budgetMin: committedBudgetMin ? Number(committedBudgetMin) : undefined,
+          budgetMax: committedBudgetMax ? Number(committedBudgetMax) : undefined,
+          sortBy: sortBy === 'date' ? 'newest' : undefined,
+          sortDesc: true,
+          category: category === 'All' ? undefined : category,
+          skills: committedSkills || undefined,
+          workType: workType === 'All' ? undefined : workType,
+          postedWithinDays: getDatePostedDays(datePosted) ?? undefined,
+          aiOnly,
+          searchEventId: page > 1 ? searchEventId : null,
+        }, controller.signal);
+        setAllJobs(result.items.map(job => ({
           ...job,
           datePosted: job.createdAt || '',
-          isFeatured: Boolean(job.isAiRecommended),
+          isFeatured: Boolean(job.isFeatured),
         })));
+        setTotalResults(result.totalResults);
+        if (result.searchEventId) setSearchEventId(result.searchEventId);
       } catch (error) {
+        if (controller.signal.aborted) return;
         console.error('Failed to fetch jobs:', error);
         setLoadError('Unable to load jobs from the backend.');
         setAllJobs([]);
+        setTotalResults(0);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
-    fetchJobs();
-  }, []);
+    void fetchJobs();
+    return () => controller.abort();
+  }, [aiOnly, category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, page, sortBy, workType]);
 
   useEffect(() => {
     let isMounted = true;
@@ -174,59 +226,34 @@ export default function BrowseJobsScreen() {
 
   const budgetInvalid = Boolean(budgetMin && budgetMax && Number(budgetMin) > Number(budgetMax));
 
-  const jobs = useMemo(() => {
-    if (budgetInvalid) return [];
+  const jobs = budgetInvalid ? [] : allJobs;
 
-    const query = sanitizeSearch(search).toLowerCase();
-    const skillTerms = skills.split(',').map(item => item.trim().toLowerCase()).filter(Boolean);
-    const postedWithinDays = getDatePostedDays(datePosted);
-
-    const scored = allJobs
-      .filter(job => job.status === 'open')
-      .filter(job => {
-        const searchableText = `${job.title} ${job.description}`.toLowerCase();
-        const matchesSearch = !query || searchableText.includes(query);
-        const matchesCategory = category === 'All' || job.category === category;
-        const matchesSkills = skillTerms.length === 0 || skillTerms.every(skill =>
-          job.skills.some(jobSkill => jobSkill.toLowerCase().includes(skill))
-        );
-        const matchesBudgetMin = !budgetMin || job.budgetMax >= Number(budgetMin);
-        const matchesBudgetMax = !budgetMax || job.budgetMin <= Number(budgetMax);
-        const matchesWorkType = workType === 'All' || job.jobType === workType;
-        const matchesAi = !aiOnly || job.isAiRecommended;
-        const matchesDate = !postedWithinDays || (
-          (Date.now() - new Date(job.datePosted).getTime()) / 86400000 <= postedWithinDays
-        );
-
-        return matchesSearch && matchesCategory && matchesSkills && matchesBudgetMin
-          && matchesBudgetMax && matchesWorkType && matchesAi && matchesDate;
-      })
-      .map(job => {
-        const titleScore = query && job.title.toLowerCase().includes(query) ? 3 : 0;
-        const descScore = query && job.description.toLowerCase().includes(query) ? 1 : 0;
-        const skillScore = query ? job.skills.filter(skill => skill.toLowerCase().includes(query)).length : 0;
-        return { job, relevance: titleScore + descScore + skillScore + (job.aiMatchScore || 0) / 100 };
-      });
-
-    scored.sort((a, b) => {
-      if ((a.job.isFeatured ? 1 : 0) !== (b.job.isFeatured ? 1 : 0)) {
-        return (b.job.isFeatured ? 1 : 0) - (a.job.isFeatured ? 1 : 0);
-      }
-      if (sortBy === 'date') {
-        return new Date(b.job.datePosted).getTime() - new Date(a.job.datePosted).getTime();
-      }
-      return b.relevance - a.relevance;
-    });
-
-    return scored.map(item => item.job);
-  }, [aiOnly, allJobs, budgetInvalid, budgetMax, budgetMin, category, datePosted, search, skills, sortBy, workType]);
-
-  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
-  const pagedJobs = jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
+  const pagedJobs = jobs;
 
   useEffect(() => {
+    setParams(current => {
+      const next = new URLSearchParams(current);
+      next.set('page', String(page));
+      return next;
+    }, { replace: true });
+  }, [page, setParams]);
+
+  const commitSearch = () => {
+    setCommittedSearch(sanitizeSearch(search).trim());
+    setSearchEventId(null);
     setPage(1);
-  }, [search, category, skills, budgetMin, budgetMax, workType, datePosted, sortBy, aiOnly]);
+  };
+
+  const resetBrowsePage = () => {
+    setPage(1);
+    setSearchEventId(null);
+  };
+
+  const openJob = (job: BrowseJob) => {
+    void jobGetAPI.recordJobOpen(job.id, searchEventId);
+    navigate(`/jobs/${job.id}`, { state: { job, searchEventId } });
+  };
 
   const toggleSave = async (id: string) => {
     if (!id) {
@@ -297,6 +324,7 @@ export default function BrowseJobsScreen() {
                     type="text"
                     value={search}
                     onChange={event => setSearch(sanitizeSearch(event.target.value))}
+                    onKeyDown={event => event.key === 'Enter' && commitSearch()}
                     placeholder={t('jobs.searchPlaceholder')}
                     className="input-gb w-full browse-jobs-search-input"
                   />
@@ -305,7 +333,7 @@ export default function BrowseJobsScreen() {
                   className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm transition-all browse-jobs-filter-btn">
                   <Filter size={16} /> {t('jobs.filters')}
                 </button>
-                <button onClick={() => setAiOnly(!aiOnly)}
+                <button onClick={() => { setAiOnly(!aiOnly); resetBrowsePage(); }}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${aiOnly ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
                   <Bot size={16} />
                   {t('jobs.aiRecommended')}
@@ -317,7 +345,7 @@ export default function BrowseJobsScreen() {
                   <div className="browse-jobs-filter-grid">
                     <label>
                       {t('jobs.category')}
-                      <select value={category} onChange={event => setCategory(event.target.value)}>
+                      <select value={category} onChange={event => { setCategory(event.target.value); resetBrowsePage(); }}>
                         {categoryOptions.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : item}</option>)}
                       </select>
                     </label>
@@ -335,13 +363,13 @@ export default function BrowseJobsScreen() {
                     </label>
                     <label>
                       {t('jobs.workType')}
-                      <select value={workType} onChange={event => setWorkType(event.target.value)}>
+                      <select value={workType} onChange={event => { setWorkType(event.target.value); resetBrowsePage(); }}>
                         {WORK_TYPES.map(item => <option key={item} value={item}>{item === 'All' ? (isEn ? 'All' : 'Tất cả') : t('jobs.fixedPrice')}</option>)}
                       </select>
                     </label>
                     <label>
                       {t('jobs.datePosted')}
-                      <select value={datePosted} onChange={event => setDatePosted(event.target.value)}>
+                      <select value={datePosted} onChange={event => { setDatePosted(event.target.value); resetBrowsePage(); }}>
                         {DATE_POSTED.map(item => <option key={item} value={item}>{translateDatePosted(item)}</option>)}
                       </select>
                     </label>
@@ -353,7 +381,7 @@ export default function BrowseJobsScreen() {
 
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {categoryOptions.map(cat => (
-                <button key={cat} onClick={() => setCategory(cat)}
+                <button key={cat} onClick={() => { setCategory(cat); resetBrowsePage(); }}
                   className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${category === cat ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
                   {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
                 </button>
@@ -363,11 +391,11 @@ export default function BrowseJobsScreen() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm browse-jobs-desc">
-                  <span className="text-primary font-semibold">{jobs.length}</span> {t('jobs.openJobsFound')}
+                  <span className="text-primary font-semibold">{totalResults}</span> {t('jobs.openJobsFound')}
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-xs browse-jobs-desc">{t('jobs.sortBy')}:</span>
-                  <button onClick={() => setSortBy(sortBy === 'relevance' ? 'date' : 'relevance')} className="flex items-center gap-1 text-sm text-primary">
+                  <button onClick={() => { setSortBy(sortBy === 'relevance' ? 'date' : 'relevance'); resetBrowsePage(); }} className="flex items-center gap-1 text-sm text-primary">
                     {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')} <ChevronDown size={14} />
                   </button>
                 </div>
@@ -378,7 +406,7 @@ export default function BrowseJobsScreen() {
                   <div key={job.id}
                     className="glass-card p-5 cursor-pointer group browse-jobs-job-card"
                     style={{ animationDelay: `${idx * 0.05}s` }}
-                    onClick={() => navigate(`/jobs/${job.id}`, { state: { job } })}>
+                    onClick={() => openJob(job)}>
                     <div className="flex flex-col md:flex-row md:items-start gap-4">
                       <div className="flex-1">
                         <div className="flex items-start gap-2 flex-wrap mb-2">
@@ -431,7 +459,7 @@ export default function BrowseJobsScreen() {
                             </>
                           );
                         })()}
-                        <button onClick={event => { event.stopPropagation(); navigate(`/jobs/${job.id}`, { state: { job } }); }}
+                        <button onClick={event => { event.stopPropagation(); openJob(job); }}
                           className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
                           {t('jobs.viewJob')}
                         </button>
@@ -450,7 +478,7 @@ export default function BrowseJobsScreen() {
                 </div>
               )}
 
-              {jobs.length > PAGE_SIZE && (
+              {totalResults > PAGE_SIZE && (
                 <div className="browse-jobs-pagination">
                   <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>{t('jobs.previous')}</button>
                   <span>{t('jobs.pageOf', { page, totalPages })}</span>

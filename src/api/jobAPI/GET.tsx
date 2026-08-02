@@ -22,6 +22,31 @@ import type {
 const jobPostsUrl = 'JobPosts';
 const PUBLIC_JOB_FETCH_PAGE_SIZE = 100;
 
+interface PagedJobSearchResponse {
+  items: JobPostSummaryDto[];
+  totalResults: number;
+  pageIndex: number;
+  pageSize: number;
+  searchEventId: string | null;
+}
+
+export interface PublicJobSearchResult {
+  items: Job[];
+  totalResults: number;
+  pageIndex: number;
+  pageSize: number;
+  searchEventId: string | null;
+}
+
+const getAnalyticsSession = () => {
+  const key = 'gigbridge_analytics_session';
+  const current = localStorage.getItem(key);
+  if (current) return current;
+  const created = crypto.randomUUID();
+  localStorage.setItem(key, created);
+  return created;
+};
+
 const mergeSkillNames = (...groups: Array<Array<string | null | undefined> | undefined>): string[] => {
   const result: string[] = [];
   const seen = new Set<string>();
@@ -81,6 +106,8 @@ const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   isRemote: true,
   clientEloPoints: job.eloPoints ?? 100,
   gigcoin_cost: 0,
+  isFeatured: Boolean(job.isFeatured),
+  isAiRecommended: Boolean(job.isAiGenerated),
   hasAiInterview: Boolean(job.hasAiInterview),
 });
 
@@ -203,6 +230,31 @@ export const jobGetAPI = {
     params: JobPostQueryParams = {}
   ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
     return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/public`, params);
+  },
+
+  searchPublicJobs: async (
+    params: {
+      pageIndex?: number; pageSize?: number; search?: string; budgetMin?: number;
+      budgetMax?: number; sortBy?: string; sortDesc?: boolean; searchEventId?: string | null;
+      category?: string; skills?: string; workType?: string; postedWithinDays?: number;
+      aiOnly?: boolean;
+    },
+    signal?: AbortSignal,
+  ): Promise<PublicJobSearchResult> => {
+    const response = await apiService.get<PagedJobSearchResponse>(
+      `${jobPostsUrl}/search`, params, { 'X-Analytics-Session': getAnalyticsSession() }, signal,
+    );
+    if (!response.success || !response.data) throw new Error(response.message || 'Unable to search jobs.');
+    return {
+      ...response.data,
+      items: response.data.items.map(toLegacyJobFromSummary),
+    };
+  },
+
+  recordJobOpen: async (jobPostId: string, searchEventId?: string | null): Promise<void> => {
+    await apiService.post('job-discovery/events', {
+      eventId: crypto.randomUUID(), jobPostId, searchEventId: searchEventId || null,
+    }, { 'X-Analytics-Session': getAnalyticsSession() });
   },
 
   /**

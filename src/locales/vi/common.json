@@ -153,7 +153,8 @@
     "contractTemplates": "Mẫu Hợp Đồng",
     "revenue": "Doanh Thu",
     "systemFinance": "Tài Chính Hệ Thống",
-    "systemTracking": "Theo Dõi Hệ Thống"
+    "systemTracking": "Theo Dõi Hệ Thống",
+    "platformAnalytics": "Phân Tích Nền Tảng"
   },
   "common": {
     "search": "Tìm kiếm",
@@ -2829,6 +2830,10 @@
       "emailTitle": "Cập nhật qua email",
       "emailDescription": "Chúng tôi cũng sẽ gửi kết quả đến email của bạn."
     }
+  },
+  "adminAnalytics": {
+    "title": "Phân Tích Nền Tảng",
+    "subtitle": "Theo dõi doanh thu, giao dịch ví và cơ hội thị trường mà không trộn lẫn thu nhập nền tảng với tiền của người dùng."
   },
   "premiumPromotion": {
     "preview": "Xem trước",

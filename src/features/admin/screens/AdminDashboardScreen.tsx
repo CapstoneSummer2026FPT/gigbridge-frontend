@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  BarChart3,
   Bell,
   Briefcase,
   FileText,
@@ -23,6 +24,7 @@ interface AdminLink {
 }
 
 const ADMIN_LINKS: readonly AdminLink[] = [
+  { label: 'Platform Analytics', description: 'Track platform revenue, transactions, and marketplace opportunities', path: '/admin/analytics', icon: BarChart3 },
   { label: 'Manage Users', description: 'Review and manage platform users', path: '/admin/users', icon: Users },
   { label: 'Manage Jobs', description: 'Review job postings and moderation state', path: '/admin/jobs', icon: Briefcase },
   { label: 'Contract Audit', description: 'Inspect contract and milestone workflows', path: '/admin/contracts', icon: FileText },
