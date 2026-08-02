@@ -10,6 +10,7 @@ import { adminPatchAPI } from './PATCH';
 import { adminDeleteAPI } from './DELETE';
 
 export const adminAPI = {
+  getSystemTracking: adminGetAPI.getSystemTracking,
   getAllUsers: adminGetAPI.getAllUsers,
   getFAQs: adminGetAPI.getFAQs,
   getFAQCategories: adminGetAPI.getFAQCategories,

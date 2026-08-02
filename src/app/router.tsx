@@ -43,6 +43,7 @@ const AdminUsersScreen = lazy(() => import('../features/admin/screens/AdminUsers
 const AdminJobsScreen = lazy(() => import('../features/admin/screens/AdminJobsScreen'));
 const AdminSystemTrackingScreen = lazy(() => import('../features/admin/screens/AdminSystemTrackingScreen'));
 const AdminWithdrawalsScreen = lazy(() => import('../features/admin/screens/AdminWithdrawalsScreen'));
+const AdminAnalyticsScreen = lazy(() => import('../features/admin/screens/AdminAnalyticsScreen'));
 const AdminReportsScreen = lazy(() => import('../features/admin/screens/AdminReportsScreen'));
 const AdminReviewsScreen = lazy(() => import('../features/admin/screens/AdminReviewsScreen'));
 const AdminNotificationsScreen = lazy(() => import('../features/admin/screens/AdminNotificationsScreen'));
@@ -299,6 +300,7 @@ export const router = createBrowserRouter([
       { path: 'admin/reviews', element: <AdminRoute><AdminReviewsScreen /></AdminRoute> },
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/withdrawals', element: <AdminRoute><AdminWithdrawalsScreen /></AdminRoute> },
+      { path: 'admin/analytics', element: <AdminRoute><AdminAnalyticsScreen /></AdminRoute> },
       { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
 
       // Notifications - requires authentication

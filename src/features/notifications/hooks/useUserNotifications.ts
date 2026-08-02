@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { notificationGetAPI, notificationPutAPI } from '../../../api/notificationAPI';
 import type { User } from '../../../types/models/User';
-import * as signalR from '@microsoft/signalr';
-import { getNotificationHubUrl } from '../../../service/apiService';
+import { createNotificationHubConnection } from '../services/notificationHubConnection';
 import { toast } from 'sonner';
 
 const surfacedMeetingAlerts = new Set<string>();
@@ -282,12 +281,10 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
 
   useEffect(() => {
     if (!user || !localStorage.getItem('access_token')) return;
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(getNotificationHubUrl(), {
-      accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-    }).withAutomaticReconnect().build();
-    connection.on('ReceiveNotification', raw => {
+    let disposed = false;
+    let connection = createNotificationHubConnection('direct-websocket');
+
+    const handleNotification = (raw: unknown) => {
       const incoming = normalizeNotification(raw, user.role);
       const isNew = !seenNotificationIds.current.has(incoming.id);
       seenNotificationIds.current.add(incoming.id);
@@ -306,10 +303,44 @@ export function useUserNotifications(user: User | null, options: { pageSize?: nu
           },
         });
       }
-    });
-    void connection.start().catch(() => undefined);
-    return () => { void connection.stop(); };
-  }, [user]);
+    };
+
+    const attachHandler = () => connection.on('ReceiveNotification', handleNotification);
+    attachHandler();
+
+    const startConnection = async () => {
+      try {
+        await connection.start();
+      } catch (directWebSocketError) {
+        if (disposed) return;
+
+        console.warn(
+          '[NotificationHub] Direct WebSocket connection failed; retrying negotiated transport.',
+          directWebSocketError,
+        );
+        await connection.stop().catch(() => undefined);
+        if (disposed) return;
+
+        connection = createNotificationHubConnection('negotiated');
+        attachHandler();
+        try {
+          await connection.start();
+        } catch (negotiatedTransportError) {
+          if (!disposed) {
+            console.warn('[NotificationHub] Connection failed.', negotiatedTransportError);
+          }
+        }
+      }
+
+      if (disposed) await connection.stop();
+    };
+
+    void startConnection();
+    return () => {
+      disposed = true;
+      void connection.stop();
+    };
+  }, [user?.id, user?.role]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     const target = notifications.find(notification => notification.id === notificationId);
