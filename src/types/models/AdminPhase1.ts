@@ -5,9 +5,9 @@ export enum AccountReportResolutionAction { None = 0, Warning = 1, Suspension = 
 export interface PageResult<T> { items: T[]; pageNumber: number; pageSize?: number; totalPages: number; totalCount: number; hasPreviousPage?: boolean; hasNextPage?: boolean }
 export interface AdminViolation { id: string; sourceType: number; disputeId?: string; reportId?: string; manualActionId?: string; number: number; type: number; reason: string; description?: string; actionTaken: number; suspendedUntil?: string; isActive: boolean; createdAt: string }
 export interface AdminUserReport { id: string; type: number; status: number; reason: string; description?: string; evidenceCount: number; createdAt: string }
-export interface AdminAuditLog { auditLogId?: string; id?: string; adminUserId?: string; adminName?: string; action: string; entityType?: string; entityId?: string; oldValues?: unknown; newValues?: unknown; correlationId: string; userAgent?: string; createdAt: string }
+export interface AdminAuditLog { auditLogId?: string; id?: string; adminUserId?: string; adminName?: string; adminAvatar?: string | null; action: string; entityType?: string; entityId?: string; oldValues?: unknown; newValues?: unknown; correlationId: string; userAgent?: string; createdAt: string }
 export interface AdminUserDetail {
-  userId: string; fullName: string; email: string; role: number; createdAt: string; isEmailVerified: boolean; isActive: boolean;
+  userId: string; fullName: string; email: string; avatar?: string | null; eloPoints?: number | null; role: number; createdAt: string; isEmailVerified: boolean; isActive: boolean;
   accountStatus: AccountStatus; isFlagged: boolean; violationCount: number; suspendedUntil?: string; bannedAt?: string; banReason?: string;
   subscription?: { planName: string; status: number; startDate: string; endDate: string };
   profile?: { kind: string; title?: string; bio?: string; companyName?: string; industry?: string; location?: string; skills: string[]; categories: string[]; portfolioUrls: string[]; workExperience: string[] };

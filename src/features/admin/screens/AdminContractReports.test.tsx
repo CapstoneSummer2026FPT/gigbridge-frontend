@@ -6,6 +6,7 @@ import type { AdminContractReportDetail } from '../../../types/models/AdminContr
 const getApi=vi.hoisted(()=>({getContractReports:vi.fn(),getContractReportDetail:vi.fn(),getContractReportAttachmentDownload:vi.fn()}));
 const postApi=vi.hoisted(()=>({assignContractReport:vi.fn(),requestContractReportInformation:vi.fn(),closeContractReport:vi.fn(),dismissContractReport:vi.fn(),addContractReportNote:vi.fn(),linkContractReportDispute:vi.fn(),escalateContractReport:vi.fn()}));
 vi.mock('../../../api/adminAPI/GET',()=>({adminGetAPI:getApi}));vi.mock('../../../api/adminAPI/POST',()=>({adminPostAPI:postApi}));
+vi.mock('../../../shared/components/AppLayout',()=>({AppLayout:({children}:{children:React.ReactNode})=><>{children}</>}));
 import AdminContractReportsScreen from './AdminContractReportsScreen';
 import AdminContractReportDetailScreen from './AdminContractReportDetailScreen';
 

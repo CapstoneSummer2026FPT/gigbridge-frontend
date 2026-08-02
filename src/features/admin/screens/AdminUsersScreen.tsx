@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag, Wallet, Folder, File as FileIcon, Image, Film, FileText, Crown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
 import { UserRole } from '../../../types';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
+import { UserProfilePreviewDrawer } from '../components/UserProfilePreviewDrawer';
 import '../styles/admin-users-screen.css';
 
 type UserFilter = 'all' | 'client' | 'freelancer' | 'premium' | 'admin' | 'banned';
@@ -47,6 +48,7 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
 
   return {
     id: dto.userId,
+    avatar: dto.avatar,
     email: dto.email,
     first_name: firstName,
     last_name: lastName,
@@ -81,6 +83,7 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
 
 export default function AdminUsersScreen() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<UserFilter>('all');
   const [sortBy, setSortBy] = useState<UserSort>('joined');
@@ -91,8 +94,23 @@ export default function AdminUsersScreen() {
   const [createForm, setCreateForm] = useState(initialCreateForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ type: 'ban' | 'unban' | 'clearSuspension' | 'role', user: User, newRole?: 0 | 1 | 2 } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'ban' | 'unban' | 'clearSuspension', user: User } | null>(null);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '' });
+
+  const previewUserId = searchParams.get('preview');
+  const openPreview = (user: User) => {
+    setPreviewUser(user);
+    const next = new URLSearchParams(searchParams);
+    next.set('preview', user.id);
+    setSearchParams(next, { replace: false });
+  };
+  const closePreview = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('preview');
+    setSearchParams(next, { replace: true });
+    setPreviewUser(null);
+    setActiveTab('profile');
+  };
 
   // Wallet moderation states
   const [activeTab, setActiveTab] = useState<'profile' | 'wallet' | 'assets'>('profile');
@@ -283,6 +301,7 @@ export default function AdminUsersScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [reportedUserTotal, setReportedUserTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -290,6 +309,7 @@ export default function AdminUsersScreen() {
 
   const loadUsers = async () => {
     setLoading(true);
+    setUsersError(null);
     const response = await adminAPI.getAllUsers();
     if (response.success && response.data) {
       setUsers(response.data.items.map(mapAdminUserDtoToUser));
@@ -301,6 +321,7 @@ export default function AdminUsersScreen() {
     } else {
       setUsers([]);
       setReportedUserTotal(0);
+      setUsersError(response.message || 'Unable to load users.');
     }
     setLoading(false);
   };
@@ -391,11 +412,6 @@ export default function AdminUsersScreen() {
     setShowActionMenu(null);
   };
 
-  const handleChangeRole = async (_userId: string, _newRole: 0 | 1 | 2) => {
-    alert('Role changes are not yet supported through the API. This will be integrated in Step 2.');
-    setShowActionMenu(null);
-  };
-
   const handleCreateUser = async () => {
     const fullName = createForm.fullName.trim();
     const email = createForm.email.trim();
@@ -472,10 +488,6 @@ export default function AdminUsersScreen() {
             >
               <Plus size={16} className="flex-shrink-0" />
               Create User
-            </button>
-            <button className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
-              <Download size={16} />
-              Export Users
             </button>
           </div>
         </div>
@@ -589,6 +601,12 @@ export default function AdminUsersScreen() {
         </div>
 
         {/* Users Table */}
+        {usersError && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--destructive)] bg-[color-mix(in_srgb,var(--destructive)_10%,transparent)] p-4" role="alert">
+            <span className="text-sm text-[var(--destructive)]">{usersError}</span>
+            <button className="btn-ghost-cyan px-4 py-2 text-sm" onClick={() => void loadUsers()}>Retry</button>
+          </div>
+        )}
         <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -614,13 +632,11 @@ export default function AdminUsersScreen() {
                   </tr>
                 ) : (
                   filteredUsers.map(user => (
-                    <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                    <tr key={user.id} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openPreview(user)}>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <UserProfileLink userId={user.id} role={user.role} className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white ${user.is_premium ? 'admin-premium-avatar' : ''}`}>
-                              {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                            </div>
+                          <button type="button" className="flex items-center gap-3 text-left" onClick={event => { event.stopPropagation(); openPreview(user); }} aria-label={`Preview ${user.full_name}`}>
+                            <UserAvatar name={user.full_name} src={user.avatar} premium={user.is_premium} />
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`text-sm font-semibold ${user.is_currently_reported ? 'text-red' : 'text-primary'}`}>
@@ -637,7 +653,7 @@ export default function AdminUsersScreen() {
                             </div>
                             <p className="text-xs text-secondary">{user.id}</p>
                             </div>
-                          </UserProfileLink>
+                          </button>
                         </div>
                       </td>
                       <td className="p-4">
@@ -664,32 +680,35 @@ export default function AdminUsersScreen() {
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => navigate(`/admin/users/${user.id}`)}
+                            onClick={(event) => { event.stopPropagation(); openPreview(user); }}
                             className="p-2 rounded-lg glass-button hover:bg-cyan/10 transition-colors"
-                            title="Manage User"
+                            title="Profile Preview"
+                            aria-label={`Open Profile Preview for ${user.full_name}`}
                           >
                             <Folder size={16} className="text-cyan" />
                           </button>
 
                           <button
-                            onClick={() => setPreviewUser(user)}
+                            onClick={(event) => { event.stopPropagation(); openPreview(user); }}
                             className="p-2 rounded-lg glass-button hover:bg-cyan/10 transition-colors"
                             title="Preview Profile"
+                            aria-label={`Preview ${user.full_name}`}
                           >
                             <Eye size={16} className="text-cyan" />
                           </button>
 
                           <button
-                            onClick={() => setSelectedUser(user)}
+                            onClick={(event) => { event.stopPropagation(); setSelectedUser(user); }}
                             className="p-2 rounded-lg glass-button hover:bg-purple/10 transition-colors"
                             title="Edit User"
+                            aria-label={`Edit ${user.full_name}`}
                           >
                             <Edit size={16} className="text-purple" />
                           </button>
 
                           {user.is_currently_reported && (
                             <button
-                              onClick={() => navigate(`/admin/reports?reportedEntityType=User&reportedEntityId=${encodeURIComponent(user.id)}`)}
+                              onClick={(event) => { event.stopPropagation(); navigate(`/admin/reports?reportedEntityType=User&reportedEntityId=${encodeURIComponent(user.id)}`); }}
                               className="p-2 rounded-lg glass-button hover:bg-red/10 transition-colors"
                               title={`View ${user.open_report_count || 0} open report${user.open_report_count === 1 ? '' : 's'}`}
                             >
@@ -697,9 +716,9 @@ export default function AdminUsersScreen() {
                             </button>
                           )}
 
-                          <div className="relative user-action-menu-container">
+                          <div className="relative user-action-menu-container" onClick={event => event.stopPropagation()}>
                             <button
-                              onClick={() => setShowActionMenu(showActionMenu === user.id ? null : user.id)}
+                              onClick={(event) => { event.stopPropagation(); setShowActionMenu(showActionMenu === user.id ? null : user.id); }}
                               className="p-2 rounded-lg glass-button hover:bg-amber/10 transition-colors"
                               title="More Actions"
                             >
@@ -710,14 +729,13 @@ export default function AdminUsersScreen() {
                               <div className="absolute right-0 top-full mt-2 w-48 dropdown-menu p-2 z-50">
                                 <button
                                   onClick={() => {
-                                    setPreviewUser(user);
-                                    setActiveTab('wallet');
+                                    openPreview(user);
                                     setShowActionMenu(null);
                                   }}
                                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-cyan/10 text-cyan"
                                 >
                                   <Wallet size={14} />
-                                  Add Fund
+                                  Wallet Summary
                                 </button>
 
                                 <div className="h-px my-1 dropdown-divider" />
@@ -956,7 +974,7 @@ export default function AdminUsersScreen() {
         )}
 
         {/* Preview Profile Modal */}
-        {previewUser && (
+        {previewUser && previewUserId === '__legacy-preview__' && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { setPreviewUser(null); setActiveTab('profile'); }}>
             <div className="glass-card max-w-4xl w-full p-6 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
@@ -1325,6 +1343,10 @@ export default function AdminUsersScreen() {
           </div>
         )}
 
+        {previewUserId && (
+          <UserProfilePreviewDrawer userId={previewUserId} onClose={closePreview} onChanged={loadUsers} />
+        )}
+
         {/* User Edit Modal */}
         {selectedUser && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedUser(null)}>
@@ -1393,34 +1415,7 @@ export default function AdminUsersScreen() {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card p-4">
-                    <p className="text-sm text-secondary mb-3">Role Management</p>
-                    <div className="space-y-2">
-                      {[
-                        { role: 0, label: 'Client', icon: <Briefcase size={14} /> },
-                        { role: 1, label: 'Freelancer', icon: <UserCheck size={14} /> },
-                        { role: 2, label: 'Admin', icon: <Shield size={14} /> },
-                      ].map(r => (
-                        <button
-                          key={r.role}
-                          onClick={() => {
-                            setConfirmAction({ type: 'role', user: selectedUser, newRole: r.role as 0 | 1 | 2 });
-                          }}
-                          disabled={selectedUser.role === r.role}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${selectedUser.role === r.role
-                            ? 'bg-cyan/20 text-cyan border border-cyan'
-                            : 'glass-button text-secondary hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
-                            }`}
-                        >
-                          {r.icon}
-                          {r.label}
-                          {selectedUser.role === r.role && <CheckCircle size={14} className="ml-auto" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 gap-4">
                   <div className="glass-card p-4">
                     <p className="text-sm text-secondary mb-3">Account Status</p>
                     <div className="space-y-2">
@@ -1565,7 +1560,6 @@ export default function AdminUsersScreen() {
                   {confirmAction.type === 'ban' && `Are you sure you want to ban this user? They will lose access to the platform.`}
                   {confirmAction.type === 'unban' && `Are you sure you want to unban this user? They will regain access to the platform.`}
                   {confirmAction.type === 'clearSuspension' && `Are you sure you want to clear this user's temporary suspension? Their access will be restored if the account is active.`}
-                  {confirmAction.type === 'role' && `Are you sure you want to change this user's role to ${confirmAction.newRole === 0 ? 'Client' : confirmAction.newRole === 1 ? 'Freelancer' : 'Admin'}?`}
                 </p>
               </div>
 
@@ -1578,9 +1572,7 @@ export default function AdminUsersScreen() {
                 </button>
                 <button
                   onClick={async () => {
-                    if (confirmAction.type === 'role' && confirmAction.newRole !== undefined) {
-                      handleChangeRole(confirmAction.user.id, confirmAction.newRole);
-                    } else if (confirmAction.type === 'ban' || confirmAction.type === 'unban') {
+                    if (confirmAction.type === 'ban' || confirmAction.type === 'unban') {
                       await handleBanUser(confirmAction.user.id);
                     } else if (confirmAction.type === 'clearSuspension') {
                       await handleClearSuspension(confirmAction.user.id);
@@ -1600,7 +1592,6 @@ export default function AdminUsersScreen() {
                   {confirmAction.type === 'ban' && 'Ban User'}
                   {confirmAction.type === 'unban' && 'Unban User'}
                   {confirmAction.type === 'clearSuspension' && 'Clear Suspension'}
-                  {confirmAction.type === 'role' && 'Change Role'}
                 </button>
               </div>
             </div>

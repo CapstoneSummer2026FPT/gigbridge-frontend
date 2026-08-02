@@ -14,6 +14,7 @@ vi.mock('../../../../shared/components/AppLayout', () => ({
 vi.mock('../../../../api/adminAPI/GET', () => ({
   adminGetAPI: {
     getUsers: vi.fn(),
+    getAuditLogs: vi.fn(),
   },
 }));
 
@@ -44,6 +45,7 @@ describe('admin screens without telemetry or history APIs', () => {
         totalPages: 0,
       },
     });
+    vi.mocked(adminGetAPI.getAuditLogs).mockResolvedValue({ success: true, statusCode: 200, message: 'Success', data: { items: [], pageNumber: 1, pageSize: 20, totalCount: 0, totalPages: 1 } });
     vi.mocked(jobGetAPI.getAllJobPosts).mockResolvedValue({
       success: true,
       statusCode: 200,
@@ -71,17 +73,18 @@ describe('admin screens without telemetry or history APIs', () => {
     expect(screen.queryByRole('button', { name: 'Create Notification' })).not.toBeInTheDocument();
   });
 
-  it('redirects legacy system tracking to real audit logs', () => {
+  it('shows real audit-backed System Tracking without synthetic telemetry', async () => {
     render(
       <MemoryRouter initialEntries={['/admin/system-tracking']}>
         <Routes>
           <Route path="/admin/system-tracking" element={<AdminSystemTrackingScreen />} />
-          <Route path="/admin/audit-logs" element={<div>Admin Audit Logs</div>} />
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Admin Audit Logs')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'System Tracking' })).toBeInTheDocument();
+    expect(await screen.findByText('No administrator activity found')).toBeInTheDocument();
+    expect(adminGetAPI.getAuditLogs).toHaveBeenCalled();
     expect(screen.queryByText('1,890')).not.toBeInTheDocument();
     expect(screen.queryByText('$212.3')).not.toBeInTheDocument();
   });

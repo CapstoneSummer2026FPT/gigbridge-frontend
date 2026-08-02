@@ -40,7 +40,6 @@ const AIInterviewScreen = lazy(() => import('../features/ai-interview/screens/AI
 const SettingsScreen = lazy(() => import('../features/settings/screens/SettingsScreen'));
 const AdminDashboardScreen = lazy(() => import('../features/admin/screens/AdminDashboardScreen'));
 const AdminUsersScreen = lazy(() => import('../features/admin/screens/AdminUsersScreen'));
-const AdminUserDetailScreen = lazy(() => import('../features/admin/screens/AdminUserDetailScreen'));
 const AdminJobsScreen = lazy(() => import('../features/admin/screens/AdminJobsScreen'));
 const AdminProposalsScreen = lazy(() => import('../features/admin/screens/AdminProposalsScreen'));
 const AdminProposalDetailScreen = lazy(() => import('../features/admin/screens/AdminProposalDetailScreen'));
@@ -48,7 +47,7 @@ const AdminAccountReportsScreen = lazy(() => import('../features/admin/screens/A
 const AdminAccountReportDetailScreen = lazy(() => import('../features/admin/screens/AdminAccountReportDetailScreen'));
 const AdminContractReportsScreen = lazy(() => import('../features/admin/screens/AdminContractReportsScreen'));
 const AdminContractReportDetailScreen = lazy(() => import('../features/admin/screens/AdminContractReportDetailScreen'));
-const AdminAuditLogsScreen = lazy(() => import('../features/admin/screens/AdminAuditLogsScreen'));
+const AdminSystemTrackingScreen = lazy(() => import('../features/admin/screens/AdminSystemTrackingScreen'));
 const AdminWithdrawalsScreen = lazy(() => import('../features/admin/screens/AdminWithdrawalsScreen'));
 const AdminReportsScreen = lazy(() => import('../features/admin/screens/AdminReportsScreen'));
 const AdminReviewsScreen = lazy(() => import('../features/admin/screens/AdminReviewsScreen'));
@@ -191,6 +190,11 @@ function NavigateToProposalCreate() {
   return <Navigate to={getProposalCreatePath(jobPostId || '')} replace />;
 }
 
+function LegacyAdminUserDetailRedirect() {
+  const { userId = '' } = useParams<{ userId: string }>();
+  return <Navigate to={`/admin/users?preview=${encodeURIComponent(userId)}`} replace />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -294,7 +298,7 @@ export const router = createBrowserRouter([
       // Admin - requires authentication and admin role
       { path: 'admin', element: <AdminRoute><AdminDashboardScreen /></AdminRoute> },
       { path: 'admin/users', element: <AdminRoute><AdminUsersScreen /></AdminRoute> },
-      { path: 'admin/users/:userId', element: <AdminRoute><AdminUserDetailScreen /></AdminRoute> },
+      { path: 'admin/users/:userId', element: <AdminRoute><LegacyAdminUserDetailRedirect /></AdminRoute> },
       { path: 'admin/jobs', element: <AdminRoute><AdminJobsScreen /></AdminRoute> },
       { path: 'admin/proposals', element: <AdminRoute><AdminProposalsScreen /></AdminRoute> },
       { path: 'admin/proposals/:proposalId', element: <AdminRoute><AdminProposalDetailScreen /></AdminRoute> },
@@ -311,8 +315,8 @@ export const router = createBrowserRouter([
       { path: 'admin/reports/contracts', element: <AdminRoute><AdminContractReportsScreen /></AdminRoute> },
       { path: 'admin/reports/contracts/:reportId', element: <AdminRoute><AdminContractReportDetailScreen /></AdminRoute> },
       { path: 'admin/reviews', element: <AdminRoute><AdminReviewsScreen /></AdminRoute> },
-      { path: 'admin/audit-logs', element: <AdminRoute><AdminAuditLogsScreen /></AdminRoute> },
-      { path: 'admin/system-tracking', element: <AdminRoute><Navigate to="/admin/audit-logs" replace /></AdminRoute> },
+      { path: 'admin/audit-logs', element: <AdminRoute><Navigate to="/admin/system-tracking" replace /></AdminRoute> },
+      { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/withdrawals', element: <AdminRoute><AdminWithdrawalsScreen /></AdminRoute> },
       { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
 

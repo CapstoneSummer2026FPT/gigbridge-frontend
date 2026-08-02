@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ getAccountReports: vi.fn(), getAuditLogs: vi.fn() }));
 vi.mock('../../../api/adminAPI/GET', () => ({ adminGetAPI: api }));
+vi.mock('../../../shared/components/AppLayout', () => ({ AppLayout: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 
 import AdminAccountReportsScreen from './AdminAccountReportsScreen';
-import AdminAuditLogsScreen from './AdminAuditLogsScreen';
+import AdminSystemTrackingScreen from './AdminSystemTrackingScreen';
 
 describe('Phase 1 Admin screens', () => {
   beforeEach(() => {
@@ -25,7 +26,7 @@ describe('Phase 1 Admin screens', () => {
   });
 
   it('renders real structured audit values without synthetic telemetry', async () => {
-    render(<MemoryRouter><AdminAuditLogsScreen /></MemoryRouter>);
+    render(<MemoryRouter><AdminSystemTrackingScreen /></MemoryRouter>);
     expect(await screen.findByText('AccountReport.Warning')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Structured values'));
     expect(screen.getByText(/"status": 2/)).toBeInTheDocument();

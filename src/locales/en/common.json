@@ -155,6 +155,21 @@
     "systemFinance": "System Finance",
     "systemTracking": "System Tracking"
   },
+  "adminNav": {
+    "groups": { "overview": "Overview", "users": "User Management", "content": "Content Management", "contracts": "Contracts & Finance", "moderation": "Moderation & Disputes", "configuration": "Configuration", "monitoring": "System & Monitoring" },
+    "accountReports": "Account Reports",
+    "contractReports": "Contract Reports",
+    "assets": "Assets & Handoffs",
+    "esign": "E-sign Agreements"
+  },
+  "adminDashboard": {
+    "kicker": "Admin panel",
+    "title": "GigBridge Administration",
+    "subtitle": "Open a management area. Counts are shown only when a dedicated aggregate API is available.",
+    "descriptions": {
+      "dashboard": "Administration overview and manager shortcuts", "users": "Review profiles, access, reports, and enforcement history", "jobs": "Review job posts and their moderation state", "proposals": "Inspect proposal lifecycle and moderation records", "reports": "Review general content and account reports", "accountReports": "Investigate reports involving user accounts", "contractReports": "Investigate contract execution reports", "reviews": "Moderate platform reviews and related reports", "assets": "Inspect platform deliverables and handoff assets", "contracts": "Inspect contract, milestone, and escrow workflows", "esign": "Review electronic agreement and signature state", "withdrawals": "Review and reconcile withdrawal requests", "disputes": "Resolve disputes using evidence and financial context", "faqs": "Maintain public help content", "templates": "Maintain reusable contract templates", "notifications": "Publish and review administrator notifications", "systemTracking": "Review real administrator activity and operational availability"
+    }
+  },
   "common": {
     "search": "Search",
     "filter": "Filter",

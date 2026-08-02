@@ -1,135 +1,64 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Activity,
-  Bell,
-  Briefcase,
-  FileText,
-  HelpCircle,
-  Shield,
-  Users,
-  Wallet,
-} from 'lucide-react';
+import { ChevronRight, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
-import { adminAPI } from '../../../api/adminAPI';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import type { AdminUserDto } from '../../../types';
-
-interface AdminLink {
-  readonly label: string;
-  readonly description: string;
-  readonly path: string;
-  readonly icon: typeof Users;
-}
-
-const ADMIN_LINKS: readonly AdminLink[] = [
-  { label: 'Manage Users', description: 'Review and manage platform users', path: '/admin/users', icon: Users },
-  { label: 'Manage Jobs', description: 'Review job postings and moderation state', path: '/admin/jobs', icon: Briefcase },
-  { label: 'Contract Audit', description: 'Inspect contract and milestone workflows', path: '/admin/contracts', icon: FileText },
-  { label: 'Disputes', description: 'Review active reports and dispute evidence', path: '/admin/disputes', icon: Shield },
-  { label: 'Notifications', description: 'Publish and manage admin notifications', path: '/admin/notifications', icon: Bell },
-  { label: 'Withdrawals', description: 'Review and reconcile withdrawal requests', path: '/admin/withdrawals', icon: Wallet },
-  { label: 'Audit Logs', description: 'Review recorded administrative actions', path: '/admin/audit-logs', icon: Activity },
-  { label: 'FAQ Management', description: 'Maintain public help content', path: '/admin/faq-management', icon: HelpCircle },
-] as const;
+import { useTranslation } from '../../../hooks/useTranslation';
+import { ADMIN_GROUPS, ADMIN_MANAGERS } from '../adminManagers';
 
 export default function AdminDashboardScreen() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<AdminUserDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadUsers(): Promise<void> {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await adminAPI.getAllUsers();
-      if (!isMounted) return;
-
-      if (response.success && response.data) {
-        setUsers(response.data.items);
-      } else {
-        setUsers([]);
-        setError(response.message || 'Users could not be loaded.');
-      }
-
-      setIsLoading(false);
-    }
-
-    void loadUsers();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const stats = useMemo(() => {
-    const active = users.filter(user => user.isActive).length;
-    const premium = users.filter(user => user.isPremium).length;
-    const reported = users.filter(user => user.isCurrentlyReported).length;
-
-    return [
-      { label: 'Loaded users', value: users.length },
-      { label: 'Active users', value: active },
-      { label: 'Premium users', value: premium },
-      { label: 'Reported users', value: reported },
-    ] as const;
-  }, [users]);
+  const { t } = useTranslation();
+  const label = (key: string, fallback: string) => t(key, { defaultValue: fallback });
 
   return (
     <AppLayout>
       <main className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-8">
-          <div className="mb-2 flex items-center gap-2 text-purple-500">
+          <div className="mb-2 flex items-center gap-2 text-[var(--brand)]">
             <Shield size={20} />
-            <span className="text-xs font-bold uppercase tracking-widest">Admin panel</span>
+            <span className="text-xs font-bold uppercase tracking-widest">{label('adminDashboard.kicker', 'Admin panel')}</span>
           </div>
-          <h1 className="text-3xl font-black text-primary">GigBridge Administration</h1>
-          <p className="mt-2 text-sm text-secondary">
-            This dashboard shows API-backed data only. Detailed metrics live in their dedicated operational screens.
+          <h1 className="text-3xl font-black text-primary">{label('adminDashboard.title', 'GigBridge Administration')}</h1>
+          <p className="mt-2 max-w-3xl text-sm text-secondary">
+            {label('adminDashboard.subtitle', 'Open a management area. Counts are shown only when a dedicated aggregate API is available.')}
           </p>
         </header>
 
-        {error ? (
-          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
-            {error}
-          </div>
-        ) : null}
-
-        <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="User overview">
-          {stats.map(stat => (
-            <article key={stat.label} className="stat-card">
-              <p className="text-sm text-secondary">{stat.label}</p>
-              <p className="mt-2 text-2xl font-bold text-primary">{isLoading ? '…' : stat.value.toLocaleString()}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Administration areas">
-          {ADMIN_LINKS.map(link => {
-            const Icon = link.icon;
+        <div className="space-y-8">
+          {ADMIN_GROUPS.filter(group => group.id !== 'overview').map(group => {
+            const managers = ADMIN_MANAGERS.filter(manager => manager.group === group.id && manager.showOnDashboard);
+            if (managers.length === 0) return null;
             return (
-              <button
-                key={link.path}
-                type="button"
-                onClick={() => navigate(link.path)}
-                className="glass-card group cursor-pointer p-6 text-left transition-all hover:bg-white/5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-bold text-primary">{link.label}</h2>
-                    <p className="mt-2 text-sm text-secondary">{link.description}</p>
-                  </div>
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/15 text-purple-500 transition-transform group-hover:scale-110">
-                    <Icon size={20} />
-                  </span>
+              <section key={group.id} aria-labelledby={`admin-group-${group.id}`}>
+                <h2 id={`admin-group-${group.id}`} className="mb-3 text-sm font-bold uppercase tracking-wider text-secondary">
+                  {label(group.labelKey, group.fallbackLabel)}
+                </h2>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {managers.map(manager => {
+                    const Icon = manager.icon;
+                    return (
+                      <button
+                        key={manager.path}
+                        type="button"
+                        onClick={() => navigate(manager.path)}
+                        className="glass-card group flex min-h-32 items-start gap-4 p-5 text-left transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand)]">
+                          <Icon size={21} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-bold text-primary">{label(manager.labelKey, manager.fallbackLabel)}</span>
+                          <span className="mt-1 block text-sm leading-5 text-secondary">{label(manager.descriptionKey, manager.fallbackDescription)}</span>
+                        </span>
+                        <ChevronRight size={18} className="mt-1 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                      </button>
+                    );
+                  })}
                 </div>
-              </button>
+              </section>
             );
           })}
-        </section>
+        </div>
       </main>
     </AppLayout>
   );
