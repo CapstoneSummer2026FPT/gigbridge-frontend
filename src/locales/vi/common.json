@@ -1272,7 +1272,10 @@
     "history": "Lịch Sử Giao Dịch",
     "addFunds": "Nạp Tiền",
     "amount": "Số Tiền",
-    "noTransactions": "Chưa có giao dịch"
+    "noTransactions": "Chưa có giao dịch",
+    "depositedBalance": "GigCoin Đã Nạp",
+    "depositedTooltip": "GigCoin đã nạp — không thể rút về tiền thật, chỉ dùng để thanh toán trong nền tảng",
+    "depositedCaption": "Không thể rút · chỉ dùng trong nền tảng"
   },
   "ai": {
     "assistant": "Trợ Lý AI",

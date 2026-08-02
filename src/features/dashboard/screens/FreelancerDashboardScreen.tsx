@@ -322,7 +322,7 @@ export default function FreelancerDashboardScreen() {
                 {[
                   {
                     label: 'Available balance',
-                    value: <GigCoinAmount amount={wallet?.availableTokens ?? 0} />,
+                    value: <GigCoinAmount amount={wallet?.totalSpendableGigCoin ?? 0} />,
                     icon: <GCoinIcon size={18} />,
                     detail: 'Current wallet',
                     color: 'text-success',

@@ -80,7 +80,7 @@ vi.mock('../../hooks/useProjectWorkspace', () => ({
 
 vi.mock('../../../../api/walletAPI/GET', () => ({
   walletGetAPI: {
-    getMyWallet: vi.fn().mockResolvedValue({ success: true, data: { availableTokens: 1000 } }),
+    getMyWallet: vi.fn().mockResolvedValue({ success: true, data: { totalSpendableGigCoin: 1000 } }),
   },
 }));
 

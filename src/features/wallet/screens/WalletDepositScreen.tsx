@@ -57,7 +57,8 @@ export default function WalletDepositScreen() {
       setLoadingBalance(true);
       const res = await walletGetAPI.getMyWallet();
       if (res.success && res.data) {
-        setCurrentBalance(res.data.availableTokens);
+        // "Current balance" on the deposit screen is the overall spendable wallet.
+        setCurrentBalance(res.data.totalSpendableGigCoin);
       } else {
         setErrorText(res.message || t('walletDeposit.errorLoadBalance'));
       }

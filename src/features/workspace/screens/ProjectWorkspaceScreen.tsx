@@ -591,7 +591,8 @@ export default function ProjectWorkspaceScreen() {
 
     const response = await walletGetAPI.getMyWallet();
     if (response.success && response.data) {
-      setEndProjectBalance(response.data.availableTokens);
+      // End-project service fee is an in-platform payment, spendable from either pool.
+      setEndProjectBalance(response.data.totalSpendableGigCoin);
     } else {
       setEndProjectError(response.message || t('workspace.unableLoadGigCoinBalance'));
     }

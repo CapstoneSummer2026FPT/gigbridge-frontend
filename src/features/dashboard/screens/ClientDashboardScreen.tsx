@@ -286,11 +286,11 @@ export default function ClientDashboardScreen() {
                         Available funds
                       </span>
                       <GigCoinAmount
-                        amount={wallet?.availableTokens ?? 0}
+                        amount={wallet?.totalSpendableGigCoin ?? 0}
                         className="text-5xl font-black tracking-tight text-text-primary"
                       />
                       <span className="block text-xs text-text-secondary mt-3">
-                        Held: <GigCoinAmount amount={wallet?.heldTokens ?? 0} />
+                        Held: <GigCoinAmount amount={wallet?.heldGigCoin ?? 0} />
                       </span>
                     </div>
                     <div className="flex items-center justify-between relative z-10">

@@ -1274,7 +1274,10 @@
     "history": "Transaction History",
     "addFunds": "Add Funds",
     "amount": "Amount",
-    "noTransactions": "No transactions yet"
+    "noTransactions": "No transactions yet",
+    "depositedBalance": "Deposited GigCoin",
+    "depositedTooltip": "Deposited GigCoin — non-withdrawable, available for platform payments",
+    "depositedCaption": "Non-withdrawable · available for platform payments"
   },
   "ai": {
     "assistant": "AI Assistant",
