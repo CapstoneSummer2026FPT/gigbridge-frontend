@@ -165,6 +165,7 @@ const mockWorkspace = (
     },
     partnerName: 'Partner',
     partnerAvatar: '',
+    partnerUserId: 'partner-user-1',
     partnerTitle: 'Partner',
     partnerCompany: '',
     isPartnerOnline: false,

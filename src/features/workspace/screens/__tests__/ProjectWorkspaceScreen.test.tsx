@@ -233,6 +233,7 @@ const mockWorkspaceHook = (options: {
     currentProjData: currentProject,
     partnerName: 'Freelancer',
     partnerAvatar: 'https://example.com/avatar.png',
+    partnerUserId: 'partner-user-1',
     partnerTitle: isClient ? 'Freelancer' : 'Client',
     partnerCompany: 'Workspace',
     isPartnerOnline: true,
