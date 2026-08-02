@@ -198,6 +198,7 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
     {
       title: t('nav.financial') || 'Financial',
       items: [
+        { label: t('nav.platformAnalytics') || 'Platform Analytics', icon: <BarChart2 size={18} />, path: '/admin/analytics' },
         { label: t('nav.withdrawals') || 'Withdrawals', icon: <Banknote size={18} />, path: '/admin/withdrawals' },
       ],
     },

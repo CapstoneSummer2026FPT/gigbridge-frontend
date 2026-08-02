@@ -72,6 +72,7 @@ export interface Job {
   viewCount: number;
   aiMatchScore?: number;
   isAiRecommended?: boolean;
+  isFeatured?: boolean;
   hasAiInterview?: boolean;
   clientEloPoints?: number;
   postedAt: string;
@@ -110,6 +111,9 @@ export interface JobPostSummaryDto {
   skills: JobPostSkillDto[];
   customSkillNames: string[];
   skillNames: string[];
+  isFeatured?: boolean;
+  featuredUntil?: string | null;
+  isAiGenerated?: boolean;
   hasAiInterview?: boolean;
 }
 

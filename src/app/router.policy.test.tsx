@@ -44,6 +44,13 @@ describe('public policy routes', () => {
     expect(retiredRoute).toBeUndefined();
   });
 
+  it('keeps platform analytics behind the shared admin route guard', () => {
+    const analyticsRoute = getPolicyElement('admin/analytics');
+
+    expect(analyticsRoute.type).toBeDefined();
+    expect(analyticsRoute.props.children).toBeDefined();
+  });
+
   it('allows clients and freelancers to open milestone details', () => {
     const milestoneRoute = getPolicyElement('contracts/:contractId/milestones');
 
