@@ -153,7 +153,8 @@
     "contractTemplates": "Contract Templates",
     "revenue": "Revenue",
     "systemFinance": "System Finance",
-    "systemTracking": "System Tracking"
+    "systemTracking": "System Tracking",
+    "platformAnalytics": "Platform Analytics"
   },
   "adminNav": {
     "groups": { "overview": "Overview", "users": "User Management", "content": "Content Management", "contracts": "Contracts & Finance", "moderation": "Moderation & Disputes", "configuration": "Configuration", "monitoring": "System & Monitoring" },
@@ -2857,6 +2858,10 @@
       "emailTitle": "Email update",
       "emailDescription": "We’ll also send the decision to your email."
     }
+  },
+  "adminAnalytics": {
+    "title": "Platform Analytics",
+    "subtitle": "Revenue integrity, wallet activity, and marketplace opportunity—without mixing platform income with user funds."
   },
   "premiumPromotion": {
     "preview": "Preview",

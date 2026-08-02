@@ -5,6 +5,9 @@ import type {
   CreateJobPostQuestionRequest,
   GenerateJobDescriptionRequest,
   GenerateJobDescriptionResponse,
+  GenerateJobDescriptionDetailsResponse,
+  GenerateJobHiringPlanRequest,
+  GenerateJobHiringPlanResponse,
   JobPostPromotionDto,
   PromoteJobPostRequest,
   JobPromotionInteractionDto,
@@ -46,17 +49,37 @@ export const jobPostAPI = {
     return apiService.post<GenerateJobDescriptionResponse>(`${jobPostsUrl}/ai/generate`, data);
   },
 
+  generateAIDetails: async (
+    data: GenerateJobDescriptionRequest
+  ): Promise<ApiResponse<GenerateJobDescriptionDetailsResponse>> => {
+    return apiService.post<GenerateJobDescriptionDetailsResponse>(`${jobPostsUrl}/ai/generate/details`, data);
+  },
+
+  generateAIHiringPlan: async (
+    data: GenerateJobHiringPlanRequest
+  ): Promise<ApiResponse<GenerateJobHiringPlanResponse>> => {
+    return apiService.post<GenerateJobHiringPlanResponse>(`${jobPostsUrl}/ai/generate/hiring-plan`, data);
+  },
+
   promoteJobPost: async (jobPostId: string, data: PromoteJobPostRequest): Promise<ApiResponse<JobPostPromotionDto>> =>
     apiService.post<JobPostPromotionDto>(`${jobPostsUrl}/${jobPostId}/promote`, data),
 
   endJobPromotion: async (jobPostId: string): Promise<ApiResponse<JobPostPromotionDto>> =>
     apiService.post<JobPostPromotionDto>(`${jobPostsUrl}/${jobPostId}/promotion/end`),
 
-  trackJobPromotionImpression: async (promotionId: string): Promise<ApiResponse<JobPromotionInteractionDto>> =>
-    apiService.post<JobPromotionInteractionDto>(`job-promotions/${promotionId}/impression`),
+  trackJobPromotionImpression: async (
+    promotionId: string,
+    visitorKey: string,
+  ): Promise<ApiResponse<JobPromotionInteractionDto>> =>
+    apiService.post<JobPromotionInteractionDto>(
+      `job-promotions/${promotionId}/impression`, {}, { 'X-Promotion-Visitor': visitorKey }),
 
-  trackJobPromotionClick: async (promotionId: string): Promise<ApiResponse<JobPromotionInteractionDto>> =>
-    apiService.post<JobPromotionInteractionDto>(`job-promotions/${promotionId}/click`),
+  trackJobPromotionClick: async (
+    promotionId: string,
+    visitorKey: string,
+  ): Promise<ApiResponse<JobPromotionInteractionDto>> =>
+    apiService.post<JobPromotionInteractionDto>(
+      `job-promotions/${promotionId}/click`, {}, { 'X-Promotion-Visitor': visitorKey }),
 
   uploadJobPromotionImage: async (file: File): Promise<ApiResponse<string>> => {
     const form = new FormData();

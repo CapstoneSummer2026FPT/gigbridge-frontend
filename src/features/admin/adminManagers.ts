@@ -1,6 +1,7 @@
 import {
   Activity,
   Banknote,
+  BarChart3,
   Bell,
   Briefcase,
   FileCheck2,
@@ -65,6 +66,7 @@ export const ADMIN_MANAGERS: readonly AdminManagerDefinition[] = [
   { id: 'assets', labelKey: 'adminNav.assets', fallbackLabel: 'Assets & Handoffs', descriptionKey: 'adminDashboard.descriptions.assets', fallbackDescription: 'Inspect platform deliverables and handoff assets', path: '/admin/assets', icon: Layers, group: 'content', showInNavigation: true, showOnDashboard: true },
   { id: 'contracts', labelKey: 'nav.contractsCompliance', fallbackLabel: 'Contracts', descriptionKey: 'adminDashboard.descriptions.contracts', fallbackDescription: 'Inspect contract, milestone, and escrow workflows', path: '/admin/contracts', icon: FileCheck2, group: 'contracts', showInNavigation: true, showOnDashboard: true },
   { id: 'esign', labelKey: 'adminNav.esign', fallbackLabel: 'E-sign Agreements', descriptionKey: 'adminDashboard.descriptions.esign', fallbackDescription: 'Review electronic agreement and signature state', path: '/admin/contracts/esign', icon: FileText, group: 'contracts', showInNavigation: true, showOnDashboard: true },
+  { id: 'analytics', labelKey: 'nav.platformAnalytics', fallbackLabel: 'Platform Analytics', descriptionKey: 'adminDashboard.descriptions.analytics', fallbackDescription: 'Track platform revenue, transactions, and marketplace opportunities', path: '/admin/analytics', icon: BarChart3, group: 'contracts', showInNavigation: true, showOnDashboard: true },
   { id: 'withdrawals', labelKey: 'nav.withdrawals', fallbackLabel: 'Withdrawals', descriptionKey: 'adminDashboard.descriptions.withdrawals', fallbackDescription: 'Review and reconcile withdrawal requests', path: '/admin/withdrawals', icon: Banknote, group: 'contracts', showInNavigation: true, showOnDashboard: true },
   { id: 'disputes', labelKey: 'nav.disputeManagement', fallbackLabel: 'Disputes', descriptionKey: 'adminDashboard.descriptions.disputes', fallbackDescription: 'Resolve disputes using evidence and financial context', path: '/admin/disputes', icon: Shield, group: 'moderation', showInNavigation: true, showOnDashboard: true },
   { id: 'faqs', labelKey: 'nav.faqManagement', fallbackLabel: 'FAQ Management', descriptionKey: 'adminDashboard.descriptions.faqs', fallbackDescription: 'Maintain public help content', path: '/admin/faq-management', icon: HelpCircle, group: 'configuration', showInNavigation: true, showOnDashboard: true },
@@ -74,4 +76,3 @@ export const ADMIN_MANAGERS: readonly AdminManagerDefinition[] = [
 ] as const;
 
 export const getAdminManager = (id: string) => ADMIN_MANAGERS.find(manager => manager.id === id);
-

@@ -42,9 +42,10 @@ const mapAdminUserDtoToUser = (dto: AdminUserDto): User => {
   const spaceIndex = dto.fullName.indexOf(' ');
   const firstName = spaceIndex >= 0 ? dto.fullName.slice(0, spaceIndex) : dto.fullName;
   const lastName = spaceIndex >= 0 ? dto.fullName.slice(spaceIndex + 1) : '';
-  // Premium is a freelancer-only entitlement. Use an explicit boolean check so
+  // Premium is available to client and freelancer accounts. Use an explicit boolean check so
   // malformed values such as "false" cannot become truthy in the admin UI.
-  const isPremium = dto.role === UserRole.Freelancer && dto.isPremium === true;
+  const isPremium = (dto.role === UserRole.Client || dto.role === UserRole.Freelancer)
+    && dto.isPremium === true;
 
   return {
     id: dto.userId,
@@ -401,7 +402,7 @@ export default function AdminUsersScreen() {
   };
 
   const handlePremiumAction = async (user: User) => {
-    if (user.role !== UserRole.Freelancer) return;
+    if (user.role !== UserRole.Client && user.role !== UserRole.Freelancer) return;
     const action = user.is_premium ? 'revoke Premium from' : 'promote to Premium';
     if (!window.confirm(`Are you sure you want to ${action} ${user.full_name}?`)) return;
     const response = user.is_premium
@@ -740,7 +741,7 @@ export default function AdminUsersScreen() {
 
                                 <div className="h-px my-1 dropdown-divider" />
 
-                                {user.role === UserRole.Freelancer && <button
+                                {(user.role === UserRole.Client || user.role === UserRole.Freelancer) && <button
                                   onClick={() => void handlePremiumAction(user)}
                                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${user.is_premium ? 'hover:bg-red/10 text-red' : 'hover:bg-purple/10 text-purple'}`}
                                 >

@@ -1,11 +1,38 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { adminGetAPI } from '../../../../api/adminAPI/GET';
 import { jobGetAPI } from '../../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../../api/proposalAPI/GET';
 import AdminNotificationsScreen from '../AdminNotificationsScreen';
 import AdminSystemTrackingScreen from '../AdminSystemTrackingScreen';
+
+const signalRMock = vi.hoisted(() => {
+  const connection = {
+    on: vi.fn(),
+    off: vi.fn(),
+    onreconnecting: vi.fn(),
+    onreconnected: vi.fn(),
+    onclose: vi.fn(),
+    start: vi.fn(() => Promise.resolve()),
+    stop: vi.fn(() => Promise.resolve()),
+  };
+  const builder = {
+    withUrl: vi.fn(),
+    withAutomaticReconnect: vi.fn(),
+    build: vi.fn(() => connection),
+  };
+  builder.withUrl.mockReturnValue(builder);
+  builder.withAutomaticReconnect.mockReturnValue(builder);
+  return { builder, connection };
+});
+
+vi.mock('@microsoft/signalr', () => ({
+  HubConnectionBuilder: class {
+    constructor() {
+      return signalRMock.builder;
+    }
+  },
+}));
 
 vi.mock('../../../../shared/components/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -15,6 +42,7 @@ vi.mock('../../../../api/adminAPI/GET', () => ({
   adminGetAPI: {
     getUsers: vi.fn(),
     getAuditLogs: vi.fn(),
+    getSystemTracking: vi.fn(),
   },
 }));
 
@@ -32,6 +60,46 @@ vi.mock('../../../../api/proposalAPI/GET', () => ({
 
 describe('admin screens without telemetry or history APIs', () => {
   beforeEach(() => {
+    vi.mocked(adminGetAPI.getAuditLogs).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: { items: [], pageNumber: 1, pageSize: 20, totalCount: 0, totalPages: 1 },
+    });
+    vi.mocked(adminGetAPI.getSystemTracking).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        generatedAt: '2026-07-31T00:00:00Z',
+        environment: 'Testing',
+        startedAt: '2026-07-31T00:00:00Z',
+        uptimeSeconds: 0,
+        retentionMode: 'memory-current-instance',
+        retainedEntryLimit: 500,
+        overview: {
+          status: 'healthy',
+          totalRequests: 0,
+          errorRequests: 0,
+          errorRatePercent: 0,
+          averageResponseMs: 0,
+          p95ResponseMs: 0,
+          activeAlerts: 0,
+        },
+        requests: [],
+        errors: [],
+        alerts: [],
+        aiUsage: {
+          configured: false,
+          source: 'not-connected',
+          totalRequests: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          estimatedCostUsd: 0,
+          dailyUsage: [],
+        },
+      },
+    });
     vi.mocked(adminGetAPI.getUsers).mockResolvedValue({
       success: true,
       statusCode: 200,
@@ -45,7 +113,6 @@ describe('admin screens without telemetry or history APIs', () => {
         totalPages: 0,
       },
     });
-    vi.mocked(adminGetAPI.getAuditLogs).mockResolvedValue({ success: true, statusCode: 200, message: 'Success', data: { items: [], pageNumber: 1, pageSize: 20, totalCount: 0, totalPages: 1 } });
     vi.mocked(jobGetAPI.getAllJobPosts).mockResolvedValue({
       success: true,
       statusCode: 200,
@@ -73,19 +140,54 @@ describe('admin screens without telemetry or history APIs', () => {
     expect(screen.queryByRole('button', { name: 'Create Notification' })).not.toBeInTheDocument();
   });
 
-  it('shows real audit-backed System Tracking without synthetic telemetry', async () => {
-    render(
-      <MemoryRouter initialEntries={['/admin/system-tracking']}>
-        <Routes>
-          <Route path="/admin/system-tracking" element={<AdminSystemTrackingScreen />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+  it('shows unavailable AI telemetry instead of generated usage charts', async () => {
+    render(<AdminSystemTrackingScreen />);
 
-    expect(screen.getByRole('heading', { name: 'System Tracking' })).toBeInTheDocument();
-    expect(await screen.findByText('No administrator activity found')).toBeInTheDocument();
-    expect(adminGetAPI.getAuditLogs).toHaveBeenCalled();
+    await waitFor(() => expect(adminGetAPI.getSystemTracking).toHaveBeenCalled());
+
+    expect(signalRMock.builder.withUrl).toHaveBeenCalledWith(
+      expect.stringContaining('/hubs/system-tracking'),
+      expect.objectContaining({ accessTokenFactory: expect.any(Function) }),
+    );
+    expect(signalRMock.connection.start).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByRole('button', { name: 'AI Usage' }));
+
+    expect(screen.getByText('AI usage telemetry unavailable')).toBeInTheDocument();
     expect(screen.queryByText('1,890')).not.toBeInTheDocument();
     expect(screen.queryByText('$212.3')).not.toBeInTheDocument();
+  });
+
+  it('adds the persisted administrator audit trail to the incoming realtime tracking screen', async () => {
+    vi.mocked(adminGetAPI.getAuditLogs).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [{
+          auditLogId: 'audit-1',
+          adminUserId: 'admin-1',
+          adminName: 'System Admin',
+          action: 'wallet.adjusted',
+          entityType: 'UserWallet',
+          entityId: 'wallet-1',
+          oldValues: { deposited: 100 },
+          newValues: { deposited: 80 },
+          correlationId: 'correlation-1',
+          createdAt: '2026-08-03T00:00:00Z',
+        }],
+        pageNumber: 1,
+        pageSize: 20,
+        totalCount: 1,
+        totalPages: 1,
+      },
+    });
+
+    render(<AdminSystemTrackingScreen />);
+    await waitFor(() => expect(adminGetAPI.getAuditLogs).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recent Activity' }));
+    expect(await screen.findByText('wallet.adjusted')).toBeInTheDocument();
+    expect(screen.getByText(/UserWallet wallet-1/)).toBeInTheDocument();
   });
 });

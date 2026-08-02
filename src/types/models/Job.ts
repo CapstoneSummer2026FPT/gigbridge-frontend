@@ -72,6 +72,7 @@ export interface Job {
   viewCount: number;
   aiMatchScore?: number;
   isAiRecommended?: boolean;
+  isFeatured?: boolean;
   hasAiInterview?: boolean;
   clientEloPoints?: number;
   postedAt: string;
@@ -110,6 +111,9 @@ export interface JobPostSummaryDto {
   skills: JobPostSkillDto[];
   customSkillNames: string[];
   skillNames: string[];
+  isFeatured?: boolean;
+  featuredUntil?: string | null;
+  isAiGenerated?: boolean;
   hasAiInterview?: boolean;
 }
 
@@ -332,6 +336,29 @@ export interface GenerateJobDescriptionResponse {
   customSkills: string[];
   description: string;
   questionRecruitment?: string[] | null;
+}
+
+export interface GenerateJobDescriptionDetailsResponse {
+  title: string;
+  majorId?: string | null;
+  majorName?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  majorCategoryId?: string | null;
+  skills: GeneratedJobSkillDto[];
+  customSkills: string[];
+  description: string;
+}
+
+export interface GenerateJobHiringPlanRequest {
+  clientPrompt: string;
+  title: string;
+  description: string;
+}
+
+export interface GenerateJobHiringPlanResponse {
+  questionRecruitment: string[];
+  milestones: JobPostMilestonePlanDto[];
 }
 
 export interface JobPostPromotionDto {
