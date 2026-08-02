@@ -1,5 +1,6 @@
 import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import type { ReportContract, ReportContractAttachment } from '../../../types/models/ReportContract';
 import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
@@ -269,7 +270,7 @@ export function ReportDetailModal({
             <div className="rc-detail-grid">
               <div className="rc-detail-field">
                 <label>{t('workspace.reportReporter')}</label>
-                <span>{report.reporter.name || t('common.unknown')}
+                <span><UserProfileLink userId={report.reporter.id} role={report.reporter.role ?? undefined}>{report.reporter.name || t('common.unknown')}</UserProfileLink>
                   {isReporter ? ` (${t('common.you')})` : ''} ({report.reporter.role})
                 </span>
               </div>
@@ -277,7 +278,7 @@ export function ReportDetailModal({
                 <div className="rc-detail-field">
                   <label>{t('workspace.reportRespondent')}</label>
                   <span>
-                    {report.respondent.name || t('common.unknown')}
+                    <UserProfileLink userId={report.respondent.id} role={report.respondent.role ?? undefined}>{report.respondent.name || t('common.unknown')}</UserProfileLink>
                     {isRespondent ? ` (${t('common.you')})` : ''} ({report.respondent.role})
                   </span>
                 </div>

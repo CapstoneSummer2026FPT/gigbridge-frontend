@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { MarkdownPreview } from '../../../shared/components/MarkdownEditor';
 import {
   AlertDialog,
@@ -1302,13 +1303,15 @@ function ProposalTableRow({ item, t, onOpen }: {
     >
       <td className="px-4 py-4 align-top">
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/20 to-indigo-500/20 font-bold text-cyan-700 dark:text-cyan-300">
-            {(item.freelancerName || 'F').slice(0, 1).toUpperCase()}
-          </span>
-          <div className="min-w-0">
-            <p className="max-w-40 truncate font-semibold">{item.freelancerName || t('proposalReview.freelancer')}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{t('proposalReview.candidate')}</p>
-          </div>
+          <UserProfileLink userId={item.freelancerUserId} role="freelancer" className="flex items-center gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/20 to-indigo-500/20 font-bold text-cyan-700 dark:text-cyan-300">
+              {(item.freelancerName || 'F').slice(0, 1).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <p className="max-w-40 truncate font-semibold">{item.freelancerName || t('proposalReview.freelancer')}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t('proposalReview.candidate')}</p>
+            </div>
+          </UserProfileLink>
         </div>
       </td>
       <td className="px-4 py-4 align-top">
@@ -1347,7 +1350,7 @@ function ProposalCard({ item, t, onOpen }: {
       className="rounded-xl border border-border bg-card p-4 cursor-pointer transition hover:border-cyan-500/50 hover:bg-cyan-500/[0.015] focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <UserProfileLink userId={item.freelancerUserId} role="freelancer" className="flex min-w-0 items-center gap-3">
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 font-bold text-cyan-700 dark:text-cyan-300">
             {(item.freelancerName || 'F').slice(0, 1).toUpperCase()}
           </span>
@@ -1355,7 +1358,7 @@ function ProposalCard({ item, t, onOpen }: {
             <h2 className="truncate font-bold">{item.freelancerName || t('proposalReview.freelancer')}</h2>
             <p className="text-xs text-muted-foreground">{formatDate(item.submittedAt)}</p>
           </div>
-        </div>
+        </UserProfileLink>
         <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${badgeClass(status)}`}>{getStatusLabel(status)}</span>
       </div>
       <div className="my-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/35 p-3 text-sm">

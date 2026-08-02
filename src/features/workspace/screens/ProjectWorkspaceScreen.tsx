@@ -7,6 +7,8 @@ import {
   Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
@@ -166,6 +168,7 @@ export default function ProjectWorkspaceScreen() {
     partnerAvatar,
     partnerTitle,
     partnerCompany,
+    partnerUserId,
     isPartnerOnline,
     projectMessages,
     reviewPromptContractId,
@@ -771,15 +774,17 @@ export default function ProjectWorkspaceScreen() {
                     className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''}`}
                   >
                     <div className="flex gap-3">
-                      <div className="relative flex-shrink-0">
+                      <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
                         <img alt={proj.partnerName} className="w-12 h-12 rounded-full object-cover" src={proj.partnerAvatar} />
                         {proj.online && (
                           <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full"></span>
                         )}
-                      </div>
+                      </UserProfileLink>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-0.5">
-                          <h3 className="font-headline-sm text-sm truncate font-semibold">{proj.partnerName}</h3>
+                          <h3 className="font-headline-sm text-sm truncate font-semibold">
+                            <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>{proj.partnerName}</UserProfileLink>
+                          </h3>
                           <span className="text-[10px] text-muted-foreground">{proj.time}</span>
                         </div>
                         {proj.status === ContractStatus.Disputed && (
@@ -1174,18 +1179,20 @@ export default function ProjectWorkspaceScreen() {
                         profilePopoverTimeout.current = setTimeout(() => setShowProfilePopover(false), 150);
                       }}
                     >
-                      <div className="relative">
-                        <img alt={partnerName} className="w-8 h-8 rounded-full object-cover" src={partnerAvatar} />
-                        {isPartnerOnline && (
-                          <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 border border-card rounded-full"></span>
-                        )}
-                      </div>
-                      <div>
-                        <h2 className="text-xs font-semibold">{partnerName}</h2>
-                        <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
-                          {isPartnerOnline ? t('workspace.online') : t('workspace.offline')} • {partnerTitle}
-                        </p>
-                      </div>
+                      <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex items-center gap-3">
+                        <span className="relative">
+                          <img alt={partnerName} className="w-8 h-8 rounded-full object-cover" src={partnerAvatar} />
+                          {isPartnerOnline && (
+                            <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 border border-card rounded-full"></span>
+                          )}
+                        </span>
+                        <span>
+                          <h2 className="text-xs font-semibold">{partnerName}</h2>
+                          <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
+                            {isPartnerOnline ? t('workspace.online') : t('workspace.offline')} • {partnerTitle}
+                          </p>
+                        </span>
+                      </UserProfileLink>
 
                       {/* Hover Popover — stays open while hovered */}
                       {showProfilePopover && (
@@ -1199,14 +1206,17 @@ export default function ProjectWorkspaceScreen() {
                           }}
                         >
                           <div className="text-center">
-                            <img alt={partnerName} className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
-                            <h3 className="font-bold text-xs text-foreground">{partnerName}</h3>
+                            <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'}>
+                              <img alt={partnerName} className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
+                              <h3 className="font-bold text-xs text-foreground">{partnerName}</h3>
+                            </UserProfileLink>
                             <p className="text-[9px] text-muted-foreground mb-3">{partnerTitle} at {partnerCompany}</p>
                             <div className="flex justify-center gap-2 mb-3">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/profile/${isClient ? 'freelancer' : 'client'}/${isClient ? project.freelancerId : project.clientId}`);
+                                  const path = getProfilePath(partnerUserId, isClient ? 'freelancer' : 'client');
+                                  if (path) navigate(path);
                                 }}
                                 className="text-[8px] font-bold px-3 py-1 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
                               >
@@ -1369,7 +1379,9 @@ export default function ProjectWorkspaceScreen() {
                       return (
                         <div key={msg.id || index} className={`flex items-end gap-2 max-w-[85%] ${isMe ? 'self-end flex-row-reverse' : ''}`}>
                           {!isMe && (
-                            <img alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" src={partnerAvatar} />
+                            <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex-shrink-0">
+                              <img alt="" className="w-7 h-7 rounded-full object-cover" src={partnerAvatar} />
+                            </UserProfileLink>
                           )}
                           <div className="flex flex-col gap-1">
                             {msg.type === 'file' ? (

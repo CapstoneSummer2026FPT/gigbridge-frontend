@@ -108,6 +108,8 @@ export interface ContractDto {
   updatedAt?: string;
   clientName?: string;
   freelancerName?: string | null;
+  clientUserId?: string | null;
+  freelancerUserId?: string | null;
   jobTitle?: string;
   jobDescription?: string;
   clientEmail?: string;

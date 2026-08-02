@@ -12,6 +12,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { reportAPI } from '../../api/reportAPI';
 import { usePremiumStatus } from '../../features/premium/hooks';
 import { PremiumStatusBadge } from '../../features/premium/components/PremiumStatusBadge';
+import { getProfilePath } from '../../shared/hooks/useProfileNavigation';
 import '../../features/premium/styles/premium.css';
 import '../styles/Sidebar.css';
 
@@ -343,7 +344,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* User Profile Mini */}
       {user && (
         <div className="sidebar-profile-mini"
-          onClick={() => navigate(role === 1 ? `/profile/freelancer/${user.id}` : `/profile/client/${user.id}`)}>
+          onClick={() => { const path = getProfilePath(user.id, role); if (path) navigate(path); }}>
           <div className="sidebar-profile-avatar">
             {user.first_name.charAt(0)}{user.last_name.charAt(0)}
           </div>

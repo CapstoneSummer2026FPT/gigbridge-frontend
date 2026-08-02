@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Star, MapPin, Briefcase, Users, Shield, Edit3, ArrowLeft, Globe, Mail, Phone, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useClientProfile } from '../hooks/useClientProfile';
 import { ReportUserModal } from '../components/ReportUserModal';
@@ -328,7 +329,7 @@ export default function ClientProfileScreen() {
                     {paginatedReviews.map(review => (
                       <div key={review.id} className="review-card p-6 rounded-2xl border border-outline-variant shadow-sm transition-all hover:shadow-md">
                         <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
+                          <UserProfileLink userId={review.reviewerId} role="freelancer" disabled={review.isAnonymous} className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-headline-sm">
                               {review.isAnonymous ? 'A' : review.reviewerName.charAt(0)}
                             </div>
@@ -343,7 +344,7 @@ export default function ClientProfileScreen() {
                                 <p className="profile-review-project">{t('reviews.projectContext', { project: review.projectTitle })}</p>
                               )}
                             </div>
-                          </div>
+                          </UserProfileLink>
                           <div className="flex items-center text-yellow-500 bg-surface-container-lowest px-2 py-1 rounded-full border border-outline-variant">
                             {[...Array(5)].map((_, i) => (
                               <Star 

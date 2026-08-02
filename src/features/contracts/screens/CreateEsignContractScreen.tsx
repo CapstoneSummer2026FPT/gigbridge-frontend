@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AlertCircle, ArrowRight, Calendar, FileText, Users, X, CheckCircle, Download, Send, Zap } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -367,7 +368,7 @@ export default function CreateEsignContractScreen() {
 
               <div className="proposal-summary-card">
                 <div className="summary-header">
-                  <div>
+                  <UserProfileLink userId={proposal.freelancerUserId} role="freelancer" className="flex items-center gap-3">
                     <img
                       src={`https://api.dicebear.com/9.x/avataaars/svg?seed=${proposal.freelancerName}`}
                       alt={proposal.freelancerName}
@@ -377,7 +378,7 @@ export default function CreateEsignContractScreen() {
                       <h3>{proposal.freelancerName || t('contracts.unknown')}</h3>
                       <p>{proposal.jobTitle}</p>
                     </div>
-                  </div>
+                  </UserProfileLink>
                   <span className="proposal-status">{t('contracts.milestoneStatus.Approved')}</span>
                 </div>
 
@@ -623,7 +624,9 @@ export default function CreateEsignContractScreen() {
                   </div>
                   <div>
                     <span>{t('contracts.freelancer')}</span>
-                    <strong>{proposal.freelancerName}</strong>
+                    <strong>
+                      <UserProfileLink userId={proposal.freelancerUserId} role="freelancer">{proposal.freelancerName}</UserProfileLink>
+                    </strong>
                   </div>
                   <div>
                     <span>{t('contracts.contractTitle')}</span>
@@ -672,7 +675,9 @@ export default function CreateEsignContractScreen() {
                     <Users size={20} />
                     <div>
                       <h4>{t('contracts.freelancer')}</h4>
-                      <p>{proposal.freelancerName}</p>
+                      <p>
+                        <UserProfileLink userId={proposal.freelancerUserId} role="freelancer">{proposal.freelancerName}</UserProfileLink>
+                      </p>
                     </div>
                   </div>
 

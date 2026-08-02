@@ -28,6 +28,7 @@ import {
 } from '../../../app/components/ui/tooltip';
 import { useApp } from '../../../app/providers/AppProvider';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
 import { JobPostStatus } from '../../../types/models/Job';
 import type { FreelancerSummaryDto } from '../../../types/models/Profile';
@@ -333,7 +334,8 @@ export default function SmartTalentMatchingScreen() {
         idempotencyKey: `match:${matchRunId}:profile-opened:${match.freelancerProfileId}`,
       });
     }
-    navigate(`/profile/freelancer/${match.userId}`);
+    const path = getProfilePath(match.userId, 'freelancer');
+    if (path) navigate(path);
   };
 
   const toggleSaved = async (profileId: string, attributedRunId?: string) => {
@@ -568,11 +570,11 @@ export default function SmartTalentMatchingScreen() {
                   return (
                     <article key={profileId} className="bento-card rounded-3xl p-6">
                       <div className="flex gap-4 items-start">
-                        <button onClick={() => navigate(`/profile/freelancer/${freelancer.userId}`)} className="shrink-0">
+                        <button onClick={() => { const path = getProfilePath(freelancer.userId, 'freelancer'); if (path) navigate(path); }} className="shrink-0">
                           {freelancer.userAvatar ? <img src={freelancer.userAvatar} alt="" className="w-16 h-16 rounded-2xl object-cover" /> : <span className="w-16 h-16 rounded-2xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-black">{initials(displayName)}</span>}
                         </button>
                         <div className="min-w-0 flex-1">
-                          <button onClick={() => navigate(`/profile/freelancer/${freelancer.userId}`)} className="text-left font-black text-xl hover:text-blue-600">{displayName}</button>
+                          <button onClick={() => { const path = getProfilePath(freelancer.userId, 'freelancer'); if (path) navigate(path); }} className="text-left font-black text-xl hover:text-blue-600">{displayName}</button>
                           <p className="text-sm font-semibold text-blue-600">{freelancer.title || 'Freelancer'}</p>
                           <div className="flex flex-wrap gap-2 mt-3 text-xs">
                             {freelancer.location && <span className="px-2.5 py-1 rounded-full bg-surface border border-border inline-flex items-center gap-1"><MapPin size={12} />{freelancer.location}</span>}

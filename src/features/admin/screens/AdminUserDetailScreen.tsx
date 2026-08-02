@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { adminPostAPI } from '../../../api/adminAPI/POST';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { AccountStatus, UserViolationType, type AdminUserDetail, type EnforcementPayload } from '../../../types/models/AdminPhase1';
 import '../styles/admin-phase-one.css';
 
@@ -14,7 +15,7 @@ export default function AdminUserDetailScreen() {
   const clear=async(restore:boolean)=>{const reason=window.prompt(`Reason for ${restore?'restore':'clearing suspension'}`)?.trim(); if(!reason)return; const r=restore?await adminPostAPI.restoreUser(userId,reason):await adminPostAPI.clearUserSuspension(userId,reason); if(!r.success)setError(r.message||'Action failed.'); else await load();};
   if(!data)return <main className="admin-phase">{error?<div className="admin-phase__error">{error}</div>:<p>Loading user…</p>}</main>;
   const protectedAdmin=data.role===2;
-  return <main className="admin-phase"><div className="admin-phase__header"><div><Link to="/admin/users">← Users</Link><h1>{data.fullName}</h1><p>{data.email}</p></div><span className="admin-phase__badge">{labels[data.accountStatus]} · {data.violationCount} violation(s){data.isFlagged?' · Flagged':''}</span></div>{error&&<div className="admin-phase__error">{error}</div>}
+  return <main className="admin-phase"><div className="admin-phase__header"><div><Link to="/admin/users">← Users</Link><h1><UserProfileLink userId={data.userId} role={data.role}>{data.fullName}</UserProfileLink></h1><p>{data.email}</p></div><span className="admin-phase__badge">{labels[data.accountStatus]} · {data.violationCount} violation(s){data.isFlagged?' · Flagged':''}</span></div>{error&&<div className="admin-phase__error">{error}</div>}
     <div className="admin-phase__tabs">{['Overview','Profile','Account Reports','Violations','Account Enforcement','Wallet Summary','Audit Logs'].map(x=><button key={x} className={tab===x?'active':''} onClick={()=>setTab(x)}>{x}</button>)}</div>
     {tab==='Overview'&&<section className="admin-phase__panel admin-phase__grid"><div className="admin-phase__stat"><small>Role</small>{['Client','Freelancer','Admin'][data.role]}</div><div className="admin-phase__stat"><small>Email verified</small>{data.isEmailVerified?'Yes':'No'}</div><div className="admin-phase__stat"><small>Created</small>{new Date(data.createdAt).toLocaleString()}</div><div className="admin-phase__stat"><small>Subscription</small>{data.subscription?.planName||'None'}</div></section>}
     {tab==='Profile'&&<section className="admin-phase__panel"><h2>{data.profile?.kind||'Profile'}</h2><p>{data.profile?.title||data.profile?.companyName}</p><p>{data.profile?.bio}</p><p>{[...(data.profile?.categories||[]),...(data.profile?.skills||[])].join(', ')||'No taxonomy data'}</p></section>}

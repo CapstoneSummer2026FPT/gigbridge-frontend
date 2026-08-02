@@ -59,6 +59,7 @@ export interface ProposalDto {
   jobTitle: string;
   freelancerProfilesId: string;
   freelancerName: string;
+  freelancerUserId?: string | null;
   coverLetter: string;
   proposedBudget: number;
   proposedDuration: string;
@@ -154,6 +155,7 @@ export interface ProposalDetailDto {
   jobPostTitle?: string | null;
   freelancerProfileId: string;
   freelancerName?: string | null;
+  freelancerUserId?: string | null;
   coverLetter?: string | null;
   proposedBudget?: number | null;
   proposedDuration?: string | null;

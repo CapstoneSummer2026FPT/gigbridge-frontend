@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { Search, Filter, Users, UserCheck, UserX, Shield, Ban, CheckCircle, XCircle, Eye, Edit, MoreVertical, Download, Mail, Calendar, Briefcase, Plus, KeyRound, Phone, Flag, Wallet, Folder, File as FileIcon, Image, Film, FileText, Crown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { adminAPI } from '../../../api/adminAPI';
 import type { AdminUserDto, User } from '../../../types';
 import { UserRole } from '../../../types';
@@ -615,15 +617,16 @@ export default function AdminUsersScreen() {
                     <tr key={user.id} className="hover:bg-white/5 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white ${user.is_premium ? 'admin-premium-avatar' : ''}`}>
-                            {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <button className={`text-sm font-semibold bg-transparent border-0 p-0 cursor-pointer ${user.is_currently_reported ? 'text-red' : 'text-primary'}`} onClick={() => navigate(`/admin/users/${user.id}`)}>
-                                {user.full_name}
-                              </button>
-                              {user.is_currently_reported && (
+                          <UserProfileLink userId={user.id} role={user.role} className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-cyan to-purple flex items-center justify-center text-sm font-bold text-white ${user.is_premium ? 'admin-premium-avatar' : ''}`}>
+                              {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-sm font-semibold ${user.is_currently_reported ? 'text-red' : 'text-primary'}`}>
+                                  {user.full_name}
+                                </span>
+                                {user.is_currently_reported && (
                                 <span className="badge-red text-xs inline-flex items-center gap-1" title="Open user reports">
                                   <Flag size={12} /> {user.open_report_count || 0}
                                 </span>
@@ -633,7 +636,8 @@ export default function AdminUsersScreen() {
                               {user.is_flagged && <span className="badge-red text-xs">Flagged · {user.violation_count ?? 0}</span>}
                             </div>
                             <p className="text-xs text-secondary">{user.id}</p>
-                          </div>
+                            </div>
+                          </UserProfileLink>
                         </div>
                       </td>
                       <td className="p-4">
@@ -659,6 +663,14 @@ export default function AdminUsersScreen() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => navigate(`/admin/users/${user.id}`)}
+                            className="p-2 rounded-lg glass-button hover:bg-cyan/10 transition-colors"
+                            title="Manage User"
+                          >
+                            <Folder size={16} className="text-cyan" />
+                          </button>
+
                           <button
                             onClick={() => setPreviewUser(user)}
                             className="p-2 rounded-lg glass-button hover:bg-cyan/10 transition-colors"
@@ -1300,7 +1312,8 @@ export default function AdminUsersScreen() {
                 </button>
                 <button
                   onClick={() => {
-                    navigate(`/profile/${previewUser.role === 1 ? 'freelancer' : 'client'}/${previewUser.id}`);
+                    const path = getProfilePath(previewUser.id, previewUser.role);
+                    if (path) navigate(path);
                   }}
                   className="btn-cyan px-6 py-2 flex items-center gap-2"
                 >
