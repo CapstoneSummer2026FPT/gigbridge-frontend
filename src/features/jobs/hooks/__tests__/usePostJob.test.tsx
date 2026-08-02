@@ -47,6 +47,8 @@ vi.mock('../../../../api/jobAPI', () => ({
     getMyJobPostById: vi.fn(),
     getJobPostQuestions: vi.fn(),
     generateAIDescription: vi.fn(),
+    generateAIDetails: vi.fn(),
+    generateAIHiringPlan: vi.fn(),
     createDraftJobPost: vi.fn().mockResolvedValue({
       success: true,
       statusCode: 200,
@@ -514,5 +516,73 @@ describe('usePostJob hook skills conversion', () => {
       ],
     }));
     expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
+  });
+
+  describe('background hiring plan generation delusional flow', () => {
+    it('immediately triggers generateAIHiringPlan in the background and processes correctly on resolve/success', async () => {
+      let resolvePlanPromise: any;
+      const planPromise = new Promise((resolve) => {
+        resolvePlanPromise = resolve;
+      });
+      vi.mocked(jobAPI.generateAIHiringPlan).mockImplementation(() => planPromise);
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+
+      const mockPendingDetails = {
+        title: 'Background Generated SaaS Dashboard',
+        description: 'Need a dashboard',
+        majorId: 'major-1',
+        majorCategoryId: 'category-1',
+        categoryId: 'category-1',
+        majorName: 'Software',
+        categoryName: 'Web Dev',
+        skills: [],
+        customSkills: [],
+      };
+
+      vi.mocked(jobAPI.generateAIDetails).mockResolvedValue(successResponse(mockPendingDetails));
+
+      const { result } = renderHook(() => usePostJob());
+
+      await act(async () => {
+        await result.current.handleGenerateInstantJob('Build a SaaS Dashboard');
+      });
+
+      expect(result.current.isReviewModalOpen).toBe(true);
+      expect(result.current.pendingGeneratedDetails).toEqual(mockPendingDetails);
+
+      await act(async () => {
+        await result.current.handleApproveDetails();
+      });
+
+      expect(result.current.isReviewModalOpen).toBe(false);
+      expect(result.current.form.title).toBe('Background Generated SaaS Dashboard');
+
+      expect(jobAPI.generateAIHiringPlan).toHaveBeenCalledWith({
+        clientPrompt: 'Build a SaaS Dashboard',
+        title: 'Background Generated SaaS Dashboard',
+        description: 'Need a dashboard',
+      });
+
+      let submitPromise: any;
+      act(() => {
+        submitPromise = result.current.submitDraftFlow('plan');
+      });
+
+      expect(result.current.isGeneratingPlan).toBe(true);
+
+      await act(async () => {
+        resolvePlanPromise(successResponse({
+          milestones: [{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a' }],
+          questionRecruitment: ['Question 1'],
+        }));
+      });
+
+      await act(async () => {
+        await submitPromise;
+      });
+
+      expect(result.current.isGeneratingPlan).toBe(false);
+      expect(result.current.milestonePlans).toEqual([{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', workItems: [] }]);
+    });
   });
 });

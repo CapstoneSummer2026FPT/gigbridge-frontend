@@ -263,6 +263,10 @@ export function usePostJob() {
   const [isHiringPlanGenerated, setIsHiringPlanGenerated] = useState(() => {
     return (location.state as any)?.hiringPlanGenerated ?? false;
   });
+  const [backgroundHiringPlanStatus, setBackgroundHiringPlanStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [backgroundHiringPlanError, setBackgroundHiringPlanError] = useState<string | null>(null);
+  const backgroundHiringPlanPromiseRef = useRef<Promise<{ milestones: JobPostMilestonePlanDto[]; questions: QuestionInput[] }> | null>(null);
+
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
   const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
@@ -600,6 +604,9 @@ export function usePostJob() {
     setMilestonePlans([]);
     setAttachments([]);
     setAttachmentError(null);
+    backgroundHiringPlanPromiseRef.current = null;
+    setBackgroundHiringPlanStatus('idle');
+    setBackgroundHiringPlanError(null);
   };
 
   const insertMarkdown = (before: string, after: string): void => {
@@ -774,6 +781,55 @@ export function usePostJob() {
     setIsReviewModalOpen(false);
     setIsInstantJobMode(true);
     setIsHiringPlanGenerated(false);
+
+    // Start background generation of hiring plan immediately
+    const promptText = aiClientPrompt;
+    const jobTitle = generatedData.title;
+    const jobDescription = generatedData.description;
+
+    setBackgroundHiringPlanStatus('loading');
+    setBackgroundHiringPlanError(null);
+
+    const promise = jobAPI.generateAIHiringPlan({
+      clientPrompt: promptText,
+      title: jobTitle || '',
+      description: jobDescription || ''
+    }).then(response => {
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to generate hiring plan.');
+      }
+      
+      const planData = response.data;
+      const rawMilestones = planData.milestones || (planData as any).milestonePlans || (planData as any).milestone_plans;
+      const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
+
+      let nextMilestones: JobPostMilestonePlanDto[] = [];
+      let nextQuestions: QuestionInput[] = [];
+
+      if (rawMilestones && rawMilestones.length > 0) {
+        nextMilestones = withoutWorkBreakdownItems(rawMilestones);
+      }
+      if (rawQuestions && rawQuestions.length > 0) {
+        nextQuestions = rawQuestions.map((qText: string) => ({
+          questionText: qText,
+          isRequired: true,
+        }));
+      }
+
+      setMilestonePlans(nextMilestones);
+      setQuestions(nextQuestions);
+      setIsHiringPlanGenerated(true);
+      setBackgroundHiringPlanStatus('success');
+
+      return { milestones: nextMilestones, questions: nextQuestions };
+    }).catch(error => {
+      const planErrorMsg = error instanceof Error ? error.message : 'An error occurred generating hiring plan.';
+      setBackgroundHiringPlanStatus('error');
+      setBackgroundHiringPlanError(planErrorMsg);
+      throw error;
+    });
+
+    backgroundHiringPlanPromiseRef.current = promise;
 
     try {
       const [categoriesResponse, skillsResponse] = await Promise.all([
@@ -1218,42 +1274,62 @@ export function usePostJob() {
         let finalQuestions = questions;
 
         if (isInstantJobMode && !isHiringPlanGenerated) {
-          setIsGeneratingPlan(true);
-          try {
-            const planResponse = await jobAPI.generateAIHiringPlan({
-              clientPrompt: aiClientPrompt,
-              title: form.title,
-              description: form.description
-            });
+          // If the background promise failed previously, clear it to retry using fallback
+          if (backgroundHiringPlanStatus === 'error') {
+            backgroundHiringPlanPromiseRef.current = null;
+          }
 
-            if (!planResponse.success || !planResponse.data) {
-              throw new Error(planResponse.message || 'Failed to generate hiring plan.');
+          if (backgroundHiringPlanPromiseRef.current) {
+            setIsGeneratingPlan(true);
+            try {
+              const result = await backgroundHiringPlanPromiseRef.current;
+              finalMilestones = result.milestones;
+              finalQuestions = result.questions;
+            } catch (planError) {
+              backgroundHiringPlanPromiseRef.current = null;
+              setBackgroundHiringPlanStatus('error');
+              throw planError;
+            } finally {
+              setIsGeneratingPlan(false);
             }
+          } else {
+            setIsGeneratingPlan(true);
+            try {
+              const planResponse = await jobAPI.generateAIHiringPlan({
+                clientPrompt: aiClientPrompt,
+                title: form.title,
+                description: form.description
+              });
 
-            const planData = planResponse.data;
-            const rawMilestones = planData.milestones || (planData as any).milestonePlans || (planData as any).milestone_plans;
-            const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
+              if (!planResponse.success || !planResponse.data) {
+                throw new Error(planResponse.message || 'Failed to generate hiring plan.');
+              }
 
-            if (rawMilestones && rawMilestones.length > 0) {
-              const mappedMilestones = withoutWorkBreakdownItems(rawMilestones);
-              setMilestonePlans(mappedMilestones);
-              finalMilestones = mappedMilestones;
+              const planData = planResponse.data;
+              const rawMilestones = planData.milestones || (planData as any).milestonePlans || (planData as any).milestone_plans;
+              const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
+
+              if (rawMilestones && rawMilestones.length > 0) {
+                const mappedMilestones = withoutWorkBreakdownItems(rawMilestones);
+                setMilestonePlans(mappedMilestones);
+                finalMilestones = mappedMilestones;
+              }
+              if (rawQuestions && rawQuestions.length > 0) {
+                const mappedQuestions = rawQuestions.map((qText: string) => ({
+                  questionText: qText,
+                  isRequired: true,
+                }));
+                setQuestions(mappedQuestions);
+                finalQuestions = mappedQuestions;
+              }
+              setIsHiringPlanGenerated(true);
+            } catch (planError) {
+              const planErrorMsg = planError instanceof Error ? planError.message : 'An error occurred generating hiring plan.';
+              toast.error(planErrorMsg);
+              throw planError;
+            } finally {
+              setIsGeneratingPlan(false);
             }
-            if (rawQuestions && rawQuestions.length > 0) {
-              const mappedQuestions = rawQuestions.map((qText: string) => ({
-                questionText: qText,
-                isRequired: true,
-              }));
-              setQuestions(mappedQuestions);
-              finalQuestions = mappedQuestions;
-            }
-            setIsHiringPlanGenerated(true);
-          } catch (planError) {
-            const planErrorMsg = planError instanceof Error ? planError.message : 'An error occurred generating hiring plan.';
-            toast.error(planErrorMsg);
-            throw planError;
-          } finally {
-            setIsGeneratingPlan(false);
           }
         }
 
