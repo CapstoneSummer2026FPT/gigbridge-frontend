@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   ArrowLeft, ArrowRight, BarChart3, BriefcaseBusiness, CalendarDays, Check, Crown,
-  Download, Eye, EyeOff, Info, Layers3, RefreshCw, X,
+  Download, ExternalLink, Eye, EyeOff, Info, Layers3, RefreshCw, X,
 } from 'lucide-react';
 import { adminAnalyticsAPI } from '../../../api/adminAnalyticsAPI';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -14,12 +14,12 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import type {
   AdminTransactionItem, AdminTransactionPage, AnalyticsKpi, AnalyticsPeriod, AnalyticsRangeParams,
   AnalyticsSeriesPoint, AnalyticsTab, FinanceAnalyticsResponse, MarketplaceAnalyticsResponse,
-  PremiumAnalyticsResponse, TransactionFilters,
+  PremiumAnalyticsResponse, PremiumPromotionRecord, TransactionFilters,
 } from '../../../types/adminAnalytics';
 import '../styles/admin-analytics-screen.css';
 
 const COLORS = ['#494be7', '#d97706', '#16a34a', '#8b5cf6', '#dc2626', '#0284c7', '#db2777'];
-const TABS: AnalyticsTab[] = ['revenue', 'transactions', 'market'];
+const TABS: AnalyticsTab[] = ['revenue', 'transactions', 'premium', 'market'];
 const PERIODS: AnalyticsPeriod[] = ['month', 'quarter', 'year', 'custom'];
 const TABLE_PAGE_SIZE = 8;
 const SOURCE_VISIBILITY_KEY = 'gigbridge.adminAnalytics.hiddenRevenueSources';
@@ -260,6 +260,149 @@ function FeatureAdoptionTable({ premium }: { premium: PremiumAnalyticsResponse }
   );
 }
 
+type PromotionRoleFilter = 'all' | 'Client' | 'Freelancer';
+
+function PromotionAttributeValue({ label, value }: { label: string; value: string | null }) {
+  const normalized = value?.trim();
+  if (!normalized) return <>—</>;
+  if (!/^https?:\/\//i.test(normalized)) return <>{normalized}</>;
+
+  const isImage = /image|photo|avatar|thumbnail/i.test(label)
+    || /\.(?:avif|gif|jpe?g|png|webp)(?:\?.*)?$/i.test(normalized);
+  return (
+    <a className="analytics-masked-url" href={normalized} target="_blank" rel="noreferrer">
+      {isImage ? 'View image' : 'Open link'} <ExternalLink size={14} aria-hidden="true" />
+    </a>
+  );
+}
+
+function PremiumTrackingView({ premium }: { premium: PremiumAnalyticsResponse }) {
+  const [role, setRole] = useState<PromotionRoleFilter>('all');
+  const [status, setStatus] = useState('all');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<PremiumPromotionRecord | null>(null);
+  const promotions = premium.promotions ?? [];
+  const summaries = premium.promotionSummaries ?? [];
+  const promotionRecordCount = premium.promotionRecordCount ?? promotions.length;
+  const statuses = useMemo(() => [...new Set(promotions.map(item => item.status))].sort(), [promotions]);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return promotions.filter(item => {
+      if (role !== 'all' && item.role !== role) return false;
+      if (status !== 'all' && item.status !== status) return false;
+      if (!query) return true;
+      return [item.ownerName, item.ownerEmail, item.subjectName, item.type, item.promotionId]
+        .some(value => value.toLocaleLowerCase().includes(query));
+    });
+  }, [promotions, role, search, status]);
+  const pagination = useTablePage(filtered.length, 12);
+  const rows = filtered.slice(pagination.from, pagination.to);
+
+  useEffect(() => {
+    if (!selected) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelected(null);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [selected]);
+
+  return (
+    <div className="analytics-stack">
+      <section className="analytics-section-heading analytics-section-heading-first">
+        <div><span>Premium operations</span><h2>Premium and promotion tracking</h2><p>Inspect client job promotions and freelancer profile promotions with their persisted attributes.</p></div>
+      </section>
+      <section className="analytics-kpis">{premium.kpis.map(metric => <MetricCard key={metric.key} metric={metric} />)}</section>
+
+      <section className="analytics-promotion-summaries" aria-label="Promotion summaries">
+        {summaries.map(summary => (
+          <article key={summary.role} className="analytics-promotion-summary-card">
+            <div className="analytics-promotion-summary-heading"><span className={`analytics-role-badge ${summary.role.toLowerCase()}`}>{summary.role}</span><strong>{summary.type}</strong></div>
+            <dl>
+              <div><dt>Records</dt><dd>{summary.total.toLocaleString()}</dd></div>
+              <div><dt>Active</dt><dd>{summary.active.toLocaleString()}</dd></div>
+              <div><dt>Spend</dt><dd>{number.format(summary.tokenSpend)} GC</dd></div>
+              <div><dt>CTR</dt><dd>{number.format(summary.clickThroughRate)}%</dd></div>
+              <div><dt>Impressions</dt><dd>{summary.impressions.toLocaleString()}</dd></div>
+              <div><dt>Clicks</dt><dd>{summary.clicks.toLocaleString()}</dd></div>
+            </dl>
+          </article>
+        ))}
+      </section>
+
+      <section className="analytics-panel">
+        <header><h2>Promotion inventory</h2><p>{promotionRecordCount.toLocaleString()} promotions overlap the selected period or are active now. Ongoing promotions are pinned first; impression and click values are lifetime counters. Select a row to inspect every stored attribute.</p></header>
+        <div className="analytics-promotion-filters">
+          <label>Account type<select value={role} onChange={event => setRole(event.target.value as PromotionRoleFilter)}><option value="all">All accounts</option><option value="Client">Clients</option><option value="Freelancer">Freelancers</option></select></label>
+          <label>Status<select value={status} onChange={event => setStatus(event.target.value)}><option value="all">All statuses</option>{statuses.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label>Search<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Owner, email, item, or promotion ID" /></label>
+        </div>
+        <div className="analytics-table-wrap"><table><thead><tr><th>Account</th><th>Owner</th><th>Promoted item</th><th>Status</th><th>Cost</th><th>Period</th><th>Impressions</th><th>Clicks</th><th>CTR</th></tr></thead><tbody>
+          {rows.map(item => <tr key={item.promotionId} tabIndex={0} className="analytics-clickable-row" onClick={() => setSelected(item)} onKeyDown={event => event.key === 'Enter' && setSelected(item)}><td><span className={`analytics-role-badge ${item.role.toLowerCase()}`}>{item.role}</span><small className="analytics-promotion-type">{item.type}</small></td><td><strong>{item.ownerName}</strong><small className="analytics-table-secondary">{item.ownerEmail}</small></td><td><strong>{item.subjectName}</strong><small className="analytics-table-secondary">{item.subjectId}</small></td><td><span className={`analytics-promotion-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{number.format(item.tokenCost)} GC</td><td>{new Date(item.startsAt).toLocaleDateString()}<small className="analytics-table-secondary">to {new Date(item.endsAt).toLocaleDateString()}</small></td><td>{item.impressionCount.toLocaleString()}</td><td>{item.clickCount.toLocaleString()}</td><td>{number.format(item.clickThroughRate)}%</td></tr>)}
+        </tbody></table></div>
+        {rows.length === 0 ? <div className="analytics-empty">No promotions match the selected filters.</div> : null}
+        <PaginationControls page={pagination.page} pageCount={pagination.pageCount} from={pagination.from} to={pagination.to} total={filtered.length} onPage={pagination.setPage} noun="promotions" />
+        {premium.promotionsTruncated ? <div className="analytics-lifetime-note"><Info size={15} /> Showing active promotions first, followed by the most recent records, up to 200 total. Narrow the date range to inspect older promotions.</div> : null}
+      </section>
+
+      <div className="analytics-grid analytics-grid-two">
+        <section className="analytics-panel"><header><h2>Premium plan purchases</h2><p>Subscription purchases split by plan and account role.</p></header><div className="analytics-table-wrap"><table><thead><tr><th>Plan</th><th>Role</th><th>Purchases</th><th>GigCoin</th><th>VND</th></tr></thead><tbody>{premium.plans.map(plan => <tr key={`${plan.plan}-${plan.role}`}><td>{plan.plan}</td><td>{plan.role}</td><td>{plan.purchases.toLocaleString()}</td><td>{number.format(plan.revenueGigCoin)}</td><td>{money.format(plan.revenueVnd)} ₫</td></tr>)}</tbody></table></div></section>
+        <FeatureAdoptionTable premium={premium} />
+      </div>
+
+      {selected ? (
+        <div className="analytics-promotion-modal-backdrop" role="presentation" onMouseDown={() => setSelected(null)}>
+          <section
+            className="analytics-promotion-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="promotion-details-title"
+            onMouseDown={event => event.stopPropagation()}
+          >
+            <header className="analytics-promotion-modal-header">
+              <div>
+                <span className={`analytics-role-badge ${selected.role.toLowerCase()}`}>{selected.role}</span>
+                <h2 id="promotion-details-title">{selected.subjectName}</h2>
+                <p>{selected.type} · <span className={`analytics-promotion-status ${selected.status.toLowerCase()}`}>{selected.status}</span></p>
+              </div>
+              <button type="button" autoFocus aria-label="Close promotion details" onClick={() => setSelected(null)}><X size={20} /></button>
+            </header>
+            <div className="analytics-promotion-modal-body">
+              <section aria-labelledby="promotion-overview-title">
+                <h3 id="promotion-overview-title">Promotion overview</h3>
+                <dl className="analytics-promotion-detail-grid">
+                  <div><dt>Promotion ID</dt><dd>{selected.promotionId}</dd></div>
+                  <div><dt>Subject ID</dt><dd>{selected.subjectId}</dd></div>
+                  <div><dt>Owner</dt><dd><a href={`/admin/users?userId=${selected.ownerUserId}`}>{selected.ownerName}</a><br />{selected.ownerEmail}</dd></div>
+                  <div><dt>Cost</dt><dd>{number.format(selected.tokenCost)} GigCoin</dd></div>
+                  <div><dt>Performance</dt><dd>{selected.impressionCount.toLocaleString()} impressions · {selected.clickCount.toLocaleString()} clicks · {number.format(selected.clickThroughRate)}% CTR</dd></div>
+                  <div><dt>Promotion period</dt><dd>{new Date(selected.startsAt).toLocaleString()} — {new Date(selected.endsAt).toLocaleString()}</dd></div>
+                  <div><dt>Created</dt><dd>{new Date(selected.createdAt).toLocaleString()}</dd></div>
+                </dl>
+              </section>
+              {Object.keys(selected.attributes).length > 0 ? (
+                <section aria-labelledby="promotion-attributes-title">
+                  <h3 id="promotion-attributes-title">Promotion attributes</h3>
+                  <dl className="analytics-promotion-detail-grid analytics-promotion-attributes">
+                    {Object.entries(selected.attributes).map(([key, value]) => (
+                      <div key={key}><dt>{key}</dt><dd><PromotionAttributeValue label={key} value={value} /></dd></div>
+                    ))}
+                  </dl>
+                </section>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SeriesTable({ points }: { points: AnalyticsSeriesPoint[] }) {
   const pagination = useTablePage(points.length, 10);
   const rows = points.slice(pagination.from, pagination.to);
@@ -497,6 +640,11 @@ export default function AdminAnalyticsScreen() {
         if (!active) return;
         if (!financeResponse.success || !financeResponse.data || !premiumResponse.success || !premiumResponse.data) throw new Error(financeResponse.message || premiumResponse.message);
         setFinance(financeResponse.data); setPremium(premiumResponse.data);
+      } else if (tab === 'premium') {
+        const response = await adminAnalyticsAPI.premium(analyticsRequest as AnalyticsRangeParams);
+        if (!active) return;
+        if (!response.success || !response.data) throw new Error(response.message);
+        setPremium(response.data);
       } else if (tab === 'transactions') {
         const response = await adminAnalyticsAPI.transactions(analyticsRequest as TransactionFilters);
         if (!active) return;
@@ -534,15 +682,16 @@ export default function AdminAnalyticsScreen() {
           <div><span className="analytics-eyebrow"><BarChart3 size={16} /> Admin intelligence</span><h1>{t('adminAnalytics.title', { defaultValue: 'Platform Analytics' })}</h1><p>{t('adminAnalytics.subtitle', { defaultValue: 'Revenue integrity, wallet activity, and marketplace opportunity—without mixing platform income with user funds.' })}</p></div>
           <div className="analytics-hero-actions"><button type="button" onClick={() => setRefreshKey(value => value + 1)}><RefreshCw size={17} />Refresh</button>{tab === 'transactions' ? <button type="button" onClick={() => void exportCsv()}><Download size={17} />CSV export</button> : null}</div>
         </header>
-        <nav className="analytics-tabs" aria-label="Analytics sections">{TABS.map(value => <button key={value} type="button" className={tab === value ? 'active' : ''} onClick={() => updateParams({ tab: value })}>{value === 'market' ? 'Market Trends' : labelFor(value)}</button>)}</nav>
+        <nav className="analytics-tabs" aria-label="Analytics sections">{TABS.map(value => <button key={value} type="button" className={tab === value ? 'active' : ''} onClick={() => updateParams({ tab: value })}>{value === 'market' ? 'Market Trends' : value === 'premium' ? 'Premium & Promotions' : labelFor(value)}</button>)}</nav>
         <section className="analytics-toolbar">
           <div className="analytics-periods">{PERIODS.map(value => <button type="button" key={value} className={period === value ? 'active' : ''} onClick={() => updateParams({ period: value })}>{labelFor(value)}</button>)}</div>
           {period !== 'custom' ? <div className="analytics-navigator"><button type="button" aria-label="Previous period" onClick={() => movePeriod(-1)}><ArrowLeft size={17} /></button><label><CalendarDays size={17} /><input type="date" value={anchor} onChange={event => updateParams({ anchor: event.target.value })} /></label><button type="button" aria-label="Next period" onClick={() => movePeriod(1)}><ArrowRight size={17} /></button></div> : <div className="analytics-custom-range"><label>From<input type="date" value={from} onChange={event => updateParams({ from: event.target.value })} /></label><label>To<input type="date" value={to} onChange={event => updateParams({ to: event.target.value })} /></label></div>}
           <span className="analytics-timezone">ICT · Asia/Ho_Chi_Minh</span>
         </section>
-        {loading && ((tab === 'revenue' && (!finance || !premium)) || (tab === 'transactions' && !transactions) || (tab === 'market' && !market)) ? <div className="analytics-state"><RefreshCw className="analytics-spin" /><h2>Loading persisted analytics</h2><p>Aggregating the selected ICT period…</p></div> : null}
+        {loading && ((tab === 'revenue' && (!finance || !premium)) || (tab === 'premium' && !premium) || (tab === 'transactions' && !transactions) || (tab === 'market' && !market)) ? <div className="analytics-state"><RefreshCw className="analytics-spin" /><h2>Loading persisted analytics</h2><p>Aggregating the selected ICT period…</p></div> : null}
         {error ? <div className="analytics-state analytics-error"><Info /><h2>Analytics unavailable</h2><p>{error}</p><button type="button" onClick={() => setRefreshKey(value => value + 1)}>Try again</button></div> : null}
         {tab === 'revenue' && finance && premium ? <RevenueView finance={finance} premium={premium} /> : null}
+        {tab === 'premium' && premium ? <PremiumTrackingView premium={premium} /> : null}
         {tab === 'transactions' && transactions ? <TransactionsView
           data={transactions}
           filters={filters}
