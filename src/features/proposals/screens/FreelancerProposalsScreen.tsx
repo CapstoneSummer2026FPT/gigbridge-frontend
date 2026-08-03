@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Bot, Edit3, FileText, MessageSquare, Send, ShieldAlert, XCircle } from 'lucide-react';
+import { ArrowLeft, Bot, Edit3, FileText, MessageSquare, ShieldAlert, XCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -33,7 +33,9 @@ export default function FreelancerProposalsScreen() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  // Server returns totalCount for pagination metadata; only the setter is used
+  // (the list header already renders each proposal's own counts).
+  const [, setTotalCount] = useState(0);
   const pageSize = 10;
 
   useEffect(() => {

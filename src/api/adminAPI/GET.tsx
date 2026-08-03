@@ -18,12 +18,19 @@ import {
   normalizeAdminDisputeDetail,
   normalizeAdminDisputeListResult,
 } from './disputeUtils';
+import { normalizeAdminProposalDetail } from './proposalUtils';
 
 const Admin_Api_Base_Url = '/admin';
 
 export const adminGetAPI = {
   getProposals: (params: AdminProposalListParams = {}): Promise<ApiResponse<ProposalPage<AdminProposalListItem>>> => apiService.get('/Proposals/admin/all', params),
-  getProposalDetail: (proposalId:string): Promise<ApiResponse<AdminProposalDetail>> => apiService.get(`/Proposals/admin/${proposalId}`),
+  getProposalDetail: async (proposalId: string): Promise<ApiResponse<AdminProposalDetail>> => {
+    const response = await apiService.get<unknown>(`/Proposals/admin/${proposalId}`);
+    return {
+      ...response,
+      data: response.data ? normalizeAdminProposalDetail(response.data) : undefined,
+    };
+  },
   getContractReports: (params: AdminContractReportListParams = {}): Promise<ApiResponse<AdminContractReportPage>> => apiService.get(`${Admin_Api_Base_Url}/contract-reports`, params),
   getContractReportDetail: (reportId: string): Promise<ApiResponse<AdminContractReportDetail>> => apiService.get(`${Admin_Api_Base_Url}/contract-reports/${reportId}`),
   getContractReportAttachmentDownload: (reportId:string, attachmentId:string): Promise<ApiResponse<{attachmentId:string;fileName:string;downloadUrl:string}>> => apiService.get(`${Admin_Api_Base_Url}/contract-reports/${reportId}/attachments/${attachmentId}/download`),

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   AlertTriangle,
   CheckCircle,
+  ChevronRight,
   Clock,
   Eye,
   Flag,
@@ -16,6 +17,7 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { reportAPI } from '../../../api/reportAPI';
+import { getAdminManager } from '../adminManagers';
 import {
   ReportStatus,
   ReportType,
@@ -314,6 +316,26 @@ export default function AdminReportsScreen() {
               </div>
               <p className="text-2xl font-bold text-primary">{value}</p>
             </div>
+          ))}
+        </div>
+
+        {/* Report flow entry — routes into the dedicated Account and Contract report queues */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+          {[getAdminManager('account-reports'), getAdminManager('contract-reports')].filter(Boolean).map(manager => manager && (
+            <Link
+              key={manager.id}
+              to={manager.path}
+              className="glass-card p-4 flex items-center gap-4 transition-all hover:border-cyan/40 hover:bg-white/5"
+            >
+              <span className="w-10 h-10 shrink-0 rounded-lg bg-cyan/10 text-cyan flex items-center justify-center">
+                <manager.icon size={18} />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-primary">{manager.fallbackLabel}</span>
+                <span className="block text-xs text-secondary mt-0.5">{manager.fallbackDescription}</span>
+              </span>
+              <ChevronRight size={16} className="text-muted shrink-0" />
+            </Link>
           ))}
         </div>
 
