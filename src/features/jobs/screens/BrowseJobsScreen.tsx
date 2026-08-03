@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,6 +42,13 @@ export default function BrowseJobsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  // React Router recreates setSearchParams on every URL change, so depending on it
+  // in an effect would re-fire that effect when the page param is updated. Keep the
+  // latest setter in a ref and call that, so effects only react to real state changes.
+  const setParamsRef = useRef(setParams);
+  useEffect(() => {
+    setParamsRef.current = setParams;
+  }, [setParams]);
   const { user, role } = useApp();
   const [search, setSearch] = useState(sanitizeSearch(params.get('q') || ''));
   const [committedSearch, setCommittedSearch] = useState(sanitizeSearch(params.get('q') || ''));
@@ -136,7 +143,7 @@ export default function BrowseJobsScreen() {
       setCommittedSearch(sanitizeSearch(search).trim());
       setPage(1);
       setSearchEventId(null);
-      setParams(current => {
+      setParamsRef.current(current => {
         const next = new URLSearchParams(current);
         if (search.trim()) next.set('q', sanitizeSearch(search).trim()); else next.delete('q');
         next.set('page', '1');
@@ -144,7 +151,7 @@ export default function BrowseJobsScreen() {
       }, { replace: true });
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [search, setParams]);
+  }, [search]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -232,12 +239,12 @@ export default function BrowseJobsScreen() {
   const pagedJobs = jobs;
 
   useEffect(() => {
-    setParams(current => {
+    setParamsRef.current(current => {
       const next = new URLSearchParams(current);
       next.set('page', String(page));
       return next;
     }, { replace: true });
-  }, [page, setParams]);
+  }, [page]);
 
   const commitSearch = () => {
     setCommittedSearch(sanitizeSearch(search).trim());
