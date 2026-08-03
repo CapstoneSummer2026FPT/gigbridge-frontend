@@ -57,6 +57,10 @@ interface BackendContractResponse {
   ClientName?: string;
   freelancerName?: string | null;
   FreelancerName?: string | null;
+  clientUserId?: string | null;
+  ClientUserId?: string | null;
+  freelancerUserId?: string | null;
+  FreelancerUserId?: string | null;
   jobTitle?: string;
   JobTitle?: string;
   jobDescription?: string | null;
@@ -237,6 +241,8 @@ export const normalizeContract = (contract: BackendContractResponse): ContractDt
     updatedAt: getValue<string | undefined>(source, 'updatedAt', 'UpdatedAt'),
     clientName: getValue<string | undefined>(source, 'clientName', 'ClientName'),
     freelancerName: getValue<string | null>(source, 'freelancerName', 'FreelancerName') ?? null,
+    clientUserId: getValue<string | null>(source, 'clientUserId', 'ClientUserId') ?? null,
+    freelancerUserId: getValue<string | null>(source, 'freelancerUserId', 'FreelancerUserId') ?? null,
     jobTitle: getValue<string | undefined>(source, 'jobTitle', 'JobTitle'),
     jobDescription: getValue<string | undefined>(source, 'jobDescription', 'JobDescription'),
     clientEmail: getValue<string | undefined>(source, 'clientEmail', 'ClientEmail'),

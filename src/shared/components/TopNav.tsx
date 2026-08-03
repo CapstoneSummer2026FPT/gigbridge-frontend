@@ -79,7 +79,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
       const response = await walletGetAPI.getMyWallet();
       if (isMounted && response.success && response.data) {
-        setWalletBalance(response.data.availableTokens);
+        // Toolbar shows ONLY the deposited (non-withdrawable) GigCoin pool.
+        setWalletBalance(response.data.depositedGigCoin);
       }
     };
 
@@ -354,6 +355,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             <button
               onClick={() => { setShowWalletMenu(!showWalletMenu); setShowNotifs(false); setShowUserMenu(false); }}
               className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all glass-button"
+              title={t('wallet.depositedTooltip')}
+              aria-label={t('wallet.depositedTooltip')}
             >
               <GigCoinLogo size={16} />
               <span className="text-primary text-sm font-semibold hidden sm:inline-flex">{formatGigCoinNumber(walletBalance)}</span>
@@ -363,10 +366,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             {showWalletMenu && (
               <div className="absolute right-0 top-12 w-56 rounded-2xl p-2 z-50 dropdown-menu">
                 <div className="px-3 py-2 mb-1">
-                  <p className="text-xs text-muted">{t('wallet.balance')}</p>
+                  <p className="text-xs text-muted">{t('wallet.depositedBalance')}</p>
                   <div className="flex items-center gap-1">
                     <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-[var(--gb-amber)]" />
                   </div>
+                  <p className="text-[10px] text-muted mt-0.5">{t('wallet.depositedCaption')}</p>
                 </div>
                 <div className="h-px mb-1 dropdown-divider" />
 

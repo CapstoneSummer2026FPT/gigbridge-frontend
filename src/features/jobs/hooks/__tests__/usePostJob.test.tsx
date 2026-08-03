@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { usePostJob, type PostJobRouteState } from '../usePostJob';
 import { jobAPI } from '../../../../api/jobAPI';
-import { JobPostStatus } from '../../../../types/models/Job';
+import { JobPostStatus, type GenerateJobHiringPlanResponse } from '../../../../types/models/Job';
 import type { ApiResponse } from '../../../../types/common';
 
 let mockLocationState: PostJobRouteState | null = null;
@@ -520,8 +520,8 @@ describe('usePostJob hook skills conversion', () => {
 
   describe('background hiring plan generation delusional flow', () => {
     it('immediately triggers generateAIHiringPlan in the background and processes correctly on resolve/success', async () => {
-      let resolvePlanPromise: any;
-      const planPromise = new Promise((resolve) => {
+      let resolvePlanPromise!: (value: ApiResponse<GenerateJobHiringPlanResponse>) => void;
+      const planPromise = new Promise<ApiResponse<GenerateJobHiringPlanResponse>>((resolve) => {
         resolvePlanPromise = resolve;
       });
       vi.mocked(jobAPI.generateAIHiringPlan).mockImplementation(() => planPromise);

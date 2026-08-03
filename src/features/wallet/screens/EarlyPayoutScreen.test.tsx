@@ -47,14 +47,18 @@ describe('EarlyPayoutScreen', () => {
     api.getMyWallet.mockResolvedValue({
       success: true,
       data: {
-        availableTokens: 500,
-        withdrawableTokens: 500,
-        heldTokens: 0,
-        pendingWithdrawalTokens: 0,
-        availableVnd: 500000,
-        withdrawableVnd: 500000,
-        heldVnd: 0,
-        pendingWithdrawalVnd: 0,
+        walletId: 'wallet-1',
+        userId: 'user-1',
+        depositedGigCoin: 500,
+        withdrawableGigCoin: 500,
+        heldGigCoin: 0,
+        pendingWithdrawalGigCoin: 0,
+        totalSpendableGigCoin: 1000,
+        depositedGigCoinVnd: 500000,
+        withdrawableGigCoinVnd: 500000,
+        heldGigCoinVnd: 0,
+        pendingWithdrawalGigCoinVnd: 0,
+        totalSpendableGigCoinVnd: 1000000,
       },
     });
     api.getBankAccounts.mockResolvedValue({
@@ -105,6 +109,37 @@ describe('EarlyPayoutScreen', () => {
 
     expect(api.createWithdrawal.mock.calls[1][0].idempotencyKey)
       .toBe(api.createWithdrawal.mock.calls[0][0].idempotencyKey);
+  });
+
+  it('caps withdrawals at earned GigCoin and ignores deposited GigCoin for eligibility', async () => {
+    api.getMyWallet.mockResolvedValue({
+      success: true,
+      data: {
+        walletId: 'wallet-1',
+        userId: 'user-1',
+        depositedGigCoin: 500,
+        withdrawableGigCoin: 25,
+        heldGigCoin: 0,
+        pendingWithdrawalGigCoin: 0,
+        totalSpendableGigCoin: 525,
+        depositedGigCoinVnd: 500000,
+        withdrawableGigCoinVnd: 25000,
+        heldGigCoinVnd: 0,
+        pendingWithdrawalGigCoinVnd: 0,
+        totalSpendableGigCoinVnd: 525000,
+      },
+    });
+
+    render(<EarlyPayoutScreen />);
+
+    const amountInput = await screen.findByRole('spinbutton');
+    const submit = document.querySelector('button.early-payout-submit');
+    expect(submit).not.toBeNull();
+    expect(amountInput).toHaveAttribute('max', '25');
+    expect(submit).toBeDisabled();
+
+    fireEvent.change(amountInput, { target: { value: '25' } });
+    await waitFor(() => expect(submit).toBeEnabled());
   });
 
   it('shows a disabled bank account for repair but does not allow it for withdrawal', async () => {

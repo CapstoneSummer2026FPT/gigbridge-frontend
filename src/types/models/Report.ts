@@ -41,6 +41,7 @@ export interface ReportDto {
   type: ReportType;
   status: ReportStatus;
   reason: string;
+  description?: string | null;
   adminNote?: string | null;
   resolvedByAdmin?: ReportUserSummaryDto | null;
   targetSummary?: ReportTargetSummaryDto | null;
@@ -71,6 +72,7 @@ export interface CreateReportPayload {
   reportedEntityType: ReportedEntityType;
   type: ReportType;
   reason: string;
+  description?: string;
 }
 
 export interface GetReportsParams {

@@ -1370,8 +1370,9 @@ export function useMessages() {
       if (!current || current.offerId !== offerId) return current;
       return {
         ...current,
+        // Service fee is an in-platform payment, spendable from either pool.
         balance: walletResponse.success && walletResponse.data
-          ? walletResponse.data.availableTokens
+          ? walletResponse.data.totalSpendableGigCoin
           : null,
         loadingBalance: false,
         error: walletResponse.success

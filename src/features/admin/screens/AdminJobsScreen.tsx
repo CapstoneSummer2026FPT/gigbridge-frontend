@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, FileText, CheckCircle, XCircle, Clock, AlertCircle, Trash2, FileQuestion, Download, ExternalLink, Award, MapPin, Clock8, Folder, Image, Film, File as FileIcon } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
@@ -63,6 +63,7 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
 
 export default function AdminJobsScreen() {
   const navigate = useNavigate();
+  const [routeSearchParams, setRouteSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<JobFilter>('all');
   const [sortBy, setSortBy] = useState<JobSort>('posted');
@@ -74,6 +75,13 @@ export default function AdminJobsScreen() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [jobAssets, setJobAssets] = useState<any[]>([]);
   const [isLoadingJobAssets, setIsLoadingJobAssets] = useState(false);
+  const previewJobId = routeSearchParams.get('preview');
+  const closeJobPreview = () => {
+    const next = new URLSearchParams(routeSearchParams);
+    next.delete('preview');
+    setRouteSearchParams(next, { replace: true });
+    setPreviewJob(null);
+  };
 
   const [jobContract, setJobContract] = useState<any | null>(null);
   const [jobMilestones, setJobMilestones] = useState<any[]>([]);
@@ -123,6 +131,12 @@ export default function AdminJobsScreen() {
   useEffect(() => {
     fetchJobs();
   }, []);
+
+  useEffect(() => {
+    if (!previewJobId || allJobs.length === 0) return;
+    const requested = allJobs.find(job => job.id === previewJobId);
+    if (requested) setPreviewJob(requested);
+  }, [allJobs, previewJobId]);
 
   useEffect(() => {
     if (previewJob) {
@@ -815,7 +829,7 @@ export default function AdminJobsScreen() {
 
           {/* Preview Job Modal */}
           {previewJob && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setPreviewJob(null)}>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeJobPreview}>
               <div className="glass-card max-w-3xl w-full p-0 max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                 {/* Modal Header */}
                 <div className="px-6 pt-6 pb-4 border-b border-white/10 flex-shrink-0">
@@ -829,7 +843,7 @@ export default function AdminJobsScreen() {
                       </h2>
                     </div>
                     <button
-                      onClick={() => setPreviewJob(null)}
+                      onClick={closeJobPreview}
                       className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors flex-shrink-0"
                     >
                       <XCircle size={20} className="text-red" />
@@ -1194,7 +1208,7 @@ export default function AdminJobsScreen() {
                 {/* Modal Footer */}
                 <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3 flex-shrink-0">
                   <button
-                    onClick={() => setPreviewJob(null)}
+                    onClick={closeJobPreview}
                     className="btn-ghost-cyan px-5 py-2 text-sm"
                   >
                     Close

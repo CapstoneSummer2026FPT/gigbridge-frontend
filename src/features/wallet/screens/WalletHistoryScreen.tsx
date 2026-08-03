@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
-import type { WalletTransactionResponse } from '../../../types/models/Financial';
+import type { WalletTransactionResponse, WalletTransactionsSummaryResponse } from '../../../types/models/Financial';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import '../../admin/styles/admin-users-screen.css';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
@@ -21,6 +21,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 export default function WalletHistoryScreen() {
   const { t } = useTranslation();
   const [transactions, setTransactions] = useState<WalletTransactionResponse[]>([]);
+  const [summary, setSummary] = useState<WalletTransactionsSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,7 +33,15 @@ export default function WalletHistoryScreen() {
     try {
       setLoading(true);
       setErrorText(null);
-      const res = await walletGetAPI.getTransactions(100);
+      // Fetch the 100-item list AND the lifetime summary in parallel. The stat cards
+      // must show cumulative totals (all history), not just the most recent 100.
+      const [res, summaryRes] = await Promise.all([
+        walletGetAPI.getTransactions(100),
+        walletGetAPI.getTransactionsSummary(),
+      ]);
+      if (summaryRes.success && summaryRes.data) {
+        setSummary(summaryRes.data);
+      }
       if (res.success && res.data) {
         setTransactions(res.data);
 
@@ -51,11 +60,17 @@ export default function WalletHistoryScreen() {
               }
             })
           ).then(async () => {
-            // Silently re-fetch transactions to show the updated statuses (e.g. Succeeded or Cancelled)
+            // Silently re-fetch transactions + summary to show the updated statuses (e.g. Succeeded or Cancelled)
             try {
-              const silentRes = await walletGetAPI.getTransactions(100);
+              const [silentRes, silentSummaryRes] = await Promise.all([
+                walletGetAPI.getTransactions(100),
+                walletGetAPI.getTransactionsSummary(),
+              ]);
               if (silentRes.success && silentRes.data) {
                 setTransactions(silentRes.data);
+              }
+              if (silentSummaryRes.success && silentSummaryRes.data) {
+                setSummary(silentSummaryRes.data);
               }
             } catch (e) {
               console.error('Failed to silently refresh transactions:', e);
@@ -105,7 +120,21 @@ export default function WalletHistoryScreen() {
     }
   };
 
+  // Lifetime (cumulative) stats come from GET /wallet/transactions/summary so the
+  // cards reflect ALL history, not just the most-recent-100 list below. Fall back
+  // to computing from the loaded list only if the summary response is unavailable.
   const stats = useMemo(() => {
+    if (summary) {
+      return {
+        totalDeposits: summary.totalDeposits,
+        totalHold: summary.totalEscrow,
+        totalRefund: summary.totalRefunds,
+        totalWithdrawn: summary.totalWithdrawn,
+        pending: summary.pendingCount,
+        totalTransactions: summary.totalTransactions,
+      };
+    }
+
     const succeeded = transactions.filter(t => t.status === 1);
     const totalDeposits = succeeded.filter(t => t.type === 1).reduce((sum, t) => sum + t.tokenAmount, 0);
     const totalHold = succeeded.filter(t => t.type === 2).reduce((sum, t) => sum + t.tokenAmount, 0);
@@ -121,7 +150,7 @@ export default function WalletHistoryScreen() {
       pending,
       totalTransactions: transactions.length,
     };
-  }, [transactions]);
+  }, [transactions, summary]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(trans => {

@@ -3,15 +3,17 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
-  Bot, BarChart2, Settings, Shield, Users, Flag,
-  TrendingUp, PlusCircle, Zap, ChevronRight, X, Activity, Bell, Bookmark,
-  ChevronDown, Wallet, Layers, Banknote, Star
+  Bot, BarChart2, Shield, Flag,
+  TrendingUp, PlusCircle, Zap, ChevronRight, X, Bell, Bookmark,
+  ChevronDown, Wallet, Banknote, Star
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
 import { reportAPI } from '../../api/reportAPI';
 import { usePremiumStatus } from '../../features/premium/hooks';
 import { PremiumStatusBadge } from '../../features/premium/components/PremiumStatusBadge';
+import { getProfilePath } from '../../shared/hooks/useProfileNavigation';
+import { ADMIN_GROUPS, ADMIN_MANAGERS } from '../../features/admin/adminManagers';
 import '../../features/premium/styles/premium.css';
 import '../styles/Sidebar.css';
 
@@ -157,59 +159,39 @@ function getFreelancerNavItems(t: any): NavItem[] {
 }
 
 function getAdminNavSections(t: any, openReportCount: number | null): NavSection[] {
-  return [
-    {
-      title: t('dashboard.overview') || 'Overview',
-      items: [
-        { label: t('nav.dashboard'), icon: <LayoutDashboard size={18} />, path: '/admin' },
-      ],
-    },
-    {
-      title: t('nav.userManagement') || 'User Management',
-      items: [
-        { label: t('nav.allUsers') || 'All Users', icon: <Users size={18} />, path: '/admin/users' },
-      ],
-    },
-    {
-      title: t('nav.contentManagement') || 'Content Management',
-      items: [
-        { label: t('nav.jobPosts') || 'Job Posts', icon: <Briefcase size={18} />, path: '/admin/jobs' },
-        { label: t('nav.contractsCompliance') || 'Contracts & Compliance', icon: <Shield size={18} />, path: '/admin/contracts' },
-        { label: 'Assets Library', icon: <Layers size={18} />, path: '/admin/assets' },
-        { label: t('nav.disputeManagement') || 'Dispute Management', icon: <Flag size={18} />, path: '/admin/disputes' },
-        { label: t('nav.faqManagement') || 'FAQ Management', icon: <FileText size={18} />, path: '/admin/faq-management' },
-        { label: t('nav.reviewManagement') || 'Review Management', icon: <Star size={18} />, path: '/admin/reviews' },
-        {
-          label: t('nav.reports') || 'Reports',
-          icon: <Flag size={18} />,
-          path: '/admin/reports',
-          badge: openReportCount === null ? undefined : openReportCount.toString(),
-          badgeType: 'red',
-          badgeLabel: 'Open reports',
-        },
-      ],
-    },
-    {
-      title: t('nav.configuration') || 'Configuration',
-      items: [
-        { label: t('nav.contractTemplates') || 'Contract Templates', icon: <Settings size={18} />, path: '/admin/contract-templates' },
-      ],
-    },
-    {
-      title: t('nav.financial') || 'Financial',
-      items: [
-        { label: t('nav.platformAnalytics') || 'Platform Analytics', icon: <BarChart2 size={18} />, path: '/admin/analytics' },
-        { label: t('nav.withdrawals') || 'Withdrawals', icon: <Banknote size={18} />, path: '/admin/withdrawals' },
-      ],
-    },
-    {
-      title: t('nav.systemMonitoring') || 'System & Monitoring',
-      items: [
-        { label: t('nav.systemTracking') || 'System Tracking', icon: <Activity size={18} />, path: '/admin/system-tracking', badge: 'LIVE', badgeType: 'green' },
-        { label: t('nav.notifications'), icon: <Bell size={18} />, path: '/admin/notifications' },
-      ],
-    },
-  ];
+  const label = (key: string, fallback: string) => t(key, { defaultValue: fallback });
+  return ADMIN_GROUPS.map(group => {
+    const managers = ADMIN_MANAGERS.filter(manager => manager.showInNavigation && manager.group === group.id);
+    const reportEntries = managers.filter(manager => manager.parentId === 'reports');
+    const items = managers
+      .filter(manager => manager.parentId !== 'reports')
+      .map(manager => ({
+        id: manager.id,
+        label: label(manager.labelKey, manager.fallbackLabel),
+        icon: React.createElement(manager.icon, { size: 18 }),
+        path: manager.path,
+      } as NavItem));
+
+    if (reportEntries.length > 0) {
+      const reportManager = reportEntries.find(manager => manager.id === 'reports')!;
+      items.push({
+        id: 'reports',
+        label: label(reportManager.labelKey, reportManager.fallbackLabel),
+        icon: React.createElement(reportManager.icon, { size: 18 }),
+        badge: openReportCount === null ? undefined : openReportCount.toString(),
+        badgeType: 'red',
+        badgeLabel: 'Open reports',
+        children: reportEntries.map(manager => ({
+          id: manager.id,
+          label: label(manager.labelKey, manager.fallbackLabel),
+          icon: React.createElement(manager.icon, { size: 18 }),
+          path: manager.path,
+        })),
+      });
+    }
+
+    return { title: label(group.labelKey, group.fallbackLabel), items };
+  }).filter(section => section.items.length > 0);
 }
 
 function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, path }: any) {
@@ -256,7 +238,7 @@ function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, pa
                   onNavigate(child.path);
                 }
               }}
-              className={`sidebar-item sidebar-child-item ${path === child.path ? 'active' : ''}`}
+              className={`sidebar-item sidebar-child-item ${path === child.path || (child.path !== '/admin/reports' && child.path && path.startsWith(`${child.path}/`)) ? 'active' : ''}`}
             >
               <span className="ml-1">{child.icon}</span>
               <span className="flex-1 text-left">{child.label}</span>
@@ -280,9 +262,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { t } = useTranslation();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [openReportCount, setOpenReportCount] = useState<number | null>(null);
-  const [pendingReportCount, setPendingReportCount] = useState<number | null>(null);
-  const [reviewingReportCount, setReviewingReportCount] = useState<number | null>(null);
-  const [reportHoverPosition, setReportHoverPosition] = useState<{ left: number; top: number } | null>(null);
   const [showPremiumTeaser, setShowPremiumTeaser] = useState(false);
   const premiumStatus = usePremiumStatus(role);
   const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
@@ -296,8 +275,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     void reportAPI.getAdminSummary().then((response) => {
       if (active && response.success && response.data) {
         setOpenReportCount(response.data.open);
-        setPendingReportCount(response.data.pending);
-        setReviewingReportCount(response.data.reviewing);
       }
     });
     return () => { active = false; };
@@ -341,7 +318,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* User Profile Mini */}
       {user && (
         <div className="sidebar-profile-mini"
-          onClick={() => navigate(role === 1 ? `/profile/freelancer/${user.id}` : `/profile/client/${user.id}`)}>
+          onClick={() => { const path = getProfilePath(user.id, role); if (path) navigate(path); }}>
           <div className="sidebar-profile-avatar">
             {user.first_name.charAt(0)}{user.last_name.charAt(0)}
           </div>
@@ -362,46 +339,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {role === 2 && adminSections.map(section => (
           <div key={section.title} className="sidebar-section">
             <div className="sidebar-section-title">{section.title}</div>
-            {section.items.map(item => {
-              const active = isActive(item.path);
-              return (
-                <button
-                  key={item.path || item.label}
-                  onClick={() => {
-                    if (item.path) {
-                      handleNavigate(item.path);
-                    }
-                  }}
-                  onMouseEnter={(event) => {
-                    if (item.path !== '/admin/reports') return;
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    const popoverWidth = 176;
-                    const left = rect.right + 10 + popoverWidth <= window.innerWidth
-                      ? rect.right + 10
-                      : Math.max(8, rect.left - popoverWidth - 10);
-                    setReportHoverPosition({ left, top: Math.max(8, rect.top) });
-                  }}
-                  onMouseLeave={() => {
-                    if (item.path === '/admin/reports') setReportHoverPosition(null);
-                  }}
-                  className={`sidebar-item w-full relative ${active ? 'active' : ''}`}
-                >
-                  {active && <span className="sidebar-active-indicator" />}
-                  <span className="ml-1">{item.icon}</span>
-                  <span className="flex-1 text-left">{item.label}</span>
-                  <span className="flex items-center gap-1">
-                    {item.badge && (
-                      <span
-                        className={`badge-${item.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}
-                        title={item.badgeLabel}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
+            {section.items.map(item => (
+              <NavItemComponent
+                key={item.id || item.path || item.label}
+                item={item}
+                isActive={isMenuActive(item)}
+                isExpanded={expandedMenus.includes(item.id || item.label) || isMenuActive(item)}
+                onToggle={handleToggleMenu}
+                onNavigate={handleNavigate}
+                path={location.pathname}
+              />
+            ))}
           </div>
         ))}
 
@@ -464,35 +412,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </button>
       )}
 
-      {reportHoverPosition && typeof document !== 'undefined' && createPortal(
-        <div
-          className="fixed w-44 rounded-xl p-3 pointer-events-none"
-          style={{
-            left: reportHoverPosition.left,
-            top: reportHoverPosition.top,
-            zIndex: 9999,
-            background: 'var(--card)',
-            border: '1px solid var(--gb-border)',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.22)',
-          }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-primary">Open reports</span>
-            <span className="badge-red text-[10px] px-1.5 py-0">{openReportCount ?? 0}</span>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-secondary">Pending</span>
-              <span className="badge-red text-[10px] px-1.5 py-0">{pendingReportCount ?? 0}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-secondary">Reviewing</span>
-              <span className="badge-amber text-[10px] px-1.5 py-0">{reviewingReportCount ?? 0}</span>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
       {showPremiumTeaser && typeof document !== 'undefined' && createPortal(
         <div className="premium-modal" onClick={() => setShowPremiumTeaser(false)}>
           <div className="premium-modal-box" onClick={event => event.stopPropagation()}>

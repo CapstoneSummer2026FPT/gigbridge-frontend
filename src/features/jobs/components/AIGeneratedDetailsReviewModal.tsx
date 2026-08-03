@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Sparkles, Check, Briefcase, Wrench } from 'lucide-react';
 import type { GenerateJobDescriptionDetailsResponse } from '../../../types/models/Job';
 

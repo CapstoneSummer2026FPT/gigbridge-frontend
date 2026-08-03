@@ -14,6 +14,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { reportAPI } from '../../../api/reportAPI';
 import {
   ReportStatus,
@@ -411,7 +412,7 @@ export default function AdminReportsScreen() {
                       </button>
                     </td>
                     <td className="p-4 min-w-44">
-                      <p className="text-sm text-primary">{report.reporter.fullName}</p>
+                      <p className="text-sm text-primary"><UserProfileLink userId={report.reporter.id} role={report.reporter.role}>{report.reporter.fullName}</UserProfileLink></p>
                       <p className="text-xs text-secondary">{report.reporter.email}</p>
                     </td>
                     <td className="p-4 min-w-64 max-w-sm">
@@ -441,7 +442,7 @@ export default function AdminReportsScreen() {
                 <span className={`${statusBadgeClass(report.status)} text-xs h-fit`}>{STATUS_LABELS[report.status]}</span>
               </div>
               <p className="text-sm text-primary mb-2">{report.reason}</p>
-              <p className="text-xs text-secondary mb-4">Reported by {report.reporter.fullName} · {formatDate(report.createdAt)}</p>
+              <p className="text-xs text-secondary mb-4">Reported by <UserProfileLink userId={report.reporter.id} role={report.reporter.role}>{report.reporter.fullName}</UserProfileLink> · {formatDate(report.createdAt)}</p>
               <div className="mt-3">{renderActions(report)}</div>
             </div>
           ))}
@@ -484,7 +485,7 @@ export default function AdminReportsScreen() {
             <div className="grid sm:grid-cols-2 gap-4 mb-5">
               <div className="glass-card p-4">
                 <p className="text-xs text-secondary mb-1">Reporter</p>
-                <p className="font-semibold text-primary">{selectedReport.reporter.fullName}</p>
+                <p className="font-semibold text-primary"><UserProfileLink userId={selectedReport.reporter.id} role={selectedReport.reporter.role}>{selectedReport.reporter.fullName}</UserProfileLink></p>
                 <p className="text-sm text-secondary">{selectedReport.reporter.email}</p>
               </div>
               <div className="glass-card p-4">

@@ -20,7 +20,7 @@ import {
 import { adminGetAPI, adminPatchAPI, adminPostAPI } from '../../../api/adminAPI';
 import type { AdminResolveDisputePayload } from '../../../api/adminAPI/POST';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import type { AdminDisputeDetail, AdminDisputeListItem } from '../../../types/models/AdminDispute';
+import { AccountStatus, UserViolationType, type AdminDisputeDetail, type AdminDisputeListItem } from '../../../types/models/AdminDispute';
 import { DisputeMilestoneOutcome, DisputeResolution, DisputeStatus, EvidenceRequestTarget, type DisputeEvidence } from '../../../types/models/Dispute';
 import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { MilestoneStatus } from '../../../types/models/Contract';
@@ -79,6 +79,26 @@ interface EvidenceRequestState {
   target: EvidenceRequestTarget;
 }
 
+interface ViolationState {
+  isViolation: boolean;
+  violationType: UserViolationType | null;
+  reason: string;
+  description: string;
+}
+
+const emptyViolation = (): ViolationState => ({
+  isViolation: false,
+  violationType: null,
+  reason: '',
+  description: '',
+});
+
+const accountStatusLabels: Record<AccountStatus, string> = {
+  [AccountStatus.Active]: 'Active',
+  [AccountStatus.Suspended]: 'Suspended for 7 days',
+  [AccountStatus.Banned]: 'Permanently banned',
+};
+
 type InvestigationTab = 'dispute' | 'contract' | 'milestones' | 'workspace' | 'conversation' | 'evidence' | 'audit';
 
 export default function AdminDisputeManagementScreen() {
@@ -103,7 +123,9 @@ export default function AdminDisputeManagementScreen() {
   const [disputeMessages, setDisputeMessages] = useState<ConversationMessageResponse[]>([]);
   const [adminMessage, setAdminMessage] = useState('');
   const [adminMessageFiles, setAdminMessageFiles] = useState<File[]>([]);
-  const [milestoneDecisions, setMilestoneDecisions] = useState<Record<string, { outcome: DisputeMilestoneOutcome; release: string; refund: string }>>({});
+  const [milestoneDecisions, setMilestoneDecisions] = useState<Record<string, { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string }>>({});
+  const [clientViolation, setClientViolation] = useState<ViolationState>(emptyViolation);
+  const [freelancerViolation, setFreelancerViolation] = useState<ViolationState>(emptyViolation);
 
   // Resolve dialog fields
   const [resolution, setResolution] = useState<DisputeResolution>(DisputeResolution.ClientFavored);
@@ -196,6 +218,40 @@ export default function AdminDisputeManagementScreen() {
     closed: disputes.filter((item) => item.status === DisputeStatus.Closed).length,
   }), [disputes]);
 
+  const allocationTotals = useMemo(() => Object.values(milestoneDecisions).reduce((totals, decision) => ({
+    release: totals.release + Number(decision.release || 0),
+    refund: totals.refund + Number(decision.refund || 0),
+    penalty: totals.penalty + Number(decision.penalty || 0),
+  }), { release: 0, refund: 0, penalty: 0 }), [milestoneDecisions]);
+
+  const resultingAccountStatus = (party: AdminDisputeDetail['client'], violation: ViolationState) => {
+    if (!violation.isViolation) return party.accountStatus;
+    const count = party.violationCount + 1;
+    return count >= 3 ? AccountStatus.Banned : count === 2 ? AccountStatus.Suspended : AccountStatus.Active;
+  };
+
+  const allocationHasError = (milestoneId: string) => {
+    if (!selectedDispute) return true;
+    const milestone = selectedDispute.milestones.find(item => item.milestoneId === milestoneId);
+    const decision = milestoneDecisions[milestoneId];
+    if (!milestone || !decision) return true;
+    const release = Number(decision.release || 0);
+    const refund = Number(decision.refund || 0);
+    const penalty = Number(decision.penalty || 0);
+    if ([release, refund, penalty].some(value => !Number.isFinite(value) || value < 0)) return true;
+    if (Math.abs(release + refund + penalty - milestone.lockedAmount) >= 0.01) return true;
+    if (penalty > 0 && !decision.reason.trim()) return true;
+    const override = milestone.status === MilestoneStatus.Submitted || milestone.status === MilestoneStatus.Approved
+      ? Math.abs(release - milestone.lockedAmount) >= 0.01 || refund >= 0.01 || penalty >= 0.01
+      : milestone.status === MilestoneStatus.Pending || milestone.status === MilestoneStatus.InProgress
+        ? Math.abs(refund - milestone.lockedAmount) >= 0.01 || release >= 0.01 || penalty >= 0.01
+        : false;
+    return override && !decision.reason.trim();
+  };
+
+  const violationHasError = (violation: ViolationState) =>
+    violation.isViolation && (violation.violationType === null || !violation.reason.trim());
+
   const applyUpdatedDetail = (detail: AdminDisputeDetail) => {
     setSelectedDispute(detail);
     setRefreshKey((value) => value + 1);
@@ -262,13 +318,27 @@ export default function AdminDisputeManagementScreen() {
       resolution,
       resolutionNote: resolutionNote.trim(),
       internalNotes: internalNotes.trim() || undefined,
-      milestoneDecisions: Object.entries(milestoneDecisions).map(([milestoneId, decision]) => ({
+      milestoneAllocations: Object.entries(milestoneDecisions).map(([milestoneId, decision]) => ({
         milestoneId,
         outcome: decision.outcome,
-        additionalReleaseToFreelancer: Number(decision.release || 0),
-        refundToClient: Number(decision.refund || 0),
+        freelancerAward: Number(decision.release || 0),
+        clientRefund: Number(decision.refund || 0),
+        penaltyAmount: Number(decision.penalty || 0),
+        reason: decision.reason.trim() || null,
       })),
       contractAction,
+      clientViolation: {
+        isViolation: clientViolation.isViolation,
+        violationType: clientViolation.violationType,
+        reason: clientViolation.reason.trim() || null,
+        description: clientViolation.description.trim() || null,
+      },
+      freelancerViolation: {
+        isViolation: freelancerViolation.isViolation,
+        violationType: freelancerViolation.violationType,
+        reason: freelancerViolation.reason.trim() || null,
+        description: freelancerViolation.description.trim() || null,
+      },
     };
 
     const response = await adminPostAPI.resolveDispute(selectedDispute.id, payload);
@@ -284,6 +354,8 @@ export default function AdminDisputeManagementScreen() {
     setResolutionNote('');
     setInternalNotes('');
     setMilestoneDecisions({});
+    setClientViolation(emptyViolation());
+    setFreelancerViolation(emptyViolation());
     setContractAction(0);
     setSuccess('Dispute resolved. Financial transactions and contract actions were executed.');
   };
@@ -291,13 +363,18 @@ export default function AdminDisputeManagementScreen() {
   const openResolveDialog = () => {
     if (!selectedDispute) return;
     setMilestoneDecisions(Object.fromEntries(selectedDispute.milestones
-      .filter(milestone => milestone.allocatableAmount > 0 &&
+      .filter(milestone => milestone.lockedAmount > 0 &&
         (milestone.status === MilestoneStatus.Disputed || milestone.milestoneId === selectedDispute.milestoneId))
-      .map(milestone => [milestone.milestoneId, {
-        outcome: DisputeMilestoneOutcome.PartiallyAccepted,
-        release: (milestone.allocatableAmount / 2).toFixed(2),
-        refund: (milestone.allocatableAmount - milestone.allocatableAmount / 2).toFixed(2),
-      }])));
+      .map(milestone => {
+        const defaults = milestone.status === MilestoneStatus.Submitted || milestone.status === MilestoneStatus.Approved
+          ? { outcome: DisputeMilestoneOutcome.Accepted, release: milestone.lockedAmount.toFixed(2), refund: '0.00' }
+          : milestone.status === MilestoneStatus.Pending || milestone.status === MilestoneStatus.InProgress
+            ? { outcome: DisputeMilestoneOutcome.Rejected, release: '0.00', refund: milestone.lockedAmount.toFixed(2) }
+            : { outcome: DisputeMilestoneOutcome.PartiallyAccepted, release: (milestone.lockedAmount / 2).toFixed(2), refund: (milestone.lockedAmount - milestone.lockedAmount / 2).toFixed(2) };
+        return [milestone.milestoneId, { ...defaults, penalty: '0.00', reason: '' }];
+      })));
+    setClientViolation(emptyViolation());
+    setFreelancerViolation(emptyViolation());
     setShowResolveDialog(true);
   };
 
@@ -305,14 +382,16 @@ export default function AdminDisputeManagementScreen() {
     if (!selectedDispute) return;
     setContractAction(action);
     setMilestoneDecisions(Object.fromEntries(selectedDispute.milestones
-      .filter(milestone => milestone.allocatableAmount > 0 &&
+      .filter(milestone => milestone.lockedAmount > 0 &&
         (action === 1 || milestone.status === MilestoneStatus.Disputed || milestone.milestoneId === selectedDispute.milestoneId))
       .map(milestone => {
         const existing = milestoneDecisions[milestone.milestoneId];
         return [milestone.milestoneId, existing ?? {
           outcome: DisputeMilestoneOutcome.PartiallyAccepted,
-          release: (milestone.allocatableAmount / 2).toFixed(2),
-          refund: (milestone.allocatableAmount - milestone.allocatableAmount / 2).toFixed(2),
+          release: (milestone.lockedAmount / 2).toFixed(2),
+          refund: (milestone.lockedAmount - milestone.lockedAmount / 2).toFixed(2),
+          penalty: '0.00',
+          reason: '',
         }];
       })));
   };
@@ -373,6 +452,8 @@ export default function AdminDisputeManagementScreen() {
     setResolutionNote('');
     setInternalNotes('');
     setMilestoneDecisions({});
+    setClientViolation(emptyViolation());
+    setFreelancerViolation(emptyViolation());
     setContractAction(0);
   };
 
@@ -510,13 +591,14 @@ export default function AdminDisputeManagementScreen() {
                       <div><span>Original escrow</span><strong>{selectedDispute.escrow.originalEscrow.toLocaleString()}</strong></div>
                       <div><span>Released</span><strong>{selectedDispute.escrow.releasedAmount.toLocaleString()}</strong></div>
                       <div><span>Refunded</span><strong>{selectedDispute.escrow.refundedAmount.toLocaleString()}</strong></div>
+                      <div><span>Previous penalties</span><strong>{selectedDispute.escrow.penaltyAmount.toLocaleString()}</strong></div>
                       <div><span>Service fees</span><strong>{selectedDispute.escrow.serviceFeeAmount.toLocaleString()}</strong></div>
-                      <div><span>Remaining</span><strong>{selectedDispute.escrow.remainingAmount.toLocaleString()}</strong></div>
+                      <div><span>Remaining locked</span><strong>{selectedDispute.escrow.remainingAmount.toLocaleString()}</strong></div>
                     </div>
                     {selectedDispute.milestones.map((milestone, index) => <article className="admin-milestone-card" key={milestone.milestoneId}>
                       <h4>Milestone {index + 1}: {milestone.title}</h4>
                       <p>{milestone.description}</p>
-                      <div className="dispute-detail-grid"><div><span>Amount</span><strong>{milestone.amount}</strong></div><div><span>Released</span><strong>{milestone.releasedAmount}</strong></div><div><span>Remaining</span><strong>{milestone.allocatableAmount}</strong></div><div><span>Status</span><strong>{milestone.status}</strong></div></div>
+                      <div className="dispute-detail-grid"><div><span>Amount</span><strong>{milestone.amount}</strong></div><div><span>Released</span><strong>{milestone.releasedAmount}</strong></div><div><span>Refunded</span><strong>{milestone.refundedAmount}</strong></div><div><span>Penalized</span><strong>{milestone.penaltyAmount}</strong></div><div><span>Remaining locked</span><strong>{milestone.lockedAmount}</strong></div><div><span>Scope</span><strong>{milestone.isInDisputeScope ? 'In scope' : 'Out of scope'}</strong></div><div><span>Status</span><strong>{milestone.status}</strong></div></div>
                       <p><strong>Deliverables:</strong> {milestone.deliverables ?? 'Not specified'}</p><p><strong>Submission:</strong> {milestone.submissionDescription ?? 'Not submitted'}</p>
                     </article>)}
                   </section>
@@ -736,28 +818,28 @@ export default function AdminDisputeManagementScreen() {
 
               <section className="admin-resolution-milestones">
                 <h3>Milestone Financial Decisions</h3>
-                <p>Previously released funds are final. Allocate each milestone's remaining escrow between the freelancer and client.</p>
+                <p>Released, refunded, and previously penalized funds are read-only. Allocate each remaining locked amount completely.</p>
                 {selectedDispute.milestones.filter(milestone => milestoneDecisions[milestone.milestoneId]).map((milestone) => {
                   const decision = milestoneDecisions[milestone.milestoneId];
                   if (!decision) return null;
-                  const total = Number(decision.release || 0) + Number(decision.refund || 0);
+                  const total = Number(decision.release || 0) + Number(decision.refund || 0) + Number(decision.penalty || 0);
                   return <article className="admin-resolution-milestone" key={milestone.milestoneId}>
-                    <header><strong>{milestone.title}</strong><span>Amount {milestone.amount.toLocaleString()} · already released {milestone.releasedAmount.toLocaleString()} · allocatable {milestone.allocatableAmount.toLocaleString()}</span></header>
+                    <header><strong>{milestone.title}</strong><span>Amount {milestone.amount.toLocaleString()} · released {milestone.releasedAmount.toLocaleString()} · refunded {milestone.refundedAmount.toLocaleString()} · locked {milestone.lockedAmount.toLocaleString()}</span></header>
                     <div className="resolve-dialog-grid">
                       <label>Outcome
                         <select value={decision.outcome} onChange={event => {
                           const outcome = Number(event.target.value) as DisputeMilestoneOutcome;
                           const release = outcome === DisputeMilestoneOutcome.Accepted
-                            ? milestone.allocatableAmount.toFixed(2)
+                            ? milestone.lockedAmount.toFixed(2)
                             : outcome === DisputeMilestoneOutcome.Rejected || outcome === DisputeMilestoneOutcome.Cancelled
                               ? '0.00'
                               : decision.release;
                           const refund = outcome === DisputeMilestoneOutcome.Accepted
                             ? '0.00'
                             : outcome === DisputeMilestoneOutcome.Rejected || outcome === DisputeMilestoneOutcome.Cancelled
-                              ? milestone.allocatableAmount.toFixed(2)
+                              ? milestone.lockedAmount.toFixed(2)
                               : decision.refund;
-                          setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { outcome, release, refund } }));
+                          setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, outcome, release, refund, penalty: outcome === DisputeMilestoneOutcome.PartiallyAccepted ? decision.penalty : '0.00' } }));
                         }}>
                           <option value={DisputeMilestoneOutcome.Accepted}>Accepted</option>
                           <option value={DisputeMilestoneOutcome.Rejected}>Rejected</option>
@@ -765,25 +847,55 @@ export default function AdminDisputeManagementScreen() {
                           <option value={DisputeMilestoneOutcome.Cancelled}>Cancelled</option>
                         </select>
                       </label>
-                      <label>Additional release
-                        <input type="number" min="0" max={milestone.allocatableAmount} step="0.01" value={decision.release} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, release: event.target.value } }))} />
+                      <label>Freelancer award
+                        <input type="number" min="0" max={milestone.lockedAmount} step="0.01" value={decision.release} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, release: event.target.value } }))} />
                       </label>
                       <label>Refund to client
-                        <input type="number" min="0" max={milestone.allocatableAmount} step="0.01" value={decision.refund} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, refund: event.target.value } }))} />
+                        <input type="number" min="0" max={milestone.lockedAmount} step="0.01" value={decision.refund} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, refund: event.target.value } }))} />
+                      </label>
+                      <label>Penalty
+                        <input type="number" min="0" max={milestone.lockedAmount} step="0.01" value={decision.penalty} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, penalty: event.target.value } }))} />
+                      </label>
+                      <label>Allocation reason
+                        <input value={decision.reason} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, reason: event.target.value } }))} placeholder="Required for penalties or default overrides" />
                       </label>
                     </div>
-                    <small className={Math.abs(total - milestone.allocatableAmount) < 0.01 ? 'allocation-valid' : 'allocation-invalid'}>Allocated {total.toLocaleString()} of {milestone.allocatableAmount.toLocaleString()} GigCoin</small>
+                    <small className={!allocationHasError(milestone.milestoneId) ? 'allocation-valid' : 'allocation-invalid'}>Allocated {total.toLocaleString()} of {milestone.lockedAmount.toLocaleString()} GigCoin{allocationHasError(milestone.milestoneId) ? ' · check totals and reason' : ''}</small>
                   </article>;
                 })}
               </section>
 
-              <section className="admin-resolution-summary">
-                <h3>Decision Summary</h3>
-                <p><strong>{resolutionLabels[resolution]}</strong> · {contractAction === 0 ? 'Resume contract' : 'Terminate contract'}</p>
-                <p>Release {Object.values(milestoneDecisions).reduce((sum, decision) => sum + Number(decision.release || 0), 0).toLocaleString()} · Refund {Object.values(milestoneDecisions).reduce((sum, decision) => sum + Number(decision.refund || 0), 0).toLocaleString()} GigCoin</p>
+              <section className="admin-violation-grid">
+                {([
+                  ['Client', selectedDispute.client, clientViolation, setClientViolation],
+                  ['Freelancer', selectedDispute.freelancer, freelancerViolation, setFreelancerViolation],
+                ] as const).map(([label, party, violation, setter]) => party && <article className="admin-resolution-milestone" key={label}>
+                  <h3>{label} Violation</h3>
+                  <p>Previous violations: {party.violationCount} · current status: {accountStatusLabels[party.accountStatus]}</p>
+                  <label className="admin-violation-toggle"><input type="checkbox" checked={violation.isViolation} onChange={event => setter(current => ({ ...current, isViolation: event.target.checked }))} /> Confirm violation</label>
+                  {violation.isViolation && <>
+                    <label>Violation type<select value={violation.violationType ?? ''} onChange={event => setter(current => ({ ...current, violationType: Number(event.target.value) as UserViolationType }))}>
+                      <option value="" disabled>Select type</option>
+                      {Object.entries(UserViolationType).filter(([key]) => Number.isNaN(Number(key))).map(([key, value]) => <option key={key} value={value as number}>{key.replace(/([A-Z])/g, ' $1').trim()}</option>)}
+                    </select></label>
+                    <label>Reason<input value={violation.reason} onChange={event => setter(current => ({ ...current, reason: event.target.value }))} /></label>
+                    <label>Description<textarea rows={2} value={violation.description} onChange={event => setter(current => ({ ...current, description: event.target.value }))} /></label>
+                    <p className={resultingAccountStatus(party, violation) === AccountStatus.Banned ? 'allocation-invalid' : ''}>Result: violation {party.violationCount + 1} · {accountStatusLabels[resultingAccountStatus(party, violation)]}</p>
+                    {resultingAccountStatus(party, violation) === AccountStatus.Suspended && <small>Suspension ends seven days after resolution.</small>}
+                    {resultingAccountStatus(party, violation) === AccountStatus.Banned && <small className="allocation-invalid">This permanently disables the account and invalidates its refresh token.</small>}
+                  </>}
+                </article>)}
               </section>
 
-              <button className="resolve-btn" onClick={() => void resolveCase()} disabled={actionLoading || !resolutionNote.trim() || Object.entries(milestoneDecisions).some(([milestoneId, decision]) => { const milestone = selectedDispute.milestones.find(item => item.milestoneId === milestoneId); return !milestone || Math.abs(Number(decision.release || 0) + Number(decision.refund || 0) - milestone.allocatableAmount) >= 0.01; })}>
+              <section className="admin-resolution-summary">
+                <h3>Final Confirmation</h3>
+                <p><strong>{resolutionLabels[resolution]}</strong> · {contractAction === 0 ? 'Resume contract' : 'Terminate contract'}</p>
+                <p>Freelancer {allocationTotals.release.toLocaleString()} · Client {allocationTotals.refund.toLocaleString()} · Penalty {allocationTotals.penalty.toLocaleString()} GigCoin</p>
+                {Object.entries(milestoneDecisions).map(([id, decision]) => <p key={id}>{selectedDispute.milestones.find(item => item.milestoneId === id)?.title}: {Number(decision.release || 0)} / {Number(decision.refund || 0)} / {Number(decision.penalty || 0)}</p>)}
+                <p>Client: {clientViolation.isViolation ? accountStatusLabels[resultingAccountStatus(selectedDispute.client, clientViolation)] : 'No violation'} · Freelancer: {selectedDispute.freelancer && freelancerViolation.isViolation ? accountStatusLabels[resultingAccountStatus(selectedDispute.freelancer, freelancerViolation)] : 'No violation'}</p>
+              </section>
+
+              <button className="resolve-btn" onClick={() => void resolveCase()} disabled={actionLoading || !resolutionNote.trim() || Object.keys(milestoneDecisions).some(allocationHasError) || violationHasError(clientViolation) || violationHasError(freelancerViolation)}>
                 {actionLoading ? <LoaderCircle className="admin-dispute-spin" size={17} /> : <CheckCircle size={17} />}
                 Execute Resolution
               </button>
