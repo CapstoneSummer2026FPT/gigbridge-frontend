@@ -134,6 +134,19 @@ export interface CreateWalletTopUpRequest {
   idempotencyKey?: string;
 }
 
+/**
+ * Lifetime wallet aggregates (covers the account's entire history, unlike the
+ * 100-item transaction list). Drives the /wallet/history stat cards.
+ */
+export interface WalletTransactionsSummaryResponse {
+  totalDeposits: number;
+  totalEscrow: number;
+  totalRefunds: number;
+  totalWithdrawn: number;
+  pendingCount: number;
+  totalTransactions: number;
+}
+
 export interface CreateWalletTopUpResponse {
   walletTransactionId: string;
   tokenAmount: number;

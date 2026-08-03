@@ -15,10 +15,10 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
+import BankAccountManager from '../components/BankAccountManager';
 import { BankAccountStatus, WithdrawalStatus } from '../../../types';
 import type {
   BankAccountResponse,
-  SupportedBankResponse,
   WalletResponse,
   WithdrawalResponse,
   WithdrawalSettingsResponse,
@@ -26,18 +26,6 @@ import type {
 import '../styles/early-payout-screen.css';
 
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000, 5000];
-
-type BankFormState = {
-  bankBin: string;
-  accountNumber: string;
-  accountName: string;
-};
-
-const emptyBankForm: BankFormState = {
-  bankBin: '',
-  accountNumber: '',
-  accountName: '',
-};
 
 function formatVnd(amount: number): string {
   return `${new Intl.NumberFormat('vi-VN').format(Math.round(amount))} đ`;
@@ -86,14 +74,10 @@ export default function EarlyPayoutScreen() {
   const [bankAccounts, setBankAccounts] = useState<BankAccountResponse[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
   const [settings, setSettings] = useState<WithdrawalSettingsResponse | null>(null);
-  const [supportedBanks, setSupportedBanks] = useState<SupportedBankResponse[]>([]);
   const [selectedBankId, setSelectedBankId] = useState('');
-  const [editingBankId, setEditingBankId] = useState<string | null>(null);
   const [amount, setAmount] = useState('100');
-  const [bankForm, setBankForm] = useState<BankFormState>(emptyBankForm);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [savingBank, setSavingBank] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -109,13 +93,17 @@ export default function EarlyPayoutScreen() {
     [activeBankAccounts, selectedBankId]
   );
 
-  const editingBankAccount = useMemo(
-    () => bankAccounts.find(account => account.bankAccountId === editingBankId) || null,
-    [bankAccounts, editingBankId]
-  );
-  const editingBankRequiresAccountNumber = Boolean(
-    editingBankAccount && editingBankAccount.status !== BankAccountStatus.Active
-  );
+  // Keep the selected payout account valid as the shared BankAccountManager
+  // loads or changes accounts: if the current selection is gone, fall back to
+  // the default account, then the first active account.
+  useEffect(() => {
+    setSelectedBankId(current => {
+      const activeIds = new Set(activeBankAccounts.map(account => account.bankAccountId));
+      if (current && activeIds.has(current)) return current;
+      const defaultBank = activeBankAccounts.find(account => account.isDefault);
+      return defaultBank?.bankAccountId || activeBankAccounts[0]?.bankAccountId || '';
+    });
+  }, [activeBankAccounts]);
 
   const amountValue = Number(amount || 0);
   // Deposited GigCoin is spendable in-platform but never withdrawable; earned
@@ -142,12 +130,10 @@ export default function EarlyPayoutScreen() {
     setLoading(true);
     setError('');
 
-    const [walletRes, bankRes, withdrawalRes, settingsRes, banksRes] = await Promise.all([
+    const [walletRes, withdrawalRes, settingsRes] = await Promise.all([
       walletGetAPI.getMyWallet(),
-      walletGetAPI.getBankAccounts(),
       walletGetAPI.getWithdrawals(50),
       walletGetAPI.getWithdrawalSettings(),
-      walletGetAPI.getSupportedBanks(),
     ]);
     let nextError = '';
 
@@ -155,20 +141,6 @@ export default function EarlyPayoutScreen() {
       setWallet(walletRes.data);
     } else {
       nextError = getResponseMessage(walletRes.message, 'Không thể tải ví.');
-    }
-
-    if (bankRes.success && bankRes.data) {
-      setBankAccounts(bankRes.data);
-      const defaultBank = bankRes.data.find(account => account.isDefault && account.status === BankAccountStatus.Active && account.bankBin);
-      const firstActive = bankRes.data.find(account => account.status === BankAccountStatus.Active && account.bankBin);
-      const activeIds = new Set(
-        bankRes.data
-          .filter(account => account.status === BankAccountStatus.Active && account.bankBin)
-          .map(account => account.bankAccountId)
-      );
-      setSelectedBankId(current => (current && activeIds.has(current) ? current : defaultBank?.bankAccountId || firstActive?.bankAccountId || ''));
-    } else if (!nextError) {
-      nextError = getResponseMessage(bankRes.message, 'Không thể tải tài khoản ngân hàng.');
     }
 
     if (withdrawalRes.success && withdrawalRes.data) {
@@ -183,12 +155,6 @@ export default function EarlyPayoutScreen() {
       nextError = getResponseMessage(settingsRes.message, 'Khong the tai cau hinh rut tien.');
     }
 
-    if (banksRes.success && banksRes.data) {
-      setSupportedBanks(banksRes.data);
-    } else if (!nextError) {
-      nextError = getResponseMessage(banksRes.message, 'Khong the tai danh sach ngan hang.');
-    }
-
     setError(nextError);
     setLoading(false);
   };
@@ -196,124 +162,6 @@ export default function EarlyPayoutScreen() {
   useEffect(() => {
     void loadData();
   }, []);
-
-  const handleBankFormChange = (key: keyof BankFormState, value: string) => {
-    setBankForm(prev => ({ ...prev, [key]: value }));
-    setError('');
-    setSuccess('');
-  };
-
-  const clearBankForm = () => {
-    setBankForm(emptyBankForm);
-    setEditingBankId(null);
-  };
-
-  const handleEditBank = (account: BankAccountResponse) => {
-    setBankForm({
-      bankBin: account.bankBin ?? '',
-      accountName: account.accountName,
-      accountNumber: '',
-    });
-    setEditingBankId(account.bankAccountId);
-    setError('');
-    setSuccess('');
-  };
-
-  const handleSaveBankAccount = async () => {
-    const accountNumberPattern = /^[0-9A-Za-z\s-]{4,40}$/;
-    const accountNumber = bankForm.accountNumber.trim();
-    const selectedDirectoryBank = supportedBanks.find(bank => bank.bin === bankForm.bankBin);
-    if (!selectedDirectoryBank) {
-      setError('Vui long chon ngan hang hop le.');
-      return;
-    }
-
-    const basePayload = {
-      bankBin: selectedDirectoryBank.bin,
-      bankCode: selectedDirectoryBank.code,
-      bankName: selectedDirectoryBank.name,
-      accountName: bankForm.accountName.trim(),
-    };
-
-    if (!basePayload.bankCode || basePayload.bankCode.length < 2 || basePayload.bankName.length < 2) {
-      setError('Vui lòng nhập mã ngân hàng và tên ngân hàng hợp lệ.');
-      return;
-    }
-
-    if (basePayload.accountName.length < 2 ||
-      ((!editingBankId || editingBankRequiresAccountNumber) && !accountNumberPattern.test(accountNumber))) {
-      setError('Vui lòng nhập tên chủ tài khoản và số tài khoản hợp lệ.');
-      return;
-    }
-
-    if (editingBankId && accountNumber && !accountNumberPattern.test(accountNumber)) {
-      setError('Số tài khoản mới không hợp lệ.');
-      return;
-    }
-
-    setSavingBank(true);
-    setError('');
-    setSuccess('');
-
-    const response = editingBankId
-      ? await walletPostAPI.updateBankAccount(editingBankId, {
-        ...basePayload,
-        ...(accountNumber ? { accountNumber } : {}),
-      })
-      : await walletPostAPI.createBankAccount({
-        ...basePayload,
-        accountNumber,
-        isDefault: activeBankAccounts.length === 0,
-      });
-
-    if (response.success && response.data) {
-      clearBankForm();
-      setSuccess(editingBankId ? 'Đã cập nhật tài khoản ngân hàng.' : 'Đã lưu tài khoản ngân hàng.');
-      await loadData();
-      setSelectedBankId(response.data.status === BankAccountStatus.Active ? response.data.bankAccountId : '');
-    } else {
-      setError(getResponseMessage(response.message, 'Không thể lưu tài khoản ngân hàng.'));
-    }
-
-    setSavingBank(false);
-  };
-
-  const handleSetDefaultBank = async (bankAccountId: string) => {
-    setSavingBank(true);
-    setError('');
-    setSuccess('');
-
-    const response = await walletPostAPI.updateBankAccount(bankAccountId, { isDefault: true });
-    if (response.success && response.data) {
-      setSelectedBankId(response.data.bankAccountId);
-      setSuccess('Đã đặt tài khoản mặc định.');
-      await loadData();
-    } else {
-      setError(getResponseMessage(response.message, 'Không thể đặt tài khoản mặc định.'));
-    }
-
-    setSavingBank(false);
-  };
-
-  const handleDeleteBank = async (bankAccountId: string) => {
-    setSavingBank(true);
-    setError('');
-    setSuccess('');
-
-    const response = await walletPostAPI.deleteBankAccount(bankAccountId);
-    if (response.success) {
-      setSuccess('Đã xóa tài khoản ngân hàng.');
-      setSelectedBankId(current => (current === bankAccountId ? '' : current));
-      if (editingBankId === bankAccountId) {
-        clearBankForm();
-      }
-      await loadData();
-    } else {
-      setError(getResponseMessage(response.message, 'Không thể xóa tài khoản đang dùng cho lệnh rút tiền.'));
-    }
-
-    setSavingBank(false);
-  };
 
   const handleCreateWithdrawal = async () => {
     if (!selectedBank) {
@@ -517,70 +365,7 @@ export default function EarlyPayoutScreen() {
               </main>
 
               <aside className="early-payout-side">
-                <div>
-                  <Banknote size={22} />
-                  <strong>{editingBankId ? 'Sửa tài khoản ngân hàng' : 'Thêm tài khoản ngân hàng'}</strong>
-                  <div className="early-payout-form-grid">
-                    <select value={bankForm.bankBin} onChange={event => handleBankFormChange('bankBin', event.target.value)}>
-                      <option value="">Chọn ngân hàng</option>
-                      {supportedBanks.map(bank => (
-                        <option key={bank.bin} value={bank.bin}>{bank.shortName} - {bank.name}</option>
-                      ))}
-                    </select>
-                    <input value={bankForm.accountName} onChange={event => handleBankFormChange('accountName', event.target.value)} placeholder="Tên chủ tài khoản" />
-                    <input
-                      value={bankForm.accountNumber}
-                      onChange={event => handleBankFormChange('accountNumber', event.target.value)}
-                      placeholder={editingBankRequiresAccountNumber
-                        ? 'Nhập lại số tài khoản'
-                        : editingBankId ? 'Số tài khoản mới (tùy chọn)' : 'Số tài khoản'}
-                    />
-                  </div>
-                  {bankAccounts.length > activeBankAccounts.length && (
-                    <small className="early-payout-balance-note">Một số tài khoản cũ cần chọn lại ngân hàng trước khi sử dụng.</small>
-                  )}
-                  <button type="button" onClick={() => void handleSaveBankAccount()} disabled={savingBank}>
-                    {savingBank ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                    {editingBankId ? 'Cập nhật tài khoản' : 'Lưu tài khoản'}
-                  </button>
-                  {editingBankId && (
-                    <button type="button" onClick={clearBankForm} disabled={savingBank}>
-                      Hủy sửa
-                    </button>
-                  )}
-                </div>
-
-                <div>
-                  <ShieldCheck size={22} />
-                  <strong>Tài khoản đã lưu</strong>
-                  <div className="early-payout-bank-list">
-                    {bankAccounts.map(account => {
-                      const isActive = account.status === BankAccountStatus.Active && Boolean(account.bankBin);
-                      return (
-                      <article key={account.bankAccountId} className={isActive ? '' : 'requires-update'}>
-                        <span>{account.bankName}</span>
-                        <p>{account.accountName}</p>
-                        <p>{account.accountNumberMasked}</p>
-                        {!isActive && <small>Cần chọn lại ngân hàng và nhập lại số tài khoản.</small>}
-                        <div>
-                          {isActive && !account.isDefault && (
-                            <button type="button" onClick={() => void handleSetDefaultBank(account.bankAccountId)} disabled={savingBank}>
-                              Đặt mặc định
-                            </button>
-                          )}
-                          <button type="button" onClick={() => handleEditBank(account)} disabled={savingBank}>
-                            Sửa
-                          </button>
-                          <button type="button" onClick={() => void handleDeleteBank(account.bankAccountId)} disabled={savingBank}>
-                            Xóa
-                          </button>
-                        </div>
-                      </article>
-                      );
-                    })}
-                    {bankAccounts.length === 0 && <p>Chưa có tài khoản ngân hàng.</p>}
-                  </div>
-                </div>
+                <BankAccountManager onBankAccountsChange={setBankAccounts} />
               </aside>
             </div>
 
