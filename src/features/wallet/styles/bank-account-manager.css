@@ -1,0 +1,51 @@
+/* Self-contained styles for BankAccountManager.
+   Used both inside the withdrawal screen's aside (which also applies
+   .early-payout-side > div card styling) and the /settings payment tab. */
+
+.bam-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 0.85rem;
+  background: var(--gb-glass-bg);
+}
+
+.bam-card svg {
+  color: var(--gb-purple);
+}
+
+.bam-card strong {
+  color: var(--gb-text-primary);
+}
+
+.bam-card p {
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.bam-card button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.4rem;
+  border: 1px solid var(--gb-border);
+  border-radius: 0.65rem;
+  color: var(--gb-text-primary);
+  background: var(--gb-glass-bg);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.bam-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Smaller action buttons inside the saved-accounts list. */
+.bam-card .early-payout-bank-list button {
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  font-size: 0.74rem;
+}

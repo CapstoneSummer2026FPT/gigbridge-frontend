@@ -156,6 +156,21 @@
     "systemTracking": "System Tracking",
     "platformAnalytics": "Platform Analytics"
   },
+  "adminNav": {
+    "groups": { "overview": "Overview", "users": "User Management", "content": "Content Management", "contracts": "Contracts & Finance", "moderation": "Moderation & Disputes", "configuration": "Configuration", "monitoring": "System & Monitoring" },
+    "accountReports": "Account Reports",
+    "contractReports": "Contract Reports",
+    "assets": "Assets & Handoffs",
+    "esign": "E-sign Agreements"
+  },
+  "adminDashboard": {
+    "kicker": "Admin panel",
+    "title": "GigBridge Administration",
+    "subtitle": "Open a management area. Counts are shown only when a dedicated aggregate API is available.",
+    "descriptions": {
+      "dashboard": "Administration overview and manager shortcuts", "users": "Review profiles, access, reports, and enforcement history", "jobs": "Review job posts and their moderation state", "proposals": "Inspect proposal lifecycle and moderation records", "reports": "Review general content and account reports", "accountReports": "Investigate reports involving user accounts", "contractReports": "Investigate contract execution reports", "reviews": "Moderate platform reviews and related reports", "assets": "Inspect platform deliverables and handoff assets", "contracts": "Inspect contract, milestone, and escrow workflows", "esign": "Review electronic agreement and signature state", "withdrawals": "Review and reconcile withdrawal requests", "disputes": "Resolve disputes using evidence and financial context", "faqs": "Maintain public help content", "templates": "Maintain reusable contract templates", "notifications": "Publish and review administrator notifications", "systemTracking": "Review real administrator activity and operational availability"
+    }
+  },
   "common": {
     "search": "Search",
     "filter": "Filter",
@@ -1170,6 +1185,10 @@
     "aiOptimizerSuccessMessage": "✓ Profile optimized! Your bio has been updated.",
     "withdrawalSettings": "Withdrawal Settings",
     "addPaymentMethod": "Add Payment Method",
+    "payoutAccounts": "Payout Bank Accounts",
+    "payoutAccountsDesc": "Accounts added here appear on the Withdrawal page so you can select them when creating a payout.",
+    "goToWithdrawals": "Go to Withdrawal page",
+    "payoutAccountsFreelancerOnly": "Payout bank accounts are only available to Freelancer accounts.",
     "default": "Default",
     "remove": "Remove",
     "basicInfo": "Basic Information",
@@ -1260,7 +1279,10 @@
     "history": "Transaction History",
     "addFunds": "Add Funds",
     "amount": "Amount",
-    "noTransactions": "No transactions yet"
+    "noTransactions": "No transactions yet",
+    "depositedBalance": "Deposited GigCoin",
+    "depositedTooltip": "Deposited GigCoin — non-withdrawable, available for platform payments",
+    "depositedCaption": "Non-withdrawable · available for platform payments"
   },
   "ai": {
     "assistant": "AI Assistant",

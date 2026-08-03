@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AlertCircle, CheckCircle, Clock, FileText, Loader, PenTool, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -450,11 +451,15 @@ export default function SignatureWorkflowScreen() {
                 </div>
                 <div className="detail-row">
                   <span>{t('contracts.client')}</span>
-                  <strong>{contract.clientName || contract.clientEmail || t('contracts.client')}</strong>
+                  <strong>
+                    <UserProfileLink userId={contract.clientUserId} role="client">{contract.clientName || contract.clientEmail || t('contracts.client')}</UserProfileLink>
+                  </strong>
                 </div>
                 <div className="detail-row">
                   <span>{t('contracts.freelancer')}</span>
-                  <strong>{contract.freelancerName || contract.freelancerEmail || t('contracts.freelancer')}</strong>
+                  <strong>
+                    <UserProfileLink userId={contract.freelancerUserId} role="freelancer">{contract.freelancerName || contract.freelancerEmail || t('contracts.freelancer')}</UserProfileLink>
+                  </strong>
                 </div>
               </div>
 

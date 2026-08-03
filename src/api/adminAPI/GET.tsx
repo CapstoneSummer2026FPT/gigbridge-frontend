@@ -10,6 +10,9 @@ import type {
 } from '../../types/models/AdminDispute';
 import type { DisputeEvidenceDownload } from '../../types/models/Dispute';
 import type { ConversationMessageResponse } from '../messageAPI/GET';
+import type { AccountReportDetail, AccountReportItem, AdminAuditLog, AdminUserDetail, PageResult } from '../../types/models/AdminPhase1';
+import type { AdminContractReportDetail, AdminContractReportListParams, AdminContractReportPage } from '../../types/models/AdminContractReport';
+import type { AdminProposalDetail, AdminProposalListItem, AdminProposalListParams, PageResult as ProposalPage } from '../../types/models/AdminProposal';
 import type { SystemTrackingSnapshot } from '../../types/systemTracking';
 import {
   normalizeAdminDisputeDetail,
@@ -19,6 +22,16 @@ import {
 const Admin_Api_Base_Url = '/admin';
 
 export const adminGetAPI = {
+  getProposals: (params: AdminProposalListParams = {}): Promise<ApiResponse<ProposalPage<AdminProposalListItem>>> => apiService.get('/Proposals/admin/all', params),
+  getProposalDetail: (proposalId:string): Promise<ApiResponse<AdminProposalDetail>> => apiService.get(`/Proposals/admin/${proposalId}`),
+  getContractReports: (params: AdminContractReportListParams = {}): Promise<ApiResponse<AdminContractReportPage>> => apiService.get(`${Admin_Api_Base_Url}/contract-reports`, params),
+  getContractReportDetail: (reportId: string): Promise<ApiResponse<AdminContractReportDetail>> => apiService.get(`${Admin_Api_Base_Url}/contract-reports/${reportId}`),
+  getContractReportAttachmentDownload: (reportId:string, attachmentId:string): Promise<ApiResponse<{attachmentId:string;fileName:string;downloadUrl:string}>> => apiService.get(`${Admin_Api_Base_Url}/contract-reports/${reportId}/attachments/${attachmentId}/download`),
+  getUserDetail: (userId: string): Promise<ApiResponse<AdminUserDetail>> => apiService.get(`${Admin_Api_Base_Url}/users/${userId}`),
+  getAccountReports: (params: Record<string, unknown> = {}): Promise<ApiResponse<PageResult<AccountReportItem>>> => apiService.get('/reports/admin/accounts', params),
+  getAccountReportDetail: (reportId: string): Promise<ApiResponse<AccountReportDetail>> => apiService.get(`/reports/admin/accounts/${reportId}`),
+  getAccountReportEvidenceDownload: (reportId: string, evidenceId: string): Promise<ApiResponse<{ evidenceId: string; fileName: string; downloadUrl: string }>> => apiService.get(`/reports/admin/accounts/${reportId}/evidence/${evidenceId}/download`),
+  getAuditLogs: (params: Record<string, unknown> = {}): Promise<ApiResponse<PageResult<AdminAuditLog>>> => apiService.get(`${Admin_Api_Base_Url}/audit-logs`, params),
   getSystemTracking: async (limit = 100): Promise<ApiResponse<SystemTrackingSnapshot>> => {
     return apiService.get<SystemTrackingSnapshot>(`${Admin_Api_Base_Url}/system-tracking`, { limit });
   },

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, FileText, CheckCircle, XCircle, AlertCircle, Trash2, FileQuestion, Download, ExternalLink, Award, MapPin, Clock8, Folder, Image, Film, File as FileIcon } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -81,6 +81,7 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
 
 export default function AdminJobsScreen() {
   const navigate = useNavigate();
+  const [routeSearchParams, setRouteSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<JobFilter>('all');
@@ -97,6 +98,13 @@ export default function AdminJobsScreen() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [jobAssets, setJobAssets] = useState<any[]>([]);
   const [isLoadingJobAssets, setIsLoadingJobAssets] = useState(false);
+  const previewJobId = routeSearchParams.get('preview');
+  const closeJobPreview = () => {
+    const next = new URLSearchParams(routeSearchParams);
+    next.delete('preview');
+    setRouteSearchParams(next, { replace: true });
+    setPreviewJob(null);
+  };
 
   const [jobContract, setJobContract] = useState<any | null>(null);
   const [jobMilestones, setJobMilestones] = useState<any[]>([]);
@@ -555,8 +563,8 @@ export default function AdminJobsScreen() {
                           setPageIndex(1);
                         }}
                         className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${filterType === filter.type
-                            ? `bg-${filter.color}/20 text-${filter.color} border border-${filter.color} shadow-lg shadow-${filter.color}/20`
-                            : 'glass-button text-secondary hover:text-primary hover:border-white/20'
+                          ? `bg-${filter.color}/20 text-${filter.color} border border-${filter.color} shadow-lg shadow-${filter.color}/20`
+                          : 'glass-button text-secondary hover:text-primary hover:border-white/20'
                           }`}
                       >
                         <span className={filterType === filter.type ? `text-${filter.color}` : 'text-muted'}>
@@ -908,7 +916,7 @@ export default function AdminJobsScreen() {
 
           {/* Preview Job Modal */}
           {previewJob && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setPreviewJob(null)}>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeJobPreview}>
               <div className="glass-card max-w-3xl w-full p-0 max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                 {/* Modal Header */}
                 <div className="px-6 pt-6 pb-4 border-b border-white/10 flex-shrink-0">
@@ -922,7 +930,7 @@ export default function AdminJobsScreen() {
                       </h2>
                     </div>
                     <button
-                      onClick={() => setPreviewJob(null)}
+                      onClick={closeJobPreview}
                       className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors flex-shrink-0"
                     >
                       <XCircle size={20} className="text-red" />
@@ -1085,9 +1093,9 @@ export default function AdminJobsScreen() {
                                     <span className="text-xs font-bold text-cyan">{jobContract.totalBudget.toLocaleString()} G</span>
                                   </div>
                                   <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold mt-1 ${jobContract.status === 7 ? 'bg-green/10 text-green border border-green/20' :
-                                      jobContract.status === 8 ? 'bg-cyan/10 text-cyan border border-cyan/20' :
-                                        jobContract.status === 9 ? 'bg-red/10 text-red border border-red/20' :
-                                          'bg-white/5 text-secondary border border-white/10'
+                                    jobContract.status === 8 ? 'bg-cyan/10 text-cyan border border-cyan/20' :
+                                      jobContract.status === 9 ? 'bg-red/10 text-red border border-red/20' :
+                                        'bg-white/5 text-secondary border border-white/10'
                                     }`}>
                                     {jobContract.status === 7 ? 'Active' :
                                       jobContract.status === 8 ? 'Completed' :
@@ -1102,8 +1110,8 @@ export default function AdminJobsScreen() {
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="badge-cyan text-[10px]">Current Milestone</span>
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${currentMilestone.status === 3 || currentMilestone.status === 5 ? 'bg-green/10 text-green' :
-                                        currentMilestone.status === 2 ? 'bg-amber/10 text-amber' :
-                                          currentMilestone.status === 1 ? 'bg-purple/10 text-purple' : 'bg-white/10 text-muted'
+                                      currentMilestone.status === 2 ? 'bg-amber/10 text-amber' :
+                                        currentMilestone.status === 1 ? 'bg-purple/10 text-purple' : 'bg-white/10 text-muted'
                                       }`}>
                                       {currentMilestone.status === 0 ? 'Pending' :
                                         currentMilestone.status === 1 ? 'In Progress' :
@@ -1221,8 +1229,8 @@ export default function AdminJobsScreen() {
                                 </div>
                                 <div className="flex items-center gap-2 justify-between sm:justify-end">
                                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${asset.assetType === 'Deliverable'
-                                      ? 'bg-green/10 text-green border border-green/20'
-                                      : 'bg-purple/10 text-purple border border-purple/20'
+                                    ? 'bg-green/10 text-green border border-green/20'
+                                    : 'bg-purple/10 text-purple border border-purple/20'
                                     }`}>
                                     {asset.assetType === 'Deliverable' ? 'Final Handoff' : 'Milestone File'}
                                   </span>
@@ -1287,7 +1295,7 @@ export default function AdminJobsScreen() {
                 {/* Modal Footer */}
                 <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-3 flex-shrink-0">
                   <button
-                    onClick={() => setPreviewJob(null)}
+                    onClick={closeJobPreview}
                     className="btn-ghost-cyan px-5 py-2 text-sm"
                   >
                     Close
@@ -1329,7 +1337,7 @@ export default function AdminJobsScreen() {
 
                   <div className="flex items-start gap-3 p-4 glass-card mb-4">
                     <div className={`p-2 rounded-lg ${confirmAction.type === 'delete' ? 'bg-red/20' :
-                        confirmAction.type === 'lock' ? 'bg-amber/20' : 'bg-green/20'
+                      confirmAction.type === 'lock' ? 'bg-amber/20' : 'bg-green/20'
                       }`}>
                       {confirmAction.type === 'delete' ? (
                         <Trash2 size={20} className="text-red" />
@@ -1372,10 +1380,10 @@ export default function AdminJobsScreen() {
                     }}
                     disabled={isJobActionPending}
                     className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${confirmAction.type === 'delete'
-                        ? 'bg-red-500 text-white hover:bg-red-600'
-                        : confirmAction.type === 'lock'
-                          ? 'bg-amber/20 text-amber border border-amber hover:bg-amber/30'
-                          : 'bg-green/20 text-green border border-green hover:bg-green/30'
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : confirmAction.type === 'lock'
+                        ? 'bg-amber/20 text-amber border border-amber hover:bg-amber/30'
+                        : 'bg-green/20 text-green border border-green hover:bg-green/30'
                       }`}
                   >
                     {isJobActionPending ? 'Working…' : (
@@ -1553,10 +1561,10 @@ export default function AdminJobsScreen() {
                                 </span>
                                 <p className="text-sm font-semibold text-primary">{milestone.title}</p>
                                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${milestone.status === 3 || milestone.status === 5 ? 'bg-green/10 text-green border border-green/20' :
-                                    milestone.status === 2 ? 'bg-amber/10 text-amber border border-amber/20' :
-                                      milestone.status === 1 ? 'bg-purple/10 text-purple border border-purple/20' :
-                                        milestone.status === 6 ? 'bg-red/10 text-red border border-red/20' :
-                                          'bg-white/5 text-secondary border border-white/10'
+                                  milestone.status === 2 ? 'bg-amber/10 text-amber border border-amber/20' :
+                                    milestone.status === 1 ? 'bg-purple/10 text-purple border border-purple/20' :
+                                      milestone.status === 6 ? 'bg-red/10 text-red border border-red/20' :
+                                        'bg-white/5 text-secondary border border-white/10'
                                   }`}>
                                   {milestone.status === 0 ? 'Pending' :
                                     milestone.status === 1 ? 'In Progress' :
@@ -1694,8 +1702,8 @@ export default function AdminJobsScreen() {
                             Question #{q.orderIndex ?? (idx + 1)}
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${q.isRequired
-                              ? 'bg-red/10 text-red border border-red/20'
-                              : 'bg-white/5 text-secondary border border-white/15'
+                            ? 'bg-red/10 text-red border border-red/20'
+                            : 'bg-white/5 text-secondary border border-white/15'
                             }`}>
                             {q.isRequired ? 'Required' : 'Optional'}
                           </span>

@@ -4,10 +4,13 @@ import type { AdminUserDto } from '../../types/models/User';
 import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
 import type { DisputeStatus } from '../../types/models/Dispute';
 import { normalizeAdminDisputeDetail } from './disputeUtils';
+import type { AdminProposalDetail } from '../../types/models/AdminProposal';
 
 const Admin_Api_Base_Url = '/admin';
 
 export const adminPatchAPI = {
+  invalidateProposal: (proposalId:string, payload:{reason:string;internalNote?:string}): Promise<ApiResponse<AdminProposalDetail>> => apiService.patch(`/Proposals/admin/${proposalId}/invalidate`,payload),
+  restoreProposal: (proposalId:string, payload:{reason:string;internalNote?:string}): Promise<ApiResponse<AdminProposalDetail>> => apiService.patch(`/Proposals/admin/${proposalId}/restore`,payload),
   updateDisputeStatus: async (
     disputeId: string,
     status: DisputeStatus

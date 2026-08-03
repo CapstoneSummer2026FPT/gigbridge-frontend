@@ -27,9 +27,11 @@ const signalRMock = vi.hoisted(() => {
 });
 
 vi.mock('@microsoft/signalr', () => ({
-  HubConnectionBuilder: vi.fn(function HubConnectionBuilderMock() {
-    return signalRMock.builder;
-  }),
+  HubConnectionBuilder: class {
+    constructor() {
+      return signalRMock.builder;
+    }
+  },
 }));
 
 vi.mock('../../../../shared/components/AppLayout', () => ({
@@ -39,6 +41,7 @@ vi.mock('../../../../shared/components/AppLayout', () => ({
 vi.mock('../../../../api/adminAPI/GET', () => ({
   adminGetAPI: {
     getUsers: vi.fn(),
+    getAuditLogs: vi.fn(),
     getSystemTracking: vi.fn(),
   },
 }));
@@ -57,6 +60,12 @@ vi.mock('../../../../api/proposalAPI/GET', () => ({
 
 describe('admin screens without telemetry or history APIs', () => {
   beforeEach(() => {
+    vi.mocked(adminGetAPI.getAuditLogs).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: { items: [], pageNumber: 1, pageSize: 20, totalCount: 0, totalPages: 1 },
+    });
     vi.mocked(adminGetAPI.getSystemTracking).mockResolvedValue({
       success: true,
       statusCode: 200,
@@ -154,5 +163,38 @@ describe('admin screens without telemetry or history APIs', () => {
     expect(screen.getByText('AI usage telemetry unavailable')).toBeInTheDocument();
     expect(screen.queryByText('1,890')).not.toBeInTheDocument();
     expect(screen.queryByText('$212.3')).not.toBeInTheDocument();
+  });
+
+  it('adds the persisted administrator audit trail to the incoming realtime tracking screen', async () => {
+    vi.mocked(adminGetAPI.getAuditLogs).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: {
+        items: [{
+          auditLogId: 'audit-1',
+          adminUserId: 'admin-1',
+          adminName: 'System Admin',
+          action: 'wallet.adjusted',
+          entityType: 'UserWallet',
+          entityId: 'wallet-1',
+          oldValues: { deposited: 100 },
+          newValues: { deposited: 80 },
+          correlationId: 'correlation-1',
+          createdAt: '2026-08-03T00:00:00Z',
+        }],
+        pageNumber: 1,
+        pageSize: 20,
+        totalCount: 1,
+        totalPages: 1,
+      },
+    });
+
+    render(<AdminSystemTrackingScreen />);
+    await waitFor(() => expect(adminGetAPI.getAuditLogs).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recent Activity' }));
+    expect(await screen.findByText('wallet.adjusted')).toBeInTheDocument();
+    expect(screen.getByText(/UserWallet wallet-1/)).toBeInTheDocument();
   });
 });

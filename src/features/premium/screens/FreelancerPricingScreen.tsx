@@ -67,7 +67,7 @@ export default function FreelancerPricingScreen() {
       <div className="premium-eyebrow"><Crown size={16} /> Freelancer Premium</div>
       <h1 className="premium-title">Turn your reputation into an advantage.</h1>
       <p className="premium-muted">Unlock Elo tiers, rank protection, Premium identity, and profile promotion. Pay securely with GigCoin.</p>
-      <div className="premium-balance"><Wallet size={18} /><span>Available balance</span><GigCoinAmount amount={wallet.data?.availableTokens || 0} /></div>
+      <div className="premium-balance"><Wallet size={18} /><span>Available balance</span><GigCoinAmount amount={wallet.data?.totalSpendableGigCoin || 0} /></div>
       {entitled && <button className="premium-button secondary" onClick={() => navigate('/premium/freelancer')}>Open Premium hub</button>}
     </section>
 
@@ -92,9 +92,9 @@ export default function FreelancerPricingScreen() {
 
     {selected && <div className="premium-modal" onClick={() => !busy && setSelected(undefined)}><div className="premium-modal-box" onClick={e => e.stopPropagation()}>
       <div className="premium-eyebrow"><GigCoinLogo size={18} /> Confirm GigCoin purchase</div><h2>{selected.name}</h2>
-      <div className="premium-row"><span>Plan price</span><GigCoinAmount amount={selected.price} /></div><div className="premium-row"><span>Current balance</span><GigCoinAmount amount={wallet.data?.availableTokens || 0} /></div>
-      {(wallet.data?.availableTokens || 0) < selected.price ? <div className="premium-notice"><AlertTriangle size={18} /><div><strong>Not enough GigCoin</strong><p className="premium-muted">Add GigCoin before purchasing this plan.</p></div></div> : <div className="premium-row"><span>Balance after purchase</span><GigCoinAmount amount={(wallet.data?.availableTokens || 0) - selected.price} /></div>}
-      <div className="premium-modal-actions"><button className="premium-button secondary" disabled={busy} onClick={() => setSelected(undefined)}>Go back</button>{(wallet.data?.availableTokens || 0) < selected.price ? <button className="premium-button" onClick={() => navigate('/wallet/deposit')}>Get GigCoin</button> : <button className="premium-button" disabled={busy} onClick={() => void purchase()}>{busy ? 'Purchasing…' : 'Confirm purchase'}</button>}</div>
+      <div className="premium-row"><span>Plan price</span><GigCoinAmount amount={selected.price} /></div><div className="premium-row"><span>Current balance</span><GigCoinAmount amount={wallet.data?.totalSpendableGigCoin || 0} /></div>
+      {(wallet.data?.totalSpendableGigCoin || 0) < selected.price ? <div className="premium-notice"><AlertTriangle size={18} /><div><strong>Not enough GigCoin</strong><p className="premium-muted">Add GigCoin before purchasing this plan.</p></div></div> : <div className="premium-row"><span>Balance after purchase</span><GigCoinAmount amount={(wallet.data?.totalSpendableGigCoin || 0) - selected.price} /></div>}
+      <div className="premium-modal-actions"><button className="premium-button secondary" disabled={busy} onClick={() => setSelected(undefined)}>Go back</button>{(wallet.data?.totalSpendableGigCoin || 0) < selected.price ? <button className="premium-button" onClick={() => navigate('/wallet/deposit')}>Get GigCoin</button> : <button className="premium-button" disabled={busy} onClick={() => void purchase()}>{busy ? 'Purchasing…' : 'Confirm purchase'}</button>}</div>
     </div></div>}
   </main></AppLayout>;
 }

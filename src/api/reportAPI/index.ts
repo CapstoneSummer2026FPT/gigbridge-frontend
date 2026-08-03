@@ -12,6 +12,13 @@ export const reportAPI = {
   createReport: (payload: CreateReportPayload): Promise<ApiResponse<string>> =>
     apiService.post<string>('/Reports', payload),
 
+  uploadEvidence: (reportId: string, files: File[], description?: string): Promise<ApiResponse<unknown>> => {
+    const form = new FormData();
+    files.forEach(file => form.append('files', file));
+    if (description?.trim()) form.append('description', description.trim());
+    return apiService.post(`/Reports/${reportId}/evidence`, form);
+  },
+
   getAdminReports: (params: GetReportsParams = {}): Promise<ApiResponse<ReportsResponse>> =>
     apiService.get<ReportsResponse>('/reports/admin', params),
 

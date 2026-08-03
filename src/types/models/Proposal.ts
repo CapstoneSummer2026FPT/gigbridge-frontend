@@ -11,6 +11,11 @@ export enum ProposalStatus {
   Withdrawn = 5,
 }
 
+export enum ProposalModerationStatus {
+  Active = 0,
+  Invalidated = 1,
+}
+
 export interface Proposal {
   id: string;
   job_post_id: string;
@@ -54,10 +59,13 @@ export interface ProposalDto {
   jobTitle: string;
   freelancerProfilesId: string;
   freelancerName: string;
+  freelancerUserId?: string | null;
   coverLetter: string;
   proposedBudget: number;
   proposedDuration: string;
   status: ProposalStatus | number;
+  moderationStatus?: ProposalModerationStatus | number;
+  invalidationReason?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
   analysisSummaryPreview?: string;
@@ -147,10 +155,13 @@ export interface ProposalDetailDto {
   jobPostTitle?: string | null;
   freelancerProfileId: string;
   freelancerName?: string | null;
+  freelancerUserId?: string | null;
   coverLetter?: string | null;
   proposedBudget?: number | null;
   proposedDuration?: string | null;
   status: ProposalStatus | number;
+  moderationStatus?: ProposalModerationStatus | number;
+  invalidationReason?: string | null;
   submittedAt?: string | null;
   updatedAt?: string | null;
   isAigenerated?: boolean | null;

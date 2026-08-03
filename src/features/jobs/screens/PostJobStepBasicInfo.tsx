@@ -14,6 +14,7 @@ import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
 import { usePostJob } from '../hooks/usePostJob';
 import { JOB_DURATION_UNITS, type JobDurationUnit } from '../utils/jobDuration';
+import { AIGeneratedDetailsReviewModal } from '../components/AIGeneratedDetailsReviewModal';
 
 export default function PostJobStepBasicInfo() {
   const navigate = useNavigate();
@@ -41,6 +42,8 @@ export default function PostJobStepBasicInfo() {
     renderSubmitLabel, retryAutosave, resetToNewDraft,
     uploadAttachment, deleteAttachment,
     isGeneratingInstant, handleGenerateInstantJob,
+    isReviewModalOpen, pendingGeneratedDetails, isGeneratingPlan,
+    handleApproveDetails, handleCancelDetails,
   } = usePostJob();
 
   const completionItems = [
@@ -138,6 +141,24 @@ export default function PostJobStepBasicInfo() {
         onDiscardDraft={handleLeaveDiscardDraft}
         onCancel={cancelBlockedNavigation}
       />
+
+      <AIGeneratedDetailsReviewModal
+        isOpen={isReviewModalOpen}
+        data={pendingGeneratedDetails}
+        onClose={handleCancelDetails}
+        onApprove={handleApproveDetails}
+      />
+
+      {isGeneratingPlan && (
+        <div className="job-post-plan-spinner-overlay">
+          <div className="job-post-spinner-logo">
+            <div className="job-post-spinner-ring" />
+            <Sparkles size={28} className="text-white" />
+          </div>
+          <h2>Generating Hiring Plan...</h2>
+          <p>Analyzing requirements to build milestones & vetting questions</p>
+        </div>
+      )}
     </>
   );
 

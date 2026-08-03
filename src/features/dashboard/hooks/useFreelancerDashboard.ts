@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
-import { proposalGetAPI } from '../../../api/proposalAPI/GET';
+import { normalizeProposalList, proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
@@ -111,7 +111,7 @@ export function useFreelancerDashboard() {
 
     if (proposalsResult.status === 'fulfilled' && proposalsResult.value.success && proposalsResult.value.data) {
       const data = proposalsResult.value.data;
-      setProposals(data.items ?? []);
+      setProposals(normalizeProposalList(data));
     } else {
       setProposals([]);
       hasFailure = true;

@@ -10,6 +10,7 @@ export enum UserRole {
 
 export interface User {
   id: string;
+  avatar?: string | null;
   email: string;
   first_name: string;
   last_name: string;
@@ -18,6 +19,11 @@ export interface User {
   role: UserRole;
   is_email_verified: boolean;
   is_active: boolean;
+  account_status?: number;
+  is_flagged?: boolean;
+  violation_count?: number;
+  banned_at?: string | null;
+  ban_reason?: string | null;
   suspended_until?: string | null;
   suspended_at?: string | null;
   suspension_reason?: string | null;
@@ -48,6 +54,11 @@ export interface AdminUserDto {
   role: number;
   isEmailVerified: boolean;
   isActive: boolean;
+  accountStatus: number;
+  isFlagged: boolean;
+  violationCount: number;
+  bannedAt?: string | null;
+  banReason?: string | null;
   suspendedUntil?: string | null;
   suspendedAt?: string | null;
   suspensionReason?: string | null;

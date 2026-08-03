@@ -156,6 +156,21 @@
     "systemTracking": "Theo Dõi Hệ Thống",
     "platformAnalytics": "Phân Tích Nền Tảng"
   },
+  "adminNav": {
+    "groups": { "overview": "Tổng quan", "users": "Quản lý người dùng", "content": "Quản lý nội dung", "contracts": "Hợp đồng & tài chính", "moderation": "Kiểm duyệt & tranh chấp", "configuration": "Cấu hình", "monitoring": "Hệ thống & giám sát" },
+    "accountReports": "Báo cáo tài khoản",
+    "contractReports": "Báo cáo hợp đồng",
+    "assets": "Tài sản & bàn giao",
+    "esign": "Thỏa thuận điện tử"
+  },
+  "adminDashboard": {
+    "kicker": "Bảng quản trị",
+    "title": "Quản trị GigBridge",
+    "subtitle": "Mở một khu vực quản lý. Số liệu chỉ hiển thị khi có API tổng hợp chuyên dụng.",
+    "descriptions": {
+      "dashboard": "Tổng quan quản trị và lối tắt", "users": "Xem hồ sơ, quyền truy cập, báo cáo và lịch sử xử lý", "jobs": "Xem bài đăng và trạng thái kiểm duyệt", "proposals": "Theo dõi vòng đời và kiểm duyệt đề xuất", "reports": "Xem báo cáo nội dung và tài khoản", "accountReports": "Điều tra báo cáo liên quan tài khoản", "contractReports": "Điều tra báo cáo thực hiện hợp đồng", "reviews": "Kiểm duyệt đánh giá và báo cáo liên quan", "assets": "Kiểm tra tài sản và tệp bàn giao", "contracts": "Kiểm tra hợp đồng, cột mốc và ký quỹ", "esign": "Xem trạng thái thỏa thuận và chữ ký điện tử", "withdrawals": "Xem và đối soát yêu cầu rút tiền", "disputes": "Giải quyết tranh chấp bằng chứng và tài chính", "faqs": "Quản lý nội dung trợ giúp công khai", "templates": "Quản lý mẫu hợp đồng tái sử dụng", "notifications": "Đăng và xem thông báo quản trị", "systemTracking": "Xem hoạt động quản trị thật và trạng thái nguồn vận hành"
+    }
+  },
   "common": {
     "search": "Tìm kiếm",
     "filter": "Lọc",
@@ -1168,6 +1183,10 @@
     "aiOptimizerSuccessMessage": "✓ Hồ sơ đã được tối ưu! Tiểu sử của bạn đã được cập nhật.",
     "withdrawalSettings": "Cài đặt rút tiền",
     "addPaymentMethod": "Thêm phương thức thanh toán",
+    "payoutAccounts": "Tài khoản ngân hàng nhận tiền",
+    "payoutAccountsDesc": "Tài khoản thêm ở đây sẽ có mặt tại trang Rút tiền để chọn khi tạo lệnh rút.",
+    "goToWithdrawals": "Đi tới trang rút tiền",
+    "payoutAccountsFreelancerOnly": "Tài khoản ngân hàng nhận tiền rút chỉ dành cho tài khoản Freelancer.",
     "default": "Mặc định",
     "remove": "Xóa",
     "basicInfo": "Thông tin cơ bản",
@@ -1258,7 +1277,10 @@
     "history": "Lịch Sử Giao Dịch",
     "addFunds": "Nạp Tiền",
     "amount": "Số Tiền",
-    "noTransactions": "Chưa có giao dịch"
+    "noTransactions": "Chưa có giao dịch",
+    "depositedBalance": "GigCoin Đã Nạp",
+    "depositedTooltip": "GigCoin đã nạp — không thể rút về tiền thật, chỉ dùng để thanh toán trong nền tảng",
+    "depositedCaption": "Không thể rút · chỉ dùng trong nền tảng"
   },
   "ai": {
     "assistant": "Trợ Lý AI",

@@ -41,6 +41,12 @@ const SettingsScreen = lazy(() => import('../features/settings/screens/SettingsS
 const AdminDashboardScreen = lazy(() => import('../features/admin/screens/AdminDashboardScreen'));
 const AdminUsersScreen = lazy(() => import('../features/admin/screens/AdminUsersScreen'));
 const AdminJobsScreen = lazy(() => import('../features/admin/screens/AdminJobsScreen'));
+const AdminProposalsScreen = lazy(() => import('../features/admin/screens/AdminProposalsScreen'));
+const AdminProposalDetailScreen = lazy(() => import('../features/admin/screens/AdminProposalDetailScreen'));
+const AdminAccountReportsScreen = lazy(() => import('../features/admin/screens/AdminAccountReportsScreen'));
+const AdminAccountReportDetailScreen = lazy(() => import('../features/admin/screens/AdminAccountReportDetailScreen'));
+const AdminContractReportsScreen = lazy(() => import('../features/admin/screens/AdminContractReportsScreen'));
+const AdminContractReportDetailScreen = lazy(() => import('../features/admin/screens/AdminContractReportDetailScreen'));
 const AdminSystemTrackingScreen = lazy(() => import('../features/admin/screens/AdminSystemTrackingScreen'));
 const AdminWithdrawalsScreen = lazy(() => import('../features/admin/screens/AdminWithdrawalsScreen'));
 const AdminAnalyticsScreen = lazy(() => import('../features/admin/screens/AdminAnalyticsScreen'));
@@ -185,6 +191,11 @@ function NavigateToProposalCreate() {
   return <Navigate to={getProposalCreatePath(jobPostId || '')} replace />;
 }
 
+function LegacyAdminUserDetailRedirect() {
+  const { userId = '' } = useParams<{ userId: string }>();
+  return <Navigate to={`/admin/users?preview=${encodeURIComponent(userId)}`} replace />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -288,7 +299,10 @@ export const router = createBrowserRouter([
       // Admin - requires authentication and admin role
       { path: 'admin', element: <AdminRoute><AdminDashboardScreen /></AdminRoute> },
       { path: 'admin/users', element: <AdminRoute><AdminUsersScreen /></AdminRoute> },
+      { path: 'admin/users/:userId', element: <AdminRoute><LegacyAdminUserDetailRedirect /></AdminRoute> },
       { path: 'admin/jobs', element: <AdminRoute><AdminJobsScreen /></AdminRoute> },
+      { path: 'admin/proposals', element: <AdminRoute><AdminProposalsScreen /></AdminRoute> },
+      { path: 'admin/proposals/:proposalId', element: <AdminRoute><AdminProposalDetailScreen /></AdminRoute> },
       { path: 'admin/contracts', element: <AdminRoute><AdminContractAuditScreen /></AdminRoute> },
       { path: 'admin/contracts/esign', element: <AdminRoute><ESignContractsScreen /></AdminRoute> },
       { path: 'admin/assets', element: <AdminRoute><AdminAssetsScreen /></AdminRoute> },
@@ -297,7 +311,12 @@ export const router = createBrowserRouter([
       { path: 'admin/faq-management', element: <AdminRoute><AdminFAQManagementScreen /></AdminRoute> },
       { path: 'admin/disputes', element: <AdminRoute><AdminDisputeManagementScreen /></AdminRoute> },
       { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
+      { path: 'admin/reports/accounts', element: <AdminRoute><AdminAccountReportsScreen /></AdminRoute> },
+      { path: 'admin/reports/accounts/:reportId', element: <AdminRoute><AdminAccountReportDetailScreen /></AdminRoute> },
+      { path: 'admin/reports/contracts', element: <AdminRoute><AdminContractReportsScreen /></AdminRoute> },
+      { path: 'admin/reports/contracts/:reportId', element: <AdminRoute><AdminContractReportDetailScreen /></AdminRoute> },
       { path: 'admin/reviews', element: <AdminRoute><AdminReviewsScreen /></AdminRoute> },
+      { path: 'admin/audit-logs', element: <AdminRoute><Navigate to="/admin/system-tracking" replace /></AdminRoute> },
       { path: 'admin/system-tracking', element: <AdminRoute><AdminSystemTrackingScreen /></AdminRoute> },
       { path: 'admin/withdrawals', element: <AdminRoute><AdminWithdrawalsScreen /></AdminRoute> },
       { path: 'admin/analytics', element: <AdminRoute><AdminAnalyticsScreen /></AdminRoute> },

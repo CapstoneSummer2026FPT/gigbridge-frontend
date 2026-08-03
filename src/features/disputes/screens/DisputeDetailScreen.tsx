@@ -7,6 +7,7 @@ import {
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractReportIssueType } from '../../../types/models/ReportContract';
 import {
@@ -176,7 +177,7 @@ export default function DisputeDetailScreen() {
                 </div>
                 <div className="dispute-detail-meta-grid">
                   <div><ShieldAlert size={17} /><span>Type and urgency</span><strong>{dispute.issueType === null ? 'Legacy dispute' : issueLabels[dispute.issueType]}</strong><small>{urgencyLabels[dispute.urgency]}</small></div>
-                  <div><User size={17} /><span>Initiator</span><strong>{dispute.initiator.name ?? 'Name unavailable'}</strong><small>{dispute.initiator.role ?? 'Role unavailable'}</small></div>
+                  <div><User size={17} /><span>Initiator</span><strong><UserProfileLink userId={dispute.initiator.id} role={dispute.initiator.role ?? undefined}>{dispute.initiator.name ?? 'Name unavailable'}</UserProfileLink></strong><small>{dispute.initiator.role ?? 'Role unavailable'}</small></div>
                   <div><FileText size={17} /><span>Milestone</span><strong>{dispute.milestone?.title ?? 'General contract dispute'}</strong>{dispute.milestone && <small>{dispute.milestone.id}</small>}</div>
                   <div><Calendar size={17} /><span>Created</span><strong>{formatDate(dispute.createdAt)}</strong><small>Updated: {formatDate(dispute.updatedAt)}</small></div>
                 </div>
@@ -247,7 +248,7 @@ export default function DisputeDetailScreen() {
                         {evidenceItems.length === 0 ? <p className="dispute-detail-muted">No evidence submitted by this party.</p> : evidenceItems.map(evidence => (
                           <div className="dispute-evidence-row" key={evidence.id}>
                             {evidenceIcon(evidence.fileName)}
-                            <div><strong>{evidence.fileName}</strong><span>{formatSize(evidence.fileSize)} · {formatDate(evidence.createdAt)}</span><span>Uploaded by {party?.name ?? role}</span>{evidence.description && <p>{evidence.description}</p>}</div>
+                            <div><strong>{evidence.fileName}</strong><span>{formatSize(evidence.fileSize)} · {formatDate(evidence.createdAt)}</span><span>Uploaded by {party ? <UserProfileLink userId={party.id} role={party.role ?? undefined}>{party.name ?? role}</UserProfileLink> : role}</span>{evidence.description && <p>{evidence.description}</p>}</div>
                             <button onClick={() => void downloadEvidence(evidence)} disabled={downloadingId !== null}>{downloadingId === evidence.id ? <LoaderCircle className="dispute-detail-spinner" size={17} /> : <Download size={17} />} Download</button>
                           </div>
                         ))}
