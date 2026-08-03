@@ -4,7 +4,6 @@ import type {
   CreateDraftJobPostResponse,
   CreateJobPostQuestionRequest,
   GenerateJobDescriptionRequest,
-  GenerateJobDescriptionResponse,
   GenerateJobDescriptionDetailsResponse,
   GenerateJobHiringPlanRequest,
   GenerateJobHiringPlanResponse,
@@ -39,15 +38,6 @@ export const jobPostAPI = {
     return apiService.post<JobPostQuestionDto>(`${jobPostsUrl}/${jobPostId}/questions`, data);
   },
 
-  generateAIDescription: async (
-    vettingQuestions: string[] | GenerateJobDescriptionRequest
-  ): Promise<ApiResponse<GenerateJobDescriptionResponse>> => {
-    const data = Array.isArray(vettingQuestions)
-      ? { vettingQuestions }
-      : vettingQuestions;
-
-    return apiService.post<GenerateJobDescriptionResponse>(`${jobPostsUrl}/ai/generate`, data);
-  },
 
   generateAIDetails: async (
     data: GenerateJobDescriptionRequest

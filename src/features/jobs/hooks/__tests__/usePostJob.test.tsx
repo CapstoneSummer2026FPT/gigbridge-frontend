@@ -46,7 +46,6 @@ vi.mock('../../../../api/jobAPI', () => ({
     getSkillsByCategory: vi.fn(),
     getMyJobPostById: vi.fn(),
     getJobPostQuestions: vi.fn(),
-    generateAIDescription: vi.fn(),
     generateAIDetails: vi.fn(),
     generateAIHiringPlan: vi.fn(),
     createDraftJobPost: vi.fn().mockResolvedValue({
@@ -524,7 +523,7 @@ describe('usePostJob hook skills conversion', () => {
       const planPromise = new Promise((resolve) => {
         resolvePlanPromise = resolve;
       });
-      vi.mocked(jobAPI.generateAIHiringPlan).mockImplementation(() => planPromise);
+      vi.mocked(jobAPI.generateAIHiringPlan).mockImplementation(() => planPromise as any);
       vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
 
       const mockPendingDetails = {

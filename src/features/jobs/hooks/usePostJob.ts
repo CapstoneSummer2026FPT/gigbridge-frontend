@@ -15,6 +15,7 @@ import {
   type SaveDraftJobPostRequest,
   type JobPostMilestonePlanDto,
   type JobPostAttachmentDto,
+  type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
   formatJobDuration,
