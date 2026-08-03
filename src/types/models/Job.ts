@@ -325,19 +325,6 @@ export interface GeneratedJobSkillDto {
   name: string;
 }
 
-export interface GenerateJobDescriptionResponse {
-  title: string;
-  majorId?: string | null;
-  majorName?: string | null;
-  categoryId?: string | null;
-  categoryName?: string | null;
-  majorCategoryId?: string | null;
-  skills: GeneratedJobSkillDto[];
-  customSkills: string[];
-  description: string;
-  questionRecruitment?: string[] | null;
-}
-
 export interface GenerateJobDescriptionDetailsResponse {
   title: string;
   majorId?: string | null;
