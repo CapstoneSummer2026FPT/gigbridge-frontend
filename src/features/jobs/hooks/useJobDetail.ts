@@ -260,7 +260,8 @@ export function useJobDetail() {
     if (role !== UserRole.Freelancer || !user) return;
     try {
       const response = await walletGetAPI.getMyWallet();
-      setGigcoinBalance(response.success && response.data ? response.data.availableTokens : null);
+      // Application cost is an in-platform payment, spendable from either pool.
+      setGigcoinBalance(response.success && response.data ? response.data.totalSpendableGigCoin : null);
     } catch {
       // non-critical — silently ignore
     }

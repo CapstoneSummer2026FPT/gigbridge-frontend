@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -380,7 +381,7 @@ export default function FreelancerContractScreen() {
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground font-semibold">
                               <span className="text-foreground flex items-center gap-1.5">
                                 <User size={13} className="text-muted-foreground" />
-                                {name}
+                                <UserProfileLink userId={contract.clientUserId} role="client">{name}</UserProfileLink>
                               </span>
                               <span className="h-3 w-px bg-border/60 hidden sm:inline" />
                               <span className="flex items-center gap-1.5">

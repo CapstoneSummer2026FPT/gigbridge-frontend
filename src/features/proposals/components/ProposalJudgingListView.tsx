@@ -4,6 +4,7 @@ import type { ProposalDto } from '../../../types/models/Proposal';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useTranslation } from '../../../hooks/useTranslation';
 
 interface ProposalJudgingListViewProps {
@@ -386,7 +387,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-bold text-base text-foreground truncate">
-                          {candidate.freelancerName || 'Freelancer'}
+                          <UserProfileLink userId={candidate.freelancerUserId} role="freelancer">{candidate.freelancerName || 'Freelancer'}</UserProfileLink>
                         </h3>
                         {candidate.aiRecommendedHire === true && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">

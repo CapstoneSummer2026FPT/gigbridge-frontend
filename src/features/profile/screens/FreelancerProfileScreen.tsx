@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router';
 import { Star, MapPin, ArrowLeft, Crown, Bookmark, BriefcaseBusiness, MoreVertical, Share2, Flag, ChevronLeft, ChevronRight, CheckCircle, Edit3 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
 import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
@@ -412,7 +413,7 @@ export default function FreelancerProfileScreen() {
                     {paginatedReviews.map(review => (
                       <div key={review.id} className="review-card p-6 rounded-2xl border border-outline-variant shadow-sm transition-all hover:shadow-md">
                         <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
+                          <UserProfileLink userId={review.reviewerId} role="client" disabled={review.isAnonymous} className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-headline-sm">
                               {review.isAnonymous ? 'A' : review.reviewerName.charAt(0)}
                             </div>
@@ -427,7 +428,7 @@ export default function FreelancerProfileScreen() {
                                 <p className="profile-review-project">{t('reviews.projectContext', { project: review.projectTitle })}</p>
                               )}
                             </div>
-                          </div>
+                          </UserProfileLink>
                           <div className="flex items-center text-yellow-500 bg-surface-container-lowest px-2 py-1 rounded-full border border-outline-variant">
                             {[...Array(5)].map((_, i) => (
                               <Star

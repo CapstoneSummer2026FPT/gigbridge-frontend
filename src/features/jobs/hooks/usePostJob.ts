@@ -799,7 +799,7 @@ export function usePostJob() {
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to generate hiring plan.');
       }
-      
+
       const planData = response.data;
       const rawMilestones = planData.milestones || (planData as any).milestonePlans || (planData as any).milestone_plans;
       const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
@@ -1519,6 +1519,7 @@ export function usePostJob() {
     isReviewModalOpen,
     pendingGeneratedDetails,
     isGeneratingPlan,
+    backgroundHiringPlanError,
     handleApproveDetails,
     handleCancelDetails,
   };

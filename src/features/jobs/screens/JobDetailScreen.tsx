@@ -11,6 +11,8 @@ import '../styles/job-detail-screen.css';
 import { GigCoinAmount, GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 
 export default function JobDetailScreen() {
   const { t } = useTranslation();
@@ -79,6 +81,8 @@ export default function JobDetailScreen() {
   // AI match gauge
   const matchScore = job.aiMatchScore ?? 0;
   const gR = 18, gC = 2 * Math.PI * gR, gOff = gC * (1 - matchScore / 100);
+  // Client profile navigation (client?.id is the userId resolved via getClientProfile)
+  const clientProfilePath = getProfilePath(client?.id ?? null, 'client');
 
   return (
     <AppLayout>
@@ -354,7 +358,7 @@ export default function JobDetailScreen() {
             {!isClientMode && (
               <div className="glass-card rounded-2xl p-5 jd-stagger jd-d4">
                 <h3 className="jd-section-title">{t('jobDetail.aboutClient')}</h3>
-                <div className="flex items-center gap-3 mb-4">
+                <UserProfileLink userId={client?.id} role="client" className="flex items-center gap-3 mb-4">
                   <div className="jd-avatar-ring">
                     <div className="jd-avatar-inner">{client?.fullName.charAt(0) || '?'}</div>
                   </div>
@@ -362,7 +366,7 @@ export default function JobDetailScreen() {
                     <p className="text-text-primary font-black text-sm truncate">{client?.fullName || 'Client'}</p>
                     <p className="text-[10px] text-text-muted font-medium truncate">{clientProfile?.companyName || 'Company not provided'}</p>
                   </div>
-                </div>
+                </UserProfileLink>
                 <div className="space-y-0.5">
                   {clientProfile?.industry && (
                     <div className="jd-client-row">
@@ -377,7 +381,7 @@ export default function JobDetailScreen() {
                     </div>
                   )}
                 </div>
-                <button className="jd-btn-secondary mt-3" onClick={() => navigate(`/profile/client/${client?.id || job.clientId}`)}>{t('jobDetail.viewClientProfile')}</button>
+                <button className="jd-btn-secondary mt-3" disabled={!clientProfilePath} onClick={() => clientProfilePath && navigate(clientProfilePath)}>{t('jobDetail.viewClientProfile')}</button>
               </div>
             )}
 

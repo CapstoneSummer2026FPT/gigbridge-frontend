@@ -4,6 +4,7 @@ import { reviewGetAPI } from '../../../api/reviewAPI/GET';
 import { reportAPI } from '../../../api/reportAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { ReportType } from '../../../types/models/Report';
 import {
   ReviewModerationStatus,
@@ -105,6 +106,7 @@ export default function MyReviewsScreen() {
           {reviews.map(review => {
             const counterpartyName = direction === 'received' ? review.reviewerName : review.revieweeName;
             const counterpartyRole = direction === 'received' ? review.reviewerRole : review.revieweeRole;
+            const counterpartyId = direction === 'received' ? review.reviewerId : review.revieweeId;
             const evaluatesFreelancer = review.revieweeRole === UserRole.Freelancer;
             const hidden = review.moderationStatus === ReviewModerationStatus.Hidden;
             return (
@@ -113,7 +115,7 @@ export default function MyReviewsScreen() {
                   <div className="review-history-project"><Briefcase size={17} /><div><small>{t('reviewManagement.project')}</small><strong>{review.projectTitle}</strong></div></div>
                   <div className="review-history-score"><Star fill="currentColor" size={19} />{review.rating.toFixed(1)}</div>
                 </div>
-                <div className="review-history-person"><UserRound size={17} /><span>{counterpartyName}</span><em>{counterpartyRole === UserRole.Freelancer ? t('reviewManagement.freelancer') : t('reviewManagement.client')}</em></div>
+                <div className="review-history-person"><UserRound size={17} /><span><UserProfileLink userId={counterpartyId} role={counterpartyRole} disabled={direction === 'received' && review.isAnonymous}>{counterpartyName}</UserProfileLink></span><em>{counterpartyRole === UserRole.Freelancer ? t('reviewManagement.freelancer') : t('reviewManagement.client')}</em></div>
                 <div className="review-history-ratings">
                   <RatingLine label={t('reviews.communication')} value={review.communicationRating} />
                   <RatingLine label={t(evaluatesFreelancer ? 'reviews.workQuality' : 'reviews.requirementClarity')} value={review.qualityRating} />

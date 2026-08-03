@@ -80,7 +80,7 @@ vi.mock('../../hooks/useProjectWorkspace', () => ({
 
 vi.mock('../../../../api/walletAPI/GET', () => ({
   walletGetAPI: {
-    getMyWallet: vi.fn().mockResolvedValue({ success: true, data: { availableTokens: 1000 } }),
+    getMyWallet: vi.fn().mockResolvedValue({ success: true, data: { totalSpendableGigCoin: 1000 } }),
   },
 }));
 
@@ -233,6 +233,7 @@ const mockWorkspaceHook = (options: {
     currentProjData: currentProject,
     partnerName: 'Freelancer',
     partnerAvatar: 'https://example.com/avatar.png',
+    partnerUserId: 'partner-user-1',
     partnerTitle: isClient ? 'Freelancer' : 'Client',
     partnerCompany: 'Workspace',
     isPartnerOnline: true,

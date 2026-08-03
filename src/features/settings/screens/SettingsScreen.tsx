@@ -10,6 +10,7 @@ import { CompanySize } from '../../../types/models/Profile';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { profilePutAPI } from '../../../api/profileAPI/PUT';
 import { authPostAPI } from '../../../api/authAPI/POST';
+import BankAccountManager from '../../wallet/components/BankAccountManager';
 
 type SettingsTab = 'profile' | 'security' | 'payment' | 'preferences';
 
@@ -450,22 +451,43 @@ export default function SettingsScreen() {
             )}
 
             {tab === 'payment' && (
-              <section className="glass-card space-y-5 p-6">
-                <div className="flex items-center gap-3">
-                  <CreditCard size={18} className="text-[var(--gb-cyan)]" />
-                  <div>
-                    <h2 className="font-semibold text-primary">{t('settings.payment')}</h2>
-                    <p className="mt-1 text-sm text-secondary">
-                      Payment accounts and transactions are managed by the secured Wallet flows.
-                    </p>
+              <div className="space-y-5">
+                <section className="glass-card space-y-5 p-6">
+                  <div className="flex items-center gap-3">
+                    <CreditCard size={18} className="text-[var(--gb-cyan)]" />
+                    <div>
+                      <h2 className="font-semibold text-primary">{t('settings.payment')}</h2>
+                      <p className="mt-1 text-sm text-secondary">
+                        Payment accounts and transactions are managed by the secured Wallet flows.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Link to="/wallet/deposit" className="btn-cyan px-4 py-2 text-sm">Deposit</Link>
-                  <Link to="/wallet/withdrawals" className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Withdrawal accounts</Link>
-                  <Link to="/wallet/history" className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Transaction history</Link>
-                </div>
-              </section>
+                  <div className="flex flex-wrap gap-3">
+                    <Link to="/wallet/deposit" className="btn-cyan px-4 py-2 text-sm">Deposit</Link>
+                    <Link to="/wallet/withdrawals" className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Withdrawal accounts</Link>
+                    <Link to="/wallet/history" className="rounded-lg border border-border px-4 py-2 text-sm font-semibold">Transaction history</Link>
+                  </div>
+                </section>
+
+                {role === UserRole.Freelancer && (
+                  <section className="glass-card space-y-4 p-6">
+                    <div>
+                      <h2 className="font-semibold text-primary">{t('settings.payoutAccounts')}</h2>
+                      <p className="mt-1 text-sm text-secondary">{t('settings.payoutAccountsDesc')}</p>
+                    </div>
+                    <BankAccountManager />
+                    <div className="flex flex-wrap gap-3">
+                      <Link to="/wallet/withdrawals" className="btn-cyan px-4 py-2 text-sm">{t('settings.goToWithdrawals')}</Link>
+                    </div>
+                  </section>
+                )}
+
+                {role !== UserRole.Freelancer && (
+                  <section className="glass-card p-6">
+                    <p className="text-sm text-secondary">{t('settings.payoutAccountsFreelancerOnly')}</p>
+                  </section>
+                )}
+              </div>
             )}
 
             {tab === 'preferences' && (

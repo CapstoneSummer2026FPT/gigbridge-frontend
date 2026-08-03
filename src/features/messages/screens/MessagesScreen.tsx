@@ -23,6 +23,8 @@ import {
   ContractReportStatus,
 } from '../../../types/models/ReportContract';
 import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import '../styles/messages-screen.css';
 
 const ROOM_COPY = {
@@ -243,6 +245,8 @@ export default function MessagesScreen() {
     clearSelectedReport();
   };
 
+  const activeConvProfilePath = getProfilePath(activeConv?.participantId ?? null, activeConv?.participantRole);
+
   const canNegotiateActiveJob = activeConv?.canNegotiate !== false;
   const jobDetailPath = activeConv
     ? isClient
@@ -355,7 +359,7 @@ export default function MessagesScreen() {
                             className={`msg-conv-item ${conv.id === activeConvId ? 'active' : ''}`}
                             onClick={() => handleSelectConv(conv.id)}
                           >
-                            <div className="relative flex-shrink-0">
+                            <UserProfileLink userId={conv.participantId} role={conv.participantRole} className="relative flex-shrink-0">
                               <img
                                 src={conv.participantAvatar}
                                 alt={conv.participantName}
@@ -364,10 +368,10 @@ export default function MessagesScreen() {
                               {conv.participantOnline && (
                                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
                               )}
-                            </div>
+                            </UserProfileLink>
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-baseline">
-                                <span className="text-sm font-semibold truncate">{conv.participantName}</span>
+                                <UserProfileLink userId={conv.participantId} role={conv.participantRole} className="text-sm font-semibold truncate">{conv.participantName}</UserProfileLink>
                                 <span className="text-[10px] text-muted-foreground ml-1 flex-shrink-0">
                                   {formatTime(conv.lastMessageAt)}
                                 </span>
@@ -413,7 +417,7 @@ export default function MessagesScreen() {
                 {/* Header info / Context of Job */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-card shadow-sm z-10 animate-in fade-in duration-200">
               <div className="flex items-center gap-3">
-                <div className="relative">
+                <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative">
                   <img
                     src={activeConv.participantAvatar}
                     alt={activeConv.participantName}
@@ -422,11 +426,11 @@ export default function MessagesScreen() {
                   {activeConv.participantOnline && (
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full shadow-sm" />
                   )}
-                </div>
+                </UserProfileLink>
                 <div className="flex flex-col">
-                  <span className="text-sm font-extrabold text-foreground tracking-tight leading-none" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif" }}>
-                    {activeConv.participantName}
-                  </span>
+                  <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="text-sm font-extrabold text-foreground tracking-tight leading-none" tooltip={activeConv.participantName}>
+                    <span style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif" }}>{activeConv.participantName}</span>
+                  </UserProfileLink>
                   
                   {/* Premium Job Pill */}
                   <div 
@@ -966,7 +970,7 @@ export default function MessagesScreen() {
             >
             {/* Profile */}
             <div className="p-6 text-center border-b border-border">
-              <div className="relative inline-block mb-4">
+              <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative inline-block mb-4">
                 <img
                   src={activeConv.participantAvatar}
                   alt={activeConv.participantName}
@@ -975,18 +979,20 @@ export default function MessagesScreen() {
                 {activeConv.participantOnline && (
                   <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-card rounded-full" />
                 )}
-              </div>
-              <h3 className="font-headline-md text-base font-bold">{activeConv.participantName}</h3>
+              </UserProfileLink>
+              <h3 className="font-headline-md text-base font-bold"><UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole}>{activeConv.participantName}</UserProfileLink></h3>
               <p className="text-xs text-muted-foreground mb-1">{activeConv.participantRole}</p>
               <p className="text-xs text-[var(--gb-cyan)] font-semibold mb-4">{activeConv.participantCompany}</p>
 
               <div className="flex justify-center gap-2">
+                {activeConvProfilePath && (
                 <button
-                  onClick={() => navigate(`/profile/client/${activeConv.participantId}`)}
+                  onClick={() => navigate(activeConvProfilePath)}
                   className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer border-none"
                 >
                   View Profile
                 </button>
+                )}
                 <button
                   onClick={() => setIsFavorited(!isFavorited)}
                   className={`text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider transition-all cursor-pointer border-none ${

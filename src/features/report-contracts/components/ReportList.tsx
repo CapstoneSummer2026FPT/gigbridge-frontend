@@ -5,6 +5,7 @@ import {
   ContractReportStatus,
 } from '../../../types/models/ReportContract';
 import { AlertCircle, Eye, FileText } from 'lucide-react';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import '../styles/report-contract.css';
 
 const ISSUE_TYPE_KEYS: Record<number, string> = {
@@ -72,7 +73,7 @@ export function ReportList({ reports, isLoading, currentUserId, onViewReport }: 
               </div>
               <div className="rc-list-item-meta">
                 <span>
-                  {t('workspace.reportReporter')}: {report.reporterName || t('common.unknown')}
+                  {t('workspace.reportReporter')}: <UserProfileLink userId={report.reporterId} role={report.reporterRole ?? undefined}>{report.reporterName || t('common.unknown')}</UserProfileLink>
                   {isReporter ? ` (${t('common.you')})` : ''}
                 </span>
                 <span className="rc-separator">•</span>

@@ -9,6 +9,7 @@ import type { ApiResponse } from '../../../types/common';
 import type { AdminUserDto, PaginatedUsersResponse } from '../../../types/models/User';
 import type { JobPostSummaryDto } from '../../../types/models/Job';
 import type { ProposalDto } from '../../../types/models/Proposal';
+import type { AdminAuditLog, PageResult } from '../../../types/models/AdminPhase1';
 import type { SystemTrackingSnapshot } from '../../../types/systemTracking';
 import { getSystemTrackingHubUrl } from '../../../service/apiService';
 import '../styles/admin-users-screen.css';
@@ -115,6 +116,28 @@ const toAuditLogs = (
     .filter(log => Boolean(log.timestamp))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 };
+
+const formatStructuredAuditValue = (value: unknown): string => {
+  if (value === undefined || value === null || value === '') return 'none';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const toBackendAuditLogs = (items: AdminAuditLog[]): AuditLog[] =>
+  items.map(item => ({
+    id: item.auditLogId || item.id || item.correlationId,
+    timestamp: item.createdAt,
+    userName: item.adminName || item.adminUserId || 'Admin',
+    action: item.action,
+    resource: [item.entityType, item.entityId].filter(Boolean).join(' ') || 'Platform',
+    ipAddress: '-',
+    userAgent: item.userAgent || 'GigBridge Admin',
+    details: `Before: ${formatStructuredAuditValue(item.oldValues)} · After: ${formatStructuredAuditValue(item.newValues)} · Correlation: ${item.correlationId || 'none'}`,
+  }));
 
 const toFailureLog = (service: string, url: string, response: ApiResponse<unknown>): ErrorLogEntry => ({
   id: `${service}_${Date.now()}`,
@@ -254,7 +277,7 @@ export default function AdminSystemTrackingScreen() {
       return response;
     };
 
-    const [usersResponse, jobsResponse, proposalsResponse] = await Promise.all([
+    const [usersResponse, jobsResponse, proposalsResponse, auditResponse] = await Promise.all([
       callTracked<PaginatedUsersResponse>(
         'admin-users',
         '/api/v1/admin/users',
@@ -270,13 +293,25 @@ export default function AdminSystemTrackingScreen() {
         '/api/Proposals/admin/all',
         () => proposalGetAPI.getAllProposals({ PageIndex: 1, PageSize: 200 })
       ),
+      callTracked<PageResult<AdminAuditLog>>(
+        'admin-audit-logs',
+        '/api/v1/admin/audit-logs',
+        () => adminGetAPI.getAuditLogs({ page: 1, pageSize: 200 })
+      ),
     ]);
 
     const users = usersResponse.data?.items || [];
     const jobs = jobsResponse.data || [];
     const proposals = proposalsResponse.data || [];
 
-    setAuditLogs(toAuditLogs(users, jobs, proposals));
+    // Prefer the persisted admin audit trail from our branch. The discovery-derived
+    // activity from the incoming implementation remains as a fallback when that
+    // endpoint is unavailable, so none of its original tracking coverage is lost.
+    setAuditLogs(
+      auditResponse.success && auditResponse.data
+        ? toBackendAuditLogs(auditResponse.data.items)
+        : toAuditLogs(users, jobs, proposals)
+    );
     setErrorLogs(failures);
     setAlerts(activeAlerts);
     setApiLogs(requestLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
@@ -339,6 +374,17 @@ export default function AdminSystemTrackingScreen() {
       return matchesSearch && matchesLevel;
     });
   }, [errorLogs, searchQuery, logLevelFilter]);
+
+  const filteredAuditLogs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return auditLogs;
+    return auditLogs.filter(log =>
+      log.action.toLowerCase().includes(query) ||
+      log.userName.toLowerCase().includes(query) ||
+      log.resource.toLowerCase().includes(query) ||
+      log.details.toLowerCase().includes(query)
+    );
+  }, [auditLogs, searchQuery]);
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter(alert => {
@@ -840,7 +886,7 @@ export default function AdminSystemTrackingScreen() {
 
               {/* Audit Logs List */}
               <div className="space-y-3">
-                {auditLogs.map(log => (
+                  {filteredAuditLogs.map(log => (
                   <div key={log.id} className="glass-card p-4 hover:bg-white/5 transition-all">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -864,7 +910,7 @@ export default function AdminSystemTrackingScreen() {
                     </div>
                   </div>
                 ))}
-                {!isLoadingTracking && auditLogs.length === 0 && (
+                  {!isLoadingTracking && filteredAuditLogs.length === 0 && (
                   <div className="glass-card text-center py-12">
                     <FileText size={48} className="mx-auto mb-4 text-muted" />
                     <p className="text-primary font-medium mb-2">No audit activity found</p>

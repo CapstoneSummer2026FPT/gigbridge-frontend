@@ -6,6 +6,7 @@ import type {
   FinancialOverviewResponse,
   WalletResponse,
   WalletTransactionResponse,
+  WalletTransactionsSummaryResponse,
   WithdrawalResponse,
   WithdrawalSettingsResponse,
   SupportedBankResponse,
@@ -28,6 +29,15 @@ export const walletGetAPI = {
    */
   getTransactions: async (limit = 50): Promise<ApiResponse<WalletTransactionResponse[]>> => {
     return apiService.get<WalletTransactionResponse[]>(`${walletUrl}/transactions`, { limit });
+  },
+
+  /**
+   * GET /api/wallet/transactions/summary
+   * Lifetime aggregates (all history, not capped at the 100-item list limit).
+   * Drives the /wallet/history stat cards.
+   */
+  getTransactionsSummary: async (): Promise<ApiResponse<WalletTransactionsSummaryResponse>> => {
+    return apiService.get<WalletTransactionsSummaryResponse>(`${walletUrl}/transactions/summary`);
   },
 
   /**

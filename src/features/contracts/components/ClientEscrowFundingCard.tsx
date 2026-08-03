@@ -56,7 +56,8 @@ export function ClientEscrowFundingCard({
         return;
       }
 
-      setWalletBalance(response.data.availableTokens);
+      // Funding escrow spends from both spendable pools (deposited first).
+      setWalletBalance(response.data.totalSpendableGigCoin);
     } catch {
       setWalletBalance(null);
       setWalletError(walletLoadFailedMessage);

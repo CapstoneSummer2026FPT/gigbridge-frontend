@@ -2,10 +2,15 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type { FAQCategoryDto, FAQDto, UpdateFAQCategoryPayload, UpdateFAQPayload } from '../../types/models/FAQ';
 import type { AdminUserDto, UpdateUserPayload } from '../../types/models/User';
+import type { AccountReportDetail, AccountReportResolutionAction, UserViolationType } from '../../types/models/AdminPhase1';
 
 const Admin_Api_Base_Url = '/admin';
 
 export const adminPutAPI = {
+  updateAccountReportStatus: (reportId: string, status: number, adminNote?: string): Promise<ApiResponse<AccountReportDetail>> =>
+    apiService.put(`/reports/admin/accounts/${reportId}/status`, { status, adminNote }),
+  resolveAccountReport: (reportId: string, payload: { action: AccountReportResolutionAction; violationType?: UserViolationType; reason: string; description?: string; adminNote?: string; suspendedUntil?: string }): Promise<ApiResponse<AccountReportDetail>> =>
+    apiService.put(`/reports/admin/accounts/${reportId}/resolve`, payload),
   /**
    * PUT /api/v1/admin/users
    * Updates an existing user identified by their email.

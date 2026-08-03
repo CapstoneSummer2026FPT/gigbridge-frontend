@@ -7,6 +7,7 @@ import {
   Mail, ShieldAlert, ListChecks, Copy, Check, ChevronDown, Star, LoaderCircle, RefreshCw,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { esignGetAPI } from '../../../api/esignAPI/GET';
@@ -977,53 +978,58 @@ export function ClientContractDetails({
                   {contract.clientProfile && (
                     <div>
                       <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">{t('contracts.clientYou')}</span>
-                      <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
-                        <img
-                          src={contract.clientProfile.profileImageUrl || '/img/avatar-fallback.png'}
-                          alt={contract.clientProfile.fullName}
-                          className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + (contract.clientProfile?.fullName || 'Client');
-                          }}
-                        />
-                        <div className="flex-1 min-width-0 space-y-1">
-                          <h4 className="text-sm font-bold text-foreground truncate">{contract.clientProfile.fullName}</h4>
-                          {contract.clientProfile.companyName && (
-                            <p className="text-[11px] text-muted-foreground font-semibold truncate">{contract.clientProfile.companyName}</p>
-                          )}
+                      <UserProfileLink userId={contract.clientUserId} role="client" className="block">
+                        <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
+                          <img
+                            src={contract.clientProfile.profileImageUrl || '/img/avatar-fallback.png'}
+                            alt={contract.clientProfile.fullName}
+                            className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + (contract.clientProfile?.fullName || 'Client');
+                            }}
+                          />
+                          <div className="flex-1 min-width-0 space-y-1">
+                            <h4 className="text-sm font-bold text-foreground truncate">{contract.clientProfile.fullName}</h4>
+                            {contract.clientProfile.companyName && (
+                              <p className="text-[11px] text-muted-foreground font-semibold truncate">{contract.clientProfile.companyName}</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </UserProfileLink>
                     </div>
                   )}
 
                   {contract.freelancerProfile && (
                     <div>
                       <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">{t('contracts.freelancer')}</span>
-                      <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
-                        <img
-                          src={contract.freelancerProfile.profileImageUrl || '/img/avatar-fallback.png'}
-                          alt={contract.freelancerProfile.fullName}
-                          className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + (contract.freelancerProfile?.fullName || 'Freelancer');
-                          }}
-                        />
-                        <div className="flex-1 min-width-0 space-y-1">
-                          <h4 className="text-sm font-bold text-foreground truncate">{contract.freelancerProfile.fullName}</h4>
-                          {contract.freelancerProfile.headline && (
-                            <p className="text-[11px] text-muted-foreground leading-snug font-medium line-clamp-2">{contract.freelancerProfile.headline}</p>
-                          )}
-                          {contract.freelancerProfile.email && (
-                            <a 
-                              href={`mailto:${contract.freelancerProfile.email}`} 
-                              className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
-                            >
-                              <Mail size={11} />
-                              {contract.freelancerProfile.email}
-                            </a>
-                          )}
+                      <UserProfileLink userId={contract.freelancerUserId} role="freelancer" className="block">
+                        <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
+                          <img
+                            src={contract.freelancerProfile.profileImageUrl || '/img/avatar-fallback.png'}
+                            alt={contract.freelancerProfile.fullName}
+                            className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + (contract.freelancerProfile?.fullName || 'Freelancer');
+                            }}
+                          />
+                          <div className="flex-1 min-width-0 space-y-1">
+                            <h4 className="text-sm font-bold text-foreground truncate">{contract.freelancerProfile.fullName}</h4>
+                            {contract.freelancerProfile.headline && (
+                              <p className="text-[11px] text-muted-foreground leading-snug font-medium line-clamp-2">{contract.freelancerProfile.headline}</p>
+                            )}
+                            {contract.freelancerProfile.email && (
+                              <a
+                                href={`mailto:${contract.freelancerProfile.email}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
+                              >
+                                <Mail size={11} />
+                                {contract.freelancerProfile.email}
+                              </a>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </UserProfileLink>
                     </div>
                   )}
                 </div>

@@ -10,6 +10,7 @@ import {
   Star, ShieldAlert, Edit3, XCircle, LoaderCircle, RefreshCw
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { ContractStatus, MilestoneStatus, type Milestone } from '../../../types/models/Contract';
@@ -475,7 +476,11 @@ export function FreelancerContractDetails({
                         </div>
                         <div className="bg-secondary/15 border border-border/25 rounded-2xl p-4">
                           <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">{t('contracts.parties')}</span>
-                          <span className="text-sm font-bold text-foreground mt-1 block">{contract.clientName || 'Client'} / {contract.freelancerName || 'Freelancer'}</span>
+                          <span className="text-sm font-bold text-foreground mt-1 block">
+                            <UserProfileLink userId={contract.clientUserId} role="client">{contract.clientName || 'Client'}</UserProfileLink>
+                            {' / '}
+                            <UserProfileLink userId={contract.freelancerUserId} role="freelancer">{contract.freelancerName || 'Freelancer'}</UserProfileLink>
+                          </span>
                         </div>
                       </div>
 
@@ -1038,62 +1043,68 @@ export function FreelancerContractDetails({
                   <div>
                     <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">{t('contracts.client')}</span>
                     <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
-                      <img
-                        src={clientAvatar}
-                        alt={clientName}
-                        className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(clientName)}`;
-                        }}
-                      />
-                      <div className="flex-1 min-width-0 space-y-1">
-                        <h4 className="text-sm font-bold text-foreground truncate">{clientName}</h4>
-                        {clientCompany && (
-                          <p className="text-[11px] text-muted-foreground font-semibold truncate">{clientCompany}</p>
-                        )}
-                        {clientEmail ? (
-                          <a
-                            href={`mailto:${clientEmail}`}
-                            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
-                          >
-                            <Mail size={11} />
-                            {clientEmail}
-                          </a>
-                        ) : (
-                          <p className="text-[10px] text-muted-foreground font-semibold">{t('contracts.emailNotAvailable')}</p>
-                        )}
-                      </div>
+                      <UserProfileLink userId={contract.clientUserId} role="client" className="flex items-start gap-3.5 flex-1 min-w-0">
+                        <img
+                          src={clientAvatar}
+                          alt={clientName}
+                          className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(clientName)}`;
+                          }}
+                        />
+                        <div className="flex-1 min-width-0 space-y-1">
+                          <h4 className="text-sm font-bold text-foreground truncate">{clientName}</h4>
+                          {clientCompany && (
+                            <p className="text-[11px] text-muted-foreground font-semibold truncate">{clientCompany}</p>
+                          )}
+                          {clientEmail ? (
+                            <a
+                              href={`mailto:${clientEmail}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
+                            >
+                              <Mail size={11} />
+                              {clientEmail}
+                            </a>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground font-semibold">{t('contracts.emailNotAvailable')}</p>
+                          )}
+                        </div>
+                      </UserProfileLink>
                     </div>
                   </div>
 
                   <div>
                     <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2.5">{t('contracts.freelancerYou')}</span>
                     <div className="bg-secondary/25 border border-border/30 rounded-2xl p-4 flex items-start gap-3.5 profile-avatar-halo">
-                      <img
-                        src={freelancerAvatar}
-                        alt={freelancerName}
-                        className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(freelancerName)}`;
-                        }}
-                      />
-                      <div className="flex-1 min-width-0 space-y-1">
-                        <h4 className="text-sm font-bold text-foreground truncate">{freelancerName}</h4>
-                        {freelancerHeadline && (
-                          <p className="text-[11px] text-muted-foreground leading-snug font-medium line-clamp-2">{freelancerHeadline}</p>
-                        )}
-                        {freelancerEmail ? (
-                          <a
-                            href={`mailto:${freelancerEmail}`}
-                            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
-                          >
-                            <Mail size={11} />
-                            {freelancerEmail}
-                          </a>
-                        ) : (
-                          <p className="text-[10px] text-muted-foreground font-semibold">{t('contracts.emailNotAvailable')}</p>
-                        )}
-                      </div>
+                      <UserProfileLink userId={contract.freelancerUserId} role="freelancer" className="flex items-start gap-3.5 flex-1 min-w-0">
+                        <img
+                          src={freelancerAvatar}
+                          alt={freelancerName}
+                          className="w-12 h-12 rounded-full border border-card shadow object-cover shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(freelancerName)}`;
+                          }}
+                        />
+                        <div className="flex-1 min-width-0 space-y-1">
+                          <h4 className="text-sm font-bold text-foreground truncate">{freelancerName}</h4>
+                          {freelancerHeadline && (
+                            <p className="text-[11px] text-muted-foreground leading-snug font-medium line-clamp-2">{freelancerHeadline}</p>
+                          )}
+                          {freelancerEmail ? (
+                            <a
+                              href={`mailto:${freelancerEmail}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-bold truncate max-w-full"
+                            >
+                              <Mail size={11} />
+                              {freelancerEmail}
+                            </a>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground font-semibold">{t('contracts.emailNotAvailable')}</p>
+                          )}
+                        </div>
+                      </UserProfileLink>
                     </div>
                   </div>
                 </div>

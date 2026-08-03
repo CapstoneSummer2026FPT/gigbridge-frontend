@@ -51,7 +51,7 @@ export default function ClientPricingScreen() {
       <div className="premium-eyebrow"><Crown size={16} /> Client Premium</div>
       <h1 className="premium-title">Hire with better signals and less manual work.</h1>
       <p className="premium-muted">Unlock deterministic talent matching, AI-assisted hiring, promoted job posts, AI interviews, and priority dispute handling.</p>
-      <div className="premium-balance"><Wallet size={18} /><span>Available balance</span><GigCoinAmount amount={wallet.data?.availableTokens || 0} /></div>
+      <div className="premium-balance"><Wallet size={18} /><span>Available balance</span><GigCoinAmount amount={wallet.data?.totalSpendableGigCoin || 0} /></div>
       {entitled && <button className="premium-button secondary" onClick={() => navigate('/premium/client')}>Open Premium hub</button>}
     </section>
 
@@ -84,9 +84,9 @@ export default function ClientPricingScreen() {
       <div className="premium-eyebrow"><GigCoinLogo size={18} /> Confirm GigCoin purchase</div>
       <h2>{selected.name}</h2>
       <div className="premium-row"><span>Plan price</span><GigCoinAmount amount={selected.price} /></div>
-      <div className="premium-row"><span>Current balance</span><GigCoinAmount amount={wallet.data?.availableTokens || 0} /></div>
-      {(wallet.data?.availableTokens || 0) < selected.price ? <div className="premium-notice"><AlertTriangle size={18} /><div><strong>Not enough GigCoin</strong><p className="premium-muted">Add GigCoin before purchasing this plan.</p></div></div> : <div className="premium-row"><span>Balance after purchase</span><GigCoinAmount amount={(wallet.data?.availableTokens || 0) - selected.price} /></div>}
-      <div className="premium-modal-actions"><button className="premium-button secondary" disabled={busy} onClick={() => setSelected(undefined)}>Go back</button>{(wallet.data?.availableTokens || 0) < selected.price ? <button className="premium-button" onClick={() => navigate('/wallet/deposit')}>Get GigCoin</button> : <button className="premium-button" disabled={busy} onClick={() => void purchase()}>{busy ? 'Purchasing…' : 'Confirm purchase'}</button>}</div>
+      <div className="premium-row"><span>Current balance</span><GigCoinAmount amount={wallet.data?.totalSpendableGigCoin || 0} /></div>
+      {(wallet.data?.totalSpendableGigCoin || 0) < selected.price ? <div className="premium-notice"><AlertTriangle size={18} /><div><strong>Not enough GigCoin</strong><p className="premium-muted">Add GigCoin before purchasing this plan.</p></div></div> : <div className="premium-row"><span>Balance after purchase</span><GigCoinAmount amount={(wallet.data?.totalSpendableGigCoin || 0) - selected.price} /></div>}
+      <div className="premium-modal-actions"><button className="premium-button secondary" disabled={busy} onClick={() => setSelected(undefined)}>Go back</button>{(wallet.data?.totalSpendableGigCoin || 0) < selected.price ? <button className="premium-button" onClick={() => navigate('/wallet/deposit')}>Get GigCoin</button> : <button className="premium-button" disabled={busy} onClick={() => void purchase()}>{busy ? 'Purchasing…' : 'Confirm purchase'}</button>}</div>
     </div></div>}
   </main></AppLayout>;
 }

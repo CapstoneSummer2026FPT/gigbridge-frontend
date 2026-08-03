@@ -37,6 +37,8 @@ interface WorkspaceProject {
   startDate?: string;
   clientId?: string;
   freelancerId?: string | null;
+  clientUserId?: string | null;
+  freelancerUserId?: string | null;
   milestones: WorkspaceMilestone[];
 }
 
@@ -45,6 +47,7 @@ interface WorkspaceProjectListItem {
   title: string;
   partnerName: string;
   partnerAvatar: string;
+  partnerUserId?: string | null;
   latestMessage: string;
   time: string;
   unread: boolean;
@@ -152,6 +155,8 @@ const buildProject = (contract: ContractDto, milestones: Milestone[]): Workspace
     startDate: contract.startDate,
     clientId: contract.clientProfilesId,
     freelancerId: contract.freelancerProfilesId,
+    clientUserId: contract.clientUserId,
+    freelancerUserId: contract.freelancerUserId,
     milestones: mappedMilestones,
   };
 };
@@ -164,6 +169,7 @@ const mapContractListItem = (contract: ContractDto, isClient: boolean): Workspac
     title: contract.jobTitle || contract.title,
     partnerName,
     partnerAvatar: getAvatarUrl(partnerName),
+    partnerUserId: isClient ? contract.freelancerUserId : contract.clientUserId,
     latestMessage: contract.status === ContractStatus.Active
       ? 'Workspace is open.'
       : contract.status === ContractStatus.Disputed
@@ -472,6 +478,9 @@ export function useProjectWorkspace(initialContractId: string) {
     titleLong: project.title,
     partnerName: activeContract ? getPartnerName(activeContract, isClient) : 'Partner',
     partnerAvatar: getAvatarUrl(activeContract ? getPartnerName(activeContract, isClient) : 'Partner'),
+    partnerUserId: activeContract
+      ? (isClient ? activeContract.freelancerUserId : activeContract.clientUserId)
+      : null,
     latestMessage: 'Workspace is open.',
     time: 'Just now',
     unread: false,
@@ -484,6 +493,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const partnerTitle = isClient ? 'Freelancer' : 'Client';
   const partnerCompany = activeContract ? activeContract.jobTitle || activeContract.title : '';
   const isPartnerOnline = currentProjData.online;
+  const partnerUserId = currentProjData.partnerUserId ?? null;
 
   const handleSendMessage = async (): Promise<void> => {
     if (isContractLocked(activeContract?.status) || !messageInput.trim() || !project.conversationId) return;
@@ -745,6 +755,7 @@ export function useProjectWorkspace(initialContractId: string) {
     partnerAvatar,
     partnerTitle,
     partnerCompany,
+    partnerUserId,
     isPartnerOnline,
     projectMessages,
     reviewPromptContractId,

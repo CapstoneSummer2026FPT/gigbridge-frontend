@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import {
   Search, Filter, Eye, Download, AlertCircle, CheckCircle2, Clock,
   ChevronDown, FileText, TrendingUp, AlertTriangle, BarChart3, Calendar, Edit, XCircle
@@ -31,6 +31,7 @@ interface ContractAuditData extends ContractDto {
 
 export default function AdminContractAuditScreen() {
   const navigate = useNavigate();
+  const [routeSearchParams] = useSearchParams();
 
   // State
   const [contracts, setContracts] = useState<ContractAuditData[]>([]);
@@ -60,6 +61,11 @@ export default function AdminContractAuditScreen() {
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
   const [showAtRiskOnly, setShowAtRiskOnly] = useState(false);
   const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const contractId = routeSearchParams.get('contractId');
+    if (contractId && contracts.some(contract => contract.contractsId === contractId)) setExpandedContractId(contractId);
+  }, [contracts, routeSearchParams]);
 
   const buildAuditContracts = (source: ContractDto[]): ContractAuditData[] =>
     source.map(c => ({
