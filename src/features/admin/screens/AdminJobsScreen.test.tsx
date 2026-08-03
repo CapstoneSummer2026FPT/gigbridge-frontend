@@ -1,10 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { JobPostStatus } from '../../../types/models/Job';
 
 const api = vi.hoisted(() => ({
   getAllJobPosts: vi.fn(),
+  getJobPostDetail: vi.fn(),
+  getAssets: vi.fn(),
+  getContracts: vi.fn(),
   lockJobPost: vi.fn(),
   deleteJobPost: vi.fn(),
 }));
@@ -23,9 +26,9 @@ vi.mock('../../../api/jobAPI/GET', () => ({
 }));
 vi.mock('../../../api/adminAPI', () => ({
   adminAPI: {
-    getJobPostDetail: vi.fn(),
-    getAssets: vi.fn(),
-    getContracts: vi.fn(),
+    getJobPostDetail: api.getJobPostDetail,
+    getAssets: api.getAssets,
+    getContracts: api.getContracts,
     getContractMilestones: vi.fn(),
     createMilestone: vi.fn(),
     updateMilestone: vi.fn(),
@@ -58,22 +61,31 @@ const cancelledJob = {
   skillNames: [],
 };
 
+const createListResponse = (
+  items = [cancelledJob],
+  totalItems = 26,
+  totalPages = 2,
+) => ({
+  success: true,
+  statusCode: 200,
+  message: 'Success',
+  data: {
+    items,
+    pageIndex: 1,
+    pageSize: 25,
+    totalItems,
+    totalPages,
+    stats: { total: totalItems, draft: 0, open: 0, closed: 0, cancelled: totalItems, locked: 0 },
+  },
+});
+
 describe('AdminJobsScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    api.getAllJobPosts.mockResolvedValue({
-      success: true,
-      statusCode: 200,
-      message: 'Success',
-      data: {
-        items: [cancelledJob],
-        pageIndex: 1,
-        pageSize: 25,
-        totalItems: 26,
-        totalPages: 2,
-        stats: { total: 30, draft: 4, open: 15, closed: 6, cancelled: 5, locked: 2 },
-      },
-    });
+    api.getAllJobPosts.mockResolvedValue(createListResponse());
+    api.getJobPostDetail.mockResolvedValue({ success: true, data: { title: 'Related job' } });
+    api.getAssets.mockResolvedValue({ success: true, data: [] });
+    api.getContracts.mockResolvedValue({ success: true, data: [] });
     api.lockJobPost.mockResolvedValue({
       success: true,
       statusCode: 200,
@@ -116,7 +128,7 @@ describe('AdminJobsScreen', () => {
     })));
   });
 
-  it('updates lock and delete actions locally without reloading the job list', async () => {
+  it('updates a lock action locally without reloading the job list', async () => {
     render(<MemoryRouter><AdminJobsScreen /></MemoryRouter>);
 
     await waitFor(() => expect(api.getAllJobPosts).toHaveBeenCalledTimes(1));
@@ -127,13 +139,61 @@ describe('AdminJobsScreen', () => {
 
     await waitFor(() => expect(api.lockJobPost).toHaveBeenCalledWith('job-cancelled'));
     expect(api.getAllJobPosts).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the requested job preview from the preview query parameter', async () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/jobs?preview=job-related']}>
+        <AdminJobsScreen />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(api.getJobPostDetail).toHaveBeenCalledWith('job-related'));
+    expect(screen.getByText('ADMIN PREVIEW')).toBeInTheDocument();
+  });
+
+  it('ignores a stale response after the sort changes', async () => {
+    let resolveFirst: (response: ReturnType<typeof createListResponse>) => void = () => undefined;
+    let resolveSecond: (response: ReturnType<typeof createListResponse>) => void = () => undefined;
+    const firstResponse = new Promise<ReturnType<typeof createListResponse>>(resolve => { resolveFirst = resolve; });
+    const secondResponse = new Promise<ReturnType<typeof createListResponse>>(resolve => { resolveSecond = resolve; });
+    api.getAllJobPosts
+      .mockImplementationOnce(() => firstResponse)
+      .mockImplementationOnce(() => secondResponse);
+
+    render(<MemoryRouter><AdminJobsScreen /></MemoryRouter>);
+    await waitFor(() => expect(api.getAllJobPosts).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'title' } });
+    await waitFor(() => expect(api.getAllJobPosts).toHaveBeenCalledTimes(2));
+
+    const currentJob = { ...cancelledJob, jobPostsId: 'job-current', title: 'Current sorted result' };
+    await act(async () => resolveSecond(createListResponse([currentJob], 1, 1)));
+    expect(screen.getAllByText('Current sorted result').length).toBeGreaterThan(0);
+
+    const staleJob = { ...cancelledJob, jobPostsId: 'job-stale', title: 'Stale result' };
+    await act(async () => resolveFirst(createListResponse([staleJob], 1, 1)));
+    expect(screen.queryByText('Stale result')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Current sorted result').length).toBeGreaterThan(0);
+  });
+
+  it('refetches after deletion to backfill the current page', async () => {
+    const backfilledJob = { ...cancelledJob, jobPostsId: 'job-backfilled', title: 'Backfilled job' };
+    api.getAllJobPosts
+      .mockResolvedValueOnce(createListResponse())
+      .mockResolvedValueOnce(createListResponse([backfilledJob], 25, 1));
+
+    render(<MemoryRouter><AdminJobsScreen /></MemoryRouter>);
+    await waitFor(() => expect(api.getAllJobPosts).toHaveBeenCalledTimes(1));
 
     fireEvent.click(screen.getAllByTitle('More Actions')[0]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Delete Job' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Delete Job' }));
 
     await waitFor(() => expect(api.deleteJobPost).toHaveBeenCalledWith('job-cancelled'));
-    expect(api.getAllJobPosts).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.getAllJobPosts).toHaveBeenCalledTimes(2));
+    expect(screen.getAllByText('Backfilled job').length).toBeGreaterThan(0);
     expect(screen.queryByText('Cancelled design job')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
   });
 });

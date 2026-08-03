@@ -378,7 +378,7 @@ function PremiumTrackingView({ premium }: { premium: PremiumAnalyticsResponse })
                 <dl className="analytics-promotion-detail-grid">
                   <div><dt>Promotion ID</dt><dd>{selected.promotionId}</dd></div>
                   <div><dt>Subject ID</dt><dd>{selected.subjectId}</dd></div>
-                  <div><dt>Owner</dt><dd><a href={`/admin/users?userId=${selected.ownerUserId}`}>{selected.ownerName}</a><br />{selected.ownerEmail}</dd></div>
+                  <div><dt>Owner</dt><dd><a href={`/admin/users?preview=${encodeURIComponent(selected.ownerUserId)}`}>{selected.ownerName}</a><br />{selected.ownerEmail}</dd></div>
                   <div><dt>Cost</dt><dd>{number.format(selected.tokenCost)} GigCoin</dd></div>
                   <div><dt>Performance</dt><dd>{selected.impressionCount.toLocaleString()} impressions · {selected.clickCount.toLocaleString()} clicks · {number.format(selected.clickThroughRate)}% CTR</dd></div>
                   <div><dt>Promotion period</dt><dd>{new Date(selected.startsAt).toLocaleString()} — {new Date(selected.endsAt).toLocaleString()}</dd></div>
@@ -509,7 +509,7 @@ function TransactionsView({
       </ChartPanel>
       <section className="analytics-panel"><header><h2>Wallet transaction ledger</h2><p>{data.filteredCount.toLocaleString()} matching rows · GigCoin and VND are never combined</p></header>
         <div className="analytics-table-wrap"><table><thead><tr><th>Occurred</th><th>User</th><th>Type</th><th>Direction</th><th>GigCoin</th><th>VND</th><th>Status</th><th>Revenue source</th></tr></thead><tbody>
-          {data.items.map(item => <tr key={item.id} tabIndex={0} onClick={() => setSelected(item)} onKeyDown={event => event.key === 'Enter' && setSelected(item)} className="analytics-clickable-row"><td>{new Date(item.occurredAt).toLocaleString()}</td><td><a href={`/admin/users?userId=${item.userId}`}>{item.userName}</a></td><td>{item.typeLabel}</td><td><span className={`analytics-direction ${item.direction.toLowerCase()}`}>{item.direction}</span></td><td>{number.format(item.gigCoinAmount)}</td><td>{money.format(item.vndAmount)} ₫</td><td>{item.statusLabel}</td><td>{item.revenueSource ?? '—'}</td></tr>)}
+          {data.items.map(item => <tr key={item.id} tabIndex={0} onClick={() => setSelected(item)} onKeyDown={event => event.key === 'Enter' && setSelected(item)} className="analytics-clickable-row"><td>{new Date(item.occurredAt).toLocaleString()}</td><td><a href={`/admin/users?preview=${encodeURIComponent(item.userId)}`}>{item.userName}</a></td><td>{item.typeLabel}</td><td><span className={`analytics-direction ${item.direction.toLowerCase()}`}>{item.direction}</span></td><td>{number.format(item.gigCoinAmount)}</td><td>{money.format(item.vndAmount)} ₫</td><td>{item.statusLabel}</td><td>{item.revenueSource ?? '—'}</td></tr>)}
         </tbody></table></div>
         {data.items.length === 0 ? <div className="analytics-empty">No transactions match the selected filters.</div> : null}
         <PaginationControls page={page} pageCount={pageCount} from={from} to={to} total={data.filteredCount} onPage={target => target < page ? onPrevious() : onNext()} canPrevious={page > 1} canNext={Boolean(data.nextCursor)} noun="transactions" />

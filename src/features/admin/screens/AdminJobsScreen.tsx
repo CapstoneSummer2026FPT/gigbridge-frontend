@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, FileText, CheckCircle, XCircle, AlertCircle, Trash2, FileQuestion, Download, ExternalLink, Award, MapPin, Clock8, Folder, Image, Film, File as FileIcon } from 'lucide-react';
@@ -79,6 +79,24 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
   visibility: job.visibility ?? undefined,
 });
 
+const createJobPreviewPlaceholder = (jobId: string): Job => ({
+  id: jobId,
+  clientId: '',
+  title: 'Job post',
+  description: '',
+  category: 'Uncategorized',
+  skills: [],
+  budgetMin: 0,
+  budgetMax: 0,
+  jobType: 'fixed',
+  status: 'draft',
+  proposalCount: 0,
+  viewCount: 0,
+  postedAt: '',
+  isRemote: true,
+  gigcoin_cost: 0,
+});
+
 export default function AdminJobsScreen() {
   const navigate = useNavigate();
   const [routeSearchParams, setRouteSearchParams] = useSearchParams();
@@ -132,8 +150,11 @@ export default function AdminJobsScreen() {
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: 'lock' | 'unlock' | 'delete', job: Job } | null>(null);
   const [isJobActionPending, setIsJobActionPending] = useState(false);
+  const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
+  const latestJobsRequestRef = useRef(0);
 
   const fetchJobs = async (forceSummary = false) => {
+    const requestId = ++latestJobsRequestRef.current;
     setIsLoadingJobs(true);
     setJobsError(null);
 
@@ -149,6 +170,8 @@ export default function AdminJobsScreen() {
       includeSummary,
       knownTotalItems: includeSummary ? undefined : totalItems,
     });
+
+    if (requestId !== latestJobsRequestRef.current) return;
 
     if (response.success && response.data) {
       if (response.data.totalPages > 0 && pageIndex > response.data.totalPages) {
@@ -180,7 +203,25 @@ export default function AdminJobsScreen() {
 
   useEffect(() => {
     void fetchJobs();
-  }, [pageIndex, debouncedSearchQuery, filterType, sortBy]);
+
+    return () => {
+      latestJobsRequestRef.current += 1;
+    };
+  }, [pageIndex, debouncedSearchQuery, filterType, sortBy, jobsRefreshKey]);
+
+  useEffect(() => {
+    if (!previewJobId) {
+      setPreviewJob(null);
+      return;
+    }
+
+    const requested = allJobs.find(job => job.id === previewJobId);
+    setPreviewJob(current => {
+      if (requested) return requested;
+      if (current?.id === previewJobId) return current;
+      return createJobPreviewPlaceholder(previewJobId);
+    });
+  }, [allJobs, previewJobId]);
 
   useEffect(() => {
     if (previewJob) {
@@ -452,6 +493,7 @@ export default function AdminJobsScreen() {
         setPageIndex(currentPage =>
           nextTotalPages > 0 && currentPage > nextTotalPages ? nextTotalPages : currentPage
         );
+        setJobsRefreshKey(current => current + 1);
         setConfirmAction(null);
         toast.success(response.message || 'Job deleted successfully');
       } else {
