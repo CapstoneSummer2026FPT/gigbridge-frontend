@@ -28,6 +28,15 @@ const report = {
   createdAt: '2026-08-01T00:00:00Z',
 };
 
+const userReport = {
+  ...report,
+  id: 'user-report-1',
+  reportedEntityId: 'user-1',
+  reportedEntityType: 'User',
+  reason: 'Harassing messages after a failed deal',
+  targetSummary: { title: 'User One', email: 'u@test.dev', role: 0 },
+};
+
 describe('AdminReportsScreen (report flow entry)', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -51,14 +60,31 @@ describe('AdminReportsScreen (report flow entry)', () => {
     expect(api.getAdminReports).toHaveBeenCalledTimes(1);
   });
 
-  it('routes into the Account and Contract report queues from the entry cards', async () => {
+  it('routes into the Contract Reports queue from the entry card', async () => {
     render(<MemoryRouter><AdminReportsScreen /></MemoryRouter>);
 
     await screen.findAllByText('Fraudulent job listing');
-    const account = screen.getByRole('link', { name: /Account Reports/i });
     const contract = screen.getByRole('link', { name: /Contract Reports/i });
-    expect(account).toHaveAttribute('href', '/admin/reports/accounts');
     expect(contract).toHaveAttribute('href', '/admin/reports/contracts');
+    expect(screen.queryByRole('link', { name: /Account Reports/i })).not.toBeInTheDocument();
+  });
+
+  it('links User reports to the account-enforcement detail screen', async () => {
+    api.getAdminReports.mockResolvedValue(ok({
+      items: [userReport],
+      page: 1,
+      pageSize: 10,
+      totalItems: 1,
+      totalPages: 1,
+    }));
+    render(<MemoryRouter><AdminReportsScreen /></MemoryRouter>);
+
+    expect(await screen.findAllByText('Harassing messages after a failed deal')).toHaveLength(2);
+    const detailLinks = screen.getAllByRole('link', { name: /Account enforcement/i });
+    expect(detailLinks.length).toBeGreaterThan(0);
+    for (const link of detailLinks) {
+      expect(link).toHaveAttribute('href', '/admin/reports/accounts/user-report-1');
+    }
   });
 
   it('shows the error banner and empty state when the report list fails', async () => {

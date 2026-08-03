@@ -296,8 +296,8 @@ export default function AdminReportsScreen() {
             <Flag size={20} className="text-red" />
             <span className="badge-red text-xs">Content Management</span>
           </div>
-          <h1 className="text-3xl font-black text-primary">Manage Reports</h1>
-          <p className="text-sm text-secondary mt-1">Review reports for users, job posts, and reviews.</p>
+          <h1 className="text-3xl font-black text-primary">Reports &amp; Account Reports</h1>
+          <p className="text-sm text-secondary mt-1">Review reports for accounts (users), job posts, and reviews. Account reports include enforcement.</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
@@ -319,13 +319,13 @@ export default function AdminReportsScreen() {
           ))}
         </div>
 
-        {/* Report flow entry — routes into the dedicated Account and Contract report queues */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-          {[getAdminManager('account-reports'), getAdminManager('contract-reports')].filter(Boolean).map(manager => manager && (
+        {/* Contract Reports are a separate queue — investigate contract execution reports */}
+        {(() => {
+          const manager = getAdminManager('contract-reports');
+          return manager && (
             <Link
-              key={manager.id}
               to={manager.path}
-              className="glass-card p-4 flex items-center gap-4 transition-all hover:border-cyan/40 hover:bg-white/5"
+              className="glass-card p-4 flex items-center gap-4 mb-8 transition-all hover:border-cyan/40 hover:bg-white/5"
             >
               <span className="w-10 h-10 shrink-0 rounded-lg bg-cyan/10 text-cyan flex items-center justify-center">
                 <manager.icon size={18} />
@@ -336,8 +336,8 @@ export default function AdminReportsScreen() {
               </span>
               <ChevronRight size={16} className="text-muted shrink-0" />
             </Link>
-          ))}
-        </div>
+          );
+        })()}
 
         {entityId && (
           <div className="glass-card p-3 mb-4 flex items-center justify-between gap-3">
@@ -420,6 +420,7 @@ export default function AdminReportsScreen() {
               <thead className="border-b border-primary">
                 <tr>
                   {['Target', 'Reporter', 'Reason', 'Status', 'Created', 'Actions'].map((heading) => (
+
                     <th key={heading} className="text-left p-4 text-xs font-semibold text-primary uppercase">{heading}</th>
                   ))}
                 </tr>
@@ -432,6 +433,14 @@ export default function AdminReportsScreen() {
                         <p className="text-sm font-semibold text-primary hover:text-cyan">{report.targetSummary?.title || report.reportedEntityId}</p>
                         <p className="text-xs text-secondary">{report.reportedEntityType}</p>
                       </button>
+                      {report.reportedEntityType === 'User' && (
+                        <Link
+                          to={`/admin/reports/accounts/${report.id}`}
+                          className="inline-block mt-1.5 text-xs font-medium text-cyan hover:text-cyan/80"
+                        >
+                          Account enforcement
+                        </Link>
+                      )}
                     </td>
                     <td className="p-4 min-w-44">
                       <p className="text-sm text-primary"><UserProfileLink userId={report.reporter.id} role={report.reporter.role}>{report.reporter.fullName}</UserProfileLink></p>
@@ -465,6 +474,11 @@ export default function AdminReportsScreen() {
               </div>
               <p className="text-sm text-primary mb-2">{report.reason}</p>
               <p className="text-xs text-secondary mb-4">Reported by <UserProfileLink userId={report.reporter.id} role={report.reporter.role}>{report.reporter.fullName}</UserProfileLink> · {formatDate(report.createdAt)}</p>
+              {report.reportedEntityType === 'User' && (
+                <Link to={`/admin/reports/accounts/${report.id}`} className="inline-block mb-3 text-xs font-medium text-cyan hover:text-cyan/80">
+                  Account enforcement
+                </Link>
+              )}
               <div className="mt-3">{renderActions(report)}</div>
             </div>
           ))}
@@ -532,6 +546,19 @@ export default function AdminReportsScreen() {
             {(selectedReport.status === ReportStatus.Pending || selectedReport.status === ReportStatus.Reviewing) && (
               <div className="mt-6 pt-5 border-t border-white/10">
                 {renderDetailActions(selectedReport)}
+              </div>
+            )}
+            {selectedReport.reportedEntityType === 'User' && (
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <Link
+                  to={`/admin/reports/accounts/${selectedReport.id}`}
+                  className="btn-cyan px-4 py-2 text-sm inline-flex items-center gap-2"
+                >
+                  Account enforcement <ChevronRight size={15} />
+                </Link>
+                <p className="text-xs text-secondary mt-2">
+                  Warn, suspend, or ban the reported account and review its violation history.
+                </p>
               </div>
             )}
           </div>
