@@ -9,7 +9,7 @@ import { jobAPI } from '../../../api/jobAPI';
 import { useApp } from '../../../app/providers/AppProvider';
 import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
 import { usePremiumStatus } from '../../premium/hooks';
-import { PostJobAiDrawer } from '../components/PostJobAiDrawer';
+import { PostJobAiInput } from '../components/PostJobAiInput';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
 import { usePostJob } from '../hooks/usePostJob';
@@ -22,7 +22,6 @@ export default function PostJobStepBasicInfo() {
   const { role } = useApp();
   const premium = usePremiumStatus(role);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showAiDrawer, setShowAiDrawer] = useState(false);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
   const [drafts, setDrafts] = useState<GetMyJobPostDto[]>([]);
   const [isDraftsLoading, setIsDraftsLoading] = useState(false);
@@ -43,7 +42,8 @@ export default function PostJobStepBasicInfo() {
     uploadAttachment, deleteAttachment,
     isGeneratingInstant, handleGenerateInstantJob,
     isReviewModalOpen, pendingGeneratedDetails, isGeneratingPlan,
-    handleApproveDetails, handleCancelDetails,
+    handleApproveDetails, handleCancelDetails, isInstantJobMode,
+    setIsInstantJobMode,
   } = usePostJob();
 
   const completionItems = [
@@ -80,15 +80,6 @@ export default function PostJobStepBasicInfo() {
 
   const overlay = (
     <>
-      <PostJobAiDrawer
-        isOpen={showAiDrawer}
-        isPremium={premium.isPremium}
-        isLoading={isGeneratingInstant}
-        onClose={() => setShowAiDrawer(false)}
-        onGenerate={handleGenerateInstantJob}
-        onUpgrade={() => navigate('/premium/client/pricing')}
-      />
-
       {isDraftModalOpen && (
         <div className="fixed inset-0 z-[90] grid place-items-center bg-black/55 p-4 backdrop-blur-sm" onClick={() => setIsDraftModalOpen(false)}>
           <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" onClick={event => event.stopPropagation()}>
@@ -104,7 +95,7 @@ export default function PostJobStepBasicInfo() {
               {draftsError && <p className="rounded-xl bg-red-500/10 p-3 text-sm text-red-500">{draftsError}</p>}
               {!isDraftsLoading && !draftsError && drafts.length === 0 && (
                 <div className="rounded-xl border border-dashed border-border p-8 text-center">
-                  <FileText className="mx-auto mb-2 text-muted-foreground" />
+                   <FileText className="mx-auto mb-2 text-muted-foreground" />
                   <strong>{t('postJob.noDrafts')}</strong>
                   <p className="mt-1 text-xs text-muted-foreground">{t('postJob.noDraftsDesc')}</p>
                 </div>
@@ -182,9 +173,11 @@ export default function PostJobStepBasicInfo() {
           <button type="button" className="job-post-button job-post-button--secondary" onClick={loadDrafts}>
             <FileText size={15} />{t('postJob.continueDraft')}
           </button>
-          <button type="button" className="job-post-button job-post-button--primary" onClick={() => setShowAiDrawer(true)}>
-            <Sparkles size={15} />{t('postJobWizard.ai.open')}
-          </button>
+          {!isInstantJobMode && (
+            <button type="button" className="job-post-button job-post-button--primary" onClick={() => setIsInstantJobMode(true)}>
+              <Sparkles size={15} />{t('postJobWizard.ai.open')}
+            </button>
+          )}
         </div>
       )}
       secondaryAction={(
@@ -197,6 +190,17 @@ export default function PostJobStepBasicInfo() {
           {renderSubmitLabel('plan', t('postJobWizard.continuePlan'))}
         </button>
       )}
+      promptInput={
+        isInstantJobMode && (
+          <PostJobAiInput
+            isPremium={premium.isPremium}
+            isLoading={isGeneratingInstant}
+            onGenerate={handleGenerateInstantJob}
+            onUpgrade={() => navigate('/premium/client/pricing')}
+            onClose={() => setIsInstantJobMode(false)}
+          />
+        )
+      }
       overlay={overlay}
     >
       <section className="job-post-section">

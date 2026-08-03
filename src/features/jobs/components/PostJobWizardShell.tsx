@@ -27,6 +27,7 @@ interface Props {
   onRetryAutosave?: () => void;
   children: ReactNode;
   overlay?: ReactNode;
+  promptInput?: ReactNode;
 }
 
 export function PostJobWizardShell({
@@ -49,87 +50,95 @@ export function PostJobWizardShell({
   onRetryAutosave,
   children,
   overlay,
+  promptInput,
 }: Props) {
   const { t } = useTranslation('common');
   const completedSteps = Array.from({ length: currentStep - 1 }, (_, index) => index + 1);
 
   return (
-    <AppLayout>
-      <div className="job-post-wizard">
-        <div className="job-post-wizard__mobile-progress">
-          <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />
-        </div>
-
-        <header className="job-post-wizard__header">
-          <div>
-            <span className="job-post-wizard__eyebrow">
-              {t('postJobWizard.stepOf', { current: currentStep, total: 3 })}
-            </span>
-            <h1>{title}</h1>
-            <p>{subtitle}</p>
+    <>
+      <AppLayout>
+        <div className="job-post-wizard">
+          <div className="job-post-wizard__mobile-progress">
+            <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />
           </div>
-          {headerAction}
-        </header>
 
-        {errorMessage && (
-          <div className="job-post-wizard__alert" role="alert">
-            <AlertCircle size={17} />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="job-post-wizard__notice">
-            <RefreshCw size={16} className="animate-spin" />
-            {t('postJob.loadingDraft')}
-          </div>
-        )}
-
-        <div className="job-post-wizard__layout">
-          <main className="job-post-wizard__main">{children}</main>
-
-          <aside className="job-post-wizard__sidebar" aria-label={t('postJobWizard.summary')}>
-            <div className="job-post-wizard__sidebar-card">
-              <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />
+          <header className="job-post-wizard__header">
+            <div>
+              <span className="job-post-wizard__eyebrow">
+                {t('postJobWizard.stepOf', { current: currentStep, total: 3 })}
+              </span>
+              <h1>{title}</h1>
+              <p>{subtitle}</p>
             </div>
+            {headerAction}
+          </header>
 
-            <div className="job-post-wizard__sidebar-card">
-              <span className="job-post-wizard__side-label">{t('postJobWizard.draft')}</span>
-              <strong className="job-post-wizard__draft-title">{previewTitle}</strong>
-              <div className={`job-post-wizard__save-state is-${autosaveStatus}`}>
-                {autosaveStatus === 'saved' ? <CheckCircle2 size={14} /> : <Cloud size={14} />}
-                <span>{t(`postJobWizard.autosave.${autosaveStatus}`)}</span>
-                {autosaveStatus === 'error' && onRetryAutosave && (
-                  <button type="button" onClick={onRetryAutosave}>{t('postJob.retry')}</button>
-                )}
+          {errorMessage && (
+            <div className="job-post-wizard__alert" role="alert">
+              <AlertCircle size={17} />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="job-post-wizard__notice">
+              <RefreshCw size={16} className="animate-spin" />
+              {t('postJob.loadingDraft')}
+            </div>
+          )}
+
+          <div className="job-post-wizard__layout">
+            <main className="job-post-wizard__main">{children}</main>
+
+            <aside className="job-post-wizard__sidebar" aria-label={t('postJobWizard.summary')}>
+              <div className="job-post-wizard__sidebar-card">
+                <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />
               </div>
-              {autosaveError && <small className="job-post-wizard__save-error">{autosaveError}</small>}
-            </div>
 
-            <div className="job-post-wizard__sidebar-card">
-              <div className="job-post-wizard__completion-copy">
-                <span>{t('postJobWizard.completion')}</span>
-                <strong>{Math.round(completion)}%</strong>
+              <div className="job-post-wizard__sidebar-card">
+                <span className="job-post-wizard__side-label">{t('postJobWizard.draft')}</span>
+                <strong className="job-post-wizard__draft-title">{previewTitle}</strong>
+                <div className={`job-post-wizard__save-state is-${autosaveStatus}`}>
+                  {autosaveStatus === 'saved' ? <CheckCircle2 size={14} /> : <Cloud size={14} />}
+                  <span>{t(`postJobWizard.autosave.${autosaveStatus}`)}</span>
+                  {autosaveStatus === 'error' && onRetryAutosave && (
+                    <button type="button" onClick={onRetryAutosave}>{t('postJob.retry')}</button>
+                  )}
+                </div>
+                {autosaveError && <small className="job-post-wizard__save-error">{autosaveError}</small>}
               </div>
-              <div className="job-post-wizard__completion-track"><span style={{ width: `${completion}%` }} /></div>
-              <dl className="job-post-wizard__stats">
-                <div><dt><CircleDollarSign size={14} />{t('postJobWizard.budget')}</dt><dd>{budget.toLocaleString()} G-coin</dd></div>
-                <div><dt>{t('postJobWizard.milestones')}</dt><dd>{milestoneCount}</dd></div>
-                <div><dt>{t('postJobWizard.questions')}</dt><dd>{questionCount}</dd></div>
-              </dl>
-            </div>
-          </aside>
-        </div>
 
-        <footer className="job-post-wizard__footer">
-          <div>{backAction}</div>
-          <div className="job-post-wizard__footer-actions">
-            {secondaryAction}
-            {primaryAction}
+              <div className="job-post-wizard__sidebar-card">
+                <div className="job-post-wizard__completion-copy">
+                  <span>{t('postJobWizard.completion')}</span>
+                  <strong>{Math.round(completion)}%</strong>
+                </div>
+                <div className="job-post-wizard__completion-track"><span style={{ width: `${completion}%` }} /></div>
+                <dl className="job-post-wizard__stats">
+                  <div><dt><CircleDollarSign size={14} />{t('postJobWizard.budget')}</dt><dd>{budget.toLocaleString()} G-coin</dd></div>
+                  <div><dt>{t('postJobWizard.milestones')}</dt><dd>{milestoneCount}</dd></div>
+                  <div><dt>{t('postJobWizard.questions')}</dt><dd>{questionCount}</dd></div>
+                </dl>
+              </div>
+
+              <div className="job-post-wizard__sidebar-actions">
+                {primaryAction}
+                {secondaryAction}
+                {backAction}
+              </div>
+            </aside>
           </div>
-        </footer>
-      </div>
+
+          {promptInput && (
+            <footer className="job-post-wizard__footer">
+              {promptInput}
+            </footer>
+          )}
+        </div>
+      </AppLayout>
       {overlay}
-    </AppLayout>
+    </>
   );
 }
+
