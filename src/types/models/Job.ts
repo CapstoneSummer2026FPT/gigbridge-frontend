@@ -89,6 +89,12 @@ export interface JobPostQueryParams {
   PageSize?: number;
   pageIndex?: number;
   pageSize?: number;
+  search?: string;
+  status?: JobPostStatus | number;
+  sortBy?: 'newest' | 'title' | 'budgetMin' | 'budgetMax';
+  sortDesc?: boolean;
+  includeSummary?: boolean;
+  knownTotalItems?: number;
 }
 
 export interface JobPostSummaryDto {
@@ -115,6 +121,24 @@ export interface JobPostSummaryDto {
   featuredUntil?: string | null;
   isAiGenerated?: boolean;
   hasAiInterview?: boolean;
+}
+
+export interface AdminJobPostStatsDto {
+  total: number;
+  draft: number;
+  open: number;
+  closed: number;
+  cancelled: number;
+  locked: number;
+}
+
+export interface AdminJobPostListResponse {
+  items: JobPostSummaryDto[];
+  pageIndex: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  stats?: AdminJobPostStatsDto | null;
 }
 
 export interface GetMyJobPostSkillDto {

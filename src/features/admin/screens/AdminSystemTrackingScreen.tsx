@@ -7,7 +7,7 @@ import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import type { ApiResponse } from '../../../types/common';
 import type { AdminUserDto, PaginatedUsersResponse } from '../../../types/models/User';
-import type { JobPostSummaryDto } from '../../../types/models/Job';
+import type { AdminJobPostListResponse, JobPostSummaryDto } from '../../../types/models/Job';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import type { SystemTrackingSnapshot } from '../../../types/systemTracking';
 import { getSystemTrackingHubUrl } from '../../../service/apiService';
@@ -260,10 +260,10 @@ export default function AdminSystemTrackingScreen() {
         '/api/v1/admin/users',
         () => adminGetAPI.getUsers({ Page: 1, PageSize: 200 })
       ),
-      callTracked<JobPostSummaryDto[]>(
+      callTracked<AdminJobPostListResponse>(
         'job-posts',
         '/api/JobPosts/admin/all',
-        () => jobGetAPI.getAllJobPosts({ PageIndex: 1, PageSize: 200 })
+        () => jobGetAPI.getAllJobPosts({ pageIndex: 1, pageSize: 100 })
       ),
       callTracked<ProposalDto[]>(
         'proposals',
@@ -273,7 +273,7 @@ export default function AdminSystemTrackingScreen() {
     ]);
 
     const users = usersResponse.data?.items || [];
-    const jobs = jobsResponse.data || [];
+    const jobs = jobsResponse.data?.items || [];
     const proposals = proposalsResponse.data || [];
 
     setAuditLogs(toAuditLogs(users, jobs, proposals));
