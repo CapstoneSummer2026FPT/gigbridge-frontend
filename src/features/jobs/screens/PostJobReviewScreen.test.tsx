@@ -87,6 +87,10 @@ vi.mock('../components/PostJobLeavePrompt', () => ({
   PostJobLeavePrompt: () => null,
 }));
 
+vi.mock('../components/PostJobBudgetExceededPrompt', () => ({
+  PostJobBudgetExceededPrompt: () => null,
+}));
+
 const buildHookValue = () => ({
   form: {
     title: 'Client onboarding portal',
@@ -193,6 +197,9 @@ const buildHookValue = () => ({
   retryAutosave: vi.fn(),
   navigateWizard: mockNavigateWizard,
   flushAutosave: mockFlushAutosave,
+  isBudgetExceededPromptOpen: false,
+  handleBudgetExceededConfirm: vi.fn(),
+  handleBudgetExceededCancel: vi.fn(),
 });
 
 describe('PostJobReviewScreen', () => {

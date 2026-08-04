@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Check, CheckCircle2, CircleDollarSign, Clock3, FileQuestion, FileText, Images, ListChecks, LoaderCircle, Pencil, Save, Tags } from 'lucide-react';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { JobPostVisibility } from '../../../types/models/Job';
+import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import {
   PostJobHiringPlanReviewEditor,
@@ -32,6 +33,7 @@ export default function PostJobReviewScreen() {
     handleLeaveSaveDraft, handleLeaveDiscardDraft, cancelBlockedNavigation,
     submitDraftFlow, renderSubmitLabel, retryAutosave, navigateWizard,
     flushAutosave,
+    isBudgetExceededPromptOpen, handleBudgetExceededConfirm, handleBudgetExceededCancel,
   } = controller;
   const [editingSection, setEditingSection] = useState<PostJobReviewSection | null>(null);
   const [isFinishingEdit, setIsFinishingEdit] = useState(false);
@@ -137,13 +139,22 @@ export default function PostJobReviewScreen() {
         </button>
       )}
       overlay={(
-        <PostJobLeavePrompt
-          isOpen={isLeavePromptOpen}
-          leaveAction={leaveAction}
-          onSaveDraft={handleLeaveSaveDraft}
-          onDiscardDraft={handleLeaveDiscardDraft}
-          onCancel={cancelBlockedNavigation}
-        />
+        <>
+          <PostJobLeavePrompt
+            isOpen={isLeavePromptOpen}
+            leaveAction={leaveAction}
+            onSaveDraft={handleLeaveSaveDraft}
+            onDiscardDraft={handleLeaveDiscardDraft}
+            onCancel={cancelBlockedNavigation}
+          />
+          <PostJobBudgetExceededPrompt
+            isOpen={isBudgetExceededPromptOpen}
+            total={formatGigCoin(milestonePlanTotal)}
+            expected={formatGigCoin(Number(form.budget) || 0)}
+            onConfirm={handleBudgetExceededConfirm}
+            onCancel={handleBudgetExceededCancel}
+          />
+        </>
       )}
     >
       <section className="job-post-section">
