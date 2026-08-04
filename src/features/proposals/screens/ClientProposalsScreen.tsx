@@ -4,10 +4,7 @@ import {
   ArrowLeft,
   Brain,
   Check,
-  ChevronDown,
-  ChevronRight,
   CircleDollarSign,
-  Eye,
   FileSearch,
   Filter,
   LayoutList,
@@ -20,14 +17,10 @@ import {
   X,
   FileText,
   FileQuestion,
-  Briefcase,
-  CheckCircle2,
-  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
-import { MarkdownPreview } from '../../../shared/components/MarkdownEditor';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,7 +55,6 @@ import ClientProposalJobSidebar, {
 
 type SortBy = 'submittedAt' | 'status' | 'budget' | 'duration' | 'milestoneTotal';
 type BusyAction = 'shortlist' | 'reject' | 'accept' | 'open';
-type DetailTab = 'overview' | 'plan' | 'screening';
 
 const actionKey = (id: string, action: BusyAction) => `${id}:${action}`;
 
@@ -127,7 +119,6 @@ export default function ClientProposalsScreen() {
   const [evalResult, setEvalResult] = useState<VettingEvaluationResponseDto | null>(null);
   const [evalError, setEvalError] = useState('');
   const [modalTab, setModalTab] = useState<'userAnswers' | 'proposalDetails' | 'aiReport'>('userAnswers');
-  const [message, setMessage] = useState('');
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [rejectProposalId, setRejectProposalId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -142,7 +133,6 @@ export default function ClientProposalsScreen() {
   const [submittedFrom, setSubmittedFrom] = useState('');
   const [submittedTo, setSubmittedTo] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'aiJudging'>('table');
-  const [searchTerm, setSearchTerm] = useState('');
 
   const stats = useMemo(() => {
     const totalCount = proposals.length;
@@ -169,7 +159,7 @@ export default function ClientProposalsScreen() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedJobId, statusFilter, sortBy, budgetMin, budgetMax, durationMax, milestoneMin, milestoneMax, submittedFrom, submittedTo, viewMode, searchTerm]);
+  }, [selectedJobId, statusFilter, sortBy, budgetMin, budgetMax, durationMax, milestoneMin, milestoneMax, submittedFrom, submittedTo, viewMode]);
 
   const refreshProposals = () => {
     if (!selectedJobId) return;
@@ -298,12 +288,6 @@ export default function ClientProposalsScreen() {
       const submitted = new Date(item.submittedAt || 0).getTime();
       if (from !== null && submitted < from) return false;
       if (to !== null && submitted > to) return false;
-      if (searchTerm.trim() !== '') {
-        const term = searchTerm.toLowerCase();
-        const nameMatch = (item.freelancerName || '').toLowerCase().includes(term);
-        const letterMatch = (item.coverLetter || '').toLowerCase().includes(term);
-        if (!nameMatch && !letterMatch) return false;
-      }
       return true;
     });
 
@@ -472,21 +456,22 @@ export default function ClientProposalsScreen() {
         if (hasAnswers) {
           const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, true).catch(() => null);
           if (evalRes && evalRes.success && evalRes.data) {
-            setEvalResult(evalRes.data);
+            const evaluation = evalRes.data;
+            setEvalResult(evaluation);
             setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
               ...p,
-              aiScore: evalRes.data.score,
-              aiSummary: evalRes.data.summary,
-              aiRecommendedHire: evalRes.data.recommendedHire,
-              aiTechnicalSkills: evalRes.data.technicalSkills,
-              aiSoftSkills: evalRes.data.softSkills,
+              aiScore: evaluation.score,
+              aiSummary: evaluation.summary,
+              aiRecommendedHire: evaluation.recommendedHire,
+              aiTechnicalSkills: evaluation.technicalSkills,
+              aiSoftSkills: evaluation.softSkills,
               aiEvaluatedAt: new Date().toISOString()
             } : p));
           }
         }
       }
-    } catch (err: any) {
-      setEvalError(err.message || 'An error occurred during evaluation.');
+    } catch (err: unknown) {
+      setEvalError(err instanceof Error ? err.message : 'An error occurred during evaluation.');
     } finally {
       setEvalLoading(false);
     }
@@ -498,21 +483,22 @@ export default function ClientProposalsScreen() {
       setEvalError('');
       const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, false);
       if (evalRes && evalRes.success && evalRes.data) {
-        setEvalResult(evalRes.data);
+        const evaluation = evalRes.data;
+        setEvalResult(evaluation);
         setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
           ...p,
-          aiScore: evalRes.data.score,
-          aiSummary: evalRes.data.summary,
-          aiRecommendedHire: evalRes.data.recommendedHire,
-          aiTechnicalSkills: evalRes.data.technicalSkills,
-          aiSoftSkills: evalRes.data.softSkills,
+          aiScore: evaluation.score,
+          aiSummary: evaluation.summary,
+          aiRecommendedHire: evaluation.recommendedHire,
+          aiTechnicalSkills: evaluation.technicalSkills,
+          aiSoftSkills: evaluation.softSkills,
           aiEvaluatedAt: new Date().toISOString()
         } : p));
       } else {
         setEvalError(evalRes.message || 'Failed to evaluate proposal.');
       }
-    } catch (err: any) {
-      setEvalError(err.message || 'An error occurred during evaluation.');
+    } catch (err: unknown) {
+      setEvalError(err instanceof Error ? err.message : 'An error occurred during evaluation.');
     } finally {
       setEvalLoading(false);
     }
@@ -601,7 +587,6 @@ export default function ClientProposalsScreen() {
                 proposals={proposals}
                 loading={loading}
                 onSelectProposal={id => openProposalModal(id, 'aiReport')}
-                onOpenAiReport={id => openProposalModal(id, 'aiReport')}
                 onShortlist={id => updateStatus(id, ProposalStatus.Shortlisted, 'shortlist')}
                 onStartNegotiation={id => acceptForNegotiation(id)}
                 onReject={id => updateStatus(id, ProposalStatus.Rejected, 'reject')}
@@ -969,6 +954,8 @@ export default function ClientProposalsScreen() {
                   <div className="space-y-6">
                     {detailLoading ? (
                       <div className="py-10 text-center text-sm text-muted-foreground">Loading proposal details...</div>
+                    ) : detailError ? (
+                      <div role="alert" className="py-10 text-center text-sm text-rose-600 dark:text-rose-400">{detailError}</div>
                     ) : !detail ? (
                       <div className="py-10 text-center text-sm text-muted-foreground">No proposal details available.</div>
                     ) : (

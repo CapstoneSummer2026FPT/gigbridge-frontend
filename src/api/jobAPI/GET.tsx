@@ -17,6 +17,7 @@ import type {
   JobPromotionPolicyDto,
   PublicJobPromotionCardDto,
   JobPostSummaryDto,
+  AdminJobPostListResponse,
 } from '../../types/models/Job';
 
 const jobPostsUrl = 'JobPosts';
@@ -283,8 +284,8 @@ export const jobGetAPI = {
    */
   getAllJobPosts: async (
     params: JobPostQueryParams = {}
-  ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
-    return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/admin/all`, params);
+  ): Promise<ApiResponse<AdminJobPostListResponse>> => {
+    return apiService.get<AdminJobPostListResponse>(`${jobPostsUrl}/admin/all`, params);
   },
 
   /**

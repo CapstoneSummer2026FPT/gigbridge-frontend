@@ -571,7 +571,7 @@ describe('usePostJob hook skills conversion', () => {
 
       await act(async () => {
         resolvePlanPromise(successResponse({
-          milestones: [{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a' }],
+          milestones: [{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }],
           questionRecruitment: ['Question 1'],
         }));
       });
@@ -581,7 +581,7 @@ describe('usePostJob hook skills conversion', () => {
       });
 
       expect(result.current.isGeneratingPlan).toBe(false);
-      expect(result.current.milestonePlans).toEqual([{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', workItems: [] }]);
+      expect(result.current.milestonePlans).toEqual([{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }]);
     });
   });
 });

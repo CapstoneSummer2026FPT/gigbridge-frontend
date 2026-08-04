@@ -2,7 +2,6 @@ import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
 import type {
   BatchJudgeResultDto,
-  CreateProposalAnswerRequest,
   CreateProposalRequest,
   CompleteQuestionTimerRequest,
   InterviewReviewSessionDto,
@@ -11,6 +10,28 @@ import type {
 } from '../../types/models/Proposal';
 
 const proposalsUrl = 'Proposals';
+
+/** Snake_case payload shape returned by the AI interview-judging endpoint. */
+interface RawVettingGradedQuestion {
+  question_index: number;
+  question_text: string;
+  question_type: string;
+  difficulty: string;
+  candidate_answer: string;
+  score: number;
+  feedback: string;
+}
+
+interface RawVettingEvaluationResponse {
+  score: number;
+  summary: string;
+  technical_skills: string[] | null;
+  soft_skills: string[] | null;
+  recommended_hire: boolean;
+  holistic_adjustment: number | null;
+  holistic_adjustment_reason: string | null;
+  graded_questions: RawVettingGradedQuestion[] | null;
+}
 
 export const proposalPostAPI = {
   /**
@@ -64,18 +85,18 @@ export const proposalPostAPI = {
     onlyIfCached: boolean = false
   ): Promise<ApiResponse<VettingEvaluationResponseDto>> => {
     const url = `${proposalsUrl}/${proposalId}/ai-interview-judging${onlyIfCached ? '?onlyIfCached=true' : ''}`;
-    const response = await apiService.post<any>(url);
+    const response = await apiService.post<RawVettingEvaluationResponse>(url);
     if (response.success && response.data) {
       const raw = response.data;
       const mapped: VettingEvaluationResponseDto = {
         score: raw.score,
         summary: raw.summary,
-        technicalSkills: raw.technical_skills || [],
-        softSkills: raw.soft_skills || [],
+        technicalSkills: raw.technical_skills ?? [],
+        softSkills: raw.soft_skills ?? [],
         recommendedHire: !!raw.recommended_hire,
-        holisticAdjustment: raw.holistic_adjustment || 0,
-        holisticAdjustmentReason: raw.holistic_adjustment_reason || '',
-        gradedQuestions: (raw.graded_questions || []).map((q: any) => ({
+        holisticAdjustment: raw.holistic_adjustment ?? 0,
+        holisticAdjustmentReason: raw.holistic_adjustment_reason ?? '',
+        gradedQuestions: (raw.graded_questions ?? []).map(q => ({
           questionIndex: q.question_index,
           questionText: q.question_text,
           questionType: q.question_type,
@@ -90,7 +111,9 @@ export const proposalPostAPI = {
         data: mapped,
       };
     }
-    return response;
+    // On failure the payload carries no data; normalize it explicitly so the
+    // error branch satisfies the DTO-typed response contract.
+    return { ...response, data: undefined };
   },
 
   generateAICoverLetter: async (jobTitle: string, freelancerSkills: string[]): Promise<string> => {

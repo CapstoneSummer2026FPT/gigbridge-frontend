@@ -117,7 +117,14 @@ describe('admin screens without telemetry or history APIs', () => {
       success: true,
       statusCode: 200,
       message: 'Success',
-      data: [],
+      data: {
+        items: [],
+        pageIndex: 1,
+        pageSize: 25,
+        totalItems: 0,
+        totalPages: 0,
+        stats: { total: 0, draft: 0, open: 0, closed: 0, cancelled: 0, locked: 0 },
+      },
     });
     vi.mocked(proposalGetAPI.getAllProposals).mockResolvedValue({
       success: true,

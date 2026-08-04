@@ -1,5 +1,5 @@
 export type AnalyticsPeriod = 'month' | 'quarter' | 'year' | 'custom';
-export type AnalyticsTab = 'revenue' | 'transactions' | 'market';
+export type AnalyticsTab = 'revenue' | 'transactions' | 'premium' | 'market';
 
 export interface AnalyticsRangeParams {
   period: AnalyticsPeriod;
@@ -64,6 +64,41 @@ export interface PremiumAnalyticsResponse {
   cancellations: number;
   historicalPromotionImpressions: number;
   historicalPromotionClicks: number;
+  promotionSummaries: PremiumPromotionSummary[];
+  promotions: PremiumPromotionRecord[];
+  promotionRecordCount: number;
+  promotionsTruncated: boolean;
+}
+
+export interface PremiumPromotionSummary {
+  type: string;
+  role: 'Client' | 'Freelancer';
+  total: number;
+  active: number;
+  tokenSpend: number;
+  impressions: number;
+  clicks: number;
+  clickThroughRate: number;
+}
+
+export interface PremiumPromotionRecord {
+  promotionId: string;
+  type: string;
+  role: 'Client' | 'Freelancer';
+  ownerUserId: string;
+  ownerName: string;
+  ownerEmail: string;
+  subjectId: string;
+  subjectName: string;
+  status: string;
+  tokenCost: number;
+  impressionCount: number;
+  clickCount: number;
+  clickThroughRate: number;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+  attributes: Record<string, string | null>;
 }
 
 export interface TransactionFilters extends AnalyticsRangeParams {
