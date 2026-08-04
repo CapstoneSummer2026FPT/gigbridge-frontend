@@ -1,0 +1,13 @@
+{
+  "notifications": {
+    "title": "Thông Báo",
+    "markAsRead": "Đánh dấu đã đọc",
+    "markAllAsRead": "Đánh dấu tất cả đã đọc",
+    "noNotifications": "Không có thông báo",
+    "newMessage": "Tin nhắn mới từ {{name}}",
+    "proposalAccepted": "Đề xuất của bạn đã được chấp nhận!",
+    "projectUpdate": "Cập nhật dự án: {{title}}",
+    "seeAll": "Xem tất cả",
+    "caughtUp": "Bạn đã xem hết thông báo."
+  }
+}

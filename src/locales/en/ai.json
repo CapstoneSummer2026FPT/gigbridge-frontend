@@ -1,0 +1,143 @@
+{
+  "ai": {
+    "assistant": "AI Assistant",
+    "interview": "AI Interview",
+    "help": "How can I help you today?",
+    "startInterview": "Start AI Interview",
+    "askQuestion": "Ask a question...",
+    "suggestions": "Quick Suggestions"
+  },
+  "aiInterview": {
+    "intro": {
+      "title": "AI Instant Interview",
+      "description": "A natural, voice-led conversation with your AI interviewer. Take a breath—we’ll guide you through it.",
+      "interviewingFor": "Interviewing for",
+      "howItWorks": "How it works",
+      "steps": {
+        "question": "1. Your interviewer asks each question out loud. The question text stays hidden.",
+        "answer": "2. Press Answer question and respond naturally.",
+        "finish": "3. Finish with the button, or pause for 3 seconds after speaking.",
+        "review": "4. Review your transcript, speak again if needed, then submit."
+      }
+    },
+    "room": {
+      "inProgress": "Interview in progress",
+      "defaultTitle": "AI interview",
+      "currentQuestion": "Current question",
+      "questionOf": "Question {{current}} of {{total}}"
+    },
+    "interviewer": {
+      "ariaLabel": "AI interviewer",
+      "identity": "Alex · GigBridge interviewer",
+      "audioOnly": "Listen carefully—the interview question is audio-only.",
+      "states": {
+        "preparing": "Preparing the question…",
+        "speaking": "Alex is speaking",
+        "yourTurn": "Your turn",
+        "failed": "Voice playback needs attention",
+        "ready": "The interviewer is ready"
+      }
+    },
+    "answer": {
+      "ariaLabel": "Your answer",
+      "yourTurn": "Your turn",
+      "micOn": "Mic on",
+      "micOff": "Mic off",
+      "microphoneHint": "Your microphone starts only after you press the button.",
+      "states": {
+        "idle": "Answer when you’re ready",
+        "recording": "We’re listening",
+        "transcribing": "Turning speech into text",
+        "review": "Review your answer",
+        "submitting": "Passing your answer to Alex"
+      }
+    },
+    "recording": {
+      "label": "Recording",
+      "finishHint": "Finish with the button, or pause for 3 seconds to submit.",
+      "silenceCountdown": "Silence detected · submitting in {{count}} seconds…",
+      "silenceCountdown_one": "Silence detected · submitting in {{count}} second…",
+      "silenceCountdown_other": "Silence detected · submitting in {{count}} seconds…"
+    },
+    "transcribing": {
+      "title": "Transcribing your answer…",
+      "description": "This usually takes just a moment."
+    },
+    "review": {
+      "whatWeHeard": "What we heard",
+      "readOnly": "Read-only transcript"
+    },
+    "submitting": {
+      "title": "Alex is considering your answer…",
+      "description": "The next question will play automatically."
+    },
+    "proposal": {
+      "submitted": "Your proposal was submitted successfully.",
+      "submittedWithInterview": "Your proposal was submitted. Start the AI interview whenever you’re ready.",
+      "readyTitle": "AI interview ready",
+      "readyDescription": "This client enabled an AI interview for the job. You can start it now or return here when you’re ready.",
+      "completedTitle": "AI interview completed",
+      "completedDescription": "Your interview responses were submitted successfully.",
+      "startAction": "Start AI interview",
+      "continueAction": "Continue AI interview"
+    },
+    "actions": {
+      "start": "Start AI Interview",
+      "starting": "Starting interview…",
+      "browseToChoose": "Browse jobs to choose an interview role",
+      "answerQuestion": "Answer question",
+      "retryAudio": "Retry question audio",
+      "hearAgain": "Hear question again",
+      "cancel": "Cancel",
+      "finishAnswer": "Finish answer",
+      "speakAgain": "Speak again",
+      "submitAnswer": "Submit answer",
+      "browseMoreJobs": "Browse more jobs",
+      "goToDashboard": "Go to dashboard"
+    },
+    "errors": {
+      "chooseJob": "Choose a job before starting an AI interview.",
+      "startFailed": "The AI interview could not be started. Please try again.",
+      "noQuestions": "Cannot start AI interview. Because this job post does not have interview questions.",
+      "incompleteSession": "The interview service returned an incomplete session. Please try again.",
+      "transcriptionFailed": "Your answer could not be transcribed. Please record it again.",
+      "unsupportedRecording": "This browser does not support microphone recording. Please use a current Chrome, Edge, Firefox, or Safari browser.",
+      "recordingFailed": "The browser could not record your answer. Please try again.",
+      "noAudioCaptured": "No audio was captured. Please record your answer again.",
+      "microphoneDenied": "Microphone permission was denied. Allow microphone access and try again.",
+      "microphoneUnavailable": "The microphone could not be opened. Please check your device and try again.",
+      "noTranscript": "No transcript was captured. Please speak again before submitting.",
+      "submitFailed": "Your answer could not be submitted. Please try again.",
+      "nextQuestionMissing": "The interview service did not return the next question. Please try again.",
+      "replayFailed": "The interviewer voice could not be replayed. Please try again.",
+      "voiceUnavailable": "The interviewer voice is unavailable. Please refresh and try again.",
+      "audioStreamFailed": "The interviewer voice could not be played. Please try again."
+    },
+    "debug": {
+      "title": "Debug console",
+      "session": "Session",
+      "question": "Question",
+      "language": "Language",
+      "confidence": "Confidence",
+      "notStarted": "not started",
+      "pending": "pending",
+      "notUsedYet": "not used yet",
+      "ttsStates": {
+        "idle": "idle",
+        "streaming": "preparing",
+        "ready": "ready",
+        "playing": "playing",
+        "failed": "failed"
+      }
+    },
+    "complete": {
+      "eyebrow": "Interview complete",
+      "title": "Thank you for using our AI interview",
+      "message": "Your responses have been submitted successfully. You’ll receive a notification soon if your application is accepted.",
+      "inAppTitle": "In-app notification",
+      "inAppDescription": "We’ll update you inside GigBridge.",
+      "emailTitle": "Email update",
+      "emailDescription": "We’ll also send the decision to your email."
+    }
+  }
+}
