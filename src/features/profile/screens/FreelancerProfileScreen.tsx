@@ -24,6 +24,7 @@ import {
   Building2,
   FolderGit2,
   Calendar,
+  Plus,
 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { useGSAP } from '@gsap/react';
@@ -545,115 +546,143 @@ export default function FreelancerProfileScreen() {
             </div>
           </div>
 
-          {/* Row 3: Portfolio Card (Coverflow 3D Gallery) (Col-12) */}
-          <div className="cp-card cp-col-12 space-y-6 overflow-hidden">
-            <div className="flex items-center justify-between">
-              <div className="cp-card-title-group">
-                <FolderGit2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
-                <h2 className="cp-card-title">Portfolio & Projects</h2>
+          {/* Row 3: Portfolio & Work Experience Side-by-Side Bento Grid */}
+          <div className="cp-bento-grid">
+            {/* Portfolio Card (Col-6) */}
+            <div className="cp-card cp-col-6 space-y-6 overflow-hidden flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="cp-card-title-group">
+                  <FolderGit2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
+                  <h2 className="cp-card-title">Portfolio & Projects</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {currentUser?.id === targetId && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/settings?tab=profile&subtab=portfolio')}
+                      className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
+                    >
+                      <Plus size={13} />
+                      <span>Add Project</span>
+                    </button>
+                  )}
+                  <span className="cp-pill-brand text-xs">
+                    {profileData.rawPortfolioItems?.length || profileData.portfolio?.length || 0} Projects
+                  </span>
+                </div>
               </div>
-              <span className="cp-pill-brand text-xs">
-                {profileData.rawPortfolioItems?.length || profileData.portfolio?.length || 0} Projects
-              </span>
-            </div>
 
-            <div className="w-full py-2">
-              <Smooth3DSlideshow
-                slides={
-                  profileData.rawPortfolioItems && profileData.rawPortfolioItems.length > 0
-                    ? profileData.rawPortfolioItems.map((item, idx) => ({
-                        id: item.portfolioItemId || String(idx),
-                        title: item.title,
-                        description: item.description,
-                        projectUrl: item.projectUrl,
-                        image: {
-                          src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
-                          alt: item.title,
-                        },
-                      }))
-                    : undefined
-                }
-                cardWidth={380}
-                cardHeight={340}
-                autoplay={false}
-              />
-            </div>
-          </div>
-
-          {/* Row 4: Work Experience Card (Col-12) */}
-          <div className="cp-card cp-col-12 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="cp-card-title-group">
-                <Building2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
-                <h2 className="cp-card-title">Work Experience</h2>
+              <div className="w-full py-2 flex-1 flex items-center justify-center">
+                <Smooth3DSlideshow
+                  slides={
+                    profileData.rawPortfolioItems && profileData.rawPortfolioItems.length > 0
+                      ? profileData.rawPortfolioItems.map((item, idx) => ({
+                          id: item.portfolioItemId || String(idx),
+                          title: item.title,
+                          description: item.description,
+                          projectUrl: item.projectUrl,
+                          image: {
+                            src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
+                            alt: item.title,
+                          },
+                        }))
+                      : undefined
+                  }
+                  cardWidth={210}
+                  cardHeight={210}
+                  radius={4}
+                  tilt={10}
+                  sideTilt={6}
+                  gap={6}
+                  autoplay={false}
+                />
               </div>
-              <span className="cp-pill-muted text-xs">
-                {profileData.rawWorkExperiences?.length || experience.length || 0} Positions
-              </span>
             </div>
 
-            <div className="space-y-4">
-              {profileData.rawWorkExperiences && profileData.rawWorkExperiences.length > 0 ? (
-                profileData.rawWorkExperiences.map((exp, idx) => (
-                  <div
-                    key={exp.workExperienceId || idx}
-                    className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))] transition-all hover:border-[var(--brand-soft)]"
-                  >
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-bold text-[var(--text-primary)]">
+            {/* Work Experience Card (Col-6) */}
+            <div className="cp-card cp-col-6 space-y-6 flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="cp-card-title-group">
+                  <Building2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
+                  <h2 className="cp-card-title">Work Experience</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {currentUser?.id === targetId && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/settings?tab=profile&subtab=experience')}
+                      className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
+                    >
+                      <Plus size={13} />
+                      <span>Add Position</span>
+                    </button>
+                  )}
+                  <span className="cp-pill-muted text-xs">
+                    {profileData.rawWorkExperiences?.length || experience.length || 0} Positions
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[340px] pr-1">
+                {profileData.rawWorkExperiences && profileData.rawWorkExperiences.length > 0 ? (
+                  profileData.rawWorkExperiences.map((exp, idx) => (
+                    <div
+                      key={exp.workExperienceId || idx}
+                      className="flex flex-col gap-2 p-3.5 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))] transition-all hover:border-[var(--brand-soft)]"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h3 className="text-sm font-bold text-[var(--text-primary)]">
                           {exp.jobTitle}
                         </h3>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
                           {exp.companyName}
                         </span>
                       </div>
+
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+                        <Calendar size={12} className="text-[var(--brand,#494be7)]" />
+                        <span>
+                          {exp.startDate} - {exp.endDate || 'Present'}
+                        </span>
+                      </div>
+
                       {exp.description && (
-                        <p className="text-sm text-[var(--text-secondary)] leading-relaxed pt-1">
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-0.5 line-clamp-3">
                           {exp.description}
                         </p>
                       )}
                     </div>
-
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)] shrink-0 self-start md:self-center bg-black/20 px-3 py-1.5 rounded-lg border border-white/5">
-                      <Calendar size={13} className="text-[var(--brand,#494be7)]" />
-                      <span>
-                        {exp.startDate} - {exp.endDate || 'Present'}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : experience.length > 0 ? (
-                experience.map((exp, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))]"
-                  >
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  ))
+                ) : experience.length > 0 ? (
+                  experience.map((exp, idx) => (
+                    <div
+                      key={idx}
+                      className="flex flex-col gap-1.5 p-3.5 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))]"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h3 className="text-sm font-bold text-[var(--text-primary)]">
                           {exp.title}
                         </h3>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
                           {exp.company}
                         </span>
                       </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+                        <Calendar size={12} className="text-[var(--brand,#494be7)]" />
+                        <span>{exp.years}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)] shrink-0">
-                      <Calendar size={13} className="text-[var(--brand,#494be7)]" />
-                      <span>{exp.years}</span>
-                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-sm text-[var(--text-secondary)]">
+                    No work experience entries added yet.
                   </div>
-                ))
-              ) : (
-                <div className="p-6 text-center text-sm text-[var(--text-secondary)]">
-                  No work experience entries added yet.
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Row 5: Client Reviews Card (Col-12) */}
+          {/* Row 4: Client Reviews Card (Col-12) */}
           <div className="cp-card cp-col-12 space-y-6">
             <div className="cp-card-title-group">
               <Star size={18} className="text-amber-500 fill-current" />
@@ -782,61 +811,10 @@ export default function FreelancerProfileScreen() {
                 </div>
               </div>
             ) : (
-              /* Fallback Demo Review Cards */
-              <div className="cp-review-grid">
-                <div className="cp-col-4 cp-review-summary-card">
-                  <span className="cp-review-score-big">4.8</span>
-                  <div className="flex items-center gap-1 text-amber-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={20} className="fill-current text-amber-500" />
-                    ))}
-                  </div>
-                  <p className="text-xs font-semibold text-[var(--text-secondary)]">
-                    Based on 4 reviews from clients
-                  </p>
-                </div>
-
-                <div className="cp-col-8 cp-review-list">
-                  <div className="cp-review-item-card">
-                    <div className="cp-review-item-header">
-                      <div className="flex items-center gap-3">
-                        <div className="cp-reviewer-avatar">J</div>
-                        <div>
-                          <h4 className="cp-reviewer-name">Jonathan Gudev</h4>
-                          <p className="text-xs font-bold text-[var(--brand,#494be7)]">Bangkiv Software</p>
-                        </div>
-                      </div>
-                      <div className="cp-review-rating-badge">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={13} className="fill-current text-amber-500" />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="cp-review-comment">
-                      "Bạn ấy có một kĩ năng code điêu luyện, gõ promt xuất quỷ nhập thần. Đứng đầu trường chuyên Tuyên Quang."
-                    </p>
-                  </div>
-
-                  <div className="cp-review-item-card">
-                    <div className="cp-review-item-header">
-                      <div className="flex items-center gap-3">
-                        <div className="cp-reviewer-avatar">J</div>
-                        <div>
-                          <h4 className="cp-reviewer-name">Jonathan Gudev</h4>
-                          <p className="text-xs font-bold text-[var(--brand,#494be7)]">Bangkiv Software</p>
-                        </div>
-                      </div>
-                      <div className="cp-review-rating-badge">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} size={13} className={i < 4 ? 'fill-current text-amber-500' : 'text-[var(--border-strong)]'} />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="cp-review-comment">
-                      "Bạn ấy có một kĩ năng code điêu luyện, gõ promt xuất quỷ nhập thần. Đứng đầu trường chuyên Tuyên Quang."
-                    </p>
-                  </div>
-                </div>
+              <div className="p-8 text-center space-y-2 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))]">
+                <Star size={24} className="mx-auto text-[var(--text-muted)] opacity-50" />
+                <p className="text-sm font-semibold text-[var(--text-secondary)]">No client reviews yet</p>
+                <p className="text-xs text-[var(--text-muted)]">Reviews will appear here once contracts are completed.</p>
               </div>
             )}
           </div>

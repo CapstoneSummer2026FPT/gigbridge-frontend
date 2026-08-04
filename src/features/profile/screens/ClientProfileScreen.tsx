@@ -204,7 +204,7 @@ export default function ClientProfileScreen() {
                   </span>
 
                   <span className="cp-pill-muted">
-                    {getCompanySizeLabel(profile.company_size) || 'UI/UX Designer'}
+                    {getCompanySizeLabel(profile.company_size)}
                   </span>
                 </div>
               </div>
@@ -314,7 +314,7 @@ export default function ClientProfileScreen() {
                       <span className="cp-info-label">
                         <Users size={14} className="cp-card-icon" /> Company Size
                       </span>
-                      <span className="cp-info-val">{getCompanySizeLabel(profile.company_size) || 'UI/UX Designer'}</span>
+                      <span className="cp-info-val">{getCompanySizeLabel(profile.company_size)}</span>
                     </div>
 
                     <div className="cp-info-item">

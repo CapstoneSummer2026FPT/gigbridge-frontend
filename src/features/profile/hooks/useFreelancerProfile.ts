@@ -229,7 +229,7 @@ export function useFreelancerProfile(targetId: string, canSave = false) {
     return { star, count, percentage };
   });
 
-  const reviewsPerPage = 2;
+  const reviewsPerPage = 4;
   const totalPages = Math.max(1, Math.ceil(reviewsList.length / reviewsPerPage));
   const paginatedReviews = reviewsList.slice((currentPage - 1) * reviewsPerPage, currentPage * reviewsPerPage);
 

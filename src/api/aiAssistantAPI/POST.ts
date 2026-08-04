@@ -1,5 +1,5 @@
-import { apiService } from '../service/apiService';
-import type { ApiResponse } from '../types/common';
+import { apiService } from '../../service/apiService';
+import type { ApiResponse } from '../../types/common';
 
 export interface AIAssistantQueryRequest {
   question: string;
@@ -12,7 +12,7 @@ export interface AIAssistantQueryResponse {
   answer: string;
 }
 
-export const aiAssistantAPI = {
+export const aiAssistantPostAPI = {
   query: async (payload: AIAssistantQueryRequest): Promise<ApiResponse<AIAssistantQueryResponse>> => {
     return apiService.post<AIAssistantQueryResponse>('ai-assistant/query', payload);
   },

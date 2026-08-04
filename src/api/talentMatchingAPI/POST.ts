@@ -1,14 +1,14 @@
-import { apiService } from '../service/apiService';
-import type { ApiResponse } from '../types/common';
+import { apiService } from '../../service/apiService';
+import type { ApiResponse } from '../../types/common';
 import type {
   AiTalentMatchingRequest,
   AiTalentMatchingResult,
   TalentMatchEventRequest,
-} from '../types/talentMatching';
+} from '../../types/talentMatching';
 
 const jobPostsUrl = 'JobPosts';
 
-export const talentMatchingAPI = {
+export const talentMatchingPostAPI = {
   getMatches: (
     jobPostId: string,
     request: AiTalentMatchingRequest,

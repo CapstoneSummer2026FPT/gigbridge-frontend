@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
+import { useSearchParams } from 'react-router';
 import { User, FileText, Briefcase, Building2, MapPin, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGSAP } from '@gsap/react';
@@ -66,10 +67,12 @@ const initialProfileForm = (user: any): ProfileForm => ({
   companyDescription: '',
 });
 
-export function GeneralTab() {
+export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const { user, role } = useApp();
   const { t, i18n } = useTranslation();
-  const [subTab, setSubTab] = useState<SubTab>('basic');
+  const [searchParams] = useSearchParams();
+  const urlSubTab = searchParams.get('subtab') as SubTab | null;
+  const [subTab, setSubTab] = useState<SubTab>(urlSubTab || defaultSubTab || 'basic');
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1279,8 +1282,12 @@ export function GeneralTab() {
                       }))
                     : undefined
                 }
-                cardWidth={360}
-                cardHeight={320}
+                cardWidth={280}
+                cardHeight={260}
+                radius={4}
+                tilt={10}
+                sideTilt={6}
+                gap={6}
               />
             </div>
 
