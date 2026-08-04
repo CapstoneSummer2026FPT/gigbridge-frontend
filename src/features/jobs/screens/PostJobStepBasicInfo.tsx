@@ -296,8 +296,8 @@ export default function PostJobStepBasicInfo() {
           <div className="job-post-grid">
             <div className="job-post-field">
               <label htmlFor="job-budget">{t('postJob.expectedBudget')}</label>
-              <input id="job-budget" type="number" min="0" value={form.budget} disabled={milestonePlans.length > 0} onChange={event => setForm({ ...form, budget: event.target.value })} placeholder="0" />
-              <small>{milestonePlans.length ? t('postJobWizard.details.budgetFromMilestones') : t('postJobWizard.details.budgetHint')}</small>
+              <input id="job-budget" type="number" min="0" value={form.budget} onChange={event => setForm({ ...form, budget: event.target.value })} placeholder="0" />
+              <small>{t('postJobWizard.details.budgetFromMilestones')}</small>
             </div>
             <div className="job-post-field">
               <label>{t('postJob.estimatedDuration')} *</label>

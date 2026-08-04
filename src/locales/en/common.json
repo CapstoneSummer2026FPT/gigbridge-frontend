@@ -1394,6 +1394,7 @@
     "budgetMin": "Budget Min",
     "budgetMinPlaceholder": "Minimum budget",
     "budgetMax": "Budget Max",
+    "expectedBudget": "Expected Budget",
     "budgetGuideTitle": "Budget Unit Guide",
     "budgetGuideDesc": "The currency unit used for job budgets on the GigBridge system is <strong>G-coin</strong>.",
     "budgetGuideRate": "1,000 VND",
@@ -1507,6 +1508,11 @@
     "edit": "Edit",
     "complete": "complete",
     "notProvided": "Not provided",
+    "budgetExceeded": {
+      "title": "Milestone total exceeds expected budget",
+      "desc": "Your milestone plan totals {{total}}, which exceeds your expected budget of {{expected}}. Update the expected budget to {{total}} and continue?",
+      "confirm": "Update budget & continue"
+    },
     "autosave": {
       "idle": "Changes pending",
       "saving": "Saving changes...",
@@ -1522,8 +1528,8 @@
       "requirementsHint": "Describe the objective, constraints, inputs and expected outcome.",
       "budgetTimeline": "Budget & timeline",
       "budgetTimelineHint": "Set practical expectations for proposal closing and delivery.",
-      "budgetHint": "Optional working budget in G-coin. A milestone plan will replace this total.",
-      "budgetFromMilestones": "Calculated automatically from your milestone plan.",
+      "budgetHint": "Optional expected budget in G-coin for this project.",
+      "budgetFromMilestones": "The milestone total is checked against your expected budget before publishing.",
       "deadlineHint": "This is the proposal closing date, not the final project delivery date.",
       "attachments": "Project images",
       "attachmentsHint": "Add visual references that help freelancers understand the expected result.",
