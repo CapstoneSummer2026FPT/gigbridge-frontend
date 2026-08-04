@@ -15,7 +15,15 @@ const sanitizeImageUrl = (value?: string): string => {
 
 const sanitizeText = (text?: string): string => {
   if (!text) return '';
-  return text.replace(/<[^>]*>?/gm, '').trim();
+
+  let current = text;
+  let previous: string;
+  do {
+    previous = current;
+    current = current.replace(/<[^>]*>?/gm, '');
+  } while (current !== previous);
+
+  return current.trim();
 };
 
 export function PromotionCard({
