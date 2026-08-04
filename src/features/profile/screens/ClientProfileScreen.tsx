@@ -29,6 +29,7 @@ import { getCompanySizeLabel } from '../utils/profileUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/client-profile-screen.css';
+import '../styles/freelancer-profile-screen.css';
 
 export default function ClientProfileScreen() {
   const { t } = useTranslation();
@@ -187,7 +188,7 @@ export default function ClientProfileScreen() {
                       className="cp-meta-link"
                     >
                       <Globe size={15} />
-                      <span>{profile.company_website}</span>
+                      <span>{profile.company_website.replace(/^https?:\/\//, '')}</span>
                     </a>
                   ) : (
                     <div className="cp-meta-link">
@@ -203,7 +204,7 @@ export default function ClientProfileScreen() {
                   </span>
 
                   <span className="cp-pill-muted">
-                    {getCompanySizeLabel(profile.company_size) || 'UI/UX Designer'}
+                    {getCompanySizeLabel(profile.company_size)}
                   </span>
                 </div>
               </div>
@@ -313,7 +314,7 @@ export default function ClientProfileScreen() {
                       <span className="cp-info-label">
                         <Users size={14} className="cp-card-icon" /> Company Size
                       </span>
-                      <span className="cp-info-val">{getCompanySizeLabel(profile.company_size) || 'UI/UX Designer'}</span>
+                      <span className="cp-info-val">{getCompanySizeLabel(profile.company_size)}</span>
                     </div>
 
                     <div className="cp-info-item">
@@ -338,7 +339,7 @@ export default function ClientProfileScreen() {
 
           {/* Row 2: Elo Point Card & Job List Card */}
           <div className="cp-bento-grid">
-            {/* Elo Point Card (Col-4) */}
+            {/* Elo Point Card (Col-4) — Arc Gauge */}
             <div className="cp-card cp-col-4 cp-elo-wrapper">
               <div className="w-full flex items-center justify-between">
                 <div className="cp-card-title-group">
@@ -350,30 +351,33 @@ export default function ClientProfileScreen() {
                 </span>
               </div>
 
-              {/* Glowing Elo Circle Gauge */}
-              <div className="cp-elo-gauge-container">
-                <div className="cp-elo-pulse-glow" />
-                <div className="cp-elo-gauge-inner">
-                  <span className="cp-elo-number">
-                    {eloPoints || 9999}
-                  </span>
-                  <span className="cp-elo-subtitle">
-                    PROFILE STRENGTH
-                  </span>
-                </div>
-              </div>
-
-              {/* Stats Summary */}
-              <div className="cp-elo-stats-box">
-                <div className="cp-elo-stat-row">
-                  <span className="font-semibold">Review Count</span>
-                  <span className="font-bold text-[var(--brand,#494be7)]">{reviewsList.length}</span>
-                </div>
-                <div className="cp-elo-stat-row">
-                  <span className="font-semibold">Member Since</span>
-                  <span className="font-bold text-[var(--brand,#494be7)]">
-                    {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'}
-                  </span>
+              {/* SVG Arc Gauge — 290° arc, gap 70° at bottom */}
+              <div className="fp-arc-gauge-wrap">
+                <div className="fp-arc-glow" />
+                <svg
+                  viewBox="0 0 200 200"
+                  className="fp-arc-svg"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
+                    fill="none"
+                    stroke="var(--border, #E7E8EA)"
+                    strokeWidth="13"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
+                    fill="none"
+                    stroke="var(--brand, #494be7)"
+                    strokeWidth="13"
+                    strokeLinecap="round"
+                    className="fp-arc-progress"
+                  />
+                </svg>
+                <div className="fp-arc-center">
+                  <span className="fp-arc-number">{eloPoints || 9999}</span>
+                  <span className="fp-arc-label">PROFILE STRENGTH</span>
                 </div>
               </div>
             </div>
