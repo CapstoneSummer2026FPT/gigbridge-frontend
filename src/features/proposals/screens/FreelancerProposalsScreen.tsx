@@ -72,7 +72,7 @@ export default function FreelancerProposalsScreen() {
           );
           if (submittedProposal) {
             setActiveProposalId(submittedProposal.proposalsId);
-            setMessage(submittedProposal.hasAiInterview
+            setMessage(submittedProposal.hasAiInterview && !submittedProposal.aiInterviewCompleted
               ? t('aiInterview.proposal.submittedWithInterview')
               : t('aiInterview.proposal.submitted'));
           }
@@ -378,6 +378,7 @@ export default function FreelancerProposalsScreen() {
                           jobPostId: activeProposal.jobPostsId,
                           jobTitle: activeProposal.jobTitle,
                           interviewDefinitionId: activeProposal.aiInterviewDefinitionId,
+                          proposalId: activeProposal.proposalsId,
                         },
                       })}
                       className="btn-cyan text-sm px-5 py-2.5 flex items-center gap-2"

@@ -247,6 +247,17 @@ export default function CreateProposalScreen() {
     setSubmitting(true); setError('');
     const savedId = await persistDraft();
     if (!savedId || !resolvedJobPostId) return setSubmitting(false);
+    if (jobPost?.hasAiInterview) {
+      setSubmitting(false);
+      navigate(`/ai-interview/${resolvedJobPostId}`, {
+        state: {
+          proposalId: savedId,
+          jobPostId: resolvedJobPostId,
+          jobTitle: jobPost.title,
+        },
+      });
+      return;
+    }
     const questionsResponse = await jobGetAPI.getJobPostQuestions(resolvedJobPostId);
     if (!questionsResponse.success) { setSubmitting(false); return setError(questionsResponse.message || 'Clarifying questions could not be loaded.'); }
     if ((questionsResponse.data || []).length > 0) {

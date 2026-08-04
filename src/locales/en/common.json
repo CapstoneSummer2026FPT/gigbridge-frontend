@@ -2816,7 +2816,8 @@
       "speakAgain": "Speak again",
       "submitAnswer": "Submit answer",
       "browseMoreJobs": "Browse more jobs",
-      "goToDashboard": "Go to dashboard"
+      "goToDashboard": "Go to dashboard",
+      "goToProposals": "Go to proposals"
     },
     "errors": {
       "chooseJob": "Choose a job before starting an AI interview.",

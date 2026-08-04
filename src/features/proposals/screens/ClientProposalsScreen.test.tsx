@@ -488,6 +488,8 @@ describe('ClientProposalsScreen', () => {
 
     expect(await within(modal).findByText(/No freelancer Interview Answers available/i)).toBeInTheDocument();
 
+    mocks.evaluateProposalAnswers.mockClear();
+
     await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
     expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();
     expect(mocks.evaluateProposalAnswers).not.toHaveBeenCalled();

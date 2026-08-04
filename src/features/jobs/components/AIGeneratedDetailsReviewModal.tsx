@@ -1,5 +1,6 @@
 import { X, Sparkles, Check, Briefcase, Wrench } from 'lucide-react';
 import type { GenerateJobDescriptionDetailsResponse } from '../../../types/models/Job';
+import { renderDescription } from '../utils/descriptionFormatter';
 
 interface Props {
   isOpen: boolean;
@@ -78,11 +79,12 @@ export function AIGeneratedDetailsReviewModal({ isOpen, data, onClose, onApprove
             </div>
           </div>
 
-          {/* Job Description (Scrollable) */}
           <div className="job-post-review-section">
             <label className="job-post-review-label">Job Description</label>
             <div className="job-post-review-desc-container">
-              <pre className="job-post-review-desc-text">{data.description}</pre>
+              <div className="job-post-review-desc-text whitespace-pre-line text-sm leading-6">
+                {renderDescription(data.description)}
+              </div>
             </div>
           </div>
         </div>

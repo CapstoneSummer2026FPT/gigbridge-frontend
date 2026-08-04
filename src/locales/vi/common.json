@@ -2806,7 +2806,8 @@
       "speakAgain": "Nói lại",
       "submitAnswer": "Gửi câu trả lời",
       "browseMoreJobs": "Xem thêm việc làm",
-      "goToDashboard": "Đến bảng điều khiển"
+      "goToDashboard": "Đến bảng điều khiển",
+      "goToProposals": "Đến trang đề xuất"
     },
     "errors": {
       "chooseJob": "Hãy chọn một công việc trước khi bắt đầu phỏng vấn AI.",
