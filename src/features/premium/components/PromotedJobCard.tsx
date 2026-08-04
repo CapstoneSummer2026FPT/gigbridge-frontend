@@ -3,7 +3,7 @@ import type { PublicJobPromotionCardDto } from '../../../types/models/Job';
 import '../styles/promotion-card.css';
 
 /**
- * Sanitizes URLs for img src attributes using protocol whitelist and encodeURI
+ * Sanitizes URLs for img src attributes using strict protocol/MIME allowlisting
  * to prevent DOM XSS / dangerous protocol execution (CodeQL js/xss-through-dom)
  */
 function sanitizeImageUrl(url?: string): string {
@@ -11,11 +11,18 @@ function sanitizeImageUrl(url?: string): string {
   const trimmed = String(url).trim();
   if (!trimmed) return '';
 
-  if (trimmed.startsWith('/')) return trimmed;
-  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:image/')) return trimmed;
+  const allowedDataImageMime = /^(image\/png|image\/jpeg|image\/webp|image\/gif)$/i;
+
+  if (trimmed.startsWith('data:')) {
+    const match = /^data:([^;,]+);base64,[a-z0-9+/=\s]+$/i.exec(trimmed);
+    if (!match) return '';
+    const mime = match[1];
+    return allowedDataImageMime.test(mime) ? trimmed : '';
+  }
 
   try {
     const parsed = new URL(trimmed, window.location.origin);
+    if (parsed.protocol === 'blob:') return parsed.href;
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return encodeURI(parsed.href);
     }
