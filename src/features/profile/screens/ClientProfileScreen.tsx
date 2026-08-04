@@ -139,7 +139,7 @@ export default function ClientProfileScreen() {
               <div className="flex flex-row flex-nowrap gap-3 overflow-x-auto scrollbar-hide justify-start lg:justify-end items-center w-full lg:w-auto py-1">
                 {currentUser?.id === targetId ? (
                   <button 
-                    onClick={() => navigate(`/profile/client/${user.id}/edit`)}
+                    onClick={() => navigate('/settings')}
                     className="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm cursor-pointer border border-transparent flex-shrink-0"
                   >
                     <Edit3 size={18} />

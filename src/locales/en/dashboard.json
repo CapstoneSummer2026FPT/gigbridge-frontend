@@ -1,0 +1,13 @@
+{
+  "dashboard": {
+    "welcome": "Welcome back, {{name}}!",
+    "overview": "Overview",
+    "stats": "Statistics",
+    "recentActivity": "Recent Activity",
+    "earnings": "Earnings",
+    "activeProjects": "Active Projects",
+    "totalJobs": "Total Jobs",
+    "completedProjects": "Completed Projects",
+    "viewDetails": "View Details"
+  }
+}

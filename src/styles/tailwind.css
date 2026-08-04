@@ -4,11 +4,11 @@
 @import 'tw-animate-css';
 
 @theme {
-  --font-zentry: "zentry", sans-serif;
-  --font-general: "general", sans-serif;
-  --font-circular-web: "circular-web", sans-serif;
-  --font-robert-medium: "robert-medium", sans-serif;
-  --font-robert-regular: "robert-regular", sans-serif;
+  --font-zentry: "Plus Jakarta Sans", sans-serif;
+  --font-general: "Plus Jakarta Sans", sans-serif;
+  --font-circular-web: "Plus Jakarta Sans", sans-serif;
+  --font-robert-medium: "Plus Jakarta Sans", sans-serif;
+  --font-robert-regular: "Plus Jakarta Sans", sans-serif;
 
   --color-blue-50: #DFDFF0;
   --color-blue-75: #dfdff2;
@@ -20,13 +20,9 @@
   --color-yellow-300: #edff66;
 }
 
-/* Override fonts when the document language is set to Vietnamese */
-html[lang="vi"] {
-  --font-zentry: "Montserrat", "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
-  --font-general: "Plus Jakarta Sans", "Outfit", "Inter", sans-serif;
-  --font-circular-web: "Inter", sans-serif;
-  --font-robert-medium: "Plus Jakarta Sans", "Outfit", sans-serif;
-  --font-robert-regular: "Inter", sans-serif;
+/* Globally force base font to Plus Jakarta Sans */
+:root, body {
+  font-family: "Plus Jakarta Sans", sans-serif;
 }
 
 /* Globally force logo text to Montserrat geometric sans-serif */

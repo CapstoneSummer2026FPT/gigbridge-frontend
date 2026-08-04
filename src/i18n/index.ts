@@ -15,8 +15,8 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
 // Import translation files
-import enCommon from '../locales/en/common.json';
-import viCommon from '../locales/vi/common.json';
+import en from '../locales/en';
+import vi from '../locales/vi';
 
 // Define supported languages
 export const SUPPORTED_LANGUAGES = {
@@ -71,16 +71,35 @@ i18n
   .init({
     // Language resources
     resources: {
-      en: {
-        common: enCommon,
-      },
-      vi: {
-        common: viCommon,
-      },
+      en,
+      vi,
     },
 
     // Default namespace
     defaultNS: 'common',
+
+    // Fallback namespaces to allow single namespace or global key resolution
+    fallbackNS: [
+      'common',
+      'auth',
+      'admin',
+      'jobs',
+      'proposals',
+      'contracts',
+      'profile',
+      'wallet',
+      'ai',
+      'landing',
+      'disputes',
+      'reviews',
+      'premium',
+      'workspace',
+      'dashboard',
+      'messages',
+      'settings',
+      'notifications',
+      'talentMatching',
+    ],
 
     // Fallback language when detected language is not supported
     fallbackLng: (code) => {
