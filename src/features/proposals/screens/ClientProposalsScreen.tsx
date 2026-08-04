@@ -447,28 +447,41 @@ export default function ClientProposalsScreen() {
       setEvalResult(null);
       setRawAnswers([]);
 
+      // Try to pre-populate with already loaded AI evaluation fields from list view
+      const existingProposal = proposals.find(p => p.proposalsId === proposalId);
+      if (existingProposal && typeof existingProposal.aiScore === 'number') {
+        setEvalResult({
+          score: existingProposal.aiScore,
+          summary: existingProposal.aiSummary || '',
+          technicalSkills: existingProposal.aiTechnicalSkills || [],
+          softSkills: existingProposal.aiSoftSkills || [],
+          recommendedHire: !!existingProposal.aiRecommendedHire,
+          holisticAdjustment: 0,
+          holisticAdjustmentReason: '',
+          gradedQuestions: [],
+        });
+      }
+
       const answersRes = await proposalGetAPI.getProposalAnswers(proposalId).catch(() => null);
 
       if (answersRes && answersRes.success && answersRes.data) {
         setRawAnswers(answersRes.data);
+      }
 
-        const hasAnswers = answersRes.data.length > 0 && answersRes.data.some(ans => ans.answerText?.trim());
-        if (hasAnswers) {
-          const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, true).catch(() => null);
-          if (evalRes && evalRes.success && evalRes.data) {
-            const evaluation = evalRes.data;
-            setEvalResult(evaluation);
-            setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
-              ...p,
-              aiScore: evaluation.score,
-              aiSummary: evaluation.summary,
-              aiRecommendedHire: evaluation.recommendedHire,
-              aiTechnicalSkills: evaluation.technicalSkills,
-              aiSoftSkills: evaluation.softSkills,
-              aiEvaluatedAt: new Date().toISOString()
-            } : p));
-          }
-        }
+      // Try to load cached evaluation from backend (regardless of whether hasAnswers is true or false)
+      const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, true).catch(() => null);
+      if (evalRes && evalRes.success && evalRes.data) {
+        const evaluation = evalRes.data;
+        setEvalResult(evaluation);
+        setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
+          ...p,
+          aiScore: evaluation.score,
+          aiSummary: evaluation.summary,
+          aiRecommendedHire: evaluation.recommendedHire,
+          aiTechnicalSkills: evaluation.technicalSkills,
+          aiSoftSkills: evaluation.softSkills,
+          aiEvaluatedAt: new Date().toISOString()
+        } : p));
       }
     } catch (err: unknown) {
       setEvalError(err instanceof Error ? err.message : 'An error occurred during evaluation.');
@@ -1053,7 +1066,7 @@ export default function ClientProposalsScreen() {
                         {evalError}
                       </div>
                     )}
-                     {!evalLoading && (rawAnswers.length === 0 || !evalResult) && (
+                     {!evalLoading && !evalResult && (
                       <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-4">
                         <Brain size={32} className="mx-auto text-purple-500/60" />
                         <div>
@@ -1073,7 +1086,7 @@ export default function ClientProposalsScreen() {
                       </div>
                     )}
 
-                    {!evalLoading && rawAnswers.length > 0 && evalResult && (
+                    {!evalLoading && evalResult && (
                       <div className="space-y-6">
                         {/* Summary Card */}
                         <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">
