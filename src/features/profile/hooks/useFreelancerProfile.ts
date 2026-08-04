@@ -62,6 +62,7 @@ const emptyProfileData = (targetId: string) => ({
       bio: '',
       location: '',
       avatar: '',
+      availability: 0,
       eloPoints: 100,
       createdAt: '',
       majorId: null as string | null,
@@ -74,6 +75,8 @@ const emptyProfileData = (targetId: string) => ({
     skills: [] as string[],
     experience: [] as Array<{ company: string; title: string; years: string }>,
     portfolio: [] as Array<{ title: string; tech: string; image: string }>,
+    rawPortfolioItems: [] as import('../../../types/models/Profile').PortfolioItemDto[],
+    rawWorkExperiences: [] as import('../../../types/models/Profile').WorkExperienceDto[],
 });
 
 export function useFreelancerProfile(targetId: string, canSave = false) {
@@ -112,6 +115,7 @@ export function useFreelancerProfile(targetId: string, canSave = false) {
               bio: apiData.bio || '',
               location: apiData.location || '',
               avatar: apiData.userAvatar || '',
+              availability: apiData.availability ?? 0,
               eloPoints: apiData.eloPoints ?? 100,
               createdAt: apiData.createdAt,
               majorId: apiData.majorId ?? null,
@@ -138,6 +142,8 @@ export function useFreelancerProfile(targetId: string, canSave = false) {
                   image: pi.imageUrl || ''
                 }))
               : [],
+            rawPortfolioItems: apiData.portfolioItems || [],
+            rawWorkExperiences: apiData.workExperiences || [],
           });
         } else {
           setProfileData(emptyProfileData(targetId));
