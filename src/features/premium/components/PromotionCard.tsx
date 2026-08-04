@@ -25,7 +25,7 @@ function sanitizeImageUrl(url?: string): string {
 
 function sanitizeText(text?: string): string {
   if (!text) return '';
-  const clean = String(text).replace(/<[^>]*>?/gm, '').trim();
+  const clean = String(text).trim();
   return clean
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
