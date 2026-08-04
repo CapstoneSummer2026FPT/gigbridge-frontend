@@ -237,6 +237,8 @@ export function usePostJob() {
   const routeState = location.state as PostJobRouteState | null;
   const initialJobData = routeState?.jobData ?? null;
   const initialJobPostId = routeState?.jobPostId ? String(routeState.jobPostId) : null;
+  const hasBudgetFromWizardNavigation = initialJobData !== null
+    && (initialJobData.budgetMin !== undefined || initialJobData.budgetMax !== undefined);
   const navigationAllowedRef = useRef(false);
 
   const [skillInput, setSkillInput] = useState('');
@@ -433,7 +435,15 @@ export function usePostJob() {
         }
 
         const job = jobResponse.data;
-        setForm(formFromJobDetail(job));
+        const loadedForm = formFromJobDetail(job);
+
+        setForm(current => ({
+          ...loadedForm,
+          // The route state contains the values that were just saved in step 1.
+          // Keep its expected budget while the detail request hydrates step 2;
+          // an older/null response must not make the value flash and disappear.
+          budget: hasBudgetFromWizardNavigation ? current.budget : loadedForm.budget,
+        }));
         setTaxonomyDisplayNames({
           majorName: job.majorName || '',
           categoryName: job.categoryName || '',
@@ -468,7 +478,7 @@ export function usePostJob() {
     return () => {
       isMounted = false;
     };
-  }, [initialJobPostId, draftRequestAttempt]);
+  }, [initialJobPostId, draftRequestAttempt, hasBudgetFromWizardNavigation]);
 
   useEffect(() => {
     if (!form.majorId) {
