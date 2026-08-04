@@ -165,10 +165,19 @@
     "companyNamePlaceholder": "e.g. Acme Tech Solutions",
     "websitePlaceholder": "https://example.com",
     "companyDescPlaceholder": "Tell freelancers about your company, mission, and culture...",
-    "errorLoadFreelancer": "Could not load freelancer profile.",
-    "errorLoadClient": "Could not load client profile.",
     "errorLoadSettings": "Error loading profile settings.",
     "errorMajorRequired": "Please select a major.",
-    "errorSaveFailed": "Failed to save profile."
+    "errorSaveFailed": "Failed to save profile.",
+    "paymentMethods": "Payment Methods",
+    "paymentMethodsSubtitle": "Add and manage bank accounts for fast project funding/payouts, secured with 256-bit SSL encryption.",
+    "paymentMethodsClientSubtitle": "Deposit funds conveniently into your Wallet via PayOS and track project payment transaction history.",
+    "payoutsAndBillings": "Payouts & Billings",
+    "security256bit": "256-bit Security",
+    "pciDssNotice": "All bank account information is secured according to PCI-DSS standards.",
+    "supportCenter": "Support Center",
+    "quickWalletNav": "Quick Wallet Access",
+    "depositBtn": "Deposit",
+    "withdrawBtn": "Withdraw",
+    "historyBtn": "Transaction History"
   }
 }

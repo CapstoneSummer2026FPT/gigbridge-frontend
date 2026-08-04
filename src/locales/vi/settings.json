@@ -165,10 +165,18 @@
     "companyNamePlaceholder": "Ví dụ: Công ty Công nghệ Acme",
     "websitePlaceholder": "https://example.com",
     "companyDescPlaceholder": "Giới thiệu về tầm nhìn, văn hóa và dự án của công ty...",
-    "errorLoadFreelancer": "Không thể tải hồ sơ Freelancer.",
-    "errorLoadClient": "Không thể tải hồ sơ Client.",
     "errorLoadSettings": "Lỗi khi tải cài đặt hồ sơ.",
     "errorMajorRequired": "Vui lòng chọn chuyên ngành.",
-    "errorSaveFailed": "Lưu hồ sơ thất bại."
+    "errorSaveFailed": "Lưu hồ sơ thất bại.",
+    "paymentMethods": "Phương thức thanh toán",
+    "paymentMethodsSubtitle": "Thêm và quản lý tài khoản ngân hàng để nạp/rút tiền dự án nhanh chóng, bảo mật tuyệt đối với mã hóa SSL 256-bit.",
+    "paymentMethodsClientSubtitle": "Nạp tiền tiện lợi vào Ví qua PayOS và xem lịch sử giao dịch thanh toán dự án.",
+    "security256bit": "Bảo mật 256-bit",
+    "pciDssNotice": "Mọi thông tin tài khoản ngân hàng đều được bảo mật theo tiêu chuẩn PCI-DSS.",
+    "supportCenter": "Trung tâm hỗ trợ",
+    "quickWalletNav": "Truy cập nhanh Ví",
+    "depositBtn": "Nạp tiền",
+    "withdrawBtn": "Rút tiền",
+    "historyBtn": "Lịch sử giao dịch"
   }
 }
