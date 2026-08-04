@@ -12,7 +12,7 @@ import { PostJobWizardShell } from '../components/PostJobWizardShell';
 import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { JOB_DURATION_UNITS } from '../utils/jobDuration';
+import { durationToWeeks, JOB_DURATION_UNITS, parseJobDuration } from '../utils/jobDuration';
 
 export default function PostJobMilestonesScreen() {
   const navigate = useNavigate();
@@ -58,6 +58,13 @@ export default function PostJobMilestonesScreen() {
   const estimatedDuration = form.estimatedDurationValue
     ? `${form.estimatedDurationValue} ${t(`postJob.durationUnits.${form.estimatedDurationUnit}`)}`
     : null;
+  const expectedDurationWeeks = form.estimatedDurationValue
+    ? durationToWeeks(form.estimatedDurationValue, form.estimatedDurationUnit)
+    : 0;
+  const milestoneTotalWeeks = milestonePlans.reduce((sum, milestone) => {
+    const { value, unit } = parseJobDuration(milestone.estimatedDuration);
+    return sum + durationToWeeks(value, unit);
+  }, 0);
 
   return (
     <PostJobWizardShell
@@ -76,6 +83,9 @@ export default function PostJobMilestonesScreen() {
       onRetryAutosave={retryAutosave}
       expectedBudget={expectedBudget}
       estimatedDuration={estimatedDuration}
+      milestoneTotal={milestonePlanTotal}
+      milestoneTotalWeeks={milestoneTotalWeeks}
+      expectedDurationWeeks={expectedDurationWeeks}
       backAction={(
         <button type="button" className="job-post-button job-post-button--ghost" onClick={() => navigateWizard('/jobs/post')}>
           <ArrowLeft size={15} />{t('postJobWizard.backDetails')}
