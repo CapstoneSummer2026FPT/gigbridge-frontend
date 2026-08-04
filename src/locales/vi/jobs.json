@@ -97,6 +97,7 @@
     "budgetMin": "Ngân Sách Tối Thiểu",
     "budgetMinPlaceholder": "Ngân sách tối thiểu",
     "budgetMax": "Ngân Sách Tối Đa",
+    "expectedBudget": "Ngân sách dự kiến",
     "budgetGuideTitle": "Hướng dẫn Đơn vị Ngân sách",
     "budgetGuideDesc": "Đơn vị tiền tệ sử dụng cho ngân sách công việc trên hệ thống GigBridge là <strong>G-coin</strong>.",
     "budgetGuideRate": "1.000 VND",
@@ -232,6 +233,11 @@
     "edit": "Chỉnh sửa",
     "complete": "hoàn thành",
     "notProvided": "Chưa cung cấp",
+    "budgetExceeded": {
+      "title": "Tổng số tiền milestone vượt quá ExpectedBudget",
+      "desc": "Tổng số tiền milestone {{total}} vượt quá ExpectedBudget {{expected}}. Bạn có muốn tiếp tục không?",
+      "confirm": "Cập nhật ngân sách & tiếp tục"
+    },
     "autosave": {
       "idle": "Đang chờ lưu",
       "saving": "Đang lưu thay đổi...",

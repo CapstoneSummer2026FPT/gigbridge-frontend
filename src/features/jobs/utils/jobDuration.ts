@@ -59,3 +59,23 @@ export const isValidJobDurationValue = (value: string): boolean => {
   const durationValue = Number(value);
   return Number.isInteger(durationValue) && durationValue > 0;
 };
+
+// Approximate conversions used only for comparing milestone totals against the
+// job's estimated duration (e.g. 2 months -> 8 weeks, 1 year -> 52 weeks).
+const WEEKS_PER_UNIT: Record<JobDurationUnit, number> = {
+  weeks: 1,
+  months: 4,
+  years: 52,
+};
+
+export const durationToWeeks = (
+  value: string,
+  unit: JobDurationUnit = DEFAULT_JOB_DURATION_UNIT
+): number => {
+  const durationValue = Number(value);
+  if (!Number.isInteger(durationValue) || durationValue <= 0) {
+    return 0;
+  }
+
+  return durationValue * WEEKS_PER_UNIT[unit];
+};
