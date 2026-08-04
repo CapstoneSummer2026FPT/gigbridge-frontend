@@ -3,21 +3,21 @@ import type { PublicJobPromotionCardDto } from '../../../types/models/Job';
 import '../styles/promotion-card.css';
 
 /**
- * Validates image URLs to ensure safe protocols (http, https, blob, data:image, relative path)
+ * Sanitizes URLs for img src attributes using protocol whitelist and encodeURI
+ * to prevent DOM XSS / dangerous protocol execution (CodeQL js/xss-through-dom)
  */
-function safeUrl(url?: string): string {
+function sanitizeImageUrl(url?: string): string {
   if (!url) return '';
-  const trimmed = url.trim();
+  const trimmed = String(url).trim();
   if (!trimmed) return '';
 
   if (trimmed.startsWith('/')) return trimmed;
-  if (trimmed.startsWith('blob:')) return trimmed;
-  if (trimmed.startsWith('data:image/')) return trimmed;
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:image/')) return trimmed;
 
   try {
-    const parsed = new URL(trimmed);
+    const parsed = new URL(trimmed, window.location.origin);
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return parsed.toString();
+      return encodeURI(parsed.href);
     }
   } catch {
     return '';
@@ -27,11 +27,13 @@ function safeUrl(url?: string): string {
 }
 
 /**
- * Contextual HTML meta-character escaping to prevent XSS through DOM (CodeQL js/xss-through-dom)
+ * Sanitizes text by stripping HTML tags and escaping meta-characters
+ * to guarantee 100% safe plain text rendering (CodeQL js/xss-through-dom)
  */
-function escapeHtml(str?: string): string {
-  if (!str) return '';
-  return String(str)
+function sanitizeText(text?: string): string {
+  if (!text) return '';
+  const clean = String(text).replace(/<[^>]*>?/gm, '').trim();
+  return clean
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -56,9 +58,10 @@ export function PromotedJobCard({
   preview?: boolean;
   imageStyle?: React.CSSProperties;
 }) {
-  const safeImageUrl = safeUrl(card.imageUrl);
-  const safeTitle = escapeHtml(card.title);
-  const safeDescription = escapeHtml(card.description);
+  const safeImageUrl = sanitizeImageUrl(card?.imageUrl);
+  const safeTitle = sanitizeText(card?.title);
+  const safeDescription = sanitizeText(card?.description);
+  const safeDate = card?.featuredUntil ? new Date(card.featuredUntil).toLocaleDateString() : '';
 
   return (
     <article className="promotion-profile-card promoted-job-card">
@@ -69,9 +72,11 @@ export function PromotedJobCard({
         <p className="promotion-profile-kicker">Promoted job</p>
         <h3>{safeTitle}</h3>
         <p className="promotion-job-description">{safeDescription}</p>
-        <span className="promotion-job-expiry">
-          <Clock3 size={14} /> Featured until {new Date(card.featuredUntil).toLocaleDateString()}
-        </span>
+        {safeDate && (
+          <span className="promotion-job-expiry">
+            <Clock3 size={14} /> Featured until {safeDate}
+          </span>
+        )}
       </div>
       <button type="button" className="promotion-explore-button" disabled={preview} onClick={onExplore}>
         View job <ArrowUpRight size={18} />
