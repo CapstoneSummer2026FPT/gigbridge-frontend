@@ -391,6 +391,9 @@
   .cp-col-8 {
     grid-column: span 8 / span 8;
   }
+  .cp-col-6 {
+    grid-column: span 6 / span 6;
+  }
 }
 
 /* Inner Bio + Company Info Two-Column Layout

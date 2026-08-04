@@ -30,16 +30,18 @@ export const getGoogleOAuth2 = (): GoogleOAuth2 | null => {
   return googleWindow.google?.accounts?.oauth2 ?? null;
 };
 
-export const hasCompletedStoredSetup = (serializedUser: string | null): boolean => {
-  if (!serializedUser) return false;
+export const hasCompletedStoredSetup = (userOrSerialized: unknown): boolean => {
+  if (!userOrSerialized) return false;
 
   try {
-    const parsed: unknown = JSON.parse(serializedUser);
+    const parsed: unknown = typeof userOrSerialized === 'string'
+      ? JSON.parse(userOrSerialized)
+      : userOrSerialized;
     return (
       typeof parsed === 'object' &&
       parsed !== null &&
       'is_setup' in parsed &&
-      parsed.is_setup === true
+      (parsed as Record<string, unknown>).is_setup === true
     );
   } catch {
     return false;

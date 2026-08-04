@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatJobDuration, isValidJobDurationValue, parseJobDuration } from './jobDuration';
+import { durationToWeeks, formatJobDuration, isValidJobDurationValue, parseJobDuration } from './jobDuration';
 
 describe('jobDuration utilities', () => {
   it('parses supported duration units', () => {
@@ -29,5 +29,30 @@ describe('jobDuration utilities', () => {
     expect(isValidJobDurationValue('0')).toBe(false);
     expect(isValidJobDurationValue('-1')).toBe(false);
     expect(isValidJobDurationValue('1.5')).toBe(false);
+  });
+});
+
+describe('durationToWeeks', () => {
+  it('keeps weeks as-is', () => {
+    expect(durationToWeeks('3', 'weeks')).toBe(3);
+  });
+
+  it('converts months to weeks', () => {
+    expect(durationToWeeks('2', 'months')).toBe(8);
+  });
+
+  it('converts years to weeks', () => {
+    expect(durationToWeeks('1', 'years')).toBe(52);
+  });
+
+  it('defaults the unit to weeks', () => {
+    expect(durationToWeeks('2')).toBe(2);
+  });
+
+  it('returns 0 for empty or invalid values', () => {
+    expect(durationToWeeks('', 'weeks')).toBe(0);
+    expect(durationToWeeks('0', 'weeks')).toBe(0);
+    expect(durationToWeeks('-2', 'weeks')).toBe(0);
+    expect(durationToWeeks('abc', 'weeks')).toBe(0);
   });
 });

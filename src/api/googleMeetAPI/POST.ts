@@ -1,11 +1,4 @@
-import { apiService } from '../service/apiService';
-
-export interface GoogleMeetConnectionStatus {
-  isConnected: boolean;
-  googleEmail?: string | null;
-  connectedAt?: string | null;
-  needsReconnect: boolean;
-}
+import { apiService } from '../../service/apiService';
 
 export interface AuthorizationUrlResult {
   authorizationUrl: string;
@@ -13,13 +6,10 @@ export interface AuthorizationUrlResult {
   flowId: string;
 }
 
-export const googleMeetAPI = {
+export const googleMeetPostAPI = {
   getAuthorizationUrl: () =>
     apiService.post<AuthorizationUrlResult>('integrations/google-meet/authorization-url'),
 
   completeCallback: (state: string, code?: string | null, error?: string | null) =>
     apiService.post<{ result: string }>('integrations/google-meet/callback', { state, code, error }),
-
-  getStatus: () =>
-    apiService.get<GoogleMeetConnectionStatus>('integrations/google-meet/status'),
 };

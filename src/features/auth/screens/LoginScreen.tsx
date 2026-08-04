@@ -14,6 +14,7 @@ import {
   hasCompletedStoredSetup,
   type GoogleCodeClient,
 } from '../googleIdentity';
+import { secureStorage } from '../../../shared/utils/secureStorage';
 
 
 export default function LoginScreen() {
@@ -83,7 +84,7 @@ export default function LoginScreen() {
       const googleLogin = appContext?.googleLogin || (async () => undefined);
       const role = await googleLogin(authCode, selectedRole, true);
 
-      const isSetupComplete = hasCompletedStoredSetup(localStorage.getItem('gigbridge_user'));
+      const isSetupComplete = hasCompletedStoredSetup(secureStorage.getItem('gigbridge_user'));
 
       if (selectedRole === undefined && (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin))) {
         if (isMounted.current) {
@@ -151,7 +152,7 @@ export default function LoginScreen() {
     try {
       const role_signIn = await login(formData.email, formData.password);
       
-      const isSetupComplete = hasCompletedStoredSetup(localStorage.getItem('gigbridge_user'));
+      const isSetupComplete = hasCompletedStoredSetup(secureStorage.getItem('gigbridge_user'));
       
       if (role_signIn === null || role_signIn === undefined || (role_signIn !== UserRole.Client && role_signIn !== UserRole.Freelancer && role_signIn !== UserRole.Admin)) {
         if (isMounted.current) {

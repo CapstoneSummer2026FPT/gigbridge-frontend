@@ -101,16 +101,8 @@ export function AvatarCropModal({
     ctx.translate(position.x, position.y);
 
     const aspect = img.width / img.height;
-    let drawWidth = size;
-    let drawHeight = size;
-
-    if (aspect > 1) {
-      drawHeight = size;
-      drawWidth = size * aspect;
-    } else {
-      drawWidth = size;
-      drawHeight = size / aspect;
-    }
+    const drawWidth = aspect > 1 ? size * aspect : size;
+    const drawHeight = aspect > 1 ? size : size / aspect;
 
     ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     ctx.restore();

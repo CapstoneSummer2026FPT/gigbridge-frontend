@@ -176,7 +176,7 @@ export function useJobDetail() {
         let fetchedClient: ClientIdentity | null = null;
         let fetchedClientProfile: ClientProfileDetailDto | null = null;
 
-        if (!fetchedClient && data.job.clientId) {
+        if (data.job.clientId) {
           try {
             const profileRes = await profileGetAPI.getClientProfile(data.job.clientId);
             if (profileRes.success && profileRes.data) {

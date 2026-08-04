@@ -47,6 +47,15 @@ export interface PortfolioItemDto {
   description?: string;
   projectUrl?: string;
   imageUrl?: string;
+  projectDate?: string;
+}
+
+export interface PortfolioItemInputDto {
+  title: string;
+  description?: string;
+  projectUrl?: string;
+  imageUrl?: string;
+  projectDate?: string;
 }
 
 export interface WorkExperienceDto {
@@ -56,6 +65,14 @@ export interface WorkExperienceDto {
   description?: string;
   startDate: string;
   endDate?: string;
+}
+
+export interface WorkExperienceInputDto {
+  companyName: string;
+  jobTitle: string;
+  startDate: string;
+  endDate?: string;
+  description?: string;
 }
 
 export interface FreelancerProfileDto {

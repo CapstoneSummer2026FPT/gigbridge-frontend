@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import PostJobMilestonesScreen from './PostJobMilestonesScreen';
 
 const {
@@ -40,13 +41,21 @@ vi.mock('../../../shared/components/NestedMilestonePlanEditor', () => ({
 
 vi.mock('../components/PostJobWizardShell', () => ({
   PostJobWizardShell: ({
+    children,
     expectedBudget,
     estimatedDuration,
+    milestoneTotal,
+    milestoneTotalWeeks,
+    expectedDurationWeeks,
     primaryAction,
     overlay,
   }: {
+    children?: React.ReactNode;
     expectedBudget?: number | null;
     estimatedDuration?: string | null;
+    milestoneTotal?: number;
+    milestoneTotalWeeks?: number;
+    expectedDurationWeeks?: number;
     primaryAction?: React.ReactNode;
     overlay?: React.ReactNode;
   }) => (
@@ -55,8 +64,18 @@ vi.mock('../components/PostJobWizardShell', () => ({
         {expectedBudget !== undefined && expectedBudget !== null ? String(expectedBudget) : 'none'}
       </div>
       <div data-testid="estimated-duration">{estimatedDuration ?? 'none'}</div>
+      <div data-testid="milestone-total">
+        {milestoneTotal !== undefined ? String(milestoneTotal) : 'none'}
+      </div>
+      <div data-testid="milestone-total-weeks">
+        {milestoneTotalWeeks !== undefined ? String(milestoneTotalWeeks) : 'none'}
+      </div>
+      <div data-testid="expected-duration-weeks">
+        {expectedDurationWeeks !== undefined ? String(expectedDurationWeeks) : 'none'}
+      </div>
       {primaryAction}
       {overlay}
+      {children}
     </div>
   ),
 }));
@@ -84,7 +103,7 @@ const buildHookValue = () => ({
   errorMessage: '',
   isDraftInitializing: false,
   draftError: '',
-  milestonePlans: [],
+  milestonePlans: [] as EditableMilestonePlan[],
   setMilestonePlans: vi.fn(),
   milestoneErrors: {},
   setMilestoneErrors: vi.fn(),
@@ -147,5 +166,40 @@ describe('PostJobMilestonesScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue to review' }));
 
     expect(mockSubmitDraftFlow).toHaveBeenCalledWith('review');
+  });
+
+  it('passes the milestone total and duration weeks to the sidebar for draft ratios', () => {
+    mockUsePostJob.mockReturnValue({
+      ...buildHookValue(),
+      milestonePlans: [
+        { amount: 0, orderIndex: 0, workItems: [], estimatedDuration: '2 weeks' },
+        { amount: 0, orderIndex: 1, workItems: [], estimatedDuration: '2 weeks' },
+      ] as EditableMilestonePlan[],
+    });
+
+    render(<PostJobMilestonesScreen />);
+
+    expect(screen.getByTestId('milestone-total')).toHaveTextContent('200');
+    expect(screen.getByTestId('milestone-total-weeks')).toHaveTextContent('4');
+    expect(screen.getByTestId('expected-duration-weeks')).toHaveTextContent('3');
+  });
+
+  it('passes zero milestone weeks when no milestone durations are set', () => {
+    render(<PostJobMilestonesScreen />);
+
+    expect(screen.getByTestId('milestone-total-weeks')).toHaveTextContent('0');
+    expect(screen.getByTestId('expected-duration-weeks')).toHaveTextContent('3');
+  });
+
+  it('passes zero expected duration weeks when the job has no estimated duration', () => {
+    mockUsePostJob.mockReturnValue({
+      ...buildHookValue(),
+      form: { ...buildHookValue().form, estimatedDurationValue: '' },
+    });
+
+    render(<PostJobMilestonesScreen />);
+
+    expect(screen.getByTestId('estimated-duration')).toHaveTextContent('none');
+    expect(screen.getByTestId('expected-duration-weeks')).toHaveTextContent('0');
   });
 });
