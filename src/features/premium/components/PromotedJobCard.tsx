@@ -27,12 +27,12 @@ function sanitizeImageUrl(url?: string): string {
 }
 
 /**
- * Sanitizes text by stripping HTML tags and escaping meta-characters
+ * Sanitizes text by escaping HTML meta-characters
  * to guarantee 100% safe plain text rendering (CodeQL js/xss-through-dom)
  */
 function sanitizeText(text?: string): string {
   if (!text) return '';
-  const clean = String(text).replace(/<[^>]*>?/gm, '').trim();
+  const clean = String(text).trim();
   return clean
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
