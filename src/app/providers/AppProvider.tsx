@@ -168,7 +168,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (savedUser) {
       const user = JSON.parse(savedUser);
       user.role = newRole;
-      localStorage.setItem('gigbridge_user', JSON.stringify({ ...user, phone_number: null }));
+      const persistedUser = sanitizeUserForStorage(user);
+      localStorage.setItem('gigbridge_user', JSON.stringify(persistedUser));
     }
   }, []);
 
@@ -233,11 +234,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       const user = mapUserDTOToUser(apiResponse.data);
+      const persistedUser = sanitizeUserForStorage(user);
 
       setUser(user);
       setRoleState(user.role);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      localStorage.setItem('gigbridge_session', JSON.stringify({ user: persistedUser, role: user.role }));
+      localStorage.setItem('gigbridge_user', JSON.stringify(persistedUser));
       
       // Automatically log the user in after registration to acquire tokens
       await login(email, password);
