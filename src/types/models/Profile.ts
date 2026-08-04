@@ -265,3 +265,22 @@ export interface FreelancerSkill {
   years_of_experience: number;
   proficiency_level: ProficiencyLevel;
 }
+
+export interface UserProfileDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  avatar?: string | null;
+  phoneNumber?: string | null;
+  preferredLanguage?: string | null;
+  role: number;
+}
+
+export interface UpdateUserProfileDto {
+  fullName: string;
+  email: string;
+  avatar?: string | null;
+  phoneNumber?: string | null;
+  preferredLanguage?: string | null;
+}
+

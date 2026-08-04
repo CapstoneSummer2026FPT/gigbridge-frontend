@@ -4,6 +4,7 @@ import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import { BankAccountStatus } from '../../../types';
 import type { BankAccountResponse, SupportedBankResponse } from '../../../types';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/early-payout-screen.css';
 import '../styles/bank-account-manager.css';
 
@@ -41,6 +42,7 @@ interface BankAccountManagerProps {
  * Settings is immediately available for selection in the withdrawal flow.
  */
 export default function BankAccountManager({ onBankAccountsChange }: BankAccountManagerProps) {
+  const { t } = useTranslation();
   const [bankAccounts, setBankAccounts] = useState<BankAccountResponse[]>([]);
   const [supportedBanks, setSupportedBanks] = useState<SupportedBankResponse[]>([]);
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
@@ -86,15 +88,15 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
     }
 
     const loadFailures = [
-      !bankRes.success ? getResponseMessage(bankRes.message, 'Không thể tải tài khoản ngân hàng.') : '',
-      !banksRes.success ? getResponseMessage(banksRes.message, 'Không thể tải danh sách ngân hàng.') : '',
+      !bankRes.success ? getResponseMessage(bankRes.message, t('wallet.bankAccount.errorLoadAccounts', { defaultValue: 'Không thể tải tài khoản ngân hàng.' })) : '',
+      !banksRes.success ? getResponseMessage(banksRes.message, t('wallet.bankAccount.errorLoadBanks', { defaultValue: 'Không thể tải danh sách ngân hàng.' })) : '',
     ].filter(Boolean);
     if (loadFailures.length > 0) {
       setError(loadFailures.join(' '));
     }
 
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadBankAccounts();
@@ -126,7 +128,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
     const accountNumber = bankForm.accountNumber.trim();
     const selectedDirectoryBank = supportedBanks.find(bank => bank.bin === bankForm.bankBin);
     if (!selectedDirectoryBank) {
-      setError('Vui long chon ngan hang hop le.');
+      setError(t('wallet.bankAccount.errorInvalidBank', { defaultValue: 'Vui lòng chọn ngân hàng hợp lệ.' }));
       return;
     }
 
@@ -138,7 +140,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
     };
 
     if (!basePayload.bankCode || basePayload.bankCode.length < 2 || basePayload.bankName.length < 2) {
-      setError('Vui lòng nhập mã ngân hàng và tên ngân hàng hợp lệ.');
+      setError(t('wallet.bankAccount.errorInvalidBankCodeName', { defaultValue: 'Vui lòng nhập mã ngân hàng và tên ngân hàng hợp lệ.' }));
       return;
     }
 
@@ -146,12 +148,12 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
       basePayload.accountName.length < 2 ||
       ((!editingBankId || editingBankRequiresAccountNumber) && !ACCOUNT_NUMBER_PATTERN.test(accountNumber))
     ) {
-      setError('Vui lòng nhập tên chủ tài khoản và số tài khoản hợp lệ.');
+      setError(t('wallet.bankAccount.errorInvalidHolderNumber', { defaultValue: 'Vui lòng nhập tên chủ tài khoản và số tài khoản hợp lệ.' }));
       return;
     }
 
     if (editingBankId && accountNumber && !ACCOUNT_NUMBER_PATTERN.test(accountNumber)) {
-      setError('Số tài khoản mới không hợp lệ.');
+      setError(t('wallet.bankAccount.errorInvalidNewNumber', { defaultValue: 'Số tài khoản mới không hợp lệ.' }));
       return;
     }
 
@@ -172,10 +174,10 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
 
     if (response.success && response.data) {
       clearBankForm();
-      setSuccess(editingBankId ? 'Đã cập nhật tài khoản ngân hàng.' : 'Đã lưu tài khoản ngân hàng.');
+      setSuccess(editingBankId ? t('wallet.bankAccount.updatedSuccess', { defaultValue: 'Đã cập nhật tài khoản ngân hàng.' }) : t('wallet.bankAccount.savedSuccess', { defaultValue: 'Đã lưu tài khoản ngân hàng.' }));
       await loadBankAccounts();
     } else {
-      setError(getResponseMessage(response.message, 'Không thể lưu tài khoản ngân hàng.'));
+      setError(getResponseMessage(response.message, t('wallet.bankAccount.errorSaveAccount', { defaultValue: 'Không thể lưu tài khoản ngân hàng.' })));
     }
 
     setSavingBank(false);
@@ -188,10 +190,10 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
 
     const response = await walletPostAPI.updateBankAccount(bankAccountId, { isDefault: true });
     if (response.success && response.data) {
-      setSuccess('Đã đặt tài khoản mặc định.');
+      setSuccess(t('wallet.bankAccount.defaultSuccess', { defaultValue: 'Đã đặt tài khoản mặc định.' }));
       await loadBankAccounts();
     } else {
-      setError(getResponseMessage(response.message, 'Không thể đặt tài khoản mặc định.'));
+      setError(getResponseMessage(response.message, t('wallet.bankAccount.errorDefaultAccount', { defaultValue: 'Không thể đặt tài khoản mặc định.' })));
     }
 
     setSavingBank(false);
@@ -204,13 +206,13 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
 
     const response = await walletPostAPI.deleteBankAccount(bankAccountId);
     if (response.success) {
-      setSuccess('Đã xóa tài khoản ngân hàng.');
+      setSuccess(t('wallet.bankAccount.deleteSuccess', { defaultValue: 'Đã xóa tài khoản ngân hàng.' }));
       if (editingBankId === bankAccountId) {
         clearBankForm();
       }
       await loadBankAccounts();
     } else {
-      setError(getResponseMessage(response.message, 'Không thể xóa tài khoản đang dùng cho lệnh rút tiền.'));
+      setError(getResponseMessage(response.message, t('wallet.bankAccount.deleteError', { defaultValue: 'Không thể xóa tài khoản đang dùng cho lệnh rút tiền.' })));
     }
 
     setSavingBank(false);
@@ -220,7 +222,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
     <>
       <div className="bam-card">
         <Banknote size={22} />
-        <strong>{editingBankId ? 'Sửa tài khoản ngân hàng' : 'Thêm tài khoản ngân hàng'}</strong>
+        <strong>{editingBankId ? t('wallet.bankAccount.editTitle', { defaultValue: 'Sửa tài khoản ngân hàng' }) : t('wallet.bankAccount.addTitle', { defaultValue: 'Thêm tài khoản ngân hàng' })}</strong>
         {error && (
           <p className="early-payout-alert danger"><AlertTriangle size={15} />{error}</p>
         )}
@@ -229,7 +231,7 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
         )}
         <div className="early-payout-form-grid">
           <select value={bankForm.bankBin} onChange={event => handleBankFormChange('bankBin', event.target.value)}>
-            <option value="">Chọn ngân hàng</option>
+            <option value="">{t('wallet.bankAccount.selectBank', { defaultValue: 'Chọn ngân hàng' })}</option>
             {supportedBanks.map(bank => (
               <option key={bank.bin} value={bank.bin}>{bank.shortName} - {bank.name}</option>
             ))}
@@ -237,35 +239,35 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
           <input
             value={bankForm.accountName}
             onChange={event => handleBankFormChange('accountName', event.target.value)}
-            placeholder="Tên chủ tài khoản"
+            placeholder={t('wallet.bankAccount.accountNamePlaceholder', { defaultValue: 'Tên chủ tài khoản' })}
           />
           <input
             value={bankForm.accountNumber}
             onChange={event => handleBankFormChange('accountNumber', event.target.value)}
             placeholder={editingBankRequiresAccountNumber
-              ? 'Nhập lại số tài khoản'
-              : editingBankId ? 'Số tài khoản mới (tùy chọn)' : 'Số tài khoản'}
+              ? t('wallet.bankAccount.accountNumberReentryPlaceholder', { defaultValue: 'Nhập lại số tài khoản' })
+              : editingBankId ? t('wallet.bankAccount.accountNumberNewPlaceholder', { defaultValue: 'Số tài khoản mới (tùy chọn)' }) : t('wallet.bankAccount.accountNumberPlaceholder', { defaultValue: 'Số tài khoản' })}
           />
         </div>
         {bankAccounts.length > activeBankCount && (
-          <small className="early-payout-balance-note">Một số tài khoản cũ cần chọn lại ngân hàng trước khi sử dụng.</small>
+          <small className="early-payout-balance-note">{t('wallet.bankAccount.reselectNotice', { defaultValue: 'Một số tài khoản cũ cần chọn lại ngân hàng trước khi sử dụng.' })}</small>
         )}
         <button type="button" onClick={() => void handleSaveBankAccount()} disabled={savingBank}>
           {savingBank ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-          {editingBankId ? 'Cập nhật tài khoản' : 'Lưu tài khoản'}
+          {editingBankId ? t('wallet.bankAccount.updateBtn', { defaultValue: 'Cập nhật tài khoản' }) : t('wallet.bankAccount.saveBtn', { defaultValue: 'Lưu tài khoản' })}
         </button>
         {editingBankId && (
           <button type="button" onClick={clearBankForm} disabled={savingBank}>
-            Hủy sửa
+            {t('wallet.bankAccount.cancelBtn', { defaultValue: 'Hủy sửa' })}
           </button>
         )}
       </div>
 
       <div className="bam-card">
         <ShieldCheck size={22} />
-        <strong>Tài khoản đã lưu</strong>
+        <strong>{t('wallet.bankAccount.savedAccountsTitle', { defaultValue: 'Tài khoản đã lưu' })}</strong>
         {loading ? (
-          <p className="early-payout-balance-note"><Loader2 size={14} className="animate-spin" /> Đang tải tài khoản...</p>
+          <p className="early-payout-balance-note"><Loader2 size={14} className="animate-spin" /> {t('wallet.bankAccount.loadingAccounts', { defaultValue: 'Đang tải tài khoản...' })}</p>
         ) : (
           <div className="early-payout-bank-list">
             {bankAccounts.map(account => {
@@ -275,24 +277,24 @@ export default function BankAccountManager({ onBankAccountsChange }: BankAccount
                   <span>{account.bankName}</span>
                   <p>{account.accountName}</p>
                   <p>{account.accountNumberMasked}</p>
-                  {!isActive && <small>Cần chọn lại ngân hàng và nhập lại số tài khoản.</small>}
+                  {!isActive && <small>{t('wallet.bankAccount.reselectAccountNotice', { defaultValue: 'Cần chọn lại ngân hàng và nhập lại số tài khoản.' })}</small>}
                   <div>
                     {isActive && !account.isDefault && (
                       <button type="button" onClick={() => void handleSetDefaultBank(account.bankAccountId)} disabled={savingBank}>
-                        Đặt mặc định
+                        {t('wallet.bankAccount.setDefault', { defaultValue: 'Đặt mặc định' })}
                       </button>
                     )}
                     <button type="button" onClick={() => handleEditBank(account)} disabled={savingBank}>
-                      Sửa
+                      {t('wallet.bankAccount.edit', { defaultValue: 'Sửa' })}
                     </button>
                     <button type="button" onClick={() => void handleDeleteBank(account.bankAccountId)} disabled={savingBank}>
-                      Xóa
+                      {t('wallet.bankAccount.remove', { defaultValue: 'Xóa' })}
                     </button>
                   </div>
                 </article>
               );
             })}
-            {bankAccounts.length === 0 && <p>Chưa có tài khoản ngân hàng.</p>}
+            {bankAccounts.length === 0 && <p>{t('wallet.bankAccount.noAccounts', { defaultValue: 'Chưa có tài khoản ngân hàng.' })}</p>}
           </div>
         )}
       </div>
