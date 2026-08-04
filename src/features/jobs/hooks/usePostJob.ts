@@ -97,8 +97,20 @@ export type PostJobReviewSection = 'project' | 'terms' | 'hiringPlan';
 export type PostJobSubmitResult =
   | { status: 'success' }
   | { status: 'validation-error'; section: PostJobReviewSection; fieldSelector?: string }
+  | { status: 'budget-exceeded' }
   | { status: 'error' };
 type LeaveAction = 'save' | 'discard' | null;
+
+/**
+ * True when a client-entered expected budget exists and the milestone plan
+ * total exceeds it — the "budget-exceeded" confirmation should be shown.
+ * A missing/zero expected budget means there is nothing to exceed, so no
+ * confirmation is shown.
+ */
+export const shouldConfirmBudgetOverride = (budgetValue: string, milestonePlanTotal: number): boolean => {
+  const expected = Number(budgetValue);
+  return expected > 0 && milestonePlanTotal > expected;
+};
 
 interface PostJobValidationIssue {
   message: string;
@@ -229,6 +241,9 @@ export function usePostJob() {
 
   const [skillInput, setSkillInput] = useState('');
   const [submitMode, setSubmitMode] = useState<PostJobSubmitMode | null>(null);
+  const [isBudgetExceededPromptOpen, setIsBudgetExceededPromptOpen] = useState(false);
+  const [pendingBudgetSubmitMode, setPendingBudgetSubmitMode] = useState<PostJobSubmitMode | null>(null);
+  const budgetOverrideRef = useRef<string | null>(null);
   const [leaveAction, setLeaveAction] = useState<LeaveAction>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [jobPostId, setJobPostId] = useState<string | null>(initialJobPostId);
@@ -305,14 +320,6 @@ export function usePostJob() {
     () => milestonePlans.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [milestonePlans]
   );
-
-  useEffect(() => {
-    if (milestonePlans.length === 0) return;
-    const fixedBudget = milestonePlanTotal > 0 ? String(milestonePlanTotal) : '';
-    setForm(current => current.budget === fixedBudget
-      ? current
-      : { ...current, budget: fixedBudget });
-  }, [milestonePlanTotal, milestonePlans.length]);
 
   const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
@@ -1007,7 +1014,12 @@ export function usePostJob() {
     questions?: QuestionInput[];
     milestonePlans?: JobPostMilestonePlanDto[];
   }): SaveDraftJobPostRequest => {
-    const budgetValue = form.budget ? Number(form.budget) : null;
+    // A confirmed budget override (milestone total) takes precedence over the
+    // current form value — the immediate post-confirm save runs in the same
+    // tick as setForm, so form.budget would still hold the stale expected budget.
+    const budgetValue = budgetOverrideRef.current !== null
+      ? Number(budgetOverrideRef.current)
+      : form.budget ? Number(form.budget) : null;
     const finalQuestions = overrides?.questions || questions;
     const finalMilestones = overrides?.milestonePlans || milestonePlans;
     const questionsWithOrderOverrides = finalQuestions.map((question, index) => ({ ...question, orderIndex: index }));
@@ -1266,6 +1278,16 @@ export function usePostJob() {
       }
     }
 
+    // When the milestone plan total exceeds the client's expected budget, ask
+    // before saving so the job post budget is only raised by explicit consent.
+    if ((mode === 'review' || mode === 'publish')
+      && shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)
+      && budgetOverrideRef.current === null) {
+      setPendingBudgetSubmitMode(mode);
+      setIsBudgetExceededPromptOpen(true);
+      return { status: 'budget-exceeded' };
+    }
+
     setSubmitMode(mode);
     setErrorMessage(null);
 
@@ -1384,7 +1406,25 @@ export function usePostJob() {
       return { status: 'error' };
     } finally {
       setSubmitMode(null);
+      budgetOverrideRef.current = null;
     }
+  };
+
+  const handleBudgetExceededConfirm = (): Promise<PostJobSubmitResult> => {
+    budgetOverrideRef.current = String(milestonePlanTotal);
+    setForm(current => ({
+      ...current,
+      budget: String(milestonePlanTotal),
+    }));
+    setIsBudgetExceededPromptOpen(false);
+    const mode = pendingBudgetSubmitMode;
+    setPendingBudgetSubmitMode(null);
+    return mode ? submitDraftFlow(mode) : Promise.resolve({ status: 'budget-exceeded' });
+  };
+
+  const handleBudgetExceededCancel = (): void => {
+    setIsBudgetExceededPromptOpen(false);
+    setPendingBudgetSubmitMode(null);
   };
 
   const continueBlockedNavigation = (): void => {
@@ -1505,6 +1545,10 @@ export function usePostJob() {
     handleLeaveDiscardDraft,
     cancelBlockedNavigation,
     submitDraftFlow,
+    isBudgetExceededPromptOpen,
+    handleBudgetExceededConfirm,
+    handleBudgetExceededCancel,
+    shouldConfirmBudgetOverride,
     navigateWizard,
     flushAutosave,
     retryAutosave,

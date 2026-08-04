@@ -1392,6 +1392,7 @@
     "budgetMin": "Ngân Sách Tối Thiểu",
     "budgetMinPlaceholder": "Ngân sách tối thiểu",
     "budgetMax": "Ngân Sách Tối Đa",
+    "expectedBudget": "Ngân Sách Dự Kiến",
     "budgetGuideTitle": "Hướng dẫn Đơn vị Ngân sách",
     "budgetGuideDesc": "Đơn vị tiền tệ sử dụng cho ngân sách công việc trên hệ thống GigBridge là <strong>G-coin</strong>.",
     "budgetGuideRate": "1.000 VND",
@@ -1500,6 +1501,11 @@
     "edit": "Chỉnh sửa",
     "complete": "hoàn thành",
     "notProvided": "Chưa cung cấp",
+    "budgetExceeded": {
+      "title": "Tổng tiền milestone vượt quá ngân sách dự kiến",
+      "desc": "Tổng tiền milestone là {{total}}, vượt quá ngân sách dự kiến {{expected}} của bạn. Cập nhật ngân sách dự kiến thành {{total}} và tiếp tục?",
+      "confirm": "Cập nhật ngân sách & tiếp tục"
+    },
     "autosave": {
       "idle": "Đang chờ lưu",
       "saving": "Đang lưu thay đổi...",
@@ -1515,8 +1521,8 @@
       "requirementsHint": "Mô tả mục tiêu, ràng buộc, dữ liệu đầu vào và kết quả mong đợi.",
       "budgetTimeline": "Ngân sách & thời gian",
       "budgetTimelineHint": "Thiết lập kỳ vọng thực tế về thời hạn nhận proposal và triển khai.",
-      "budgetHint": "Ngân sách dự kiến bằng G-coin, không bắt buộc. Tổng milestone sẽ thay thế giá trị này.",
-      "budgetFromMilestones": "Được tự động tính từ kế hoạch milestone.",
+      "budgetHint": "Ngân sách dự kiến bằng G-coin, không bắt buộc cho dự án này.",
+      "budgetFromMilestones": "Tổng milestone sẽ được đối chiếu với ngân sách dự kiến trước khi đăng tin.",
       "deadlineHint": "Đây là hạn cuối nhận proposal, không phải ngày hoàn thành toàn bộ dự án.",
       "attachments": "Hình ảnh dự án",
       "attachmentsHint": "Thêm hình ảnh tham khảo để freelancer hiểu rõ kết quả bạn mong muốn.",

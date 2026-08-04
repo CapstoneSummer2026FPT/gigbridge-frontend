@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, CircleDollarSign, Cloud, RefreshCw } from 'l
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import JobPostStepper from '../../../shared/components/JobPostStepper';
+import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import type { AutosaveStatus } from '../hooks/usePostJob';
 import '../../../shared/styles/job-post-stepper.css';
 import '../styles/post-job-wizard.css';
@@ -20,6 +21,8 @@ interface Props {
   autosaveError?: string | null;
   errorMessage?: string | null;
   isLoading?: boolean;
+  expectedBudget?: number | null;
+  estimatedDuration?: string | null;
   headerAction?: ReactNode;
   backAction?: ReactNode;
   primaryAction: ReactNode;
@@ -43,6 +46,8 @@ export function PostJobWizardShell({
   autosaveError,
   errorMessage,
   isLoading,
+  expectedBudget,
+  estimatedDuration,
   headerAction,
   backAction,
   primaryAction,
@@ -95,7 +100,6 @@ export function PostJobWizardShell({
               <div className="job-post-wizard__sidebar-card">
                 <JobPostStepper currentStep={currentStep} completedSteps={completedSteps} />
               </div>
-
               <div className="job-post-wizard__sidebar-card">
                 <span className="job-post-wizard__side-label">{t('postJobWizard.draft')}</span>
                 <strong className="job-post-wizard__draft-title">{previewTitle}</strong>
@@ -107,6 +111,16 @@ export function PostJobWizardShell({
                   )}
                 </div>
                 {autosaveError && <small className="job-post-wizard__save-error">{autosaveError}</small>}
+                {(expectedBudget !== undefined && expectedBudget !== null) || estimatedDuration ? (
+                  <dl className="job-post-wizard__stats job-post-wizard__draft-details">
+                    {expectedBudget !== undefined && expectedBudget !== null && (
+                      <div><dt>{t('postJob.expectedBudget')}</dt><dd>{formatGigCoin(expectedBudget)}</dd></div>
+                    )}
+                    {estimatedDuration && (
+                      <div><dt>{t('postJob.estimatedDuration')}</dt><dd>{estimatedDuration}</dd></div>
+                    )}
+                  </dl>
+                ) : null}
               </div>
 
               <div className="job-post-wizard__sidebar-card">
