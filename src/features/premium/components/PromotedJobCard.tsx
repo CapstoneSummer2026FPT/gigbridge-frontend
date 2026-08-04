@@ -5,14 +5,21 @@ import '../styles/promotion-card.css';
 function safeUrl(url?: string): string {
   if (!url) return '';
   const trimmed = url.trim();
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:image/') ||
-    trimmed.startsWith('/')
-  ) {
-    return trimmed;
+  if (!trimmed) return '';
+
+  if (trimmed.startsWith('/')) return trimmed;
+  if (trimmed.startsWith('blob:')) return trimmed;
+  if (trimmed.startsWith('data:image/')) return trimmed;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    return '';
   }
+
   return '';
 }
 
