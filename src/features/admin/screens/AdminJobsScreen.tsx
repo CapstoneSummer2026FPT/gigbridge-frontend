@@ -1,15 +1,33 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, FileText, CheckCircle, XCircle, Clock, AlertCircle, Trash2, FileQuestion, Download, ExternalLink, Award, MapPin, Clock8, Folder, Image, Film, File as FileIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import { Search, Filter, Briefcase, Eye, Lock, Unlock, MoreVertical, Calendar, FileText, CheckCircle, XCircle, AlertCircle, Trash2, FileQuestion, Download, ExternalLink, Award, MapPin, Clock8, Folder, Image, Film, File as FileIcon } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { adminAPI } from '../../../api/adminAPI';
-import { JobPostStatus, type Job, type JobPostSummaryDto } from '../../../types/models/Job';
+import { JobPostStatus, type AdminJobPostStatsDto, type Job, type JobPostSummaryDto } from '../../../types/models/Job';
 import '../styles/admin-users-screen.css';
 
-type JobFilter = 'all' | 'draft' | 'open' | 'in_progress' | 'closed';
+type JobFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled';
 type JobSort = 'posted' | 'title' | 'budget';
+
+const PAGE_SIZE = 25;
+const EMPTY_STATS: AdminJobPostStatsDto = {
+  total: 0,
+  draft: 0,
+  open: 0,
+  closed: 0,
+  cancelled: 0,
+  locked: 0,
+};
+
+const JOB_FILTER_STATUS: Record<Exclude<JobFilter, 'all'>, JobPostStatus> = {
+  draft: JobPostStatus.Draft,
+  open: JobPostStatus.Open,
+  closed: JobPostStatus.Closed,
+  cancelled: JobPostStatus.Cancelled,
+};
 
 const formatBytes = (bytes?: number) => {
   if (bytes === undefined || bytes === null || bytes === 0) return 'Unknown Size';
@@ -61,13 +79,36 @@ const mapJobPostSummaryToJob = (job: JobPostSummaryDto): Job => ({
   visibility: job.visibility ?? undefined,
 });
 
+const createJobPreviewPlaceholder = (jobId: string): Job => ({
+  id: jobId,
+  clientId: '',
+  title: 'Job post',
+  description: '',
+  category: 'Uncategorized',
+  skills: [],
+  budgetMin: 0,
+  budgetMax: 0,
+  jobType: 'fixed',
+  status: 'draft',
+  proposalCount: 0,
+  viewCount: 0,
+  postedAt: '',
+  isRemote: true,
+  gigcoin_cost: 0,
+});
+
 export default function AdminJobsScreen() {
   const navigate = useNavigate();
   const [routeSearchParams, setRouteSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<JobFilter>('all');
   const [sortBy, setSortBy] = useState<JobSort>('posted');
   const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [pageIndex, setPageIndex] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [stats, setStats] = useState<AdminJobPostStatsDto>(EMPTY_STATS);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [jobsError, setJobsError] = useState<string | null>(null);
   const [previewJob, setPreviewJob] = useState<Job | null>(null);
@@ -108,20 +149,44 @@ export default function AdminJobsScreen() {
 
   const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: 'lock' | 'unlock' | 'delete', job: Job } | null>(null);
+  const [isJobActionPending, setIsJobActionPending] = useState(false);
+  const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
+  const latestJobsRequestRef = useRef(0);
 
-  const fetchJobs = async () => {
+  const fetchJobs = async (forceSummary = false) => {
+    const requestId = ++latestJobsRequestRef.current;
     setIsLoadingJobs(true);
     setJobsError(null);
 
+    const includeSummary = forceSummary || pageIndex === 1;
+
     const response = await jobGetAPI.getAllJobPosts({
-      PageIndex: 1,
-      PageSize: 200,
+      pageIndex,
+      pageSize: PAGE_SIZE,
+      search: debouncedSearchQuery.trim() || undefined,
+      status: filterType === 'all' ? undefined : JOB_FILTER_STATUS[filterType],
+      sortBy: sortBy === 'posted' ? 'newest' : sortBy === 'budget' ? 'budgetMax' : 'title',
+      sortDesc: sortBy !== 'title',
+      includeSummary,
+      knownTotalItems: includeSummary ? undefined : totalItems,
     });
 
+    if (requestId !== latestJobsRequestRef.current) return;
+
     if (response.success && response.data) {
-      setAllJobs(response.data.map(mapJobPostSummaryToJob));
+      if (response.data.totalPages > 0 && pageIndex > response.data.totalPages) {
+        setPageIndex(response.data.totalPages);
+      } else {
+        setAllJobs(response.data.items.map(mapJobPostSummaryToJob));
+      }
+      setTotalItems(response.data.totalItems);
+      setTotalPages(response.data.totalPages);
+      if (response.data.stats) setStats(response.data.stats);
     } else {
       setAllJobs([]);
+      setTotalItems(0);
+      setTotalPages(0);
+      setStats(EMPTY_STATS);
       setJobsError(response.message || 'Failed to load jobs');
     }
 
@@ -129,13 +194,33 @@ export default function AdminJobsScreen() {
   };
 
   useEffect(() => {
-    fetchJobs();
-  }, []);
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   useEffect(() => {
-    if (!previewJobId || allJobs.length === 0) return;
+    void fetchJobs();
+
+    return () => {
+      latestJobsRequestRef.current += 1;
+    };
+  }, [pageIndex, debouncedSearchQuery, filterType, sortBy, jobsRefreshKey]);
+
+  useEffect(() => {
+    if (!previewJobId) {
+      setPreviewJob(null);
+      return;
+    }
+
     const requested = allJobs.find(job => job.id === previewJobId);
-    if (requested) setPreviewJob(requested);
+    setPreviewJob(current => {
+      if (requested) return requested;
+      if (current?.id === previewJobId) return current;
+      return createJobPreviewPlaceholder(previewJobId);
+    });
   }, [allJobs, previewJobId]);
 
   useEffect(() => {
@@ -346,77 +431,85 @@ export default function AdminJobsScreen() {
     };
   }, [showActionMenu]);
 
-  // Filter and sort jobs
-  const filteredJobs = useMemo(() => {
-    let filtered = allJobs.filter(job => {
-      const matchesSearch = searchQuery === '' ||
-        job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.category.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredJobs = allJobs;
 
-      const matchesFilter =
-        filterType === 'all' ? true :
-          job.status === filterType;
-
-      return matchesSearch && matchesFilter;
-    });
-
-    // Sort
-    filtered.sort((a, b) => {
-      if (sortBy === 'title') return a.title.localeCompare(b.title);
-      if (sortBy === 'posted') return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
-      if (sortBy === 'budget') return b.budgetMax - a.budgetMax;
-      return 0;
-    });
-
-    return filtered;
-  }, [allJobs, searchQuery, filterType, sortBy]);
-
-  const stats = useMemo(() => {
-    const total = allJobs.length;
-    const draft = allJobs.filter(j => j.status === 'draft').length;
-    const open = allJobs.filter(j => j.status === 'open').length;
-    const inProgress = allJobs.filter(j => j.status === 'in_progress').length;
-    const closed = allJobs.filter(j => j.status === 'closed').length;
-    const locked = allJobs.filter(j => j.visibility === 3).length;
-
-    return { total, draft, open, inProgress, closed, locked };
-  }, [allJobs]);
-
-  const handleLockToggle = async (jobId: string) => {
+  const handleLockToggle = async (job: Job) => {
+    setIsJobActionPending(true);
     try {
-      const response = await adminAPI.lockJobPost(jobId);
+      const response = await adminAPI.lockJobPost(job.id);
       if (response.success) {
-        alert(response.message || 'Job lock status updated successfully');
-        await fetchJobs();
+        const isLocked = response.data === true;
+        const wasLocked = job.visibility === 3;
+
+        setAllJobs(currentJobs => currentJobs.map(currentJob =>
+          currentJob.id === job.id
+            ? { ...currentJob, visibility: isLocked ? 3 : 0 }
+            : currentJob
+        ));
+        if (isLocked !== wasLocked) {
+          setStats(currentStats => ({
+            ...currentStats,
+            locked: Math.max(0, currentStats.locked + (isLocked ? 1 : -1)),
+          }));
+        }
+        setConfirmAction(null);
+        toast.success(response.message || 'Job lock status updated successfully');
       } else {
-        alert(response.message || 'Failed to update job lock status');
+        toast.error(response.message || 'Failed to update job lock status');
       }
-    } catch (err) {
-      alert('An error occurred while locking/unlocking the job post');
+    } catch {
+      toast.error('An error occurred while locking/unlocking the job post');
+    } finally {
+      setIsJobActionPending(false);
     }
-    setConfirmAction(null);
   };
 
-  const handleDeleteJob = async (jobId: string) => {
+  const handleDeleteJob = async (job: Job) => {
+    setIsJobActionPending(true);
     try {
-      const response = await adminAPI.deleteJobPost(jobId);
+      const response = await adminAPI.deleteJobPost(job.id);
       if (response.success) {
-        alert(response.message || 'Job deleted successfully');
-        await fetchJobs();
+        const nextTotalItems = Math.max(0, totalItems - 1);
+        const nextTotalPages = nextTotalItems === 0 ? 0 : Math.ceil(nextTotalItems / PAGE_SIZE);
+        const statusKey = job.status === 'draft'
+          ? 'draft'
+          : job.status === 'open'
+            ? 'open'
+            : job.status === 'cancelled'
+              ? 'cancelled'
+              : 'closed';
+
+        setAllJobs(currentJobs => currentJobs.filter(currentJob => currentJob.id !== job.id));
+        setTotalItems(nextTotalItems);
+        setTotalPages(nextTotalPages);
+        setStats(currentStats => ({
+          ...currentStats,
+          total: Math.max(0, currentStats.total - 1),
+          [statusKey]: Math.max(0, currentStats[statusKey] - 1),
+          locked: job.visibility === 3
+            ? Math.max(0, currentStats.locked - 1)
+            : currentStats.locked,
+        }));
+        setPageIndex(currentPage =>
+          nextTotalPages > 0 && currentPage > nextTotalPages ? nextTotalPages : currentPage
+        );
+        setJobsRefreshKey(current => current + 1);
+        setConfirmAction(null);
+        toast.success(response.message || 'Job deleted successfully');
       } else {
-        alert(response.message || 'Failed to delete job post');
+        toast.error(response.message || 'Failed to delete job post');
       }
-    } catch (err) {
-      alert('An error occurred while deleting the job post');
+    } catch {
+      toast.error('An error occurred while deleting the job post');
+    } finally {
+      setIsJobActionPending(false);
     }
-    setConfirmAction(null);
   };
 
   const getStatusBadge = (status: string) => {
     if (status === 'draft') return <span className="badge-gray text-xs">Draft</span>;
     if (status === 'open') return <span className="badge-green text-xs">Open</span>;
-    if (status === 'in_progress') return <span className="badge-cyan text-xs">In Progress</span>;
+    if (status === 'cancelled') return <span className="badge-amber text-xs">Cancelled</span>;
     return <span className="badge-red text-xs">Closed</span>;
   };
 
@@ -453,7 +546,7 @@ export default function AdminJobsScreen() {
               { label: 'Total Jobs', value: stats.total.toLocaleString(), icon: <Briefcase size={16} />, color: 'cyan' },
               { label: 'Draft', value: stats.draft.toLocaleString(), icon: <FileText size={16} />, color: 'gray' },
               { label: 'Open', value: stats.open.toLocaleString(), icon: <CheckCircle size={16} />, color: 'green' },
-              { label: 'In Progress', value: stats.inProgress.toString(), icon: <Clock size={16} />, color: 'purple' },
+              { label: 'Cancelled', value: stats.cancelled.toLocaleString(), icon: <XCircle size={16} />, color: 'amber' },
               { label: 'Closed', value: stats.closed.toString(), icon: <XCircle size={16} />, color: 'red' },
               { label: 'Locked', value: stats.locked.toString(), icon: <Lock size={16} />, color: 'amber' },
             ].map(stat => (
@@ -484,8 +577,11 @@ export default function AdminJobsScreen() {
                   <input
                     type="text"
                     value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search by title, description, or category..."
+                    onChange={e => {
+                      setSearchQuery(e.target.value);
+                      setPageIndex(1);
+                    }}
+                    placeholder="Search by title, description, client, category, or skill..."
                     className="input-gb w-full py-3 text-sm"
                     style={{ paddingLeft: '3rem', paddingRight: '1rem' }}
                   />
@@ -499,15 +595,18 @@ export default function AdminJobsScreen() {
                       { type: 'all', label: 'All Jobs', icon: <Briefcase size={14} />, color: 'cyan' },
                       { type: 'draft', label: 'Draft', icon: <FileText size={14} />, color: 'gray' },
                       { type: 'open', label: 'Open', icon: <CheckCircle size={14} />, color: 'green' },
-                      { type: 'in_progress', label: 'In Progress', icon: <Clock size={14} />, color: 'purple' },
                       { type: 'closed', label: 'Closed', icon: <XCircle size={14} />, color: 'red' },
+                      { type: 'cancelled', label: 'Cancelled', icon: <XCircle size={14} />, color: 'amber' },
                     ].map(filter => (
                       <button
                         key={filter.type}
-                        onClick={() => setFilterType(filter.type as JobFilter)}
+                        onClick={() => {
+                          setFilterType(filter.type as JobFilter);
+                          setPageIndex(1);
+                        }}
                         className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${filterType === filter.type
-                            ? `bg-${filter.color}/20 text-${filter.color} border border-${filter.color} shadow-lg shadow-${filter.color}/20`
-                            : 'glass-button text-secondary hover:text-primary hover:border-white/20'
+                          ? `bg-${filter.color}/20 text-${filter.color} border border-${filter.color} shadow-lg shadow-${filter.color}/20`
+                          : 'glass-button text-secondary hover:text-primary hover:border-white/20'
                           }`}
                       >
                         <span className={filterType === filter.type ? `text-${filter.color}` : 'text-muted'}>
@@ -523,7 +622,10 @@ export default function AdminJobsScreen() {
                     <span className="text-sm font-medium text-secondary">Sort:</span>
                     <select
                       value={sortBy}
-                      onChange={e => setSortBy(e.target.value as JobSort)}
+                      onChange={e => {
+                        setSortBy(e.target.value as JobSort);
+                        setPageIndex(1);
+                      }}
                       className="input-gb px-3 sm:px-4 py-2 pr-8 sm:pr-10 flex-1 sm:flex-initial sm:min-w-[160px] text-xs sm:text-sm font-medium cursor-pointer"
                     >
                       <option value="posted">Newest First</option>
@@ -543,7 +645,9 @@ export default function AdminJobsScreen() {
                 <span>Loading jobs...</span>
               ) : (
                 <>
-                  Showing <span className="text-primary font-semibold">{filteredJobs.length}</span> of <span className="text-primary font-semibold">{allJobs.length}</span> jobs
+                  Showing <span className="text-primary font-semibold">
+                    {totalItems === 0 ? 0 : ((pageIndex - 1) * PAGE_SIZE) + 1}-{Math.min(pageIndex * PAGE_SIZE, totalItems)}
+                  </span> of <span className="text-primary font-semibold">{totalItems}</span> matching jobs
                 </>
               )}
             </p>
@@ -827,6 +931,31 @@ export default function AdminJobsScreen() {
             )}
           </div>
 
+          {totalPages > 1 && (
+            <nav className="mt-6 flex items-center justify-center gap-3" aria-label="Job list pagination">
+              <button
+                type="button"
+                className="glass-button rounded-lg px-4 py-2 text-sm font-semibold text-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={isLoadingJobs || pageIndex <= 1}
+                onClick={() => setPageIndex(current => Math.max(1, current - 1))}
+              >
+                Previous
+              </button>
+              <span className="text-sm text-secondary">
+                Page <span className="font-semibold text-primary">{pageIndex}</span> of{' '}
+                <span className="font-semibold text-primary">{totalPages}</span>
+              </span>
+              <button
+                type="button"
+                className="glass-button rounded-lg px-4 py-2 text-sm font-semibold text-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={isLoadingJobs || pageIndex >= totalPages}
+                onClick={() => setPageIndex(current => Math.min(totalPages, current + 1))}
+              >
+                Next
+              </button>
+            </nav>
+          )}
+
           {/* Preview Job Modal */}
           {previewJob && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeJobPreview}>
@@ -1006,9 +1135,9 @@ export default function AdminJobsScreen() {
                                     <span className="text-xs font-bold text-cyan">{jobContract.totalBudget.toLocaleString()} G</span>
                                   </div>
                                   <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold mt-1 ${jobContract.status === 7 ? 'bg-green/10 text-green border border-green/20' :
-                                      jobContract.status === 8 ? 'bg-cyan/10 text-cyan border border-cyan/20' :
-                                        jobContract.status === 9 ? 'bg-red/10 text-red border border-red/20' :
-                                          'bg-white/5 text-secondary border border-white/10'
+                                    jobContract.status === 8 ? 'bg-cyan/10 text-cyan border border-cyan/20' :
+                                      jobContract.status === 9 ? 'bg-red/10 text-red border border-red/20' :
+                                        'bg-white/5 text-secondary border border-white/10'
                                     }`}>
                                     {jobContract.status === 7 ? 'Active' :
                                       jobContract.status === 8 ? 'Completed' :
@@ -1023,8 +1152,8 @@ export default function AdminJobsScreen() {
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="badge-cyan text-[10px]">Current Milestone</span>
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${currentMilestone.status === 3 || currentMilestone.status === 5 ? 'bg-green/10 text-green' :
-                                        currentMilestone.status === 2 ? 'bg-amber/10 text-amber' :
-                                          currentMilestone.status === 1 ? 'bg-purple/10 text-purple' : 'bg-white/10 text-muted'
+                                      currentMilestone.status === 2 ? 'bg-amber/10 text-amber' :
+                                        currentMilestone.status === 1 ? 'bg-purple/10 text-purple' : 'bg-white/10 text-muted'
                                       }`}>
                                       {currentMilestone.status === 0 ? 'Pending' :
                                         currentMilestone.status === 1 ? 'In Progress' :
@@ -1142,8 +1271,8 @@ export default function AdminJobsScreen() {
                                 </div>
                                 <div className="flex items-center gap-2 justify-between sm:justify-end">
                                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${asset.assetType === 'Deliverable'
-                                      ? 'bg-green/10 text-green border border-green/20'
-                                      : 'bg-purple/10 text-purple border border-purple/20'
+                                    ? 'bg-green/10 text-green border border-green/20'
+                                    : 'bg-purple/10 text-purple border border-purple/20'
                                     }`}>
                                     {asset.assetType === 'Deliverable' ? 'Final Handoff' : 'Milestone File'}
                                   </span>
@@ -1227,12 +1356,15 @@ export default function AdminJobsScreen() {
 
           {/* Confirmation Modal */}
           {confirmAction && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setConfirmAction(null)}>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => {
+              if (!isJobActionPending) setConfirmAction(null);
+            }}>
               <div className="glass-card max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-bold text-primary">Confirm Action</h3>
                   <button
                     onClick={() => setConfirmAction(null)}
+                    disabled={isJobActionPending}
                     className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
                   >
                     <XCircle size={18} className="text-red" />
@@ -1247,7 +1379,7 @@ export default function AdminJobsScreen() {
 
                   <div className="flex items-start gap-3 p-4 glass-card mb-4">
                     <div className={`p-2 rounded-lg ${confirmAction.type === 'delete' ? 'bg-red/20' :
-                        confirmAction.type === 'lock' ? 'bg-amber/20' : 'bg-green/20'
+                      confirmAction.type === 'lock' ? 'bg-amber/20' : 'bg-green/20'
                       }`}>
                       {confirmAction.type === 'delete' ? (
                         <Trash2 size={20} className="text-red" />
@@ -1275,6 +1407,7 @@ export default function AdminJobsScreen() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setConfirmAction(null)}
+                    disabled={isJobActionPending}
                     className="flex-1 btn-ghost-cyan px-4 py-2"
                   >
                     Cancel
@@ -1282,21 +1415,26 @@ export default function AdminJobsScreen() {
                   <button
                     onClick={() => {
                       if (confirmAction.type === 'delete') {
-                        handleDeleteJob(confirmAction.job.id);
+                        void handleDeleteJob(confirmAction.job);
                       } else {
-                        handleLockToggle(confirmAction.job.id);
+                        void handleLockToggle(confirmAction.job);
                       }
                     }}
+                    disabled={isJobActionPending}
                     className={`flex-1 px-4 py-2 rounded-lg font-semibold transition-all ${confirmAction.type === 'delete'
-                        ? 'bg-red-500 text-white hover:bg-red-600'
-                        : confirmAction.type === 'lock'
-                          ? 'bg-amber/20 text-amber border border-amber hover:bg-amber/30'
-                          : 'bg-green/20 text-green border border-green hover:bg-green/30'
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : confirmAction.type === 'lock'
+                        ? 'bg-amber/20 text-amber border border-amber hover:bg-amber/30'
+                        : 'bg-green/20 text-green border border-green hover:bg-green/30'
                       }`}
                   >
-                    {confirmAction.type === 'delete' && 'Delete Job'}
-                    {confirmAction.type === 'lock' && 'Lock Job'}
-                    {confirmAction.type === 'unlock' && 'Unlock Job'}
+                    {isJobActionPending ? 'Working…' : (
+                      <>
+                        {confirmAction.type === 'delete' && 'Delete Job'}
+                        {confirmAction.type === 'lock' && 'Lock Job'}
+                        {confirmAction.type === 'unlock' && 'Unlock Job'}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1465,10 +1603,10 @@ export default function AdminJobsScreen() {
                                 </span>
                                 <p className="text-sm font-semibold text-primary">{milestone.title}</p>
                                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${milestone.status === 3 || milestone.status === 5 ? 'bg-green/10 text-green border border-green/20' :
-                                    milestone.status === 2 ? 'bg-amber/10 text-amber border border-amber/20' :
-                                      milestone.status === 1 ? 'bg-purple/10 text-purple border border-purple/20' :
-                                        milestone.status === 6 ? 'bg-red/10 text-red border border-red/20' :
-                                          'bg-white/5 text-secondary border border-white/10'
+                                  milestone.status === 2 ? 'bg-amber/10 text-amber border border-amber/20' :
+                                    milestone.status === 1 ? 'bg-purple/10 text-purple border border-purple/20' :
+                                      milestone.status === 6 ? 'bg-red/10 text-red border border-red/20' :
+                                        'bg-white/5 text-secondary border border-white/10'
                                   }`}>
                                   {milestone.status === 0 ? 'Pending' :
                                     milestone.status === 1 ? 'In Progress' :
@@ -1606,8 +1744,8 @@ export default function AdminJobsScreen() {
                             Question #{q.orderIndex ?? (idx + 1)}
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${q.isRequired
-                              ? 'bg-red/10 text-red border border-red/20'
-                              : 'bg-white/5 text-secondary border border-white/15'
+                            ? 'bg-red/10 text-red border border-red/20'
+                            : 'bg-white/5 text-secondary border border-white/15'
                             }`}>
                             {q.isRequired ? 'Required' : 'Optional'}
                           </span>
