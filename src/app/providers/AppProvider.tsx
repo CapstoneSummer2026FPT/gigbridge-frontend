@@ -87,6 +87,11 @@ const mapUserDTOToUser = (userDTO: UserDTO | any): User => {
   };
 };
 
+const sanitizeUserForStorage = (user: User): User => ({
+  ...user,
+  phone_number: null,
+});
+
 const getLoginData = (response: ApiResponse<LoginResponse>) => {
   const loginData = response.data as any;
 
@@ -163,7 +168,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (savedUser) {
       const user = JSON.parse(savedUser);
       user.role = newRole;
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      localStorage.setItem('gigbridge_user', JSON.stringify({ ...user, phone_number: null }));
     }
   }, []);
 
@@ -191,9 +196,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setUser(user);
       setRoleState(user.role);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
+      const persistedUser = sanitizeUserForStorage(user);
+      localStorage.setItem('gigbridge_session', JSON.stringify({ user: persistedUser, role: user.role }));
       localStorage.setItem('access_token', token);
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      localStorage.setItem('gigbridge_user', JSON.stringify(persistedUser));
 
       return user.role;
     } catch (error) {
