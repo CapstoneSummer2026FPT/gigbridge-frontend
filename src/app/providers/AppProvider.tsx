@@ -5,6 +5,7 @@ import type { ClientProfile, FreelancerProfile } from '../../types/models/Profil
 import type { ApiResponse } from '../../types/common';
 import type { LoginResponse, RegisterRequest, UserDTO } from '../../types/models/Auth';
 import { authAPI } from '../../api/authAPI';
+import { secureStorage } from '../../shared/utils/secureStorage';
 
 export type AppTheme = 'black' | 'white';
 
@@ -87,11 +88,6 @@ const mapUserDTOToUser = (userDTO: UserDTO | any): User => {
   };
 };
 
-const sanitizeUserForStorage = (user: User): User => ({
-  ...user,
-  phone_number: null,
-});
-
 const getLoginData = (response: ApiResponse<LoginResponse>) => {
   const loginData = response.data as any;
 
@@ -120,15 +116,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         let savedUser = null;
         let savedRole = null;
 
-        const sessionData = localStorage.getItem('gigbridge_session');
-        const gigbridgeUserData = localStorage.getItem('gigbridge_user');
+        const sessionData = secureStorage.getItem<{ user: User; role: UserRole }>('gigbridge_session');
+        const gigbridgeUserData = secureStorage.getItem<User>('gigbridge_user');
 
         if (sessionData) {
-          const parsed = JSON.parse(sessionData);
-          savedUser = parsed.user;
-          savedRole = parsed.role;
+          savedUser = sessionData.user;
+          savedRole = sessionData.role;
         } else if (gigbridgeUserData) {
-          savedUser = JSON.parse(gigbridgeUserData);
+          savedUser = gigbridgeUserData;
           savedRole = savedUser?.role;
         }
 
@@ -138,8 +133,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setRoleState(normalizedRole);
         }
       } catch (_e) {
-        localStorage.removeItem('gigbridge_session');
-        localStorage.removeItem('gigbridge_user');
+        secureStorage.removeItem('gigbridge_session');
+        secureStorage.removeItem('gigbridge_user');
         localStorage.removeItem('access_token');
       } finally {
         setIsLoading(false);
@@ -164,12 +159,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setRole = useCallback((newRole: UserRole) => {
     setRoleState(newRole);
     // Update stored role
-    const savedUser = localStorage.getItem('gigbridge_user');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
+    const user = secureStorage.getItem<User>('gigbridge_user');
+    if (user) {
       user.role = newRole;
-      const persistedUser = sanitizeUserForStorage(user);
-      localStorage.setItem('gigbridge_user', JSON.stringify(persistedUser));
+      secureStorage.setItem('gigbridge_user', user);
     }
   }, []);
 
@@ -197,10 +190,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setUser(user);
       setRoleState(user.role);
-      const persistedUser = sanitizeUserForStorage(user);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user: persistedUser, role: user.role }));
+      secureStorage.setItem('gigbridge_session', { user, role: user.role });
       localStorage.setItem('access_token', token);
-      localStorage.setItem('gigbridge_user', JSON.stringify(persistedUser));
+      secureStorage.setItem('gigbridge_user', user);
 
       return user.role;
     } catch (error) {
@@ -234,12 +226,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       const user = mapUserDTOToUser(apiResponse.data);
-      const persistedUser = sanitizeUserForStorage(user);
 
       setUser(user);
       setRoleState(user.role);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user: persistedUser, role: user.role }));
-      localStorage.setItem('gigbridge_user', JSON.stringify(persistedUser));
+      secureStorage.setItem('gigbridge_session', { user, role: user.role });
+      secureStorage.setItem('gigbridge_user', user);
       
       // Automatically log the user in after registration to acquire tokens
       await login(email, password);
@@ -265,9 +256,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setUser(user);
       setRoleState(user.role);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
+      secureStorage.setItem('gigbridge_session', { user, role: user.role });
       localStorage.setItem('access_token', token);
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      secureStorage.setItem('gigbridge_user', user);
 
       return user.role;
     } catch (error) {
@@ -281,8 +272,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setRoleState(null);
     setClientProfile(null);
     setFreelancerProfile(null);
-    localStorage.removeItem('gigbridge_session');
-    localStorage.removeItem('gigbridge_user');
+    secureStorage.removeItem('gigbridge_session');
+    secureStorage.removeItem('gigbridge_user');
     localStorage.removeItem('access_token');
     if (redirectPath) {
       window.location.href = redirectPath;
