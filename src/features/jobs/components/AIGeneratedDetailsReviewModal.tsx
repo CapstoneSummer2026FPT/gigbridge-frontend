@@ -62,7 +62,9 @@ export function AIGeneratedDetailsReviewModal({ isOpen, data, onClose, onApprove
             <div className="job-post-review-section">
               <label className="job-post-review-label">Expected Budget</label>
               <div className="job-post-review-value">
-                {data.budgetMax ? `${data.budgetMin} - ${data.budgetMax} GC` : (data.budgetMin ? `${data.budgetMin} GC` : 'N/A')}
+                {data.budgetMin !== undefined && data.budgetMin !== null ? (
+                  data.budgetMin === data.budgetMax ? `${data.budgetMin} GC` : `${data.budgetMin} - ${data.budgetMax} GC`
+                ) : 'N/A'}
               </div>
             </div>
             <div className="job-post-review-section">
