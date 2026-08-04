@@ -6,10 +6,12 @@ import {
   NestedMilestonePlanEditor,
   type EditableMilestonePlan,
 } from '../../../shared/components/NestedMilestonePlanEditor';
+import { PostJobBudgetExceededPrompt } from '../components/PostJobBudgetExceededPrompt';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
 import { PostJobWizardShell } from '../components/PostJobWizardShell';
 import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
+import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { JOB_DURATION_UNITS } from '../utils/jobDuration';
 
 export default function PostJobMilestonesScreen() {
@@ -26,6 +28,7 @@ export default function PostJobMilestonesScreen() {
     isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
     handleLeaveSaveDraft, handleLeaveDiscardDraft, cancelBlockedNavigation,
     submitDraftFlow, renderSubmitLabel, retryAutosave, navigateWizard,
+    isBudgetExceededPromptOpen, handleBudgetExceededConfirm, handleBudgetExceededCancel,
   } = usePostJob();
   const questionCount = questions.filter(question => question.questionText.trim()).length;
   const [milestonesOpen, setMilestonesOpen] = useState(true);
@@ -51,6 +54,11 @@ export default function PostJobMilestonesScreen() {
     questions.every(question => question.questionText.length <= MAX_QUESTION_LENGTH),
   ];
 
+  const expectedBudget = form.budget && Number(form.budget) > 0 ? Number(form.budget) : null;
+  const estimatedDuration = form.estimatedDurationValue
+    ? `${form.estimatedDurationValue} ${t(`postJob.durationUnits.${form.estimatedDurationUnit}`)}`
+    : null;
+
   return (
     <PostJobWizardShell
       currentStep={2}
@@ -66,6 +74,8 @@ export default function PostJobMilestonesScreen() {
       errorMessage={errorMessage || draftError}
       isLoading={isDraftInitializing}
       onRetryAutosave={retryAutosave}
+      expectedBudget={expectedBudget}
+      estimatedDuration={estimatedDuration}
       backAction={(
         <button type="button" className="job-post-button job-post-button--ghost" onClick={() => navigateWizard('/jobs/post')}>
           <ArrowLeft size={15} />{t('postJobWizard.backDetails')}
@@ -82,13 +92,22 @@ export default function PostJobMilestonesScreen() {
         </button>
       )}
       overlay={(
-        <PostJobLeavePrompt
-          isOpen={isLeavePromptOpen}
-          leaveAction={leaveAction}
-          onSaveDraft={handleLeaveSaveDraft}
-          onDiscardDraft={handleLeaveDiscardDraft}
-          onCancel={cancelBlockedNavigation}
-        />
+        <>
+          <PostJobLeavePrompt
+            isOpen={isLeavePromptOpen}
+            leaveAction={leaveAction}
+            onSaveDraft={handleLeaveSaveDraft}
+            onDiscardDraft={handleLeaveDiscardDraft}
+            onCancel={cancelBlockedNavigation}
+          />
+          <PostJobBudgetExceededPrompt
+            isOpen={isBudgetExceededPromptOpen}
+            total={formatGigCoin(milestonePlanTotal)}
+            expected={formatGigCoin(Number(form.budget) || 0)}
+            onConfirm={handleBudgetExceededConfirm}
+            onCancel={handleBudgetExceededCancel}
+          />
+        </>
       )}
     >
       <section className="job-post-section">

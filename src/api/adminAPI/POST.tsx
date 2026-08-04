@@ -6,6 +6,7 @@ import type { WithdrawalResponse } from '../../types/models/Financial';
 import type { AdminDisputeDetail, UserViolationType } from '../../types/models/AdminDispute';
 import type { DisputeEvidence, DisputeMilestoneOutcome, DisputeResolution, EvidenceRequestTarget } from '../../types/models/Dispute';
 import { normalizeAdminDisputeDetail } from './disputeUtils';
+import { normalizeAdminProposalDetail } from './proposalUtils';
 import { normalizeEvidence } from '../disputeAPI/utils';
 import type { MessageResponse } from '../messageAPI/GET';
 import type { EnforcementPayload } from '../../types/models/AdminPhase1';
@@ -50,7 +51,10 @@ export interface AdminViolationPayload {
 }
 
 export const adminPostAPI = {
-  addProposalNote: (proposalId:string, content:string): Promise<ApiResponse<AdminProposalDetail>> => apiService.post(`/Proposals/admin/${proposalId}/internal-notes`,{content}),
+  addProposalNote: async (proposalId: string, content: string): Promise<ApiResponse<AdminProposalDetail>> => {
+    const response = await apiService.post<unknown>(`/Proposals/admin/${proposalId}/internal-notes`, { content });
+    return { ...response, data: response.data ? normalizeAdminProposalDetail(response.data) : undefined };
+  },
   assignContractReport: (reportId:string, adminId?:string): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/assign`, {adminId:adminId||null}),
   requestContractReportInformation: (reportId:string, payload:{requestId:string;target:ContractReportInformationTarget;message:string;requestedEvidenceOrClarification?:string;dueAt?:string}): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/request-information`,payload),
   closeContractReport: (reportId:string,payload:{resolutionAction:ContractReportAdminResolutionAction;resolutionSummary:string;internalNote?:string}): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/close`,payload),

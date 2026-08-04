@@ -4,13 +4,21 @@ import type { AdminUserDto } from '../../types/models/User';
 import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
 import type { DisputeStatus } from '../../types/models/Dispute';
 import { normalizeAdminDisputeDetail } from './disputeUtils';
+import { normalizeAdminProposalDetail } from './proposalUtils';
 import type { AdminProposalDetail } from '../../types/models/AdminProposal';
 
 const Admin_Api_Base_Url = '/admin';
 
+const normalizedProposalMutation = async (proposalId: string, action: string, payload: { reason: string; internalNote?: string }): Promise<ApiResponse<AdminProposalDetail>> => {
+  const response = await apiService.patch<unknown>(`/Proposals/admin/${proposalId}/${action}`, payload);
+  return { ...response, data: response.data ? normalizeAdminProposalDetail(response.data) : undefined };
+};
+
 export const adminPatchAPI = {
-  invalidateProposal: (proposalId:string, payload:{reason:string;internalNote?:string}): Promise<ApiResponse<AdminProposalDetail>> => apiService.patch(`/Proposals/admin/${proposalId}/invalidate`,payload),
-  restoreProposal: (proposalId:string, payload:{reason:string;internalNote?:string}): Promise<ApiResponse<AdminProposalDetail>> => apiService.patch(`/Proposals/admin/${proposalId}/restore`,payload),
+  invalidateProposal: (proposalId: string, payload: { reason: string; internalNote?: string }): Promise<ApiResponse<AdminProposalDetail>> =>
+    normalizedProposalMutation(proposalId, 'invalidate', payload),
+  restoreProposal: (proposalId: string, payload: { reason: string; internalNote?: string }): Promise<ApiResponse<AdminProposalDetail>> =>
+    normalizedProposalMutation(proposalId, 'restore', payload),
   updateDisputeStatus: async (
     disputeId: string,
     status: DisputeStatus

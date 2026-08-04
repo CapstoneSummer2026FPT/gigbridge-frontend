@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePostJob, type PostJobRouteState } from '../usePostJob';
+import { shouldConfirmBudgetOverride, usePostJob, type PostJobRouteState } from '../usePostJob';
 import { jobAPI } from '../../../../api/jobAPI';
 import { JobPostStatus, type GenerateJobHiringPlanResponse } from '../../../../types/models/Job';
 import type { ApiResponse } from '../../../../types/common';
@@ -571,7 +571,7 @@ describe('usePostJob hook skills conversion', () => {
 
       await act(async () => {
         resolvePlanPromise(successResponse({
-          milestones: [{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a' }],
+          milestones: [{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }],
           questionRecruitment: ['Question 1'],
         }));
       });
@@ -581,7 +581,160 @@ describe('usePostJob hook skills conversion', () => {
       });
 
       expect(result.current.isGeneratingPlan).toBe(false);
-      expect(result.current.milestonePlans).toEqual([{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', workItems: [] }]);
+      expect(result.current.milestonePlans).toEqual([{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }]);
+    });
+  });
+
+  describe('budget-exceeded confirmation flow', () => {
+    const projectFormPatch = {
+      title: 'Build vendor onboarding portal',
+      majorId: 'major-1',
+      majorCategoryId: 'major-category-1',
+      categoryId: 'category-1',
+      description: 'We need a portal for vendors to submit documents and track approval status.',
+      estimatedDurationValue: '3',
+    };
+
+    const validMilestone = (amount: number) => ({
+      title: 'Vendor onboarding workflow',
+      description: '',
+      amount,
+      estimatedDuration: '2 weeks',
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      deliverables: 'Working onboarding workflow',
+      acceptanceCriteria: 'A vendor can complete every onboarding step',
+      orderIndex: 0,
+      workItems: [],
+    });
+
+    it('only confirms an override when a positive expected budget is exceeded', () => {
+      expect(shouldConfirmBudgetOverride('100', 200)).toBe(true);
+      expect(shouldConfirmBudgetOverride('100', 100)).toBe(false);
+      expect(shouldConfirmBudgetOverride('100', 99)).toBe(false);
+      expect(shouldConfirmBudgetOverride('0', 200)).toBe(false);
+      expect(shouldConfirmBudgetOverride('', 200)).toBe(false);
+    });
+
+    it('keeps the step-1 expected budget instead of overwriting it with the milestone total', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      expect(result.current.form.budget).toBe('100');
+      expect(result.current.milestonePlanTotal).toBe(200);
+    });
+
+    it('keeps the budget empty when none was entered (no auto-fill), and publishes without an override prompt', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      expect(result.current.form.budget).toBe('');
+
+      let publishResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        publishResult = await result.current.submitDraftFlow('publish');
+      });
+
+      expect(publishResult).toEqual({ status: 'success' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(false);
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        budgetMin: null,
+        budgetMax: null,
+      }));
+      expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
+    });
+
+    it('blocks review with budget-exceeded and cancel aborts without saving', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      let reviewResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        reviewResult = await result.current.submitDraftFlow('review');
+      });
+
+      expect(reviewResult).toEqual({ status: 'budget-exceeded' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(true);
+      expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+
+      await act(async () => {
+        result.current.handleBudgetExceededCancel();
+      });
+
+      expect(result.current.isBudgetExceededPromptOpen).toBe(false);
+      expect(result.current.form.budget).toBe('100');
+      expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('confirms the override by raising the budget to the milestone total and continuing to review', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      await act(async () => {
+        await result.current.submitDraftFlow('review');
+      });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(true);
+
+      let confirmResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        confirmResult = await result.current.handleBudgetExceededConfirm();
+      });
+
+      expect(confirmResult).toEqual({ status: 'success' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(false);
+      expect(result.current.form.budget).toBe('200');
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        budgetMin: 200,
+        budgetMax: 200,
+      }));
+      expect(mockNavigate).toHaveBeenCalledWith('/jobs/post/review', expect.anything());
+    });
+
+    it('confirms the override for publish and opens the job with the raised budget', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      await act(async () => {
+        await result.current.submitDraftFlow('publish');
+      });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(true);
+
+      await act(async () => {
+        await result.current.handleBudgetExceededConfirm();
+      });
+
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        budgetMin: 200,
+        budgetMax: 200,
+      }));
+      expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
+      expect(mockNavigate).toHaveBeenCalledWith('/jobs/my-jobs');
     });
   });
 });

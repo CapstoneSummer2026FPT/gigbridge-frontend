@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router';
 import { ReviewModerationStatus } from '../../../types/models/ReviewManagement';
 import { UserRole } from '../../../types/models/User';
 
@@ -32,7 +33,7 @@ describe('MyReviewsScreen', () => {
   });
 
   it('loads received and sent reviews through separate tabs', async () => {
-    render(<MyReviewsScreen />);
+    render(<MemoryRouter><MyReviewsScreen /></MemoryRouter>);
     expect(await screen.findByText('Mobile redesign')).toBeInTheDocument();
     expect(api.getMyReviews).toHaveBeenCalledWith('received', 1, 10);
 
@@ -41,7 +42,7 @@ describe('MyReviewsScreen', () => {
   });
 
   it('reports a received review and refreshes its open-report state', async () => {
-    render(<MyReviewsScreen />);
+    render(<MemoryRouter><MyReviewsScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'reviewManagement.report' }));
     fireEvent.change(screen.getByLabelText(/reviewManagement\.reason/), { target: { value: 'This content breaks the review policy.' } });
     fireEvent.click(screen.getByRole('button', { name: 'reviewManagement.submitReport' }));

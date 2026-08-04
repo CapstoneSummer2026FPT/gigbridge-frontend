@@ -34,12 +34,13 @@ describe('contract GET response normalization', () => {
       JobPostId: 'job-1',
       ClientProfileId: 'client-1',
       Title: 'Escrow contract',
-      TotalBudget: 1_000_000,
+      // Contract/escrow amounts are G-coin: TotalBudget and RequiredAmount are 1_000 G-coin.
+      TotalBudget: 1_000,
       Status: 5,
       CreatedAt: '2026-07-28T00:00:00.000Z',
       Escrow: {
         ContractEscrowId: 'escrow-1',
-        RequiredAmount: 1_000_000,
+        RequiredAmount: 1_000,
         RequiredTokens: 1_000,
         FundingFeeRate: 0.01,
         FundingFeeVnd: 10_000,
@@ -56,7 +57,7 @@ describe('contract GET response normalization', () => {
 
     expect(contract.escrow).toEqual({
       contractEscrowId: 'escrow-1',
-      requiredAmount: 1_000_000,
+      requiredAmount: 1_000,
       requiredTokens: 1_000,
       fundingFeeRate: 0.01,
       fundingFeeVnd: 10_000,

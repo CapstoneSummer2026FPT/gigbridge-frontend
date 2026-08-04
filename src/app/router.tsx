@@ -41,7 +41,6 @@ const AdminUsersScreen = lazy(() => import('../features/admin/screens/AdminUsers
 const AdminJobsScreen = lazy(() => import('../features/admin/screens/AdminJobsScreen'));
 const AdminProposalsScreen = lazy(() => import('../features/admin/screens/AdminProposalsScreen'));
 const AdminProposalDetailScreen = lazy(() => import('../features/admin/screens/AdminProposalDetailScreen'));
-const AdminAccountReportsScreen = lazy(() => import('../features/admin/screens/AdminAccountReportsScreen'));
 const AdminAccountReportDetailScreen = lazy(() => import('../features/admin/screens/AdminAccountReportDetailScreen'));
 const AdminContractReportsScreen = lazy(() => import('../features/admin/screens/AdminContractReportsScreen'));
 const AdminContractReportDetailScreen = lazy(() => import('../features/admin/screens/AdminContractReportDetailScreen'));
@@ -289,7 +288,7 @@ export const router = createBrowserRouter([
       { path: 'admin/faq-management', element: <AdminRoute><AdminFAQManagementScreen /></AdminRoute> },
       { path: 'admin/disputes', element: <AdminRoute><AdminDisputeManagementScreen /></AdminRoute> },
       { path: 'admin/reports', element: <AdminRoute><AdminReportsScreen /></AdminRoute> },
-      { path: 'admin/reports/accounts', element: <AdminRoute><AdminAccountReportsScreen /></AdminRoute> },
+      { path: 'admin/reports/accounts', element: <AdminRoute><Navigate to="/admin/reports?reportedEntityType=User" replace /></AdminRoute> },
       { path: 'admin/reports/accounts/:reportId', element: <AdminRoute><AdminAccountReportDetailScreen /></AdminRoute> },
       { path: 'admin/reports/contracts', element: <AdminRoute><AdminContractReportsScreen /></AdminRoute> },
       { path: 'admin/reports/contracts/:reportId', element: <AdminRoute><AdminContractReportDetailScreen /></AdminRoute> },
