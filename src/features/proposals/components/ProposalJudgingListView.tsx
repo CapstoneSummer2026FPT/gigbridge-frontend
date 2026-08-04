@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Brain, Award, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Eye, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { Brain, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Search, SlidersHorizontal } from 'lucide-react';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
-import { useTranslation } from '../../../hooks/useTranslation';
 
 interface ProposalJudgingListViewProps {
   jobPostId: string;
@@ -13,7 +12,6 @@ interface ProposalJudgingListViewProps {
   proposals: ProposalDto[];
   loading: boolean;
   onSelectProposal: (proposalId: string) => void;
-  onOpenAiReport: (proposalId: string) => void;
   onShortlist: (proposalId: string) => void;
   onStartNegotiation: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
@@ -30,14 +28,12 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
   proposals,
   loading,
   onSelectProposal,
-  onOpenAiReport,
   onShortlist,
   onStartNegotiation,
   onReject,
   canAct,
   onRefreshProposals,
 }) => {
-  const { t } = useTranslation();
   const [filterRec, setFilterRec] = useState<FilterRec>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortByOption>('aiScore');
@@ -130,7 +126,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
     try {
       while (remaining > 0) {
         const response = await proposalPostAPI.judgeAllProposals(jobPostId, 10);
-        if (!response.success || response.data.processedCount === 0) {
+        if (!response.success || !response.data || response.data.processedCount === 0) {
           setBatchError(
             !response.success
               ? (response.message || 'Batch evaluation encountered an error.')
@@ -148,8 +144,8 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
 
         if (response.data.isCompleted) break;
       }
-    } catch (err: any) {
-      setBatchError(err?.message || 'Failed to complete batch judging.');
+    } catch (err: unknown) {
+      setBatchError(err instanceof Error ? err.message : 'Failed to complete batch judging.');
     } finally {
       setBatchLoading(false);
       setBatchProgress(null);

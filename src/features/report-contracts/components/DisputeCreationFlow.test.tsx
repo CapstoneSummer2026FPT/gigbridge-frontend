@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router';
 import { DisputeUrgency } from '../../../types/models/Dispute';
 import {
   ContractReportIssueType,
@@ -44,20 +45,22 @@ const report: ReportContract = {
 };
 
 const renderFlow = (onEscalate = vi.fn()) => render(
-  <ReportDetailModal
-    report={report}
-    contractTitle="Website contract"
-    currentUserId="client-1"
-    isOpen
-    onClose={vi.fn()}
-    onRespond={vi.fn()}
-    onConfirm={vi.fn().mockResolvedValue({ success: true })}
-    onEscalate={onEscalate}
-    onDisputeCreated={vi.fn()}
-    isResponding={false}
-    isConfirming={false}
-    isEscalating={false}
-  />,
+  <MemoryRouter>
+    <ReportDetailModal
+      report={report}
+      contractTitle="Website contract"
+      currentUserId="client-1"
+      isOpen
+      onClose={vi.fn()}
+      onRespond={vi.fn()}
+      onConfirm={vi.fn().mockResolvedValue({ success: true })}
+      onEscalate={onEscalate}
+      onDisputeCreated={vi.fn()}
+      isResponding={false}
+      isConfirming={false}
+      isEscalating={false}
+    />
+  </MemoryRouter>,
 );
 
 describe('report dispute creation flow', () => {

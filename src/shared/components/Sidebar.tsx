@@ -178,6 +178,7 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
         id: 'reports',
         label: label(reportManager.labelKey, reportManager.fallbackLabel),
         icon: React.createElement(reportManager.icon, { size: 18 }),
+        path: reportManager.path,
         badge: openReportCount === null ? undefined : openReportCount.toString(),
         badgeType: 'red',
         badgeLabel: 'Open reports',
@@ -201,10 +202,13 @@ function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, pa
     <>
       <button
         onClick={() => {
+          // A parent that also has a path (e.g. Reports) navigates to its
+          // landing screen while still expanding its child items.
+          if (item.path) {
+            onNavigate(item.path);
+          }
           if (hasChildren) {
             onToggle(item.id || item.label);
-          } else if (item.path) {
-            onNavigate(item.path);
           }
         }}
         className={`sidebar-item w-full relative ${isActive ? 'active' : ''}`}
