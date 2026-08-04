@@ -1,0 +1,12 @@
+{
+  "disputes": {
+    "chatTitle": "Cuộc trò chuyện tranh chấp",
+    "chatLoading": "Đang tải cuộc trò chuyện...",
+    "chatEmpty": "Chưa có tin nhắn. Hãy bắt đầu trao đổi về tranh chấp bên dưới.",
+    "chatPlaceholder": "Nhập tin nhắn về tranh chấp này...",
+    "chatSend": "Gửi",
+    "chatUnavailable": "Cuộc trò chuyện tranh chấp chưa khả dụng.",
+    "chatLoadFailed": "Không thể tải cuộc trò chuyện tranh chấp.",
+    "chatSendFailed": "Không thể gửi tin nhắn."
+  }
+}

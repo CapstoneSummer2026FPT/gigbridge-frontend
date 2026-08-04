@@ -27,8 +27,6 @@ const SavedJobsScreen = lazy(() => import('../features/jobs/screens/SavedJobsScr
 const JobInvitationsScreen = lazy(() => import('../features/jobs/screens/JobInvitationsScreen'));
 const FreelancerProfileScreen = lazy(() => import('../features/profile/screens/FreelancerProfileScreen'));
 const ClientProfileScreen = lazy(() => import('../features/profile/screens/ClientProfileScreen'));
-const EditClientProfileScreen = lazy(() => import('../features/profile/screens/EditClientProfileScreen'));
-const EditFreelancerProfileScreen = lazy(() => import('../features/profile/screens/EditFreelancerProfileScreen'));
 const ProposalsInboxScreen = lazy(() => import('../features/proposals/screens/ProposalsInboxScreen'));
 const CreateProposalScreen = lazy(() => import('../features/proposals/screens/CreateProposalScreen'));
 const ScreenProposalAnswerQuestion = lazy(() => import('../features/proposals/screens/ScreenProposalAnswerQuestion'));
@@ -134,27 +132,7 @@ function AdminRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function OwnProfileEditRoute({ expectedRole, children }: { expectedRole: UserRole; children: ReactNode }) {
-  const { user, isLoading } = useApp();
-  const { id } = useParams<{ id: string }>();
 
-  if (isLoading || !user) {
-    return null;
-  }
-
-  if (user.role === UserRole.Admin) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  const roleSegment = user.role === UserRole.Freelancer ? 'freelancer' : 'client';
-  const ownEditPath = `/profile/${roleSegment}/${user.id}/edit`;
-
-  if (user.role !== expectedRole || id?.toLowerCase() !== user.id.toLowerCase()) {
-    return <Navigate to={ownEditPath} replace />;
-  }
-
-  return <>{children}</>;
-}
 
 function ContractListRoute() {
   const { role } = useApp();
@@ -248,8 +226,8 @@ export const router = createBrowserRouter([
       // Profiles - requires authentication
       { path: 'profile/freelancer/:id', element: <ProtectedRoute requireAuth><FreelancerProfileScreen /></ProtectedRoute> },
       { path: 'profile/client/:id', element: <ProtectedRoute requireAuth><ClientProfileScreen /></ProtectedRoute> },
-      { path: 'profile/freelancer/:id/edit', element: <ProtectedRoute requireAuth><OwnProfileEditRoute expectedRole={UserRole.Freelancer}><EditFreelancerProfileScreen /></OwnProfileEditRoute></ProtectedRoute> },
-      { path: 'profile/client/:id/edit', element: <ProtectedRoute requireAuth><OwnProfileEditRoute expectedRole={UserRole.Client}><EditClientProfileScreen /></OwnProfileEditRoute></ProtectedRoute> },
+      { path: 'profile/freelancer/:id/edit', element: <Navigate to="/settings" replace /> },
+      { path: 'profile/client/:id/edit', element: <Navigate to="/settings" replace /> },
 
       // Proposals - requires authentication and setup
       { path: 'proposals', element: <ProtectedRoute requireAuth requireSetup><ProposalsInboxScreen /></ProtectedRoute> },

@@ -5,6 +5,7 @@ import type {
   FreelancerProfileDetailDto,
   FreelancerSummaryDto,
   PaginatedList,
+  UserProfileDto,
 } from '../../types/models/Profile';
 
 const buildFreelancerDirectoryQuery = (query: FreelancerDirectoryQuery): string => {
@@ -29,6 +30,10 @@ export const profileGetAPI = {
 
   getMyFreelancerProfile: async () => {
     return await apiService.get<FreelancerProfileDetailDto>('profile/freelancer/me');
+  },
+
+  getMyUserProfile: async () => {
+    return await apiService.get<UserProfileDto>('profile/user/me');
   },
 
   getMyClientProfile: async () => {
