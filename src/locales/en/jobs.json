@@ -97,6 +97,7 @@
     "budgetMin": "Budget Min",
     "budgetMinPlaceholder": "Minimum budget",
     "budgetMax": "Budget Max",
+    "expectedBudget": "Expected budget",
     "budgetGuideTitle": "Budget Unit Guide",
     "budgetGuideDesc": "The currency unit used for job budgets on the GigBridge system is <strong>G-coin</strong>.",
     "budgetGuideRate": "1,000 VND",
@@ -236,6 +237,11 @@
     "edit": "Edit",
     "complete": "complete",
     "notProvided": "Not provided",
+    "budgetExceeded": {
+      "title": "Milestone total exceeds expected budget",
+      "desc": "The milestone total {{total}} exceeds your expected budget {{expected}}. Do you want to continue?",
+      "confirm": "Update budget & continue"
+    },
     "autosave": {
       "idle": "Changes pending",
       "saving": "Saving changes...",

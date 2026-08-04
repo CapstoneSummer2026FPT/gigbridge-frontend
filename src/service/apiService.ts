@@ -6,6 +6,7 @@ import axios, {
 } from 'axios';
 import type { ApiResponse } from '../types/common';
 import type { LoginResponse } from '../types/models/Auth';
+import { secureStorage } from '../shared/utils/secureStorage';
 
 type UnknownRecord = Record<string, unknown>;
 type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -134,8 +135,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem('access_token');
-        localStorage.removeItem('gigbridge_user');
-        localStorage.removeItem('gigbridge_session');
+        secureStorage.removeItem('gigbridge_user');
+        secureStorage.removeItem('gigbridge_session');
         window.location.assign('/auth/login');
         return Promise.reject(refreshError);
       }

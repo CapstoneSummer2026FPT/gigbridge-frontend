@@ -9,6 +9,7 @@ vi.mock('react-i18next', () => ({
       const map: Record<string, string> = {
         'postJob.expectedBudget': 'Expected budget',
         'postJob.estimatedDuration': 'Estimated duration',
+        'postJob.durationUnits.weeks': 'weeks',
         'postJobWizard.draft': 'Current draft',
         'postJobWizard.autosave.saved': 'Saved',
       };
@@ -78,5 +79,50 @@ describe('PostJobWizardShell', () => {
     expect(screen.queryByText('Expected budget')).not.toBeInTheDocument();
     expect(screen.getByText('Estimated duration')).toBeInTheDocument();
     expect(screen.getByText('3 weeks')).toBeInTheDocument();
+  });
+
+  it('shows milestone total / expected budget ratio when ratio props are provided', () => {
+    render(
+      <PostJobWizardShell {...baseProps} expectedBudget={100} estimatedDuration="4 weeks" milestoneTotal={200} />,
+    );
+
+    expect(screen.getByText('200 / 100 G-coin')).toBeInTheDocument();
+    expect(screen.getByText('200 / 100 G-coin').className).toContain('is-over');
+  });
+
+  it('keeps the budget ratio in normal state when milestone total is within budget', () => {
+    render(
+      <PostJobWizardShell {...baseProps} expectedBudget={100} estimatedDuration="4 weeks" milestoneTotal={50} />,
+    );
+
+    const ratio = screen.getByText('50 / 100 G-coin');
+    expect(ratio.className).not.toContain('is-over');
+  });
+
+  it('shows milestone weeks / estimated duration weeks ratio when ratio props are provided', () => {
+    render(
+      <PostJobWizardShell {...baseProps} expectedBudget={100} estimatedDuration="4 weeks" milestoneTotal={100} milestoneTotalWeeks={7} expectedDurationWeeks={4} />,
+    );
+
+    expect(screen.getByText('7 weeks / 4 weeks')).toBeInTheDocument();
+    expect(screen.getByText('7 weeks / 4 weeks').className).toContain('is-over');
+  });
+
+  it('keeps the duration ratio in normal state when milestone weeks are within estimate', () => {
+    render(
+      <PostJobWizardShell {...baseProps} expectedBudget={100} estimatedDuration="4 weeks" milestoneTotal={100} milestoneTotalWeeks={3} expectedDurationWeeks={4} />,
+    );
+
+    const ratio = screen.getByText('3 weeks / 4 weeks');
+    expect(ratio.className).not.toContain('is-over');
+  });
+
+  it('falls back to the single budget value when milestone total is not provided', () => {
+    render(
+      <PostJobWizardShell {...baseProps} expectedBudget={100} estimatedDuration="4 weeks" />,
+    );
+
+    expect(screen.getByText('100 G-coin')).toBeInTheDocument();
+    expect(screen.getByText('4 weeks')).toBeInTheDocument();
   });
 });

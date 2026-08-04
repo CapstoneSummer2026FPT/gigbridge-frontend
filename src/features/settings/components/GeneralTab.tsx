@@ -1,17 +1,23 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
-import { User, FileText, Briefcase, Building2, MapPin, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock } from 'lucide-react';
+import { useSearchParams } from 'react-router';
+import { User, FileText, Briefcase, Building2, MapPin, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { UserRole } from '../../../types/models/User';
 import { profileGetAPI, profilePutAPI } from '../../../api/profileAPI';
+import { portfolioAPI } from '../../../api/portfolioAPI';
+import { workExperienceAPI } from '../../../api/workExperienceAPI';
 import { jobAPI } from '../../../api/jobAPI';
 import type { CategoryOptionDto, MajorDto, SkillOptionDto } from '../../../types/models/Category';
+import type { PortfolioItemDto, WorkExperienceDto } from '../../../types/models/Profile';
+import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow';
 
 import { AvatarCropModal } from './AvatarCropModal';
 
-type SubTab = 'basic' | 'details';
+type SubTab = 'basic' | 'details' | 'portfolio' | 'experience';
 
 interface ProfileForm {
   // User basic info
@@ -61,10 +67,12 @@ const initialProfileForm = (user: any): ProfileForm => ({
   companyDescription: '',
 });
 
-export function GeneralTab() {
+export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const { user, role } = useApp();
   const { t, i18n } = useTranslation();
-  const [subTab, setSubTab] = useState<SubTab>('basic');
+  const [searchParams] = useSearchParams();
+  const urlSubTab = searchParams.get('subtab') as SubTab | null;
+  const [subTab, setSubTab] = useState<SubTab>(urlSubTab || defaultSubTab || 'basic');
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,6 +97,198 @@ export function GeneralTab() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Portfolio Management States
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItemDto[]>([]);
+  const [loadingPortfolio, setLoadingPortfolio] = useState(false);
+  const [savingPortfolio, setSavingPortfolio] = useState(false);
+  const [showPortfolioForm, setShowPortfolioForm] = useState(false);
+  const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
+  const [portfolioForm, setPortfolioForm] = useState({
+    title: '',
+    description: '',
+    imageUrl: '',
+    projectUrl: '',
+    projectDate: '',
+  });
+
+  // Work Experience Management States
+  const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
+  const [loadingExperience, setLoadingExperience] = useState(false);
+  const [savingExperience, setSavingExperience] = useState(false);
+  const [showExperienceForm, setShowExperienceForm] = useState(false);
+  const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
+  const [experienceForm, setExperienceForm] = useState({
+    companyName: '',
+    jobTitle: '',
+    startDate: '',
+    endDate: '',
+    description: '',
+  });
+
+  const loadPortfolio = useCallback(async () => {
+    try {
+      setLoadingPortfolio(true);
+      const res = await portfolioAPI.getMyPortfolio();
+      if (res.success && res.data) {
+        setPortfolioItems(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingPortfolio(false);
+    }
+  }, []);
+
+  const loadWorkExperiences = useCallback(async () => {
+    try {
+      setLoadingExperience(true);
+      const res = await workExperienceAPI.getMyWorkExperiences();
+      if (res.success && res.data) {
+        setWorkExperiences(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingExperience(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (subTab === 'portfolio') {
+      void loadPortfolio();
+    } else if (subTab === 'experience') {
+      void loadWorkExperiences();
+    }
+  }, [subTab, loadPortfolio, loadWorkExperiences]);
+
+  const handleSavePortfolioItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!portfolioForm.title.trim()) {
+      toast.error('Project title is required.');
+      return;
+    }
+    try {
+      setSavingPortfolio(true);
+      if (editingPortfolioId) {
+        const res = await portfolioAPI.updatePortfolioItem(editingPortfolioId, portfolioForm);
+        if (res.success) {
+          toast.success('Portfolio item updated!');
+          setEditingPortfolioId(null);
+          setShowPortfolioForm(false);
+          setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
+          void loadPortfolio();
+        } else {
+          toast.error(res.message || 'Failed to update portfolio item.');
+        }
+      } else {
+        const res = await portfolioAPI.createPortfolioItem(portfolioForm);
+        if (res.success) {
+          toast.success('Portfolio item created!');
+          setShowPortfolioForm(false);
+          setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
+          void loadPortfolio();
+        } else {
+          toast.error(res.message || 'Failed to create portfolio item.');
+        }
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error saving portfolio item.');
+    } finally {
+      setSavingPortfolio(false);
+    }
+  };
+
+  const handleDeletePortfolioItem = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this portfolio item?')) return;
+    try {
+      const res = await portfolioAPI.deletePortfolioItem(id);
+      if (res.success) {
+        toast.success('Portfolio item deleted.');
+        void loadPortfolio();
+      } else {
+        toast.error(res.message || 'Failed to delete portfolio item.');
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error deleting portfolio item.');
+    }
+  };
+
+  const handleStartEditPortfolio = (item: PortfolioItemDto) => {
+    setEditingPortfolioId(item.portfolioItemId);
+    setPortfolioForm({
+      title: item.title || '',
+      description: item.description || '',
+      imageUrl: item.imageUrl || '',
+      projectUrl: item.projectUrl || '',
+      projectDate: item.projectDate || '',
+    });
+    setShowPortfolioForm(true);
+  };
+
+  const handleSaveWorkExperience = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!experienceForm.companyName.trim() || !experienceForm.jobTitle.trim() || !experienceForm.startDate) {
+      toast.error('Company Name, Job Title, and Start Date are required.');
+      return;
+    }
+    try {
+      setSavingExperience(true);
+      if (editingExperienceId) {
+        const res = await workExperienceAPI.updateWorkExperience(editingExperienceId, experienceForm);
+        if (res.success) {
+          toast.success('Work experience updated!');
+          setEditingExperienceId(null);
+          setShowExperienceForm(false);
+          setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
+          void loadWorkExperiences();
+        } else {
+          toast.error(res.message || 'Failed to update work experience.');
+        }
+      } else {
+        const res = await workExperienceAPI.createWorkExperience(experienceForm);
+        if (res.success) {
+          toast.success('Work experience created!');
+          setShowExperienceForm(false);
+          setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
+          void loadWorkExperiences();
+        } else {
+          toast.error(res.message || 'Failed to create work experience.');
+        }
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error saving work experience.');
+    } finally {
+      setSavingExperience(false);
+    }
+  };
+
+  const handleDeleteWorkExperience = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this work experience entry?')) return;
+    try {
+      const res = await workExperienceAPI.deleteWorkExperience(id);
+      if (res.success) {
+        toast.success('Work experience entry deleted.');
+        void loadWorkExperiences();
+      } else {
+        toast.error(res.message || 'Failed to delete work experience entry.');
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error deleting work experience entry.');
+    }
+  };
+
+  const handleStartEditExperience = (item: WorkExperienceDto) => {
+    setEditingExperienceId(item.workExperienceId);
+    setExperienceForm({
+      companyName: item.companyName || '',
+      jobTitle: item.jobTitle || '',
+      startDate: item.startDate || '',
+      endDate: item.endDate || '',
+      description: item.description || '',
+    });
+    setShowExperienceForm(true);
+  };
 
   // GSAP Sub-Tab Transition Animation
   useGSAP(
@@ -423,6 +623,24 @@ export function GeneralTab() {
         >
           <FileText size={16} />
           <span>{t('settings.detailedProfile')}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('portfolio')}
+          className={`settings-subtab-btn ${subTab === 'portfolio' ? 'active' : ''}`}
+        >
+          <FolderGit2 size={16} />
+          <span>Portfolio</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('experience')}
+          className={`settings-subtab-btn ${subTab === 'experience' ? 'active' : ''}`}
+        >
+          <Building2 size={16} />
+          <span>Work Experience</span>
         </button>
       </div>
 
@@ -918,6 +1136,417 @@ export function GeneralTab() {
                   <span>{t('settings.saveChanges')}</span>
                 )}
               </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Sub-Tab 3: Portfolio Showcase Management */}
+      {subTab === 'portfolio' && (
+        <div className="settings-subtab-content space-y-6">
+          <section className="settings-form-card space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
+              <div>
+                <h2 className="settings-form-card-title mb-1">
+                  <FolderGit2 size={18} className="text-[var(--brand,#494be7)]" />
+                  <span>Portfolio Showcase</span>
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Manage project cards shown in your 3D Coverflow profile gallery.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingPortfolioId(null);
+                  setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
+                  setShowPortfolioForm(!showPortfolioForm);
+                }}
+                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold"
+              >
+                {showPortfolioForm ? <X size={15} /> : <Plus size={15} />}
+                <span>{showPortfolioForm ? 'Cancel' : 'Add Project'}</span>
+              </button>
+            </div>
+
+            {/* Form Section */}
+            {showPortfolioForm && (
+              <form onSubmit={handleSavePortfolioItem} className="p-5 rounded-2xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--brand-soft)] space-y-4">
+                <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                  <Sparkles size={16} className="text-[var(--brand,#494be7)]" />
+                  <span>{editingPortfolioId ? 'Edit Portfolio Item' : 'New Portfolio Item'}</span>
+                </h3>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">
+                      Project Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. E-Commerce Web App"
+                      value={portfolioForm.title}
+                      onChange={e => setPortfolioForm(prev => ({ ...prev, title: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">Description</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Brief overview of tech stack, features, and key achievements..."
+                      value={portfolioForm.description}
+                      onChange={e => setPortfolioForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">Image URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/project-preview.jpg"
+                      value={portfolioForm.imageUrl}
+                      onChange={e => setPortfolioForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">Project Link (URL)</label>
+                    <input
+                      type="url"
+                      placeholder="https://github.com/my-user/my-repo"
+                      value={portfolioForm.projectUrl}
+                      onChange={e => setPortfolioForm(prev => ({ ...prev, projectUrl: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">Completion Date</label>
+                    <input
+                      type="date"
+                      value={portfolioForm.projectDate}
+                      onChange={e => setPortfolioForm(prev => ({ ...prev, projectDate: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPortfolioForm(false);
+                      setEditingPortfolioId(null);
+                    }}
+                    className="cp-btn-secondary px-4 py-2 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingPortfolio}
+                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5"
+                  >
+                    {savingPortfolio ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>{editingPortfolioId ? 'Update Item' : 'Save Item'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Live 3D Coverflow Gallery Preview */}
+            <div className="rounded-2xl p-4 bg-black/40 border border-white/10 space-y-2">
+              <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] px-2">
+                <span className="font-bold uppercase tracking-wider text-[var(--brand,#494be7)] flex items-center gap-1.5">
+                  <Sparkles size={14} /> Live Coverflow 3D Gallery Preview
+                </span>
+                <span>{portfolioItems.length} items</span>
+              </div>
+              <Smooth3DSlideshow
+                slides={
+                  portfolioItems.length > 0
+                    ? portfolioItems.map((item, idx) => ({
+                        id: item.portfolioItemId || String(idx),
+                        title: item.title,
+                        description: item.description,
+                        projectUrl: item.projectUrl,
+                        image: {
+                          src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
+                          alt: item.title,
+                        },
+                      }))
+                    : undefined
+                }
+                cardWidth={280}
+                cardHeight={260}
+                radius={4}
+                tilt={10}
+                sideTilt={6}
+                gap={6}
+              />
+            </div>
+
+            {/* Portfolio Items List */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Existing Projects</h3>
+              {loadingPortfolio ? (
+                <div className="flex items-center justify-center p-8 text-sm text-secondary">
+                  <RefreshCw size={18} className="animate-spin mr-2 text-[var(--brand,#494be7)]" />
+                  Loading portfolio...
+                </div>
+              ) : portfolioItems.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {portfolioItems.map(item => (
+                    <div
+                      key={item.portfolioItemId}
+                      className="p-4 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))] flex flex-col justify-between gap-3 group"
+                    >
+                      <div className="flex items-start gap-3">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            className="w-16 h-16 rounded-lg object-cover shrink-0 border border-white/10"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-indigo-900/40 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold shrink-0">
+                            GB
+                          </div>
+                        )}
+
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">{item.title}</h4>
+                          {item.description && (
+                            <p className="text-xs text-[var(--text-secondary)] line-clamp-2">{item.description}</p>
+                          )}
+                          {item.projectUrl && (
+                            <a
+                              href={item.projectUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-[var(--brand,#494be7)] font-medium inline-flex items-center gap-1 hover:underline pt-1"
+                            >
+                              <ExternalLink size={12} /> View Project
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-[var(--text-muted)]">
+                        <span>{item.projectDate || 'No date'}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditPortfolio(item)}
+                            className="p-1.5 rounded-lg hover:bg-white/10 text-secondary hover:text-white"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDeletePortfolioItem(item.portfolioItemId)}
+                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-xl border border-dashed border-[var(--border,#ededf0)]">
+                  No portfolio items created yet. Click "+ Add Project" to build your showcase!
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Sub-Tab 4: Work Experience Management */}
+      {subTab === 'experience' && (
+        <div className="settings-subtab-content space-y-6">
+          <section className="settings-form-card space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
+              <div>
+                <h2 className="settings-form-card-title mb-1">
+                  <Building2 size={18} className="text-[var(--brand,#494be7)]" />
+                  <span>Work Experience</span>
+                </h2>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Add your past professional roles and work history.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingExperienceId(null);
+                  setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
+                  setShowExperienceForm(!showExperienceForm);
+                }}
+                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold"
+              >
+                {showExperienceForm ? <X size={15} /> : <Plus size={15} />}
+                <span>{showExperienceForm ? 'Cancel' : 'Add Position'}</span>
+              </button>
+            </div>
+
+            {/* Form Section */}
+            {showExperienceForm && (
+              <form onSubmit={handleSaveWorkExperience} className="p-5 rounded-2xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--brand-soft)] space-y-4">
+                <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                  <Sparkles size={16} className="text-[var(--brand,#494be7)]" />
+                  <span>{editingExperienceId ? 'Edit Work Experience' : 'New Work Experience'}</span>
+                </h3>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">
+                      Job Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Senior Frontend Engineer"
+                      value={experienceForm.jobTitle}
+                      onChange={e => setExperienceForm(prev => ({ ...prev, jobTitle: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">
+                      Company / Organization <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Acme Software Inc."
+                      value={experienceForm.companyName}
+                      onChange={e => setExperienceForm(prev => ({ ...prev, companyName: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={experienceForm.startDate}
+                      onChange={e => setExperienceForm(prev => ({ ...prev, startDate: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">End Date (Leave empty if current job)</label>
+                    <input
+                      type="date"
+                      value={experienceForm.endDate}
+                      onChange={e => setExperienceForm(prev => ({ ...prev, endDate: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-xs font-bold text-[var(--text-secondary)]">Description / Responsibilities</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Describe key responsibilities, tools used, and deliverables..."
+                      value={experienceForm.description}
+                      onChange={e => setExperienceForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="settings-input w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowExperienceForm(false);
+                      setEditingExperienceId(null);
+                    }}
+                    className="cp-btn-secondary px-4 py-2 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingExperience}
+                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5"
+                  >
+                    {savingExperience ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>{editingExperienceId ? 'Update Position' : 'Save Position'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Experience List */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Work History</h3>
+              {loadingExperience ? (
+                <div className="flex items-center justify-center p-8 text-sm text-secondary">
+                  <RefreshCw size={18} className="animate-spin mr-2 text-[var(--brand,#494be7)]" />
+                  Loading work history...
+                </div>
+              ) : workExperiences.length > 0 ? (
+                <div className="space-y-3">
+                  {workExperiences.map(item => (
+                    <div
+                      key={item.workExperienceId}
+                      className="p-4 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))] flex items-start justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-base font-bold text-[var(--text-primary)]">{item.jobTitle}</h4>
+                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
+                            {item.companyName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                          <Calendar size={13} className="text-[var(--brand,#494be7)]" />
+                          <span>{item.startDate} - {item.endDate || 'Present'}</span>
+                        </div>
+                        {item.description && (
+                          <p className="text-sm text-[var(--text-secondary)] pt-1">{item.description}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditExperience(item)}
+                          className="p-1.5 rounded-lg hover:bg-white/10 text-secondary hover:text-white"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteWorkExperience(item.workExperienceId)}
+                          className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-xl border border-dashed border-[var(--border,#ededf0)]">
+                  No work experience entries added yet. Click "+ Add Position" to populate your work history!
+                </div>
+              )}
             </div>
           </section>
         </div>

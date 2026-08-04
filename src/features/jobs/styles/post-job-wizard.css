@@ -83,6 +83,8 @@
 .job-post-image-card--review img { height: 8rem; }
 .job-post-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .job-post-accordion__trigger { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 1rem; text-align: left; }
+.job-post-ratio { display: inline-flex; align-items: center; gap: .3rem; }
+.job-post-ratio.is-over { color: var(--destructive); }
 .job-post-ai { position: fixed; inset: 0; z-index: 100; }
 .job-post-ai__backdrop { position: absolute; inset: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, .48); backdrop-filter: blur(3px); }
 .job-post-ai__panel { position: absolute; top: 0; right: 0; width: min(100%, 28rem); height: 100%; overflow-y: auto; border-left: 1px solid var(--border); background: var(--card); box-shadow: -20px 0 60px rgba(15, 23, 42, .14); animation: drawer-in .25s ease-out; }
