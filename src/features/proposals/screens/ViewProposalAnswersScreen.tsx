@@ -119,11 +119,9 @@ export default function ViewProposalAnswersScreen() {
                     <h2 className="text-sm font-bold text-foreground">
                       {answer.orderIndex}. {answer.questionText}
                     </h2>
-                    {answer.isRequired && (
-                      <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                        {t('proposalAnswers.required')}
-                      </span>
-                    )}
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${answer.isRequired ? 'bg-red-500/10 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+                      {t(answer.isRequired ? 'proposalAnswers.required' : 'proposalAnswers.optional')}
+                    </span>
                   </div>
                   <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                     {answer.answerText?.trim() || t('proposalAnswers.noAnswerProvided')}

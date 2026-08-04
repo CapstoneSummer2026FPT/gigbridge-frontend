@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Brain, Award, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Eye, ChevronRight } from 'lucide-react';
+import { Brain, CheckCircle2, XCircle, Sparkles, Filter, RefreshCw, Check, MessageSquare, X, Search, SlidersHorizontal } from 'lucide-react';
 import type { ProposalDto } from '../../../types/models/Proposal';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { useTranslation } from '../../../hooks/useTranslation';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 
 interface ProposalJudgingListViewProps {
   jobPostId: string;
@@ -12,7 +12,6 @@ interface ProposalJudgingListViewProps {
   proposals: ProposalDto[];
   loading: boolean;
   onSelectProposal: (proposalId: string) => void;
-  onOpenAiReport: (proposalId: string) => void;
   onShortlist: (proposalId: string) => void;
   onStartNegotiation: (proposalId: string) => void;
   onReject: (proposalId: string) => void;
@@ -29,24 +28,24 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
   proposals,
   loading,
   onSelectProposal,
-  onOpenAiReport,
   onShortlist,
   onStartNegotiation,
   onReject,
   canAct,
   onRefreshProposals,
 }) => {
-  const { t } = useTranslation();
   const [filterRec, setFilterRec] = useState<FilterRec>('all');
   const [minScoreFilter, setMinScoreFilter] = useState<number>(0);
   const [sortBy, setSortBy] = useState<SortByOption>('aiScore');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [extraFiltersOpen, setExtraFiltersOpen] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [filterRec, minScoreFilter, sortBy, jobPostId]);
+  }, [filterRec, minScoreFilter, sortBy, jobPostId, searchQuery]);
 
   // Batch Judging State
   const [batchLoading, setBatchLoading] = useState(false);
@@ -80,6 +79,24 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       list = list.filter(p => (p.aiScore || 0) >= minScoreFilter);
     }
 
+    // Dynamic search filtering
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      list = list.filter(p => {
+        const name = p.freelancerName?.toLowerCase() || '';
+        const summary = p.aiSummary?.toLowerCase() || '';
+        const techSkills = p.aiTechnicalSkills?.map(s => s.toLowerCase()) || [];
+        const softSkills = p.aiSoftSkills?.map(s => s.toLowerCase()) || [];
+        const duration = p.proposedDuration?.toLowerCase() || '';
+        
+        return name.includes(query) ||
+               summary.includes(query) ||
+               techSkills.some(s => s.includes(query)) ||
+               softSkills.some(s => s.includes(query)) ||
+               duration.includes(query);
+      });
+    }
+
     return list.sort((a, b) => {
       if (sortBy === 'budget') return (a.proposedBudget || 0) - (b.proposedBudget || 0);
       if (sortBy === 'newest') return new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime();
@@ -89,7 +106,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       const scoreB = typeof b.aiScore === 'number' ? b.aiScore : -1;
       return scoreB - scoreA;
     });
-  }, [proposals, filterRec, minScoreFilter, sortBy]);
+  }, [proposals, filterRec, minScoreFilter, sortBy, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(rankedCandidates.length / pageSize));
   const pagedCandidates = useMemo(() => {
@@ -109,7 +126,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
     try {
       while (remaining > 0) {
         const response = await proposalPostAPI.judgeAllProposals(jobPostId, 10);
-        if (!response.success || response.data.processedCount === 0) {
+        if (!response.success || !response.data || response.data.processedCount === 0) {
           setBatchError(
             !response.success
               ? (response.message || 'Batch evaluation encountered an error.')
@@ -127,8 +144,8 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
 
         if (response.data.isCompleted) break;
       }
-    } catch (err: any) {
-      setBatchError(err?.message || 'Failed to complete batch judging.');
+    } catch (err: unknown) {
+      setBatchError(err instanceof Error ? err.message : 'Failed to complete batch judging.');
     } finally {
       setBatchLoading(false);
       setBatchProgress(null);
@@ -218,53 +235,121 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
       </div>
 
       {/* 2. Filter & Sort Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1 font-bold text-muted-foreground">
-            <Filter size={14} /> Filter:
-          </span>
-          <button
-            onClick={() => setFilterRec('all')}
-            className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'all' ? 'bg-purple-500/15 text-purple-600 border border-purple-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
-          >
-            All Candidates ({proposals.length})
-          </button>
-          <button
-            onClick={() => setFilterRec('recommended')}
-            className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'recommended' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
-          >
-            Recommended Only ({stats.recommendedCount})
-          </button>
-          <button
-            onClick={() => setFilterRec('unjudged')}
-            className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'unjudged' ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
-          >
-            Un-judged ({stats.unjudgedCount})
-          </button>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-xs overflow-x-auto whitespace-nowrap">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="flex items-center gap-1 font-bold text-muted-foreground">
+              <Filter size={14} /> Filter:
+            </span>
+            <button
+              onClick={() => setFilterRec('all')}
+              className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'all' ? 'bg-purple-500/15 text-purple-600 border border-purple-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+            >
+              All Candidates ({proposals.length})
+            </button>
+            <button
+              onClick={() => setFilterRec('recommended')}
+              className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'recommended' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+            >
+              Recommended Only ({stats.recommendedCount})
+            </button>
+            <button
+              onClick={() => setFilterRec('unjudged')}
+              className={`rounded-lg px-3 py-1.5 font-semibold transition ${filterRec === 'unjudged' ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30' : 'bg-muted/30 text-muted-foreground hover:bg-muted'}`}
+            >
+              Un-judged ({stats.unjudgedCount})
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Dynamic Search Input */}
+            <div className="relative w-40 sm:w-48">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <Search size={13} />
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search freelancer..."
+                className="w-full rounded border border-border bg-background py-1.5 pl-8 pr-6 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setExtraFiltersOpen(prev => !prev)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-semibold transition ${extraFiltersOpen || minScoreFilter > 0 || sortBy !== 'aiScore' ? 'border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300' : 'border-border bg-background hover:bg-muted/50'} cursor-pointer`}
+            >
+              <Filter size={13} />
+              Filters
+              {(minScoreFilter > 0 || sortBy !== 'aiScore') && (
+                <span className="rounded-full bg-purple-600 px-1.5 py-0.5 text-[10px] text-white font-bold leading-none flex items-center justify-center h-4 min-w-4">
+                  {(minScoreFilter > 0 ? 1 : 0) + (sortBy !== 'aiScore' ? 1 : 0)}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={minScoreFilter}
-            onChange={e => setMinScoreFilter(Number(e.target.value))}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium"
-          >
-            <option value={0}>Min Score: Any</option>
-            <option value={80}>Score 80+</option>
-            <option value={70}>Score 70+</option>
-            <option value={60}>Score 60+</option>
-          </select>
+        {extraFiltersOpen && (
+          <div className="rounded-xl border border-border bg-muted/25 p-4 mt-3">
+            <div className="flex items-center justify-between gap-3 mb-3 text-xs">
+              <h3 className="flex items-center gap-1.5 font-bold text-foreground">
+                <SlidersHorizontal size={14} className="text-purple-600" />
+                Advanced Filters & Sorting
+              </h3>
+              {(minScoreFilter > 0 || sortBy !== 'aiScore') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinScoreFilter(0);
+                    setSortBy('aiScore');
+                  }}
+                  className="text-xs font-semibold text-purple-600 hover:underline cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 text-xs">
+                <label className="block font-semibold text-muted-foreground">Minimum AI Score</label>
+                <select
+                  value={minScoreFilter}
+                  onChange={e => setMinScoreFilter(Number(e.target.value))}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground cursor-pointer focus:outline-none focus:border-purple-500"
+                >
+                  <option value={0}>Any Score</option>
+                  <option value={80}>Score 80+</option>
+                  <option value={70}>Score 70+</option>
+                  <option value={60}>Score 60+</option>
+                </select>
+              </div>
 
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as SortByOption)}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 font-medium"
-          >
-            <option value="aiScore">Sort: Highest AI Score</option>
-            <option value="budget">Sort: Proposed Budget</option>
-            <option value="newest">Sort: Newest Submitted</option>
-          </select>
-        </div>
+              <div className="space-y-1.5 text-xs">
+                <label className="block font-semibold text-muted-foreground">Sort Candidates By</label>
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as SortByOption)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground cursor-pointer focus:outline-none focus:border-purple-500"
+                >
+                  <option value="aiScore">Highest AI Score</option>
+                  <option value="budget">Proposed Budget</option>
+                  <option value="newest">Newest Submitted</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Ranked Candidate Cards Leaderboard */}
@@ -298,7 +383,7 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-bold text-base text-foreground truncate">
-                          {candidate.freelancerName || 'Freelancer'}
+                          <UserProfileLink userId={candidate.freelancerUserId} role="freelancer">{candidate.freelancerName || 'Freelancer'}</UserProfileLink>
                         </h3>
                         {candidate.aiRecommendedHire === true && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">

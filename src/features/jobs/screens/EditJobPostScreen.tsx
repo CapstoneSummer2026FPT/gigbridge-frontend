@@ -49,7 +49,6 @@ interface EditJobPostFormData {
   currency: string;
   estimatedDurationValue: string;
   estimatedDurationUnit: JobDurationUnit;
-  location: string;
   visibility: string;
   endDate: string;
   skillIds: string[];
@@ -143,7 +142,6 @@ export default function EditJobPostScreen() {
     currency: GIGCOIN_CURRENCY_CODE,
     estimatedDurationValue: '',
     estimatedDurationUnit: DEFAULT_JOB_DURATION_UNIT,
-    location: '',
     visibility: String(JobPostVisibility.Public),
     endDate: '',
     skillIds: [],
@@ -250,7 +248,6 @@ export default function EditJobPostScreen() {
           currency: job.currency || GIGCOIN_CURRENCY_CODE,
           estimatedDurationValue: duration.value,
           estimatedDurationUnit: duration.unit,
-          location: job.location || '',
           visibility: String(job.visibility ?? JobPostVisibility.Public),
           endDate: job.endDate?.split('T')?.[0] || '',
           skillIds: job.skills?.map(skill => skill.skillsId.toLowerCase()) || [],
@@ -525,7 +522,6 @@ export default function EditJobPostScreen() {
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
     currency: formData.currency.trim() || GIGCOIN_CURRENCY_CODE,
     estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
-    location: formData.location.trim() || null,
     visibility: Number(formData.visibility),
     endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
     skillIds: formData.skillIds,
@@ -540,7 +536,6 @@ export default function EditJobPostScreen() {
     budgetMax: formData.budgetMax ? Number(formData.budgetMax) : null,
     currency: formData.currency.trim() || GIGCOIN_CURRENCY_CODE,
     estimatedDuration: formatJobDuration(formData.estimatedDurationValue, formData.estimatedDurationUnit),
-    location: formData.location.trim() || null,
     visibility: Number(formData.visibility),
     endDate: formData.endDate ? new Date(`${formData.endDate}T23:59:59`).toISOString() : null,
     skillIds: formData.skillIds,

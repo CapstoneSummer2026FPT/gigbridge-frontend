@@ -28,9 +28,10 @@ import {
 } from '../../../app/components/ui/tooltip';
 import { useApp } from '../../../app/providers/AppProvider';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
 import { JobPostStatus } from '../../../types/models/Job';
-import type { FreelancerProfileDetailDto } from '../../../types/models/Profile';
+import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 import type { SavedFreelancerDto } from '../../../types/savedFreelancer';
 import type { AiTalentMatch } from '../../../types/talentMatching';
 import { UserRole } from '../../../types/models/User';
@@ -52,8 +53,7 @@ interface InviteTarget {
 const savedProfileId = (item: SavedFreelancerDto) =>
   item.freelancerProfileId ?? item.freelancerProfilesId ?? '';
 
-const freelancerProfileId = (item: FreelancerProfileDetailDto) =>
-  item.freelancerProfilesId ?? item.freelancerProfileId ?? '';
+const freelancerProfileId = (item: FreelancerSummaryDto) => item.freelancerProfilesId;
 
 const initials = (name?: string | null) =>
   (name || 'Freelancer')
@@ -63,6 +63,30 @@ const initials = (name?: string | null) =>
     .join('')
     .toUpperCase();
 
+const rankingFactors = [
+  {
+    label: 'Skill match',
+    description: 'Skills and experience relevant to this job',
+    weight: 45,
+    color: 'bg-blue-500',
+    marker: 'bg-blue-500',
+  },
+  {
+    label: 'Track record',
+    description: 'Past work, ratings, and reliability',
+    weight: 35,
+    color: 'bg-purple-500',
+    marker: 'bg-purple-500',
+  },
+  {
+    label: 'Platform activity',
+    description: 'Recent, verified activity on GigBridge',
+    weight: 20,
+    color: 'bg-emerald-500',
+    marker: 'bg-emerald-500',
+  },
+] as const;
+
 function DataConfidenceBadge({ match }: { match: AiTalentMatch }) {
   const details = match.confidenceBreakdown;
   const scoreAgreement = details?.scoreAgreement ?? Math.max(
@@ -70,8 +94,8 @@ function DataConfidenceBadge({ match }: { match: AiTalentMatch }) {
     100 - Math.abs(match.scoreBreakdown.embedding - match.scoreBreakdown.algorithm),
   );
   const ariaLabel = details
-    ? `${match.confidence} data confidence. Profile coverage ${details.dataCoverage.toFixed(1)} percent. Score agreement ${scoreAgreement.toFixed(1)} percent.`
-    : `${match.confidence} data confidence. Score agreement ${scoreAgreement.toFixed(1)} percent. Profile coverage is unavailable from the current backend response.`;
+    ? `${match.confidence} confidence. Profile information ${details.dataCoverage.toFixed(1)} percent. Result consistency ${scoreAgreement.toFixed(1)} percent.`
+    : `${match.confidence} confidence. Result consistency ${scoreAgreement.toFixed(1)} percent.`;
 
   return (
     <Tooltip>
@@ -81,25 +105,25 @@ function DataConfidenceBadge({ match }: { match: AiTalentMatch }) {
           className={`px-2.5 py-1 rounded-full font-bold inline-flex items-center gap-1 ${match.confidence === 'high' ? 'bg-green-500/10 text-green-600' : match.confidence === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-gray-500/10 text-muted-foreground'}`}
           aria-label={ariaLabel}
         >
-          {match.confidence} data confidence
+          {match.confidence} confidence
           <Info size={12} aria-hidden="true" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={6} className="max-w-72 space-y-1.5">
-        <p className="font-semibold">How reliable is the match calculation?</p>
+        <p className="font-semibold">How much information supports this result?</p>
         {details ? (
           <>
-            <p>Profile coverage: {details.dataCoverage.toFixed(1)}%</p>
-            <p>Embedding/algorithm agreement: {scoreAgreement.toFixed(1)}%</p>
-            <p>Data-confidence index: {details.confidenceScore.toFixed(1)}/100</p>
+            <p>Profile information: {details.dataCoverage.toFixed(1)}%</p>
+            <p>Result consistency: {scoreAgreement.toFixed(1)}%</p>
+            <p>Confidence score: {details.confidenceScore.toFixed(1)}/100</p>
           </>
         ) : (
           <>
-            <p>Embedding/algorithm agreement: {scoreAgreement.toFixed(1)}%</p>
-            <p>Profile coverage is unavailable until the backend is restarted.</p>
+            <p>Result consistency: {scoreAgreement.toFixed(1)}%</p>
+            <p>More confidence details will appear when available.</p>
           </>
         )}
-        <p className="opacity-80">This measures data support, not how strong the match is.</p>
+        <p className="opacity-80">This reflects how much information is available, not the freelancer's match score.</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -114,7 +138,7 @@ export default function SmartTalentMatchingScreen() {
   const requestSequence = useRef(0);
   const [activeStage, setActiveStage] = useState<ViewStage>('browse');
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
-  const [freelancers, setFreelancers] = useState<FreelancerProfileDetailDto[]>([]);
+  const [freelancers, setFreelancers] = useState<FreelancerSummaryDto[]>([]);
   const [selectedJobId, setSelectedJobId] = useState('');
   const [saved, setSaved] = useState<SavedFreelancerDto[]>([]);
   const [matches, setMatches] = useState<AiTalentMatch[]>([]);
@@ -154,7 +178,7 @@ export default function SmartTalentMatchingScreen() {
     setBrowseError(null);
     const [jobsResponse, freelancersResponse, savedResult] = await Promise.allSettled([
       jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 }),
-      profileGetAPI.getAllFreelancers(),
+      profileGetAPI.getFreelancers({ page: 1, pageSize: 50, sort: 'featured' }),
       savedFreelancerAPI.getMySavedFreelancers(),
     ]);
 
@@ -186,7 +210,7 @@ export default function SmartTalentMatchingScreen() {
       );
     } else {
       setFreelancers(
-        (freelancersResponse.value.data || []).filter(item => freelancerProfileId(item)),
+        (freelancersResponse.value.data?.items || []).filter(item => freelancerProfileId(item)),
       );
     }
 
@@ -310,7 +334,8 @@ export default function SmartTalentMatchingScreen() {
         idempotencyKey: `match:${matchRunId}:profile-opened:${match.freelancerProfileId}`,
       });
     }
-    navigate(`/profile/freelancer/${match.userId}`);
+    const path = getProfilePath(match.userId, 'freelancer');
+    if (path) navigate(path);
   };
 
   const toggleSaved = async (profileId: string, attributedRunId?: string) => {
@@ -386,7 +411,7 @@ export default function SmartTalentMatchingScreen() {
       ? 'Saved freelancers'
       : 'Freelancer directory';
   const resultDescription = activeStage === 'smart'
-    ? 'Ranked for the selected job using skills, reputation, and verified platform evidence.'
+    ? 'Ranked for the selected job using skills, track record, and activity on GigBridge.'
     : activeStage === 'saved'
       ? 'Review the talent you shortlisted and invite the right people when you are ready.'
       : 'Search the complete talent pool by name, specialty, skill, location, or category.';
@@ -545,11 +570,11 @@ export default function SmartTalentMatchingScreen() {
                   return (
                     <article key={profileId} className="bento-card rounded-3xl p-6">
                       <div className="flex gap-4 items-start">
-                        <button onClick={() => navigate(`/profile/freelancer/${freelancer.userId}`)} className="shrink-0">
+                        <button onClick={() => { const path = getProfilePath(freelancer.userId, 'freelancer'); if (path) navigate(path); }} className="shrink-0">
                           {freelancer.userAvatar ? <img src={freelancer.userAvatar} alt="" className="w-16 h-16 rounded-2xl object-cover" /> : <span className="w-16 h-16 rounded-2xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-black">{initials(displayName)}</span>}
                         </button>
                         <div className="min-w-0 flex-1">
-                          <button onClick={() => navigate(`/profile/freelancer/${freelancer.userId}`)} className="text-left font-black text-xl hover:text-blue-600">{displayName}</button>
+                          <button onClick={() => { const path = getProfilePath(freelancer.userId, 'freelancer'); if (path) navigate(path); }} className="text-left font-black text-xl hover:text-blue-600">{displayName}</button>
                           <p className="text-sm font-semibold text-blue-600">{freelancer.title || 'Freelancer'}</p>
                           <div className="flex flex-wrap gap-2 mt-3 text-xs">
                             {freelancer.location && <span className="px-2.5 py-1 rounded-full bg-surface border border-border inline-flex items-center gap-1"><MapPin size={12} />{freelancer.location}</span>}
@@ -580,8 +605,8 @@ export default function SmartTalentMatchingScreen() {
                 {loadingMatches && (
                   <div className="glass-panel rounded-3xl p-12 text-center">
                     <Bot size={36} className="mx-auto mb-4 text-purple-600 animate-pulse" />
-                    <h2 className="font-bold text-lg">Retrieving and algorithmically scoring eligible talent…</h2>
-                    <p className="text-sm text-muted-foreground mt-2">No generative LLM is used for ranking.</p>
+                    <h2 className="font-bold text-lg">Finding freelancers for this job</h2>
+                    <p className="text-sm text-muted-foreground mt-2">This usually takes a few seconds.</p>
                   </div>
                 )}
                 {!loadingMatches && matchError && (
@@ -596,7 +621,7 @@ export default function SmartTalentMatchingScreen() {
                   <div className="glass-panel rounded-3xl p-10 text-center">
                     <BriefcaseBusiness size={34} className="mx-auto text-muted-foreground mb-3" />
                     <h2 className="font-bold text-lg">Create an open job to use smart matching</h2>
-                    <p className="text-sm text-muted-foreground mt-2">The matching algorithm needs a real job title, description, taxonomy, and preferred skills.</p>
+                    <p className="text-sm text-muted-foreground mt-2">The job title, description, category, and preferred skills help us find relevant freelancers.</p>
                   </div>
                 )}
                 {!loadingMatches && !matchError && selectedJobId && filteredMatches.length === 0 && (
@@ -627,10 +652,14 @@ export default function SmartTalentMatchingScreen() {
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-5 text-center">
-                      {Object.entries(match.scoreBreakdown).map(([label, score]) => <div key={label} className="rounded-xl bg-surface border border-border p-3"><strong className="block">{Number(score).toFixed(1)}</strong><span className="text-[10px] uppercase text-muted-foreground">{label}</span></div>)}
+                      {[
+                        { label: 'Skill match', score: match.scoreBreakdown.embedding },
+                        { label: 'Track record', score: match.scoreBreakdown.algorithm },
+                        { label: 'Platform activity', score: match.scoreBreakdown.evidence },
+                      ].map(item => <div key={item.label} className="rounded-xl bg-surface border border-border p-3"><strong className="block">{item.score.toFixed(1)}</strong><span className="text-[10px] uppercase text-muted-foreground">{item.label}</span></div>)}
                     </div>
                     <div className="mt-5 space-y-3 text-sm">
-                      {match.semanticStrengths.length > 0 && <div><strong>Algorithm strengths:</strong> {match.semanticStrengths.join(' · ')}</div>}
+                      {match.semanticStrengths.length > 0 && <div><strong>Why they stand out:</strong> {match.semanticStrengths.join(' · ')}</div>}
                       {match.matchedSkills.length > 0 && <div className="flex flex-wrap items-center gap-2"><strong>Matched:</strong>{match.matchedSkills.map(skill => <span key={skill} className="px-2 py-1 rounded-lg bg-green-500/10 text-green-700"><Check size={12} className="inline mr-1" />{skill}</span>)}</div>}
                       {match.missingSkills.length > 0 && <div className="flex flex-wrap items-center gap-2"><strong>Skill gaps:</strong>{match.missingSkills.map(skill => <span key={skill} className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-700">{skill}</span>)}</div>}
                       <ul className="space-y-1 text-muted-foreground list-disc pl-5">{match.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
@@ -656,9 +685,48 @@ export default function SmartTalentMatchingScreen() {
             <SponsoredPromotionCard promotionType="freelancer" />
             <div className="glass-panel rounded-3xl p-5">
               {isDirectoryStage ? (
-                <><h3 className="font-bold flex items-center gap-2"><Users size={18} className="text-blue-600" /> Browse first</h3><p className="text-sm text-muted-foreground mt-3">The directory shows normal backend freelancer profiles without inventing a job-fit score.</p><p className="text-xs text-muted-foreground mt-3">Switch to Smart matching when you want a ranked shortlist for a specific open job.</p></>
+                <><h3 className="font-bold flex items-center gap-2"><Users size={18} className="text-blue-600" /> Browse first</h3><p className="text-sm text-muted-foreground mt-3">Explore all available freelancer profiles in the directory.</p><p className="text-xs text-muted-foreground mt-3">Switch to Smart matching when you want a ranked shortlist for a specific open job.</p></>
               ) : (
-                <><h3 className="font-bold flex items-center gap-2"><Bot size={18} className="text-purple-600" /> How ranking works</h3><p className="text-sm text-muted-foreground mt-3">45% embedding similarity, 35% deterministic matching algorithm, and 20% structured platform evidence.</p><p className="text-xs text-muted-foreground mt-3">No generative LLM ranks candidates. Low-data profiles remain eligible, with data confidence reflecting profile coverage and score agreement—not match strength.</p></>
+                <>
+                  <h3 className="font-bold flex items-center gap-2">
+                    <Sparkles size={18} className="text-purple-600" />
+                    How ranking works
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-3">
+                    Each recommendation combines three factors:
+                  </p>
+                  <div
+                    className="mt-4 flex h-3 overflow-hidden rounded-full bg-muted"
+                    role="img"
+                    aria-label="Ranking weights: skill match 45 percent, track record 35 percent, platform activity 20 percent"
+                  >
+                    {rankingFactors.map(factor => (
+                      <span
+                        key={factor.label}
+                        className={factor.color}
+                        style={{ width: `${factor.weight}%` }}
+                        title={`${factor.label}: ${factor.weight}%`}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {rankingFactors.map(factor => (
+                      <div key={factor.label} className="flex items-start gap-2.5">
+                        <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${factor.marker}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-3 text-sm font-bold">
+                            <span>{factor.label}</span>
+                            <span>{factor.weight}%</span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{factor.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-4 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">
+                    Freelancers with less activity history can still be matched — we just show a lower confidence score next to their result.
+                  </p>
+                </>
               )}
             </div>
           </aside>

@@ -1,11 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { usePostJob } from '../usePostJob';
+import { shouldConfirmBudgetOverride, usePostJob, type PostJobRouteState } from '../usePostJob';
 import { jobAPI } from '../../../../api/jobAPI';
-import { JobPostStatus } from '../../../../types/models/Job';
+import { JobPostStatus, type GenerateJobHiringPlanResponse } from '../../../../types/models/Job';
+import type { ApiResponse } from '../../../../types/common';
 
-let mockLocationState: any = null;
+let mockLocationState: PostJobRouteState | null = null;
 const mockNavigate = vi.fn();
+
+const successResponse = <T,>(data?: T): ApiResponse<T> => ({
+  success: true,
+  statusCode: 200,
+  message: 'OK',
+  ...(data === undefined ? {} : { data }),
+});
 
 vi.mock('react-router', () => ({
   useNavigate: () => mockNavigate,
@@ -23,15 +31,42 @@ vi.mock('sonner', () => ({
 
 vi.mock('../../../../api/jobAPI', () => ({
   jobAPI: {
-    getMajors: vi.fn().mockResolvedValue({ success: true, data: [] }),
-    getCategoriesByMajor: vi.fn().mockResolvedValue({ success: true, data: [] }),
+    getMajors: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: [],
+    }),
+    getCategoriesByMajor: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: [],
+    }),
     getSkillsByCategory: vi.fn(),
     getMyJobPostById: vi.fn(),
     getJobPostQuestions: vi.fn(),
-    generateAIDescription: vi.fn(),
-    createDraftJobPost: vi.fn().mockResolvedValue({ success: true, data: { jobPostId: 'job-1' } }),
-    saveDraftJobPost: vi.fn().mockResolvedValue({ success: true }),
-    updateJobPostStatus: vi.fn().mockResolvedValue({ success: true, data: true }),
+    generateAIDetails: vi.fn(),
+    generateAIHiringPlan: vi.fn(),
+    createDraftJobPost: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: { jobPostId: 'job-1', status: 0 },
+    }),
+    saveDraftJobPost: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+    }),
+    uploadJobPostAttachment: vi.fn(),
+    deleteJobPostAttachment: vi.fn(),
+    updateJobPostStatus: vi.fn().mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'OK',
+      data: true,
+    }),
   },
 }));
 
@@ -40,9 +75,18 @@ describe('usePostJob hook skills conversion', () => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
     mockLocationState = null;
-    vi.mocked(jobAPI.createDraftJobPost).mockResolvedValue({ success: true, data: { jobPostId: 'job-1' } } as any);
-    vi.mocked(jobAPI.saveDraftJobPost).mockResolvedValue({ success: true } as any);
-    vi.mocked(jobAPI.updateJobPostStatus).mockResolvedValue({ success: true, data: true } as any);
+    vi.mocked(jobAPI.createDraftJobPost).mockResolvedValue(successResponse({
+      jobPostId: 'job-1',
+      status: JobPostStatus.Draft,
+    }));
+    vi.mocked(jobAPI.saveDraftJobPost).mockResolvedValue(successResponse());
+    vi.mocked(jobAPI.updateJobPostStatus).mockResolvedValue(successResponse(true));
+    vi.mocked(jobAPI.uploadJobPostAttachment).mockResolvedValue(successResponse({
+      jobPostAttachmentsId: 'attachment-1',
+      fileUrl: 'https://files.example/project.png',
+      fileName: 'project.png',
+    }));
+    vi.mocked(jobAPI.deleteJobPostAttachment).mockResolvedValue(successResponse(true));
   });
 
   it('keeps matching skills and converts mismatching skills to custom skills', async () => {
@@ -57,9 +101,9 @@ describe('usePostJob hook skills conversion', () => {
 
     vi.mocked(jobAPI.getSkillsByCategory).mockImplementation((categoryId) => {
       if (categoryId === 'category-1') {
-        return Promise.resolve({ success: true, data: mockSkillsCategory1 });
+        return Promise.resolve(successResponse(mockSkillsCategory1));
       }
-      return Promise.resolve({ success: true, data: mockSkillsCategory2 });
+      return Promise.resolve(successResponse(mockSkillsCategory2));
     });
 
     const initialJobData = {
@@ -115,7 +159,7 @@ describe('usePostJob hook skills conversion', () => {
   });
 
   it('publishes directly without requiring clarifying questions', async () => {
-    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue({ success: true, data: [] });
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
 
     const { result } = renderHook(() => usePostJob());
 
@@ -143,5 +187,590 @@ describe('usePostJob hook skills conversion', () => {
     expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
     expect(mockNavigate).toHaveBeenCalledWith('/jobs/my-jobs');
     expect(mockNavigate).not.toHaveBeenCalledWith('/jobs/post/contract', expect.anything());
+  });
+
+  it('returns the project field that blocks publication', async () => {
+    const { result } = renderHook(() => usePostJob());
+    let submissionResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+
+    await act(async () => {
+      submissionResult = await result.current.submitDraftFlow('publish');
+    });
+
+    expect(submissionResult).toEqual({
+      status: 'validation-error',
+      section: 'project',
+      fieldSelector: '#job-title',
+    });
+    expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+  });
+
+  it('returns the milestone field that blocks publication', async () => {
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+    const { result } = renderHook(() => usePostJob());
+
+    act(() => {
+      result.current.setForm(prev => ({
+        ...prev,
+        title: 'Build vendor onboarding portal',
+        majorId: 'major-1',
+        majorCategoryId: 'major-category-1',
+        categoryId: 'category-1',
+        description: 'We need a portal for vendors to submit documents and track approval status.',
+        estimatedDurationValue: '3',
+      }));
+      result.current.setMilestonePlans([{
+        title: '',
+        description: '',
+        amount: 12,
+        estimatedDuration: '2 weeks',
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        deliverables: 'Working onboarding workflow',
+        acceptanceCriteria: 'A vendor can complete every onboarding step',
+        orderIndex: 0,
+        workItems: [],
+      }]);
+    });
+
+    let submissionResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+    await act(async () => {
+      submissionResult = await result.current.submitDraftFlow('publish');
+    });
+
+    expect(submissionResult).toEqual({
+      status: 'validation-error',
+      section: 'hiringPlan',
+      fieldSelector: '[data-milestone-field="0.title"]',
+    });
+    expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+  });
+
+  it('saves the first step before navigating to milestone setup', async () => {
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+
+    const { result } = renderHook(() => usePostJob());
+
+    act(() => {
+      result.current.setForm(prev => ({
+        ...prev,
+        title: 'Build vendor onboarding portal',
+        majorId: 'major-1',
+        majorCategoryId: 'major-category-1',
+        categoryId: 'category-1',
+        description: 'We need a portal for vendors to submit documents and track approval status.',
+        estimatedDurationValue: '3',
+      }));
+    });
+
+    await act(async () => {
+      await result.current.submitDraftFlow('plan');
+    });
+
+    expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+      title: 'Build vendor onboarding portal',
+    }));
+    expect(mockNavigate).toHaveBeenCalledWith('/jobs/post/plan', expect.objectContaining({
+      state: expect.objectContaining({ jobPostId: 'job-1' }),
+    }));
+    expect(jobAPI.updateJobPostStatus).not.toHaveBeenCalled();
+  });
+
+  it('does not create an empty draft during autosave', async () => {
+    vi.useFakeTimers();
+    try {
+      renderHook(() => usePostJob());
+
+      await act(async () => {
+        vi.advanceTimersByTime(1500);
+        await Promise.resolve();
+      });
+
+      expect(jobAPI.createDraftJobPost).not.toHaveBeenCalled();
+      expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('autosaves meaningful changes after the debounce window', async () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, title: 'Autosaved project request' }));
+      });
+
+      expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(1200);
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(jobAPI.createDraftJobPost).toHaveBeenCalledTimes(1);
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        title: 'Autosaved project request',
+      }));
+      expect(result.current.autosaveStatus).toBe('saved');
+      expect(result.current.isDirty).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('retries a failed autosave with the latest draft data', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(jobAPI.saveDraftJobPost)
+        .mockResolvedValueOnce({ success: false, statusCode: 500, message: 'Network unavailable' })
+        .mockResolvedValueOnce(successResponse());
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, title: 'Retry this draft' }));
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(1200);
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(result.current.autosaveStatus).toBe('error');
+
+      await act(async () => {
+        await result.current.retryAutosave();
+      });
+
+      expect(jobAPI.saveDraftJobPost).toHaveBeenLastCalledWith('job-1', expect.objectContaining({
+        title: 'Retry this draft',
+      }));
+      expect(result.current.autosaveStatus).toBe('saved');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('serializes overlapping saves and creates only one draft', async () => {
+    let activeRequests = 0;
+    let peakRequests = 0;
+    vi.mocked(jobAPI.saveDraftJobPost).mockImplementation(async () => {
+      activeRequests += 1;
+      peakRequests = Math.max(peakRequests, activeRequests);
+      await Promise.resolve();
+      activeRequests -= 1;
+      return successResponse();
+    });
+    const { result } = renderHook(() => usePostJob());
+
+    act(() => {
+      result.current.setForm(prev => ({ ...prev, title: 'Sequential draft saves' }));
+    });
+
+    await act(async () => {
+      await Promise.all([
+        result.current.flushAutosave(),
+        result.current.flushAutosave(),
+      ]);
+    });
+
+    expect(jobAPI.createDraftJobPost).toHaveBeenCalledTimes(1);
+    expect(jobAPI.saveDraftJobPost).toHaveBeenCalledTimes(2);
+    expect(peakRequests).toBe(1);
+  });
+
+  it('uploads only an accepted image to JobPostAttachment', async () => {
+    const { result } = renderHook(() => usePostJob());
+    const file = new File(['png'], 'project.png', { type: 'image/png' });
+
+    await act(async () => {
+      await result.current.uploadAttachment(file);
+    });
+
+    expect(jobAPI.createDraftJobPost).toHaveBeenCalledTimes(1);
+    expect(jobAPI.uploadJobPostAttachment).toHaveBeenCalledWith('job-1', file);
+    expect(result.current.attachments).toEqual([{
+      jobPostAttachmentsId: 'attachment-1',
+      fileUrl: 'https://files.example/project.png',
+      fileName: 'project.png',
+    }]);
+  });
+
+  it('rejects a non-image attachment before making an API request', async () => {
+    const { result } = renderHook(() => usePostJob());
+    const file = new File(['pdf'], 'requirements.pdf', { type: 'application/pdf' });
+
+    await act(async () => {
+      await result.current.uploadAttachment(file);
+    });
+
+    expect(jobAPI.createDraftJobPost).not.toHaveBeenCalled();
+    expect(jobAPI.uploadJobPostAttachment).not.toHaveBeenCalled();
+    expect(result.current.attachments).toEqual([]);
+    expect(result.current.attachmentError).toBeTruthy();
+  });
+
+  it('preserves the selected required status in the draft payload', async () => {
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+
+    const { result } = renderHook(() => usePostJob());
+
+    act(() => {
+      result.current.setForm(prev => ({
+        ...prev,
+        title: 'Build vendor onboarding portal',
+        majorId: 'major-1',
+        majorCategoryId: 'major-category-1',
+        categoryId: 'category-1',
+        description: 'We need a portal for vendors to submit documents and track approval status.',
+        estimatedDurationValue: '3',
+      }));
+      result.current.setQuestions([{
+        questionText: 'How would you approach the onboarding workflow?',
+        isRequired: false,
+      }]);
+    });
+
+    await act(async () => {
+      await result.current.submitDraftFlow('publish');
+    });
+
+    expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+      questions: [{
+        questionText: 'How would you approach the onboarding workflow?',
+        orderIndex: 0,
+        isRequired: false,
+      }],
+    }));
+  });
+
+  it('preserves optional questions from route state', () => {
+    mockLocationState = {
+      jobData: {
+        interviewQuestions: [{
+          questionText: 'Share any additional context if useful.',
+          isRequired: false,
+        }],
+      },
+    };
+
+    const { result } = renderHook(() => usePostJob());
+
+    expect(result.current.questions).toEqual([{
+      questionText: 'Share any additional context if useful.',
+      isRequired: false,
+    }]);
+  });
+
+  it('keeps the step-1 expected budget when step-2 draft hydration returns an empty budget', async () => {
+    mockLocationState = {
+      jobPostId: 'job-1',
+      jobData: {
+        title: 'Client onboarding portal',
+        budgetMin: 1000,
+        budgetMax: 1000,
+        estimatedDuration: '3 weeks',
+      },
+    };
+    vi.mocked(jobAPI.getMyJobPostById).mockResolvedValue(successResponse({
+      jobPostsId: 'job-1',
+      clientProfilesId: 'client-1',
+      title: 'Client onboarding portal',
+      description: 'Build the onboarding portal.',
+      budgetMin: null,
+      budgetMax: null,
+      estimatedDuration: '3 weeks',
+      status: JobPostStatus.Draft,
+      createdAt: '2026-08-04T00:00:00.000Z',
+      skills: [],
+      customSkillNames: [],
+      attachments: [],
+      proposalCount: 0,
+    }));
+    vi.mocked(jobAPI.getJobPostQuestions).mockResolvedValue(successResponse([]));
+
+    const { result } = renderHook(() => usePostJob());
+
+    expect(result.current.form.budget).toBe('1000');
+
+    await waitFor(() => expect(result.current.isDraftInitializing).toBe(false));
+
+    expect(result.current.form.budget).toBe('1000');
+  });
+
+  it('publishes a client baseline milestone without sending work breakdown items', async () => {
+    vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+    const futureDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
+    const { result } = renderHook(() => usePostJob());
+
+    act(() => {
+      result.current.setForm(prev => ({
+        ...prev,
+        title: 'Build vendor onboarding portal',
+        majorId: 'major-1',
+        majorCategoryId: 'major-category-1',
+        categoryId: 'category-1',
+        description: 'We need a portal for vendors to submit documents and track approval status.',
+        estimatedDurationValue: '3',
+      }));
+      result.current.setMilestonePlans([{
+        title: 'Vendor onboarding workflow',
+        description: '',
+        amount: 12,
+        estimatedDuration: '2 weeks',
+        dueDate: futureDate,
+        deliverables: 'Working onboarding workflow',
+        acceptanceCriteria: 'A vendor can complete every onboarding step',
+        orderIndex: 0,
+        workItems: [{
+          title: 'Implement onboarding form',
+          description: 'Build the vendor-facing form',
+          deliverables: 'Working form',
+          estimatedDuration: '1 week',
+          orderIndex: 0,
+        }],
+      }]);
+    });
+
+    await act(async () => {
+      await result.current.submitDraftFlow('publish');
+    });
+
+    expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+      milestonePlans: [
+        expect.objectContaining({
+          title: 'Vendor onboarding workflow',
+          workItems: [],
+        }),
+      ],
+    }));
+    expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
+  });
+
+  describe('background hiring plan generation delusional flow', () => {
+    it('immediately triggers generateAIHiringPlan in the background and processes correctly on resolve/success', async () => {
+      let resolvePlanPromise!: (value: ApiResponse<GenerateJobHiringPlanResponse>) => void;
+      const planPromise = new Promise<ApiResponse<GenerateJobHiringPlanResponse>>((resolve) => {
+        resolvePlanPromise = resolve;
+      });
+      vi.mocked(jobAPI.generateAIHiringPlan).mockImplementation(() => planPromise as any);
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+
+      const mockPendingDetails = {
+        title: 'Background Generated SaaS Dashboard',
+        description: 'Need a dashboard',
+        majorId: 'major-1',
+        majorCategoryId: 'category-1',
+        categoryId: 'category-1',
+        majorName: 'Software',
+        categoryName: 'Web Dev',
+        skills: [],
+        customSkills: [],
+      };
+
+      vi.mocked(jobAPI.generateAIDetails).mockResolvedValue(successResponse(mockPendingDetails));
+
+      const { result } = renderHook(() => usePostJob());
+
+      await act(async () => {
+        await result.current.handleGenerateInstantJob('Build a SaaS Dashboard');
+      });
+
+      expect(result.current.isReviewModalOpen).toBe(true);
+      expect(result.current.pendingGeneratedDetails).toEqual(mockPendingDetails);
+
+      await act(async () => {
+        await result.current.handleApproveDetails();
+      });
+
+      expect(result.current.isReviewModalOpen).toBe(false);
+      expect(result.current.form.title).toBe('Background Generated SaaS Dashboard');
+
+      expect(jobAPI.generateAIHiringPlan).toHaveBeenCalledWith({
+        clientPrompt: 'Build a SaaS Dashboard',
+        title: 'Background Generated SaaS Dashboard',
+        description: 'Need a dashboard',
+      });
+
+      let submitPromise: any;
+      act(() => {
+        submitPromise = result.current.submitDraftFlow('plan');
+      });
+
+      expect(result.current.isGeneratingPlan).toBe(true);
+
+      await act(async () => {
+        resolvePlanPromise(successResponse({
+          milestones: [{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }],
+          questionRecruitment: ['Question 1'],
+        }));
+      });
+
+      await act(async () => {
+        await submitPromise;
+      });
+
+      expect(result.current.isGeneratingPlan).toBe(false);
+      expect(result.current.milestonePlans).toEqual([{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }]);
+    });
+  });
+
+  describe('budget-exceeded confirmation flow', () => {
+    const projectFormPatch = {
+      title: 'Build vendor onboarding portal',
+      majorId: 'major-1',
+      majorCategoryId: 'major-category-1',
+      categoryId: 'category-1',
+      description: 'We need a portal for vendors to submit documents and track approval status.',
+      estimatedDurationValue: '3',
+    };
+
+    const validMilestone = (amount: number) => ({
+      title: 'Vendor onboarding workflow',
+      description: '',
+      amount,
+      estimatedDuration: '2 weeks',
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      deliverables: 'Working onboarding workflow',
+      acceptanceCriteria: 'A vendor can complete every onboarding step',
+      orderIndex: 0,
+      workItems: [],
+    });
+
+    it('only confirms an override when a positive expected budget is exceeded', () => {
+      expect(shouldConfirmBudgetOverride('100', 200)).toBe(true);
+      expect(shouldConfirmBudgetOverride('100', 100)).toBe(false);
+      expect(shouldConfirmBudgetOverride('100', 99)).toBe(false);
+      expect(shouldConfirmBudgetOverride('0', 200)).toBe(false);
+      expect(shouldConfirmBudgetOverride('', 200)).toBe(false);
+    });
+
+    it('keeps the step-1 expected budget instead of overwriting it with the milestone total', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      expect(result.current.form.budget).toBe('100');
+      expect(result.current.milestonePlanTotal).toBe(200);
+    });
+
+    it('keeps the budget empty when none was entered (no auto-fill), and publishes without an override prompt', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      expect(result.current.form.budget).toBe('');
+
+      let publishResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        publishResult = await result.current.submitDraftFlow('publish');
+      });
+
+      expect(publishResult).toEqual({ status: 'success' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(false);
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        budgetMin: null,
+        budgetMax: null,
+      }));
+      expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
+    });
+
+    it('blocks review with budget-exceeded and cancel aborts without saving', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      let reviewResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        reviewResult = await result.current.submitDraftFlow('review');
+      });
+
+      expect(reviewResult).toEqual({ status: 'budget-exceeded' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(true);
+      expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+
+      await act(async () => {
+        result.current.handleBudgetExceededCancel();
+      });
+
+      expect(result.current.isBudgetExceededPromptOpen).toBe(false);
+      expect(result.current.form.budget).toBe('100');
+      expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('confirms the override by raising the budget to the milestone total and continuing to review', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      await act(async () => {
+        await result.current.submitDraftFlow('review');
+      });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(true);
+
+      let confirmResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        confirmResult = await result.current.handleBudgetExceededConfirm();
+      });
+
+      expect(confirmResult).toEqual({ status: 'success' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(false);
+      expect(result.current.form.budget).toBe('200');
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        budgetMin: 200,
+        budgetMax: 200,
+      }));
+      expect(mockNavigate).toHaveBeenCalledWith('/jobs/post/review', expect.anything());
+    });
+
+    it('confirms the override for publish and opens the job with the raised budget', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '100' }));
+        result.current.setMilestonePlans([validMilestone(200)]);
+      });
+
+      await act(async () => {
+        await result.current.submitDraftFlow('publish');
+      });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(true);
+
+      await act(async () => {
+        await result.current.handleBudgetExceededConfirm();
+      });
+
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        budgetMin: 200,
+        budgetMax: 200,
+      }));
+      expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
+      expect(mockNavigate).toHaveBeenCalledWith('/jobs/my-jobs');
+    });
   });
 });

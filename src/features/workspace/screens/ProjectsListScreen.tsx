@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
 import { Flag, Calendar, Clock, User } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -8,9 +9,10 @@ import { contractGetAPI } from '../../../api/contractAPI/GET';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
-import GCoinIcon from '../../../shared/components/GCoinIcon';
 
-const getStatusLabel = (status: ContractStatus, t: any): string => {
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+const getStatusLabel = (status: ContractStatus, t: Translate): string => {
   switch (status) {
     case ContractStatus.Active:
       return t('projects.statusActive') || 'active';
@@ -170,7 +172,13 @@ export default function ProjectsListScreen() {
                   <div className="flex items-center gap-2 mb-4 text-sm text-secondary">
                     <User className="w-4 h-4" />
                     <span className="line-clamp-1">
-                      {role === 0 ? t('projects.freelancer') : t('projects.client')}: {otherUserName}
+                      {role === 0 ? t('projects.freelancer') : t('projects.client')}:{' '}
+                      <UserProfileLink
+                        userId={role === 0 ? project.freelancerUserId : project.clientUserId}
+                        role={role === 0 ? 'freelancer' : 'client'}
+                      >
+                        {otherUserName}
+                      </UserProfileLink>
                     </span>
                   </div>
 

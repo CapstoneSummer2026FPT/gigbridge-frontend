@@ -2,14 +2,15 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProjectWorkspace } from './useProjectWorkspace';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { contractPostAPI } from '../../../api/contractAPI/POST';
 import { messageGetAPI } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { ContractStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 
 const signalRMock = vi.hoisted(() => {
   const handlers = new Map<string, (payload: Record<string, unknown>) => void>();
   let reconnectedHandler: (() => void) | undefined;
-  let closeHandler: ((error?: Error) => void) | undefined;
   const connection = {
     state: 'Connected',
     start: vi.fn().mockResolvedValue(undefined),
@@ -18,7 +19,7 @@ const signalRMock = vi.hoisted(() => {
     on: vi.fn((eventName: string, handler: (payload: Record<string, unknown>) => void) => handlers.set(eventName, handler)),
     off: vi.fn((eventName: string) => handlers.delete(eventName)),
     onreconnected: vi.fn((handler: () => void) => { reconnectedHandler = handler; }),
-    onclose: vi.fn((handler: (error?: Error) => void) => { closeHandler = handler; }),
+    onclose: vi.fn(),
   };
   const builder = {
     configureLogging: vi.fn(),
@@ -35,19 +36,23 @@ const signalRMock = vi.hoisted(() => {
     connection,
     builder,
     getReconnectedHandler: () => reconnectedHandler,
-    resetCallbacks: () => { reconnectedHandler = undefined; closeHandler = undefined; },
+    resetCallbacks: () => { reconnectedHandler = undefined; },
   };
 });
 
+const appProviderMock = vi.hoisted(() => ({ role: 0, userId: 'client-user-1' }));
+
 vi.mock('@microsoft/signalr', () => ({
-  HubConnectionBuilder: vi.fn(() => signalRMock.builder),
+  HubConnectionBuilder: vi.fn(function HubConnectionBuilderMock() {
+    return signalRMock.builder;
+  }),
   HubConnectionState: { Connected: 'Connected' },
   LogLevel: { Warning: 'Warning' },
 }));
 
 vi.mock('react-router', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('../../../app/providers/AppProvider', () => ({
-  useApp: () => ({ user: { id: 'client-user-1' }, role: 'client' }),
+  useApp: () => ({ user: { id: appProviderMock.userId }, role: appProviderMock.role }),
 }));
 vi.mock('../../../api/contractAPI/GET', () => ({
   contractGetAPI: {
@@ -59,9 +64,8 @@ vi.mock('../../../api/contractAPI/GET', () => ({
 }));
 vi.mock('../../../api/contractAPI/POST', () => ({
   contractPostAPI: {
-    withdrawMilestone: vi.fn(),
     endProject: vi.fn(),
-    claimFinalPayout: vi.fn(),
+    withdrawMilestone: vi.fn(),
   },
 }));
 vi.mock('../../../api/messageAPI/GET', () => ({
@@ -76,6 +80,8 @@ const success = <T,>(data: T) => ({ success: true, statusCode: 200, message: 'Su
 describe('useProjectWorkspace realtime chat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    appProviderMock.role = UserRole.Client;
+    appProviderMock.userId = 'client-user-1';
     signalRMock.handlers.clear();
     signalRMock.resetCallbacks();
     signalRMock.connection.state = 'Connected';
@@ -186,7 +192,7 @@ describe('useProjectWorkspace realtime chat', () => {
   it('reloads workspace data on matching ContractCompleted realtime event', async () => {
     const walletUpdatedHandler = vi.fn();
     window.addEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
-    renderHook(() => useProjectWorkspace('contract-1'));
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
     await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(1));
 
     act(() => {
@@ -207,7 +213,74 @@ describe('useProjectWorkspace realtime chat', () => {
 
     await waitFor(() => expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(walletUpdatedHandler).toHaveBeenCalledTimes(1));
+    expect(result.current.reviewPromptContractId).toBe('contract-1');
     window.removeEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+  });
+
+  it('opens the client review prompt after ending the project successfully', async () => {
+    vi.mocked(contractPostAPI.endProject).mockResolvedValue(success({}) as never);
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(result.current.activeContract?.contractsId).toBe('contract-1'));
+
+    await act(async () => {
+      expect(await result.current.handleEndProject()).toMatchObject({ success: true });
+    });
+
+    expect(contractPostAPI.endProject).toHaveBeenCalledWith('contract-1');
+    expect(result.current.reviewPromptContractId).toBe('contract-1');
+  });
+
+  it('withdraws an approved milestone, reloads workspace data, and refreshes the wallet', async () => {
+    appProviderMock.role = UserRole.Freelancer;
+    appProviderMock.userId = 'freelancer-user-1';
+    vi.mocked(contractPostAPI.withdrawMilestone).mockResolvedValue(success({
+      contractId: 'contract-1',
+      milestoneId: 'milestone-1',
+      escrowId: 'escrow-1',
+      releasedAmountVnd: 80,
+      releasedTokens: 80,
+      milestoneReleasedAmountVnd: 80,
+      escrowReleasedAmountVnd: 80,
+      escrowStatus: 1,
+    }) as never);
+    const walletUpdatedHandler = vi.fn();
+    window.addEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(result.current.activeContract?.status).toBe(ContractStatus.Active));
+    const initialLoadCount = vi.mocked(contractGetAPI.getContractById).mock.calls.length;
+
+    await act(async () => {
+      expect(await result.current.handleWithdrawMilestone('milestone-1')).toMatchObject({ success: true });
+    });
+
+    expect(contractPostAPI.withdrawMilestone).toHaveBeenCalledWith('contract-1', 'milestone-1');
+    expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(initialLoadCount + 1);
+    expect(walletUpdatedHandler).toHaveBeenCalledTimes(1);
+    window.removeEventListener('gigbridge-wallet-updated', walletUpdatedHandler);
+  });
+
+  it('reloads stale milestone data after a duplicate withdrawal conflict', async () => {
+    appProviderMock.role = UserRole.Freelancer;
+    appProviderMock.userId = 'freelancer-user-1';
+    vi.mocked(contractPostAPI.withdrawMilestone).mockResolvedValue({
+      success: false,
+      statusCode: 409,
+      message: 'Milestone has already reached the early withdrawal limit.',
+    });
+
+    const { result } = renderHook(() => useProjectWorkspace('contract-1'));
+    await waitFor(() => expect(result.current.activeContract?.status).toBe(ContractStatus.Active));
+    const initialLoadCount = vi.mocked(contractGetAPI.getContractById).mock.calls.length;
+
+    await act(async () => {
+      expect(await result.current.handleWithdrawMilestone('milestone-1')).toMatchObject({
+        success: false,
+        statusCode: 409,
+      });
+    });
+
+    expect(contractGetAPI.getContractById).toHaveBeenCalledTimes(initialLoadCount + 1);
   });
 
   it('reloads workspace and wallet on matching FinalPayoutClaimed event', async () => {

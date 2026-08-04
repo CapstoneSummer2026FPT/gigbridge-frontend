@@ -3,7 +3,6 @@ import type { ApiResponse } from '../../types/common';
 import type {
   ESignDocumentDto,
   ESignSignatureDto,
-  CreateESignDocumentDto,
   CreateSignatureDto,
   SubmitESignSignatureDto,
 } from '../../types/models/ESign';
@@ -11,16 +10,6 @@ import type {
 const esignUrl = 'ESign';
 
 export const esignPostAPI = {
-  /**
-   * POST /api/ESign/documents
-   * Create a new e-sign document
-   */
-  createDocument: async (
-    data: CreateESignDocumentDto
-  ): Promise<ApiResponse<ESignDocumentDto>> => {
-    return apiService.post<ESignDocumentDto>(`${esignUrl}/documents`, data);
-  },
-
   /**
    * POST /api/ESign/documents/from-job/{jobPostId}
    * Create a new job post e-sign document
@@ -31,20 +20,6 @@ export const esignPostAPI = {
     return apiService.post<ESignDocumentDto>(
       `${esignUrl}/documents/from-job/${jobPostId}`,
       {}
-    );
-  },
-
-  /**
-   * POST /api/ESign/documents/{documentId}/send
-   * Send document for signing
-   */
-  sendDocumentForSigning: async (
-    documentId: string,
-    signers: string[]
-  ): Promise<ApiResponse<{ success: boolean; message: string }>> => {
-    return apiService.post<{ success: boolean; message: string }>(
-      `${esignUrl}/documents/${documentId}/send`,
-      { signers }
     );
   },
 
@@ -69,33 +44,6 @@ export const esignPostAPI = {
       documentId: data.documentId,
       signatureImageUrl: data.signatureData,
     });
-  },
-
-  /**
-   * POST /api/ESign/signatures/{signatureId}/complete
-   * Mark signature as complete (after capture)
-   */
-  completeSignature: async (
-    signatureId: string
-  ): Promise<ApiResponse<ESignSignatureDto>> => {
-    return apiService.post<ESignSignatureDto>(
-      `${esignUrl}/signatures/${signatureId}/complete`,
-      {}
-    );
-  },
-
-  /**
-   * POST /api/ESign/signatures/{signatureId}/decline
-   * Decline to sign a document
-   */
-  declineSignature: async (
-    signatureId: string,
-    reason?: string
-  ): Promise<ApiResponse<{ success: boolean; message: string }>> => {
-    return apiService.post<{ success: boolean; message: string }>(
-      `${esignUrl}/signatures/${signatureId}/decline`,
-      { reason }
-    );
   },
 
   /**

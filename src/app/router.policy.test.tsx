@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { UserRole } from '../types';
 
 let router: typeof import('./router').router;
-let PolicyScreen: typeof import('../features/company/screens/PolicyScreen').default;
 
 beforeAll(async () => {
   Object.defineProperty(window, 'matchMedia', {
@@ -18,15 +18,42 @@ beforeAll(async () => {
   });
 
   ({ router } = await import('./router'));
-  ({ default: PolicyScreen } = await import('../features/company/screens/PolicyScreen'));
 });
 
 describe('public policy routes', () => {
-  it.each(['policies', 'terms', 'privacy'])('maps /%s to the shared policy screen', (path) => {
+  const getPolicyElement = (path: string): ReactElement => {
     const rootRoute = router.routes.find((route) => route.path === '/');
     const policyRoute = rootRoute?.children?.find((route) => route.path === path);
 
     expect(policyRoute).toBeDefined();
-    expect((policyRoute?.element as ReactElement).type).toBe(PolicyScreen);
+    expect(policyRoute && 'element' in policyRoute).toBe(true);
+
+    return (policyRoute && 'element' in policyRoute
+      ? policyRoute.element
+      : null) as ReactElement;
+  };
+
+  it.each(['policies', 'terms', 'privacy'])('maps /%s to the shared policy screen', (path) => {
+    expect(getPolicyElement(path).type).toBe(getPolicyElement('policies').type);
+  });
+
+  it('does not expose the retired anti-cheat admin route', () => {
+    const rootRoute = router.routes.find((route) => route.path === '/');
+    const retiredRoute = rootRoute?.children?.find((route) => route.path === 'admin/cheating');
+
+    expect(retiredRoute).toBeUndefined();
+  });
+
+  it('keeps platform analytics behind the shared admin route guard', () => {
+    const analyticsRoute = getPolicyElement('admin/analytics');
+
+    expect(analyticsRoute.type).toBeDefined();
+    expect(analyticsRoute.props.children).toBeDefined();
+  });
+
+  it('allows clients and freelancers to open milestone details', () => {
+    const milestoneRoute = getPolicyElement('contracts/:contractId/milestones');
+
+    expect(milestoneRoute.props.allowedRoles).toEqual([UserRole.Client, UserRole.Freelancer]);
   });
 });

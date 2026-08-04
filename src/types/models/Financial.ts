@@ -66,17 +66,41 @@ export interface Transaction {
   CompletedAt?: string;
 }
 
+/**
+ * Which wallet pool a transaction touched. Mirrors the backend
+ * `WalletBalanceSource` enum (0-5).
+ */
+export enum WalletBalanceSource {
+  Deposited = 0,
+  Earned = 1,
+  HeldDeposited = 2,
+  HeldEarned = 3,
+  PendingWithdrawal = 4,
+  Combined = 5,
+}
+
+/**
+ * Wallet balances with explicit, unambiguous names. The wallet has two independent
+ * spendable pools:
+ * - `depositedGigCoin` — purchased/deposited, spendable but NOT withdrawable.
+ * - `withdrawableGigCoin` — earned from completed work, spendable AND withdrawable.
+ *
+ * `totalSpendableGigCoin` is the sum of both spendable pools and must never be treated
+ * as a withdrawal maximum — withdrawals may only use `withdrawableGigCoin`.
+ */
 export interface WalletResponse {
   walletId: string;
   userId: string;
-  availableTokens: number;
-  withdrawableTokens: number;
-  heldTokens: number;
-  pendingWithdrawalTokens: number;
-  availableVnd: number;
-  withdrawableVnd: number;
-  heldVnd: number;
-  pendingWithdrawalVnd: number;
+  depositedGigCoin: number;
+  withdrawableGigCoin: number;
+  heldGigCoin: number;
+  pendingWithdrawalGigCoin: number;
+  totalSpendableGigCoin: number;
+  depositedGigCoinVnd: number;
+  withdrawableGigCoinVnd: number;
+  heldGigCoinVnd: number;
+  pendingWithdrawalGigCoinVnd: number;
+  totalSpendableGigCoinVnd: number;
 }
 
 export interface WalletTransactionResponse {
@@ -87,6 +111,11 @@ export interface WalletTransactionResponse {
   vndAmount: number;
   type: number;
   status: number;
+  balanceSource: WalletBalanceSource;
+  /** Amount sourced from the deposited pool; null when single-source Earned. */
+  depositedAmount?: number | null;
+  /** Amount sourced from the earned pool; null when single-source Deposited. */
+  earnedAmount?: number | null;
   idempotencyKey?: string | null;
   gatewayProvider?: string | null;
   gatewayOrderCode?: string | null;
@@ -103,6 +132,19 @@ export interface CreateWalletTopUpRequest {
   returnUrl?: string;
   cancelUrl?: string;
   idempotencyKey?: string;
+}
+
+/**
+ * Lifetime wallet aggregates (covers the account's entire history, unlike the
+ * 100-item transaction list). Drives the /wallet/history stat cards.
+ */
+export interface WalletTransactionsSummaryResponse {
+  totalDeposits: number;
+  totalEscrow: number;
+  totalRefunds: number;
+  totalWithdrawn: number;
+  pendingCount: number;
+  totalTransactions: number;
 }
 
 export interface CreateWalletTopUpResponse {

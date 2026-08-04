@@ -10,6 +10,7 @@ import { UserRole } from '../../../types/models/User';
 import { JobInvitationStatus, type JobInvitationDto } from '../../../types/jobInvitation';
 import '../styles/browse-jobs-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 
 type StatusFilter = 'all' | 'active' | 'applied' | 'declined' | 'cancelled';
 
@@ -278,7 +279,7 @@ export default function JobInvitationsScreen() {
                       <div className="flex flex-wrap items-center gap-3 text-xs browse-jobs-job-meta">
                         <span className="flex items-center gap-1"><GigCoinBudget min={invitation.budgetMin} max={invitation.budgetMax} /></span>
                         <span className="flex items-center gap-1"><Clock size={12} />Invited {formatDate(invitation.createdAt)}</span>
-                        <span>Client: {invitation.clientCompanyName || invitation.clientName || 'Client'}</span>
+                        <span>Client: <UserProfileLink userId={invitation.clientUserId} role="client">{invitation.clientCompanyName || invitation.clientName || 'Client'}</UserProfileLink></span>
                         {invitation.message && <span>Message: {invitation.message}</span>}
                       </div>
                     </div>

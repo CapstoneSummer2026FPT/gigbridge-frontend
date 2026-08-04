@@ -1,0 +1,44 @@
+{
+  "landing": {
+    "hero": {
+      "tagline": "Discover Skilled Freelancers",
+      "tagline2": "Connect Through Smart Matching",
+      "findWork": "Find Work",
+      "hireTalent": "Hire Talent"
+    },
+    "about": {
+      "welcome": "Welcome to Gigbridge",
+      "animatedTitle": "Connect skilled t<b>a</b>lent <br /> with modern pr<b>o</b>jects",
+      "subtext1": "Not another basic freelancing board — a trusted connection engine.",
+      "subtext2": "Gigbridge bridges the gap between expert talent and businesses looking to build high-quality solutions, combining contract protection, secure milestones, and smart matching."
+    },
+    "features": {
+      "sectionLabel": "Into the Matchmaking Layer",
+      "sectionDesc": "Immerse yourself in a unified ecosystem where freelancers build reputations and clients find elite talent without friction.",
+      "matchmakingTitle": "match<b>m</b>aking",
+      "matchmakingDesc": "Our smart matchmaking engine connects freelancer profiles with appropriate project demands based on skills and history.",
+      "escrowTitle": "sec<b>u</b>re escrow",
+      "escrowDesc": "Milestone-based escrows and secure wallets ensure developers get paid for approved work and clients receive quality delivery.",
+      "contractsTitle": "cont<b>r</b>acts",
+      "contractsDesc": "Protect your collaboration with legally-binding, digital e-signed contract templates built directly into the workflow.",
+      "aiPilotTitle": "ai cop<b>i</b>lot",
+      "aiPilotDesc": "AI interview screening tools and assistants help screen candidates and draft detailed project scopes quickly.",
+      "expandingTitle": "Expa<b>n</b>ding the ec<b>o</b>system s<b>o</b>on.",
+      "explore": "explore",
+      "featureAlt": "Feature Illustration",
+      "workspaceAlt": "Workspace Illustration"
+    },
+    "story": {
+      "label": "the secure connection bridge",
+      "animatedTitle": "the st<b>o</b>ry of <br /> trust in f<b>l</b>ow",
+      "desc": "Where businesses and creators converge, lies Gigbridge. Discover the ease of secure milestone payments, legally-binding contracts, and smart matching, working together under one clear workflow.",
+      "cta": "read user guides"
+    },
+    "contact": {
+      "label": "Join Gigbridge",
+      "animatedTitle": "let&#39;s b<b>u</b>ild the <br /> new era of <br /> co<b>l</b>laboration t<b>o</b>gether.",
+      "cta": "get started",
+      "imageAlt": "collage asset"
+    }
+  }
+}

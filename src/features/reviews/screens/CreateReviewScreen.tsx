@@ -1,115 +1,82 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Star } from 'lucide-react';
+import { contractGetAPI } from '../../../api/contractAPI/GET';
+import { useApp } from '../../../app/providers/AppProvider';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { reviewPostAPI } from '../../../api/reviewAPI/POST';
+import type { ContractDto } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
+import { ProjectReviewForm } from '../components/ProjectReviewForm';
 import '../styles/reviews-screen.css';
 
 export default function CreateReviewScreen() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { role } = useApp();
+  const { t } = useTranslation();
   const contractId = params.get('contractId') ?? params.get('contract') ?? '';
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
-  const [communicationRating, setCommunicationRating] = useState(0);
-  const [qualityRating, setQualityRating] = useState(0);
-  const [timelinessRating, setTimelinessRating] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contract, setContract] = useState<ContractDto | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-  const submitReview = async () => {
-    setError('');
-    setSuccess('');
+  useEffect(() => {
+    let cancelled = false;
+    const loadContract = async () => {
+      if (!contractId) {
+        setError(t('reviews.contractRequired'));
+        setLoading(false);
+        return;
+      }
 
-    if (!contractId) {
-      setError('Contract id is required to submit a review.');
-      return;
-    }
+      const response = await contractGetAPI.getContractById(contractId);
+      if (cancelled) return;
+      if (!response.success || !response.data) {
+        setError(response.message || t('reviews.loadError'));
+      } else {
+        setContract(response.data);
+      }
+      setLoading(false);
+    };
 
-    if (rating < 1 || rating > 5) {
-      setError('Please select a rating (1-5 stars)');
-      return;
-    }
+    void loadContract();
+    return () => { cancelled = true; };
+  }, [contractId, t]);
 
-    if (comment.length > 1000) {
-      setError('Review must be under 1000 characters');
-      return;
-    }
-
-    setIsSubmitting(true);
-    const response = await reviewPostAPI.createReview({
-      contractId,
-      rating,
-      comment: comment.trim() || null,
-      communicationRating: communicationRating || null,
-      qualityRating: qualityRating || null,
-      timelinessRating: timelinessRating || null,
-      isAnonymous,
-    });
-    setIsSubmitting(false);
-
-    if (!response.success) {
-      setError(response.message || 'Could not submit review.');
-      return;
-    }
-
-    setSuccess('Review submitted and rating updated.');
-    window.setTimeout(() => navigate(-1), 900);
-  };
-
-  const renderSubRating = (label: string, value: number, onChange: (nextValue: number) => void) => (
-    <div className="review-subrating-row">
-      <span>{label}</span>
-      <div className="review-stars">
-        {[1, 2, 3, 4, 5].map(star => (
-          <button key={star} type="button" onClick={() => onChange(star)} className={star <= value ? 'active' : ''}>
-            <Star size={20} fill={star <= value ? 'currentColor' : 'none'} />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  const validRole = role === UserRole.Client || role === UserRole.Freelancer ? role : null;
+  const alreadyReviewed = submitted || contract?.hasReviewedByCurrentUser;
 
   return (
     <AppLayout>
       <div className="review-create-page">
         <div className="review-create-card">
-          <h1>Leave Review</h1>
-          <p>Rate your completed contract partner. Anonymous reviews display as Anonymous User publicly.</p>
+          <h1>{t('reviews.title')}</h1>
+          <p>{t('reviews.subtitle')}</p>
 
-          <div className="review-stars">
-            {[1, 2, 3, 4, 5].map(value => (
-              <button key={value} type="button" onClick={() => setRating(value)} className={value <= rating ? 'active' : ''}>
-                <Star size={28} fill={value <= rating ? 'currentColor' : 'none'} />
+          {loading && <p>{t('reviews.loading')}</p>}
+          {!loading && error && <p className="review-error" role="alert">{error}</p>}
+          {!loading && !error && alreadyReviewed && (
+            <div className="review-complete-state">
+              <CheckCircle2 size={44} />
+              <h2>{t('reviews.alreadyReviewed')}</h2>
+              <p>{t('reviews.alreadyReviewedDesc')}</p>
+              <button type="button" className="review-submit" onClick={() => navigate(`/workspace/${contractId}`)}>
+                {t('reviews.backToProject')}
               </button>
-            ))}
-          </div>
-
-          <div className="review-subratings">
-            {renderSubRating('Communication', communicationRating, setCommunicationRating)}
-            {renderSubRating('Quality', qualityRating, setQualityRating)}
-            {renderSubRating('Timeliness', timelinessRating, setTimelinessRating)}
-          </div>
-
-          <label>
-            Review Text
-            <textarea value={comment} maxLength={1100} onChange={event => setComment(event.target.value)} placeholder="Share feedback..." />
-          </label>
-          <span className="review-count">{comment.length}/1000</span>
-
-          <label className="review-anonymous">
-            <input type="checkbox" checked={isAnonymous} onChange={event => setIsAnonymous(event.target.checked)} />
-            Submit Anonymously
-          </label>
-
-          {error && <p className="review-error">{error}</p>}
-          {success && <p className="review-success">{success}</p>}
-
-          <button className="review-submit" onClick={submitReview} disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit Review'}
-          </button>
+            </div>
+          )}
+          {!loading && !error && contract && validRole && !alreadyReviewed && contract.canReview && (
+            <ProjectReviewForm
+              contract={contract}
+              role={validRole}
+              onSubmitted={() => setSubmitted(true)}
+              onCancel={() => navigate(-1)}
+            />
+          )}
+          {!loading && !error && contract && !alreadyReviewed && !contract.canReview && (
+            <p className="review-error" role="alert">{t('reviews.notAvailable')}</p>
+          )}
         </div>
       </div>
     </AppLayout>

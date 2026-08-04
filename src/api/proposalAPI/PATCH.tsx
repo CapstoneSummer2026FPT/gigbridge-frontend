@@ -3,7 +3,6 @@ import type { ApiResponse } from '../../types/common';
 import type {
   ProposalAnswerDto,
   UpdateBulkProposalAnswersRequest,
-  UpdateProposalAnswerRequest,
   UpdateProposalStatusRequest,
   UpdateProposalStatusResponse,
 } from '../../types/models/Proposal';
@@ -19,17 +18,6 @@ export const proposalPatchAPI = {
     data: UpdateProposalStatusRequest
   ): Promise<ApiResponse<UpdateProposalStatusResponse>> => {
     return apiService.patch<UpdateProposalStatusResponse>(`${proposalsUrl}/${proposalId}/status`, data);
-  },
-
-  /**
-   * PATCH /api/Proposals/{proposalId}/answers/{answerId}
-   */
-  updateProposalAnswer: async (
-    proposalId: string,
-    answerId: string,
-    data: UpdateProposalAnswerRequest
-  ): Promise<ApiResponse<ProposalAnswerDto>> => {
-    return apiService.patch<ProposalAnswerDto>(`${proposalsUrl}/${proposalId}/answers/${answerId}`, data);
   },
 
   /**

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useBlocker, useLocation, useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
 import { jobAPI } from '../../../api/jobAPI';
@@ -13,6 +14,8 @@ import {
   type JobPostQuestionDto,
   type SaveDraftJobPostRequest,
   type JobPostMilestonePlanDto,
+  type JobPostAttachmentDto,
+  type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
   formatJobDuration,
@@ -42,12 +45,10 @@ export interface PostJobFormState {
   description: string;
   skillIds: string[];
   customSkillNames: string[];
-  budgetMin: string;
-  budgetMax: string;
+  budget: string;
   currency: string;
   estimatedDurationValue: string;
   estimatedDurationUnit: JobDurationUnit;
-  location: string;
   visibility: string;
   deadline: string;
   isAigenerated: boolean;
@@ -62,8 +63,10 @@ export interface PostJobRouteQuestion {
 export interface PostJobRouteJobData {
   title?: string | null;
   majorId?: string | null;
+  majorName?: string | null;
   majorCategoryId?: string | null;
   categoryId?: string | null;
+  categoryName?: string | null;
   description?: string | null;
   skillIds?: readonly string[] | null;
   customSkillNames?: readonly string[] | null;
@@ -72,7 +75,7 @@ export interface PostJobRouteJobData {
   budgetMax?: string | number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  location?: string | null;
+  attachments?: readonly JobPostAttachmentDto[] | null;
   visibility?: string | number | null;
   deadline?: string | null;
   endDate?: string | null;
@@ -88,8 +91,32 @@ export interface PostJobRouteState {
   jobData?: PostJobRouteJobData | null;
 }
 
-type SubmitMode = 'draft' | 'questions' | 'publish';
+export type PostJobSubmitMode = 'draft' | 'plan' | 'review' | 'publish';
+export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type PostJobReviewSection = 'project' | 'terms' | 'hiringPlan';
+export type PostJobSubmitResult =
+  | { status: 'success' }
+  | { status: 'validation-error'; section: PostJobReviewSection; fieldSelector?: string }
+  | { status: 'budget-exceeded' }
+  | { status: 'error' };
 type LeaveAction = 'save' | 'discard' | null;
+
+/**
+ * True when a client-entered expected budget exists and the milestone plan
+ * total exceeds it — the "budget-exceeded" confirmation should be shown.
+ * A missing/zero expected budget means there is nothing to exceed, so no
+ * confirmation is shown.
+ */
+export const shouldConfirmBudgetOverride = (budgetValue: string, milestonePlanTotal: number): boolean => {
+  const expected = Number(budgetValue);
+  return expected > 0 && milestonePlanTotal > expected;
+};
+
+interface PostJobValidationIssue {
+  message: string;
+  section: PostJobReviewSection;
+  fieldSelector?: string;
+}
 
 type DraftResponseWithLegacyId = CreateDraftJobPostResponse & {
   JobPostId?: string;
@@ -118,7 +145,14 @@ const createDraftJobPostOnce = async (): Promise<string> => {
   return draftJobPostRequest;
 };
 
-const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: false });
+const emptyQuestion = (): QuestionInput => ({ questionText: '', isRequired: true });
+
+const withoutWorkBreakdownItems = (
+  milestones: readonly JobPostMilestonePlanDto[],
+): JobPostMilestonePlanDto[] => milestones.map(milestone => ({
+  ...milestone,
+  workItems: [],
+}));
 
 const normalizeSkillName = (value: string): string => value.trim().toLowerCase()
   .replaceAll('#', 'sharp').replaceAll('+', 'plus').replaceAll('&', 'and')
@@ -136,7 +170,7 @@ const toStringValue = (value: string | number | null | undefined): string => (
 const initialQuestionsFromState = (initialJobData?: PostJobRouteJobData | null): QuestionInput[] => {
   const initialQuestions = initialJobData?.interviewQuestions?.map(question => ({
     questionText: question.questionText || question.question || '',
-    isRequired: question.isRequired ?? false,
+    isRequired: question.isRequired ?? true,
   })) || [];
 
   return initialQuestions.length > 0 ? initialQuestions : [emptyQuestion()];
@@ -147,7 +181,7 @@ const questionsFromDtos = (questions: JobPostQuestionDto[]): QuestionInput[] => 
     .sort((left, right) => left.orderIndex - right.orderIndex)
     .map(question => ({
       questionText: question.questionText || '',
-      isRequired: question.isRequired,
+      isRequired: question.isRequired ?? true,
     }));
 
   return mapped.length > 0 ? mapped : [emptyQuestion()];
@@ -168,10 +202,8 @@ const formFromJobDetail = (job: GetMyJobPostDetailDto): PostJobFormState => ({
   categoryId: job.categoryId || '',
   skillIds: job.skills?.map(skill => skill.skillsId.toLowerCase()) || [],
   customSkillNames: job.customSkillNames || [],
-  budgetMin: toStringValue(job.budgetMin),
-  budgetMax: toStringValue(job.budgetMax),
+  budget: toStringValue(job.budgetMin ?? job.budgetMax),
   currency: job.currency || GIGCOIN_CURRENCY_CODE,
-  location: job.location || '',
   visibility: String(job.visibility ?? JobPostVisibility.Public),
   deadline: job.endDate?.split?.('T')?.[0] || '',
   isAigenerated: false,
@@ -188,12 +220,10 @@ const initialFormFromState = (initialJobData?: PostJobRouteJobData | null): Post
     description: initialJobData?.description || '',
     skillIds: (initialJobData?.skillIds || []).map(id => id.toLowerCase()),
     customSkillNames: [...(initialJobData?.customSkillNames || initialJobData?.customSkills || [])],
-    budgetMin: toStringValue(initialJobData?.budgetMin),
-    budgetMax: toStringValue(initialJobData?.budgetMax),
+    budget: toStringValue(initialJobData?.budgetMin ?? initialJobData?.budgetMax),
     currency: initialJobData?.currency || GIGCOIN_CURRENCY_CODE,
     estimatedDurationValue: duration.value,
     estimatedDurationUnit: duration.unit,
-    location: initialJobData?.location || '',
     visibility: String(initialJobData?.visibility ?? JobPostVisibility.Public),
     deadline: initialJobData?.deadline || initialJobData?.endDate?.split?.('T')?.[0] || '',
     isAigenerated: initialJobData?.isAigenerated ?? false,
@@ -203,20 +233,37 @@ const initialFormFromState = (initialJobData?: PostJobRouteJobData | null): Post
 export function usePostJob() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation('common');
   const routeState = location.state as PostJobRouteState | null;
   const initialJobData = routeState?.jobData ?? null;
   const initialJobPostId = routeState?.jobPostId ? String(routeState.jobPostId) : null;
+  const hasBudgetFromWizardNavigation = initialJobData !== null
+    && (initialJobData.budgetMin !== undefined || initialJobData.budgetMax !== undefined);
   const navigationAllowedRef = useRef(false);
 
   const [skillInput, setSkillInput] = useState('');
-  const [submitMode, setSubmitMode] = useState<SubmitMode | null>(null);
+  const [submitMode, setSubmitMode] = useState<PostJobSubmitMode | null>(null);
+  const [isBudgetExceededPromptOpen, setIsBudgetExceededPromptOpen] = useState(false);
+  const [pendingBudgetSubmitMode, setPendingBudgetSubmitMode] = useState<PostJobSubmitMode | null>(null);
+  const budgetOverrideRef = useRef<string | null>(null);
   const [leaveAction, setLeaveAction] = useState<LeaveAction>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [jobPostId, setJobPostId] = useState<string | null>(initialJobPostId);
+  const jobPostIdRef = useRef<string | null>(initialJobPostId);
   const [isDraftInitializing, setIsDraftInitializing] = useState(Boolean(initialJobPostId));
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftRequestAttempt, setDraftRequestAttempt] = useState(0);
   const [isLeavePromptOpen, setIsLeavePromptOpen] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>('idle');
+  const [autosaveError, setAutosaveError] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const latestDraftSignatureRef = useRef('');
+  const [taxonomyDisplayNames, setTaxonomyDisplayNames] = useState({
+    majorName: initialJobData?.majorName || '',
+    categoryName: initialJobData?.categoryName || '',
+  });
 
   const [isInstantJobMode, setIsInstantJobMode] = useState(() => {
     return (location.state as any)?.instantJobMode ?? false;
@@ -224,6 +271,20 @@ export function usePostJob() {
   const [isJobDetailsGenerated, setIsJobDetailsGenerated] = useState(false);
   const [isGeneratingInstant, setIsGeneratingInstant] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const [aiClientPrompt, setAiClientPrompt] = useState<string>(() => {
+    return (location.state as any)?.aiClientPrompt ?? '';
+  });
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [pendingGeneratedDetails, setPendingGeneratedDetails] = useState<GenerateJobDescriptionDetailsResponse | null>(null);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [isHiringPlanGenerated, setIsHiringPlanGenerated] = useState(() => {
+    return (location.state as any)?.hiringPlanGenerated ?? false;
+  });
+  const [backgroundHiringPlanStatus, setBackgroundHiringPlanStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [backgroundHiringPlanError, setBackgroundHiringPlanError] = useState<string | null>(null);
+  const backgroundHiringPlanPromiseRef = useRef<Promise<{ milestones: JobPostMilestonePlanDto[]; questions: QuestionInput[] }> | null>(null);
+
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
   const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
@@ -248,7 +309,11 @@ export function usePostJob() {
 
   const [form, setForm] = useState<PostJobFormState>(() => initialFormFromState(initialJobData));
   const [questions, setQuestions] = useState<QuestionInput[]>(() => initialQuestionsFromState(initialJobData));
-  const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() => initialJobData?.milestonePlans || []);
+  const [milestonePlans, setMilestonePlans] = useState<JobPostMilestonePlanDto[]>(() =>
+    withoutWorkBreakdownItems(initialJobData?.milestonePlans || []));
+  const [attachments, setAttachments] = useState<JobPostAttachmentDto[]>(() => [...(initialJobData?.attachments || [])]);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(
     initialJobData?.milestonePlans?.length ? 0 : null
@@ -257,14 +322,6 @@ export function usePostJob() {
     () => milestonePlans.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [milestonePlans]
   );
-
-  useEffect(() => {
-    if (milestonePlans.length === 0) return;
-    const fixedBudget = milestonePlanTotal > 0 ? String(milestonePlanTotal) : '';
-    setForm(current => current.budgetMin === fixedBudget && current.budgetMax === fixedBudget
-      ? current
-      : { ...current, budgetMin: fixedBudget, budgetMax: fixedBudget });
-  }, [milestonePlanTotal, milestonePlans.length]);
 
   const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
@@ -277,20 +334,19 @@ export function usePostJob() {
     return !isDefaultDraftTitle(form.title) ||
       Boolean(form.description.trim()) ||
       Boolean(form.majorCategoryId) ||
-      Boolean(form.budgetMin) ||
-      Boolean(form.budgetMax) ||
+      Boolean(form.budget) ||
       Boolean(form.currency.trim() && form.currency.trim().toUpperCase() !== GIGCOIN_CURRENCY_CODE) ||
       Boolean(form.estimatedDurationValue.trim()) ||
-      Boolean(form.location.trim()) ||
       Boolean(form.deadline) ||
       (!Number.isNaN(visibility) && visibility !== JobPostVisibility.Public) ||
       form.skillIds.length > 0 ||
       form.customSkillNames.length > 0 ||
       questions.some(question => Boolean(question.questionText.trim())) ||
-      milestonePlans.length > 0;
-  }, [form, questions, milestonePlans]);
+      milestonePlans.length > 0 ||
+      attachments.length > 0;
+  }, [form, questions, milestonePlans, attachments.length]);
 
-  const shouldBlockNavigation = (Boolean(jobPostId) || hasSavableDraftContent) &&
+  const shouldBlockNavigation = (isDirty || autosaveStatus === 'saving' || autosaveStatus === 'error') &&
     !navigationAllowedRef.current &&
     !isDraftInitializing &&
     submitMode === null;
@@ -359,6 +415,7 @@ export function usePostJob() {
     }
 
     let isMounted = true;
+    jobPostIdRef.current = initialJobPostId;
     setJobPostId(initialJobPostId);
     setIsDraftInitializing(true);
     setDraftError(null);
@@ -378,8 +435,21 @@ export function usePostJob() {
         }
 
         const job = jobResponse.data;
-        setForm(formFromJobDetail(job));
-        setMilestonePlans(job.milestonePlans || []);
+        const loadedForm = formFromJobDetail(job);
+
+        setForm(current => ({
+          ...loadedForm,
+          // The route state contains the values that were just saved in step 1.
+          // Keep its expected budget while the detail request hydrates step 2;
+          // an older/null response must not make the value flash and disappear.
+          budget: hasBudgetFromWizardNavigation ? current.budget : loadedForm.budget,
+        }));
+        setTaxonomyDisplayNames({
+          majorName: job.majorName || '',
+          categoryName: job.categoryName || '',
+        });
+        setMilestonePlans(withoutWorkBreakdownItems(job.milestonePlans || []));
+        setAttachments(job.attachments || []);
         setExpandedMilestone(job.milestonePlans?.length ? 0 : null);
         setSkillNameById(prev => {
           const next = { ...prev };
@@ -408,7 +478,7 @@ export function usePostJob() {
     return () => {
       isMounted = false;
     };
-  }, [initialJobPostId, draftRequestAttempt]);
+  }, [initialJobPostId, draftRequestAttempt, hasBudgetFromWizardNavigation]);
 
   useEffect(() => {
     if (!form.majorId) {
@@ -520,6 +590,10 @@ export function usePostJob() {
   const isSubmitting = submitMode !== null || leaveAction !== null;
   const isActionDisabled = isSubmitting || isDraftInitializing;
   const previewTitle = form.title.trim() || 'Untitled Job Post';
+  const selectedMajorName = majors.find(major => major.majorId === form.majorId)?.name
+    || taxonomyDisplayNames.majorName;
+  const selectedCategoryName = categories.find(category => category.majorCategoryId === form.majorCategoryId)?.name
+    || taxonomyDisplayNames.categoryName;
 
   const allowNextNavigation = (): void => {
     navigationAllowedRef.current = true;
@@ -528,6 +602,15 @@ export function usePostJob() {
   const resetToNewDraft = (): void => {
     navigationAllowedRef.current = false;
     setJobPostId(null);
+    jobPostIdRef.current = null;
+    setAutosaveStatus('idle');
+    setAutosaveError(null);
+    setIsDirty(false);
+    latestDraftSignatureRef.current = '';
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
     setDraftError(null);
     setErrorMessage(null);
     setSkillInput('');
@@ -537,6 +620,11 @@ export function usePostJob() {
     setForm(initialFormFromState(null));
     setQuestions([emptyQuestion()]);
     setMilestonePlans([]);
+    setAttachments([]);
+    setAttachmentError(null);
+    backgroundHiringPlanPromiseRef.current = null;
+    setBackgroundHiringPlanStatus('idle');
+    setBackgroundHiringPlanError(null);
   };
 
   const insertMarkdown = (before: string, after: string): void => {
@@ -546,6 +634,7 @@ export function usePostJob() {
   const handleMajorChange = (majorId: string): void => {
     setSkillInput('');
     setAvailableSkills([]);
+    setTaxonomyDisplayNames({ majorName: '', categoryName: '' });
     setForm(prev => ({
       ...prev,
       majorId,
@@ -558,6 +647,10 @@ export function usePostJob() {
 
   const handleCategoryChange = (majorCategoryId: string): void => {
     const selectedCategory = categories.find(category => category.majorCategoryId === majorCategoryId);
+    setTaxonomyDisplayNames(current => ({
+      ...current,
+      categoryName: selectedCategory?.name || '',
+    }));
     setSkillInput('');
     setForm(prev => ({
       ...prev,
@@ -568,7 +661,7 @@ export function usePostJob() {
 
   const addOfficialSkill = (skill: SkillOptionDto): void => {
     if (form.skillIds.length + form.customSkillNames.length >= 10) {
-      toast.error('You can select up to 10 skills in total.');
+      toast.error(t('postJobWizard.validation.skillLimit'));
       return;
     }
 
@@ -590,12 +683,12 @@ export function usePostJob() {
     }
 
     if (!form.categoryId) {
-      toast.error('Please select a category before adding skills.');
+      toast.error(t('postJobWizard.validation.selectCategoryFirst'));
       return;
     }
 
     if (form.skillIds.length + form.customSkillNames.length >= 10) {
-      toast.error('You can select up to 10 skills in total.');
+      toast.error(t('postJobWizard.validation.skillLimit'));
       return;
     }
 
@@ -672,14 +765,14 @@ export function usePostJob() {
     }
 
     if (!promptText) {
-      toast.error('Vui lòng nhập mô tả yêu cầu tuyển dụng để AI bắt đầu sinh tin.');
+      toast.error(t('postJobWizard.validation.aiPromptRequired'));
       return;
     }
 
     setErrorMessage(null);
     setIsGeneratingInstant(true);
     try {
-      const response = await jobAPI.generateAIDescription({ clientPrompt: promptText });
+      const response = await jobAPI.generateAIDetails({ clientPrompt: promptText });
       if (!response.success || !response.data) {
         const errorMsg = response.message || 'Job details could not be generated.';
         toast.error(errorMsg);
@@ -687,9 +780,76 @@ export function usePostJob() {
         return;
       }
 
-      const generatedData = response.data;
+      setAiClientPrompt(promptText);
+      setPendingGeneratedDetails(response.data);
+      setIsReviewModalOpen(true);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
+      toast.error(errorMsg);
+      setErrorMessage(errorMsg);
+    } finally {
+      setIsGeneratingInstant(false);
+    }
+  };
 
-      // 1. Fetch categories and skills in parallel based on AI recommendations
+  const handleApproveDetails = async () => {
+    if (!pendingGeneratedDetails) return;
+    const generatedData = pendingGeneratedDetails;
+
+    setIsReviewModalOpen(false);
+    setIsInstantJobMode(true);
+    setIsHiringPlanGenerated(false);
+
+    // Start background generation of hiring plan immediately
+    const promptText = aiClientPrompt;
+    const jobTitle = generatedData.title;
+    const jobDescription = generatedData.description;
+
+    setBackgroundHiringPlanStatus('loading');
+    setBackgroundHiringPlanError(null);
+
+    const promise = jobAPI.generateAIHiringPlan({
+      clientPrompt: promptText,
+      title: jobTitle || '',
+      description: jobDescription || ''
+    }).then(response => {
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to generate hiring plan.');
+      }
+
+      const planData = response.data;
+      const rawMilestones = planData.milestones || (planData as any).milestonePlans || (planData as any).milestone_plans;
+      const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
+
+      let nextMilestones: JobPostMilestonePlanDto[] = [];
+      let nextQuestions: QuestionInput[] = [];
+
+      if (rawMilestones && rawMilestones.length > 0) {
+        nextMilestones = withoutWorkBreakdownItems(rawMilestones);
+      }
+      if (rawQuestions && rawQuestions.length > 0) {
+        nextQuestions = rawQuestions.map((qText: string) => ({
+          questionText: qText,
+          isRequired: true,
+        }));
+      }
+
+      setMilestonePlans(nextMilestones);
+      setQuestions(nextQuestions);
+      setIsHiringPlanGenerated(true);
+      setBackgroundHiringPlanStatus('success');
+
+      return { milestones: nextMilestones, questions: nextQuestions };
+    }).catch(error => {
+      const planErrorMsg = error instanceof Error ? error.message : 'An error occurred generating hiring plan.';
+      setBackgroundHiringPlanStatus('error');
+      setBackgroundHiringPlanError(planErrorMsg);
+      throw error;
+    });
+
+    backgroundHiringPlanPromiseRef.current = promise;
+
+    try {
       const [categoriesResponse, skillsResponse] = await Promise.all([
         generatedData.majorId ? jobAPI.getCategoriesByMajor(generatedData.majorId) : null,
         generatedData.categoryId ? jobAPI.getSkillsByCategory(generatedData.categoryId) : null
@@ -710,7 +870,6 @@ export function usePostJob() {
         });
       }
 
-      // 2. Add AI system skills name map entries so they display as selected chips/badges
       const generatedSkillIds = generatedData.skills.map(skill => skill.skillsId.toLowerCase());
       setSkillNameById(prev => {
         const next = { ...prev };
@@ -720,7 +879,11 @@ export function usePostJob() {
         return next;
       });
 
-      // 3. Update the form state with all AI recommendations
+      setTaxonomyDisplayNames({
+        majorName: generatedData.majorName || '',
+        categoryName: generatedData.categoryName || '',
+      });
+
       setForm(prev => ({
         ...prev,
         title: generatedData.title || prev.title,
@@ -731,99 +894,96 @@ export function usePostJob() {
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
         currency: prev.currency || GIGCOIN_CURRENCY_CODE,
-        estimatedDuration: prev.estimatedDuration || '2-4 weeks',
-        location: prev.location || 'Remote',
+        estimatedDurationValue: prev.estimatedDurationValue || '2',
+        estimatedDurationUnit: prev.estimatedDurationUnit || 'weeks',
         visibility: String(JobPostVisibility.Public),
         deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         isAigenerated: true,
       }));
 
-      // 4. Update the questions state with generated recruitment questions
-      if (generatedData.questionRecruitment && generatedData.questionRecruitment.length > 0) {
-        setQuestions(
-          generatedData.questionRecruitment.map(qText => ({
-            questionText: qText,
-            isRequired: false,
-          }))
-        );
-      }
-
       setIsJobDetailsGenerated(true);
-      toast.success('Job details generated successfully based on your prompt.');
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
-      toast.error(errorMsg);
-      setErrorMessage(errorMsg);
-    } finally {
-      setIsGeneratingInstant(false);
+      setPendingGeneratedDetails(null);
+      toast.success(t('postJobWizard.messages.aiGenerated'));
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to prefill job post taxonomies.');
     }
   };
 
-  const validateForm = () => {
-    if (!form.title.trim()) return 'Project title is required.';
-    if (form.title.trim().length > 200) return 'Project title must not exceed 200 characters.';
-    if (!form.majorId) return 'Major is required.';
-    if (!form.majorCategoryId || !form.categoryId) return 'Category is required.';
-    if (!form.description.trim()) return 'Requirement details are required.';
+  const handleCancelDetails = () => {
+    setIsReviewModalOpen(false);
+    setPendingGeneratedDetails(null);
+  };
 
-    const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
-    const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
+  const validateForm = (): PostJobValidationIssue | null => {
+    if (!form.title.trim()) return { message: t('postJobWizard.validation.titleRequired'), section: 'project', fieldSelector: '#job-title' };
+    if (form.title.trim().length > 200) return { message: t('postJobWizard.validation.titleTooLong'), section: 'project', fieldSelector: '#job-title' };
+    if (!form.majorId) return { message: t('postJobWizard.validation.majorRequired'), section: 'project', fieldSelector: '#job-major' };
+    if (!form.majorCategoryId || !form.categoryId) return { message: t('postJobWizard.validation.categoryRequired'), section: 'project', fieldSelector: '#job-category' };
+    if (!form.description.trim()) return { message: t('postJobWizard.validation.descriptionRequired'), section: 'project', fieldSelector: '#job-description' };
 
-    if (budgetMin !== null && (Number.isNaN(budgetMin) || budgetMin < 0)) return 'Budget min must be greater than or equal to 0.';
-    if (budgetMax !== null && (Number.isNaN(budgetMax) || budgetMax < 0)) return 'Budget max must be greater than or equal to 0.';
-    if (budgetMin !== null && budgetMax !== null && budgetMax < budgetMin) return 'Budget max must be greater than or equal to budget min.';
-    if (!isValidJobDurationValue(form.estimatedDurationValue)) return 'Estimated duration must be a positive whole number.';
+    const budgetValue = form.budget ? Number(form.budget) : null;
+    if (budgetValue !== null && (Number.isNaN(budgetValue) || budgetValue < 0)) {
+      return { message: t('postJobWizard.validation.budgetInvalid'), section: 'terms', fieldSelector: '#job-budget' };
+    }
+    if (!isValidJobDurationValue(form.estimatedDurationValue)) {
+      return { message: t('postJobWizard.validation.durationInvalid'), section: 'terms', fieldSelector: '#job-duration' };
+    }
 
     if (form.deadline) {
       const endDate = new Date(`${form.deadline}T23:59:59`);
-      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) return 'End date must be in the future.';
+      if (Number.isNaN(endDate.getTime()) || endDate <= new Date()) {
+        return { message: t('postJobWizard.validation.deadlineInvalid'), section: 'terms', fieldSelector: '#job-deadline' };
+      }
     }
 
     return null;
   };
 
-  const validateQuestions = (): string | null => {
+  const validateQuestions = (): PostJobValidationIssue | null => {
     const nonEmptyQuestions = questionsWithOrder.filter(question => question.questionText.trim());
     const orderIndexes = nonEmptyQuestions.map(question => question.orderIndex);
-    if (new Set(orderIndexes).size !== orderIndexes.length) return 'Question order indexes must be unique.';
+    if (new Set(orderIndexes).size !== orderIndexes.length) {
+      return { message: t('postJobWizard.validation.questionOrderUnique'), section: 'hiringPlan' };
+    }
 
     for (const question of nonEmptyQuestions) {
-      if (question.questionText.length > MAX_QUESTION_LENGTH) return 'Question text must not exceed 1000 characters.';
-      if (!Number.isInteger(question.orderIndex) || question.orderIndex < 0) return 'Question order index must be valid.';
+      const fieldSelector = `[data-question-index="${question.orderIndex}"]`;
+      if (question.questionText.length > MAX_QUESTION_LENGTH) {
+        return { message: t('postJobWizard.validation.questionTooLong'), section: 'hiringPlan', fieldSelector };
+      }
+      if (!Number.isInteger(question.orderIndex) || question.orderIndex < 0) {
+        return { message: t('postJobWizard.validation.questionOrderInvalid'), section: 'hiringPlan', fieldSelector };
+      }
     }
 
     return null;
   };
 
-  const validateMilestonePlans = (): string | null => {
+  const validateMilestonePlans = (): PostJobValidationIssue | null => {
     const errors: Record<string, string> = {};
     const today = new Date().toISOString().slice(0, 10);
     let previousDueDate: string | null = null;
-    let workItemError: string | null = null;
-
     for (const [index, milestone] of milestonePlans.entries()) {
-      if (!milestone.title?.trim()) errors[`${index}.title`] = 'Milestone title is required.';
-      if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = 'Amount must be greater than 0.';
+      if (!milestone.title?.trim()) errors[`${index}.title`] = t('postJobWizard.validation.milestoneTitleRequired');
+      if (Number(milestone.amount) <= 0) errors[`${index}.amount`] = t('postJobWizard.validation.milestoneAmountInvalid');
       if (!/^\s*[1-9]\d*\s+(week|weeks|month|months|year|years)\s*$/i.test(milestone.estimatedDuration || '')) {
-        errors[`${index}.estimatedDuration`] = 'Duration must be a positive whole number in weeks, months or years.';
+        errors[`${index}.estimatedDuration`] = t('postJobWizard.validation.milestoneDurationInvalid');
       }
       if (!milestone.dueDate) {
-        errors[`${index}.dueDate`] = 'Deadline is required.';
+        errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineRequired');
       } else {
-        if (milestone.dueDate < today) errors[`${index}.dueDate`] = 'Deadline cannot be in the past.';
+        if (milestone.dueDate < today) errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlinePast');
         if (form.deadline && milestone.dueDate <= form.deadline) {
-          errors[`${index}.dueDate`] = 'Deadline must be after the proposal closing date.';
+          errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineAfterClosing');
         }
         if (previousDueDate && milestone.dueDate <= previousDueDate) {
-          errors[`${index}.dueDate`] = 'Deadline must be later than the previous milestone deadline.';
+          errors[`${index}.dueDate`] = t('postJobWizard.validation.milestoneDeadlineSequence');
         }
         previousDueDate = milestone.dueDate;
       }
-      if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = 'Deliverables are required.';
-      if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = 'Acceptance criteria are required.';
-      if ((milestone.workItems || []).some(item => !item.title?.trim() || !item.description?.trim())) {
-        workItemError ??= `Every work item in milestone ${index + 1} requires title and description.`;
-      }
+      if (!milestone.deliverables?.trim()) errors[`${index}.deliverables`] = t('postJobWizard.validation.milestoneDeliverablesRequired');
+      if (!milestone.acceptanceCriteria?.trim()) errors[`${index}.acceptanceCriteria`] = t('postJobWizard.validation.milestoneAcceptanceRequired');
     }
 
     const firstErrorKey = Object.keys(errors)[0];
@@ -836,10 +996,14 @@ export function usePostJob() {
         target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         target?.focus();
       });
-      return 'Complete the highlighted milestone fields before publishing.';
+      return {
+        message: t('postJobWizard.validation.milestoneIncomplete'),
+        section: 'hiringPlan',
+        fieldSelector: `[data-milestone-field="${index}.${field}"]`,
+      };
     }
 
-    return workItemError;
+    return null;
   };
 
   const showValidationError = (message: string): void => {
@@ -847,134 +1011,430 @@ export function usePostJob() {
     toast.error(message);
   };
 
-  const buildDraftRequest = (): SaveDraftJobPostRequest => {
-    const budgetMin = form.budgetMin ? Number(form.budgetMin) : null;
-    const budgetMax = form.budgetMax ? Number(form.budgetMax) : null;
+  const focusValidationIssue = (issue: PostJobValidationIssue): void => {
+    if (!issue.fieldSelector) return;
+    requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(issue.fieldSelector!);
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target?.focus();
+    });
+  };
+
+  const buildDraftRequest = (overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): SaveDraftJobPostRequest => {
+    // A confirmed budget override (milestone total) takes precedence over the
+    // current form value — the immediate post-confirm save runs in the same
+    // tick as setForm, so form.budget would still hold the stale expected budget.
+    const budgetValue = budgetOverrideRef.current !== null
+      ? Number(budgetOverrideRef.current)
+      : form.budget ? Number(form.budget) : null;
+    const finalQuestions = overrides?.questions || questions;
+    const finalMilestones = overrides?.milestonePlans || milestonePlans;
+    const questionsWithOrderOverrides = finalQuestions.map((question, index) => ({ ...question, orderIndex: index }));
 
     return {
       title: form.title.trim() || null,
       description: form.description.trim() || null,
       majorCategoryId: form.majorCategoryId || null,
-      budgetMin: budgetMin !== null && Number.isNaN(budgetMin) ? null : budgetMin,
-      budgetMax: budgetMax !== null && Number.isNaN(budgetMax) ? null : budgetMax,
+      budgetMin: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
+      budgetMax: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       currency: form.currency.trim() || GIGCOIN_CURRENCY_CODE,
       estimatedDuration: formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit),
-      location: form.location.trim() || null,
       visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,
       endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
       isAigenerated: form.isAigenerated,
       skillIds: form.skillIds,
       customSkillNames: form.customSkillNames,
-      questions: questionsWithOrder
+      questions: questionsWithOrderOverrides
         .filter(question => question.questionText.trim())
         .map(question => ({
           questionText: question.questionText.trim(),
           orderIndex: question.orderIndex,
           isRequired: question.isRequired,
         })),
-      milestonePlans: milestonePlans.map((milestone, orderIndex) => ({
+      milestonePlans: finalMilestones.map((milestone, orderIndex) => ({
         ...milestone,
         amount: Number(milestone.amount) || 0,
         orderIndex,
-        workItems: (milestone.workItems || []).map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
+        workItems: [],
       })),
     };
   };
 
-  const buildRouteJobData = (): PostJobRouteJobData => ({
-    ...buildDraftRequest(),
+  const buildRouteJobData = (overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): PostJobRouteJobData => ({
+    ...buildDraftRequest(overrides),
     majorId: form.majorId,
+    majorName: selectedMajorName,
     categoryId: form.categoryId,
+    categoryName: selectedCategoryName,
     deadline: form.deadline,
     skillNameById,
-    interviewQuestions: questionsWithOrder,
+    interviewQuestions: (overrides?.questions || questions).map((question, index) => ({ ...question, orderIndex: index })),
+    attachments,
   });
 
-  const buildNavigationState = (currentJobPostId: string | null = jobPostId): PostJobRouteState => ({
+  const buildNavigationState = (currentJobPostId: string | null = jobPostId, overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): PostJobRouteState => ({
     jobPostId: currentJobPostId,
-    jobData: buildRouteJobData(),
+    jobData: buildRouteJobData(overrides),
   });
 
   const ensureDraftJobPostId = async (): Promise<string> => {
-    if (jobPostId) {
-      return jobPostId;
+    if (jobPostIdRef.current) {
+      return jobPostIdRef.current;
     }
 
     const createdJobPostId = await createDraftJobPostOnce();
+    jobPostIdRef.current = createdJobPostId;
     setJobPostId(createdJobPostId);
     return createdJobPostId;
   };
 
-  const saveDraftPartial = async (): Promise<string> => {
-    const currentJobPostId = await ensureDraftJobPostId();
-    const response = await jobAPI.saveDraftJobPost(currentJobPostId, buildDraftRequest());
-
-    if (!response.success) {
-      throw new Error(response.message || 'Draft JobPost could not be saved.');
+  const uploadAttachment = async (file: File): Promise<void> => {
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!allowedTypes.has(file.type)) {
+      const message = t('postJobWizard.validation.attachmentType');
+      setAttachmentError(message);
+      toast.error(message);
+      return;
+    }
+    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+      const message = t('postJobWizard.validation.attachmentSize');
+      setAttachmentError(message);
+      toast.error(message);
+      return;
+    }
+    if (attachments.length >= 5) {
+      const message = t('postJobWizard.validation.attachmentLimit');
+      setAttachmentError(message);
+      toast.error(message);
+      return;
     }
 
-    return currentJobPostId;
+    setIsUploadingAttachment(true);
+    setAttachmentError(null);
+    try {
+      const currentJobPostId = await ensureDraftJobPostId();
+      const response = await jobAPI.uploadJobPostAttachment(currentJobPostId, file);
+      if (!response.success || !response.data)
+        throw new Error(response.message || t('postJobWizard.validation.attachmentUploadFailed'));
+      setAttachments(current => [...current, response.data as JobPostAttachmentDto]);
+      toast.success(t('postJobWizard.messages.attachmentUploaded'));
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : t('postJobWizard.validation.attachmentUploadFailed');
+      setAttachmentError(message);
+      toast.error(message);
+    } finally {
+      setIsUploadingAttachment(false);
+    }
   };
 
-  const submitDraftFlow = async (mode: SubmitMode): Promise<void> => {
-    if (mode === 'questions' || mode === 'publish') {
-      const detailValidationError = validateForm();
-      if (detailValidationError) {
-        showValidationError(detailValidationError);
-        return;
+  const deleteAttachment = async (attachmentId: string): Promise<void> => {
+    const currentJobPostId = jobPostIdRef.current;
+    if (!currentJobPostId) return;
+
+    setAttachmentError(null);
+    try {
+      const response = await jobAPI.deleteJobPostAttachment(currentJobPostId, attachmentId);
+      if (!response.success)
+        throw new Error(response.message || t('postJobWizard.validation.attachmentDeleteFailed'));
+      setAttachments(current =>
+        current.filter(item => item.jobPostAttachmentsId !== attachmentId));
+      toast.success(t('postJobWizard.messages.attachmentDeleted'));
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : t('postJobWizard.validation.attachmentDeleteFailed');
+      setAttachmentError(message);
+      toast.error(message);
+    }
+  };
+
+  const saveDraftPartial = async (overrides?: {
+    questions?: QuestionInput[];
+    milestonePlans?: JobPostMilestonePlanDto[];
+  }): Promise<string> => {
+    const payload = buildDraftRequest(overrides);
+    const signature = JSON.stringify(payload);
+    latestDraftSignatureRef.current = signature;
+    setAutosaveStatus('saving');
+    setAutosaveError(null);
+
+    let savedJobPostId = jobPostId;
+    const queuedSave = saveQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        savedJobPostId = await ensureDraftJobPostId();
+        const response = await jobAPI.saveDraftJobPost(savedJobPostId, payload);
+        if (!response.success) {
+          throw new Error(response.message || 'Draft JobPost could not be saved.');
+        }
+      });
+
+    saveQueueRef.current = queuedSave.then(() => undefined, () => undefined);
+
+    try {
+      await queuedSave;
+      if (latestDraftSignatureRef.current === signature) {
+        setIsDirty(false);
+        setAutosaveStatus('saved');
+      }
+      return savedJobPostId as string;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Draft JobPost could not be saved.';
+      setAutosaveStatus('error');
+      setAutosaveError(message);
+      setIsDirty(true);
+      throw error;
+    }
+  };
+
+  const flushAutosave = async (): Promise<string | null> => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (!hasSavableDraftContent && !jobPostId) return null;
+    return saveDraftPartial();
+  };
+
+  useEffect(() => {
+    if (isDraftInitializing || !hasSavableDraftContent || submitMode !== null || leaveAction !== null) {
+      return;
+    }
+
+    setIsDirty(true);
+    setAutosaveStatus(current => current === 'error' ? current : 'idle');
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      void saveDraftPartial().catch(() => undefined);
+    }, 1200);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [form, questions, milestonePlans, isDraftInitializing, hasSavableDraftContent]);
+
+  const retryAutosave = async (): Promise<void> => {
+    try {
+      await flushAutosave();
+    } catch {
+      // Status and message are updated by saveDraftPartial.
+    }
+  };
+
+  const navigateWizard = async (path: '/jobs/post' | '/jobs/post/plan' | '/jobs/post/review'): Promise<void> => {
+    setErrorMessage(null);
+    try {
+      const currentJobPostId = await flushAutosave();
+      allowNextNavigation();
+      navigate(path, { state: buildNavigationState(currentJobPostId) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Draft JobPost could not be saved.';
+      setErrorMessage(message);
+      toast.error(message);
+    }
+  };
+
+  const submitDraftFlow = async (mode: PostJobSubmitMode): Promise<PostJobSubmitResult> => {
+    if (mode === 'plan' || mode === 'review' || mode === 'publish') {
+      const detailValidationIssue = validateForm();
+      if (detailValidationIssue) {
+        showValidationError(detailValidationIssue.message);
+        focusValidationIssue(detailValidationIssue);
+        return {
+          status: 'validation-error',
+          section: detailValidationIssue.section,
+          fieldSelector: detailValidationIssue.fieldSelector,
+        };
       }
     }
 
-    if (mode === 'publish') {
-      const questionValidationError = validateQuestions();
-      if (questionValidationError) {
-        showValidationError(questionValidationError);
-        return;
+    if (mode === 'review' || mode === 'publish') {
+      const planValidationIssue = validateMilestonePlans();
+      if (planValidationIssue) {
+        showValidationError(planValidationIssue.message);
+        return {
+          status: 'validation-error',
+          section: planValidationIssue.section,
+          fieldSelector: planValidationIssue.fieldSelector,
+        };
       }
-      const planValidationError = validateMilestonePlans();
-      if (planValidationError) {
-        showValidationError(planValidationError);
-        return;
+    }
+
+    if (mode === 'review' || mode === 'publish') {
+      const questionValidationIssue = validateQuestions();
+      if (questionValidationIssue) {
+        showValidationError(questionValidationIssue.message);
+        focusValidationIssue(questionValidationIssue);
+        return {
+          status: 'validation-error',
+          section: questionValidationIssue.section,
+          fieldSelector: questionValidationIssue.fieldSelector,
+        };
       }
+    }
+
+    // When the milestone plan total exceeds the client's expected budget, ask
+    // before saving so the job post budget is only raised by explicit consent.
+    if ((mode === 'review' || mode === 'publish')
+      && shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)
+      && budgetOverrideRef.current === null) {
+      setPendingBudgetSubmitMode(mode);
+      setIsBudgetExceededPromptOpen(true);
+      return { status: 'budget-exceeded' };
     }
 
     setSubmitMode(mode);
     setErrorMessage(null);
 
     try {
+      if (mode === 'plan') {
+        let finalMilestones = milestonePlans;
+        let finalQuestions = questions;
+
+        if (isInstantJobMode && !isHiringPlanGenerated) {
+          // If the background promise failed previously, clear it to retry using fallback
+          if (backgroundHiringPlanStatus === 'error') {
+            backgroundHiringPlanPromiseRef.current = null;
+          }
+
+          if (backgroundHiringPlanPromiseRef.current) {
+            setIsGeneratingPlan(true);
+            try {
+              const result = await backgroundHiringPlanPromiseRef.current;
+              finalMilestones = result.milestones;
+              finalQuestions = result.questions;
+            } catch (planError) {
+              backgroundHiringPlanPromiseRef.current = null;
+              setBackgroundHiringPlanStatus('error');
+              throw planError;
+            } finally {
+              setIsGeneratingPlan(false);
+            }
+          } else {
+            setIsGeneratingPlan(true);
+            try {
+              const planResponse = await jobAPI.generateAIHiringPlan({
+                clientPrompt: aiClientPrompt,
+                title: form.title,
+                description: form.description
+              });
+
+              if (!planResponse.success || !planResponse.data) {
+                throw new Error(planResponse.message || 'Failed to generate hiring plan.');
+              }
+
+              const planData = planResponse.data;
+              const rawMilestones = planData.milestones || (planData as any).milestonePlans || (planData as any).milestone_plans;
+              const rawQuestions = planData.questionRecruitment || (planData as any).question_recruitment || (planData as any).questions;
+
+              if (rawMilestones && rawMilestones.length > 0) {
+                const mappedMilestones = withoutWorkBreakdownItems(rawMilestones);
+                setMilestonePlans(mappedMilestones);
+                finalMilestones = mappedMilestones;
+              }
+              if (rawQuestions && rawQuestions.length > 0) {
+                const mappedQuestions = rawQuestions.map((qText: string) => ({
+                  questionText: qText,
+                  isRequired: true,
+                }));
+                setQuestions(mappedQuestions);
+                finalQuestions = mappedQuestions;
+              }
+              setIsHiringPlanGenerated(true);
+            } catch (planError) {
+              const planErrorMsg = planError instanceof Error ? planError.message : 'An error occurred generating hiring plan.';
+              toast.error(planErrorMsg);
+              throw planError;
+            } finally {
+              setIsGeneratingPlan(false);
+            }
+          }
+        }
+
+        const currentJobPostId = await saveDraftPartial({
+          milestonePlans: finalMilestones,
+          questions: finalQuestions
+        });
+        const navigationState = buildNavigationState(currentJobPostId, {
+          milestonePlans: finalMilestones,
+          questions: finalQuestions
+        });
+
+        allowNextNavigation();
+        navigate('/jobs/post/plan', {
+          state: {
+            ...navigationState,
+            instantJobMode: isInstantJobMode,
+            aiClientPrompt,
+            hiringPlanGenerated: true
+          }
+        });
+        return { status: 'success' };
+      }
+
       const currentJobPostId = await saveDraftPartial();
       const navigationState = buildNavigationState(currentJobPostId);
 
-      if (mode === 'questions') {
+      if (mode === 'review') {
         allowNextNavigation();
-        navigate('/jobs/post/questions', { state: navigationState });
-        return;
+        navigate('/jobs/post/review', { state: navigationState });
+        return { status: 'success' };
       }
 
       if (mode === 'publish') {
         const publishResponse = await jobAPI.updateJobPostStatus(currentJobPostId, { status: JobPostStatus.Open });
         if (!publishResponse.success) throw new Error(publishResponse.message || 'Project request could not be published.');
-        toast.success('Project request published.');
+        toast.success(t('postJobWizard.messages.published'));
         allowNextNavigation();
         navigate('/jobs/my-jobs');
-        return;
+        return { status: 'success' };
       }
 
-      toast.success('Project request saved as draft.');
+      toast.success(t('postJobWizard.messages.draftSaved'));
       allowNextNavigation();
       navigate('/jobs/my-jobs');
+      return { status: 'success' };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Project request could not be saved.';
       setErrorMessage(message);
       toast.error(message);
+      return { status: 'error' };
     } finally {
       setSubmitMode(null);
+      budgetOverrideRef.current = null;
     }
   };
 
-  const navigateBackToDetails = (): void => {
-    allowNextNavigation();
-    navigate('/jobs/post/details', { state: buildNavigationState() });
+  const handleBudgetExceededConfirm = (): Promise<PostJobSubmitResult> => {
+    budgetOverrideRef.current = String(milestonePlanTotal);
+    setForm(current => ({
+      ...current,
+      budget: String(milestonePlanTotal),
+    }));
+    setIsBudgetExceededPromptOpen(false);
+    const mode = pendingBudgetSubmitMode;
+    setPendingBudgetSubmitMode(null);
+    return mode ? submitDraftFlow(mode) : Promise.resolve({ status: 'budget-exceeded' });
+  };
+
+  const handleBudgetExceededCancel = (): void => {
+    setIsBudgetExceededPromptOpen(false);
+    setPendingBudgetSubmitMode(null);
   };
 
   const continueBlockedNavigation = (): void => {
@@ -993,7 +1453,7 @@ export function usePostJob() {
     setLeaveAction('save');
     try {
       await saveDraftPartial();
-      toast.success('Draft saved.');
+      toast.success(t('postJobWizard.messages.draftSaved'));
       continueBlockedNavigation();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Draft JobPost could not be saved.';
@@ -1013,7 +1473,7 @@ export function usePostJob() {
 
       const response = await jobAPI.deleteEmptyDraftJobPost(jobPostId);
       if (response.success) {
-        toast.success('Empty draft discarded.');
+        toast.success(t('postJobWizard.messages.emptyDraftDiscarded'));
         continueBlockedNavigation();
         return;
       }
@@ -1030,7 +1490,7 @@ export function usePostJob() {
     }
   };
 
-  const renderSubmitLabel = (mode: SubmitMode, label: string): string => (
+  const renderSubmitLabel = (mode: PostJobSubmitMode, label: string): string => (
     submitMode === mode ? 'Submitting...' : label
   );
 
@@ -1038,6 +1498,9 @@ export function usePostJob() {
     form,
     setForm,
     jobPostId,
+    autosaveStatus,
+    autosaveError,
+    isDirty,
     majors,
     categories,
     availableSkills,
@@ -1046,6 +1509,8 @@ export function usePostJob() {
     setSkillInput,
     remainingSkills,
     previewTitle,
+    selectedMajorName,
+    selectedCategoryName,
     errorMessage,
     isDraftInitializing,
     draftError,
@@ -1054,7 +1519,13 @@ export function usePostJob() {
     questions,
     setQuestions,
     milestonePlans,
+    attachments,
+    isUploadingAttachment,
+    attachmentError,
+    milestonePlanTotal,
     setMilestonePlans,
+    uploadAttachment,
+    deleteAttachment,
     milestoneErrors,
     setMilestoneErrors,
     expandedMilestone,
@@ -1084,7 +1555,13 @@ export function usePostJob() {
     handleLeaveDiscardDraft,
     cancelBlockedNavigation,
     submitDraftFlow,
-    navigateBackToDetails,
+    isBudgetExceededPromptOpen,
+    handleBudgetExceededConfirm,
+    handleBudgetExceededCancel,
+    shouldConfirmBudgetOverride,
+    navigateWizard,
+    flushAutosave,
+    retryAutosave,
     buildNavigationState,
     renderSubmitLabel,
     MAX_QUESTION_LENGTH,
@@ -1093,5 +1570,11 @@ export function usePostJob() {
     isJobDetailsGenerated,
     isGeneratingInstant,
     handleGenerateInstantJob,
+    isReviewModalOpen,
+    pendingGeneratedDetails,
+    isGeneratingPlan,
+    backgroundHiringPlanError,
+    handleApproveDetails,
+    handleCancelDetails,
   };
 }

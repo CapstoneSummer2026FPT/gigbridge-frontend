@@ -1,5 +1,6 @@
 import { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import type { ReportContract, ReportContractAttachment } from '../../../types/models/ReportContract';
 import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
@@ -8,12 +9,13 @@ import {
 } from '../../../types/models/ReportContract';
 import {
   AlertCircle, X, Loader2, CheckCircle, XCircle,
-  ExternalLink, FileText, Image, Film, Archive,
+  FileText, Image, Film, Archive,
   Upload, Download
 } from 'lucide-react';
 import '../styles/report-contract.css';
 import { DisputeEscalationModal } from './DisputeEscalationModal';
 import { DisputeCreationModal } from './DisputeCreationModal';
+import { reportContractGetAPI } from '../../../api/reportContractAPI/GET';
 
 const STATUS_KEYS: Record<number, string> = {
   [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
@@ -58,10 +60,6 @@ function getFileIcon(contentType: string) {
   return <FileText size={16} />;
 }
 
-function isImageType(contentType: string): boolean {
-  return contentType.startsWith('image/');
-}
-
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -70,25 +68,16 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function AttachmentItem({ attachment }: { attachment: ReportContractAttachment }) {
+function AttachmentItem({ attachment, onDownload }: { attachment: ReportContractAttachment; onDownload: (attachment: ReportContractAttachment) => void }) {
   return (
-    <a
+    <button
+      type="button"
       key={attachment.reportContractAttachmentId}
-      href={attachment.fileUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+      onClick={() => onDownload(attachment)}
       className="rc-attachment-item"
     >
       <span className="rc-attachment-icon">
-        {isImageType(attachment.contentType) ? (
-          <img
-            src={attachment.fileUrl}
-            alt={attachment.fileName}
-            className="rc-attachment-thumb"
-          />
-        ) : (
-          getFileIcon(attachment.contentType)
-        )}
+        {getFileIcon(attachment.contentType)}
       </span>
       <span className="rc-attachment-name" title={attachment.fileName}>
         {attachment.fileName}
@@ -102,7 +91,7 @@ function AttachmentItem({ attachment }: { attachment: ReportContractAttachment }
         )}
       </span>
       <Download size={14} className="rc-attachment-download" />
-    </a>
+    </button>
   );
 }
 
@@ -156,6 +145,13 @@ export function ReportDetailModal({
     setRejectReason('');
     setRespondentFiles([]);
     setError(null);
+  };
+
+  const downloadAttachment = async (attachment: ReportContractAttachment) => {
+    setError(null);
+    const response = await reportContractGetAPI.getAttachmentDownload(report.contractId, report.id, attachment.reportContractAttachmentId);
+    if (response.success && response.data) window.open(response.data.downloadUrl, '_blank', 'noopener,noreferrer');
+    else setError(response.message || 'Unable to download this attachment.');
   };
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
@@ -274,7 +270,7 @@ export function ReportDetailModal({
             <div className="rc-detail-grid">
               <div className="rc-detail-field">
                 <label>{t('workspace.reportReporter')}</label>
-                <span>{report.reporter.name || t('common.unknown')}
+                <span><UserProfileLink userId={report.reporter.id} role={report.reporter.role ?? undefined}>{report.reporter.name || t('common.unknown')}</UserProfileLink>
                   {isReporter ? ` (${t('common.you')})` : ''} ({report.reporter.role})
                 </span>
               </div>
@@ -282,7 +278,7 @@ export function ReportDetailModal({
                 <div className="rc-detail-field">
                   <label>{t('workspace.reportRespondent')}</label>
                   <span>
-                    {report.respondent.name || t('common.unknown')}
+                    <UserProfileLink userId={report.respondent.id} role={report.respondent.role ?? undefined}>{report.respondent.name || t('common.unknown')}</UserProfileLink>
                     {isRespondent ? ` (${t('common.you')})` : ''} ({report.respondent.role})
                   </span>
                 </div>
@@ -332,7 +328,7 @@ export function ReportDetailModal({
               </h4>
               <div className="rc-attachment-list">
                 {reporterAttachments.map((att) => (
-                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} />
+                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} onDownload={downloadAttachment} />
                 ))}
               </div>
             </div>
@@ -346,7 +342,7 @@ export function ReportDetailModal({
               </h4>
               <div className="rc-attachment-list">
                 {respondentAttachments.map((att) => (
-                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} />
+                  <AttachmentItem key={att.reportContractAttachmentId} attachment={att} onDownload={downloadAttachment} />
                 ))}
               </div>
             </div>

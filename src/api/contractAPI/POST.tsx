@@ -1,10 +1,9 @@
 import { apiService } from '../../service/apiService';
 import type { ApiResponse } from '../../types/common';
-import type { ClaimFinalPayoutResponse, ContractProductHandoffResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, WithdrawMilestoneResponse } from '../../types/models/Contract';
+import type { ContractProductHandoffResponse, CreateContractDto, ContractDto, EndProjectResponse, GenerateContractPdfDto, Milestone, MilestoneEarlyStartRequest, WithdrawMilestoneResponse } from '../../types/models/Contract';
+import { normalizeMilestone } from './GET';
 
 const contractsUrl = 'Contracts';
-const milestonesUrl = 'Milestones';
-
 export const contractPostAPI = {
   /**
    * POST /api/Contracts/from-proposal
@@ -41,30 +40,6 @@ export const contractPostAPI = {
   },
 
   /**
-   * POST /api/Milestones/{milestoneId}/submit-deliverables
-   * Submit deliverables for a milestone (freelancer only)
-   */
-  submitMilestoneDeliverables: async (
-    milestoneId: string,
-    formData: FormData
-  ): Promise<ApiResponse<{ success: boolean; message: string }>> => {
-    return apiService.post<{ success: boolean; message: string }>(
-      `${milestonesUrl}/${milestoneId}/submit-deliverables`,
-      formData
-    );
-  },
-
-  /**
-   * POST /api/contracts/{contractId}/milestones/{milestoneId}/start
-   */
-  startMilestone: async (
-    contractId: string,
-    milestoneId: string
-  ): Promise<ApiResponse<Milestone>> => {
-    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/start`);
-  },
-
-  /**
    * POST /api/contracts/{contractId}/milestones/{milestoneId}/request-unlock
    */
   requestMilestoneUnlock: async (
@@ -83,7 +58,14 @@ export const contractPostAPI = {
     milestoneId: string,
     formData: FormData
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/submit`, formData);
+    const response = await apiService.post<unknown>(
+      `contracts/${contractId}/milestones/${milestoneId}/submit`,
+      formData,
+    );
+    return {
+      ...response,
+      data: response.data ? normalizeMilestone(response.data) : undefined,
+    };
   },
 
   /**
@@ -93,7 +75,13 @@ export const contractPostAPI = {
     contractId: string,
     milestoneId: string
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/approve`);
+    const response = await apiService.post<unknown>(
+      `contracts/${contractId}/milestones/${milestoneId}/approve`,
+    );
+    return {
+      ...response,
+      data: response.data ? normalizeMilestone(response.data) : undefined,
+    };
   },
 
   /**
@@ -105,8 +93,26 @@ export const contractPostAPI = {
     reason: string,
     workItemIds: string[],
   ): Promise<ApiResponse<Milestone>> => {
-    return apiService.post<Milestone>(`contracts/${contractId}/milestones/${milestoneId}/request-revision`, { reason, workItemIds });
+    const response = await apiService.post<unknown>(
+      `contracts/${contractId}/milestones/${milestoneId}/request-revision`,
+      { reason, workItemIds },
+    );
+    return {
+      ...response,
+      data: response.data ? normalizeMilestone(response.data) : undefined,
+    };
   },
+
+  respondEarlyStartRequest: async (
+    contractId: string,
+    requestId: string,
+    approve: boolean,
+    note?: string,
+  ): Promise<ApiResponse<MilestoneEarlyStartRequest>> =>
+    apiService.post<MilestoneEarlyStartRequest>(
+      `contracts/${contractId}/milestones/early-start-requests/${requestId}/respond`,
+      { approve, note },
+    ),
 
   /**
    * POST /api/contracts/{contractId}/milestones/{milestoneId}/withdraw
@@ -115,16 +121,10 @@ export const contractPostAPI = {
     contractId: string,
     milestoneId: string
   ): Promise<ApiResponse<WithdrawMilestoneResponse>> => {
-    return apiService.post<WithdrawMilestoneResponse>(`contracts/${contractId}/milestones/${milestoneId}/withdraw`);
+    return apiService.post<WithdrawMilestoneResponse>(
+      `contracts/${contractId}/milestones/${milestoneId}/withdraw`
+    );
   },
-
-  respondEarlyStartRequest: async (
-    contractId: string,
-    requestId: string,
-    approve: boolean,
-    note?: string,
-  ): Promise<ApiResponse<Milestone>> =>
-    apiService.post<Milestone>(`contracts/${contractId}/milestones/early-start-requests/${requestId}/respond`, { approve, note }),
 
   /**
    * POST /api/contracts/{contractId}/end-project
@@ -133,13 +133,6 @@ export const contractPostAPI = {
     contractId: string
   ): Promise<ApiResponse<EndProjectResponse>> => {
     return apiService.post<EndProjectResponse>(`contracts/${contractId}/end-project`);
-  },
-
-  /** POST /api/contracts/{contractId}/claim-final-payout */
-  claimFinalPayout: async (
-    contractId: string
-  ): Promise<ApiResponse<ClaimFinalPayoutResponse>> => {
-    return apiService.post<ClaimFinalPayoutResponse>(`contracts/${contractId}/claim-final-payout`);
   },
 
   /**
@@ -152,35 +145,6 @@ export const contractPostAPI = {
   ): Promise<ApiResponse<ContractProductHandoffResponse>> => {
     return apiService.post<ContractProductHandoffResponse>(
       `contracts/${contractId}/product-handoffs`,
-      formData
-    );
-  },
-
-  /**
-   * POST /api/contracts/{contractId}/product-handoffs/{handoffId}/acknowledge
-   */
-  acknowledgeProductHandoff: async (
-    contractId: string,
-    handoffId: string
-  ): Promise<ApiResponse<ContractProductHandoffResponse>> => {
-    return apiService.post<ContractProductHandoffResponse>(
-      `contracts/${contractId}/product-handoffs/${handoffId}/acknowledge`
-    );
-  },
-
-  /**
-   * POST /api/Milestones/{milestoneId}/attachments
-   * Upload milestone attachment files
-   */
-  uploadMilestoneAttachment: async (
-    milestoneId: string,
-    file: File
-  ): Promise<ApiResponse<{ id: string; fileName: string; fileUrl: string }>> => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    return apiService.post<{ id: string; fileName: string; fileUrl: string }>(
-      `${milestonesUrl}/${milestoneId}/attachments`,
       formData
     );
   },
@@ -204,13 +168,6 @@ export const contractPostAPI = {
    */
   requestChange: async (contractId: string, reason: string): Promise<ApiResponse<any>> => {
     return apiService.post<any>(`contracts/${contractId}/details/request-change`, { reason });
-  },
-
-  /**
-   * POST /api/contracts/{contractId}/milestones/accept
-   */
-  acceptMilestones: async (contractId: string): Promise<ApiResponse<any>> => {
-    return apiService.post<any>(`contracts/${contractId}/milestones/accept`);
   },
 
   /**

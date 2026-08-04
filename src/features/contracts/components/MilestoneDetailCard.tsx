@@ -106,5 +106,3 @@ export function MilestoneDetailCard({
     </div>
   );
 }
-
-export default MilestoneDetailCard;

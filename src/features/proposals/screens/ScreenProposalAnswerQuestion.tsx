@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, Maximize2, Save, Send, ShieldAlert, X } from 'lucide-react';
-import { useApp } from '../../../app/providers/AppProvider';
+import { ArrowLeft, CheckCircle2, Clock3, Play, Save, Send } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -15,41 +14,12 @@ import {
   type QuestionTimerStateDto,
 } from '../../../types/models/Proposal';
 import type { JobPostQuestionDto } from '../../../types/models/Job';
+import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 type AnswerRouteState = {
   proposalId?: string;
   jobPostId?: string;
-};
-
-const cheatingEventTypes = {
-  copy: 0,
-  paste: 1,
-  tabSwitch: 2,
-  screenshotAttempt: 3,
-  focusLoss: 4,
-  fullscreenExit: 5,
-} as const;
-
-type CheatingEventType = typeof cheatingEventTypes[keyof typeof cheatingEventTypes];
-
-interface CheatingWarning {
-  readonly title: string;
-  readonly message: string;
-  readonly totalCount?: number;
-  readonly blocking?: boolean;
-}
-
-interface CheatingWarningOptions {
-  readonly blocking?: boolean;
-  readonly deferUntilVisible?: boolean;
-}
-
-const createClientEventId = (eventLabel: string): string => {
-  const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
-
-  return `${eventLabel.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${randomPart}`;
 };
 
 const formatRemainingTime = (seconds: number) => {
@@ -60,9 +30,9 @@ const formatRemainingTime = (seconds: number) => {
 };
 
 export default function ScreenProposalAnswerQuestion() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useApp();
   const { jobPostId: routeJobPostId } = useParams<{ jobPostId: string }>();
   const routeState = (location.state || {}) as AnswerRouteState;
   const search = new URLSearchParams(location.search);
@@ -83,18 +53,8 @@ export default function ScreenProposalAnswerQuestion() {
   const [saving, setSaving] = useState(false);
   const [timerLoading, setTimerLoading] = useState(false);
   const [error, setError] = useState('');
-  const [cheatingWarning, setCheatingWarning] = useState<CheatingWarning | null>(null);
-  const [secureModeStarted, setSecureModeStarted] = useState(false);
-  const [secureModeResumeRequired, setSecureModeResumeRequired] = useState(false);
-  const [contentShielded, setContentShielded] = useState(false);
-  const secureAreaRef = useRef<HTMLDivElement | null>(null);
-  const activeQuestionIdRef = useRef<string | null>(null);
-  const warningTimerRef = useRef<number | null>(null);
-  const pendingWarningRef = useRef<CheatingWarning | null>(null);
-  const focusLossActiveRef = useRef(false);
-  const fullscreenExitLoggedRef = useRef(false);
-  const lastScreenshotAttemptAtRef = useRef(0);
-  const lastFullscreenGuardEventAtRef = useRef(0);
+  const [proposalReadinessError, setProposalReadinessError] = useState('');
+  const [interviewStarted, setInterviewStarted] = useState(false);
   const completingQuestionRef = useRef(false);
   const completingReviewRef = useRef(false);
 
@@ -118,17 +78,6 @@ export default function ScreenProposalAnswerQuestion() {
   const isReviewMode = allQuestionsLocked && sortedQuestions.length > 0;
   const isReviewEditable = Boolean(reviewSession && !reviewSession.isLocked && reviewRemainingSeconds > 0);
 
-  const watermarkText = useMemo(() => {
-    const identity = user?.email || user?.id || 'freelancer';
-    const proposalLabel = proposalId ? proposalId.slice(0, 8) : 'proposal';
-    return `${identity} | Proposal ${proposalLabel} | ${new Date().toLocaleString()}`;
-  }, [proposalId, user?.email, user?.id]);
-
-  const watermarkTiles = useMemo(
-    () => Array.from({ length: 48 }, (_, index) => `${watermarkText} | ${index + 1}`),
-    [watermarkText]
-  );
-
   useEffect(() => {
     const load = async () => {
       if (!proposalId || !jobPostId) {
@@ -141,17 +90,29 @@ export default function ScreenProposalAnswerQuestion() {
         setLoading(true);
         setError('');
 
-        const [questionsResponse, answersResponse] = await Promise.all([
+        const [questionsResponse, answersResponse, proposalResponse] = await Promise.all([
           jobGetAPI.getJobPostQuestions(jobPostId),
           proposalGetAPI.getProposalAnswers(proposalId),
+          proposalGetAPI.getProposalDetail(proposalId),
         ]);
 
         if (!questionsResponse.success) {
           setError(questionsResponse.message || 'Questions could not be loaded.');
           return;
         }
+        if (!proposalResponse.success || !proposalResponse.data) {
+          setProposalReadinessError(
+            proposalResponse.message || 'Proposal details could not be verified. Return to the proposal and save it again.'
+          );
+          return;
+        }
 
-        const loadedQuestions = questionsResponse.data || [];
+        setProposalReadinessError(getProposalNarrativeValidationError(proposalResponse.data));
+
+        const loadedQuestions = (questionsResponse.data || []).map(question => ({
+          ...question,
+          isRequired: question.isRequired ?? true,
+        }));
         setQuestions(loadedQuestions);
 
         const answerMap: Record<string, string> = {};
@@ -172,27 +133,6 @@ export default function ScreenProposalAnswerQuestion() {
     load();
   }, [proposalId, jobPostId]);
 
-  useEffect(() => {
-    activeQuestionIdRef.current = activeQuestion?.jobPostQuestionsId || null;
-  }, [activeQuestion]);
-
-  const showCheatingWarning = useCallback((warning: CheatingWarning) => {
-    setCheatingWarning(warning);
-    if (warningTimerRef.current !== null) {
-      window.clearTimeout(warningTimerRef.current);
-      warningTimerRef.current = null;
-    }
-
-    if (warning.blocking) {
-      return;
-    }
-
-    warningTimerRef.current = window.setTimeout(() => {
-      setCheatingWarning(null);
-      warningTimerRef.current = null;
-    }, 6500);
-  }, []);
-
   const markQuestionLocked = useCallback((questionId: string) => {
     setLockedQuestionIds(prev => {
       const next = new Set(prev);
@@ -200,64 +140,6 @@ export default function ScreenProposalAnswerQuestion() {
       return next;
     });
   }, []);
-
-  const logCheatingEvent = useCallback(async (
-    eventType: CheatingEventType,
-    title: string,
-    options?: CheatingWarningOptions
-  ) => {
-    if (!proposalId) {
-      return;
-    }
-
-    try {
-      const response = await proposalPostAPI.logCheatingEvent(proposalId, {
-        eventType,
-        jobPostQuestionId: activeQuestionIdRef.current,
-        clientEventId: createClientEventId(title),
-        occurredAt: new Date().toISOString(),
-        metadata: {
-          path: window.location.pathname,
-          visibilityState: document.visibilityState,
-          fullscreen: String(Boolean(document.fullscreenElement)),
-          focused: String(document.hasFocus()),
-        },
-      });
-
-      const warning: CheatingWarning = {
-        title,
-        message: response.success && response.data
-          ? response.data.warningMessage
-          : 'Cheating behavior detected. This action has been recorded.',
-        totalCount: response.data?.totalSessionEventCount,
-        blocking: options?.blocking,
-      };
-
-      if (options?.deferUntilVisible && document.visibilityState === 'hidden') {
-        pendingWarningRef.current = warning;
-        return;
-      }
-
-      showCheatingWarning(warning);
-    } catch (_error) {
-      showCheatingWarning({
-        title,
-        message: 'Cheating behavior detected. The system will retry logging when possible.',
-        blocking: options?.blocking,
-      });
-    }
-  }, [proposalId, showCheatingWarning]);
-
-  const dismissCheatingWarning = useCallback(() => {
-    setCheatingWarning(null);
-    if (!secureModeResumeRequired) {
-      setContentShielded(false);
-    }
-    if (warningTimerRef.current !== null) {
-      window.clearTimeout(warningTimerRef.current);
-      warningTimerRef.current = null;
-    }
-  }, [secureModeResumeRequired]);
 
   const startQuestionAtIndex = useCallback(async (startIndex: number) => {
     if (!proposalId || sortedQuestions.length === 0) {
@@ -274,7 +156,6 @@ export default function ScreenProposalAnswerQuestion() {
         }
 
         setActiveQuestionIndex(index);
-        activeQuestionIdRef.current = question.jobPostQuestionsId;
         const response = await proposalPostAPI.startQuestionTimer(proposalId, question.jobPostQuestionsId);
         if (!response.success || !response.data) {
           setError(response.message || 'Question timer could not be started.');
@@ -300,33 +181,15 @@ export default function ScreenProposalAnswerQuestion() {
     }
   }, [lockedQuestionIds, markQuestionLocked, proposalId, sortedQuestions]);
 
-  const handleStartSecureMode = useCallback(async () => {
-    setError('');
-    const fullscreenTarget = secureAreaRef.current ?? document.documentElement;
-
-    try {
-      if (fullscreenTarget.requestFullscreen) {
-        await fullscreenTarget.requestFullscreen();
-      }
-
-      setSecureModeStarted(true);
-      setSecureModeResumeRequired(false);
-      setContentShielded(false);
-      setCheatingWarning(null);
-      fullscreenExitLoggedRef.current = false;
-      void startQuestionAtIndex(activeQuestionIndex);
-    } catch (_error) {
-      setSecureModeStarted(true);
-      setSecureModeResumeRequired(true);
-      setContentShielded(true);
-      void startQuestionAtIndex(activeQuestionIndex);
-      showCheatingWarning({
-        title: 'Fullscreen could not start',
-        message: 'Your browser blocked fullscreen mode. Return to fullscreen to continue the secure session.',
-        blocking: true,
-      });
+  const handleStartInterview = useCallback(() => {
+    if (proposalReadinessError) {
+      setError(proposalReadinessError);
+      return;
     }
-  }, [activeQuestionIndex, showCheatingWarning, startQuestionAtIndex]);
+    setError('');
+    setInterviewStarted(true);
+    void startQuestionAtIndex(activeQuestionIndex);
+  }, [activeQuestionIndex, proposalReadinessError, startQuestionAtIndex]);
 
   const completeQuestion = useCallback(async (reason: QuestionTimerLockedReason) => {
     if (!proposalId || !activeQuestion || completingQuestionRef.current) {
@@ -455,15 +318,15 @@ export default function ScreenProposalAnswerQuestion() {
   }, [answers, proposalId, reviewSession, reviewableQuestions]);
 
   useEffect(() => {
-    if (!secureModeStarted || !isReviewMode || reviewSession || reviewLoading) {
+    if (!interviewStarted || !isReviewMode || reviewSession || reviewLoading) {
       return;
     }
 
     void startInterviewReview();
-  }, [isReviewMode, reviewLoading, reviewSession, secureModeStarted, startInterviewReview]);
+  }, [interviewStarted, isReviewMode, reviewLoading, reviewSession, startInterviewReview]);
 
   useEffect(() => {
-    if (!secureModeStarted || !timerState || timerState.isLocked || !activeQuestion) {
+    if (!interviewStarted || !timerState || timerState.isLocked || !activeQuestion) {
       return undefined;
     }
 
@@ -480,10 +343,10 @@ export default function ScreenProposalAnswerQuestion() {
     tick();
     const intervalId = window.setInterval(tick, 1000);
     return () => window.clearInterval(intervalId);
-  }, [activeQuestion, completeQuestion, secureModeStarted, timerState]);
+  }, [activeQuestion, completeQuestion, interviewStarted, timerState]);
 
   useEffect(() => {
-    if (!secureModeStarted || !reviewSession || reviewSession.isLocked) {
+    if (!interviewStarted || !reviewSession || reviewSession.isLocked) {
       return undefined;
     }
 
@@ -500,194 +363,7 @@ export default function ScreenProposalAnswerQuestion() {
     tick();
     const intervalId = window.setInterval(tick, 1000);
     return () => window.clearInterval(intervalId);
-  }, [completeInterviewReview, reviewSession, secureModeStarted]);
-
-  useEffect(() => {
-    if (!proposalId) {
-      return undefined;
-    }
-
-    const flushPendingWarning = () => {
-      if (pendingWarningRef.current === null) {
-        return;
-      }
-
-      showCheatingWarning(pendingWarningRef.current);
-      pendingWarningRef.current = null;
-    };
-
-    const clearClipboardBestEffort = () => {
-      if (!navigator.clipboard?.writeText) {
-        return;
-      }
-
-      void navigator.clipboard.writeText('').catch(() => undefined);
-    };
-
-    const handleCopy = (event: ClipboardEvent) => {
-      event.preventDefault();
-      void logCheatingEvent(cheatingEventTypes.copy, 'Copy blocked');
-    };
-
-    const handlePaste = (event: ClipboardEvent) => {
-      event.preventDefault();
-      void logCheatingEvent(cheatingEventTypes.paste, 'Paste blocked');
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        setContentShielded(true);
-        void logCheatingEvent(cheatingEventTypes.tabSwitch, 'Tab switch detected', {
-          blocking: true,
-          deferUntilVisible: true,
-        });
-        return;
-      }
-
-      flushPendingWarning();
-    };
-
-    const logFullscreenGuardEvent = (title: string) => {
-      const now = Date.now();
-      if (now - lastFullscreenGuardEventAtRef.current < 1500) {
-        return;
-      }
-
-      lastFullscreenGuardEventAtRef.current = now;
-      setContentShielded(true);
-      if (!document.fullscreenElement) {
-        setSecureModeResumeRequired(true);
-      }
-
-      void logCheatingEvent(cheatingEventTypes.fullscreenExit, title, {
-        blocking: true,
-      });
-    };
-
-    const handleGuardKey = (event: KeyboardEvent) => {
-      if (event.key === 'PrintScreen') {
-        event.preventDefault();
-        event.stopPropagation();
-        const now = Date.now();
-        if (now - lastScreenshotAttemptAtRef.current < 1500) {
-          return;
-        }
-
-        lastScreenshotAttemptAtRef.current = now;
-        setContentShielded(true);
-        clearClipboardBestEffort();
-        void logCheatingEvent(cheatingEventTypes.screenshotAttempt, 'Screenshot attempt detected', {
-          blocking: true,
-        });
-        return;
-      }
-
-      if (event.key === 'Escape' && secureModeStarted) {
-        event.preventDefault();
-        event.stopPropagation();
-        logFullscreenGuardEvent('Escape key detected in secure mode');
-      }
-    };
-
-    const handleBeforePrint = (event: Event) => {
-      event.preventDefault();
-      setContentShielded(true);
-      void logCheatingEvent(cheatingEventTypes.screenshotAttempt, 'Print or screenshot attempt detected', {
-        blocking: true,
-      });
-    };
-
-    const handleAfterPrint = () => {
-      setContentShielded(false);
-    };
-
-    const handleBlur = () => {
-      setContentShielded(true);
-      if (focusLossActiveRef.current) {
-        return;
-      }
-
-      focusLossActiveRef.current = true;
-      void logCheatingEvent(cheatingEventTypes.focusLoss, 'Window focus lost', {
-        blocking: true,
-        deferUntilVisible: true,
-      });
-    };
-
-    const handleFocus = () => {
-      focusLossActiveRef.current = false;
-      flushPendingWarning();
-    };
-
-    const handleFullscreenChange = () => {
-      if (!secureModeStarted) {
-        return;
-      }
-
-      if (document.fullscreenElement) {
-        fullscreenExitLoggedRef.current = false;
-        return;
-      }
-
-      setContentShielded(true);
-      setSecureModeResumeRequired(true);
-      if (fullscreenExitLoggedRef.current) {
-        return;
-      }
-
-      fullscreenExitLoggedRef.current = true;
-      logFullscreenGuardEvent('Fullscreen exited');
-    };
-
-    document.addEventListener('copy', handleCopy);
-    document.addEventListener('paste', handlePaste);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    document.addEventListener('keydown', handleGuardKey, true);
-    document.addEventListener('keyup', handleGuardKey, true);
-    window.addEventListener('beforeprint', handleBeforePrint);
-    window.addEventListener('afterprint', handleAfterPrint);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener('copy', handleCopy);
-      document.removeEventListener('paste', handlePaste);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      document.removeEventListener('keydown', handleGuardKey, true);
-      document.removeEventListener('keyup', handleGuardKey, true);
-      window.removeEventListener('beforeprint', handleBeforePrint);
-      window.removeEventListener('afterprint', handleAfterPrint);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, [proposalId, logCheatingEvent, secureModeStarted, showCheatingWarning]);
-
-  useEffect(() => {
-    if (!secureModeStarted) {
-      return undefined;
-    }
-
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [secureModeStarted]);
-
-  useEffect(() => {
-    return () => {
-      if (warningTimerRef.current !== null) {
-        window.clearTimeout(warningTimerRef.current);
-      }
-    };
-  }, []);
+  }, [completeInterviewReview, interviewStarted, reviewSession]);
 
   const handleSaveDraft = async () => {
     setSaving(true);
@@ -719,6 +395,11 @@ export default function ScreenProposalAnswerQuestion() {
   };
 
   const handleSubmit = async () => {
+    if (proposalReadinessError) {
+      setError(proposalReadinessError);
+      return;
+    }
+
     if (!allQuestionsLocked) {
       setError('Complete or time out all questions before submitting.');
       return;
@@ -755,10 +436,6 @@ export default function ScreenProposalAnswerQuestion() {
       return;
     }
 
-    if (statusResponse.data?.cheatingPenalty?.message) {
-      alert(statusResponse.data.cheatingPenalty.message);
-    }
-
     navigate('/proposals', { state: { submittedProposalId: proposalId } });
   };
 
@@ -774,125 +451,55 @@ export default function ScreenProposalAnswerQuestion() {
 
   return (
     <AppLayout hideTopNav hideAIWidget excludeMeshGradient>
-      <div ref={secureAreaRef} className="relative h-screen overflow-y-auto bg-background px-4 py-6 pb-28 sm:py-8">
-        {secureModeStarted ? (
-          <div className="pointer-events-none absolute inset-0 z-10 grid grid-cols-2 gap-10 overflow-hidden opacity-[0.055] sm:grid-cols-3 lg:grid-cols-4">
-            {watermarkTiles.map(tile => (
-              <span
-                key={tile}
-                className="-rotate-12 select-none whitespace-nowrap text-xs font-bold uppercase text-red-500"
-              >
-                {tile}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        {contentShielded ? (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/95 px-4 text-center backdrop-blur-md">
-            <div className="max-w-sm rounded-lg border border-red-500/30 bg-background p-5 shadow-xl">
-              <ShieldAlert size={28} className="mx-auto text-red-500" />
-              <p className="mt-3 text-base font-bold text-primary">Content hidden</p>
-              <p className="mt-2 text-sm text-secondary">
-                {secureModeResumeRequired
-                  ? 'Secure fullscreen mode is required before you can continue.'
-                  : 'Return to the secure session and acknowledge the warning to continue.'}
-              </p>
-              {secureModeResumeRequired ? (
-                <button
-                  type="button"
-                  onClick={() => void handleStartSecureMode()}
-                  className="btn-cyan mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm"
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Maximize2 size={16} />
-                  <span>Resume Secure Mode</span>
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        {!secureModeStarted ? (
+      <div className="relative h-screen overflow-y-auto bg-background px-4 py-6 pb-28 sm:py-8">
+        {!interviewStarted ? (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 px-4 backdrop-blur-md">
             <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 text-center shadow-2xl">
-              <ShieldAlert size={32} className="mx-auto text-red-500" />
-              <h2 className="mt-3 text-xl font-bold text-primary">Secure interview mode</h2>
+              <Clock3 size={32} className="mx-auto text-[var(--gb-cyan)]" />
+              <h2 className="mt-3 text-xl font-bold text-primary">Timed interview questions</h2>
               <p className="mt-2 text-sm text-secondary">
-                Fullscreen monitoring is required while answering timed interview questions.
+                Each question has a three-minute answer window. The timer starts only after you continue.
               </p>
-              <button
-                type="button"
-                onClick={() => void handleStartSecureMode()}
-                className="btn-cyan mt-5 inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <Maximize2 size={16} />
-                <span>Start Secure Mode</span>
-              </button>
+              {proposalReadinessError ? (
+                <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-left text-sm text-red-500">
+                  <p>{proposalReadinessError}</p>
+                  <p className="mt-1 text-xs">Update the proposal details before starting the timed interview.</p>
+                </div>
+              ) : null}
+              <div className="mt-5 flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground"
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+                {proposalReadinessError ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/proposals/${proposalId}/edit`)}
+                    className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+                  >
+                    Edit proposal details
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStartInterview}
+                    className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
+                  >
+                    <Play size={16} />
+                    Start interview
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        ) : null}
-
-        {cheatingWarning ? (
-          cheatingWarning.blocking ? (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-lg border border-red-500/40 bg-background p-5 shadow-2xl">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 text-red-500">
-                    <AlertTriangle size={24} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-base font-bold text-primary">{cheatingWarning.title}</p>
-                    <p className="mt-2 text-sm text-secondary">{cheatingWarning.message}</p>
-                    {cheatingWarning.totalCount !== undefined ? (
-                      <p className="mt-3 text-xs font-semibold text-red-500">
-                        Logged events in this session: {cheatingWarning.totalCount}
-                      </p>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={secureModeResumeRequired ? () => void handleStartSecureMode() : dismissCheatingWarning}
-                      className="mt-5 w-full rounded-lg border border-red-500 bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600"
-                    >
-                      {secureModeResumeRequired ? 'Resume Secure Mode' : 'I understand'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="fixed right-4 top-4 z-50 w-[min(360px,calc(100vw-2rem))] rounded-lg border border-red-500/30 bg-background p-4 shadow-xl">
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-red-500">
-                  <AlertTriangle size={20} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-bold text-primary">{cheatingWarning.title}</p>
-                    <button
-                      type="button"
-                      onClick={dismissCheatingWarning}
-                      className="rounded border border-border bg-transparent p-1 text-muted-foreground hover:text-foreground"
-                      aria-label="Dismiss warning"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <p className="mt-1 text-sm text-secondary">{cheatingWarning.message}</p>
-                  {cheatingWarning.totalCount !== undefined ? (
-                    <p className="mt-2 text-xs font-semibold text-red-500">
-                      Logged events in this session: {cheatingWarning.totalCount}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          )
         ) : null}
 
         <div className="relative z-20 max-w-4xl mx-auto">
-          {!secureModeStarted ? (
+          {!interviewStarted ? (
             <button
               onClick={() => navigate(-1)}
               className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer"
@@ -961,19 +568,14 @@ export default function ScreenProposalAnswerQuestion() {
                         <span>
                           {question.orderIndex}. {question.questionText}
                         </span>
-                        {question.isRequired && (
-                          <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                            Required
-                          </span>
-                        )}
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${question.isRequired ? 'bg-red-500/10 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+                          {t(question.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
+                        </span>
                       </span>
                       <textarea
                         rows={5}
                         value={answers[question.jobPostQuestionsId] || ''}
-                        disabled={!isReviewEditable || saving || secureModeResumeRequired}
-                        onFocus={() => {
-                          activeQuestionIdRef.current = question.jobPostQuestionsId;
-                        }}
+                        disabled={!isReviewEditable || saving}
                         onChange={event => setAnswers(prev => ({
                           ...prev,
                           [question.jobPostQuestionsId]: event.target.value,
@@ -1004,19 +606,14 @@ export default function ScreenProposalAnswerQuestion() {
                     <span>
                       {activeQuestion.orderIndex}. {activeQuestion.questionText}
                     </span>
-                    {activeQuestion.isRequired && (
-                      <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-red-500">
-                        Required
-                      </span>
-                    )}
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${activeQuestion.isRequired ? 'bg-red-500/10 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+                      {t(activeQuestion.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
+                    </span>
                   </span>
                   <textarea
                     rows={7}
                     value={answers[activeQuestion.jobPostQuestionsId] || ''}
-                    disabled={!secureModeStarted || secureModeResumeRequired || timerLoading || saving}
-                    onFocus={() => {
-                      activeQuestionIdRef.current = activeQuestion.jobPostQuestionsId;
-                    }}
+                    disabled={!interviewStarted || timerLoading || saving}
                     onChange={event => setAnswers(prev => ({
                       ...prev,
                       [activeQuestion.jobPostQuestionsId]: event.target.value,
@@ -1032,7 +629,7 @@ export default function ScreenProposalAnswerQuestion() {
             )}
 
             <div className="sticky bottom-0 z-30 -mx-6 mt-6 flex flex-wrap justify-end gap-3 border-t border-border bg-background/95 px-6 py-4 shadow-[0_-16px_32px_rgba(0,0,0,0.08)] backdrop-blur-md">
-              {!secureModeStarted ? (
+              {!interviewStarted ? (
                 <button
                   type="button"
                   onClick={handleSaveDraft}
@@ -1047,11 +644,13 @@ export default function ScreenProposalAnswerQuestion() {
                 <button
                   type="button"
                   onClick={() => void completeQuestion(QuestionTimerLockedReason.Completed)}
-                  disabled={saving || timerLoading || !secureModeStarted || secureModeResumeRequired}
+                  disabled={saving || timerLoading || !interviewStarted}
                   className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground hover:bg-muted/20 disabled:opacity-60"
                 >
                   <CheckCircle2 size={16} />
-                  Continue Interview
+                  {t(!activeQuestion.isRequired && !(answers[activeQuestion.jobPostQuestionsId] || '').trim()
+                    ? 'proposalQuestions.skipAndContinue'
+                    : 'proposalQuestions.continueInterview')}
                 </button>
               ) : null}
               <button

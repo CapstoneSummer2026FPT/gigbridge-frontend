@@ -8,14 +8,19 @@ import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { savedJobAPI } from '../../../api/savedJobAPI';
-import { userGetAPI } from '../../../api/userAPI/GET';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import type { Job, JobPostDetailDto } from '../../../types/models/Job';
-import type { User } from '../../../types/models/User';
+import type { ClientProfileDetailDto } from '../../../types/models/Profile';
 import { UserRole } from '../../../types/models/User';
 import { JobPostStatus, type GetMyJobPostDetailDto } from '../../../types/models/Job';
 import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
 import { getProposalCreatePath } from '../../proposals/utils/proposalRoutes';
+
+interface ClientIdentity {
+  id: string;
+  fullName: string;
+}
 
 // ── Local helpers ─────────────────────────────────────────────
 const formatPostedAt = (createdAt?: string): string => {
@@ -54,7 +59,7 @@ const toJobFromClientDetail = (dto: GetMyJobPostDetailDto): Job => ({
   postedAt: formatPostedAt(dto.createdAt),
   isRemote: !dto.location || dto.location.toLowerCase().includes('remote'),
   gigcoin_cost: 0,
-  visibility: dto.visibility,
+  visibility: dto.visibility ?? undefined,
   milestonePlans: dto.milestonePlans || [],
 });
 
@@ -106,8 +111,8 @@ export function useJobDetail() {
 
   // ── Data state ────────────────────────────────────────────────
   const [job, setJob] = useState<Job | null>(null);
-  const [client, setClient] = useState<User | null>(null);
-  const [clientProfile, setClientProfile] = useState<any>(null);
+  const [client, setClient] = useState<ClientIdentity | null>(null);
+  const [clientProfile, setClientProfile] = useState<ClientProfileDetailDto | null>(null);
   const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
   const [myProposal, setMyProposal] = useState<ProposalDetailDto | null>(null);
   const [gigcoinBalance, setGigcoinBalance] = useState<number | null>(null);
@@ -168,8 +173,8 @@ export function useJobDetail() {
         const data = await jobGetAPI.getJobById(activeJobPostId);
         setJob(data.job);
 
-        let fetchedClient: User | null = data.client ?? null;
-        let fetchedClientProfile: any = data.clientProfile ?? null;
+        let fetchedClient: ClientIdentity | null = null;
+        let fetchedClientProfile: ClientProfileDetailDto | null = null;
 
         if (!fetchedClient && data.job.clientId) {
           try {
@@ -178,26 +183,9 @@ export function useJobDetail() {
               const apiData = profileRes.data;
               fetchedClient = {
                 id: apiData.userId,
-                full_name: apiData.userFullName || 'Client User',
-                avatar: apiData.userAvatar,
-                email: apiData.userEmail || '',
-                phone_number: '',
-                role: UserRole.Client,
-              } as any;
-              fetchedClientProfile = {
-                user_id: apiData.userId,
-                company_name: apiData.companyName || 'Company Name',
-                company_website: apiData.companyWebsite,
-                company_size: apiData.companySize,
-                industry: apiData.industry || 'Technology',
-                company_description: apiData.companyDescription || '',
-                location: apiData.location || 'San Francisco, CA',
-                rating: apiData.rating,
-                reviewCount: apiData.reviewCount,
-                totalSpent: apiData.totalSpent,
-                postedJobs: apiData.postedJobs,
-                isVerifiedClient: apiData.isVerifiedClient,
+                fullName: apiData.userFullName || 'Client',
               };
+              fetchedClientProfile = apiData;
             }
           } catch (err) {
             console.error('Failed to fetch client profile in useJobDetail:', err);
@@ -271,8 +259,9 @@ export function useJobDetail() {
   const fetchGigcoinBalance = useCallback(async () => {
     if (role !== UserRole.Freelancer || !user) return;
     try {
-      const bal = await userGetAPI.getGigcoinBalance(user.id);
-      setGigcoinBalance(bal.gigcoin_balance);
+      const response = await walletGetAPI.getMyWallet();
+      // Application cost is an in-platform payment, spendable from either pool.
+      setGigcoinBalance(response.success && response.data ? response.data.totalSpendableGigCoin : null);
     } catch {
       // non-critical — silently ignore
     }

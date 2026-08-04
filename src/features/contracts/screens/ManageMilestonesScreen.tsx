@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
 import {
   Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock,
@@ -14,12 +14,12 @@ import type { ContractDto, Milestone } from '../../../types/models/Contract';
 import { MilestoneStatus, ContractStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import { useTranslation } from '../../../hooks/useTranslation';
-import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
-
 import { canEditMilestone, getMilestoneStatusLabel, formatContractAmount, formatContractDate } from '../../../shared/utils/contractUtils';
 import { toast } from 'sonner';
 import '../styles/manage-milestones-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { EarlyWithdrawalDialog } from '../../../shared/components/EarlyWithdrawalDialog';
+import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
 
 interface MilestoneFormData {
   title: string;
@@ -58,21 +58,28 @@ export default function ManageMilestonesScreen() {
   });
   const [expandedMilestoneId, setExpandedMilestoneId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const canEditMilestones = contract
-    ? contract.status === ContractStatus.PendingFreelancerSelection ||
-      contract.status === ContractStatus.InNegotiation ||
-      contract.status === ContractStatus.PendingContractDetails
-    : false;
-  const shouldEnforceBudgetTotal = mode === 'contract-edit' || mode === 'jobpost-setup';
+  const [withdrawingMilestoneId, setWithdrawingMilestoneId] = useState<string | null>(null);
+  const [withdrawDialogMilestone, setWithdrawDialogMilestone] = useState<Milestone | null>(null);
+  const [withdrawalError, setWithdrawalError] = useState<{ milestoneId: string; message: string } | null>(null);
+  const withdrawalRequestInFlightRef = useRef(false);
   const isClient = role === UserRole.Client;
   const isFreelancer = role === UserRole.Freelancer;
-  const baselineReleasePercentage = 0.8;
-  const getBaselineReleaseCap = (milestone: Milestone) => Number((milestone.amount * baselineReleasePercentage).toFixed(2));
-  const isMilestoneReleasedToCap = (milestone: Milestone) => (milestone.releasedAmount ?? 0) >= getBaselineReleaseCap(milestone);
+  const canEditMilestones = Boolean(isClient && contract && (
+      contract.status === ContractStatus.PendingFreelancerSelection ||
+      contract.status === ContractStatus.InNegotiation ||
+      contract.status === ContractStatus.PendingContractDetails
+  ));
+  const shouldEnforceBudgetTotal = mode === 'contract-edit' || mode === 'jobpost-setup';
   const isMilestoneCompleteForReview = (milestone: Milestone) =>
-    milestone.status === MilestoneStatus.Approved && isMilestoneReleasedToCap(milestone);
-  const getMilestoneDisplayLabel = (milestone: Milestone) =>
-    isMilestoneReleasedToCap(milestone) ? 'Released' : getMilestoneStatusLabel(milestone.status);
+    milestone.status === MilestoneStatus.Approved;
+  const getMilestoneDisplayLabel = (milestone: Milestone) => {
+    const releasedAmount = Number(milestone.releasedAmount ?? 0);
+    if (milestone.amount > 0 && releasedAmount >= milestone.amount) return t('workspace.releasedInFull');
+
+    const eligibility = getEarlyWithdrawalEligibility(milestones, milestone, contract?.status, isFreelancer);
+    if (eligibility.isApproved && eligibility.isAtCap) return t('earlyWithdrawal.maximumReached');
+    return getMilestoneStatusLabel(milestone.status);
+  };
 
   // Load contract and milestones
   const loadData = async () => {
@@ -110,6 +117,48 @@ export default function ManageMilestonesScreen() {
   useEffect(() => {
     loadData();
   }, [contractId]);
+
+  const openWithdrawDialog = (milestone: Milestone) => {
+    setWithdrawalError(null);
+    setWithdrawDialogMilestone(milestone);
+  };
+
+  const closeWithdrawDialog = () => {
+    if (withdrawingMilestoneId) return;
+    setWithdrawDialogMilestone(null);
+  };
+
+  const handleWithdrawMilestone = async () => {
+    if (!contractId || !withdrawDialogMilestone || withdrawingMilestoneId || withdrawalRequestInFlightRef.current) return;
+
+    const milestoneId = withdrawDialogMilestone.id;
+    withdrawalRequestInFlightRef.current = true;
+    setWithdrawingMilestoneId(milestoneId);
+    setWithdrawalError(null);
+    try {
+      const response = await contractPostAPI.withdrawMilestone(contractId, milestoneId);
+
+      if (!response.success) {
+        const message = response.message || t('workspace.failedWithdrawFundsError');
+        setWithdrawalError({ milestoneId, message });
+        if (response.statusCode === 409) {
+          setWithdrawDialogMilestone(null);
+          await loadData();
+        }
+        return;
+      }
+
+      setWithdrawDialogMilestone(null);
+      toast.success(response.message || t('earlyWithdrawal.success'));
+      await loadData();
+      window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    } catch {
+      setWithdrawalError({ milestoneId, message: t('workspace.failedWithdrawFundsError') });
+    } finally {
+      withdrawalRequestInFlightRef.current = false;
+      setWithdrawingMilestoneId(null);
+    }
+  };
 
   // Calculate remaining budget
   const calculateRemainingBudget = () => {
@@ -252,6 +301,7 @@ export default function ManageMilestonesScreen() {
         due_date: formData.due_date,
         status: MilestoneStatus.Pending,
         paid_at: null,
+        workItems: [],
       };
 
       setMilestones(prev => [...prev, nextMilestone]);
@@ -322,6 +372,11 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleCompleteSetup = async () => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     if (milestones.length === 0) {
       setError('At least one milestone is required.');
       toast.error('At least one milestone is required.');
@@ -369,6 +424,11 @@ export default function ManageMilestonesScreen() {
   };
 
   const handleSubmitDetails = async () => {
+    if (!canEditMilestones) {
+      toast.info('Milestones are locked for this contract stage.');
+      return;
+    }
+
     const remaining = calculateRemainingBudget();
     if (remaining < 0) {
       const message = getBudgetExceededMessage();
@@ -419,48 +479,6 @@ export default function ManageMilestonesScreen() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit details');
       toast.error(err instanceof Error ? err.message : 'Failed to submit details');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleMilestoneWorkflowAction = async (
-    milestoneId: string,
-    action: 'start' | 'approve' | 'request-revision' | 'withdraw'
-  ) => {
-    if (!contractId) return;
-
-    try {
-      setError(null);
-      setIsSubmitting(true);
-
-      const response = action === 'start'
-        ? await contractPostAPI.startMilestone(contractId, milestoneId)
-        : action === 'approve'
-          ? await contractPostAPI.approveMilestone(contractId, milestoneId)
-          : action === 'request-revision'
-            ? await contractPostAPI.requestMilestoneRevision(contractId, milestoneId)
-            : await contractPostAPI.withdrawMilestone(contractId, milestoneId);
-
-      if (!response.success) {
-        throw new Error(response.message || 'Milestone action failed.');
-      }
-
-      const message = action === 'start'
-        ? 'Milestone started.'
-        : action === 'approve'
-          ? 'Milestone approved.'
-          : action === 'request-revision'
-            ? 'Revision requested.'
-            : 'Milestone payout released.';
-
-      toast.success(message);
-      setSuccessMessage(message);
-      setTimeout(() => setSuccessMessage(null), 3000);
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update milestone workflow');
-      toast.error(err instanceof Error ? err.message : 'Failed to update milestone workflow');
     } finally {
       setIsSubmitting(false);
     }
@@ -589,7 +607,7 @@ export default function ManageMilestonesScreen() {
             <div className="col-span-12 lg:col-span-8 flex flex-col lg:h-full min-h-0 lg:overflow-hidden">
               
               {/* Create/Edit Form panel */}
-              {showCreateForm && (
+              {isClient && showCreateForm && (
                 <div className="mb-5 shrink-0">
                   <div className="glass-card p-5 relative">
                     <div className="form-header flex justify-between items-center pb-2 border-b border-border/20 mb-4">
@@ -691,14 +709,16 @@ export default function ManageMilestonesScreen() {
                   <h2 className="text-sm font-bold text-foreground font-zentry uppercase tracking-wider">
                     {t('contracts.milestonesTimeline', { count: milestones.length })}
                   </h2>
-                  <button
-                    onClick={handleCreateClick}
-                    className="btn-primary-custom px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
-                    disabled={showCreateForm || !canEditMilestones}
-                  >
-                    <Plus size={13} />
-                    {t('contracts.newMilestone')}
-                  </button>
+                  {isClient && (
+                    <button
+                      onClick={handleCreateClick}
+                      className="btn-primary-custom px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"
+                      disabled={showCreateForm || !canEditMilestones}
+                    >
+                      <Plus size={13} />
+                      {t('contracts.newMilestone')}
+                    </button>
+                  )}
                 </div>
 
                 {/* Vertical timeline spine line */}
@@ -718,6 +738,13 @@ export default function ManageMilestonesScreen() {
                       {milestones.map((milestone, index) => {
                         const isExpanded = expandedMilestoneId === milestone.id;
                         const isCompleted = isMilestoneCompleteForReview(milestone);
+                        const withdrawalEligibility = getEarlyWithdrawalEligibility(
+                          milestones,
+                          milestone,
+                          contract?.status,
+                          isFreelancer,
+                        );
+                        const isReleasedInFull = milestone.amount > 0 && Number(milestone.releasedAmount ?? 0) >= milestone.amount;
 
                         return (
                           <div key={milestone.id} className="relative">
@@ -772,6 +799,7 @@ export default function ManageMilestonesScreen() {
  
                                   <button
                                     type="button"
+                                    aria-label={t('contracts.toggleMilestoneDetails', { title: milestone.title })}
                                     onClick={() =>
                                       setExpandedMilestoneId(
                                         expandedMilestoneId === milestone.id ? null : milestone.id
@@ -817,21 +845,10 @@ export default function ManageMilestonesScreen() {
                                   </div>
  
                                   {/* Status Workflow Controls */}
-                                  {contract && contract.status === ContractStatus.Active && !isMilestoneReleasedToCap(milestone) && (
+                                  {contract && contract.status === ContractStatus.Active && (
                                     <div className="p-3 bg-secondary/10 border border-border/20 rounded-lg text-left flex flex-col gap-2">
                                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.workflow')}</span>
                                       <div className="flex flex-wrap gap-1.5">
-                                        {isClient && milestone.status === MilestoneStatus.Pending && (
-                                          <button
-                                            type="button"
-                                            disabled={isSubmitting}
-                                            onClick={() => handleMilestoneWorkflowAction(milestone.id, 'start')}
-                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                                          >
-                                            <Clock size={10} />
-                                            {t('contracts.startWork')}
-                                          </button>
-                                        )}
                                         {isFreelancer && milestone.status === MilestoneStatus.InProgress && (
                                           <button
                                             type="button"
@@ -843,42 +860,57 @@ export default function ManageMilestonesScreen() {
                                           </button>
                                         )}
                                         {isClient && milestone.status === MilestoneStatus.Submitted && (
-                                          <>
-                                            <button
-                                              type="button"
-                                              disabled={isSubmitting}
-                                              onClick={() => handleMilestoneWorkflowAction(milestone.id, 'approve')}
-                                              className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                                            >
-                                              <CheckCircle2 size={10} />
-                                              {t('contracts.approve')}
-                                            </button>
-                                            <button
-                                              type="button"
-                                              disabled={isSubmitting}
-                                              onClick={() => handleMilestoneWorkflowAction(milestone.id, 'request-revision')}
-                                              className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                                            >
-                                              <X size={10} />
-                                              {t('contracts.requestRevision')}
-                                            </button>
-                                          </>
-                                        )}
-                                        {isFreelancer && milestone.status === MilestoneStatus.Approved && (
                                           <button
                                             type="button"
                                             disabled={isSubmitting}
-                                            onClick={() => handleMilestoneWorkflowAction(milestone.id, 'withdraw')}
-                                            className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-500 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                            onClick={() => navigate(`/contracts/${contractId}/milestones/${milestone.id}/approve`)}
+                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                           >
-                                            <GigCoinLogo size={10} />
-                                            {t('contracts.withdraw')}
+                                            <Eye size={10} />
+                                            {t('contracts.reviewSubmittedWork')}
                                           </button>
                                         )}
+                                        {isFreelancer && withdrawalEligibility.isApproved && !isReleasedInFull && (
+                                          withdrawalEligibility.isAtCap ? (
+                                            <span className="px-2.5 py-1.5 text-[10px] font-bold text-emerald-600">
+                                              {t('earlyWithdrawal.maximumReached')}
+                                            </span>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              disabled={Boolean(withdrawingMilestoneId) || !withdrawalEligibility.meetsApprovalThreshold}
+                                              onClick={() => openWithdrawDialog(milestone)}
+                                              title={withdrawalEligibility.meetsApprovalThreshold
+                                                ? t('earlyWithdrawal.actionTooltip')
+                                                : t('earlyWithdrawal.thresholdTooltip', {
+                                                    approved: withdrawalEligibility.approvedMilestones,
+                                                    required: withdrawalEligibility.requiredApprovedMilestones,
+                                                  })}
+                                              className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                              <GigCoinLogo size={10} />
+                                              {t('earlyWithdrawal.action')} ({formatContractAmount(withdrawalEligibility.availableAmount)})
+                                            </button>
+                                          )
+                                        )}
                                       </div>
+                                      {isFreelancer && withdrawalEligibility.isApproved && !withdrawalEligibility.isAtCap && !withdrawalEligibility.meetsApprovalThreshold && (
+                                        <p className="text-[10px] font-semibold text-amber-600">
+                                          {t('earlyWithdrawal.thresholdWarning', {
+                                            approved: withdrawalEligibility.approvedMilestones,
+                                            required: withdrawalEligibility.requiredApprovedMilestones,
+                                          })}
+                                        </p>
+                                      )}
+                                      {withdrawalError?.milestoneId === milestone.id && (
+                                        <p className="text-[10px] font-semibold text-red-500" role="alert">
+                                          {withdrawalError.message}
+                                        </p>
+                                      )}
                                     </div>
                                   )}
                                   {/* Actions panel */}
+                                  {isClient && (
                                   <div className="flex gap-2 border-t border-border/10 pt-3 mt-1">
                                     <button
                                       type="button"
@@ -899,6 +931,7 @@ export default function ManageMilestonesScreen() {
                                       {t('common.delete')}
                                     </button>
                                   </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -968,7 +1001,7 @@ export default function ManageMilestonesScreen() {
                     <div>
                       <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">{t('contracts.milestonesCompletion')}</span>
                       <span className="text-lg font-black text-foreground mt-0.5 block">
-                        {completedMilestones} <span className="text-[10px] font-semibold text-muted-foreground">/ {milestones.length} {t('common.search') === 'Search' ? 'paid' : 'đã giải ngân'}</span>
+                        {completedMilestones} <span className="text-[10px] font-semibold text-muted-foreground">/ {milestones.length} {t('contracts.approvedMilestonesCount')}</span>
                       </span>
                     </div>
                     <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
@@ -980,16 +1013,18 @@ export default function ManageMilestonesScreen() {
 
               {/* Sidebar Navigation Actions */}
               <div className="glass-card p-5 flex flex-col gap-2 text-left">
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={isSubmitting || milestones.length === 0 || !canEditMilestones || isBudgetExceeded}
-                  className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  <Save size={13} />
-                  {t('contracts.saveDraft')}
-                </button>
+                {isClient && (
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={isSubmitting || milestones.length === 0 || !canEditMilestones || isBudgetExceeded}
+                    className="w-full py-2.5 bg-secondary/40 hover:bg-secondary/60 border border-border/50 text-foreground rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Save size={13} />
+                    {t('contracts.saveDraft')}
+                  </button>
+                )}
 
-                {mode === 'jobpost-setup' && (
+                {isClient && mode === 'jobpost-setup' && (
                   <button
                     onClick={handleCompleteSetup}
                     disabled={isSubmitting || milestones.length === 0 || !canEditMilestones || isBudgetExceeded}
@@ -1000,7 +1035,7 @@ export default function ManageMilestonesScreen() {
                   </button>
                 )}
 
-                {mode === 'contract-edit' && (
+                {isClient && mode === 'contract-edit' && (
                   <button
                     onClick={handleSubmitDetails}
                     disabled={isSubmitting || milestones.length === 0 || remainingBudget !== 0 || isBudgetExceeded}
@@ -1025,6 +1060,19 @@ export default function ManageMilestonesScreen() {
 
         </div>
       </div>
-    </AppLayout>
+        <EarlyWithdrawalDialog
+          open={Boolean(withdrawDialogMilestone)}
+          milestoneTitle={withdrawDialogMilestone?.title || ''}
+          availableAmount={withdrawDialogMilestone
+            ? getEarlyWithdrawalEligibility(milestones, withdrawDialogMilestone, contract?.status, isFreelancer).availableAmount
+            : 0}
+          submitting={Boolean(withdrawDialogMilestone && withdrawingMilestoneId === withdrawDialogMilestone.id)}
+          error={withdrawDialogMilestone && withdrawalError?.milestoneId === withdrawDialogMilestone.id
+            ? withdrawalError.message
+            : null}
+          onConfirm={handleWithdrawMilestone}
+          onCancel={closeWithdrawDialog}
+        />
+      </AppLayout>
   );
 }

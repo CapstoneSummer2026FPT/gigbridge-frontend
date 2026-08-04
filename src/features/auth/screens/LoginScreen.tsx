@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { toast } from 'sonner';
@@ -9,6 +9,11 @@ import { useGSAP } from '@gsap/react';
 import '../styles/auth-screen.css';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
+import {
+  getGoogleOAuth2,
+  hasCompletedStoredSetup,
+  type GoogleCodeClient,
+} from '../googleIdentity';
 
 
 export default function LoginScreen() {
@@ -19,7 +24,7 @@ export default function LoginScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const isLoading = isEmailLoading || isGoogleLoading;
   const [error, setError] = useState('');
-  const [googleClient, setGoogleClient] = useState<any>(null);
+  const [googleClient, setGoogleClient] = useState<GoogleCodeClient | null>(null);
   const [googleError, setGoogleError] = useState('');
   const isMounted = useRef(true);
   useEffect(() => {
@@ -37,25 +42,25 @@ export default function LoginScreen() {
   let appContext: ReturnType<typeof useApp> | null;
   try {
     appContext = useApp();
-  } catch (e) {
+  } catch {
     appContext = null;
   }
 
   const login = appContext?.login || (async () => undefined);
 
   useEffect(() => {
-    let client: any = null;
     const interval = setInterval(() => {
-      if (window.google) {
+      const googleOAuth2 = getGoogleOAuth2();
+      if (googleOAuth2) {
         clearInterval(interval);
 
-        client = window.google.accounts.oauth2.initCodeClient({
+        const client = googleOAuth2.initCodeClient({
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
           scope: "openid email profile",
           ux_mode: "popup",
-          callback: async (response: any) => {
+          callback: response => {
             if (response.code) {
-              handleGoogleLogin(response.code);
+              void handleGoogleLogin(response.code);
             }
           },
         });
@@ -78,10 +83,7 @@ export default function LoginScreen() {
       const googleLogin = appContext?.googleLogin || (async () => undefined);
       const role = await googleLogin(authCode, selectedRole, true);
 
-      console.log('Google login role:', role);
-
-      const userStr = localStorage.getItem('gigbridge_user');
-      const user = userStr ? JSON.parse(userStr) : null;
+      const isSetupComplete = hasCompletedStoredSetup(localStorage.getItem('gigbridge_user'));
 
       if (selectedRole === undefined && (role === null || role === undefined || (role !== UserRole.Client && role !== UserRole.Freelancer && role !== UserRole.Admin))) {
         if (isMounted.current) {
@@ -120,7 +122,7 @@ export default function LoginScreen() {
 
       if (role === UserRole.Admin) {
         navigate('/admin');
-      } else if (user?.is_setup) {
+      } else if (isSetupComplete) {
         if (role === UserRole.Client) {
           navigate('/client/dashboard');
         } else if (role === UserRole.Freelancer) {
@@ -129,7 +131,7 @@ export default function LoginScreen() {
       } else {
         navigate('/onboarding/profile-setup');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setGoogleError(getErrorMessage(err));
       }
@@ -149,10 +151,7 @@ export default function LoginScreen() {
     try {
       const role_signIn = await login(formData.email, formData.password);
       
-      console.log('Email login role:', role_signIn);
-
-      const userStr = localStorage.getItem('gigbridge_user');
-      const user = userStr ? JSON.parse(userStr) : null;
+      const isSetupComplete = hasCompletedStoredSetup(localStorage.getItem('gigbridge_user'));
       
       if (role_signIn === null || role_signIn === undefined || (role_signIn !== UserRole.Client && role_signIn !== UserRole.Freelancer && role_signIn !== UserRole.Admin)) {
         if (isMounted.current) {
@@ -180,7 +179,7 @@ export default function LoginScreen() {
 
       if (role_signIn === UserRole.Admin) {
         navigate('/admin');
-      } else if (user?.is_setup) {
+      } else if (isSetupComplete) {
         if (role_signIn === UserRole.Client) {
           navigate('/client/dashboard');
         } else if (role_signIn === UserRole.Freelancer) {
@@ -189,7 +188,7 @@ export default function LoginScreen() {
       } else {
         navigate('/onboarding/profile-setup');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }

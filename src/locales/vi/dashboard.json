@@ -1,0 +1,13 @@
+{
+  "dashboard": {
+    "welcome": "Chào mừng trở lại, {{name}}!",
+    "overview": "Tổng Quan",
+    "stats": "Thống Kê",
+    "recentActivity": "Hoạt Động Gần Đây",
+    "earnings": "Thu Nhập",
+    "activeProjects": "Dự Án Đang Hoạt Động",
+    "totalJobs": "Tổng Công Việc",
+    "completedProjects": "Dự Án Đã Hoàn Thành",
+    "viewDetails": "Xem Chi Tiết"
+  }
+}

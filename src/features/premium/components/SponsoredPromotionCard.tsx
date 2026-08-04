@@ -6,6 +6,7 @@ import { premiumAPI } from '../api/premiumAPI';
 import type { PublicPromotionCard } from '../types';
 import { PromotedJobCard } from './PromotedJobCard';
 import { PromotionCard } from './PromotionCard';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 
 type SponsoredPromotionCardProps = {
   promotionType?: 'job' | 'freelancer';
@@ -58,7 +59,7 @@ export function SponsoredPromotionCard({ promotionType = 'job' }: SponsoredPromo
     if (promotionType === 'freelancer') {
       void premiumAPI.trackPromotionImpression(promotion.id, visitorKey.current);
     } else {
-      void jobAPI.trackJobPromotionImpression(promotion.id);
+      void jobAPI.trackJobPromotionImpression(promotion.id, visitorKey.current);
     }
   }, [activeIndex, promotionType, promotions]);
 
@@ -76,7 +77,8 @@ export function SponsoredPromotionCard({ promotionType = 'job' }: SponsoredPromo
         onSelectCarousel={setActiveIndex}
         onExplore={() => {
           void premiumAPI.trackPromotionClick(freelancer.id, visitorKey.current);
-          navigate(`/profile/freelancer/${freelancer.freelancerUserId}`);
+          const path = getProfilePath(freelancer.freelancerUserId, 'freelancer');
+          if (path) navigate(path);
         }}
       />
     </section>;
@@ -91,7 +93,7 @@ export function SponsoredPromotionCard({ promotionType = 'job' }: SponsoredPromo
       carouselIndex={activeIndex}
       onSelectCarousel={setActiveIndex}
       onExplore={() => {
-        void jobAPI.trackJobPromotionClick(job.id);
+        void jobAPI.trackJobPromotionClick(job.id, visitorKey.current);
         navigate(`/jobs/${job.jobPostId}`);
       }}
     />

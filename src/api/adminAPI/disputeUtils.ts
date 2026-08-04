@@ -34,10 +34,15 @@ const normalizeParty = (raw: unknown): AdminDisputeParty => {
     profileId: String(valueOf(source, 'profileId', 'ProfileId') ?? ''),
     fullName: String(valueOf(source, 'fullName', 'FullName') ?? ''),
     email: String(valueOf(source, 'email', 'Email') ?? ''),
+    violationCount: Number(valueOf(source, 'violationCount', 'ViolationCount') ?? 0),
+    isFlagged: Boolean(valueOf(source, 'isFlagged', 'IsFlagged') ?? false),
+    accountStatus: Number(valueOf(source, 'accountStatus', 'AccountStatus') ?? 0),
+    suspendedUntil: nullableString(source, 'suspendedUntil', 'SuspendedUntil'),
+    bannedAt: nullableString(source, 'bannedAt', 'BannedAt'),
   };
 };
 
-export const normalizeAdminDisputeListItem = (raw: unknown): AdminDisputeListItem => {
+const normalizeAdminDisputeListItem = (raw: unknown): AdminDisputeListItem => {
   const source = (raw ?? {}) as UnknownRecord;
   return {
     id: String(valueOf(source, 'disputeId', 'DisputeId') ?? ''),
@@ -116,9 +121,11 @@ export const normalizeAdminDisputeDetail = (raw: unknown): AdminDisputeDetail =>
     contract: contract ?? { totalBudget: 0, createdAt: '', startDate: null, endDate: null, completedAt: null, progressPercentage: 0 },
     originalJob: originalJob ?? { jobPostId: '', title: '', description: '', budgetMin: null, budgetMax: null, currency: null, duration: null, category: null, skills: [], proposalAmount: null, proposalDuration: null, questions: [], proposedMilestones: [] },
     milestones: valueOf(source, 'milestones', 'Milestones') ?? [],
-    escrow: escrow ?? { escrowId: null, originalEscrow: 0, fundedAmount: 0, releasedAmount: 0, refundedAmount: 0, serviceFeeAmount: 0, remainingAmount: 0, status: null },
+    escrow: escrow ?? { escrowId: null, originalEscrow: 0, fundedAmount: 0, releasedAmount: 0, refundedAmount: 0, penaltyAmount: 0, serviceFeeAmount: 0, remainingAmount: 0, status: null },
     conversations: conversations ?? { workspaceConversationId: null, disputeConversationId: null },
     auditTrail: valueOf(source, 'auditTrail', 'AuditTrail') ?? [],
     milestoneDecisions: valueOf(source, 'milestoneDecisions', 'MilestoneDecisions') ?? [],
+    penalties: valueOf(source, 'penalties', 'Penalties') ?? [],
+    resolutionAuditId: nullableString(source, 'resolutionAuditId', 'ResolutionAuditId'),
   };
 };

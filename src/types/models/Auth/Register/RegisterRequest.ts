@@ -5,5 +5,6 @@ export interface RegisterRequest {
   fullName?: string | null;
   password: string;
   confirmPassword: string;
+  verificationTicket: string;
   role: UserRole;
 }

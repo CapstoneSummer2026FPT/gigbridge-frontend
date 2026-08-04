@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, MouseEvent } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
   AlertCircle,
@@ -22,7 +22,11 @@ import type {
   ESignDocumentListItemDto,
   ESignDocumentListPageDto,
 } from '../../../types/models/ESign';
-import { ESignDocumentStatus } from '../../../types/models/ESign';
+import {
+  ESignerRole,
+  ESignDocumentStatus,
+  SignatureStatus,
+} from '../../../types/models/ESign';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
 import '../styles/manage-contract-screen.css';
 import '../styles/esign-contracts-screen.css';
@@ -231,7 +235,12 @@ function PreviewPanel({
 
 export default function ESignContractsScreen(): JSX.Element {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdmin = location.pathname.startsWith('/admin');
+  const requestedDocumentId = useMemo(
+    () => new URLSearchParams(location.search).get('document'),
+    [location.search]
+  );
   const [page, setPage] = useState<ESignDocumentListPageDto | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
@@ -297,13 +306,37 @@ export default function ESignContractsScreen(): JSX.Element {
     setLoadingDocument(false);
   }, []);
 
+  const handleSelectDocument = useCallback((documentId: string): void => {
+    if (requestedDocumentId === documentId) {
+      void loadDocument(documentId);
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    params.set('document', documentId);
+    navigate(
+      { pathname: location.pathname, search: params.toString() },
+      { replace: true }
+    );
+  }, [loadDocument, location.pathname, location.search, navigate, requestedDocumentId]);
+
   useEffect(() => {
     void loadDocuments();
   }, [loadDocuments]);
 
   useEffect(() => {
+    if (requestedDocumentId) {
+      void loadDocument(requestedDocumentId);
+    }
+  }, [loadDocument, requestedDocumentId]);
+
+  useEffect(() => {
     const items = page?.items ?? [];
     const firstDocument = items[0];
+
+    if (requestedDocumentId) {
+      return;
+    }
 
     if (!firstDocument) {
       documentRequestId.current += 1;
@@ -317,7 +350,7 @@ export default function ESignContractsScreen(): JSX.Element {
     if (!selectedDocumentId || !items.some((item) => item.documentId === selectedDocumentId)) {
       void loadDocument(firstDocument.documentId);
     }
-  }, [loadDocument, page?.items, selectedDocumentId]);
+  }, [loadDocument, page?.items, requestedDocumentId, selectedDocumentId]);
 
   const groupedDocuments = useMemo<GroupedDocuments[]>(() => {
     const groups = new Map<string, ESignDocumentListItemDto[]>();
@@ -330,10 +363,48 @@ export default function ESignContractsScreen(): JSX.Element {
     return Array.from(groups, ([jobPostId, documents]) => ({ jobPostId, documents }));
   }, [page?.items]);
 
-  const selectedItem = useMemo(
-    () => page?.items.find((document) => document.documentId === selectedDocumentId) ?? null,
-    [page?.items, selectedDocumentId]
-  );
+  const selectedItem = useMemo<ESignDocumentListItemDto | null>(() => {
+    const listedDocument =
+      page?.items.find(document => document.documentId === selectedDocumentId) ?? null;
+    if (listedDocument || !selectedDocument) {
+      return listedDocument;
+    }
+
+    const clientSignature = selectedDocument.signatures.find(
+      signature => signature.signerRole === ESignerRole.Client
+    );
+    const freelancerSignature = selectedDocument.signatures.find(
+      signature => signature.signerRole === ESignerRole.Freelancer
+    );
+    const currentUserSignature = selectedDocument.signatures.find(
+      signature => signature.signerRole === selectedDocument.currentUserSignerRole
+    );
+
+    return {
+      documentId: selectedDocument.documentId,
+      jobPostId: selectedDocument.jobPostId,
+      contractId: selectedDocument.contractId,
+      documentCode: selectedDocument.documentCode,
+      documentType: 'Contract',
+      title: selectedDocument.documentCode || 'E-sign contract',
+      documentStatus: selectedDocument.status,
+      currentUserSignerRole: selectedDocument.currentUserSignerRole,
+      currentUserSignedAt:
+        currentUserSignature?.status === SignatureStatus.Signed
+          ? currentUserSignature.signedAt ?? null
+          : null,
+      hasClientSigned: clientSignature?.status === SignatureStatus.Signed,
+      hasFreelancerSigned: freelancerSignature?.status === SignatureStatus.Signed,
+      canCurrentUserSign: selectedDocument.canCurrentUserSign,
+      hasFinalArtifact: selectedDocument.hasFinalArtifact,
+      finalizedDocumentFileName: selectedDocument.finalizedDocumentFileName ?? null,
+      signatureCount: selectedDocument.signatures.length,
+      finalizedAt: selectedDocument.finalizedAt ?? null,
+      exportedPdfUrl: selectedDocument.exportedPdfUrl ?? null,
+      createdAt: selectedDocument.createdAt,
+      updatedAt: selectedDocument.updatedAt ?? null,
+    };
+  }, [page?.items, selectedDocument, selectedDocumentId]);
 
   const handleClearSearch = (): void => {
     setSearchQuery('');
@@ -494,7 +565,7 @@ export default function ESignContractsScreen(): JSX.Element {
                         key={document.documentId}
                         document={document}
                         isSelected={document.documentId === selectedDocumentId}
-                        onSelect={loadDocument}
+                        onSelect={handleSelectDocument}
                       />
                     ))}
                   </div>

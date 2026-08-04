@@ -1,5 +1,5 @@
 import {
-  Clock, Users, Globe, Star, CheckCircle,
+  Clock, Users, Globe, CheckCircle,
   Bot, Bookmark, Share2, ChevronRight, Zap, Edit3, FileText,
   Briefcase, ArrowUpRight, Lock,
 } from 'lucide-react';
@@ -11,6 +11,8 @@ import '../styles/job-detail-screen.css';
 import { GigCoinAmount, GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 
 export default function JobDetailScreen() {
   const { t } = useTranslation();
@@ -79,6 +81,8 @@ export default function JobDetailScreen() {
   // AI match gauge
   const matchScore = job.aiMatchScore ?? 0;
   const gR = 18, gC = 2 * Math.PI * gR, gOff = gC * (1 - matchScore / 100);
+  // Client profile navigation (client?.id is the userId resolved via getClientProfile)
+  const clientProfilePath = getProfilePath(client?.id ?? null, 'client');
 
   return (
     <AppLayout>
@@ -224,8 +228,9 @@ export default function JobDetailScreen() {
                   onChange={() => undefined}
                   readOnly
                   showDueDate
-                  title="Client baseline milestone and WBS"
-                  description="Review this baseline before preparing your proposal. You can propose changes to milestones and work items."
+                  showWorkItems={job.milestonePlans.some(milestone => milestone.workItems.length > 0)}
+                  title="Client baseline milestone plan"
+                  description="Review the payable outcomes and acceptance criteria before preparing your proposal."
                 />
               </div>
             ) : null}
@@ -353,41 +358,30 @@ export default function JobDetailScreen() {
             {!isClientMode && (
               <div className="glass-card rounded-2xl p-5 jd-stagger jd-d4">
                 <h3 className="jd-section-title">{t('jobDetail.aboutClient')}</h3>
-                <div className="flex items-center gap-3 mb-4">
+                <UserProfileLink userId={client?.id} role="client" className="flex items-center gap-3 mb-4">
                   <div className="jd-avatar-ring">
-                    <div className="jd-avatar-inner">{client?.full_name?.charAt(0) || '?'}</div>
+                    <div className="jd-avatar-inner">{client?.fullName.charAt(0) || '?'}</div>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-text-primary font-black text-sm truncate">{client?.full_name || 'Client'}</p>
-                    <p className="text-[10px] text-text-muted font-medium truncate">{clientProfile?.company_name || 'Company'}</p>
+                    <p className="text-text-primary font-black text-sm truncate">{client?.fullName || 'Client'}</p>
+                    <p className="text-[10px] text-text-muted font-medium truncate">{clientProfile?.companyName || 'Company not provided'}</p>
                   </div>
-                </div>
+                </UserProfileLink>
                 <div className="space-y-0.5">
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.rating')}</span>
-                    <div className="flex items-center gap-1">
-                      <Star size={11} fill="#F59E0B" className="text-warning" />
-                      <span className="text-xs font-black text-text-primary">{clientProfile?.rating ?? '—'}</span>
-                      <span className="text-[10px] text-text-muted">({clientProfile?.reviewCount ?? 0})</span>
+                  {clientProfile?.industry && (
+                    <div className="jd-client-row">
+                      <span className="text-[11px] text-text-muted font-semibold">Industry</span>
+                      <span className="text-xs font-black text-text-primary">{clientProfile.industry}</span>
                     </div>
-                  </div>
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.totalSpent')}</span>
-                    <span className="text-xs font-black text-text-primary"><GigCoinAmount amount={clientProfile?.totalSpent || 0} /></span>
-                  </div>
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.jobsPosted')}</span>
-                    <span className="text-xs font-black text-text-primary">{clientProfile?.postedJobs ?? '—'}</span>
-                  </div>
-                  <div className="jd-client-row">
-                    <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.hireRate')}</span>
-                    <span className="text-xs font-black text-success">82%</span>
-                  </div>
+                  )}
+                  {clientProfile?.location && (
+                    <div className="jd-client-row">
+                      <span className="text-[11px] text-text-muted font-semibold">{t('jobDetail.location')}</span>
+                      <span className="text-xs font-black text-text-primary">{clientProfile.location}</span>
+                    </div>
+                  )}
                 </div>
-                {clientProfile?.isVerifiedClient && (
-                  <div className="jd-verified"><CheckCircle size={12} />{t('jobDetail.paymentVerified')}</div>
-                )}
-                <button className="jd-btn-secondary mt-3" onClick={() => navigate(`/profile/client/${client?.id || job.clientId}`)}>{t('jobDetail.viewClientProfile')}</button>
+                <button className="jd-btn-secondary mt-3" disabled={!clientProfilePath} onClick={() => clientProfilePath && navigate(clientProfilePath)}>{t('jobDetail.viewClientProfile')}</button>
               </div>
             )}
 

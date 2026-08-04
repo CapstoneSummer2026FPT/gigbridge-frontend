@@ -1,10 +1,9 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { DB } from '../../../mock_backend';
-import { SEED_FREELANCER_PROFILES } from '../../../mock_backend/database/seed';
+import { useState, useEffect } from 'react';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
+import { savedFreelancerAPI } from '../../../api/savedFreelancerAPI';
 import type { Review } from '../../../types/models/Job';
-import type { CheatingPenaltyLogDto } from '../../../types/models/Profile';
+import { toast } from 'sonner';
 
 type ReviewViewModel = {
   id: string;
@@ -12,7 +11,11 @@ type ReviewViewModel = {
   reviewerId: string;
   reviewerName: string;
   revieweeId: string;
+  projectTitle: string;
   rating: number;
+  communicationRating: number | null;
+  qualityRating: number | null;
+  timelinessRating: number | null;
   comment: string;
   isAnonymous: boolean;
   createdAt: string;
@@ -24,116 +27,125 @@ const toReviewViewModel = (review: Review): ReviewViewModel => ({
   reviewerId: review.reviewerId,
   reviewerName: review.reviewerName ?? 'Anonymous Reviewer',
   revieweeId: review.revieweeId,
+  projectTitle: review.projectTitle ?? '',
   rating: review.rating,
+  communicationRating: review.communicationRating ?? null,
+  qualityRating: review.qualityRating ?? null,
+  timelinessRating: review.timelinessRating ?? null,
   comment: review.comment ?? '',
   isAnonymous: Boolean(review.isAnonymous),
   createdAt: review.createdAt,
 });
 
-const resolveEloPoints = (data: any): number => {
-  const raw = data?.profile?.eloPoints ?? data?.profile?.EloPoints ?? data?.user?.elo_points ?? data?.user?.eloPoints ?? data?.user?.EloPoints;
+const resolveEloPoints = (data: {
+  profile?: { eloPoints?: unknown };
+  user?: { elo_points?: unknown };
+}): number => {
+  const raw = data.profile?.eloPoints ?? data.user?.elo_points;
   const value = Number(raw);
   return Number.isFinite(value) ? value : 100;
 };
 
-export function useFreelancerProfile(targetId: string, currentUser: any) {
-  const [profileData, setProfileData] = useState<any>({
-    user: DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!,
-    profile: SEED_FREELANCER_PROFILES.find(p => p.user_id === targetId) || SEED_FREELANCER_PROFILES[0],
-    skills: ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'],
-    experience: [
-      { company: 'Tech Startup', title: 'Senior Developer', years: '2021-Present' },
-      { company: 'Design Agency', title: 'Full Stack Developer', years: '2019-2021' },
-    ],
-    portfolio: [
-      { title: 'E-Commerce Platform', tech: 'React, Node.js, MongoDB', image: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop' },
-      { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
-    ],
-    cheatingViolationCount: 0,
-    cheatingPenaltyLogs: [] as CheatingPenaltyLogDto[],
-  });
+const emptyProfileData = (targetId: string) => ({
+    user: {
+      id: targetId,
+      full_name: '',
+      avatar: '',
+      email: '',
+      phone_number: '',
+      elo_points: 100,
+    },
+    profile: {
+      freelancerProfilesId: '',
+      user_id: targetId,
+      title: '',
+      bio: '',
+      location: '',
+      avatar: '',
+      eloPoints: 100,
+      createdAt: '',
+      majorId: null as string | null,
+      majorName: null as string | null,
+      categories: [] as Array<{ majorCategoryId: string; categoryId: string; name: string }>,
+      showProVerifiedBadge: false,
+      tierName: null as string | null,
+      premiumUntil: null as string | null,
+    },
+    skills: [] as string[],
+    experience: [] as Array<{ company: string; title: string; years: string }>,
+    portfolio: [] as Array<{ title: string; tech: string; image: string }>,
+});
+
+export function useFreelancerProfile(targetId: string, canSave = false) {
+  const [profileData, setProfileData] = useState(() => emptyProfileData(targetId));
 
   const [loading, setLoading] = useState(true);
-  const [isPremium] = useState(true);
-  const [isIdentityVerified] = useState(true);
-  const [cvFile] = useState<{ name: string; url: string } | null>({
-    name: 'john_doe_resume.pdf',
-    url: '#'
-  });
-
+  const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showJobInviteModal, setShowJobInviteModal] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewsList, setReviewsList] = useState<ReviewViewModel[]>([]);
 
-  // Create Review popup states
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewAnonymous, setReviewAnonymous] = useState(false);
-
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
+        setError(null);
         const res = await profileGetAPI.getFreelancerProfile(targetId);
         if (res.success && res.data) {
           const apiData = res.data;
           setProfileData({
             user: {
               id: apiData.userId,
-              full_name: apiData.userFullName || 'Freelancer',
-              avatar: apiData.userAvatar,
+              full_name: apiData.userFullName || '',
+              avatar: apiData.userAvatar || '',
               email: apiData.userEmail || '',
               phone_number: '',
               elo_points: apiData.eloPoints ?? 100,
             },
             profile: {
-              freelancerProfilesId: apiData.freelancerProfilesId,
+              freelancerProfilesId: apiData.freelancerProfilesId ?? targetId,
               user_id: apiData.userId,
-              title: apiData.title || 'Freelancer',
+              title: apiData.title || '',
               bio: apiData.bio || '',
-              location: apiData.location || 'San Francisco, CA',
-              hourly_rate: 95,
-              avatar: apiData.userAvatar,
+              location: apiData.location || '',
+              avatar: apiData.userAvatar || '',
               eloPoints: apiData.eloPoints ?? 100,
-              majorId: apiData.majorId,
-              majorName: apiData.majorName,
+              createdAt: apiData.createdAt,
+              majorId: apiData.majorId ?? null,
+              majorName: apiData.majorName ?? null,
               categories: apiData.categories ?? [],
-              showProVerifiedBadge: apiData.showProVerifiedBadge,
-              premiumTierName: apiData.tierName,
-              premiumUntil: apiData.premiumUntil,
+              showProVerifiedBadge: Boolean(apiData.showProVerifiedBadge),
+              tierName: apiData.tierName ?? null,
+              premiumUntil: apiData.premiumUntil ?? null,
             },
             skills: apiData.skills && apiData.skills.length > 0
               ? apiData.skills.map(s => s.skillName)
-              : ['React', 'TypeScript', 'Node.js', 'UI/UX Design', 'Figma', 'Tailwind CSS'],
+              : [],
             experience: apiData.workExperiences && apiData.workExperiences.length > 0
               ? apiData.workExperiences.map(we => ({
                   company: we.companyName,
                   title: we.jobTitle,
                   years: `${we.startDate.split('-')[0]} - ${we.endDate ? we.endDate.split('-')[0] : 'Present'}`
                 }))
-              : [
-                  { company: 'Tech Startup', title: 'Senior Developer', years: '2021-Present' },
-                  { company: 'Design Agency', title: 'Full Stack Developer', years: '2019-2021' },
-                ],
+              : [],
             portfolio: apiData.portfolioItems && apiData.portfolioItems.length > 0
               ? apiData.portfolioItems.map((pi, idx) => ({
                   title: pi.title || `Project #${idx + 1}`,
-                  tech: pi.description || 'React, Node.js',
-                  image: pi.imageUrl || 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop'
+                  tech: pi.description || '',
+                  image: pi.imageUrl || ''
                 }))
-              : [
-                  { title: 'E-Commerce Platform', tech: 'React, Node.js, MongoDB', image: 'https://images.unsplash.com/photo-1460925895917-aaf4f1f1c5ce?w=400&h=300&fit=crop' },
-                  { title: 'SaaS Dashboard', tech: 'React, TypeScript, AWS', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
-                ],
-            cheatingViolationCount: apiData.cheatingViolationCount ?? 0,
-            cheatingPenaltyLogs: apiData.cheatingPenaltyLogs ?? [],
+              : [],
           });
+        } else {
+          setProfileData(emptyProfileData(targetId));
+          setError(res.message || 'Freelancer profile could not be loaded.');
         }
-      } catch (err) {
-        console.warn('API getFreelancerProfile fallback to mock:', err);
+      } catch (err: unknown) {
+        setProfileData(emptyProfileData(targetId));
+        setError(err instanceof Error ? err.message : 'Freelancer profile could not be loaded.');
       } finally {
         setLoading(false);
       }
@@ -142,15 +154,41 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
   }, [targetId]);
 
   useEffect(() => {
+    const freelancerProfileId = profileData.profile.freelancerProfilesId;
+    if (!canSave || !freelancerProfileId) {
+      setIsSaved(false);
+      return;
+    }
+
+    let cancelled = false;
+    void savedFreelancerAPI.checkSavedFreelancer(freelancerProfileId)
+      .then(saved => {
+        if (!cancelled) setIsSaved(saved);
+      })
+      .catch(() => {
+        if (!cancelled) setIsSaved(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canSave, profileData.profile.freelancerProfilesId]);
+
+  useEffect(() => {
     const fetchReviews = async (): Promise<void> => {
-      const response = await reviewGetAPI.getReviewsByUser(targetId);
-      const reviews = response.success && response.data ? response.data : [];
-      setReviewsList(
-        reviews
-          .map(toReviewViewModel)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      );
-      setCurrentPage(1);
+      try {
+        const response = await reviewGetAPI.getReviewsByUser(targetId);
+        const reviews = response.success && response.data ? response.data : [];
+        setReviewsList(
+          reviews
+            .map(toReviewViewModel)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        );
+      } catch {
+        setReviewsList([]);
+      } finally {
+        setCurrentPage(1);
+      }
     };
 
     fetchReviews();
@@ -160,17 +198,23 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
     ? reviewsList.reduce((sum, review) => sum + review.rating, 0) / reviewsList.length
     : 0;
 
-  const handleSaveFreelancer = () => {
-    setIsSaved(!isSaved);
-  };
+  const handleSaveFreelancer = async () => {
+    const freelancerProfileId = profileData.profile.freelancerProfilesId;
+    if (!canSave || !freelancerProfileId || isSaving) return;
 
-  const handleAddReview = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    window.alert('Please submit reviews from a completed contract so the review can be linked to ELO correctly.');
-    setReviewComment('');
-    setReviewRating(5);
-    setReviewAnonymous(false);
-    setShowReviewModal(false);
+    setIsSaving(true);
+    try {
+      if (isSaved) {
+        await savedFreelancerAPI.unsaveFreelancer(freelancerProfileId);
+      } else {
+        await savedFreelancerAPI.saveFreelancer(freelancerProfileId);
+      }
+      setIsSaved(previous => !previous);
+    } catch (saveError) {
+      toast.error(saveError instanceof Error ? saveError.message : 'Saved freelancer could not be updated.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const distribution = [5, 4, 3, 2, 1].map(star => {
@@ -190,36 +234,24 @@ export function useFreelancerProfile(targetId: string, currentUser: any) {
 
   return {
     loading,
+    error,
     profileData,
-    isPremium,
-    isIdentityVerified,
     eloPoints,
-    eloRingPercent,
-    cvFile,
-    freelancerProfileId: (profileData.profile as any).freelancerProfilesId || targetId,
+    freelancerProfileId: profileData.profile.freelancerProfilesId || targetId,
     isSaved,
+    isSaving,
     showJobInviteModal,
     showMoreMenu,
     currentPage,
     reviewsList,
-    showReviewModal,
-    reviewRating,
-    reviewComment,
-    reviewAnonymous,
     averageRating,
     distribution,
     totalPages,
     paginatedReviews,
     strokeDashoffset,
-    setIsSaved,
     setShowJobInviteModal,
     setShowMoreMenu,
     setCurrentPage,
-    setReviewRating,
-    setReviewComment,
-    setReviewAnonymous,
-    setShowReviewModal,
     handleSaveFreelancer,
-    handleAddReview,
   };
 }

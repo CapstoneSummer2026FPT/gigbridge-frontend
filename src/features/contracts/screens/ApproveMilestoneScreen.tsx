@@ -19,7 +19,6 @@ import { useTranslation } from '../../../hooks/useTranslation';
 
 interface MilestoneWithAttachments extends Milestone {
   attachments?: MilestoneAttachment[];
-  deliverableDescription?: string;
 }
 
 const NOTES_LIMIT = 500;
@@ -55,12 +54,12 @@ export default function ApproveMilestoneScreen() {
           throw new Error(contractResponse.message || t('contracts.loadingContract'));
         }
         setContract(contractResponse.data);
-        const milestoneResponse = await contractGetAPI.getMilestoneById(milestoneId);
+        const milestoneResponse = await contractGetAPI.getMilestoneById(contractId, milestoneId);
         if (!milestoneResponse.success || !milestoneResponse.data) {
           throw new Error(milestoneResponse.message || t('contracts.loadingMilestone', { defaultValue: 'Failed to load milestone' }));
         }
         setMilestone(milestoneResponse.data);
-        const attachmentsResponse = await contractGetAPI.getMilestoneAttachments(milestoneId);
+        const attachmentsResponse = await contractGetAPI.getMilestoneAttachments(contractId, milestoneId);
         if (attachmentsResponse.success && attachmentsResponse.data) setAttachments(attachmentsResponse.data);
       } catch (caughtError) {
         setError(caughtError instanceof Error ? caughtError.message : t('contracts.anErrorOccurred'));
@@ -163,8 +162,16 @@ export default function ApproveMilestoneScreen() {
                 <div><span>{t('contracts.dueDateLabel')}</span><strong>{formatContractDate(milestone.due_date)}</strong></div>
                 <div><span>{t('contracts.currentStatusLabel')}</span><strong>{statusLabel}</strong></div>
                 {milestone.paid_at && <div><span>{t('contracts.paymentReleasedLabel')}</span><strong>{formatContractDate(milestone.paid_at)}</strong></div>}
+                {milestone.submittedAt && <div><span>Submitted</span><strong>{formatContractDate(milestone.submittedAt)}</strong></div>}
               </div>
             </section>
+
+            {milestone.submissionDescription && <section className="approve-milestone-card" aria-labelledby="submission-summary-title">
+              <div className="approve-milestone-section-heading">
+                <div><span className="approve-milestone-kicker">Freelancer submission</span><h2 id="submission-summary-title">Delivery summary</h2></div>
+              </div>
+              <p className="whitespace-pre-wrap text-sm text-secondary">{milestone.submissionDescription}</p>
+            </section>}
 
             {canApprove && <section className="approve-milestone-card approve-milestone-escrow">
               <button type="button" className="approve-milestone-escrow-toggle" onClick={() => setShowEscrowInfo(!showEscrowInfo)} aria-expanded={showEscrowInfo} aria-controls="escrow-explanation">

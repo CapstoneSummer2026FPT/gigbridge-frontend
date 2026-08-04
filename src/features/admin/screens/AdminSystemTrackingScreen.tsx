@@ -1,31 +1,30 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { Activity, AlertTriangle, FileText, Zap, TrendingUp, Clock, Eye, Filter, Search, Download, RefreshCw, CheckCircle, XCircle, AlertCircle, Info, Terminal, Cpu, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import * as signalR from '@microsoft/signalr';
+import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
 import type { ApiResponse } from '../../../types/common';
 import type { AdminUserDto, PaginatedUsersResponse } from '../../../types/models/User';
-import type { JobPostSummaryDto } from '../../../types/models/Job';
+import type { AdminJobPostListResponse, JobPostSummaryDto } from '../../../types/models/Job';
 import type { ProposalDto } from '../../../types/models/Proposal';
+import type { AdminAuditLog, PageResult } from '../../../types/models/AdminPhase1';
+import type { SystemTrackingSnapshot } from '../../../types/systemTracking';
+import { getSystemTrackingHubUrl } from '../../../service/apiService';
 import '../styles/admin-users-screen.css';
 
 type TabType = 'overview' | 'audit' | 'errors' | 'alerts' | 'ai-usage';
 type LogLevel = 'info' | 'warning' | 'error' | 'critical';
-type AlertStatus = 'active' | 'resolved' | 'acknowledged';
 
 type AuditLog = {
   id: string;
   timestamp: string;
-  userId: string;
   userName: string;
   action: string;
   resource: string;
   ipAddress: string;
   userAgent: string;
-  status: string;
   details: string;
 };
 
@@ -47,7 +46,6 @@ type SystemAlert = {
   title: string;
   description: string;
   severity: LogLevel;
-  status: AlertStatus;
   service: string;
   metric: string;
   value: string;
@@ -66,264 +64,8 @@ type ApiLog = {
   application: string;
 };
 
-// Mock data
-const AUDIT_LOGS = [
-  {
-    id: 'audit_1',
-    timestamp: '2024-05-16T14:30:00Z',
-    userId: 'user_client_1',
-    userName: 'John Doe',
-    action: 'job.created',
-    resource: 'Job Post #1234',
-    ipAddress: '192.168.1.100',
-    userAgent: 'Chrome/120.0',
-    status: 'success',
-    details: 'Created new job post "Full-Stack Developer"',
-  },
-  {
-    id: 'audit_2',
-    timestamp: '2024-05-16T14:25:00Z',
-    userId: 'user_freelancer_2',
-    userName: 'Sarah Smith',
-    action: 'proposal.submitted',
-    resource: 'Proposal #5678',
-    ipAddress: '192.168.1.101',
-    userAgent: 'Firefox/119.0',
-    status: 'success',
-    details: 'Submitted proposal for job "Mobile App Design"',
-  },
-  {
-    id: 'audit_3',
-    timestamp: '2024-05-16T14:20:00Z',
-    userId: 'user_admin_1',
-    userName: 'Admin User',
-    action: 'user.banned',
-    resource: 'User #9012',
-    ipAddress: '192.168.1.102',
-    userAgent: 'Chrome/120.0',
-    status: 'success',
-    details: 'Banned user for violating terms of service',
-  },
-  {
-    id: 'audit_4',
-    timestamp: '2024-05-16T14:15:00Z',
-    userId: 'user_client_3',
-    userName: 'Tech Corp',
-    action: 'contract.signed',
-    resource: 'Contract #cont_1',
-    ipAddress: '192.168.1.103',
-    userAgent: 'Safari/17.0',
-    status: 'success',
-    details: 'E-signed contract with freelancer',
-  },
-];
-
-const ERROR_LOGS = [
-  {
-    id: 'error_1',
-    timestamp: '2024-05-16T14:28:00Z',
-    level: 'error' as LogLevel,
-    service: 'payment-service',
-    message: 'Payment gateway timeout',
-    stackTrace: 'Error: Timeout after 30s\n  at PaymentService.processPayment (payment.ts:45)\n  at async PaymentController.create (controller.ts:89)',
-    userId: 'user_client_5',
-    requestId: 'req_abc123',
-    count: 3,
-  },
-  {
-    id: 'error_2',
-    timestamp: '2024-05-16T14:22:00Z',
-    level: 'warning' as LogLevel,
-    service: 'ai-service',
-    message: 'AI API rate limit approaching (85% used)',
-    stackTrace: null,
-    userId: null,
-    requestId: 'req_def456',
-    count: 1,
-  },
-  {
-    id: 'error_3',
-    timestamp: '2024-05-16T14:10:00Z',
-    level: 'critical' as LogLevel,
-    service: 'database',
-    message: 'Database connection pool exhausted',
-    stackTrace: 'Error: Pool connection timeout\n  at Pool.connect (pool.ts:123)\n  at Database.query (db.ts:67)',
-    userId: null,
-    requestId: 'req_ghi789',
-    count: 12,
-  },
-  {
-    id: 'error_4',
-    timestamp: '2024-05-16T13:55:00Z',
-    level: 'info' as LogLevel,
-    service: 'notification-service',
-    message: 'Email delivery delayed by 2 minutes',
-    stackTrace: null,
-    userId: 'user_freelancer_8',
-    requestId: 'req_jkl012',
-    count: 1,
-  },
-];
-
-const ALERTS = [
-  {
-    id: 'alert_1',
-    timestamp: '2024-05-16T14:30:00Z',
-    title: 'High Error Rate Detected',
-    description: 'Payment service error rate exceeded 5% threshold',
-    severity: 'critical' as LogLevel,
-    status: 'active' as AlertStatus,
-    service: 'payment-service',
-    metric: 'error_rate',
-    value: '8.2%',
-    threshold: '5%',
-  },
-  {
-    id: 'alert_2',
-    timestamp: '2024-05-16T14:15:00Z',
-    title: 'AI API Budget Alert',
-    description: 'AI API costs approaching monthly budget limit',
-    severity: 'warning' as LogLevel,
-    status: 'acknowledged' as AlertStatus,
-    service: 'ai-service',
-    metric: 'cost',
-    value: '$2,450',
-    threshold: '$2,500',
-  },
-  {
-    id: 'alert_3',
-    timestamp: '2024-05-16T13:45:00Z',
-    title: 'Database Performance Degradation',
-    description: 'Query response time increased by 150%',
-    severity: 'warning' as LogLevel,
-    status: 'resolved' as AlertStatus,
-    service: 'database',
-    metric: 'response_time',
-    value: '2.5s',
-    threshold: '1s',
-  },
-];
-
-const AI_API_USAGE = [
-  {
-    date: '2024-05-10',
-    requests: 1245,
-    tokens: 452000,
-    cost: 125.50,
-  },
-  {
-    date: '2024-05-11',
-    requests: 1380,
-    tokens: 485000,
-    cost: 142.30,
-  },
-  {
-    date: '2024-05-12',
-    requests: 1520,
-    tokens: 512000,
-    cost: 158.20,
-  },
-  {
-    date: '2024-05-13',
-    requests: 1650,
-    tokens: 548000,
-    cost: 175.80,
-  },
-  {
-    date: '2024-05-14',
-    requests: 1480,
-    tokens: 495000,
-    cost: 162.40,
-  },
-  {
-    date: '2024-05-15',
-    requests: 1720,
-    tokens: 572000,
-    cost: 189.60,
-  },
-  {
-    date: '2024-05-16',
-    requests: 1890,
-    tokens: 615000,
-    cost: 212.30,
-  },
-];
-
-const AI_USAGE_BY_FEATURE = [
-  { name: 'Job Matching', value: 35, color: '#0077FF' },
-  { name: 'Proposal Analysis', value: 28, color: '#9F4BFF' },
-  { name: 'AI Assistant', value: 22, color: '#22C55E' },
-  { name: 'Interview Prep', value: 15, color: '#F59E0B' },
-];
-
-const API_LOGS = [
-  {
-    id: 'log_1',
-    timestamp: '2024-05-16T14:35:22Z',
-    method: 'POST',
-    status: 201,
-    url: '/api/v1/jobs',
-    ip: '192.168.1.100',
-    duration: 145,
-    user: 'John Doe',
-    application: 'GigBridge API',
-  },
-  {
-    id: 'log_2',
-    timestamp: '2024-05-16T14:34:18Z',
-    method: 'GET',
-    status: 200,
-    url: '/api/v1/proposals',
-    ip: '192.168.1.101',
-    duration: 52,
-    user: 'Sarah Smith',
-    application: 'GigBridge API',
-  },
-  {
-    id: 'log_3',
-    timestamp: '2024-05-16T14:33:45Z',
-    method: 'PUT',
-    status: 200,
-    url: '/api/v1/contracts/cont_1',
-    ip: '192.168.1.102',
-    duration: 234,
-    user: 'Admin User',
-    application: 'GigBridge API',
-  },
-  {
-    id: 'log_4',
-    timestamp: '2024-05-16T14:32:30Z',
-    method: 'DELETE',
-    status: 204,
-    url: '/api/v1/jobs/job_789',
-    ip: '192.168.1.103',
-    duration: 98,
-    user: 'Tech Corp',
-    application: 'GigBridge API',
-  },
-  {
-    id: 'log_5',
-    timestamp: '2024-05-16T14:31:15Z',
-    method: 'GET',
-    status: 404,
-    url: '/api/v1/users/unknown',
-    ip: '192.168.1.104',
-    duration: 12,
-    user: null,
-    application: 'GigBridge API',
-  },
-  {
-    id: 'log_6',
-    timestamp: '2024-05-16T14:30:00Z',
-    method: 'POST',
-    status: 500,
-    url: '/api/v1/payments',
-    ip: '192.168.1.105',
-    duration: 3500,
-    user: 'Client User',
-    application: 'GigBridge API',
-  },
-];
+const getThrownErrorMessage = (error: unknown, fallback: string): string =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 const getRoleName = (role: number) => {
   if (role === 0) return 'Client';
@@ -340,39 +82,33 @@ const toAuditLogs = (
   const userLogs = users.slice(0, 8).map(user => ({
     id: `user_${user.userId}`,
     timestamp: user.updatedAt || user.createdAt,
-    userId: user.userId,
     userName: user.fullName,
     action: user.isActive ? 'user.active' : 'user.inactive',
     resource: `${getRoleName(user.role)} ${user.email}`,
     ipAddress: '-',
     userAgent: user.provider || 'GigBridge',
-    status: 'success',
     details: `${user.fullName} is registered as ${getRoleName(user.role)}`,
   }));
 
   const jobLogs = jobs.slice(0, 8).map(job => ({
     id: `job_${job.jobPostsId}`,
     timestamp: job.createdAt,
-    userId: '',
     userName: 'Client',
     action: 'job.created',
     resource: job.title,
     ipAddress: '-',
     userAgent: 'GigBridge API',
-    status: 'success',
     details: job.descriptionPreview || `Created job post "${job.title}"`,
   }));
 
   const proposalLogs = proposals.slice(0, 8).map(proposal => ({
     id: `proposal_${proposal.proposalsId}`,
     timestamp: proposal.submittedAt,
-    userId: proposal.freelancerProfilesId,
     userName: proposal.freelancerName || 'Freelancer',
     action: 'proposal.submitted',
     resource: proposal.jobTitle || proposal.jobPostsId,
     ipAddress: '-',
     userAgent: 'GigBridge API',
-    status: 'success',
     details: `Submitted proposal for "${proposal.jobTitle || proposal.jobPostsId}"`,
   }));
 
@@ -380,6 +116,28 @@ const toAuditLogs = (
     .filter(log => Boolean(log.timestamp))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 };
+
+const formatStructuredAuditValue = (value: unknown): string => {
+  if (value === undefined || value === null || value === '') return 'none';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const toBackendAuditLogs = (items: AdminAuditLog[]): AuditLog[] =>
+  items.map(item => ({
+    id: item.auditLogId || item.id || item.correlationId,
+    timestamp: item.createdAt,
+    userName: item.adminName || item.adminUserId || 'Admin',
+    action: item.action,
+    resource: [item.entityType, item.entityId].filter(Boolean).join(' ') || 'Platform',
+    ipAddress: '-',
+    userAgent: item.userAgent || 'GigBridge Admin',
+    details: `Before: ${formatStructuredAuditValue(item.oldValues)} · After: ${formatStructuredAuditValue(item.newValues)} · Correlation: ${item.correlationId || 'none'}`,
+  }));
 
 const toFailureLog = (service: string, url: string, response: ApiResponse<unknown>): ErrorLogEntry => ({
   id: `${service}_${Date.now()}`,
@@ -399,7 +157,6 @@ const toAlert = (service: string, response: ApiResponse<unknown>): SystemAlert =
   title: `${service} request failed`,
   description: response.message || `${service} endpoint returned an unsuccessful response`,
   severity: response.statusCode >= 500 ? 'error' : 'warning',
-  status: 'active',
   service,
   metric: 'http_status',
   value: response.statusCode.toString(),
@@ -407,12 +164,9 @@ const toAlert = (service: string, response: ApiResponse<unknown>): SystemAlert =
 });
 
 export default function AdminSystemTrackingScreen() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [logLevelFilter, setLogLevelFilter] = useState<LogLevel | 'all'>('all');
-  const [alertStatusFilter, setAlertStatusFilter] = useState<AlertStatus | 'all'>('all');
-  const [timeRange, setTimeRange] = useState('24h');
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [errorLogs, setErrorLogs] = useState<ErrorLogEntry[]>([]);
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
@@ -435,6 +189,49 @@ export default function AdminSystemTrackingScreen() {
   const [apiLogPage, setApiLogPage] = useState(1);
   const apiLogsPerPage = 5;
 
+  const applyTrackingSnapshot = useCallback((snapshot: SystemTrackingSnapshot) => {
+    setApiLogs(snapshot.requests.map(request => ({
+      id: request.id,
+      timestamp: request.timestamp,
+      method: request.method,
+      status: request.statusCode,
+      url: request.path,
+      ip: '-',
+      duration: request.durationMs,
+      user: null,
+      application: 'GigBridge API',
+    })));
+    setErrorLogs(snapshot.errors.map(error => ({
+      id: error.id,
+      timestamp: error.timestamp,
+      level: error.level,
+      service: error.service,
+      message: error.message,
+      stackTrace: null,
+      userId: null,
+      requestId: error.requestId,
+      count: error.count,
+    })));
+    setAlerts(snapshot.alerts.map(alert => ({
+      id: alert.id,
+      timestamp: alert.firstObservedAt,
+      title: alert.title,
+      description: alert.description,
+      severity: alert.severity,
+      service: 'backend-api',
+      metric: alert.metric,
+      value: alert.value,
+      threshold: alert.threshold,
+    })));
+  }, []);
+
+  const loadRealtimeSnapshot = useCallback(async () => {
+    const response = await adminGetAPI.getSystemTracking(100);
+    if (response.success && response.data) {
+      applyTrackingSnapshot(response.data);
+    }
+  }, [applyTrackingSnapshot]);
+
   const loadSystemTrackingData = async () => {
     setIsLoadingTracking(true);
 
@@ -448,7 +245,16 @@ export default function AdminSystemTrackingScreen() {
       call: () => Promise<ApiResponse<T>>
     ): Promise<ApiResponse<T>> => {
       const startedAt = Date.now();
-      const response = await call();
+      let response: ApiResponse<T>;
+      try {
+        response = await call();
+      } catch (error: unknown) {
+        response = {
+          success: false,
+          statusCode: 0,
+          message: getThrownErrorMessage(error, `${service} request failed`),
+        };
+      }
       const duration = Date.now() - startedAt;
 
       requestLogs.push({
@@ -464,39 +270,52 @@ export default function AdminSystemTrackingScreen() {
       });
 
       if (!response.success) {
-        failures.push(toFailureLog(service, url, response as ApiResponse<unknown>));
-        activeAlerts.push(toAlert(service, response as ApiResponse<unknown>));
+        failures.push(toFailureLog(service, url, response));
+        activeAlerts.push(toAlert(service, response));
       }
 
       return response;
     };
 
-    const [usersResponse, jobsResponse, proposalsResponse] = await Promise.all([
+    const [usersResponse, jobsResponse, proposalsResponse, auditResponse] = await Promise.all([
       callTracked<PaginatedUsersResponse>(
         'admin-users',
         '/api/v1/admin/users',
         () => adminGetAPI.getUsers({ Page: 1, PageSize: 200 })
       ),
-      callTracked<JobPostSummaryDto[]>(
+      callTracked<AdminJobPostListResponse>(
         'job-posts',
         '/api/JobPosts/admin/all',
-        () => jobGetAPI.getAllJobPosts({ PageIndex: 1, PageSize: 200 })
+        () => jobGetAPI.getAllJobPosts({ pageIndex: 1, pageSize: 100 })
       ),
       callTracked<ProposalDto[]>(
         'proposals',
         '/api/Proposals/admin/all',
         () => proposalGetAPI.getAllProposals({ PageIndex: 1, PageSize: 200 })
       ),
+      callTracked<PageResult<AdminAuditLog>>(
+        'admin-audit-logs',
+        '/api/v1/admin/audit-logs',
+        () => adminGetAPI.getAuditLogs({ page: 1, pageSize: 200 })
+      ),
     ]);
 
     const users = usersResponse.data?.items || [];
-    const jobs = jobsResponse.data || [];
+    const jobs = jobsResponse.data?.items || [];
     const proposals = proposalsResponse.data || [];
 
-    setAuditLogs(toAuditLogs(users, jobs, proposals));
+    // Prefer the persisted admin audit trail from our branch. The discovery-derived
+    // activity from the incoming implementation remains as a fallback when that
+    // endpoint is unavailable, so none of its original tracking coverage is lost.
+    setAuditLogs(
+      auditResponse.success && auditResponse.data
+        ? toBackendAuditLogs(auditResponse.data.items)
+        : toAuditLogs(users, jobs, proposals)
+    );
     setErrorLogs(failures);
     setAlerts(activeAlerts);
     setApiLogs(requestLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+    await loadRealtimeSnapshot();
     setIsLoadingTracking(false);
   };
 
@@ -504,17 +323,44 @@ export default function AdminSystemTrackingScreen() {
     loadSystemTrackingData();
   }, []);
 
+  useEffect(() => {
+    let disposed = false;
+    let refreshTimer: number | undefined;
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(getSystemTrackingHubUrl(), {
+        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+      })
+      .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
+      .build();
+
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        if (!disposed) void loadRealtimeSnapshot();
+      }, 300);
+    };
+
+    connection.on('SystemTrackingUpdated', scheduleRefresh);
+    connection.onreconnected(scheduleRefresh);
+    void connection.start().catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(refreshTimer);
+      connection.off('SystemTrackingUpdated', scheduleRefresh);
+      void connection.stop();
+    };
+  }, [loadRealtimeSnapshot]);
+
   const stats = useMemo(() => {
     const auditCount = auditLogs.length;
     const errorCount = errorLogs.filter(e => e.level === 'error' || e.level === 'critical').length;
-    const activeAlerts = alerts.filter(a => a.status === 'active').length;
-    const todayAIRequests = AI_API_USAGE[AI_API_USAGE.length - 1].requests;
-    const todayAICost = AI_API_USAGE[AI_API_USAGE.length - 1].cost;
+    const activeAlerts = alerts.length;
     const avgResponseTime = apiLogs.length
       ? `${Math.round(apiLogs.reduce((total, log) => total + log.duration, 0) / apiLogs.length)}ms`
       : '0ms';
 
-    return { auditCount, errorCount, activeAlerts, todayAIRequests, todayAICost, avgResponseTime };
+    return { auditCount, errorCount, activeAlerts, trackedRequests: apiLogs.length, avgResponseTime };
   }, [auditLogs, errorLogs, alerts, apiLogs]);
 
   const filteredErrors = useMemo(() => {
@@ -529,29 +375,32 @@ export default function AdminSystemTrackingScreen() {
     });
   }, [errorLogs, searchQuery, logLevelFilter]);
 
+  const filteredAuditLogs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return auditLogs;
+    return auditLogs.filter(log =>
+      log.action.toLowerCase().includes(query) ||
+      log.userName.toLowerCase().includes(query) ||
+      log.resource.toLowerCase().includes(query) ||
+      log.details.toLowerCase().includes(query)
+    );
+  }, [auditLogs, searchQuery]);
+
   const filteredAlerts = useMemo(() => {
     return alerts.filter(alert => {
       const matchesSearch = searchQuery === '' ||
         alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         alert.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesStatus = alertStatusFilter === 'all' || alert.status === alertStatusFilter;
-
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
-  }, [alerts, searchQuery, alertStatusFilter]);
+  }, [alerts, searchQuery]);
 
   const getLogLevelBadge = (level: LogLevel) => {
     if (level === 'info') return <span className="badge-cyan text-xs">Info</span>;
     if (level === 'warning') return <span className="badge-amber text-xs">Warning</span>;
     if (level === 'error') return <span className="badge-red text-xs">Error</span>;
     return <span className="badge-red text-xs font-bold">Critical</span>;
-  };
-
-  const getAlertStatusBadge = (status: AlertStatus) => {
-    if (status === 'active') return <span className="badge-red text-xs">Active</span>;
-    if (status === 'acknowledged') return <span className="badge-amber text-xs">Acknowledged</span>;
-    return <span className="badge-green text-xs">Resolved</span>;
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -698,24 +547,20 @@ export default function AdminSystemTrackingScreen() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
             {[
-              { label: 'Audit Logs', value: stats.auditCount.toString(), icon: <FileText size={16} />, color: 'cyan', trend: '+12%' },
-              { label: 'Active Errors', value: stats.errorCount.toString(), icon: <XCircle size={16} />, color: 'red', trend: '-5%' },
-              { label: 'Active Alerts', value: stats.activeAlerts.toString(), icon: <AlertTriangle size={16} />, color: 'amber', trend: '+2' },
-              { label: 'AI Requests', value: stats.todayAIRequests.toLocaleString(), icon: <Zap size={16} />, color: 'purple', trend: '+18%' },
-              { label: 'AI Cost Today', value: `$${stats.todayAICost}`, icon: <TrendingUp size={16} />, color: 'green', trend: '+$25' },
-              { label: 'Avg Response', value: stats.avgResponseTime, icon: <Clock size={16} />, color: 'cyan', trend: '-15ms' },
+              { label: 'Activity Items', value: stats.auditCount.toString(), icon: <FileText size={16} />, color: 'cyan' },
+              { label: 'Active Errors', value: stats.errorCount.toString(), icon: <XCircle size={16} />, color: 'red' },
+              { label: 'Active Alerts', value: stats.activeAlerts.toString(), icon: <AlertTriangle size={16} />, color: 'amber' },
+              { label: 'Tracked Requests', value: stats.trackedRequests.toString(), icon: <Activity size={16} />, color: 'purple' },
+              { label: 'Avg Response', value: stats.avgResponseTime, icon: <Clock size={16} />, color: 'cyan' },
             ].map(stat => (
               <div key={stat.label} className="stat-card">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs text-secondary truncate">{stat.label}</p>
                   <span className={`icon-${stat.color} flex-shrink-0`}>{stat.icon}</span>
                 </div>
-                <p className="text-xl sm:text-2xl font-bold text-primary mb-1">{stat.value}</p>
-                <p className={`text-xs ${stat.trend.startsWith('-') || stat.trend.includes('ms') ? 'text-green' : 'text-cyan'}`}>
-                  {stat.trend}
-                </p>
+                <p className="text-xl sm:text-2xl font-bold text-primary">{stat.value}</p>
               </div>
             ))}
           </div>
@@ -724,7 +569,7 @@ export default function AdminSystemTrackingScreen() {
           <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
             {[
               { id: 'overview', label: 'Overview', icon: <Activity size={14} /> },
-              { id: 'audit', label: 'Audit Logs', icon: <FileText size={14} /> },
+              { id: 'audit', label: 'Recent Activity', icon: <FileText size={14} /> },
               { id: 'errors', label: 'Error Logs', icon: <Terminal size={14} /> },
               { id: 'alerts', label: 'Alerts', icon: <AlertTriangle size={14} /> },
               { id: 'ai-usage', label: 'AI Usage', icon: <Zap size={14} /> },
@@ -747,47 +592,15 @@ export default function AdminSystemTrackingScreen() {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {/* System Health */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="glass-card p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Cpu size={18} className="text-cyan" />
-                    <h3 className="font-semibold text-primary">System Health</h3>
-                  </div>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'API Server', status: 'Healthy', value: '99.9%' },
-                      { label: 'Database', status: 'Healthy', value: '100%' },
-                      { label: 'Cache', status: 'Healthy', value: '98.5%' },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle size={14} className="text-green" />
-                          <span className="text-sm text-secondary">{item.label}</span>
-                        </div>
-                        <span className="text-sm font-semibold text-primary">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="glass-card p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Database size={18} className="text-purple" />
                     <h3 className="font-semibold text-primary">Database Metrics</h3>
                   </div>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'Connections', value: '45/100' },
-                      { label: 'Query Time', value: '12ms avg' },
-                      { label: 'Storage Used', value: '68%' },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center justify-between">
-                        <span className="text-sm text-secondary">{item.label}</span>
-                        <span className="text-sm font-semibold text-primary">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-sm text-secondary">
+                    Unavailable: no database telemetry endpoint is connected.
+                  </p>
                 </div>
 
                 <div className="glass-card p-5">
@@ -795,18 +608,9 @@ export default function AdminSystemTrackingScreen() {
                     <Cloud size={18} className="text-green" />
                     <h3 className="font-semibold text-primary">Infrastructure</h3>
                   </div>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'CDN Status', value: 'Online' },
-                      { label: 'Load Balancer', value: 'Healthy' },
-                      { label: 'Auto Scaling', value: 'Active' },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center justify-between">
-                        <span className="text-sm text-secondary">{item.label}</span>
-                        <span className="text-sm font-semibold text-green">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-sm text-secondary">
+                    Unavailable: no infrastructure telemetry endpoint is connected.
+                  </p>
                 </div>
               </div>
 
@@ -1052,26 +856,12 @@ export default function AdminSystemTrackingScreen() {
                 )}
               </div>
 
-              {/* Recent Activity Chart */}
               <div className="glass-card p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className="font-semibold text-primary">Request Volume (Last 7 Days)</h3>
-                  <span className="badge-green text-xs">+18% vs last week</span>
-                </div>
-                <ResponsiveContainer width="100%" height={250}>
-                  <AreaChart data={AI_API_USAGE}>
-                    <defs>
-                      <linearGradient id="requestGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0077FF" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#0077FF" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,119,255,0.3)', borderRadius: 10, color: 'white' }} />
-                    <Area type="monotone" dataKey="requests" stroke="#0077FF" strokeWidth={2} fill="url(#requestGrad)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <h3 className="font-semibold text-primary mb-2">Historical Request Volume</h3>
+                <p className="text-sm text-secondary">
+                  Unavailable: the current backend exposes no historical request-metrics endpoint.
+                  The table above contains only live probes made by this screen.
+                </p>
               </div>
             </div>
           )}
@@ -1087,7 +877,7 @@ export default function AdminSystemTrackingScreen() {
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search audit logs..."
+                    placeholder="Search recent activity..."
                     className="input-gb w-full py-2.5 text-sm"
                     style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
                   />
@@ -1096,7 +886,7 @@ export default function AdminSystemTrackingScreen() {
 
               {/* Audit Logs List */}
               <div className="space-y-3">
-                {auditLogs.map(log => (
+                  {filteredAuditLogs.map(log => (
                   <div key={log.id} className="glass-card p-4 hover:bg-white/5 transition-all">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -1120,7 +910,7 @@ export default function AdminSystemTrackingScreen() {
                     </div>
                   </div>
                 ))}
-                {!isLoadingTracking && auditLogs.length === 0 && (
+                  {!isLoadingTracking && filteredAuditLogs.length === 0 && (
                   <div className="glass-card text-center py-12">
                     <FileText size={48} className="mx-auto mb-4 text-muted" />
                     <p className="text-primary font-medium mb-2">No audit activity found</p>
@@ -1223,16 +1013,6 @@ export default function AdminSystemTrackingScreen() {
                       style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
                     />
                   </div>
-                  <select
-                    value={alertStatusFilter}
-                    onChange={e => setAlertStatusFilter(e.target.value as AlertStatus | 'all')}
-                    className="input-gb px-4 py-2.5 text-sm cursor-pointer"
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="acknowledged">Acknowledged</option>
-                    <option value="resolved">Resolved</option>
-                  </select>
                 </div>
               </div>
 
@@ -1243,7 +1023,7 @@ export default function AdminSystemTrackingScreen() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         {getLogLevelBadge(alert.severity)}
-                        {getAlertStatusBadge(alert.status)}
+                        <span className="badge-red text-xs">Active</span>
                         <span className="badge-purple text-xs">{alert.service}</span>
                       </div>
                       <span className="text-xs text-secondary whitespace-nowrap ml-4">
@@ -1266,12 +1046,6 @@ export default function AdminSystemTrackingScreen() {
                         <p className="text-sm font-semibold text-primary">{alert.threshold}</p>
                       </div>
                     </div>
-                    {alert.status === 'active' && (
-                      <div className="flex gap-2 mt-4">
-                        <button className="btn-ghost-cyan px-3 py-1.5 text-xs">Acknowledge</button>
-                        <button className="btn-ghost-green px-3 py-1.5 text-xs">Resolve</button>
-                      </div>
-                    )}
                   </div>
                 ))}
                 {!isLoadingTracking && filteredAlerts.length === 0 && (
@@ -1287,81 +1061,16 @@ export default function AdminSystemTrackingScreen() {
 
           {/* AI Usage Tab */}
           {activeTab === 'ai-usage' && (
-            <div className="space-y-6">
-              {/* Usage Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="glass-card p-6">
-                  <h3 className="font-semibold text-primary mb-5">API Requests (Last 7 Days)</h3>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={AI_API_USAGE}>
-                      <XAxis dataKey="date" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.3)', borderRadius: 10, color: 'white' }} />
-                      <Bar dataKey="requests" fill="#9F4BFF" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="glass-card p-6">
-                  <h3 className="font-semibold text-primary mb-5">Cost Tracking (Last 7 Days)</h3>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={AI_API_USAGE}>
-                      <XAxis dataKey="date" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
-                      <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v.toFixed(2)}`, 'Cost']} />
-                      <Line type="monotone" dataKey="cost" stroke="#22C55E" strokeWidth={2} dot={{ fill: '#22C55E', r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Usage by Feature */}
-              <div className="glass-card p-6">
-                <h3 className="font-semibold text-primary mb-5">Usage by Feature</h3>
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                  <div className="flex-shrink-0">
-                    <PieChart width={200} height={200}>
-                      <Pie data={AI_USAGE_BY_FEATURE} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value">
-                        {AI_USAGE_BY_FEATURE.map((entry, i) => (
-                          <Cell key={`cell-${i}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </div>
-                  <div className="flex-1 w-full">
-                    <div className="space-y-3">
-                      {AI_USAGE_BY_FEATURE.map(feature => (
-                        <div key={feature.name} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 rounded-full" style={{ background: feature.color }} />
-                            <span className="text-sm text-primary">{feature.name}</span>
-                          </div>
-                          <span className="text-sm font-semibold text-primary">{feature.value}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Token Usage */}
-              <div className="glass-card p-6">
-                <h3 className="font-semibold text-primary mb-5">Token Consumption</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={AI_API_USAGE}>
-                    <defs>
-                      <linearGradient id="tokenGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0077FF" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#0077FF" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,119,255,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [v.toLocaleString(), 'Tokens']} />
-                    <Area type="monotone" dataKey="tokens" stroke="#0077FF" strokeWidth={2} fill="url(#tokenGrad)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="glass-card p-10 text-center">
+              <Zap size={48} className="mx-auto mb-4 text-muted" />
+              <h3 className="text-lg font-semibold text-primary mb-2">
+                AI usage telemetry unavailable
+              </h3>
+              <p className="text-sm text-secondary max-w-2xl mx-auto">
+                No backend endpoint currently provides AI request counts, token consumption,
+                feature distribution, or cost history. These charts will remain hidden until
+                persisted telemetry is available.
+              </p>
             </div>
           )}
         </div>

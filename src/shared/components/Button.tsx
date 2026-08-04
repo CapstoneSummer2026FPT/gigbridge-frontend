@@ -35,4 +35,3 @@ export default function Button({ id, title, rightIcon, leftIcon, containerClass,
     </button>
   );
 }
-export { Button };

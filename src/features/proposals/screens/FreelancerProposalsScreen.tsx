@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { ArrowLeft, Bot, Edit3, FileText, MessageSquare, Send, ShieldAlert, XCircle } from 'lucide-react';
+import { ArrowLeft, Bot, Edit3, FileText, MessageSquare, ShieldAlert, XCircle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -33,7 +33,9 @@ export default function FreelancerProposalsScreen() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  // Server returns totalCount for pagination metadata; only the setter is used
+  // (the list header already renders each proposal's own counts).
+  const [, setTotalCount] = useState(0);
   const pageSize = 10;
 
   useEffect(() => {
@@ -407,33 +409,6 @@ export default function FreelancerProposalsScreen() {
             )}
           </section>
 
-          <section className="w-80 border-l border-border flex flex-col bg-card p-6 overflow-y-auto custom-scrollbar">
-            {activeProposal ? (
-              <div className="flex flex-col gap-5">
-                <div className="pb-4 border-b border-border">
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider text-muted-foreground mb-1">Proposal Status</h3>
-                  <div className={`inline-flex text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded ${statusBadgeClass(activeProposal.status)}`}>
-                    {getStatusLabel(activeProposal.status)}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-background p-4 text-xs text-muted-foreground leading-relaxed">
-                  {Number(activeProposal.status) === ProposalStatus.Accepted
-                    ? 'Accepted proposals stay in this proposal workspace for status and answer review.'
-                    : Number(activeProposal.status) === ProposalStatus.Draft
-                    ? 'Draft proposals can be edited and submitted when ready.'
-                    : Number(activeProposal.status) === ProposalStatus.Withdrawn
-                    ? 'This proposal has been withdrawn.'
-                    : 'Use the available actions to manage this proposal.'}
-                </div>
-              </div>
-            ) : (
-              <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground">
-                <Send size={30} className="opacity-25 mb-2" />
-                <p className="text-xs">No proposal selected.</p>
-              </div>
-            )}
-          </section>
         </div>
       </div>
     </AppLayout>

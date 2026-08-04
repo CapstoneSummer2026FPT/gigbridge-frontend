@@ -98,8 +98,8 @@ describe('SignatureWorkflowScreen policy acceptance', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Proceed to sign/i }));
 
-    const policyLink = screen.getByRole('link', { name: /Bộ chính sách GigBridge phiên bản 1.0-DATN/i });
-    const policyCheckbox = screen.getByRole('checkbox', { name: /Bộ chính sách GigBridge phiên bản 1.0-DATN/i });
+    const policyLink = screen.getByRole('link', { name: /Bộ chính sách GigBridge/i });
+    const policyCheckbox = screen.getByRole('checkbox', { name: /Bộ chính sách GigBridge/i });
     const signButton = screen.getByRole('button', { name: /Sign contract/i });
     const canvas = document.querySelector('canvas');
 

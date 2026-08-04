@@ -37,6 +37,8 @@ interface WorkspaceProject {
   startDate?: string;
   clientId?: string;
   freelancerId?: string | null;
+  clientUserId?: string | null;
+  freelancerUserId?: string | null;
   milestones: WorkspaceMilestone[];
 }
 
@@ -45,6 +47,7 @@ interface WorkspaceProjectListItem {
   title: string;
   partnerName: string;
   partnerAvatar: string;
+  partnerUserId?: string | null;
   latestMessage: string;
   time: string;
   unread: boolean;
@@ -66,6 +69,7 @@ interface SubmitMilestoneDeliverableResult {
 interface WorkspaceActionResult {
   success: boolean;
   message?: string;
+  statusCode?: number;
 }
 
 interface SubmitProductHandoffPayload {
@@ -151,6 +155,8 @@ const buildProject = (contract: ContractDto, milestones: Milestone[]): Workspace
     startDate: contract.startDate,
     clientId: contract.clientProfilesId,
     freelancerId: contract.freelancerProfilesId,
+    clientUserId: contract.clientUserId,
+    freelancerUserId: contract.freelancerUserId,
     milestones: mappedMilestones,
   };
 };
@@ -163,6 +169,7 @@ const mapContractListItem = (contract: ContractDto, isClient: boolean): Workspac
     title: contract.jobTitle || contract.title,
     partnerName,
     partnerAvatar: getAvatarUrl(partnerName),
+    partnerUserId: isClient ? contract.freelancerUserId : contract.clientUserId,
     latestMessage: contract.status === ContractStatus.Active
       ? 'Workspace is open.'
       : contract.status === ContractStatus.Disputed
@@ -176,18 +183,31 @@ const mapContractListItem = (contract: ContractDto, isClient: boolean): Workspac
   };
 };
 
-const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
-  const messageType = Number(message.messageType ?? message.MessageType ?? 0);
-  const firstAttachment = Array.isArray(message.attachments) ? message.attachments[0] as Record<string, unknown> | undefined : undefined;
+const getObjectValue = (source: unknown, ...keys: string[]): unknown => {
+  if (typeof source !== 'object' || source === null) return undefined;
+
+  for (const key of keys) {
+    if (key in source) return Reflect.get(source, key);
+  }
+
+  return undefined;
+};
+
+const mapWorkspaceMessage = (message: unknown): Message => {
+  const messageType = Number(getObjectValue(message, 'messageType', 'MessageType') ?? 0);
+  const attachments = getObjectValue(message, 'attachments', 'Attachments');
+  const firstAttachment = Array.isArray(attachments) ? attachments[0] : undefined;
+  const clientMessageId = getObjectValue(message, 'clientMessageId', 'ClientMessageId');
+  const metadata = getObjectValue(message, 'metadata', 'Metadata');
+  const fileUrl = getObjectValue(firstAttachment, 'fileUrl', 'FileUrl');
+  const fileName = getObjectValue(firstAttachment, 'fileName', 'FileName');
 
   return {
-    id: String(message.messageId ?? message.MessageId ?? message.id ?? crypto.randomUUID()),
-    clientMessageId: typeof (message.clientMessageId ?? message.ClientMessageId) === 'string'
-      ? String(message.clientMessageId ?? message.ClientMessageId)
-      : null,
-    conversationId: String(message.conversationId ?? message.ConversationId ?? ''),
-    senderId: String(message.senderUserId ?? message.SenderUserId ?? message.senderId ?? ''),
-    content: String(message.content ?? message.Content ?? ''),
+    id: String(getObjectValue(message, 'messageId', 'MessageId', 'id') ?? crypto.randomUUID()),
+    clientMessageId: typeof clientMessageId === 'string' ? clientMessageId : null,
+    conversationId: String(getObjectValue(message, 'conversationId', 'ConversationId') ?? ''),
+    senderId: String(getObjectValue(message, 'senderUserId', 'SenderUserId', 'senderId') ?? ''),
+    content: String(getObjectValue(message, 'content', 'Content') ?? ''),
     type: messageType === 1
       ? 'image'
       : messageType === 2
@@ -196,13 +216,11 @@ const mapWorkspaceMessage = (message: Record<string, unknown>): Message => {
           ? 'system'
           : 'text',
     messageType,
-    metadata: typeof (message.metadata ?? message.Metadata) === 'string'
-      ? String(message.metadata ?? message.Metadata)
-      : null,
-    createdAt: String(message.sentAt ?? message.SentAt ?? message.createdAt ?? new Date().toISOString()),
+    metadata: typeof metadata === 'string' ? metadata : null,
+    createdAt: String(getObjectValue(message, 'sentAt', 'SentAt', 'createdAt') ?? new Date().toISOString()),
     isRead: true,
-    fileUrl: typeof firstAttachment?.fileUrl === 'string' ? firstAttachment.fileUrl : undefined,
-    fileName: typeof firstAttachment?.fileName === 'string' ? firstAttachment.fileName : undefined,
+    fileUrl: typeof fileUrl === 'string' ? fileUrl : undefined,
+    fileName: typeof fileName === 'string' ? fileName : undefined,
   };
 };
 
@@ -217,8 +235,7 @@ const isContractLocked = (status?: ContractStatus): boolean =>
 export function useProjectWorkspace(initialContractId: string) {
   const navigate = useNavigate();
   const { user, role } = useApp();
-  const roleValue = role as UserRole | string | null;
-  const isClient = roleValue === UserRole.Client || roleValue === 'client';
+  const isClient = role === UserRole.Client;
 
   const [activeProjectId, setActiveProjectId] = useState(initialContractId);
   const [activeContract, setActiveContract] = useState<ContractDto | null>(null);
@@ -232,6 +249,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [projectMessages, setProjectMessages] = useState<Message[]>([]);
+  const [reviewPromptContractId, setReviewPromptContractId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatConnectionRef = useRef<signalR.HubConnection | null>(null);
   const conversationIdRef = useRef<string | null>(null);
@@ -292,7 +310,7 @@ export function useProjectWorkspace(initialContractId: string) {
         if (nextContract.conversationId) {
           const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
           if (current && messagesResponse.success && messagesResponse.data) {
-            setProjectMessages(messagesResponse.data.map(message => mapWorkspaceMessage(message as Record<string, unknown>)));
+            setProjectMessages(messagesResponse.data.map(mapWorkspaceMessage));
           }
         } else {
           setProjectMessages([]);
@@ -374,7 +392,9 @@ export function useProjectWorkspace(initialContractId: string) {
     const handleContractCompleted = (payload: Record<string, unknown>): void => {
       const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
       if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
-      void reloadActiveWorkspace().finally(() => {
+      void reloadActiveWorkspace().then(() => {
+        setReviewPromptContractId(eventContractId || activeProjectIdRef.current);
+      }).finally(() => {
         window.dispatchEvent(new Event('gigbridge-wallet-updated'));
       });
     };
@@ -458,6 +478,9 @@ export function useProjectWorkspace(initialContractId: string) {
     titleLong: project.title,
     partnerName: activeContract ? getPartnerName(activeContract, isClient) : 'Partner',
     partnerAvatar: getAvatarUrl(activeContract ? getPartnerName(activeContract, isClient) : 'Partner'),
+    partnerUserId: activeContract
+      ? (isClient ? activeContract.freelancerUserId : activeContract.clientUserId)
+      : null,
     latestMessage: 'Workspace is open.',
     time: 'Just now',
     unread: false,
@@ -470,6 +493,7 @@ export function useProjectWorkspace(initialContractId: string) {
   const partnerTitle = isClient ? 'Freelancer' : 'Client';
   const partnerCompany = activeContract ? activeContract.jobTitle || activeContract.title : '';
   const isPartnerOnline = currentProjData.online;
+  const partnerUserId = currentProjData.partnerUserId ?? null;
 
   const handleSendMessage = async (): Promise<void> => {
     if (isContractLocked(activeContract?.status) || !messageInput.trim() || !project.conversationId) return;
@@ -501,7 +525,7 @@ export function useProjectWorkspace(initialContractId: string) {
         setProjectMessages(prev =>
           prev.map(message =>
             message.id === clientMessageId
-              ? { ...mapWorkspaceMessage(response.data as Record<string, unknown>), sendStatus: 'sent' }
+              ? { ...mapWorkspaceMessage(response.data), sendStatus: 'sent' }
               : message
           )
         );
@@ -533,7 +557,9 @@ export function useProjectWorkspace(initialContractId: string) {
 
   const handleOpenMilestoneEditor = (): void => {
     if (!activeProjectId) return;
-    navigate(`/contracts/${activeProjectId}/milestones?mode=contract-edit`);
+    navigate(isClient
+      ? `/contracts/${activeProjectId}/milestones?mode=contract-edit`
+      : `/contracts/${activeProjectId}/milestones`);
   };
 
   const reloadActiveWorkspace = async (): Promise<void> => {
@@ -558,7 +584,7 @@ export function useProjectWorkspace(initialContractId: string) {
       if (nextContract.conversationId) {
         const messagesResponse = await messageGetAPI.getConversationMessages(nextContract.conversationId);
         if (messagesResponse.success && messagesResponse.data) {
-          setProjectMessages(messagesResponse.data.map(message => mapWorkspaceMessage(message as Record<string, unknown>)));
+          setProjectMessages(messagesResponse.data.map(mapWorkspaceMessage));
         }
       }
     }
@@ -595,21 +621,6 @@ export function useProjectWorkspace(initialContractId: string) {
     return { success: true, message: response.message };
   };
 
-  const handleStartMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || isContractLocked(activeContract?.status)) {
-      return { success: false, message: 'Missing contract ID.' };
-    }
-
-    const response = await contractPostAPI.startMilestone(activeProjectId, milestoneId);
-
-    if (!response.success) {
-      return { success: false, message: response.message || 'Failed to start milestone.' };
-    }
-
-    await reloadActiveWorkspace();
-    return { success: true, message: response.message };
-  };
-
   const handleRequestMilestoneUnlock = async (milestoneId: string, reason: string): Promise<WorkspaceActionResult> => {
     if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
@@ -623,6 +634,35 @@ export function useProjectWorkspace(initialContractId: string) {
 
     await reloadActiveWorkspace();
     return { success: true, message: response.message };
+  };
+
+  const handleWithdrawMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
+    if (!activeProjectId) {
+      return { success: false, message: 'Missing contract ID.' };
+    }
+    if (role !== UserRole.Freelancer) {
+      return { success: false, message: 'Only the freelancer can withdraw milestone funds.' };
+    }
+    if (activeContract?.status !== ContractStatus.Active) {
+      return { success: false, message: 'Contract is not active.' };
+    }
+
+    const response = await contractPostAPI.withdrawMilestone(activeProjectId, milestoneId);
+
+    if (!response.success) {
+      if (response.statusCode === 409) {
+        await reloadActiveWorkspace();
+      }
+      return {
+        success: false,
+        statusCode: response.statusCode,
+        message: response.message || 'Failed to withdraw milestone funds.',
+      };
+    }
+
+    await reloadActiveWorkspace();
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    return { success: true, statusCode: response.statusCode, message: response.message };
   };
 
   const handleUpdateWorkItem = async (milestoneId: string, workItemId: string, status: number, progressNote?: string): Promise<WorkspaceActionResult> => {
@@ -642,21 +682,6 @@ export function useProjectWorkspace(initialContractId: string) {
     return { success: true, message: response.message };
   };
 
-  const handleWithdrawMilestone = async (milestoneId: string): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || isContractLocked(activeContract?.status)) {
-      return { success: false, message: 'Missing contract ID.' };
-    }
-
-    const response = await contractPostAPI.withdrawMilestone(activeProjectId, milestoneId);
-
-    if (!response.success) {
-      return { success: false, message: response.message || 'Failed to withdraw milestone funds.' };
-    }
-
-    await reloadActiveWorkspace();
-    return { success: true, message: response.message };
-  };
-
   const handleEndProject = async (): Promise<WorkspaceActionResult> => {
     if (!activeProjectId || isContractLocked(activeContract?.status)) {
       return { success: false, message: 'Missing contract ID.' };
@@ -669,21 +694,7 @@ export function useProjectWorkspace(initialContractId: string) {
     }
 
     await reloadActiveWorkspace();
-    return { success: true, message: response.message };
-  };
-
-  const handleClaimFinalPayout = async (): Promise<WorkspaceActionResult> => {
-    if (!activeProjectId || isClient || activeContract?.status !== ContractStatus.Completed) {
-      return { success: false, message: 'Final payout is not available.' };
-    }
-
-    const response = await contractPostAPI.claimFinalPayout(activeProjectId);
-    if (!response.success) {
-      return { success: false, message: response.message || 'Failed to claim final payout.' };
-    }
-
-    await reloadActiveWorkspace();
-    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+    setReviewPromptContractId(activeProjectId);
     return { success: true, message: response.message };
   };
 
@@ -744,17 +755,20 @@ export function useProjectWorkspace(initialContractId: string) {
     partnerAvatar,
     partnerTitle,
     partnerCompany,
+    partnerUserId,
     isPartnerOnline,
     projectMessages,
+    reviewPromptContractId,
+    clearReviewPrompt: () => setReviewPromptContractId(null),
+    refreshWorkspace: reloadActiveWorkspace,
     handleSendMessage,
     handleSimulateAttachment,
     handleOpenMilestoneEditor,
-    handleStartMilestone,
     handleRequestMilestoneUnlock,
+    handleWithdrawMilestone,
     handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,
-    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,

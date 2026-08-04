@@ -7,7 +7,7 @@ interface BentoTiltProps {
   className?: string;
 }
 
-export function BentoTilt({ children, className = '' }: BentoTiltProps) {
+function BentoTilt({ children, className = '' }: BentoTiltProps) {
   const [transformStyle, setTransformStyle] = useState('');
   const itemRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +51,7 @@ interface BentoCardProps {
   exploreLabel?: string;
 }
 
-export function BentoCard({ src, title, description, isComingSoon, exploreLabel = 'explore' }: BentoCardProps) {
+function BentoCard({ src, title, description, isComingSoon, exploreLabel = 'explore' }: BentoCardProps) {
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [hoverOpacity, setHoverOpacity] = useState(0);
   const hoverButtonRef = useRef<HTMLDivElement>(null);
@@ -202,4 +202,3 @@ export default function Features() {
     </section>
   );
 }
-export { Features };

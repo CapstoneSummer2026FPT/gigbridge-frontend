@@ -6,6 +6,8 @@ import { normalizeReportContract, normalizeReportContractListItem } from './util
 const baseUrl = (contractId: string) => `contracts/${contractId}/reports`;
 
 export const reportContractGetAPI = {
+  getAttachmentDownload: (contractId:string, reportId:string, attachmentId:string): Promise<ApiResponse<{attachmentId:string;fileName:string;downloadUrl:string}>> =>
+    apiService.get(`${baseUrl(contractId)}/${reportId}/attachments/${attachmentId}/download`),
   /**
    * GET /api/contracts/{contractId}/reports
    * List all reports for a contract

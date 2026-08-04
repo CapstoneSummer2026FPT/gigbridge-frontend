@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
 import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
-import { ArrowLeft, BookOpen, User, Briefcase, Search, FileText, MessageSquare, Shield, Bot, Star, CheckCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, User, Briefcase, Search, MessageSquare, Shield, Bot, Star, CheckCircle } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 
 const GUIDES = {

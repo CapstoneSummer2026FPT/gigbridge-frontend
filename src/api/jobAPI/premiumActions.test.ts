@@ -38,4 +38,22 @@ describe('Premium client job actions', () => {
       language: 'vi', mode: 'voice', questionCount: 7,
     });
   });
+
+  it('ends a client job promotion through the owning job post', async () => {
+    await jobPostAPI.endJobPromotion('job-1');
+
+    expect(post).toHaveBeenCalledWith('JobPosts/job-1/promotion/end');
+  });
+
+  it('sends a stable visitor key with anonymous promotion telemetry', async () => {
+    await jobPostAPI.trackJobPromotionImpression('promotion-1', 'visitor-1');
+    await jobPostAPI.trackJobPromotionClick('promotion-1', 'visitor-1');
+
+    expect(post).toHaveBeenNthCalledWith(
+      1, 'job-promotions/promotion-1/impression', {}, { 'X-Promotion-Visitor': 'visitor-1' },
+    );
+    expect(post).toHaveBeenNthCalledWith(
+      2, 'job-promotions/promotion-1/click', {}, { 'X-Promotion-Visitor': 'visitor-1' },
+    );
+  });
 });

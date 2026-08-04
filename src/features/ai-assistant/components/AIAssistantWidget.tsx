@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type WheelEvent } from 'react';
 import { useLocation } from 'react-router';
 import {
   AlertTriangle,
@@ -17,10 +17,9 @@ import {
 import { useApp } from '../../../app/providers/AppProvider';
 import {
   AI_ASSISTANT_DISCLAIMER,
-  buildMockAIResponse,
   estimateTokenUsage,
   type AIAssistantMessage,
-} from '../mock/data-for-AIAssistantScreen';
+} from '../types/assistant';
 import { aiAssistantAPI } from '../../../api/aiAssistantAPI';
 import '../styles/ai-assistant-widget.css';
 
@@ -58,11 +57,10 @@ const playSound = (type: 'send' | 'receive' | 'chime', enabled: boolean) => {
 };
 
 export default function AIAssistantWidget() {
-  const { user, role } = useApp();
+  const { user } = useApp();
   const location = useLocation();
 
   const firstName = user?.first_name || user?.full_name?.split(' ')[0] || 'there';
-  const roleLabel  = role === 0 ? 'client' : role === 1 ? 'freelancer' : 'user';
 
   const chatEndRef         = useRef<HTMLDivElement>(null);
   const timeoutRef         = useRef<number | null>(null);
@@ -87,7 +85,7 @@ export default function AIAssistantWidget() {
   const [showIntro,         setShowIntro]       = useState(false);
   const [introClass,        setIntroClass]      = useState('active');
   const [voiceEnabled,      setVoiceEnabled]    = useState(() => localStorage.getItem('gb_ai_voice') === 'true');
-  const [soundEnabled,      setSoundEnabled]    = useState(() => localStorage.getItem('gb_ai_sound') !== 'false');
+  const soundEnabled = localStorage.getItem('gb_ai_sound') !== 'false';
   const [isListening,       setIsListening]     = useState(false);
 
   /* ── Auto-scroll ── */
@@ -280,7 +278,7 @@ export default function AIAssistantWidget() {
     }
   };
 
-  const handleSuggestionsWheel = (e: React.WheelEvent) => {
+  const handleSuggestionsWheel = (e: WheelEvent) => {
     e.currentTarget.scrollLeft += e.deltaY * 0.8;
   };
 

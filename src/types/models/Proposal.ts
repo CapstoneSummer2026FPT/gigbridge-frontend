@@ -11,6 +11,11 @@ export enum ProposalStatus {
   Withdrawn = 5,
 }
 
+export enum ProposalModerationStatus {
+  Active = 0,
+  Invalidated = 1,
+}
+
 export interface Proposal {
   id: string;
   job_post_id: string;
@@ -54,10 +59,13 @@ export interface ProposalDto {
   jobTitle: string;
   freelancerProfilesId: string;
   freelancerName: string;
+  freelancerUserId?: string | null;
   coverLetter: string;
   proposedBudget: number;
   proposedDuration: string;
   status: ProposalStatus | number;
+  moderationStatus?: ProposalModerationStatus | number;
+  invalidationReason?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
   analysisSummaryPreview?: string;
@@ -147,10 +155,13 @@ export interface ProposalDetailDto {
   jobPostTitle?: string | null;
   freelancerProfileId: string;
   freelancerName?: string | null;
+  freelancerUserId?: string | null;
   coverLetter?: string | null;
   proposedBudget?: number | null;
   proposedDuration?: string | null;
   status: ProposalStatus | number;
+  moderationStatus?: ProposalModerationStatus | number;
+  invalidationReason?: string | null;
   submittedAt?: string | null;
   updatedAt?: string | null;
   isAigenerated?: boolean | null;
@@ -194,20 +205,9 @@ export interface UpdateProposalStatusRequest {
   status: ProposalStatus | number;
 }
 
-export interface CheatingPenaltyResultDto {
-  applied: boolean;
-  violationId: string;
-  violationNumber: number;
-  eloDelta: number;
-  action: number;
-  suspendedUntil?: string | null;
-  message: string;
-}
-
 export interface UpdateProposalStatusResponse {
   success: boolean;
   status: ProposalStatus | number;
-  cheatingPenalty?: CheatingPenaltyResultDto | null;
 }
 
 export enum QuestionTimerLockedReason {
@@ -238,29 +238,6 @@ export interface InterviewReviewSessionDto {
   isLocked: boolean;
   reviewableQuestionCount: number;
   reviewableQuestionIds: string[];
-}
-
-export type CheatingEventType = 0 | 1 | 2 | 3 | 4 | 5;
-
-export interface LogProposalCheatingEventRequest {
-  eventType: CheatingEventType;
-  jobPostQuestionId?: string | null;
-  clientEventId: string;
-  occurredAt?: string | null;
-  metadata?: Record<string, string | null>;
-}
-
-export interface CheatingEventLogResponse {
-  proposalId: string;
-  eventType: CheatingEventType;
-  totalSessionEventCount: number;
-  copyCount: number;
-  pasteCount: number;
-  tabSwitchCount: number;
-  screenshotAttemptCount: number;
-  focusLossCount: number;
-  fullscreenExitCount: number;
-  warningMessage: string;
 }
 
 export interface ProposalAnswerDto {

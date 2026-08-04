@@ -155,19 +155,16 @@ export default function ProfileSetupScreen() {
       const profileData = isClient ? clientData : freelancerData;
       
       // Save profile (backend will automatically set isSetup = true)
-      console.log('Saving profile...');
       if (isClient) {
         const response = await profilePutAPI.updateClientProfile(profileData as UpdateClientProfileDto);
         if (!response.success) {
           throw new Error(response.message || 'Failed to save profile');
         }
-        console.log('Profile saved successfully');
       } else {
         const response = await profilePutAPI.updateFreelancerProfile(profileData as UpdateFreelancerProfileDto);
         if (!response.success) {
           throw new Error(response.message || 'Failed to save profile');
         }
-        console.log('Profile saved successfully');
       }
       
       // Update localStorage
@@ -189,11 +186,10 @@ export default function ProfileSetupScreen() {
       markSetupComplete();
       
       // Navigate to dashboard
-      console.log('Navigating to dashboard...');
       navigate(isClient ? '/client/dashboard' : '/freelancer/dashboard');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Setup failed:', error);
-      setError((error as any).message || 'Failed to complete setup. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to complete setup. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

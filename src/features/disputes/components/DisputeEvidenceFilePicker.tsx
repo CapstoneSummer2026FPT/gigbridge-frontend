@@ -2,8 +2,8 @@ import { FileText, Upload, X } from 'lucide-react';
 import { useRef, type ChangeEvent } from 'react';
 import './dispute-evidence-file-picker.css';
 
-export const MAX_DISPUTE_EVIDENCE_FILES = 5;
-export const MAX_DISPUTE_EVIDENCE_SIZE = 100 * 1024 * 1024;
+const MAX_DISPUTE_EVIDENCE_FILES = 5;
+const MAX_DISPUTE_EVIDENCE_SIZE = 100 * 1024 * 1024;
 
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;

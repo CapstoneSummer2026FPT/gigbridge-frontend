@@ -72,6 +72,7 @@ export interface Job {
   viewCount: number;
   aiMatchScore?: number;
   isAiRecommended?: boolean;
+  isFeatured?: boolean;
   hasAiInterview?: boolean;
   clientEloPoints?: number;
   postedAt: string;
@@ -88,6 +89,12 @@ export interface JobPostQueryParams {
   PageSize?: number;
   pageIndex?: number;
   pageSize?: number;
+  search?: string;
+  status?: JobPostStatus | number;
+  sortBy?: 'newest' | 'title' | 'budgetMin' | 'budgetMax';
+  sortDesc?: boolean;
+  includeSummary?: boolean;
+  knownTotalItems?: number;
 }
 
 export interface JobPostSummaryDto {
@@ -110,7 +117,28 @@ export interface JobPostSummaryDto {
   skills: JobPostSkillDto[];
   customSkillNames: string[];
   skillNames: string[];
+  isFeatured?: boolean;
+  featuredUntil?: string | null;
+  isAiGenerated?: boolean;
   hasAiInterview?: boolean;
+}
+
+export interface AdminJobPostStatsDto {
+  total: number;
+  draft: number;
+  open: number;
+  closed: number;
+  cancelled: number;
+  locked: number;
+}
+
+export interface AdminJobPostListResponse {
+  items: JobPostSummaryDto[];
+  pageIndex: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  stats?: AdminJobPostStatsDto | null;
 }
 
 export interface GetMyJobPostSkillDto {
@@ -264,7 +292,6 @@ export interface CreateJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  location?: string | null;
   visibility?: number | null;
   endDate?: string | null;
   skillIds: string[];
@@ -284,7 +311,6 @@ export interface UpdateJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  location?: string | null;
   visibility: JobPostVisibility | number;
   endDate?: string | null;
   skillIds: string[];
@@ -305,7 +331,6 @@ export interface SaveDraftJobPostRequest {
   budgetMax?: number | null;
   currency?: string | null;
   estimatedDuration?: string | null;
-  location?: string | null;
   visibility?: JobPostVisibility | number | null;
   endDate?: string | null;
   isAigenerated?: boolean | null;
@@ -324,7 +349,7 @@ export interface GeneratedJobSkillDto {
   name: string;
 }
 
-export interface GenerateJobDescriptionResponse {
+export interface GenerateJobDescriptionDetailsResponse {
   title: string;
   majorId?: string | null;
   majorName?: string | null;
@@ -334,7 +359,17 @@ export interface GenerateJobDescriptionResponse {
   skills: GeneratedJobSkillDto[];
   customSkills: string[];
   description: string;
-  questionRecruitment?: string[] | null;
+}
+
+export interface GenerateJobHiringPlanRequest {
+  clientPrompt: string;
+  title: string;
+  description: string;
+}
+
+export interface GenerateJobHiringPlanResponse {
+  questionRecruitment: string[];
+  milestones: JobPostMilestonePlanDto[];
 }
 
 export interface JobPostPromotionDto {
@@ -443,9 +478,10 @@ export interface UpdateJobPostVisibilityRequest {
 export interface Review {
   reviewId?: string;
   id?: string;
-  contractId?: string;
-  jobPostId?: string;
-  jobId?: string;
+    contractId?: string;
+    jobPostId?: string;
+    jobId?: string;
+    projectTitle?: string;
   reviewerId: string;
   reviewerName?: string | null;
   revieweeId: string;

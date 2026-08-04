@@ -56,7 +56,7 @@ export default function Hero() {
           duration: 1,
           ease: 'power1.inOut',
           onStart: () => {
-            if (nextVdRef.current) nextVdRef.current.play().catch(err => console.log(err));
+            if (nextVdRef.current) nextVdRef.current.play().catch(() => undefined);
           },
         });
         gsap.from('#current-video', {

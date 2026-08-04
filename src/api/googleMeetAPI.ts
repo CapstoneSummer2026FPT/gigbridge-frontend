@@ -22,7 +22,4 @@ export const googleMeetAPI = {
 
   getStatus: () =>
     apiService.get<GoogleMeetConnectionStatus>('integrations/google-meet/status'),
-
-  disconnect: () =>
-    apiService.delete<void>('integrations/google-meet'),
 };

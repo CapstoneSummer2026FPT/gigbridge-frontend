@@ -5,7 +5,6 @@ import {
   Eye,
   Calendar,
   User,
-  FileUp,
   PenTool,
   TrendingUp,
   Award,
@@ -13,7 +12,6 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  MoreVertical,
   Zap,
   ChevronDown,
   ChevronRight,
@@ -21,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -35,7 +34,6 @@ import {
 } from '../../../shared/utils/contractUtils';
 import { MilestoneDetailCard } from '../components/MilestoneDetailCard';
 import '../styles/freelancer-contract-screen.css';
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
 
 interface MilestoneDisplay extends Milestone {
@@ -383,7 +381,7 @@ export default function FreelancerContractScreen() {
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground font-semibold">
                               <span className="text-foreground flex items-center gap-1.5">
                                 <User size={13} className="text-muted-foreground" />
-                                {name}
+                                <UserProfileLink userId={contract.clientUserId} role="client">{name}</UserProfileLink>
                               </span>
                               <span className="h-3 w-px bg-border/60 hidden sm:inline" />
                               <span className="flex items-center gap-1.5">
@@ -461,10 +459,18 @@ export default function FreelancerContractScreen() {
                               <button
                                 onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
                                 className="p-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-xl flex items-center justify-center text-amber-500 transition-all duration-200 cursor-pointer"
-                                title={t('contracts.leaveReview')}
+                                title={t('reviews.leaveForClient')}
                               >
                                 <Star size={16} />
                               </button>
+                            )}
+                            {contract.hasReviewedByCurrentUser && contract.status === ContractStatus.Completed && (
+                              <span
+                                className="p-2 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center justify-center text-emerald-600"
+                                title={t('reviews.reviewed')}
+                              >
+                                <CheckCircle2 size={16} />
+                              </span>
                             )}
                           </div>
                         </div>

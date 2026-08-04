@@ -4,6 +4,54 @@ import type { ProposalAnswerDto, ProposalDetailDto, ProposalDto, ProposalJudging
 
 const proposalsUrl = 'Proposals';
 
+interface PaginatedProposalResponse {
+  items?: ProposalDto[];
+  Items?: ProposalDto[];
+  pageNumber?: number;
+  PageNumber?: number;
+  totalPages?: number;
+  TotalPages?: number;
+  totalCount?: number;
+  TotalCount?: number;
+  hasPreviousPage?: boolean;
+  HasPreviousPage?: boolean;
+  hasNextPage?: boolean;
+  HasNextPage?: boolean;
+}
+
+export const normalizeProposalList = (data: unknown): ProposalDto[] => {
+  if (Array.isArray(data)) return data as ProposalDto[];
+  if (!data || typeof data !== 'object') return [];
+
+  const page = data as PaginatedProposalResponse;
+  const items = page.items ?? page.Items;
+  return Array.isArray(items) ? items : [];
+};
+
+const hasProposalListShape = (data: unknown): boolean => {
+  if (Array.isArray(data)) return true;
+  if (!data || typeof data !== 'object') return false;
+
+  const page = data as PaginatedProposalResponse;
+  return Array.isArray(page.items ?? page.Items);
+};
+
+export const normalizeProposalPage = (data: unknown): ProposalListPageDto => {
+  const page = data && typeof data === 'object' && !Array.isArray(data)
+    ? data as PaginatedProposalResponse
+    : {};
+  const items = normalizeProposalList(data);
+
+  return {
+    items,
+    pageNumber: Number(page.pageNumber ?? page.PageNumber) || 1,
+    totalPages: Number(page.totalPages ?? page.TotalPages) || 1,
+    totalCount: Number(page.totalCount ?? page.TotalCount) || items.length,
+    hasPreviousPage: Boolean(page.hasPreviousPage ?? page.HasPreviousPage),
+    hasNextPage: Boolean(page.hasNextPage ?? page.HasNextPage),
+  };
+};
+
 export const proposalGetAPI = {
   /**
    * GET /api/Proposals/admin/all
@@ -17,31 +65,21 @@ export const proposalGetAPI = {
 
   /**
    * GET /api/Proposals/my-proposals
-   * Freelancer-only proposal list.
+   * Freelancer-only proposal list (paginated).
    */
   getMyProposals: async (
     params: ProposalQueryParams = {}
   ): Promise<ApiResponse<ProposalListPageDto>> => {
-    const response = await apiService.get<any>(`${proposalsUrl}/my-proposals`, params);
+    const response = await apiService.get<unknown>(`${proposalsUrl}/my-proposals`, params);
+    const hasValidData = hasProposalListShape(response.data);
+
     return {
       ...response,
-      data: response.data
-        ? {
-            items: response.data.items || [],
-            pageNumber: response.data.pageNumber || 1,
-            totalPages: response.data.totalPages || 1,
-            totalCount: response.data.totalCount || 0,
-            hasPreviousPage: !!response.data.hasPreviousPage,
-            hasNextPage: !!response.data.hasNextPage,
-          }
-        : {
-            items: [],
-            pageNumber: 1,
-            totalPages: 1,
-            totalCount: 0,
-            hasPreviousPage: false,
-            hasNextPage: false,
-          },
+      success: response.success && hasValidData,
+      message: response.success && !hasValidData
+        ? 'The proposals API returned an invalid list response.'
+        : response.message,
+      data: normalizeProposalPage(response.data),
     };
   },
 
@@ -95,19 +133,5 @@ export const proposalGetAPI = {
     proposalId: string
   ): Promise<ApiResponse<ProposalAnswerDto[]>> => {
     return apiService.get<ProposalAnswerDto[]>(`${proposalsUrl}/${proposalId}/answers`);
-  },
-
-  // Backward-compatible helpers for older screens.
-  getProposals: async (filters?: { jobId?: string; freelancerId?: string; clientId?: string }) => {
-    if (filters?.jobId) {
-      return proposalGetAPI.getProposalsByJobPost(filters.jobId);
-    }
-
-    return proposalGetAPI.getAllProposals();
-  },
-
-  getProposalById: async (id: string) => {
-    const response = await proposalGetAPI.getProposalDetail(id);
-    return response.data;
   },
 };

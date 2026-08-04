@@ -1,4 +1,4 @@
-export const SERVICE_FEE_RATE = 0.01;
+const SERVICE_FEE_RATE = 0.01;
 
 export function calculateServiceFee(jobAmount: number): number {
   return Math.round(jobAmount * SERVICE_FEE_RATE * 10_000) / 10_000;

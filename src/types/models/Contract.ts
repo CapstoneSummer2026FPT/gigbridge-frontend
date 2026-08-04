@@ -36,6 +36,23 @@ export enum ContractWorkItemStatus {
   RevisionRequired = 3,
 }
 
+export interface ContractEscrowDto {
+  contractEscrowId: string;
+  requiredAmount: number;
+  requiredTokens: number;
+  fundingFeeRate: number;
+  fundingFeeVnd: number;
+  fundingFeeTokens: number;
+  totalDebitTokens: number;
+  fundedAmount: number;
+  releasedAmount: number;
+  requiredPercentage: number;
+  currency: string;
+  status: number;
+  createdAt: string;
+  fundedAt?: string | null;
+}
+
 export interface ContractWorkItem {
   workItemId: string;
   milestoneId: string;
@@ -91,6 +108,8 @@ export interface ContractDto {
   updatedAt?: string;
   clientName?: string;
   freelancerName?: string | null;
+  clientUserId?: string | null;
+  freelancerUserId?: string | null;
   jobTitle?: string;
   jobDescription?: string;
   clientEmail?: string;
@@ -99,6 +118,7 @@ export interface ContractDto {
   canReview?: boolean;
   hasReviewedByCurrentUser?: boolean;
   revisionNumber?: number;
+  escrow?: ContractEscrowDto | null;
 }
 
 export interface CreateContractDto {
@@ -135,6 +155,10 @@ export interface Milestone {
   amount: number;
   due_date: string;
   status: MilestoneStatus;
+  sortOrder?: number | null;
+  startedAt?: string | null;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
   paid_at: string | null;
   releasedAmount?: number;
   lastReleasedAt?: string | null;
@@ -142,6 +166,7 @@ export interface Milestone {
   estimatedDuration?: string | null;
   deliverables?: string | null;
   acceptanceCriteria?: string | null;
+  submissionDescription?: string | null;
   workItems: ContractWorkItem[];
 }
 
@@ -231,17 +256,6 @@ export interface ContractAmendmentDetailDto {
   milestones: ContractAmendmentMilestoneDto[];
 }
 
-export interface WithdrawMilestoneResponse {
-  contractId: string;
-  milestoneId: string;
-  escrowId: string;
-  releasedAmountVnd: number;
-  releasedTokens: number;
-  milestoneReleasedAmountVnd: number;
-  escrowReleasedAmountVnd: number;
-  escrowStatus: number;
-}
-
 export interface EndProjectResponse {
   contractId: string;
   contractStatus: ContractStatus;
@@ -251,14 +265,15 @@ export interface EndProjectResponse {
   completedAt?: string | null;
 }
 
-export interface ClaimFinalPayoutResponse {
+export interface WithdrawMilestoneResponse {
   contractId: string;
+  milestoneId: string;
+  escrowId: string;
   releasedAmountVnd: number;
   releasedTokens: number;
+  milestoneReleasedAmountVnd: number;
   escrowReleasedAmountVnd: number;
   escrowStatus: number;
-  alreadyClaimed: boolean;
-  claimedAt?: string | null;
 }
 
 export interface ContractProductHandoffResponse {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, Briefcase, Code, ChevronRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle, Briefcase, Code, ChevronRight, AlertCircle } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { UserRole } from '../../../types/models/User';
 import { authAPI } from '../../../api/authAPI';
@@ -10,6 +10,7 @@ import { useGSAP } from '@gsap/react';
 import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { getGoogleOAuth2, type GoogleCodeClient } from '../googleIdentity';
 
 
 type SignupStep = 'role' | 'form';
@@ -17,6 +18,7 @@ type SignupStep = 'role' | 'form';
 export default function SignupScreen() {
   const { t } = useTranslation();
   const isMounted = useRef(true);
+  const policyAcceptanceRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     isMounted.current = true;
     return () => {
@@ -33,9 +35,11 @@ export default function SignupScreen() {
   const isLoading = isEmailLoading || isGoogleLoading;
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [googleClient, setGoogleClient] = useState<any>(null);
+  const [googleClient, setGoogleClient] = useState<GoogleCodeClient | null>(null);
   const [googleError, setGoogleError] = useState('');
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+  const [policyError, setPolicyError] = useState('');
+  const policyAcceptanceRequiredMessage = t('auth.policyAcceptanceRequired');
 
   const selectedRoleRef = useRef<UserRole | null>(null);
   useEffect(() => {
@@ -46,6 +50,7 @@ export default function SignupScreen() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
+  const [verificationTicket, setVerificationTicket] = useState('');
   const [countdown, setCountdown] = useState(0);
 
   const [formData, setFormData] = useState({ 
@@ -65,18 +70,18 @@ export default function SignupScreen() {
 
   // Google GIS Client Initialization
   useEffect(() => {
-    let client: any = null;
     const interval = setInterval(() => {
-      if (window.google) {
+      const googleOAuth2 = getGoogleOAuth2();
+      if (googleOAuth2) {
         clearInterval(interval);
 
-        client = window.google.accounts.oauth2.initCodeClient({
+        const client = googleOAuth2.initCodeClient({
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
           scope: "openid email profile",
           ux_mode: "popup",
-          callback: async (response: any) => {
+          callback: response => {
             if (response.code) {
-              handleGoogleSignup(response.code);
+              void handleGoogleSignup(response.code);
             }
           },
         });
@@ -114,7 +119,7 @@ export default function SignupScreen() {
 
       // Google Sign Up redirects new user directly to onboarding profile setup
       navigate('/onboarding/profile-setup');
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setGoogleError(getErrorMessage(err));
       }
@@ -125,10 +130,21 @@ export default function SignupScreen() {
     }
   };
 
+  const focusPolicyAcceptance = (): void => {
+    const policyAcceptance = policyAcceptanceRef.current;
+    if (policyAcceptance === null) {
+      return;
+    }
+
+    policyAcceptance.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    policyAcceptance.focus({ preventScroll: true });
+  };
+
   const handleGoogleSignupClick = () => {
     setGoogleError('');
     if (!acceptedPolicy) {
-      setGoogleError(t('auth.policyAcceptanceRequired'));
+      setPolicyError(policyAcceptanceRequiredMessage);
+      focusPolicyAcceptance();
       return;
     }
 
@@ -140,6 +156,17 @@ export default function SignupScreen() {
       return;
     }
     googleClient?.requestCode();
+  };
+
+  const handlePolicyAcceptanceChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const isAccepted = event.target.checked;
+    setAcceptedPolicy(isAccepted);
+
+    if (!isAccepted) {
+      return;
+    }
+
+    setPolicyError('');
   };
 
   const isValidEmail = (email: string) => {
@@ -154,9 +181,14 @@ export default function SignupScreen() {
     
     setError('');
     setSuccessMessage('');
+    setVerificationTicket('');
+    setIsOtpVerified(false);
     setIsSendingOtp(true);
     try {
-      const response = await authAPI.sendOtp({ email: formData.email });
+      const response = await authAPI.sendOtp({
+        email: formData.email,
+        purpose: 'signup'
+      });
       if (response.success) {
         if (isMounted.current) {
           setSuccessMessage(response.message || 'Verification code sent successfully!');
@@ -167,7 +199,7 @@ export default function SignupScreen() {
           setError(getErrorMessage(response));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
@@ -190,20 +222,23 @@ export default function SignupScreen() {
     try {
       const response = await authAPI.verifyOtp({
         email: formData.email,
-        otp: formData.otpCode
+        otp: formData.otpCode,
+        purpose: 'signup'
       });
       
-      if (response.success) {
+      const ticket = response.data?.verificationTicket;
+      if (response.success && ticket) {
         if (isMounted.current) {
           setSuccessMessage(response.message || 'Email verified successfully!');
           setIsOtpVerified(true);
+          setVerificationTicket(ticket);
         }
       } else {
         if (isMounted.current) {
           setError(getErrorMessage(response));
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
@@ -217,7 +252,7 @@ export default function SignupScreen() {
   let appContext: ReturnType<typeof useApp> | null;
   try {
     appContext = useApp();
-  } catch (e) {
+  } catch {
     appContext = null;
   }
 
@@ -245,10 +280,12 @@ export default function SignupScreen() {
     setError('');
 
     if (!acceptedPolicy) {
-      setError(t('auth.policyAcceptanceRequired'));
+      setPolicyError(policyAcceptanceRequiredMessage);
+      focusPolicyAcceptance();
       return;
     }
 
+    setPolicyError('');
     setIsEmailLoading(true);
 
     try {
@@ -260,7 +297,7 @@ export default function SignupScreen() {
         return;
       }
 
-      if (!isOtpVerified) {
+      if (!isOtpVerified || !verificationTicket) {
         if (isMounted.current) {
           setError('Please verify your email address first.');
           setIsEmailLoading(false);
@@ -268,7 +305,13 @@ export default function SignupScreen() {
         return;
       }
 
-      await signup(formData.email, formData.password, formData.fullName, selectedRole);
+      await signup(
+        formData.email,
+        formData.password,
+        formData.fullName,
+        selectedRole,
+        verificationTicket,
+      );
       
       toast.success('Registration successful! Welcome to GigBridge.', {
         style: {
@@ -282,7 +325,7 @@ export default function SignupScreen() {
       });
 
       navigate('/onboarding/profile-setup');
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (isMounted.current) {
         setError(getErrorMessage(err));
       }
@@ -462,34 +505,9 @@ export default function SignupScreen() {
                 {t('auth.registeringAs', { role: selectedRole === UserRole.Client ? t('projects.client') : t('projects.freelancer') })}
               </p>
 
-              <div className="mb-4 flex items-start gap-3 auth-form-animate">
-                <input
-                  id="policy-acceptance"
-                  type="checkbox"
-                  checked={acceptedPolicy}
-                  onChange={(event) => setAcceptedPolicy(event.target.checked)}
-                  disabled={isLoading}
-                  className="mt-1 h-4 w-4 shrink-0 accent-cyan-500"
-                />
-                <div className="text-sm leading-5 text-secondary">
-                  <label htmlFor="policy-acceptance" className="cursor-pointer">
-                    {t('auth.policyAgreement')}
-                  </label>
-                  <div className="mt-1 flex flex-wrap gap-x-2">
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
-                      {t('footer.termsOfService')}
-                    </a>
-                    <span aria-hidden="true">·</span>
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
-                      {t('footer.privacyPolicy')}
-                    </a>
-                  </div>
-                </div>
-              </div>
-
               <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl mb-4 transition-all auth-google-btn auth-form-animate"
                 onClick={handleGoogleSignupClick}
-                disabled={isLoading || !googleClient || !acceptedPolicy}
+                disabled={isLoading || !googleClient}
                 type="button">
                 {isGoogleLoading ? (
                   <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -505,7 +523,7 @@ export default function SignupScreen() {
               </button>
 
               {googleError && (
-                <div className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left auth-form-animate">
+                <div role="alert" className="flex items-start gap-2 mt-2 mb-6 text-sm text-red-500 font-medium text-left auth-form-animate">
                   <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />
                   <span>
                     {googleError}
@@ -521,7 +539,7 @@ export default function SignupScreen() {
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                  <div className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+                  <div role="alert" className="px-4 py-3 rounded-xl text-sm auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
                     {error}
                   </div>
                 )}
@@ -546,6 +564,7 @@ export default function SignupScreen() {
                       setFormData({ ...formData, email: e.target.value });
                       if (isOtpVerified) {
                         setIsOtpVerified(false);
+                        setVerificationTicket('');
                         setSuccessMessage('');
                       }
                     }}
@@ -561,6 +580,7 @@ export default function SignupScreen() {
                         setFormData({ ...formData, otpCode: e.target.value });
                         if (isOtpVerified) {
                           setIsOtpVerified(false);
+                          setVerificationTicket('');
                           setSuccessMessage('');
                         }
                       }}
@@ -624,7 +644,41 @@ export default function SignupScreen() {
                   </button>
                 </div>
 
-                <button type="submit" disabled={isLoading || !isOtpVerified || !formData.fullName || !formData.password || !acceptedPolicy}
+                <div className={`auth-policy-consent flex items-start gap-3 auth-form-animate${policyError ? ' auth-policy-consent--error' : ''}`}>
+                  <input
+                    ref={policyAcceptanceRef}
+                    id="policy-acceptance"
+                    type="checkbox"
+                    checked={acceptedPolicy}
+                    onChange={handlePolicyAcceptanceChange}
+                    disabled={isLoading}
+                    aria-invalid={policyError ? 'true' : undefined}
+                    aria-describedby={policyError ? 'policy-acceptance-error' : undefined}
+                    className="auth-policy-checkbox mt-1 h-4 w-4 shrink-0 accent-cyan-500"
+                  />
+                  <div className="text-sm leading-5 text-secondary">
+                    <label htmlFor="policy-acceptance" className="cursor-pointer">
+                      {t('auth.policyAgreement')}
+                    </label>
+                    <div className="mt-1 flex flex-wrap gap-x-2">
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
+                        {t('footer.termsOfService')}
+                      </a>
+                      <span aria-hidden="true">·</span>
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="auth-link-cyan">
+                        {t('footer.privacyPolicy')}
+                      </a>
+                    </div>
+                    {policyError ? (
+                      <div id="policy-acceptance-error" role="alert" className="auth-policy-error">
+                        <AlertCircle size={15} aria-hidden="true" />
+                        <span>{policyError}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <button type="submit" disabled={isLoading || !isOtpVerified || !formData.fullName || !formData.password}
                   className="btn-cyan w-full py-3 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed auth-form-animate hover:scale-[1.01] transition-transform">
                   {isLoading ? (
                     <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />

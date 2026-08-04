@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown } from 'lucide-react';
-import { useWindowScroll } from 'react-use';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -52,6 +51,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const logout = appContext?.logout || (() => { });
   const isAuthenticated = appContext?.isAuthenticated || false;
   const premiumStatus = usePremiumStatus(user ? role : null);
+  const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
 
   const localizedNavItems = navItems.map(item => {
     if (item.label === 'Browse Jobs') return { ...item, label: t('nav.browseJobs') };
@@ -62,7 +62,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   });
 
   // Wallet and notification data
-  const { notifications, unreadCount, markAsRead } = useUserNotifications(user, {
+  const notificationUser = location.pathname === '/notifications' ? null : user;
+  const { notifications, unreadCount, markAsRead } = useUserNotifications(notificationUser, {
     pageSize: 8,
     pollMs: 45000,
   });
@@ -78,7 +79,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
       const response = await walletGetAPI.getMyWallet();
       if (isMounted && response.success && response.data) {
-        setWalletBalance(response.data.availableTokens);
+        // Toolbar shows ONLY the deposited (non-withdrawable) GigCoin pool.
+        setWalletBalance(response.data.depositedGigCoin);
       }
     };
 
@@ -105,9 +107,17 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   const [isIndicatorActive, setIsIndicatorActive] = useState(false);
   const audioElementRef = useRef<HTMLAudioElement>(null);
   const navContainerRef = useRef<HTMLDivElement>(null);
-  const { y: currentScrollY } = useWindowScroll();
+  const [currentScrollY, setCurrentScrollY] = useState(() =>
+    typeof window === 'undefined' ? 0 : window.scrollY
+  );
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => setCurrentScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleAudioIndicator = () => {
     setIsAudioPlaying((prev) => !prev);
@@ -117,7 +127,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
   useEffect(() => {
     if (audioElementRef.current) {
       if (isAudioPlaying) {
-        audioElementRef.current.play().catch((err) => console.log('Audio autoplay blocked:', err));
+        audioElementRef.current.play().catch(() => undefined);
       } else {
         audioElementRef.current.pause();
       }
@@ -303,15 +313,15 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
       {/* Nav Links (Guest) */}
       {isLanding && (
         <nav className="hidden md:flex items-center gap-6 flex-1 justify-center">
-          {['How It Works', 'Browse Jobs', 'Market Insights'].map(link => (
-            <span key={link}
+          {[
+            { label: 'How It Works', path: '/guide' },
+            { label: 'Browse Jobs', path: '/jobs/browse' },
+          ].map(link => (
+            <span key={link.path}
               className="text-sm cursor-pointer transition-colors text-secondary hover:text-cyan"
-              onClick={() => {
-                if (link === 'Browse Jobs') navigate('/jobs/browse');
-                if (link === 'Market Insights') navigate('/market-insights');
-              }}
+              onClick={() => navigate(link.path)}
             >
-              {link}
+              {link.label}
             </span>
           ))}
         </nav>
@@ -322,13 +332,21 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
           <button
             type="button"
             className="become-premium-button"
-            onClick={() => navigate(role === 0
-              ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
-              : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing')}
+            onClick={() => {
+              if (premiumStatusUnavailable) {
+                void premiumStatus.refresh();
+                return;
+              }
+              navigate(role === 0
+                ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
+                : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing');
+            }}
           >
-            <Crown size={15} />
-            <span className="hidden sm:inline">{premiumStatus.isPremium ? 'Premium active' : 'Become Premium'}</span>
-            <span className="sm:hidden">Premium</span>
+            {premiumStatusUnavailable ? <RotateCw size={15} /> : <Crown size={15} />}
+            <span className="hidden sm:inline">
+              {premiumStatusUnavailable ? 'Retry Premium status' : premiumStatus.isPremium ? 'Premium active' : 'Become Premium'}
+            </span>
+            <span className="sm:hidden">{premiumStatusUnavailable ? 'Retry' : 'Premium'}</span>
           </button>
         )}
         {/* Wallet Balance Dropdown */}
@@ -337,6 +355,8 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             <button
               onClick={() => { setShowWalletMenu(!showWalletMenu); setShowNotifs(false); setShowUserMenu(false); }}
               className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all glass-button"
+              title={t('wallet.depositedTooltip')}
+              aria-label={t('wallet.depositedTooltip')}
             >
               <GigCoinLogo size={16} />
               <span className="text-primary text-sm font-semibold hidden sm:inline-flex">{formatGigCoinNumber(walletBalance)}</span>
@@ -346,10 +366,11 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
             {showWalletMenu && (
               <div className="absolute right-0 top-12 w-56 rounded-2xl p-2 z-50 dropdown-menu">
                 <div className="px-3 py-2 mb-1">
-                  <p className="text-xs text-muted">{t('wallet.balance')}</p>
+                  <p className="text-xs text-muted">{t('wallet.depositedBalance')}</p>
                   <div className="flex items-center gap-1">
                     <GigCoinAmount amount={walletBalance} className="text-lg font-bold text-[var(--gb-amber)]" />
                   </div>
+                  <p className="text-[10px] text-muted mt-0.5">{t('wallet.depositedCaption')}</p>
                 </div>
                 <div className="h-px mb-1 dropdown-divider" />
 

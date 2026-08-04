@@ -20,11 +20,27 @@ import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../sha
 import { useTranslation } from '../../../hooks/useTranslation';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { getMessageRoom } from '../messageRooms';
+import { getContractWorkflowRoute } from '../contractWorkflowRoute';
+import { useOngoingScheduleStatus } from './useOngoingScheduleStatus';
+import {
+  calculateNegotiationBudget,
+  calculateNegotiationDuration,
+  normalizeNegotiationMilestones,
+  prepareNegotiationMilestonesForEditing,
+  resolveNegotiationMilestones,
+  validateNegotiationMilestones,
+} from '../negotiationMilestonePlan';
 
 interface ScheduleMeetingChangedEvent {
   scheduleId: string;
   meeting: ScheduleMeetingResponse;
 }
+
+const MEETING_STATUS_POLL_INTERVAL_MS = 5_000;
+const MEETING_STATUS_POLL_ATTEMPTS = 30;
+
+const wait = (delayMs: number) =>
+  new Promise<void>(resolve => window.setTimeout(resolve, delayMs));
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -222,31 +238,6 @@ function getEventValue(event: unknown, ...keys: string[]): string | null {
   return null;
 }
 
-function getContractWorkflowRoute(contract: ContractDto, isClient: boolean): { path?: string; waitMessage?: string } {
-  const contractPath = `/contracts/${contract.contractsId}`;
-
-  switch (contract.status) {
-    case ContractStatus.PendingContractDetails:
-      return isClient
-        ? { path: `${contractPath}/milestones?mode=contract-edit` }
-        : { waitMessage: 'The client is updating milestone terms. You can review them once submitted.' };
-    case ContractStatus.PendingContractConfirmation:
-      return isClient
-        ? { waitMessage: 'Waiting for the freelancer to review the milestone terms.' }
-        : { path: contractPath };
-    case ContractStatus.PendingSignature:
-      return { path: contractPath };
-    case ContractStatus.PendingEscrow:
-      return isClient
-        ? { path: contractPath }
-        : { path: `/workspace/${contract.contractsId}` };
-    case ContractStatus.Active:
-      return { path: `/workspace/${contract.contractsId}` };
-    default:
-      return { path: contractPath };
-  }
-}
-
 export function useMessages() {
   const { t } = useTranslation();
   const { user, role } = useApp();
@@ -319,9 +310,9 @@ export function useMessages() {
   // ── UI state ─────────────────────────────────────────────────────────────
   const [showInfo, setShowInfo] = useState(true);
   const [showDealPrice, setShowDealPrice] = useState(false);
-  const [dealPriceInput, setDealPriceInputState] = useState('');
-  const [dealPriceMode, setDealPriceMode] = useState<'auto' | 'manual'>('auto');
   const [dealMilestones, setDealMilestones] = useState<NegotiationMilestoneDto[]>([]);
+  const [dealAdvancedIndexes, setDealAdvancedIndexes] = useState<number[]>([]);
+  const [dealMilestoneErrors, setDealMilestoneErrors] = useState<Record<string, string>>({});
   const [dealMilestonesLoading, setDealMilestonesLoading] = useState(false);
   const [dealMilestonesSaving, setDealMilestonesSaving] = useState(false);
   const [messageInput, setMessageInput] = useState('');
@@ -346,6 +337,7 @@ export function useMessages() {
   const [scheduleConflict, setScheduleConflict] = useState<{ version: number; remainingEdits: number } | null>(null);
   const [midnightConfirmed, setMidnightConfirmed] = useState(false);
   const [scheduleAddGoogleMeet, setScheduleAddGoogleMeet] = useState(true);
+  const [scheduleSendEmail, setScheduleSendEmail] = useState(true);
   const [googleMeetStatus, setGoogleMeetStatus] = useState<GoogleMeetConnectionStatus | null>(null);
   const [googleMeetStatusLoading, setGoogleMeetStatusLoading] = useState(false);
   const [googleMeetConnecting, setGoogleMeetConnecting] = useState(false);
@@ -369,78 +361,61 @@ export function useMessages() {
     error: string | null;
   } | null>(null);
   const [isAcceptingDeal, setIsAcceptingDeal] = useState(false);
-  const [nowMs, setNowMs] = useState(Date.now());
-  const secondModeRef = useRef(false);
-  const [hasOngoingSchedule, setHasOngoingSchedule] = useState(false);
+  const { hasOngoingSchedule, syncOngoingSchedule } = useOngoingScheduleStatus();
   const [checkingOngoingSchedule, setCheckingOngoingSchedule] = useState(false);
   const convMenuRef = useRef<HTMLDivElement>(null);
+  const resolvedAnchorKeyRef = useRef<string | null>(null);
+  const anchorLookupKeyRef = useRef<string | null>(null);
+  const sentReadReceiptKeysRef = useRef(new Set<string>());
+
+  const markMessageReadOnce = useCallback((
+    conversationId: string,
+    messageId: string,
+    revision?: string | number,
+  ) => {
+    const key = `${conversationId}:${messageId}:${revision ?? ''}`;
+    if (sentReadReceiptKeysRef.current.has(key)) return;
+    if (sentReadReceiptKeysRef.current.size >= 1000) sentReadReceiptKeysRef.current.clear();
+    sentReadReceiptKeysRef.current.add(key);
+    void messagePostAPI.markAsRead(conversationId, messageId)
+      .then(response => {
+        if (!response.success) sentReadReceiptKeysRef.current.delete(key);
+      })
+      .catch(() => sentReadReceiptKeysRef.current.delete(key));
+  }, []);
 
   const [hubConnection, setHubConnection] = useState<signalR.HubConnection | null>(null);
   const [signalRStatus, setSignalRStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed'>('idle');
   const [loading, setLoading] = useState(true);
 
   const negStatus = activeConv?.roomId === 'room_negotiation' ? 'accepted' : 'idle';
+  const resolvedDealMilestones = useMemo(
+    () => resolveNegotiationMilestones(
+      dealMilestones,
+      t('proposalMilestoneEditor.defaultAcceptanceCriteria'),
+    ),
+    [dealMilestones, t],
+  );
   const dealMilestoneTotal = useMemo(
-    () => dealMilestones.reduce((total, item) => total + (Number(item.amount) || 0), 0),
-    [dealMilestones]
+    () => calculateNegotiationBudget(resolvedDealMilestones),
+    [resolvedDealMilestones],
+  );
+  const dealOverallDuration = useMemo(
+    () => calculateNegotiationDuration(resolvedDealMilestones),
+    [resolvedDealMilestones],
+  );
+  const dealEditorMilestones = useMemo(
+    () => dealMilestones.map((milestone, index) => ({
+      ...milestone,
+      estimatedDuration: resolvedDealMilestones[index]?.estimatedDuration || milestone.estimatedDuration,
+    })),
+    [dealMilestones, resolvedDealMilestones],
   );
 
-  const normalizeDealMilestones = useCallback((items: NegotiationMilestoneDto[]) =>
-    items.map((item, orderIndex) => ({
-      ...item,
-      amount: Math.round((Number(item.amount) || 0) * 100) / 100,
-      orderIndex,
-      workItems: (item.workItems || []).map((workItem, workIndex) => ({ ...workItem, orderIndex: workIndex })),
-    })),
-  []);
-
-  const getDealMilestoneTotal = useCallback((items: NegotiationMilestoneDto[]) =>
-    Math.round(items.reduce((total, item) => total + (Number(item.amount) || 0), 0) * 100) / 100,
-  []);
-
-  const setDealPriceInput = useCallback((value: string) => {
-    setDealPriceMode('manual');
-    setDealPriceInputState(value);
+  const updateDealMilestones = useCallback((milestones: NegotiationMilestoneDto[]) => {
+    setDealMilestones(normalizeNegotiationMilestones(milestones));
+    setDealMilestoneErrors({});
   }, []);
-
-  const resetDealPriceToMilestones = useCallback(() => {
-    setDealPriceMode('auto');
-    setDealPriceInputState(dealMilestoneTotal > 0 ? String(dealMilestoneTotal) : '');
-  }, [dealMilestoneTotal]);
-
-  const updateDealMilestone = useCallback((index: number, patch: Partial<NegotiationMilestoneDto>) => {
-    setDealMilestones(items => {
-      const next = normalizeDealMilestones(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
-      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
-      return next;
-    });
-  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
-
-  const addDealMilestone = useCallback(() => {
-    setDealMilestones(items => {
-      const next = normalizeDealMilestones([...items, {
-        title: '',
-        description: '',
-        amount: 0,
-        estimatedDuration: '',
-        dueDate: null,
-        deliverables: '',
-        acceptanceCriteria: '',
-        orderIndex: items.length,
-        workItems: [{ title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex: 0 }],
-      }]);
-      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
-      return next;
-    });
-  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
-
-  const removeDealMilestone = useCallback((index: number) => {
-    setDealMilestones(items => {
-      const next = normalizeDealMilestones(items.filter((_, itemIndex) => itemIndex !== index));
-      if (dealPriceMode === 'auto') setDealPriceInputState(String(getDealMilestoneTotal(next) || ''));
-      return next;
-    });
-  }, [dealPriceMode, getDealMilestoneTotal, normalizeDealMilestones]);
 
   const refreshGoogleMeetStatus = useCallback(async () => {
     setGoogleMeetStatusLoading(true);
@@ -535,8 +510,8 @@ export function useMessages() {
   useEffect(() => {
     if (!activeConvId || activeConv?.roomType !== 'negotiation') {
       setDealMilestones([]);
-      setDealPriceInputState('');
-      setDealPriceMode('auto');
+      setDealAdvancedIndexes([]);
+      setDealMilestoneErrors({});
       return;
     }
 
@@ -544,19 +519,17 @@ export function useMessages() {
     setDealMilestonesLoading(true);
     messageGetAPI.getNegotiationMilestonePlan(activeConvId).then(response => {
       if (!active) return;
-      const normalized = normalizeDealMilestones(response.data || []);
-      const milestoneTotal = getDealMilestoneTotal(normalized);
-      const suggestedPrice = Number(activeConv?.proposedPrice) || milestoneTotal;
-      setDealMilestones(normalized);
-      setDealPriceInputState(suggestedPrice > 0 ? String(suggestedPrice) : '');
-      setDealPriceMode(suggestedPrice > 0 && Math.abs(suggestedPrice - milestoneTotal) >= 0.01 ? 'manual' : 'auto');
+      const prepared = prepareNegotiationMilestonesForEditing(response.data || []);
+      setDealMilestones(prepared.milestones);
+      setDealAdvancedIndexes(prepared.advancedIndexes);
+      setDealMilestoneErrors({});
       setDealMilestonesLoading(false);
     }).catch(() => {
       if (active) setDealMilestonesLoading(false);
     });
 
     return () => { active = false; };
-  }, [activeConv?.proposedPrice, activeConv?.roomType, activeConvId, getDealMilestoneTotal, normalizeDealMilestones]);
+  }, [activeConv?.roomType, activeConvId]);
 
   // Fetch conversations on mount
   const loadConversations = useCallback(async () => {
@@ -611,7 +584,11 @@ export function useMessages() {
             setConversationsState(prev => {
               const currentConv = prev.find(c => c.id === activeConvId);
               if (currentConv && currentConv.unreadCount > 0) {
-                messagePostAPI.markAsRead(activeConvId, lastMsg.id).catch(() => {});
+                markMessageReadOnce(
+                  activeConvId,
+                  lastMsg.id,
+                  lastMsg.schedule?.eventSequence ?? lastMsg.createdAt,
+                );
                 return prev.map(c => (c.id === activeConvId ? { ...c, unreadCount: 0 } : c));
               }
               return prev;
@@ -627,130 +604,186 @@ export function useMessages() {
     return () => {
       active = false;
     };
-  }, [activeConvId]);
+  }, [activeConvId, markMessageReadOnce]);
 
   useEffect(() => {
     if (!activeConvId) {
-      setHasOngoingSchedule(false);
+      syncOngoingSchedule(false);
       return;
     }
     let current = true;
     setCheckingOngoingSchedule(true);
     scheduleAPI.getOngoing(activeConvId).then(response => {
-      if (current) setHasOngoingSchedule(Boolean(response.success && response.data?.hasOngoingSchedule));
+      if (current) {
+        syncOngoingSchedule(
+          Boolean(response.success && response.data?.hasOngoingSchedule),
+          response.data?.scheduledAtUtc,
+        );
+      }
     }).finally(() => { if (current) setCheckingOngoingSchedule(false); });
     return () => { current = false; };
-  }, [activeConvId]);
+  }, [activeConvId, syncOngoingSchedule]);
 
-  // One adaptive timer drives every visible schedule countdown.
-  useEffect(() => {
-    const schedules = activeMessages.map(m => m.schedule).filter(Boolean) as ScheduleEvent[];
-    const nearest = schedules.filter(s => s.status === 0).reduce((min, s) => Math.min(min, new Date(s.scheduledAtUtc).getTime() - Date.now()), Infinity);
-    if (!secondModeRef.current && nearest <= 5 * 60_000) secondModeRef.current = true;
-    else if (secondModeRef.current && nearest > 6 * 60_000) secondModeRef.current = false;
-    const delay = secondModeRef.current ? 1000 : 60_000 - (Date.now() % 60_000);
-    if (document.hidden) return;
-    const id = window.setTimeout(() => setNowMs(Date.now()), Math.max(250, delay));
-    const visible = () => { if (!document.hidden) setNowMs(Date.now()); };
-    document.addEventListener('visibilitychange', visible);
-    return () => { window.clearTimeout(id); document.removeEventListener('visibilitychange', visible); };
-  }, [activeMessages, nowMs]);
-
-  // Resolve notification deep links, including messages outside the latest page.
+  // Resolve each notification deep link once. This effect observes messagesMap
+  // because the initial page loads asynchronously, but refs prevent message
+  // updates/read receipts from issuing the same backend requests again.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const conversationId = params.get('conversationId');
     const messageId = params.get('messageId');
     if (!conversationId || !messageId || activeConvId !== conversationId || !messagesMap[conversationId]) return;
+    const anchorKey = `${conversationId}:${messageId}`;
+    if (resolvedAnchorKeyRef.current === anchorKey || anchorLookupKeyRef.current === anchorKey) return;
+
     const existing = messagesMap[conversationId].some(m => m.id === messageId);
     const finish = () => {
       setHighlightedMessageId(messageId);
       window.setTimeout(() => setHighlightedMessageId(current => current === messageId ? null : current), 3000);
       window.setTimeout(() => document.getElementById(`message-${messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
-      messagePostAPI.markAsRead(conversationId, messageId).catch(() => {});
+      const anchoredMessage = messagesMap[conversationId]?.find(message => message.id === messageId);
+      markMessageReadOnce(
+        conversationId,
+        messageId,
+        anchoredMessage?.schedule?.eventSequence ?? anchoredMessage?.createdAt,
+      );
     };
-    if (existing) { finish(); return; }
+
+    if (existing) {
+      resolvedAnchorKeyRef.current = anchorKey;
+      finish();
+      return;
+    }
+
+    anchorLookupKeyRef.current = anchorKey;
     messageGetAPI.getMessagesAround(conversationId, messageId).then(res => {
-      if (!res.success || !res.data) { setAnchorNotice('Original schedule event is unavailable.'); return; }
+      if (anchorLookupKeyRef.current !== anchorKey) return;
+      anchorLookupKeyRef.current = null;
+      if (activeConvIdRef.current !== conversationId) return;
+      resolvedAnchorKeyRef.current = anchorKey;
+      if (!res.success || !res.data) {
+        setAnchorNotice('Original schedule event is unavailable.');
+        return;
+      }
       setMessagesMap(prev => {
         const merged = [...(prev[conversationId] ?? []), ...res.data!.map(mapBackendMessage)];
         return { ...prev, [conversationId]: Array.from(new Map(merged.map(m => [m.id, m])).values()).sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()) };
       });
       window.setTimeout(finish, 80);
+    }).catch(() => {
+      if (anchorLookupKeyRef.current !== anchorKey) return;
+      anchorLookupKeyRef.current = null;
+      resolvedAnchorKeyRef.current = anchorKey;
+      setAnchorNotice('Original schedule event is unavailable.');
     });
-  }, [location.search, activeConvId, messagesMap]);
+  }, [location.search, activeConvId, markMessageReadOnce, messagesMap]);
 
   // Connect to SignalR
   useEffect(() => {
     const hubUrl = getChatHubUrl();
-    const token = localStorage.getItem('access_token');
-
-    if (!token) {
-      setSignalRStatus('disconnected');
-      console.warn('[ChatHub] skipped connection: no access token found');
-      return;
-    }
-
     let disposed = false;
-    setSignalRStatus('connecting');
-    console.info('[ChatHub] connecting:', hubUrl);
+    let retryAttempt = 0;
+    let retryTimer: number | null = null;
+    let currentConnection: signalR.HubConnection | null = null;
 
-    const connection = new signalR.HubConnectionBuilder()
-      .configureLogging(signalR.LogLevel.Warning)
-      .withUrl(hubUrl, {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
-      })
-      .withAutomaticReconnect()
-      .build();
+    const clearRetryTimer = () => {
+      if (retryTimer === null) return;
+      window.clearTimeout(retryTimer);
+      retryTimer = null;
+    };
 
-    connection.onreconnecting(err => {
-      if (disposed) return;
+    const scheduleFreshConnection = () => {
+      if (disposed || retryTimer !== null) return;
+      const delay = Math.min(1_000 * (2 ** retryAttempt), 15_000);
+      retryAttempt += 1;
       setSignalRStatus('reconnecting');
-      console.warn('[ChatHub] reconnecting:', err);
-    });
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        void connect();
+      }, delay);
+    };
 
-    connection.onreconnected(() => {
+    const connect = async () => {
       if (disposed) return;
-      setSignalRStatus('connected');
-      console.info('[ChatHub] reconnected');
-      if (activeConvIdRef.current) {
-        connection.invoke('JoinConversation', activeConvIdRef.current)
-          .then(() => {
-            console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
-          })
-          .catch(err => {
-            console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
-          });
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setSignalRStatus('disconnected');
+        console.warn('[ChatHub] waiting for an access token before connecting');
+        scheduleFreshConnection();
+        return;
       }
-    });
 
-    connection.onclose(err => {
-      if (disposed) return;
-      setSignalRStatus('disconnected');
-      setHubConnection(null);
-      console.warn('[ChatHub] disconnected:', err);
-    });
+      setSignalRStatus(retryAttempt > 0 ? 'reconnecting' : 'connecting');
+      console.info('[ChatHub] connecting:', hubUrl);
 
-    connection
-      .start()
-      .then(() => {
-        if (disposed) {
-          connection.stop().catch(() => {});
+      const connection = new signalR.HubConnectionBuilder()
+        .configureLogging(signalR.LogLevel.Warning)
+        .withUrl(hubUrl, {
+          accessTokenFactory: () => localStorage.getItem('access_token') ?? '',
+        })
+        .withAutomaticReconnect([0, 2_000, 5_000, 10_000])
+        .build();
+      currentConnection = connection;
+
+      connection.onreconnecting(err => {
+        if (disposed || currentConnection !== connection) return;
+        setSignalRStatus('reconnecting');
+        console.warn('[ChatHub] reconnecting:', err);
+      });
+
+      connection.onreconnected(() => {
+        if (disposed || currentConnection !== connection) return;
+        retryAttempt = 0;
+        setSignalRStatus('connected');
+        console.info('[ChatHub] reconnected');
+        if (activeConvIdRef.current) {
+          connection.invoke('JoinConversation', activeConvIdRef.current)
+            .then(() => {
+              console.info(`[ChatHub] rejoined conversation group: ${activeConvIdRef.current}`);
+            })
+            .catch(err => {
+              console.error(`[ChatHub] failed to rejoin conversation group: ${activeConvIdRef.current}`, err);
+            });
+        }
+      });
+
+      connection.onclose(err => {
+        if (disposed || currentConnection !== connection) return;
+        currentConnection = null;
+        setHubConnection(existing => existing === connection ? null : existing);
+        setSignalRStatus('disconnected');
+        console.warn('[ChatHub] disconnected:', err);
+        scheduleFreshConnection();
+      });
+
+      try {
+        await connection.start();
+        if (disposed || currentConnection !== connection) {
+          await connection.stop().catch(() => undefined);
           return;
         }
+        retryAttempt = 0;
         setSignalRStatus('connected');
-        console.info('[ChatHub] connected');
         setHubConnection(connection);
-      })
-      .catch(err => {
-        if (disposed) return;
+        console.info('[ChatHub] connected');
+      } catch (err) {
+        if (disposed || currentConnection !== connection) return;
+        currentConnection = null;
+        setHubConnection(existing => existing === connection ? null : existing);
         setSignalRStatus('failed');
         console.error('[ChatHub] connection failed:', err);
-      });
+        await connection.stop().catch(() => undefined);
+        scheduleFreshConnection();
+      }
+    };
+
+    void connect();
 
     return () => {
       disposed = true;
-      connection.stop().catch(() => {});
+      clearRetryTimer();
+      const connection = currentConnection;
+      currentConnection = null;
+      connection?.stop().catch(() => undefined);
     };
   }, []);
 
@@ -758,11 +791,8 @@ export function useMessages() {
   useEffect(() => {
     if (!hubConnection || !activeConvId) return;
 
-    hubConnection
+    void hubConnection
       .invoke('JoinConversation', activeConvId)
-      .then(() => {
-        console.log(`✓ Joined SignalR conversation group: ${activeConvId}`);
-      })
       .catch(err => {
         console.error(`✗ Failed to join SignalR conversation group: ${activeConvId}`, err);
       });
@@ -779,8 +809,15 @@ export function useMessages() {
     const handleReceiveMessage = (m: any) => {
       const mapped = { ...mapBackendMessage(m), sendStatus: 'sent' as const };
       const targetConvId = mapped.conversationId;
+      if (!targetConvId) {
+        console.warn('[ChatHub] Ignored a message without a conversation ID.');
+        return;
+      }
       if (mapped.schedule && targetConvId === activeConvIdRef.current) {
-        setHasOngoingSchedule(mapped.schedule.status === 0 && new Date(mapped.schedule.scheduledAtUtc).getTime() > Date.now());
+        syncOngoingSchedule(
+          mapped.schedule.status === 0,
+          mapped.schedule.scheduledAtUtc,
+        );
       }
 
       setMessagesMap(prev => {
@@ -796,15 +833,24 @@ export function useMessages() {
             (m.clientMessageId && msg.id === m.clientMessageId)
         );
         if (exists) {
+          const isSameMessage = (msg: MsgMessage) =>
+            msg.id === m.clientMessageId ||
+            msg.id === mapped.id ||
+            msg.clientMessageId === m.clientMessageId;
+          const existingMessage = list.find(isSameMessage);
+          const alreadyCurrentScheduleCard = mapped.schedule &&
+            existingMessage?.schedule?.eventSequence === mapped.schedule.eventSequence &&
+            list[list.length - 1]?.id === existingMessage.id;
+          if (alreadyCurrentScheduleCard) return prev;
+
           return {
             ...prev,
-            [targetConvId]: list.map(msg =>
-              msg.id === m.clientMessageId ||
-              msg.id === mapped.id ||
-              msg.clientMessageId === m.clientMessageId
-                ? mapped
-                : msg
-            ),
+            // A schedule card is one reusable message. When a new schedule
+            // event arrives, move that card to the bottom/current event
+            // position instead of replacing it where it was first created.
+            [targetConvId]: mapped.schedule
+              ? [...list.filter(msg => !isSameMessage(msg)), mapped]
+              : list.map(msg => isSameMessage(msg) ? mapped : msg),
           };
         }
         return {
@@ -815,7 +861,11 @@ export function useMessages() {
 
       // If active conversation receives a message and it's from the other participant, mark it read immediately!
       if (targetConvId === activeConvIdRef.current && mapped.senderId !== user?.id) {
-        messagePostAPI.markAsRead(activeConvIdRef.current, mapped.id).catch(() => {});
+        markMessageReadOnce(
+          activeConvIdRef.current,
+          mapped.id,
+          mapped.schedule?.eventSequence ?? mapped.createdAt,
+        );
       }
 
       setConversationsState(prev =>
@@ -880,14 +930,19 @@ export function useMessages() {
         setMessagesMap(prev => {
           const list = prev[conversationId];
           if (!list) return prev;
+          let changed = false;
+          const next = list.map(m => {
+            const sentAt = m.createdAt ? new Date(m.createdAt).getTime() : Number.POSITIVE_INFINITY;
+            if (!m.isRead && (m.id === messageId || sentAt <= Date.now())) {
+              changed = true;
+              return { ...m, isRead: true };
+            }
+            return m;
+          });
+          if (!changed) return prev;
           return {
             ...prev,
-            [conversationId]: list.map(m => {
-              if (m.id === messageId || new Date(m.createdAt).getTime() <= new Date().getTime()) {
-                return { ...m, isRead: true };
-              }
-              return m;
-            }),
+            [conversationId]: next,
           };
         });
       }
@@ -991,16 +1046,23 @@ export function useMessages() {
 
     const handleScheduleChanged = (schedule: ScheduleEvent) => {
       if (!schedule?.scheduleId) return;
+      if (schedule.conversationId === activeConvIdRef.current) {
+        syncOngoingSchedule(schedule.status === 0, schedule.scheduledAtUtc);
+      }
       setMessagesMap(prev => {
+        let changed = false;
         const updated: Record<string, MsgMessage[]> = {};
         for (const [conversationId, messages] of Object.entries(prev)) {
-          updated[conversationId] = dedupeMessages(messages.map(message =>
-            message.id === schedule.scheduleMessageId
-              ? { ...message, schedule }
-              : message
-          ));
+          updated[conversationId] = dedupeMessages(messages.map(message => {
+            if (message.id === schedule.scheduleMessageId &&
+                message.schedule?.eventSequence !== schedule.eventSequence) {
+              changed = true;
+              return { ...message, schedule };
+            }
+            return message;
+          }));
         }
-        return updated;
+        return changed ? updated : prev;
       });
     };
 
@@ -1012,7 +1074,7 @@ export function useMessages() {
     hubConnection.on('ContractDraftUpdated', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsSubmitted', handleContractWorkflowUpdate);
     hubConnection.on('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
-    hubConnection.on('ContractFullySigned', handleContractWorkflowUpdate);
+    hubConnection.on('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
     hubConnection.on('ContractMilestonesAccepted', handleContractWorkflowUpdate);
     hubConnection.on('WorkspaceOpened', handleContractWorkflowUpdate);
     hubConnection.on('ScheduleMeetingChanged', handleMeetingChanged);
@@ -1027,13 +1089,13 @@ export function useMessages() {
       hubConnection.off('ContractDraftUpdated', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsSubmitted', handleContractWorkflowUpdate);
       hubConnection.off('ContractDetailsChangeRequested', handleContractWorkflowUpdate);
-      hubConnection.off('ContractFullySigned', handleContractWorkflowUpdate);
+      hubConnection.off('ContractReadyForEscrowFunding', handleContractWorkflowUpdate);
       hubConnection.off('ContractMilestonesAccepted', handleContractWorkflowUpdate);
       hubConnection.off('WorkspaceOpened', handleContractWorkflowUpdate);
       hubConnection.off('ScheduleMeetingChanged', handleMeetingChanged);
       hubConnection.off('ScheduleChanged', handleScheduleChanged);
     };
-  }, [hubConnection, activeConvId, activeConv?.contractId, loadConversations, user]);
+  }, [hubConnection, activeConvId, activeConv?.contractId, loadConversations, markMessageReadOnce, syncOngoingSchedule, user]);
 
   // Close conv menu on outside click
   useEffect(() => {
@@ -1046,8 +1108,9 @@ export function useMessages() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Keep schedule/chat updates inside the message scroller. scrollIntoView here
-  // can move the entire application viewport and make the composer appear locked.
+  // Scroll only when a message is added or removed. Schedule cards may update
+  // and move chronologically without changing the message count; those updates
+  // must not repeatedly pull the user away from the part of chat they are reading.
   useEffect(() => {
     const container = chatHistoryRef.current;
     if (!container) return;
@@ -1178,43 +1241,55 @@ export function useMessages() {
     }
   };
 
+  const validateDealMilestoneDraft = () => {
+    const validation = validateNegotiationMilestones(dealMilestones);
+    if (validation.valid) return true;
+
+    const translatedErrors = Object.fromEntries(Object.entries(validation.errors).map(([field, code]) => [
+      field,
+      t(`messages.finalOfferEditor.validation.${code}`),
+    ]));
+    setDealMilestoneErrors(translatedErrors);
+    if (validation.advancedIndexes.length > 0) {
+      setDealAdvancedIndexes(indexes => Array.from(new Set([
+        ...indexes,
+        ...validation.advancedIndexes,
+      ])).sort((left, right) => left - right));
+    }
+    setAnchorNotice(t(`messages.finalOfferEditor.validation.${validation.firstError || 'milestoneRequired'}`));
+    const firstField = Object.keys(validation.errors)[0];
+    if (firstField) {
+      const parts = firstField.split('.');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const selector = parts[1] === 'workItems'
+          ? `[data-work-item-field="${parts[0]}.${parts[2]}.${parts[3]}"]`
+          : `[data-milestone-field="${parts[0]}.${parts[1]}"]`;
+        const target = document.querySelector<HTMLElement>(selector);
+        target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target?.focus();
+      }));
+    }
+    return false;
+  };
+
   const handleProposeDeal = async () => {
-    if (!dealPriceInput.trim() || !activeConvId) return;
+    if (!activeConvId) return;
     if (!ensureActiveNegotiationEligible()) return;
-    const price = parseFloat(dealPriceInput);
-    if (!Number.isFinite(price) || price <= 0 || price > 9999999999999999.99 || Math.round(price * 100) / 100 !== price) {
-      setAnchorNotice('Final price must be positive and use at most 2 decimal places.');
-      return;
-    }
-    const normalizedMilestones = normalizeDealMilestones(dealMilestones);
-    if (normalizedMilestones.length === 0) {
-      setAnchorNotice('Add at least one milestone before sending a final offer.');
-      return;
-    }
-    if (normalizedMilestones.some(item => !item.title?.trim() || !item.deliverables?.trim() || !item.acceptanceCriteria?.trim() || Number(item.amount) <= 0)) {
-      setAnchorNotice('Each milestone needs title, amount, deliverables, and acceptance criteria.');
-      return;
-    }
-    if (normalizedMilestones.some(item => !item.workItems.length || item.workItems.some(workItem => !workItem.title?.trim() || !workItem.description?.trim()))) {
-      setAnchorNotice('Each milestone needs at least one work item with title and description.');
-      return;
-    }
-    if (Math.abs(normalizedMilestones.reduce((sum, item) => sum + item.amount, 0) - price) >= 0.01) {
-      setAnchorNotice('Milestone total must match the final offer price.');
-      return;
-    }
+    if (!validateDealMilestoneDraft()) return;
+    const normalizedMilestones = resolvedDealMilestones;
+    const price = dealMilestoneTotal;
 
     try {
       setDealMilestonesSaving(true);
       const res = await messagePostAPI.createFinalOffer({
         conversationId: activeConvId,
         finalPrice: price,
-        scopeSummary: 'Proposed price',
+        scopeSummary: t('messages.finalOfferEditor.scopeSummary'),
         milestones: normalizedMilestones,
       });
       setDealMilestonesSaving(false);
       if (!res.success || !res.data) {
-        throw new Error(res.message || 'Failed to create final offer.');
+        throw new Error(res.message || t('messages.finalOfferEditor.submitFailed'));
       }
 
       const offerId = String(res.data);
@@ -1235,13 +1310,12 @@ export function useMessages() {
         )
       );
       setDealStatusMap(prev => ({ ...prev, [activeConvId]: 'pending_freelancer' }));
-      setDealPriceInputState('');
-      setDealPriceMode('auto');
+      setDealMilestoneErrors({});
       setShowDealPrice(false);
       loadConversations();
     } catch (err) {
       setDealMilestonesSaving(false);
-      const message = err instanceof Error ? err.message : 'Failed to propose deal.';
+      const message = err instanceof Error ? err.message : t('messages.finalOfferEditor.submitFailed');
       setAnchorNotice(message);
       console.error('Failed to propose deal:', err);
     }
@@ -1250,16 +1324,25 @@ export function useMessages() {
   const handleSaveDealMilestones = async () => {
     if (!activeConvId) return;
     if (!ensureActiveNegotiationEligible()) return;
+    if (!validateDealMilestoneDraft()) return;
     setDealMilestonesSaving(true);
-    const normalized = normalizeDealMilestones(dealMilestones);
-    const response = await messagePutAPI.updateNegotiationMilestonePlan(activeConvId, { milestones: normalized });
-    setDealMilestonesSaving(false);
-    if (!response.success) {
-      setAnchorNotice(response.message || 'Could not save milestone plan.');
-      return;
+    const normalized = resolvedDealMilestones;
+    try {
+      const response = await messagePutAPI.updateNegotiationMilestonePlan(activeConvId, { milestones: normalized });
+      if (!response.success) {
+        setAnchorNotice(response.message || t('messages.finalOfferEditor.saveFailed'));
+        return;
+      }
+      const prepared = prepareNegotiationMilestonesForEditing(response.data || normalized);
+      setDealMilestones(prepared.milestones);
+      setDealAdvancedIndexes(prepared.advancedIndexes);
+      setDealMilestoneErrors({});
+      setAnchorNotice(t('messages.finalOfferEditor.saved'));
+    } catch (error) {
+      setAnchorNotice(error instanceof Error ? error.message : t('messages.finalOfferEditor.saveFailed'));
+    } finally {
+      setDealMilestonesSaving(false);
     }
-    setDealMilestones(normalizeDealMilestones(response.data || normalized));
-    setAnchorNotice('Milestone plan saved.');
   };
 
   const handleAcceptDeal = async (negotiationOfferId?: string | null, offeredAmount?: number) => {
@@ -1287,8 +1370,9 @@ export function useMessages() {
       if (!current || current.offerId !== offerId) return current;
       return {
         ...current,
+        // Service fee is an in-platform payment, spendable from either pool.
         balance: walletResponse.success && walletResponse.data
-          ? walletResponse.data.availableTokens
+          ? walletResponse.data.totalSpendableGigCoin
           : null,
         loadingBalance: false,
         error: walletResponse.success
@@ -1361,8 +1445,8 @@ export function useMessages() {
           return;
         }
 
-        if (activeConv?.proposalId) {
-          const contractRes = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+        if (activeConv?.job.id) {
+          const contractRes = await contractGetAPI.getContractByJobPost(activeConv.job.id);
           if (contractRes.success && contractRes.data?.contractsId) {
             navigate(`/contracts/${contractRes.data.contractsId}`);
             return;
@@ -1429,20 +1513,27 @@ export function useMessages() {
       return;
     }
 
-    if (!activeConv?.proposalId) {
-      console.error('Cannot open contract: active conversation has no contractId or proposalId.');
+    if (!activeConv?.job.id) {
+      const message = 'Cannot open contract because this conversation has no project reference.';
+      setAnchorNotice(message);
+      console.error(message);
       return;
     }
 
     try {
-      const res = await contractGetAPI.getContractByProposal(activeConv.proposalId);
+      // ContractDraftUpdated and the refreshed conversation normally provide
+      // contractId. Resolve by JobPost as a race-safe fallback while SignalR and
+      // the conversation list are still synchronizing.
+      const res = await contractGetAPI.getContractByJobPost(activeConv.job.id);
       if (res.success && res.data?.contractsId) {
         openContract(res.data);
         return;
       }
 
-      console.error('Cannot open contract from proposal:', res);
+      setAnchorNotice(res.message || 'The contract is still being prepared. Please try again.');
+      console.error('Cannot open contract from project:', res);
     } catch (err) {
+      setAnchorNotice('Unable to open the contract. Please try again.');
       console.error('Failed to open accepted contract:', err);
     }
   };
@@ -1473,7 +1564,7 @@ export function useMessages() {
   const openCreateSchedule = (addGoogleMeet = false) => {
     if (!isClient || hasOngoingSchedule || checkingOngoingSchedule) return;
     setScheduleMode('create'); setEditingSchedule(null); setScheduleTitle(''); setScheduleDetails('');
-    setScheduleTime(''); setScheduleReason(''); setScheduleError(''); setScheduleConflict(null); setMidnightConfirmed(false); setScheduleAddGoogleMeet(addGoogleMeet); setShowScheduleModal(true);
+    setScheduleTime(''); setScheduleReason(''); setScheduleError(''); setScheduleConflict(null); setMidnightConfirmed(false); setScheduleAddGoogleMeet(addGoogleMeet); setScheduleSendEmail(true); setShowScheduleModal(true);
   };
 
   const openEditSchedule = (schedule: ScheduleEvent) => {
@@ -1488,7 +1579,7 @@ export function useMessages() {
 
   const openCounterProposal = (schedule: ScheduleEvent, edit = false) => {
     const vietnam = edit
-      ? new Date(new Date(schedule.scheduledAtUtc).getTime() + 7 * 3600_000).toISOString().slice(0, 16)
+      ? new Date(new Date(schedule.proposedScheduledAtUtc || schedule.scheduledAtUtc).getTime() + 7 * 3600_000).toISOString().slice(0, 16)
       : '';
     setScheduleMode(edit ? 'counter-edit' : 'counter-create'); setEditingSchedule(schedule);
     setScheduleTime(vietnam); setScheduleError(''); setScheduleConflict(null);
@@ -1521,11 +1612,13 @@ export function useMessages() {
         setAnchorNotice(response.message || `Unable to ${action} schedule.`);
         return;
       }
+      syncOngoingSchedule(
+        response.data.schedule.status === 0,
+        response.data.schedule.scheduledAtUtc,
+      );
       if (action === 'reject' && schedule.agreementStatus === 1) {
         const rejectedEvent = response.data.message?.schedule;
         if (rejectedEvent) openCounterProposal(rejectedEvent, false);
-      } else if (action === 'reject') {
-        setHasOngoingSchedule(false);
       }
     } finally {
       setScheduleActionId(null);
@@ -1545,7 +1638,31 @@ export function useMessages() {
       return;
     }
 
+    if (response.data?.schedule) {
+      applyLatestSchedule(schedule.scheduleId, response.data.schedule);
+    }
     setAnchorNotice('Retrying Google Meet creation...');
+
+    for (let attempt = 0; attempt < MEETING_STATUS_POLL_ATTEMPTS; attempt++) {
+      await wait(MEETING_STATUS_POLL_INTERVAL_MS);
+      if (activeConvIdRef.current !== schedule.conversationId) return;
+
+      const latest = await scheduleAPI.get(schedule.scheduleId);
+      if (!latest.success || !latest.data) continue;
+
+      applyLatestSchedule(schedule.scheduleId, latest.data);
+      const meetingStatus = latest.data.meeting?.status;
+      if (meetingStatus === 2) {
+        setAnchorNotice('Google Meet room is ready.');
+        return;
+      }
+      if (meetingStatus === 3) {
+        setAnchorNotice('Google Meet creation failed. You can retry again.');
+        return;
+      }
+    }
+
+    setAnchorNotice('Google Meet creation is taking longer than expected. Reopen the conversation to refresh its status.');
   };
 
   const submitSchedule = async () => {
@@ -1560,7 +1677,7 @@ export function useMessages() {
     setScheduleSaving(true); setScheduleError('');
     const scheduledAt = scheduleTime ? `${scheduleTime}:00+07:00` : '';
     let res;
-    if (scheduleMode === 'create') res = await scheduleAPI.create({ conversationId: activeConvId, title: scheduleTitle, details: scheduleDetails || undefined, scheduledAt, timeZoneId: 'Asia/Ho_Chi_Minh', addGoogleMeet: scheduleAddGoogleMeet });
+    if (scheduleMode === 'create') res = await scheduleAPI.create({ conversationId: activeConvId, title: scheduleTitle, details: scheduleDetails || undefined, scheduledAt, timeZoneId: 'Asia/Ho_Chi_Minh', addGoogleMeet: scheduleAddGoogleMeet, sendEmailNotification: scheduleSendEmail });
     else if (scheduleMode === 'edit' && editingSchedule) res = await scheduleAPI.update(editingSchedule.scheduleId, { title: scheduleTitle, details: scheduleDetails || undefined, scheduledAt, expectedVersion: editingSchedule.version });
     else if (scheduleMode === 'cancel' && editingSchedule) res = await scheduleAPI.cancel(editingSchedule.scheduleId, { reason: scheduleReason, expectedVersion: editingSchedule.version });
     else if (scheduleMode === 'counter-create' && editingSchedule) res = await scheduleAPI.createCounterProposal(editingSchedule.scheduleId, { scheduledAt, expectedVersion: editingSchedule.version, timeZoneId: 'Asia/Ho_Chi_Minh' });
@@ -1575,8 +1692,12 @@ export function useMessages() {
       } else setScheduleError(res?.message || 'Unable to save schedule.');
       setScheduleSaving(false); return;
     }
-    if (scheduleMode === 'create') setHasOngoingSchedule(true);
-    if (scheduleMode === 'cancel') setHasOngoingSchedule(false);
+    if (res.data?.schedule) {
+      syncOngoingSchedule(
+        res.data.schedule.status === 0,
+        res.data.schedule.scheduledAtUtc,
+      );
+    }
     setShowScheduleModal(false); setScheduleSaving(false);
   };
 
@@ -1587,10 +1708,8 @@ export function useMessages() {
     setScheduleError(scheduleConflict.remainingEdits === 1 ? 'Retry confirmed. Saving will consume the final shared edit.' : 'Retry confirmed against the latest schedule version.');
   };
 
-  const isMe = (senderId: string) =>
+  const isMe = (senderId?: string) =>
     senderId === (user?.id ?? 'current_user') || senderId === 'current_user';
-
-  const totalUnread = conversationsState.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return {
     user,
@@ -1618,17 +1737,15 @@ export function useMessages() {
     setShowInfo,
     showDealPrice,
     setShowDealPrice,
-    dealPriceInput,
-    setDealPriceInput,
-    dealPriceMode,
-    resetDealPriceToMilestones,
-    dealMilestones,
+    dealMilestones: dealEditorMilestones,
+    updateDealMilestones,
+    dealAdvancedIndexes,
+    setDealAdvancedIndexes,
+    dealMilestoneErrors,
     dealMilestonesLoading,
     dealMilestonesSaving,
     dealMilestoneTotal,
-    updateDealMilestone,
-    addDealMilestone,
-    removeDealMilestone,
+    dealOverallDuration,
     handleSaveDealMilestones,
     messageInput,
     setMessageInput,
@@ -1659,15 +1776,15 @@ export function useMessages() {
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,
-    totalUnread,
     formatTime,
     showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
     scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,
     scheduleError, scheduleSaving, scheduleActionId, openCreateSchedule, openEditSchedule, openCancelSchedule,
     openCounterProposal, respondToSchedule, retryGoogleMeet, submitSchedule,
     scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed, scheduleAddGoogleMeet, setScheduleAddGoogleMeet,
+    scheduleSendEmail, setScheduleSendEmail,
     googleMeetStatus, googleMeetStatusLoading, googleMeetConnecting, connectGoogleMeet,
-    nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
+    highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   };
 }

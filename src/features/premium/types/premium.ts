@@ -136,7 +136,8 @@ export interface PromotionPolicy {
 }
 
 export interface PromotionDraft { photoUrl: string; displayName: string; jobTitle?: string | null; policy: PromotionPolicy; }
-export interface PromotionManager { active?: Promotion | null; queued: Promotion[]; history: Promotion[]; policy: PromotionPolicy; availableTokens: number; }
+export interface PromotionQueueEntry { queuePosition: number; boostWeight: number; isCurrent: boolean; }
+export interface PromotionManager { active?: Promotion | null; queued: Promotion[]; history: Promotion[]; policy: PromotionPolicy; availableTokens: number; queue: PromotionQueueEntry[]; }
 export interface PromotionCardInput { photoUrl: string; displayName: string; quote?: string; showQuote: boolean; jobTitle?: string; showJobTitle: boolean; }
 export interface PublicPromotionCard extends PromotionCardInput { id: string; freelancerUserId: string; }
 export interface PromotionInteractionResult { promotionId: string; status: PromotionStatus; clickCount: number; targetClickCount: number; }

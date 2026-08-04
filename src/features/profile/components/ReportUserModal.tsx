@@ -21,6 +21,9 @@ const REPORT_REASONS = [
 export function ReportUserModal({ userId, userName, onClose, onSuccess }: ReportUserModalProps) {
   const [type, setType] = useState<ReportType>(ReportType.Spam);
   const [reason, setReason] = useState('');
+  const [description, setDescription] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [createdReportId, setCreatedReportId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,20 +37,29 @@ export function ReportUserModal({ userId, userName, onClose, onSuccess }: Report
 
     setSubmitting(true);
     setError(null);
-    const response = await reportAPI.createReport({
-      reportedEntityId: userId,
-      reportedEntityType: 'User',
-      type,
-      reason: trimmedReason,
+    const response = createdReportId ? null : await reportAPI.createReport({
+      reportedEntityId: userId, reportedEntityType: 'User', type, reason: trimmedReason,
+      description: description.trim() || undefined,
     });
 
-    if (response.success) {
-      onSuccess();
+    const reportId = createdReportId ?? response?.data;
+    if (!reportId) {
+      setError(response?.message || 'Unable to submit your report.');
+      setSubmitting(false);
       return;
     }
+    setCreatedReportId(reportId);
 
-    setError(response.message || 'Unable to submit your report.');
-    setSubmitting(false);
+    if (files.length) {
+      const upload = await reportAPI.uploadEvidence(reportId, files, description);
+      if (!upload.success) {
+        setError(`${upload.message || 'Evidence upload failed.'} Your report was saved; submit again to retry the evidence upload.`);
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    onSuccess();
   };
 
   return (
@@ -83,6 +95,15 @@ export function ReportUserModal({ userId, userName, onClose, onSuccess }: Report
             placeholder="Give the moderation team enough detail to review this report."
           />
           <p className="text-xs text-muted text-right mt-1">{reason.length}/2000</p>
+
+          <label className="text-sm font-semibold text-primary block mt-4 mb-2">Additional description (optional)</label>
+          <textarea className="input-gb w-full min-h-20 p-3 text-sm resize-y" value={description} maxLength={4000}
+            onChange={(event) => setDescription(event.target.value)} placeholder="Add context that may help the review." />
+
+          <label className="text-sm font-semibold text-primary block mt-4 mb-2">Evidence (optional, up to 5 files)</label>
+          <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.doc,.docx" disabled={submitting}
+            onChange={(event) => setFiles(Array.from(event.target.files ?? []).slice(0, 5))} />
+          {files.length > 0 && <p className="text-xs text-muted mt-2">{files.length} file(s) selected. Each file must be 100 MB or smaller.</p>}
 
           {error && (
             <div className="mt-4 rounded-lg border border-red/30 bg-red/10 p-3 flex gap-2 text-sm text-red">

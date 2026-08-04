@@ -1,15 +1,18 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, Ban, Send, Plus, AlertTriangle,
+  ArrowLeft, Ban, Send, AlertTriangle,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
 import { ContractProductHandoffSourceType, ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
 import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
 import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
@@ -22,12 +25,19 @@ import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { disputeGetAPI } from '../../../api/disputeAPI';
 import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
+import { EarlyWithdrawalDialog } from '../../../shared/components/EarlyWithdrawalDialog';
 import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
 import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
+import { toast } from 'sonner';
 import {
   parseReportSystemMessageMetadata,
   type ReportSystemMessageMetadata,
 } from '../utils/reportSystemMessage';
+import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
+import '../../reviews/styles/reviews-screen.css';
+
+type Translate = ReturnType<typeof useTranslation>['t'];
 
 const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
   const url = handoff.sourceType === ContractProductHandoffSourceType.Link
@@ -37,7 +47,7 @@ const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string |
   return url?.trim() || null;
 };
 
-const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: any): string =>
+const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: Translate): string =>
   handoff.sourceType === ContractProductHandoffSourceType.Link
     ? t('workspace.workMaterialsLink')
     : handoff.fileName || t('workspace.workMaterialsFile');
@@ -66,7 +76,7 @@ const REPORT_STATUS_KEYS: Record<number, string> = {
   [ContractReportStatus.Escalated]: 'workspace.reportStatusEscalated',
 };
 
-const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: any): string => {
+const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: Translate): string => {
   const actor = event.actorName || event.actorRole || t('workspace.reportParticipant');
   if (event.eventType === 'created') return t('workspace.reportSystemCreatedSummary', { actor });
   if (event.eventType === 'resolved') return t('workspace.reportSystemResolvedSummary');
@@ -106,14 +116,18 @@ export default function ProjectWorkspaceScreen() {
   const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
   const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
   const [milestoneActionError, setMilestoneActionError] = useState<{ milestoneId: string; message: string } | null>(null);
+  const [withdrawDialogMilestone, setWithdrawDialogMilestone] = useState<{
+    milestoneId: string;
+    title: string;
+    availableAmount: number;
+  } | null>(null);
   const [endProjectModalOpen, setEndProjectModalOpen] = useState(false);
   const [endProjectFeeMode, setEndProjectFeeMode] = useState<'confirmation' | 'insufficient'>('confirmation');
   const [endProjectBalance, setEndProjectBalance] = useState<number | null>(null);
   const [isLoadingEndProjectBalance, setIsLoadingEndProjectBalance] = useState(false);
   const [isEndingProject, setIsEndingProject] = useState(false);
   const [endProjectError, setEndProjectError] = useState<string | null>(null);
-  const [isClaimingPayout, setIsClaimingPayout] = useState(false);
-  const [claimPayoutError, setClaimPayoutError] = useState<string | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productMode, setProductMode] = useState<'file' | 'link'>('file');
   const [productNote, setProductNote] = useState('');
@@ -127,6 +141,7 @@ export default function ProjectWorkspaceScreen() {
   const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
   const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
   const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const withdrawalRequestInFlightRef = useRef(false);
   const submitFileInputRef = useRef<HTMLInputElement>(null);
   const productFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -153,16 +168,20 @@ export default function ProjectWorkspaceScreen() {
     partnerAvatar,
     partnerTitle,
     partnerCompany,
+    partnerUserId,
     isPartnerOnline,
     projectMessages,
+    reviewPromptContractId,
+    clearReviewPrompt,
+    refreshWorkspace,
     handleSendMessage,
     handleSimulateAttachment,
+    handleOpenMilestoneEditor,
     handleRequestMilestoneUnlock,
-    handleUpdateWorkItem,
     handleWithdrawMilestone,
+    handleUpdateWorkItem,
     handleRespondEarlyStart,
     handleEndProject,
-    handleClaimFinalPayout,
     handleSubmitMilestoneDeliverable,
     handleSubmitProductHandoff,
     chatEndRef,
@@ -187,9 +206,7 @@ export default function ProjectWorkspaceScreen() {
     clearSelectedReport,
   } = useReportContract();
   const workspaceContractId = activeProjectId || contractId || '';
-  const approvedMilestoneCount = project.milestones.filter(milestone => milestone.status === 'approved').length;
-  const requiredApprovedForWithdraw = Math.ceil(project.milestones.length * 0.5);
-  const hasEnoughApprovedForWithdraw = project.milestones.length > 0 && approvedMilestoneCount >= requiredApprovedForWithdraw;
+  const isFreelancer = user?.role === UserRole.Freelancer;
   const allMilestonesSubmittedOrApproved = project.milestones.length > 0 &&
     project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved');
   const allMilestonesApproved = project.milestones.length > 0 &&
@@ -197,23 +214,25 @@ export default function ProjectWorkspaceScreen() {
   const showEndProjectButton = isClient &&
     activeContract?.status === ContractStatus.Active &&
     allMilestonesSubmittedOrApproved;
-  const allMilestonesReleased = project.milestones.length > 0 &&
-    project.milestones.every(milestone => milestone.releasedAmount >= milestone.amount);
-  const projectReleasedInFull = project.totalBudget > 0
-    ? project.paidAmount >= project.totalBudget
-    : allMilestonesReleased;
   const isContractDisputed = activeContract?.status === ContractStatus.Disputed;
   const isWorkspaceViewOnly = activeContract?.status === ContractStatus.Completed;
   const isWorkspaceLocked = isWorkspaceViewOnly || isContractDisputed;
   const showFreelancerPayoutCard = !isClient &&
     activeContract?.status === ContractStatus.Completed &&
     allMilestonesApproved;
-  const remainingEscrowAmount = Math.max(
-    0,
-    project.milestones.reduce((sum, milestone) => sum + Math.max(0, milestone.amount - milestone.releasedAmount), 0)
-  );
   const completedJobAmount = project.milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
   const endProjectServiceFee = calculateServiceFee(completedJobAmount);
+  const reviewRole = isClient ? UserRole.Client : UserRole.Freelancer;
+
+  useEffect(() => {
+    if (endProjectModalOpen || !reviewPromptContractId || !activeContract?.canReview || !user?.id) return;
+    if (reviewPromptContractId !== activeContract.contractsId) return;
+
+    const dismissedKey = `gigbridge-review-prompt-dismissed:${user.id}:${reviewPromptContractId}`;
+    if (sessionStorage.getItem(dismissedKey) !== '1') {
+      setReviewDialogOpen(true);
+    }
+  }, [activeContract, endProjectModalOpen, reviewPromptContractId, user?.id]);
 
   useEffect(() => {
     setRaiseIssueModalOpen(false);
@@ -420,17 +439,47 @@ export default function ProjectWorkspaceScreen() {
     setMilestoneActionPendingId(null);
   };
 
-  const handleWithdrawApprovedMilestone = async (milestoneId: string) => {
+  const openWithdrawDialog = (milestoneId: string, title: string, availableAmount: number) => {
+    setMilestoneActionError(null);
+    setWithdrawDialogMilestone({ milestoneId, title, availableAmount });
+  };
+
+  const closeWithdrawDialog = () => {
+    if (milestoneActionPendingId === withdrawDialogMilestone?.milestoneId) return;
+    setWithdrawDialogMilestone(null);
+  };
+
+  const confirmMilestoneWithdrawal = async () => {
+    if (!withdrawDialogMilestone || milestoneActionPendingId || withdrawalRequestInFlightRef.current) return;
+
+    const { milestoneId } = withdrawDialogMilestone;
+    withdrawalRequestInFlightRef.current = true;
     setMilestoneActionPendingId(milestoneId);
     setMilestoneActionError(null);
-    const result = await handleWithdrawMilestone(milestoneId);
-    if (!result.success) {
+    try {
+      const result = await handleWithdrawMilestone(milestoneId);
+
+      if (result.success) {
+        setWithdrawDialogMilestone(null);
+        toast.success(result.message || t('earlyWithdrawal.success'));
+      } else {
+        setMilestoneActionError({
+          milestoneId,
+          message: result.message || t('workspace.failedWithdrawFundsError'),
+        });
+        if (result.statusCode === 409) {
+          setWithdrawDialogMilestone(null);
+        }
+      }
+    } catch {
       setMilestoneActionError({
         milestoneId,
-        message: result.message || t('workspace.failedWithdrawFundsError'),
+        message: t('workspace.failedWithdrawFundsError'),
       });
+    } finally {
+      withdrawalRequestInFlightRef.current = false;
+      setMilestoneActionPendingId(null);
     }
-    setMilestoneActionPendingId(null);
   };
 
   const handleToggleReportList = useCallback(() => {
@@ -542,7 +591,8 @@ export default function ProjectWorkspaceScreen() {
 
     const response = await walletGetAPI.getMyWallet();
     if (response.success && response.data) {
-      setEndProjectBalance(response.data.availableTokens);
+      // End-project service fee is an in-platform payment, spendable from either pool.
+      setEndProjectBalance(response.data.totalSpendableGigCoin);
     } else {
       setEndProjectError(response.message || t('workspace.unableLoadGigCoinBalance'));
     }
@@ -552,6 +602,23 @@ export default function ProjectWorkspaceScreen() {
   const closeEndProjectDialog = () => {
     if (isEndingProject) return;
     setEndProjectModalOpen(false);
+  };
+
+  const closeReviewDialog = () => {
+    if (activeContract?.contractsId && user?.id) {
+      sessionStorage.setItem(
+        `gigbridge-review-prompt-dismissed:${user.id}:${activeContract.contractsId}`,
+        '1',
+      );
+    }
+    setReviewDialogOpen(false);
+    clearReviewPrompt();
+  };
+
+  const handleReviewSubmitted = () => {
+    setReviewDialogOpen(false);
+    clearReviewPrompt();
+    void refreshWorkspace();
   };
 
   const handleConfirmEndProject = async () => {
@@ -579,16 +646,6 @@ export default function ProjectWorkspaceScreen() {
     setIsEndingProject(false);
     setEndProjectModalOpen(false);
     window.dispatchEvent(new Event('gigbridge-wallet-updated'));
-  };
-
-  const handleClaimPayout = async () => {
-    setIsClaimingPayout(true);
-    setClaimPayoutError(null);
-    const result = await handleClaimFinalPayout();
-    if (!result.success) {
-      setClaimPayoutError(result.message || t('workspace.failedClaimPayoutError'));
-    }
-    setIsClaimingPayout(false);
   };
 
   return (
@@ -718,15 +775,17 @@ export default function ProjectWorkspaceScreen() {
                     className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''}`}
                   >
                     <div className="flex gap-3">
-                      <div className="relative flex-shrink-0">
+                      <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
                         <img alt={proj.partnerName} className="w-12 h-12 rounded-full object-cover" src={proj.partnerAvatar} />
                         {proj.online && (
                           <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full"></span>
                         )}
-                      </div>
+                      </UserProfileLink>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-0.5">
-                          <h3 className="font-headline-sm text-sm truncate font-semibold">{proj.partnerName}</h3>
+                          <h3 className="font-headline-sm text-sm truncate font-semibold">
+                            <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>{proj.partnerName}</UserProfileLink>
+                          </h3>
                           <span className="text-[10px] text-muted-foreground">{proj.time}</span>
                         </div>
                         {proj.status === ContractStatus.Disputed && (
@@ -764,6 +823,14 @@ export default function ProjectWorkspaceScreen() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleOpenMilestoneEditor}
+                  className="bg-card hover:bg-muted border border-border text-foreground font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <ListChecks size={15} />
+                  <span>{t('workspace.milestoneDetails')}</span>
+                </button>
                 {showEndProjectButton && (
                   <button
                     onClick={openEndProjectDialog}
@@ -774,6 +841,21 @@ export default function ProjectWorkspaceScreen() {
                     <CheckCircle size={16} />
                     <span>{t('workspace.endProject')}</span>
                   </button>
+                )}
+                {activeContract?.canReview && (
+                  <button
+                    type="button"
+                    onClick={() => setReviewDialogOpen(true)}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Star size={16} />
+                    <span>{t(isClient ? 'reviews.leaveForFreelancer' : 'reviews.leaveForClient')}</span>
+                  </button>
+                )}
+                {activeContract?.hasReviewedByCurrentUser && activeContract.status === ContractStatus.Completed && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600">
+                    <CheckCircle size={15} /> {t('reviews.reviewed')}
+                  </span>
                 )}
                 <button
                   onClick={() => setShowInfo(!showInfo)}
@@ -812,26 +894,16 @@ export default function ProjectWorkspaceScreen() {
                   <Wallet size={22} />
                 </div>
                 <div className="workspace-receive-money-copy">
-                  <span>{projectReleasedInFull ? t('workspace.paidInFull') : t('workspace.finalPayoutReady')}</span>
-                  <h3>
-                    {projectReleasedInFull
-                      ? t('workspace.escrowReleasedFully')
-                      : t('workspace.claimRemainingEscrow')}
-                  </h3>
-                  <p>
-                    {projectReleasedInFull ? t('workspace.youReceived') : t('workspace.availableToClaim')}
-                    <GigCoinAmount amount={projectReleasedInFull ? project.paidAmount : remainingEscrowAmount} />
-                    {projectReleasedInFull ? t('workspace.forThisContract') : '.'}
-                  </p>
-                  {claimPayoutError && <p className="text-red-600">{claimPayoutError}</p>}
+                  <span>{t('workspace.finalPayout')}</span>
+                  <h3>{t('workspace.finalPayoutReconciliation')}</h3>
+                  <p>{t('workspace.finalPayoutNotice')}</p>
                 </div>
                 <button
                   type="button"
-                  onClick={projectReleasedInFull ? () => navigate('/wallet/history') : handleClaimPayout}
-                  disabled={isClaimingPayout}
+                  onClick={() => navigate('/wallet/history')}
                   className="workspace-receive-money-button"
                 >
-                  {projectReleasedInFull ? t('workspace.viewWalletHistory') : isClaimingPayout ? t('workspace.claiming') : t('workspace.claimPayout')}
+                  {t('workspace.viewWalletHistory')}
                 </button>
               </div>
             )}
@@ -848,17 +920,26 @@ export default function ProjectWorkspaceScreen() {
                   const isInProgress = milestone.status === 'in_progress';
                   const isSubmitted = milestone.status === 'submitted';
                   const isPending = milestone.status === 'pending';
-                  const withdrawableAmount = Math.max(0, milestone.amount * 0.8 - milestone.releasedAmount);
-                  const isReleasedInFull = milestone.releasedAmount >= milestone.amount;
+                  const isReleasedInFull = milestone.amount > 0 && milestone.releasedAmount >= milestone.amount;
+                  const withdrawalEligibility = getEarlyWithdrawalEligibility(
+                    project.milestones,
+                    milestone,
+                    activeContract?.status,
+                    isFreelancer,
+                  );
+                  const showFreelancerWithdraw = isFreelancer &&
+                    withdrawalEligibility.isContractActive &&
+                    withdrawalEligibility.isApproved &&
+                    !withdrawalEligibility.isAtCap;
+                  const showEarlyWithdrawalCap = isFreelancer &&
+                    withdrawalEligibility.isApproved &&
+                    withdrawalEligibility.isAtCap &&
+                    !isReleasedInFull;
                   const workItems = milestone.workItems || [];
                   const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
                   const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress && allWorkItemsCompleted;
                   const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
                   const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
-                  const showFreelancerWithdraw = !isClient &&
-                    activeContract?.status === ContractStatus.Active &&
-                    isCompleted &&
-                    withdrawableAmount > 0;
                   const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
                   const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
 
@@ -941,16 +1022,20 @@ export default function ProjectWorkspaceScreen() {
                         })}
                       </div>
 
-                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || showFreelancerWithdraw || (!isClient && isCompleted && isReleasedInFull)) && (
+                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || showFreelancerWithdraw || showEarlyWithdrawalCap || (!isClient && isCompleted && isReleasedInFull)) && (
                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
                           <div className="flex-1 max-w-xs">
                             {showFreelancerWithdraw ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                {t('workspace.withdrawableBeforeEnd')} <GigCoinAmount amount={withdrawableAmount} />
+                                {t('earlyWithdrawal.availableBeforeEnd')} <GigCoinAmount amount={withdrawalEligibility.availableAmount} />
                               </span>
                             ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                                 {t('workspace.releasedInFull')}
+                              </span>
+                            ) : showEarlyWithdrawalCap ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('earlyWithdrawal.maximumReached')}
                               </span>
                             ) : (isInProgress || isSubmitted) ? (
                               <>
@@ -993,16 +1078,26 @@ export default function ProjectWorkspaceScreen() {
                               </button>
                             ) : showFreelancerWithdraw ? (
                               <button
-                                onClick={() => handleWithdrawApprovedMilestone(milestone.id)}
-                                disabled={isMilestoneActionPending || !hasEnoughApprovedForWithdraw}
+                                type="button"
+                                onClick={() => openWithdrawDialog(milestone.id, milestone.title, withdrawalEligibility.availableAmount)}
+                                disabled={isMilestoneActionPending || !withdrawalEligibility.meetsApprovalThreshold}
+                                title={withdrawalEligibility.meetsApprovalThreshold
+                                  ? t('earlyWithdrawal.actionTooltip')
+                                  : t('earlyWithdrawal.thresholdTooltip', {
+                                      approved: withdrawalEligibility.approvedMilestones,
+                                      required: withdrawalEligibility.requiredApprovedMilestones,
+                                    })}
                                 className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
-                                title={hasEnoughApprovedForWithdraw ? t('workspace.withdrawTooltip') : t('workspace.withdrawNotAllowedTooltip')}
                               >
-                                {isMilestoneActionPending ? t('workspace.withdrawing') : t('workspace.withdraw')}
+                                {isMilestoneActionPending ? t('earlyWithdrawal.submitting') : t('earlyWithdrawal.action')}
                               </button>
                             ) : !isClient && isCompleted && isReleasedInFull ? (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
                                 {t('workspace.releasedInFull')}
+                              </span>
+                            ) : showEarlyWithdrawalCap ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('earlyWithdrawal.maximumReached')}
                               </span>
                             ) : (
                               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -1017,9 +1112,12 @@ export default function ProjectWorkspaceScreen() {
                           {milestoneActionError.message}
                         </div>
                       )}
-                      {showFreelancerWithdraw && !hasEnoughApprovedForWithdraw && (
+                      {showFreelancerWithdraw && !withdrawalEligibility.meetsApprovalThreshold && (
                         <div className="mt-3 text-[11px] font-semibold text-amber-600">
-                          {t('workspace.withdrawThresholdWarning')}
+                          {t('earlyWithdrawal.thresholdWarning', {
+                            approved: withdrawalEligibility.approvedMilestones,
+                            required: withdrawalEligibility.requiredApprovedMilestones,
+                          })}
                         </div>
                       )}
                       {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
@@ -1082,18 +1180,20 @@ export default function ProjectWorkspaceScreen() {
                         profilePopoverTimeout.current = setTimeout(() => setShowProfilePopover(false), 150);
                       }}
                     >
-                      <div className="relative">
-                        <img alt={partnerName} className="w-8 h-8 rounded-full object-cover" src={partnerAvatar} />
-                        {isPartnerOnline && (
-                          <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 border border-card rounded-full"></span>
-                        )}
-                      </div>
-                      <div>
-                        <h2 className="text-xs font-semibold">{partnerName}</h2>
-                        <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
-                          {isPartnerOnline ? t('workspace.online') : t('workspace.offline')} • {partnerTitle}
-                        </p>
-                      </div>
+                      <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex items-center gap-3">
+                        <span className="relative">
+                          <img alt={partnerName} className="w-8 h-8 rounded-full object-cover" src={partnerAvatar} />
+                          {isPartnerOnline && (
+                            <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 border border-card rounded-full"></span>
+                          )}
+                        </span>
+                        <span>
+                          <h2 className="text-xs font-semibold">{partnerName}</h2>
+                          <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
+                            {isPartnerOnline ? t('workspace.online') : t('workspace.offline')} • {partnerTitle}
+                          </p>
+                        </span>
+                      </UserProfileLink>
 
                       {/* Hover Popover — stays open while hovered */}
                       {showProfilePopover && (
@@ -1107,14 +1207,17 @@ export default function ProjectWorkspaceScreen() {
                           }}
                         >
                           <div className="text-center">
-                            <img alt={partnerName} className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
-                            <h3 className="font-bold text-xs text-foreground">{partnerName}</h3>
+                            <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'}>
+                              <img alt={partnerName} className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
+                              <h3 className="font-bold text-xs text-foreground">{partnerName}</h3>
+                            </UserProfileLink>
                             <p className="text-[9px] text-muted-foreground mb-3">{partnerTitle} at {partnerCompany}</p>
                             <div className="flex justify-center gap-2 mb-3">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/profile/${isClient ? 'freelancer' : 'client'}/${isClient ? project.freelancerId : project.clientId}`);
+                                  const path = getProfilePath(partnerUserId, isClient ? 'freelancer' : 'client');
+                                  if (path) navigate(path);
                                 }}
                                 className="text-[8px] font-bold px-3 py-1 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
                               >
@@ -1277,7 +1380,9 @@ export default function ProjectWorkspaceScreen() {
                       return (
                         <div key={msg.id || index} className={`flex items-end gap-2 max-w-[85%] ${isMe ? 'self-end flex-row-reverse' : ''}`}>
                           {!isMe && (
-                            <img alt="" className="w-7 h-7 rounded-full object-cover flex-shrink-0" src={partnerAvatar} />
+                            <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex-shrink-0">
+                              <img alt="" className="w-7 h-7 rounded-full object-cover" src={partnerAvatar} />
+                            </UserProfileLink>
                           )}
                           <div className="flex flex-col gap-1">
                             {msg.type === 'file' ? (
@@ -1451,6 +1556,18 @@ export default function ProjectWorkspaceScreen() {
         </div>
       </div>
 
+      <EarlyWithdrawalDialog
+        open={Boolean(withdrawDialogMilestone)}
+        milestoneTitle={withdrawDialogMilestone?.title || ''}
+        availableAmount={withdrawDialogMilestone?.availableAmount || 0}
+        submitting={Boolean(withdrawDialogMilestone && milestoneActionPendingId === withdrawDialogMilestone.milestoneId)}
+        error={withdrawDialogMilestone && milestoneActionError?.milestoneId === withdrawDialogMilestone.milestoneId
+          ? milestoneActionError.message
+          : null}
+        onConfirm={confirmMilestoneWithdrawal}
+        onCancel={closeWithdrawDialog}
+      />
+
       <ServiceFeeDialog
         open={endProjectModalOpen}
         mode={endProjectFeeMode}
@@ -1467,6 +1584,14 @@ export default function ProjectWorkspaceScreen() {
           setEndProjectModalOpen(false);
           navigate('/wallet/deposit');
         }}
+      />
+
+      <ProjectReviewDialog
+        open={reviewDialogOpen}
+        contract={activeContract}
+        role={reviewRole}
+        onClose={closeReviewDialog}
+        onSubmitted={handleReviewSubmitted}
       />
 
       {submitModal && (

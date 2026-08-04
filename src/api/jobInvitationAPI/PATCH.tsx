@@ -6,7 +6,7 @@ const jobInvitationsUrl = 'JobInvitations';
 
 const patchInvitation = async (
   invitationId: string,
-  action: 'view' | 'apply' | 'cancel',
+  action: 'view' | 'apply',
   message: string
 ): Promise<JobInvitationDto> => {
   const response = await apiService.patch<JobInvitationDto>(`${jobInvitationsUrl}/${invitationId}/${action}`);
@@ -20,10 +20,6 @@ export const jobInvitationPatchAPI = {
 
   markApplied: async (invitationId: string): Promise<JobInvitationDto> => {
     return patchInvitation(invitationId, 'apply', 'Job invitation could not be marked as applied.');
-  },
-
-  cancelInvitation: async (invitationId: string): Promise<JobInvitationDto> => {
-    return patchInvitation(invitationId, 'cancel', 'Job invitation could not be cancelled.');
   },
 
   declineInvitation: async (

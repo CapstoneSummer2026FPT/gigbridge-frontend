@@ -3,11 +3,15 @@ import type { ApiResponse } from '../../types/common';
 import type { CreateFAQCategoryPayload, CreateFAQPayload, FAQCategoryDto, FAQDto } from '../../types/models/FAQ';
 import type { AdminUserDto, CreateUserPayload } from '../../types/models/User';
 import type { WithdrawalResponse } from '../../types/models/Financial';
-import type { AdminDisputeDetail } from '../../types/models/AdminDispute';
+import type { AdminDisputeDetail, UserViolationType } from '../../types/models/AdminDispute';
 import type { DisputeEvidence, DisputeMilestoneOutcome, DisputeResolution, EvidenceRequestTarget } from '../../types/models/Dispute';
 import { normalizeAdminDisputeDetail } from './disputeUtils';
+import { normalizeAdminProposalDetail } from './proposalUtils';
 import { normalizeEvidence } from '../disputeAPI/utils';
 import type { MessageResponse } from '../messageAPI/GET';
+import type { EnforcementPayload } from '../../types/models/AdminPhase1';
+import type { AdminContractReportDetail, ContractReportAdminResolutionAction, ContractReportInformationTarget } from '../../types/models/AdminContractReport';
+import type { AdminProposalDetail } from '../../types/models/AdminProposal';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -26,16 +30,44 @@ export interface AdminResolveDisputePayload {
   resolution: DisputeResolution;
   resolutionNote: string;
   internalNotes?: string;
-  milestoneDecisions: {
+  milestoneAllocations: {
     milestoneId: string;
     outcome: DisputeMilestoneOutcome;
-    additionalReleaseToFreelancer: number;
-    refundToClient: number;
+    freelancerAward: number;
+    clientRefund: number;
+    penaltyAmount: number;
+    reason?: string | null;
   }[];
   contractAction: number;
+  clientViolation: AdminViolationPayload;
+  freelancerViolation: AdminViolationPayload;
+}
+
+export interface AdminViolationPayload {
+  isViolation: boolean;
+  violationType: UserViolationType | null;
+  reason: string | null;
+  description: string | null;
 }
 
 export const adminPostAPI = {
+  addProposalNote: async (proposalId: string, content: string): Promise<ApiResponse<AdminProposalDetail>> => {
+    const response = await apiService.post<unknown>(`/Proposals/admin/${proposalId}/internal-notes`, { content });
+    return { ...response, data: response.data ? normalizeAdminProposalDetail(response.data) : undefined };
+  },
+  assignContractReport: (reportId:string, adminId?:string): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/assign`, {adminId:adminId||null}),
+  requestContractReportInformation: (reportId:string, payload:{requestId:string;target:ContractReportInformationTarget;message:string;requestedEvidenceOrClarification?:string;dueAt?:string}): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/request-information`,payload),
+  closeContractReport: (reportId:string,payload:{resolutionAction:ContractReportAdminResolutionAction;resolutionSummary:string;internalNote?:string}): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/close`,payload),
+  dismissContractReport: (reportId:string,payload:{reason:string;internalNote?:string}): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/dismiss`,payload),
+  addContractReportNote: (reportId:string,content:string): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/internal-notes`,{content}),
+  linkContractReportDispute: (reportId:string,disputeId:string,reason:string): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/link-dispute`,{disputeId,reason}),
+  escalateContractReport: (reportId:string,payload:{title:string;description:string;claimedAmount?:number;requestedResolution:string;urgency:number;reason:string}): Promise<ApiResponse<AdminContractReportDetail>> => apiService.post(`${Admin_Api_Base_Url}/contract-reports/${reportId}/escalate`,payload),
+  enforceUser: (userId: string, action: 'warning' | 'suspend' | 'ban', payload: EnforcementPayload): Promise<ApiResponse<unknown>> =>
+    apiService.post(`${Admin_Api_Base_Url}/users/${userId}/${action}`, payload),
+  clearUserSuspension: (userId: string, reason: string): Promise<ApiResponse<unknown>> =>
+    apiService.post(`${Admin_Api_Base_Url}/users/${userId}/clear-suspension`, { reason }),
+  restoreUser: (userId: string, reason: string): Promise<ApiResponse<unknown>> =>
+    apiService.post(`${Admin_Api_Base_Url}/users/${userId}/restore`, { reason }),
   sendDisputeMessage: async (
     disputeId: string,
     conversationId: string,

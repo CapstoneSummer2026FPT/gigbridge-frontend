@@ -5,15 +5,16 @@ import {
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
-  Plus, Trash2, ShieldAlert,
+  ShieldAlert,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
 import { calculateServiceFee } from '../../../shared/utils/serviceFee';
+import { NegotiationDealCard } from '../components/NegotiationDealCard';
+import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { useMessages } from '../hooks/useMessages';
 import { MESSAGE_ROOMS } from '../messageRooms';
 import { ReportDetailModal, useReportContract } from '../../report-contracts';
@@ -22,6 +23,8 @@ import {
   ContractReportStatus,
 } from '../../../types/models/ReportContract';
 import { parseReportSystemMessageMetadata } from '../../workspace/utils/reportSystemMessage';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import '../styles/messages-screen.css';
 
 const ROOM_COPY = {
@@ -38,21 +41,47 @@ function countdown(start: string, now: number) {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  return days ? `${days}d ${hours}h ${minutes}m remaining` : hours ? `${hours}h ${minutes}m remaining` : `${minutes}m ${seconds % 60}s remaining`;
+  const remainingSeconds = seconds % 60;
+  return days
+    ? `${days}d ${hours}h ${minutes}m ${remainingSeconds}s remaining`
+    : hours
+      ? `${hours}h ${minutes}m ${remainingSeconds}s remaining`
+      : `${minutes}m ${remainingSeconds}s remaining`;
 }
 
 function vietnamDate(value: string) {
   return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) + ' Vietnam Time (ICT)';
 }
 
-function ScheduleCard({ schedule, latest, now, onEdit, onCancel, onRetry, onLatest, onAccept, onReject, onCounterProposal, actionBusy }: {
-  schedule: ScheduleEvent; latest: boolean; now: number; onEdit: () => void; onCancel: () => void;
+function ScheduleCard({ schedule, latest, onEdit, onCancel, onRetry, onLatest, onAccept, onReject, onCounterProposal, actionBusy }: {
+  schedule: ScheduleEvent; latest: boolean; onEdit: () => void; onCancel: () => void;
   onRetry: () => Promise<void>; onLatest: () => void; onAccept: () => Promise<void>; onReject: () => Promise<void>;
   onCounterProposal: (edit: boolean) => void; actionBusy: boolean;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [retryingMeet, setRetryingMeet] = useState(false);
+  const [now, setNow] = useState(Date.now);
+
+  // Keep the one-second clock local to this card. A timer tick must not
+  // rerender the full messages screen and retrigger backend-facing hooks.
+  useEffect(() => {
+    const syncNow = () => setNow(Date.now());
+    syncNow();
+    if (schedule.status !== 0 || new Date(schedule.scheduledAtUtc).getTime() <= Date.now()) return;
+
+    const intervalId = window.setInterval(syncNow, 1000);
+    document.addEventListener('visibilitychange', syncNow);
+    window.addEventListener('focus', syncNow);
+    window.addEventListener('pageshow', syncNow);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', syncNow);
+      window.removeEventListener('focus', syncNow);
+      window.removeEventListener('pageshow', syncNow);
+    };
+  }, [schedule.scheduleId, schedule.scheduledAtUtc, schedule.status]);
+
   const cancelled = schedule.status === 1 || schedule.status === 3 || schedule.eventType === 2;
   const startLocalHour = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', hourCycle: 'h23' }).format(new Date(schedule.scheduledAtUtc)));
   const started = now >= new Date(schedule.scheduledAtUtc).getTime();
@@ -61,10 +90,24 @@ function ScheduleCard({ schedule, latest, now, onEdit, onCancel, onRetry, onLate
   const canRespond = latest && !started;
   const canEditCounter = latest && !started && schedule.canEditCounterProposal &&
     !!schedule.counterProposalEditExpiresAtUtc && now < new Date(schedule.counterProposalEditExpiresAtUtc).getTime();
-  const confirmed = schedule.agreementStatus === 0;
+  const confirmed = schedule.agreementStatus === 0 || schedule.agreementStatus === 6;
+  const reschedulePending = schedule.agreementStatus === 5;
+  const hasConfirmedTime = confirmed || reschedulePending;
+  const remainingRescheduleRequests = schedule.remainingRescheduleRequests ??
+    Math.max(0, 3 - (schedule.rescheduleRequestCount ?? 0));
   const meetingReady = schedule.meeting?.status === 2 && !!schedule.meeting.joinUri;
   const eventLabel = ['Created','Edited','Cancelled','Accepted','Rejected','Counter proposed'][schedule.eventType] || 'Schedule updated';
-  const agreementLabel = ['Confirmed','Awaiting freelancer response','Freelancer rejected — choose a new time','Awaiting client response','Client rejected'][schedule.agreementStatus] || 'Schedule updated';
+  const agreementLabel = cancelled
+    ? 'Cancelled'
+    : [
+        'Confirmed',
+        'Awaiting freelancer response',
+        'Freelancer rejected — choose a new time',
+        'Awaiting client response',
+        'Client rejected',
+        'Schedule change awaiting client response',
+        'Schedule change rejected — original date remains confirmed',
+      ][schedule.agreementStatus] || 'Schedule updated';
   return (
     <div className={`w-[min(420px,75vw)] rounded-2xl border p-4 shadow-sm ${cancelled ? 'border-red-500/30 bg-red-500/5' : 'border-[var(--gb-cyan)]/30 bg-card'}`}>
       <div className="flex justify-between gap-3">
@@ -75,23 +118,25 @@ function ScheduleCard({ schedule, latest, now, onEdit, onCancel, onRetry, onLate
         {!latest && <button onClick={onLatest} className="text-[10px] text-[var(--gb-cyan)] border-none bg-transparent cursor-pointer">{t('schedule.superseded')}</button>}
       </div>
       <div className="mt-3 rounded-xl bg-muted/60 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{reschedulePending ? 'Currently confirmed' : 'Meeting time'}</p>
         <p className="text-xs font-semibold">{vietnamDate(schedule.scheduledAtUtc)}</p>
-        {latest && !cancelled && confirmed && (!started || !meetingReady) && <p className="text-xs text-[var(--gb-cyan)] font-bold mt-1">{countdown(schedule.scheduledAtUtc, now)}</p>}
-        {latest && !cancelled && confirmed && started && meetingReady && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white no-underline transition-colors hover:bg-emerald-700"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
+        {reschedulePending && schedule.proposedScheduledAtUtc && <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2"><p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">Requested new date</p><p className="mt-1 text-xs font-bold text-amber-700">{vietnamDate(schedule.proposedScheduledAtUtc)}</p></div>}
+        {latest && !cancelled && hasConfirmedTime && (!started || !meetingReady) && <p className="text-xs text-[var(--gb-cyan)] font-bold mt-1" aria-live="off">{countdown(schedule.scheduledAtUtc, now)}</p>}
+        {latest && !cancelled && hasConfirmedTime && started && meetingReady && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white no-underline transition-colors hover:bg-emerald-700"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
         <p className="text-[10px] text-muted-foreground mt-1">Cancellation cutoff: {vietnamDate(schedule.cutoffUtc)}</p>
         {startLocalHour < 2 && <p className="text-[10px] text-amber-600 mt-2 font-semibold">Short cancellation window: this event begins close to Vietnam midnight.</p>}
       </div>
-      {latest && <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${confirmed ? 'bg-emerald-500/10 text-emerald-700' : cancelled ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-700'}`}>{agreementLabel}</div>}
-      {latest && schedule.agreementStatus === 3 && schedule.counterProposalEditExpiresAtUtc && <p className="mt-2 text-[10px] text-muted-foreground">Freelancer may edit this time until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.</p>}
-      {latest && !cancelled && confirmed && schedule.meeting?.status === 1 && <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700"><Loader2 size={14} className="animate-spin" />{t('schedule.meetingPending')}</div>}
-      {latest && !cancelled && confirmed && meetingReady && !started && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 no-underline transition-colors hover:bg-emerald-500/20"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
+      {latest && <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${cancelled ? 'bg-red-500/10 text-red-600' : confirmed ? 'bg-emerald-500/10 text-emerald-700' : 'bg-amber-500/10 text-amber-700'}`}>{agreementLabel}</div>}
+      {latest && (schedule.agreementStatus === 3 || reschedulePending) && schedule.counterProposalEditExpiresAtUtc && <p className="mt-2 text-[10px] text-muted-foreground">Freelancer may edit this request until {vietnamDate(schedule.counterProposalEditExpiresAtUtc)}.</p>}
+      {latest && !cancelled && hasConfirmedTime && schedule.meeting?.status === 1 && <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700"><Loader2 size={14} className="animate-spin" />{t('schedule.meetingPending')}</div>}
+      {latest && !cancelled && hasConfirmedTime && meetingReady && !started && <a href={schedule.meeting!.joinUri!} target="_blank" rel="noopener noreferrer" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 no-underline transition-colors hover:bg-emerald-500/20"><Video size={15} />{t('schedule.meetingJoin')}<ExternalLink size={12} /></a>}
       {latest && !cancelled && schedule.meeting?.status === 3 && <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600"><span className="flex items-center gap-2"><AlertCircle size={14} />{t('schedule.meetingFailed')}</span>{schedule.meeting.canRetry && <button type="button" disabled={retryingMeet} onClick={async () => { setRetryingMeet(true); try { await onRetry(); } finally { setRetryingMeet(false); } }} className="rounded-lg border-none bg-red-600 px-3 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-50">{retryingMeet ? t('schedule.meetingPending') : t('schedule.meetingRetry')}</button>}</div>}
       {schedule.details && <><button onClick={() => setExpanded(x => !x)} className="mt-2 flex items-center gap-1 text-xs text-muted-foreground border-none bg-transparent cursor-pointer">{expanded ? <ChevronUp size={13}/> : <ChevronDown size={13}/>} Details</button>{expanded && <p className="text-xs whitespace-pre-wrap mt-2">{schedule.details}</p>}</>}
       {cancelled && schedule.cancellationReason && <p className="mt-3 text-xs text-red-600"><strong>Reason:</strong> {schedule.cancellationReason}</p>}
       {latest && !cancelled && <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
         {canEdit && <button onClick={onEdit} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> {t('schedule.edit')}</button>}
         {canEditCounter && <button onClick={() => onCounterProposal(true)} className="px-3 py-1.5 rounded-lg text-xs bg-muted border-none cursor-pointer flex gap-1 items-center"><Pencil size={12}/> Edit proposed time</button>}
-        {schedule.canProposeTime && <button onClick={() => onCounterProposal(false)} className="px-3 py-1.5 rounded-lg text-xs bg-[var(--gb-cyan)] text-white border-none cursor-pointer">Choose new time</button>}
+        {schedule.canProposeTime && <button onClick={() => onCounterProposal(false)} className="px-3 py-1.5 rounded-lg text-xs bg-[var(--gb-cyan)] text-white border-none cursor-pointer">{schedule.agreementStatus === 2 ? 'Choose new time' : `Request date change (${remainingRescheduleRequests} left)`}</button>}
         {canRespond && schedule.canAccept && <button disabled={actionBusy} onClick={onAccept} className="px-3 py-1.5 rounded-lg text-xs bg-emerald-600 text-white border-none cursor-pointer disabled:opacity-50">Accept</button>}
         {canRespond && schedule.canReject && <button disabled={actionBusy} onClick={onReject} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer disabled:opacity-50">Reject</button>}
         {canCancel && <button onClick={onCancel} className="px-3 py-1.5 rounded-lg text-xs bg-red-500/10 text-red-600 border-none cursor-pointer">{t('schedule.cancel')}</button>}
@@ -120,17 +165,15 @@ export default function MessagesScreen() {
     setShowInfo,
     showDealPrice,
     setShowDealPrice,
-    dealPriceInput,
-    setDealPriceInput,
-    dealPriceMode,
-    resetDealPriceToMilestones,
     dealMilestones,
+    updateDealMilestones,
+    dealAdvancedIndexes,
+    setDealAdvancedIndexes,
+    dealMilestoneErrors,
     dealMilestonesLoading,
     dealMilestonesSaving,
     dealMilestoneTotal,
-    updateDealMilestone,
-    addDealMilestone,
-    removeDealMilestone,
+    dealOverallDuration,
     handleSaveDealMilestones,
     messageInput,
     setMessageInput,
@@ -161,16 +204,15 @@ export default function MessagesScreen() {
     handleSendNegotiationRequest,
     handleConfirmMoveToNegotiation,
     isMe,
-    totalUnread,
     formatTime,
     showScheduleModal, setShowScheduleModal, scheduleMode, editingSchedule, scheduleTitle, setScheduleTitle,
     scheduleDetails, setScheduleDetails, scheduleTime, setScheduleTime, scheduleReason, setScheduleReason,
     scheduleError, scheduleSaving, scheduleActionId, openCreateSchedule, openEditSchedule, openCancelSchedule,
     openCounterProposal, respondToSchedule, retryGoogleMeet, submitSchedule,
     scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed,
-    scheduleAddGoogleMeet, setScheduleAddGoogleMeet,
+    scheduleAddGoogleMeet, setScheduleAddGoogleMeet, scheduleSendEmail, setScheduleSendEmail,
     googleMeetStatus, googleMeetStatusLoading, googleMeetConnecting, connectGoogleMeet,
-    nowMs, highlightedMessageId, anchorNotice, setAnchorNotice,
+    highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   } = useMessages();
   const [viewReportId, setViewReportId] = useState<string | null>(null);
@@ -203,14 +245,8 @@ export default function MessagesScreen() {
     clearSelectedReport();
   };
 
-  const getDealStatusLabel = (status: typeof dealStatus, isLatestOffer: boolean) => {
-    if (!isLatestOffer) return 'Đề xuất cũ';
-    if (status === 'pending_freelancer') return 'Đang chờ freelancer';
-    if (status === 'agreed') return 'Đã đồng ý ✓';
-    if (status === 'declined') return 'Đã từ chối';
-    if (status === 'pending_client') return 'Đang chờ cập nhật';
-    return 'Đang đồng bộ';
-  };
+  const activeConvProfilePath = getProfilePath(activeConv?.participantId ?? null, activeConv?.participantRole);
+
   const canNegotiateActiveJob = activeConv?.canNegotiate !== false;
   const jobDetailPath = activeConv
     ? isClient
@@ -219,9 +255,6 @@ export default function MessagesScreen() {
     : '/jobs/browse';
   const canProposeDeal = activeConv?.roomType === 'negotiation' && isClient && dealStatus !== 'agreed' && canNegotiateActiveJob;
   const isNegotiationConversation = activeConv?.roomType === 'invited' || activeConv?.roomType === 'negotiation';
-  const dealPriceNumber = Number(dealPriceInput) || 0;
-  const dealPriceValid = dealPriceNumber > 0 && dealPriceNumber <= 9999999999999999.99 && Math.round(dealPriceNumber * 100) / 100 === dealPriceNumber;
-  const dealMilestonesMatchPrice = dealPriceValid && Math.abs(dealMilestoneTotal - dealPriceNumber) < 0.01;
   const sharedAttachments = Array.from(new Map(
     activeMessages.flatMap(message => message.attachments || []).map(attachment => [attachment.messageAttachmentId, attachment])
   ).values());
@@ -326,7 +359,7 @@ export default function MessagesScreen() {
                             className={`msg-conv-item ${conv.id === activeConvId ? 'active' : ''}`}
                             onClick={() => handleSelectConv(conv.id)}
                           >
-                            <div className="relative flex-shrink-0">
+                            <UserProfileLink userId={conv.participantId} role={conv.participantRole} className="relative flex-shrink-0">
                               <img
                                 src={conv.participantAvatar}
                                 alt={conv.participantName}
@@ -335,10 +368,10 @@ export default function MessagesScreen() {
                               {conv.participantOnline && (
                                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-card rounded-full" />
                               )}
-                            </div>
+                            </UserProfileLink>
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-baseline">
-                                <span className="text-sm font-semibold truncate">{conv.participantName}</span>
+                                <UserProfileLink userId={conv.participantId} role={conv.participantRole} className="text-sm font-semibold truncate">{conv.participantName}</UserProfileLink>
                                 <span className="text-[10px] text-muted-foreground ml-1 flex-shrink-0">
                                   {formatTime(conv.lastMessageAt)}
                                 </span>
@@ -384,7 +417,7 @@ export default function MessagesScreen() {
                 {/* Header info / Context of Job */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-card shadow-sm z-10 animate-in fade-in duration-200">
               <div className="flex items-center gap-3">
-                <div className="relative">
+                <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative">
                   <img
                     src={activeConv.participantAvatar}
                     alt={activeConv.participantName}
@@ -393,11 +426,11 @@ export default function MessagesScreen() {
                   {activeConv.participantOnline && (
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full shadow-sm" />
                   )}
-                </div>
+                </UserProfileLink>
                 <div className="flex flex-col">
-                  <span className="text-sm font-extrabold text-foreground tracking-tight leading-none" style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif" }}>
-                    {activeConv.participantName}
-                  </span>
+                  <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="text-sm font-extrabold text-foreground tracking-tight leading-none" tooltip={activeConv.participantName}>
+                    <span style={{ fontFamily: "'Hanken Grotesk', 'Inter', sans-serif" }}>{activeConv.participantName}</span>
+                  </UserProfileLink>
                   
                   {/* Premium Job Pill */}
                   <div 
@@ -436,7 +469,7 @@ export default function MessagesScreen() {
               </div>
             </div>
 
-            {/* Agreed Deal Banner (freelancer: navigate to contract) */}
+            {/* Agreed deal banner: both parties can inspect the contract workflow. */}
             {dealStatus === 'agreed' && isNegotiationConversation && (
               <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-6 py-3 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
                 <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
@@ -449,6 +482,7 @@ export default function MessagesScreen() {
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={handleOpenAcceptedContract}
                   className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer"
                 >
@@ -630,7 +664,7 @@ export default function MessagesScreen() {
 
                       {/* ── File message ───────────────────────────────────── */}
                       {msg.type === 'schedule' && msg.schedule ? (
-                        <ScheduleCard schedule={msg.schedule} latest={latestScheduleMessage?.id === msg.id} now={nowMs}
+                        <ScheduleCard schedule={msg.schedule} latest={latestScheduleMessage?.id === msg.id}
                           onEdit={() => openEditSchedule(msg.schedule!)} onCancel={() => openCancelSchedule(msg.schedule!)}
                           onRetry={() => retryGoogleMeet(msg.schedule!)}
                           onAccept={() => respondToSchedule(msg.schedule!, 'accept')}
@@ -656,137 +690,19 @@ export default function MessagesScreen() {
                           </div>
                         </div>
 
-                      ) : msg.type === 'negotiation_request' ? (
-                        /* ── Negotiation Request bubble ────────────────────── */
-                        <div className="msg-deal-bubble my-1 border-teal-500/30">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-500">
-                              <ArrowRightLeft size={20} />
-                            </div>
-                            <div>
-                              <h3 className="text-sm text-foreground font-bold">Yêu cầu vào vòng đàm phán</h3>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                {msg.negotiationStatus === 'pending'
-                                  ? 'Đang chờ phản hồi'
-                                  : msg.negotiationStatus === 'accepted'
-                                  ? 'Đã chấp nhận ✓'
-                                  : 'Đã từ chối'}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                            Client muốn chuyển cuộc trò chuyện này sang <strong className="text-foreground">vòng đàm phán</strong> để thảo luận chi tiết về giá cả và phạm vi công việc.
-                          </p>
-
-                          {msg.negotiationStatus === 'pending' && !mine && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleAcceptNegotiation(msg.id)}
-                                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                              >
-                                Đồng ý
-                              </button>
-                              <button
-                                onClick={() => handleDeclineNegotiation(msg.id)}
-                                className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                              >
-                                Từ chối
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
                       ) : msg.type === 'deal' ? (
-                        /* ── Deal Proposal Bubble ─────────────────────────── */
-                        <div className="msg-deal-bubble my-1">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)]">
-                              <CreditCard size={20} />
-                            </div>
-                            <div>
-                              <h3 className="text-sm text-foreground font-bold">Thỏa thuận giá (Deal)</h3>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                {getDealStatusLabel(dealBubbleStatus, isLatestDealOffer)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="bg-muted/50 rounded-xl p-3.5 mb-4 border border-border/50">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Đề xuất mức giá</span>
-                            <div className="text-2xl font-black text-[var(--gb-cyan)] mt-1 flex items-center gap-1">
-                              <GCoinIcon size={24} />
-                              {msg.content}
-                            </div>
-                          </div>
-
-                          {msg.offerDetail?.milestones?.length ? (
-                            <div className="mb-4 space-y-2 rounded-xl border border-border bg-background p-3">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Milestone snapshot</p>
-                              {msg.offerDetail.milestones.map((milestone, milestoneIndex) => (
-                                <div key={milestone.id || milestoneIndex} className="border-t border-border/60 pt-2 first:border-t-0 first:pt-0">
-                                  <div className="flex justify-between gap-3 text-xs">
-                                    <strong>{milestoneIndex + 1}. {milestone.title || 'Untitled milestone'}</strong>
-                                    <span className="font-bold text-[var(--gb-cyan)]">{milestone.amount} G-coin</span>
-                                  </div>
-                                  {milestone.estimatedDuration && <p className="mt-1 text-[11px] text-muted-foreground">Duration: {milestone.estimatedDuration}</p>}
-                                  {milestone.description && <p className="mt-1 whitespace-pre-wrap text-[11px] text-muted-foreground">{milestone.description}</p>}
-                                  {milestone.deliverables && <p className="mt-1 text-[11px]"><strong>Deliverables:</strong> {milestone.deliverables}</p>}
-                                  {milestone.acceptanceCriteria && <p className="mt-1 text-[11px]"><strong>Acceptance:</strong> {milestone.acceptanceCriteria}</p>}
-                                  {milestone.workItems?.length ? <div className="mt-2 space-y-1 border-t border-border/60 pt-2">
-                                    <strong className="text-[10px] uppercase text-muted-foreground">Work Breakdown Structure</strong>
-                                    {milestone.workItems.map((workItem, workIndex) => <div key={workItem.id || workIndex} className="rounded bg-muted/50 p-2 text-[11px]"><strong>{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-muted-foreground">{workItem.description}</p>}</div>)}
-                                  </div> : null}
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-
-                          {!isLatestDealOffer ? (
-                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                              Đề xuất này không còn là đề xuất hiện tại.
-                            </div>
-                          ) : dealBubbleStatus === 'pending_freelancer' ? (
-                            !canNegotiateActiveJob ? (
-                              <div className="text-xs text-center text-amber-700 font-medium bg-amber-500/10 p-2 rounded-lg">
-                                This job post is no longer open for negotiation.
-                              </div>
-                            ) : !mine ? (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleAcceptDeal(
-                                    msg.negotiationOfferId,
-                                    Number(msg.content.replace(/,/g, ''))
-                                  )}
-                                  className="flex-1 bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                                >
-                                  Đồng ý
-                                </button>
-                                <button
-                                  onClick={() => handleDeclineDeal(msg.negotiationOfferId)}
-                                  className="flex-1 bg-muted hover:bg-muted/80 text-muted-foreground py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border-none"
-                                >
-                                  Từ chối
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                                Đang đợi phản hồi từ đối tác...
-                              </div>
-                            )
-                          ) : dealBubbleStatus === 'agreed' ? (
-                            <div className="text-xs text-emerald-600 bg-emerald-500/10 p-2.5 rounded-lg text-center font-bold">
-                              Mức giá đã được thống nhất
-                            </div>
-                          ) : dealBubbleStatus === 'declined' ? (
-                            <div className="text-xs text-red-500 bg-red-500/10 p-2.5 rounded-lg text-center font-bold">
-                              Đề xuất đã bị từ chối
-                            </div>
-                          ) : (
-                            <div className="text-xs text-center text-muted-foreground font-medium bg-muted p-2 rounded-lg">
-                              Đang đồng bộ trạng thái đề xuất...
-                            </div>
-                          )}
-                        </div>
+                        <NegotiationDealCard
+                          offerId={msg.negotiationOfferId}
+                          amount={Number(msg.content.replace(/,/g, '')) || 0}
+                          detail={msg.offerDetail}
+                          status={dealBubbleStatus}
+                          isLatestOffer={isLatestDealOffer}
+                          canRespond={!mine}
+                          canNegotiate={canNegotiateActiveJob}
+                          actionBusy={isAcceptingDeal}
+                          onAccept={handleAcceptDeal}
+                          onDecline={handleDeclineDeal}
+                        />
 
                       ) : (
                         /* ── Text message ───────────────────────────────────── */
@@ -860,102 +776,20 @@ export default function MessagesScreen() {
 
                 {/* Deal Price Popup */}
                 {showDealPrice && canProposeDeal && (
-                  <div role="dialog" aria-modal="true" aria-label="Create final offer" className="fixed left-1/2 top-1/2 z-[120] max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-card p-4 shadow-2xl animate-in fade-in zoom-in-95 sm:p-5">
-                    <div className="flex min-w-0 flex-col gap-3">
-                      <div className="sticky top-0 z-10 flex justify-between items-center gap-3 bg-card pb-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('messages.proposeDealPrice')}</span>
-                        <button onClick={() => setShowDealPrice(false)} className="text-muted-foreground hover:text-foreground cursor-pointer border-none bg-transparent p-0">
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <input
-                        type="number"
-                        id="input-deal-price"
-                        placeholder={t('messages.enterProposedPrice')}
-                        value={dealPriceInput}
-                        onChange={e => setDealPriceInput(e.target.value)}
-                        min="0.01"
-                        step="0.01"
-                        max="9999999999999999.99"
-                        className="min-w-0 max-w-full w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/25"
-                      />
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs">
-                        <span className={dealMilestonesMatchPrice ? 'text-emerald-600' : 'text-amber-600'}>Proposed rate: {dealPriceNumber || 0} · Milestone total: {dealMilestoneTotal} G-coin</span>
-                        {dealPriceMode === 'manual' && <button type="button" onClick={resetDealPriceToMilestones} className="font-bold text-[var(--gb-cyan)] hover:underline">Use milestone total</button>}
-                      </div>
-                      <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Milestone plan</p>
-                            <p className={`mt-1 text-[11px] font-semibold ${dealMilestonesMatchPrice ? 'text-emerald-600' : 'text-amber-600'}`}>
-                              Total {dealMilestoneTotal} / Final price {dealPriceNumber || 0} G-coin
-                            </p>
-                          </div>
-                          <button type="button" onClick={addDealMilestone} className="rounded-lg border border-border p-2 text-[var(--gb-cyan)]" title="Add milestone">
-                            <Plus size={14} />
-                          </button>
-                        </div>
-                        {dealMilestonesLoading ? (
-                          <p className="text-xs text-muted-foreground">Loading milestone draft...</p>
-                        ) : dealMilestones.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No milestone draft yet. Add one before sending a final offer.</p>
-                        ) : (
-                          <div className="space-y-3 pr-1">
-                            {dealMilestones.map((milestone, index) => (
-                              <div key={milestone.id || index} className="space-y-2 rounded-lg border border-border bg-background p-3">
-                                <div className="flex items-center justify-between gap-2">
-                                  <strong className="text-xs">Milestone {index + 1}</strong>
-                                  <button type="button" onClick={() => removeDealMilestone(index)} className="rounded-md p-1 text-red-500 hover:bg-red-500/10" title="Remove milestone">
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
-                                <input value={milestone.title || ''} onChange={e => updateDealMilestone(index, { title: e.target.value })} placeholder="Title" className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <textarea value={milestone.description || ''} onChange={e => updateDealMilestone(index, { description: e.target.value })} placeholder="Description" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-                                  <input type="number" min="0" step="0.01" max="9999999999999999.99" value={milestone.amount || ''} onChange={e => updateDealMilestone(index, { amount: Number(e.target.value) })} placeholder="Amount" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                  <input value={milestone.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { estimatedDuration: e.target.value })} placeholder="Duration" className="min-w-0 max-w-full w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                </div>
-                                <input type="date" value={milestone.dueDate || ''} onChange={e => updateDealMilestone(index, { dueDate: e.target.value || null })} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" aria-label="Milestone deadline" />
-                                <textarea value={milestone.deliverables || ''} onChange={e => updateDealMilestone(index, { deliverables: e.target.value })} placeholder="Deliverables" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <textarea value={milestone.acceptanceCriteria || ''} onChange={e => updateDealMilestone(index, { acceptanceCriteria: e.target.value })} placeholder="Acceptance criteria" rows={2} className="w-full rounded-lg border border-border bg-card px-3 py-2 text-xs" />
-                                <div className="space-y-2 rounded-lg border border-border bg-card p-2">
-                                  <div className="flex items-center justify-between"><strong className="text-[11px] uppercase text-muted-foreground">Work Breakdown Structure</strong><button type="button" onClick={() => updateDealMilestone(index, { workItems: [...(milestone.workItems || []), { title: '', description: '', deliverables: '', estimatedDuration: '', orderIndex: milestone.workItems?.length || 0 }] })} className="rounded border border-border p-1" title="Add work item"><Plus size={12} /></button></div>
-                                  {(milestone.workItems || []).map((workItem, workIndex) => <div key={workItem.id || workIndex} className="grid gap-2 rounded border border-border p-2 sm:grid-cols-2">
-                                    <input value={workItem.title || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, title: e.target.value } : item) })} placeholder="Work item title" className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                                    <input value={workItem.estimatedDuration || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, estimatedDuration: e.target.value } : item) })} placeholder="Duration" className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                                    <textarea value={workItem.description || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, description: e.target.value } : item) })} placeholder="Description" rows={2} className="rounded border border-border bg-background px-2 py-1.5 text-xs" />
-                                    <div className="flex gap-2"><textarea value={workItem.deliverables || ''} onChange={e => updateDealMilestone(index, { workItems: milestone.workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, deliverables: e.target.value } : item) })} placeholder="Deliverables" rows={2} className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1.5 text-xs" /><button type="button" onClick={() => updateDealMilestone(index, { workItems: milestone.workItems.filter((_, itemIndex) => itemIndex !== workIndex) })} className="self-start p-1 text-red-500" title="Remove work item"><Trash2 size={12} /></button></div>
-                                  </div>)}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <button type="button" disabled={dealMilestonesSaving} onClick={handleSaveDealMilestones} className="w-full rounded-lg border border-border px-3 py-2 text-xs font-bold disabled:opacity-60">
-                          {dealMilestonesSaving ? 'Saving...' : 'Save milestone draft'}
-                        </button>
-                      </div>
-                      <p className="text-[11px] leading-5 text-muted-foreground">
-                        {t('messages.proposeDealNote')}
-                      </p>
-                      <div className="sticky bottom-0 z-10 flex justify-between gap-2 border-t border-border bg-card pt-3">
-                        <button
-                          onClick={() => setShowDealPrice(false)}
-                          className="flex-1 py-2 text-xs font-bold text-muted-foreground hover:bg-muted rounded-lg transition-colors uppercase tracking-widest cursor-pointer border-none bg-transparent"
-                        >
-                          {t('messages.cancel')}
-                        </button>
-                        <button
-                          onClick={handleProposeDeal}
-                          id="btn-propose-deal"
-                          disabled={!dealPriceInput.trim() || dealMilestonesSaving || !dealMilestonesMatchPrice}
-                          className="min-w-0 flex-1 py-2 text-xs font-bold bg-[var(--gb-cyan)] text-white rounded-lg shadow-md hover:bg-[var(--gb-cyan)]/90 transition-colors uppercase tracking-widest cursor-pointer border-none disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {t('messages.send')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <FinalOfferEditor
+                    milestones={dealMilestones}
+                    milestoneTotal={dealMilestoneTotal}
+                    overallDuration={dealOverallDuration}
+                    advancedIndexes={dealAdvancedIndexes}
+                    errors={dealMilestoneErrors}
+                    loading={dealMilestonesLoading}
+                    saving={dealMilestonesSaving}
+                    onMilestonesChange={updateDealMilestones}
+                    onAdvancedIndexesChange={setDealAdvancedIndexes}
+                    onSaveDraft={() => void handleSaveDealMilestones()}
+                    onSubmit={() => void handleProposeDeal()}
+                    onClose={() => setShowDealPrice(false)}
+                  />
                 )}
 
                 <textarea
@@ -1136,7 +970,7 @@ export default function MessagesScreen() {
             >
             {/* Profile */}
             <div className="p-6 text-center border-b border-border">
-              <div className="relative inline-block mb-4">
+              <UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole} className="relative inline-block mb-4">
                 <img
                   src={activeConv.participantAvatar}
                   alt={activeConv.participantName}
@@ -1145,18 +979,20 @@ export default function MessagesScreen() {
                 {activeConv.participantOnline && (
                   <span className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-card rounded-full" />
                 )}
-              </div>
-              <h3 className="font-headline-md text-base font-bold">{activeConv.participantName}</h3>
+              </UserProfileLink>
+              <h3 className="font-headline-md text-base font-bold"><UserProfileLink userId={activeConv.participantId} role={activeConv.participantRole}>{activeConv.participantName}</UserProfileLink></h3>
               <p className="text-xs text-muted-foreground mb-1">{activeConv.participantRole}</p>
               <p className="text-xs text-[var(--gb-cyan)] font-semibold mb-4">{activeConv.participantCompany}</p>
 
               <div className="flex justify-center gap-2">
+                {activeConvProfilePath && (
                 <button
-                  onClick={() => navigate(`/profile/client/${activeConv.participantId}`)}
+                  onClick={() => navigate(activeConvProfilePath)}
                   className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer border-none"
                 >
                   View Profile
                 </button>
+                )}
                 <button
                   onClick={() => setIsFavorited(!isFavorited)}
                   className={`text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider transition-all cursor-pointer border-none ${
@@ -1304,7 +1140,7 @@ export default function MessagesScreen() {
       {showScheduleModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl max-w-md w-full space-y-4">
-            <div className="flex justify-between"><div><h3 className="font-bold">{scheduleMode.startsWith('counter') ? 'Choose your desired time and date' : t(`schedule.${scheduleMode}`)}</h3><p className="text-xs text-muted-foreground">{t('schedule.vietnamTime')}</p></div><button onClick={() => setShowScheduleModal(false)} className="border-none bg-transparent cursor-pointer"><X size={17}/></button></div>
+            <div className="flex justify-between"><div><h3 className="font-bold">{scheduleMode.startsWith('counter') ? (editingSchedule?.agreementStatus === 0 || editingSchedule?.agreementStatus === 6 ? 'Request a schedule date change' : 'Choose your desired time and date') : t(`schedule.${scheduleMode}`)}</h3><p className="text-xs text-muted-foreground">{t('schedule.vietnamTime')}</p></div><button onClick={() => setShowScheduleModal(false)} className="border-none bg-transparent cursor-pointer"><X size={17}/></button></div>
             {scheduleMode === 'cancel' ? (
               <textarea maxLength={1000} value={scheduleReason} onChange={e => setScheduleReason(e.target.value)} placeholder={t('schedule.reason')} className="w-full min-h-28 bg-background border border-border rounded-xl p-3 text-sm" />
             ) : <>
@@ -1314,13 +1150,15 @@ export default function MessagesScreen() {
                 <input type="datetime-local" value={scheduleTime} onChange={e => { setScheduleTime(e.target.value); setMidnightConfirmed(Number(e.target.value.slice(11, 13)) >= 2); }} className="w-full bg-background border border-border rounded-xl p-3 text-sm" />
               </div>
               {scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && <label className="text-xs text-amber-600 bg-amber-500/10 rounded-lg p-2 flex gap-2"><input type="checkbox" checked={midnightConfirmed} onChange={e => setMidnightConfirmed(e.target.checked)}/>I understand this event starts near Vietnam midnight and may have a very short cancellation window.</label>}
+              {scheduleMode === 'counter-create' && editingSchedule && (editingSchedule.agreementStatus === 0 || editingSchedule.agreementStatus === 6) && <p className="rounded-lg bg-[var(--gb-cyan)]/10 p-2 text-xs text-[var(--gb-cyan)]">The client can accept or reject this request. You have {editingSchedule.remainingRescheduleRequests ?? Math.max(0, 3 - (editingSchedule.rescheduleRequestCount ?? 0))} of 3 schedule change requests remaining.</p>}
               {!scheduleMode.startsWith('counter') && <textarea maxLength={4000} value={scheduleDetails} onChange={e => setScheduleDetails(e.target.value)} placeholder={t('schedule.details')} className="w-full min-h-24 bg-background border border-border rounded-xl p-3 text-sm" />}
+              {scheduleMode === 'create' && <label className="flex items-center gap-3 rounded-xl border border-border bg-background p-3 text-sm cursor-pointer"><input type="checkbox" checked={scheduleSendEmail} onChange={e => setScheduleSendEmail(e.target.checked)} /><span><span className="block font-semibold">Send meeting invitation by email</span><span className="block text-xs text-muted-foreground">Email both meeting participants when this schedule is created.</span></span></label>}
               {scheduleMode === 'create' && <div className="rounded-xl border border-border bg-background p-3 space-y-2"><label className="flex items-center gap-3 text-sm cursor-pointer"><input type="checkbox" checked={scheduleAddGoogleMeet} onChange={e => setScheduleAddGoogleMeet(e.target.checked)} /><Video size={17} className="text-emerald-600" />{t('schedule.addGoogleMeet')}</label>{scheduleAddGoogleMeet && <div className="pl-7">{googleMeetStatusLoading ? <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 size={13} className="animate-spin" />Checking Google connection...</p> : googleMeetStatus?.isConnected ? <p className="text-xs font-semibold text-emerald-700">{t('schedule.connectedAs', { email: googleMeetStatus.googleEmail || 'Google' })}</p> : <button type="button" onClick={connectGoogleMeet} disabled={googleMeetConnecting} className="rounded-lg border-none bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white cursor-pointer disabled:opacity-50">{googleMeetConnecting ? 'Connecting...' : googleMeetStatus?.needsReconnect ? t('schedule.reconnectGoogle') : t('schedule.connectGoogle')}</button>}</div>}</div>}
               {scheduleMode === 'edit' && editingSchedule?.remainingEdits === 1 && <p className="text-xs text-amber-600">Saving will use the final shared edit.</p>}
             </>}
             {scheduleError && <p className="text-xs text-red-600 bg-red-500/10 rounded-lg p-2">{scheduleError}</p>}
             {scheduleConflict && <button disabled={scheduleMode === 'edit' && scheduleConflict.remainingEdits === 0} onClick={confirmScheduleRetry} className="w-full py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 text-xs cursor-pointer disabled:opacity-50">Confirm retry against version {scheduleConflict.version}{scheduleConflict.remainingEdits === 1 ? ' using the final edit' : ''}</button>}
-            <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || googleMeetConnecting || (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : scheduleMode.startsWith('counter') ? !scheduleTime : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : scheduleMode.startsWith('counter') ? 'Send time' : t('schedule.save')}</button></div>
+            <div className="flex gap-2"><button onClick={() => setShowScheduleModal(false)} className="flex-1 py-2 rounded-xl bg-muted border-none cursor-pointer">Close</button><button disabled={scheduleSaving || !!scheduleConflict || googleMeetConnecting || (scheduleMode === 'create' && scheduleAddGoogleMeet && !googleMeetStatus?.isConnected) || (scheduleMode !== 'cancel' && !!scheduleTime && Number(scheduleTime.slice(11,13)) < 2 && !midnightConfirmed) || (scheduleMode === 'cancel' ? !scheduleReason.trim() : scheduleMode.startsWith('counter') ? !scheduleTime : !scheduleTitle.trim() || !scheduleTime)} onClick={submitSchedule} className="flex-1 py-2 rounded-xl bg-[var(--gb-cyan)] text-white border-none cursor-pointer disabled:opacity-50">{scheduleSaving ? t('schedule.saving') : scheduleMode === 'cancel' ? t('schedule.cancel') : scheduleMode === 'counter-create' ? 'Send request' : scheduleMode === 'counter-edit' ? 'Update request' : t('schedule.save')}</button></div>
           </div>
         </div>
       )}

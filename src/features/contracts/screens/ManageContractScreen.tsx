@@ -4,11 +4,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, Filter, Eye, AlertCircle, ChevronDown, Calendar, 
   User, CheckCircle2, Clock, PenTool, ListChecks, 
-  Star, ShieldAlert, X, ChevronRight, TrendingUp, Award, Layers
+  Star, ShieldAlert, X, ChevronRight, TrendingUp, Layers
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { contractPutAPI } from '../../../api/contractAPI/PUT';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { ContractDto, ContractQueryParams, Milestone } from '../../../types/models/Contract';
@@ -32,7 +32,6 @@ interface MilestoneDisplay extends Milestone {
 
 interface ContractWithMilestones extends ContractDto {
   milestones?: MilestoneDisplay[];
-  freelancerName?: string;
 }
 
 const CONTRACT_STATUSES = [
@@ -141,28 +140,6 @@ export default function ManageContractScreen() {
     setFilteredContracts(result);
     setCurrentPage(1); // Reset to first page when filtering
   }, [contracts, selectedStatus, searchQuery]);
-
-  const handleStatusChange = async (contractId: string, newStatus: ContractStatus) => {
-    try {
-      const response = await contractPutAPI.updateContractStatus(contractId, newStatus);
-      
-      if (response.success) {
-        setContracts(prev =>
-          prev.map(c =>
-            c.contractsId === contractId
-              ? { ...c, status: newStatus }
-              : c
-          )
-        );
-        setSuccessMessage(t('contracts.statusUpdatedSuccess'));
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        setError(response.message || t('contracts.statusUpdatedError'));
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('contracts.anErrorOccurred'));
-    }
-  };
 
   const getStatusBadgeClass = (status: ContractStatus) => {
     return `status-badge ${getContractStatusClass(status)}`;
@@ -585,7 +562,7 @@ export default function ManageContractScreen() {
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground font-semibold">
                             <span className="text-foreground flex items-center gap-1.5">
                               <User size={13} className="text-muted-foreground" />
-                              {name}
+                              <UserProfileLink userId={contract.freelancerUserId} role="freelancer">{name}</UserProfileLink>
                             </span>
                             <span className="h-3 w-px bg-border/60 hidden sm:inline" />
                             <span className="flex items-center gap-1.5">
@@ -756,8 +733,14 @@ export default function ManageContractScreen() {
                                   className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <Star size={13} />
-                                  {t('contracts.leaveReview')}
+                                  {t('reviews.leaveForFreelancer')}
                                 </button>
+                              )}
+                              {contract.hasReviewedByCurrentUser && contract.status === ContractStatus.Completed && (
+                                <span className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
+                                  <CheckCircle2 size={13} />
+                                  {t('reviews.reviewed')}
+                                </span>
                               )}
                               
                               {contract.status === ContractStatus.Disputed && (

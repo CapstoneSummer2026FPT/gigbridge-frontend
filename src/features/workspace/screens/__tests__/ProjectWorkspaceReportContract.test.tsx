@@ -9,6 +9,9 @@ import {
   type ReportContract,
   type ReportContractListItem,
 } from '../../../../types/models/ReportContract';
+import type { Message } from '../../../../types/models/Message';
+import type { User } from '../../../../types/models/User';
+import { UserRole } from '../../../../types/models/User';
 import { useProjectWorkspace } from '../../hooks/useProjectWorkspace';
 import { useReportContract } from '../../../../features/report-contracts';
 
@@ -83,14 +86,36 @@ const reportDetail = (overrides: Partial<ReportContract> = {}): ReportContract =
   ...overrides,
 });
 
+const createWorkspaceUser = (id: string, role: UserRole): User => ({
+  id,
+  email: `${id}@example.com`,
+  first_name: role === UserRole.Client ? 'Client' : 'Freelancer',
+  last_name: 'User',
+  full_name: role === UserRole.Client ? 'Client User' : 'Freelancer User',
+  phone_number: null,
+  role,
+  is_email_verified: true,
+  is_active: true,
+  is_setup: true,
+  preferred_language: 'en',
+  last_login_at: null,
+  login_failed_time: null,
+  access_failed_count: 0,
+  elo_points: 100,
+  gigcoin_balance: 0,
+  created_at: '2026-07-17T00:00:00.000Z',
+  updated_at: '2026-07-17T00:00:00.000Z',
+});
+
 const mockWorkspace = (
   status = ContractStatus.Active,
   userId = 'user-1',
-  projectMessages: Array<Record<string, unknown>> = [],
+  projectMessages: Message[] = [],
 ) => {
-  vi.mocked(useProjectWorkspace).mockReturnValue({
-    user: { id: userId },
-    isClient: userId === 'user-1',
+  const isClient = userId === 'user-1';
+  const workspaceValue: ReturnType<typeof useProjectWorkspace> = {
+    user: createWorkspaceUser(userId, isClient ? UserRole.Client : UserRole.Freelancer),
+    isClient,
     activeProjectId: 'active-contract',
     setActiveProjectId: vi.fn(),
     showInfo: false,
@@ -122,7 +147,9 @@ const mockWorkspace = (
       status,
       createdAt: '2026-07-17T00:00:00.000Z',
     },
+    currentProductHandoff: null,
     productHandoffs: [],
+    earlyStartRequests: [],
     workspaceProjects: [],
     currentProjData: {
       id: 'active-contract',
@@ -134,9 +161,11 @@ const mockWorkspace = (
       time: '',
       unread: false,
       online: false,
+      status,
     },
     partnerName: 'Partner',
     partnerAvatar: '',
+    partnerUserId: 'partner-user-1',
     partnerTitle: 'Partner',
     partnerCompany: '',
     isPartnerOnline: false,
@@ -144,19 +173,23 @@ const mockWorkspace = (
     handleSendMessage: vi.fn(),
     handleSimulateAttachment: vi.fn(),
     handleOpenMilestoneEditor: vi.fn(),
-    handleStartMilestone: vi.fn(),
     handleRequestMilestoneUnlock: vi.fn(),
     handleWithdrawMilestone: vi.fn(),
+    handleUpdateWorkItem: vi.fn(),
+    handleRespondEarlyStart: vi.fn(),
     handleEndProject: vi.fn(),
-    handleClaimFinalPayout: vi.fn(),
     handleSubmitMilestoneDeliverable: vi.fn(),
     handleSubmitProductHandoff: vi.fn(),
+    reviewPromptContractId: null,
+    clearReviewPrompt: vi.fn(),
+    refreshWorkspace: vi.fn().mockResolvedValue(undefined),
     chatEndRef: { current: null },
-  } as ReturnType<typeof useProjectWorkspace>);
+  };
+  vi.mocked(useProjectWorkspace).mockReturnValue(workspaceValue);
 };
 
 const mockReports = (selectedReport: ReportContract | null = null) => {
-  vi.mocked(useReportContract).mockReturnValue({
+  const reportValue: ReturnType<typeof useReportContract> = {
     reports: [listItem],
     isLoading: false,
     error: null,
@@ -166,13 +199,16 @@ const mockReports = (selectedReport: ReportContract | null = null) => {
     isCreatingReport: false,
     isRespondingReport: false,
     isConfirmingReport: false,
+    isEscalatingReport: false,
     createReport: createReportMock,
     loadReportDetail: loadReportDetailMock,
     respondToReport: respondToReportMock,
     confirmResolution: confirmResolutionMock,
+    escalateToDispute: vi.fn(),
     clearError: vi.fn(),
     clearSelectedReport: clearSelectedReportMock,
-  });
+  };
+  vi.mocked(useReportContract).mockReturnValue(reportValue);
 };
 
 const openReportDetail = async () => {
@@ -222,7 +258,9 @@ describe('ProjectWorkspaceScreen Report Contract integration', () => {
     const secondAttachment = new File(['second evidence'], 'second-evidence.txt', {
       type: 'text/plain',
     });
-    const fileInput = document.getElementById('rc-evidence-files') as HTMLInputElement;
+    const fileInput = document.getElementById('rc-evidence-files');
+    expect(fileInput).toBeInstanceOf(HTMLInputElement);
+    if (!(fileInput instanceof HTMLInputElement)) throw new Error('Evidence file input was not rendered.');
 
     fireEvent.change(fileInput, { target: { files: [firstAttachment] } });
     fireEvent.change(fileInput, { target: { files: [secondAttachment] } });
@@ -232,8 +270,9 @@ describe('ProjectWorkspaceScreen Report Contract integration', () => {
 
     const firstFileItem = screen.getByText('first-evidence.txt').closest('.rc-file-item');
     const removeFirstFileButton = firstFileItem?.querySelector('button');
-    expect(removeFirstFileButton).not.toBeNull();
-    fireEvent.click(removeFirstFileButton as HTMLButtonElement);
+    expect(removeFirstFileButton).toBeInstanceOf(HTMLButtonElement);
+    if (!(removeFirstFileButton instanceof HTMLButtonElement)) throw new Error('Remove evidence button was not rendered.');
+    fireEvent.click(removeFirstFileButton);
     expect(screen.queryByText('first-evidence.txt')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/workspace.reportDescriptionLabel/), {
@@ -302,7 +341,9 @@ describe('ProjectWorkspaceScreen Report Contract integration', () => {
     const attachment = new File(['response evidence'], 'response-evidence.txt', {
       type: 'text/plain',
     });
-    const fileInput = document.getElementById('rc-respondent-files') as HTMLInputElement;
+    const fileInput = document.getElementById('rc-respondent-files');
+    expect(fileInput).toBeInstanceOf(HTMLInputElement);
+    if (!(fileInput instanceof HTMLInputElement)) throw new Error('Respondent file input was not rendered.');
     fireEvent.change(fileInput, { target: { files: [attachment] } });
 
     expect(screen.getByText('response-evidence.txt')).toBeInTheDocument();
