@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { AlertCircle, CheckCircle2, CircleDollarSign, Cloud, RefreshCw } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, CircleDollarSign, Cloud, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import JobPostStepper from '../../../shared/components/JobPostStepper';
-import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { formatGigCoin, formatGigCoinNumber } from '../../../shared/utils/gigcoin';
 import type { AutosaveStatus } from '../hooks/usePostJob';
 import '../../../shared/styles/job-post-stepper.css';
 import '../styles/post-job-wizard.css';
@@ -23,6 +23,9 @@ interface Props {
   isLoading?: boolean;
   expectedBudget?: number | null;
   estimatedDuration?: string | null;
+  milestoneTotal?: number;
+  milestoneTotalWeeks?: number;
+  expectedDurationWeeks?: number;
   headerAction?: ReactNode;
   backAction?: ReactNode;
   primaryAction: ReactNode;
@@ -47,6 +50,9 @@ export function PostJobWizardShell({
   isLoading,
   expectedBudget,
   estimatedDuration,
+  milestoneTotal,
+  milestoneTotalWeeks,
+  expectedDurationWeeks,
   headerAction,
   backAction,
   primaryAction,
@@ -112,10 +118,30 @@ export function PostJobWizardShell({
               {(expectedBudget !== undefined && expectedBudget !== null) || estimatedDuration ? (
                 <dl className="job-post-wizard__stats job-post-wizard__draft-details">
                   {expectedBudget !== undefined && expectedBudget !== null && (
-                    <div><dt>{t('postJob.expectedBudget')}</dt><dd>{formatGigCoin(expectedBudget)}</dd></div>
+                    <div>
+                      <dt>{t('postJob.expectedBudget')}</dt>
+                      <dd>
+                        {milestoneTotal !== undefined && milestoneTotal > 0 ? (
+                          <span className={`job-post-ratio${milestoneTotal > expectedBudget ? ' is-over' : ''}`}>
+                            {milestoneTotal > expectedBudget && <AlertTriangle size={12} />}
+                            {formatGigCoinNumber(milestoneTotal)} / {formatGigCoinNumber(expectedBudget)} G-coin
+                          </span>
+                        ) : formatGigCoin(expectedBudget)}
+                      </dd>
+                    </div>
                   )}
                   {estimatedDuration && (
-                    <div><dt>{t('postJob.estimatedDuration')}</dt><dd>{estimatedDuration}</dd></div>
+                    <div>
+                      <dt>{t('postJob.estimatedDuration')}</dt>
+                      <dd>
+                        {milestoneTotalWeeks !== undefined && expectedDurationWeeks !== undefined && milestoneTotalWeeks > 0 && expectedDurationWeeks > 0 ? (
+                          <span className={`job-post-ratio${milestoneTotalWeeks > expectedDurationWeeks ? ' is-over' : ''}`}>
+                            {milestoneTotalWeeks > expectedDurationWeeks && <AlertTriangle size={12} />}
+                            {milestoneTotalWeeks} {t('postJob.durationUnits.weeks')} / {expectedDurationWeeks} {t('postJob.durationUnits.weeks')}
+                          </span>
+                        ) : estimatedDuration}
+                      </dd>
+                    </div>
                   )}
                 </dl>
               ) : null}
