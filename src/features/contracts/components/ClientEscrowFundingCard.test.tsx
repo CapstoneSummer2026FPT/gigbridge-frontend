@@ -56,7 +56,8 @@ vi.mock('../../../hooks/useTranslation', () => ({
 
 const quote: ContractEscrowDto = {
   contractEscrowId: 'escrow-1',
-  requiredAmount: 1_000_000,
+  // Contract/escrow amounts are G-coin: RequiredAmount == RequiredTokens (no ÷1000).
+  requiredAmount: 1_000,
   requiredTokens: 1_000,
   fundingFeeRate: 0.01,
   fundingFeeVnd: 10_000,
