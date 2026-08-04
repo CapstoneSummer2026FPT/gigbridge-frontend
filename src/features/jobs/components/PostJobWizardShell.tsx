@@ -33,6 +33,7 @@ interface Props {
   onRetryAutosave?: () => void;
   children: ReactNode;
   overlay?: ReactNode;
+  promptInput?: ReactNode;
 }
 
 export function PostJobWizardShell({
@@ -60,6 +61,7 @@ export function PostJobWizardShell({
   onRetryAutosave,
   children,
   overlay,
+  promptInput,
 }: Props) {
   const { t } = useTranslation('common');
   const completedSteps = Array.from({ length: currentStep - 1 }, (_, index) => index + 1);
@@ -147,7 +149,7 @@ export function PostJobWizardShell({
             </div>
 
             <div className="job-post-wizard__sidebar-card">
-<div className="job-post-wizard__completion-copy">
+              <div className="job-post-wizard__completion-copy">
                 <span>{t('postJobWizard.completion')}</span>
                 <strong>{Math.round(completion)}%</strong>
               </div>
@@ -158,16 +160,30 @@ export function PostJobWizardShell({
                 <div><dt>{t('postJobWizard.questions')}</dt><dd>{questionCount}</dd></div>
               </dl>
             </div>
+
+            {promptInput && (
+              <div className="job-post-wizard__sidebar-actions">
+                {primaryAction}
+                {secondaryAction}
+                {backAction}
+              </div>
+            )}
           </aside>
         </div>
 
-        <footer className="job-post-wizard__footer">
-          <div>{backAction}</div>
-          <div className="job-post-wizard__footer-actions">
-            {secondaryAction}
-            {primaryAction}
-          </div>
-        </footer>
+        {promptInput ? (
+          <footer className="job-post-wizard__footer">
+            {promptInput}
+          </footer>
+        ) : (
+          <footer className="job-post-wizard__footer">
+            <div>{backAction}</div>
+            <div className="job-post-wizard__footer-actions">
+              {secondaryAction}
+              {primaryAction}
+            </div>
+          </footer>
+        )}
       </div>
       {overlay}
     </AppLayout>
