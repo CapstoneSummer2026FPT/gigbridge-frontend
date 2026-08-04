@@ -465,6 +465,42 @@ describe('usePostJob hook skills conversion', () => {
     }]);
   });
 
+  it('keeps the step-1 expected budget when step-2 draft hydration returns an empty budget', async () => {
+    mockLocationState = {
+      jobPostId: 'job-1',
+      jobData: {
+        title: 'Client onboarding portal',
+        budgetMin: 1000,
+        budgetMax: 1000,
+        estimatedDuration: '3 weeks',
+      },
+    };
+    vi.mocked(jobAPI.getMyJobPostById).mockResolvedValue(successResponse({
+      jobPostsId: 'job-1',
+      clientProfilesId: 'client-1',
+      title: 'Client onboarding portal',
+      description: 'Build the onboarding portal.',
+      budgetMin: null,
+      budgetMax: null,
+      estimatedDuration: '3 weeks',
+      status: JobPostStatus.Draft,
+      createdAt: '2026-08-04T00:00:00.000Z',
+      skills: [],
+      customSkillNames: [],
+      attachments: [],
+      proposalCount: 0,
+    }));
+    vi.mocked(jobAPI.getJobPostQuestions).mockResolvedValue(successResponse([]));
+
+    const { result } = renderHook(() => usePostJob());
+
+    expect(result.current.form.budget).toBe('1000');
+
+    await waitFor(() => expect(result.current.isDraftInitializing).toBe(false));
+
+    expect(result.current.form.budget).toBe('1000');
+  });
+
   it('publishes a client baseline milestone without sending work breakdown items', async () => {
     vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
     const futureDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
