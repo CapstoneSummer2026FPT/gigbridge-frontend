@@ -8,6 +8,7 @@ import { UserRole } from '../../../types/models/User';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../../types/models/Profile';
 import type { CategoryOptionDto, MajorDto } from '../../../types/models/Category';
 import { jobAPI } from '../../../api/jobAPI';
+import { secureStorage } from '../../../shared/utils/secureStorage';
 import '../styles/profile-setup-screen.css';
 
 const INDUSTRIES_FALLBACK = [
@@ -167,18 +168,16 @@ export default function ProfileSetupScreen() {
         }
       }
       
-      // Update localStorage
-      const userStr = localStorage.getItem('gigbridge_user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
+      // Update secureStorage
+      const user = secureStorage.getItem<Record<string, unknown>>('gigbridge_user');
+      if (user) {
         user.is_setup = true;
-        localStorage.setItem('gigbridge_user', JSON.stringify(user));
+        secureStorage.setItem('gigbridge_user', user);
         
-        const sessionStr = localStorage.getItem('gigbridge_session');
-        if (sessionStr) {
-          const session = JSON.parse(sessionStr);
+        const session = secureStorage.getItem<{ user: Record<string, unknown>; role: unknown }>('gigbridge_session');
+        if (session) {
           session.user.is_setup = true;
-          localStorage.setItem('gigbridge_session', JSON.stringify(session));
+          secureStorage.setItem('gigbridge_session', session);
         }
       }
       
