@@ -1,425 +1,560 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Briefcase, Search, Plus, Edit, XCircle, Eye, Users, DollarSign, Calendar, CheckCircle, Clock, Ban } from 'lucide-react';
+import {
+  Briefcase, Search, Plus, Eye, Users, Calendar,
+  CheckCircle, Ban, XCircle, LayoutGrid, AlignJustify, FileText,
+  HelpCircle, Send, Lock, Globe, UserRoundCheck, AlertCircle,
+  Bot, ChevronDown, Crown, Megaphone, Target,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { jobAPI } from '../../../api/jobAPI';
+import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
+import { useTranslation } from '../../../hooks/useTranslation';
+import {
+  JobPostStatus,
+  JobPostVisibility,
+  type GetMyJobPostDto,
+} from '../../../types/models/Job';
+import '../styles/my-jobs-screen.css';
+import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useApp } from '../../../app/providers/AppProvider';
-import '../../admin/styles/admin-users-screen.css';
+import { usePremiumStatus } from '../../premium/hooks';
+import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
+import { JobPromotionStudio } from '../../premium/components/JobPromotionStudio';
+import '../../premium/styles/premium.css';
 
-type JobStatus = 'all' | 'open' | 'in_progress' | 'closed' | 'cancelled';
+type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
-interface MyJob {
-  id: string;
-  title: string;
-  description: string;
-  budget: number;
-  budgetType: 'fixed' | 'hourly';
-  status: 'open' | 'in_progress' | 'closed' | 'cancelled';
-  proposalsCount: number;
-  viewsCount: number;
-  createdAt: string;
-  deadline?: string;
-  skills: string[];
-}
-
-// Mock data
-const MOCK_JOBS: MyJob[] = [
-  {
-    id: 'job_1',
-    title: 'E-commerce Website Development',
-    description: 'Looking for an experienced web developer to build a modern e-commerce platform with React and Node.js.',
-    budget: 5000,
-    budgetType: 'fixed',
-    status: 'open',
-    proposalsCount: 12,
-    viewsCount: 145,
-    createdAt: '2026-05-10T10:00:00Z',
-    deadline: '2026-06-10T10:00:00Z',
-    skills: ['React', 'Node.js', 'MongoDB', 'Payment Integration'],
-  },
-  {
-    id: 'job_2',
-    title: 'Mobile App UI/UX Design',
-    description: 'Need a creative designer for a fitness tracking mobile app. Must have experience with modern design trends.',
-    budget: 80,
-    budgetType: 'hourly',
-    status: 'in_progress',
-    proposalsCount: 8,
-    viewsCount: 98,
-    createdAt: '2026-05-05T14:30:00Z',
-    skills: ['Figma', 'UI/UX', 'Mobile Design', 'Prototyping'],
-  },
-  {
-    id: 'job_3',
-    title: 'SEO Optimization for Blog',
-    description: 'Looking for SEO expert to optimize our tech blog for better search rankings.',
-    budget: 1200,
-    budgetType: 'fixed',
-    status: 'closed',
-    proposalsCount: 15,
-    viewsCount: 203,
-    createdAt: '2026-04-20T09:00:00Z',
-    skills: ['SEO', 'Content Writing', 'Analytics', 'Keyword Research'],
-  },
-  {
-    id: 'job_4',
-    title: 'Data Analysis Project',
-    description: 'Need data analyst to work on customer behavior analysis using Python and SQL.',
-    budget: 3500,
-    budgetType: 'fixed',
-    status: 'cancelled',
-    proposalsCount: 6,
-    viewsCount: 67,
-    createdAt: '2026-04-15T11:00:00Z',
-    skills: ['Python', 'SQL', 'Data Visualization', 'Statistics'],
-  },
+const STATUS_FILTERS: { key: StatusFilter; labelKey: string; activeClass: string }[] = [
+  { key: 'all', labelKey: 'myJobs.filter.all', activeClass: 'active-cyan' },
+  { key: 'draft', labelKey: 'myJobs.filter.draft', activeClass: 'active-gray' },
+  { key: 'open', labelKey: 'myJobs.filter.open', activeClass: 'active-green' },
+  { key: 'closed', labelKey: 'myJobs.filter.closed', activeClass: 'active-gray' },
+  { key: 'cancelled', labelKey: 'myJobs.filter.cancelled', activeClass: 'active-red' },
+  { key: 'unknown', labelKey: 'myJobs.filter.unknown', activeClass: 'active-amber' },
 ];
 
+const statusToFilter = (status?: number | null): StatusFilter => {
+  if (status === JobPostStatus.Draft) return 'draft';
+  if (status === JobPostStatus.Open) return 'open';
+  if (status === JobPostStatus.Closed) return 'closed';
+  if (status === JobPostStatus.Cancelled) return 'cancelled';
+  return 'unknown';
+};
+
+const statusLabel = (status: number | null | undefined, t: any) => {
+  if (status === JobPostStatus.Draft) return t('myJobs.status.draft');
+  if (status === JobPostStatus.Open) return t('myJobs.status.open');
+  if (status === JobPostStatus.Closed) return t('myJobs.status.closed');
+  if (status === JobPostStatus.Cancelled) return t('myJobs.status.cancelled');
+  return t('myJobs.status.unknown');
+};
+
+const statusBadgeClass = (status?: number | null) => {
+  if (status === JobPostStatus.Draft) return 'mj-badge-closed';
+  if (status === JobPostStatus.Open) return 'mj-badge-open';
+  if (status === JobPostStatus.Closed) return 'mj-badge-closed';
+  if (status === JobPostStatus.Cancelled) return 'mj-badge-cancelled';
+  return 'mj-badge-progress';
+};
+
+const visibilityLabel = (visibility: number | null | undefined, t: any) => {
+  if (visibility === JobPostVisibility.Public) return t('myJobs.visibility.public');
+  if (visibility === JobPostVisibility.Private) return t('myJobs.visibility.private');
+  if (visibility === JobPostVisibility.InviteOnly) return t('myJobs.visibility.inviteOnly');
+  if (visibility === 3) return t('myJobs.visibility.lockedByAdmin');
+  return t('myJobs.visibility.unknown');
+};
+
+const visibilityIcon = (visibility?: number | null) => {
+  if (visibility === JobPostVisibility.Public) return <Globe size={13} />;
+  if (visibility === JobPostVisibility.Private) return <Lock size={13} />;
+  if (visibility === JobPostVisibility.InviteOnly) return <UserRoundCheck size={13} />;
+  if (visibility === 3) return <Lock size={13} className="text-red-500" />;
+  return <HelpCircle size={13} />;
+};
+
+const formatDate = (date: string) =>
+  new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
 export default function MyJobsScreen() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useApp();
+  const { role } = useApp();
+  const premiumStatus = usePremiumStatus(role);
+  const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<JobStatus>('all');
-  const [showCloseModal, setShowCloseModal] = useState<MyJob | null>(null);
-  const [showCancelModal, setShowCancelModal] = useState<MyJob | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [isCompact, setIsCompact] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingJobId, setPendingJobId] = useState<string | null>(null);
+  const [inviteJobId, setInviteJobId] = useState<string | null>(null);
+  const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
+  const [promoteTarget, setPromoteTarget] = useState<{ job: GetMyJobPostDto }>();
+  const [interviewTarget, setInterviewTarget] = useState<GetMyJobPostDto>();
+  const [premiumActionBusy, setPremiumActionBusy] = useState(false);
 
-  const stats = useMemo(() => {
-    const open = MOCK_JOBS.filter(j => j.status === 'open').length;
-    const inProgress = MOCK_JOBS.filter(j => j.status === 'in_progress').length;
-    const closed = MOCK_JOBS.filter(j => j.status === 'closed').length;
-    const totalProposals = MOCK_JOBS.reduce((sum, j) => sum + j.proposalsCount, 0);
+  const loadJobs = async () => {
+    setIsLoading(true);
+    setError(null);
 
-    return { open, inProgress, closed, totalProposals, total: MOCK_JOBS.length };
+    const response = await jobAPI.getMyJobPosts({ pageIndex: 1, pageSize: 100 });
+    if (!response.success || !response.data) {
+      setError(response.message || t('myJobs.unableToLoad'));
+      setJobs([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setJobs(response.data);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadJobs();
   }, []);
 
-  const filteredJobs = useMemo(() => {
-    return MOCK_JOBS.filter(job => {
-      const matchesSearch = searchQuery === '' ||
-        job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const openPremiumPath = (action: () => void) => {
+    if (!premiumStatus.isPremium) {
+      navigate('/premium/client/pricing');
+      return;
+    }
+    action();
+  };
 
-      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+  const createAiInterview = async (job: GetMyJobPostDto) => {
+    setInterviewTarget(job);
+    setPremiumActionBusy(true);
+    const response = await jobAPI.createAiInterview(job.jobPostsId, {
+      language: 'auto',
+      mode: 'voice',
+      questionCount: 5,
+    });
+    setPremiumActionBusy(false);
+    if (!response.success || !response.data) return toast.error(response.message || 'Unable to configure the AI interview.');
+    setInterviewTarget(undefined);
+    toast.success(`AI interview enabled with ${response.data.questionCount} questions.`);
+  };
+
+  const counts = useMemo(() => {
+    const base = {
+      all: jobs.length,
+      draft: 0,
+      open: 0,
+      closed: 0,
+      cancelled: 0,
+      unknown: 0,
+    };
+
+    for (const job of jobs) {
+      base[statusToFilter(job.status)] += 1;
+    }
+
+    return base;
+  }, [jobs]);
+
+  const filteredJobs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return jobs.filter(job => {
+      const matchesSearch = !query ||
+        job.title.toLowerCase().includes(query) ||
+        job.description.toLowerCase().includes(query) ||
+        (job.majorName || '').toLowerCase().includes(query) ||
+        (job.categoryName || '').toLowerCase().includes(query) ||
+        (job.location || '').toLowerCase().includes(query) ||
+        (job.skills || []).some(skill => skill.name.toLowerCase().includes(query)) ||
+        (job.customSkillNames || []).some(skill => skill.toLowerCase().includes(query));
+
+      const matchesStatus = statusFilter === 'all' || statusToFilter(job.status) === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [searchQuery, statusFilter]);
+  }, [jobs, searchQuery, statusFilter]);
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'open') return <span className="badge-green text-xs">Open</span>;
-    if (status === 'in_progress') return <span className="badge-cyan text-xs">In Progress</span>;
-    if (status === 'closed') return <span className="badge-gray text-xs">Closed</span>;
-    return <span className="badge-red text-xs">Cancelled</span>;
+  const updateLocalJob = (jobPostId: string, patch: Partial<GetMyJobPostDto>) => {
+    setJobs(prev => prev.map(job => job.jobPostsId === jobPostId ? { ...job, ...patch } : job));
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+  const patchStatus = async (job: GetMyJobPostDto, status: JobPostStatus, successMessage: string) => {
+    setPendingJobId(job.jobPostsId);
+    const response = await jobAPI.updateJobPostStatus(job.jobPostsId, { status });
+    setPendingJobId(null);
+
+    if (!response.success) {
+      toast.error(response.message || t('myJobs.unableUpdateStatus'));
+      return;
+    }
+
+    updateLocalJob(job.jobPostsId, { status });
+    toast.success(successMessage);
   };
 
-  const handleCloseJob = (jobId: string) => {
-    console.log('Closing job:', jobId);
-    // API call to close job
-    setShowCloseModal(null);
+  const patchVisibility = async (job: GetMyJobPostDto, visibility: JobPostVisibility) => {
+    setPendingJobId(job.jobPostsId);
+    const response = await jobAPI.updateJobPostVisibility(job.jobPostsId, { visibility });
+    setPendingJobId(null);
+
+    if (!response.success) {
+      toast.error(response.message || t('myJobs.unableUpdateVisibility'));
+      return;
+    }
+
+    updateLocalJob(job.jobPostsId, { visibility });
+    toast.success(t('myJobs.visibilityUpdated'));
   };
 
-  const handleCancelJob = (jobId: string) => {
-    console.log('Cancelling job:', jobId);
-    // API call to cancel job
-    setShowCancelModal(null);
-  };
+  const canPublish = (job: GetMyJobPostDto) => job.status === JobPostStatus.Draft;
+  const canClose = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open;
+  const canCancel = (job: GetMyJobPostDto) => job.status === JobPostStatus.Open || job.status === JobPostStatus.Draft;
+  const canChangeVisibility = (job: GetMyJobPostDto) => job.visibility !== undefined && job.visibility !== null;
 
   return (
     <AppLayout>
-      <div className="w-full max-w-[100vw] overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Briefcase size={20} className="text-cyan" />
-                <span className="badge-cyan text-xs">My Jobs</span>
+      <div className="mj-custom-scrollbar" style={{ padding: '32px 0 64px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+          <header style={{ marginBottom: 40 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Briefcase size={18} className="mj-cyan" />
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--gb-cyan,#1782FC)' }}>
+                  {t('myJobs.management')}
+                </span>
+                {!premiumStatus.loading && <PremiumStatusBadge active={premiumStatus.isPremium} compact />}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">Job Posts</h1>
-              <p className="text-sm text-secondary mt-1">Manage your job postings</p>
+              <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.03em', color: '#0f0f1a', margin: 0 }} className="black:text-white">
+                {t('myJobs.title')}
+              </h1>
+              <p style={{ fontSize: 15, color: '#6b7280', marginTop: 4 }}>
+                {t('myJobs.subtitle')}
+              </p>
             </div>
-            <button
-              onClick={() => navigate('/jobs/post')}
-              className="btn-cyan px-4 py-2 text-sm flex items-center gap-2"
-            >
-              <Plus size={16} />
-              Post New Job
-            </button>
-          </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-8">
+            <div style={{ marginTop: 20 }}>
+              <button
+                onClick={() => navigate('/jobs/post')}
+                className="mj-action-btn mj-btn-primary"
+                style={{ padding: '10px 22px', fontSize: 13 }}
+              >
+                <Plus size={16} />
+                {t('myJobs.postNewJob')}
+              </button>
+            </div>
+          </header>
+
+          <div className="mj-stat-grid" style={{ marginBottom: 32 }}>
             {[
-              { label: 'Total Jobs', value: stats.total.toString(), icon: <Briefcase size={16} />, color: 'cyan' },
-              { label: 'Open', value: stats.open.toString(), icon: <CheckCircle size={16} />, color: 'green' },
-              { label: 'In Progress', value: stats.inProgress.toString(), icon: <Clock size={16} />, color: 'amber' },
-              { label: 'Closed', value: stats.closed.toString(), icon: <XCircle size={16} />, color: 'gray' },
-              { label: 'Total Proposals', value: stats.totalProposals.toString(), icon: <Users size={16} />, color: 'purple' },
+              { label: t('myJobs.totalJobs'), value: counts.all, icon: <Briefcase size={18} />, bg: 'mj-bg-cyan', color: 'mj-cyan' },
+              { label: t('myJobs.status.open'), value: counts.open, icon: <CheckCircle size={18} />, bg: 'mj-bg-green', color: 'mj-green' },
+              { label: t('myJobs.status.draft'), value: counts.draft, icon: <FileText size={18} />, bg: 'mj-bg-amber', color: 'mj-amber' },
+              { label: t('myJobs.status.closed'), value: counts.closed, icon: <Ban size={18} />, bg: 'mj-bg-gray', color: 'mj-gray' },
+              { label: t('myJobs.status.unknown'), value: counts.unknown, icon: <HelpCircle size={18} />, bg: 'mj-bg-purple', color: 'mj-purple' },
             ].map(stat => (
-              <div key={stat.label} className="stat-card">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-secondary truncate">{stat.label}</p>
-                  <span className={`icon-${stat.color} flex-shrink-0`}>{stat.icon}</span>
+              <div key={stat.label} className="mj-stat-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div className={`mj-stat-icon-wrap ${stat.bg}`}>
+                    <span className={stat.color}>{stat.icon}</span>
+                  </div>
                 </div>
-                <p className="text-xl sm:text-2xl font-bold text-primary">{stat.value}</p>
+                <div>
+                  <div className="mj-stat-value">{stat.value}</div>
+                  <div className="mj-stat-label">{stat.label}</div>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Filters */}
-          <div className="glass-card p-4 mb-6">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 relative">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+          <div className="mj-card mj-filter-bar" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+              <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+                <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search jobs..."
-                  className="input-gb w-full py-2.5 text-sm"
-                  style={{ paddingLeft: '2.5rem', paddingRight: '1rem' }}
+                  onChange={event => setSearchQuery(event.target.value)}
+                  placeholder={t('myJobs.searchPlaceholder')}
+                  className="mj-input"
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as JobStatus)}
-                className="input-gb px-4 py-2.5 text-sm cursor-pointer"
-              >
-                <option value="all">All Status</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="closed">Closed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+
+              <div className="mj-glass" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 999, flexWrap: 'wrap' }}>
+                {STATUS_FILTERS.map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setStatusFilter(tab.key)}
+                    className={`mj-tab-pill ${statusFilter === tab.key ? tab.activeClass : 'inactive'}`}
+                  >
+                    {t(tab.labelKey)}
+                    {tab.key !== 'all' && (
+                      <span style={{
+                        background: statusFilter === tab.key ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.08)',
+                        borderRadius: 999,
+                        padding: '1px 6px',
+                        fontSize: 10,
+                      }}>
+                        {counts[tab.key]}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mj-glass" style={{ display: 'flex', gap: 2, padding: 4, borderRadius: 10 }}>
+                <button
+                  onClick={() => setIsCompact(false)}
+                  style={{ padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: !isCompact ? 'var(--gb-cyan,#1782FC)' : 'transparent', color: !isCompact ? '#fff' : '#6b7280', transition: 'all 0.2s' }}
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button
+                  onClick={() => setIsCompact(true)}
+                  style={{ padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: isCompact ? 'var(--gb-cyan,#1782FC)' : 'transparent', color: isCompact ? '#fff' : '#6b7280', transition: 'all 0.2s' }}
+                >
+                  <AlignJustify size={16} />
+                </button>
+              </div>
             </div>
+
+            <div
+              style={{ marginTop: 10, fontSize: 12, color: '#9ca3af', fontWeight: 500 }}
+              dangerouslySetInnerHTML={{ __html: t('myJobs.showingJobs', { count: filteredJobs.length, total: jobs.length }) }}
+            />
           </div>
 
-          {/* Jobs List */}
-          <div className="space-y-4">
-            {filteredJobs.map(job => (
-              <div key={job.id} className="glass-card p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <h3 className="text-lg font-bold text-primary">{job.title}</h3>
-                      {getStatusBadge(job.status)}
+          {isLoading ? (
+            <div className="mj-card mj-empty">
+              <p style={{ fontSize: 14, color: '#6b7280' }}>{t('myJobs.loading')}</p>
+            </div>
+          ) : error ? (
+            <div className="mj-card mj-empty">
+              <XCircle size={36} className="mj-red" />
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">{t('myJobs.unableToLoad')}</p>
+              <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>{error}</p>
+              <button onClick={loadJobs} className="mj-action-btn mj-btn-primary">{t('myJobs.retry')}</button>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="mj-card mj-empty">
+              <div className="mj-empty-icon-wrap">
+                <Briefcase size={36} className="mj-cyan" />
+              </div>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#0f0f1a', marginBottom: 6 }} className="black:text-white">
+                {t('myJobs.noJobs')}
+              </p>
+              <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
+                {searchQuery ? t('myJobs.noJobsDesc') : t('myJobs.noJobsPostFirst')}
+              </p>
+              <button onClick={() => navigate('/jobs/post')} className="mj-action-btn mj-btn-primary">
+                <Plus size={16} /> {t('myJobs.postNewJob')}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {filteredJobs.map(job => {
+                const isPending = pendingJobId === job.jobPostsId;
+                const statusKnown = job.status !== undefined && job.status !== null;
+
+                return (
+                  <div key={job.jobPostsId} className="mj-card mj-job-card" style={isCompact ? { padding: '16px 20px' } : {}}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+                          <h3 className="mj-job-title">{job.title}</h3>
+                          <span className={`mj-badge ${statusBadgeClass(job.status)}`}>{statusLabel(job.status, t)}</span>
+                          <span className="mj-badge mj-badge-progress" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility, t)}
+                          </span>
+                        </div>
+                        {!isCompact && (
+                          <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.description}</p>
+                        )}
+                        {job.status === JobPostStatus.Draft && (
+                          <div className="mj-draft-warning" style={{ marginBottom: 12 }}>
+                            <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                            <span dangerouslySetInnerHTML={{ __html: t('myJobs.draftWarning') }} />
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {job.majorName && <span className="mj-skill-tag">{job.majorName}</span>}
+                          {job.categoryName && <span className="mj-skill-tag">{job.categoryName}</span>}
+                          {(job.skills || []).slice(0, 5).map(skill => (
+                            <span key={skill.skillId} className="mj-skill-tag">{skill.name}</span>
+                          ))}
+                          {(job.customSkillNames || []).slice(0, 5).map(skill => (
+                            <span key={skill} className="mj-skill-tag">{skill}{t('myJobs.customSkillSuffix')}</span>
+                          ))}
+                          {job.location && <span className="mj-skill-tag">{job.location}</span>}
+                          {job.estimatedDuration && <span className="mj-skill-tag">{job.estimatedDuration}</span>}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div className="mj-budget-value"><GigCoinBudget min={job.budgetMin} max={job.budgetMax} /></div>
+                        <div className="mj-budget-label">{t('myJobs.budget')}</div>
+                      </div>
                     </div>
-                    <p className="text-sm text-secondary mb-3 line-clamp-2">{job.description}</p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {job.skills.slice(0, 4).map(skill => (
-                        <span key={skill} className="tag-pill text-xs">{skill}</span>
-                      ))}
-                      {job.skills.length > 4 && (
-                        <span className="tag-pill text-xs">+{job.skills.length - 4} more</span>
+
+                    {!isCompact && <hr className="mj-divider" style={{ marginBottom: 16 }} />}
+                    <div className="mj-meta-grid" style={isCompact ? { marginTop: 10 } : {}}>
+                      <div>
+                        <div className="mj-meta-label">{t('myJobs.proposals')}</div>
+                        <div className="mj-meta-value mj-purple">
+                          <Users size={13} /> {job.proposalCount}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mj-meta-label">{t('myJobs.status')}</div>
+                        <div className="mj-meta-value">
+                          <CheckCircle size={13} /> {statusLabel(job.status, t)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mj-meta-label">{t('myJobs.posted')}</div>
+                        <div className="mj-meta-value">
+                          <Calendar size={13} /> {formatDate(job.createdAt)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mj-meta-label">{t('myJobs.visibility')}</div>
+                        <div className="mj-meta-value">
+                          {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility, t)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr className="mj-divider" style={{ margin: '16px 0' }} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                      <button onClick={() => navigate(`/jobs/my-jobs/${job.jobPostsId}`)} className="mj-action-btn mj-btn-cyan">
+                        <Eye size={14} /> {t('myJobs.viewDetail')}
+                      </button>
+                      <button onClick={() => navigate(`/client/job-posts/${job.jobPostsId}/questions`)} className="mj-action-btn mj-btn-cyan">
+                        <HelpCircle size={14} /> {t('myJobs.manageQuestions')}
+                      </button>
+                      {job.status === JobPostStatus.Open && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setInviteJobId(job.jobPostsId);
+                              setInviteJobTitle(job.title);
+                            }}
+                            disabled={isPending}
+                            className="mj-action-btn mj-btn-cyan"
+                          >
+                            <Users size={14} /> {t('myJobs.inviteFreelancers')}
+                          </button>
+                          <details className="mj-premium-menu">
+                            <summary className="mj-premium-action-label">
+                              <Crown size={12} /> Premium features
+                              {job.isFeatured && <span className="mj-premium-active-dot" title="Promotion active" />}
+                              <ChevronDown size={13} className="mj-premium-chevron" />
+                            </summary>
+                            <div className="mj-premium-menu-panel">
+                              <button
+                                onClick={event => {
+                                  event.currentTarget.closest('details')?.removeAttribute('open');
+                                  openPremiumPath(() => navigate(`/talent-matching?job=${job.jobPostsId}`));
+                                }}
+                                className="mj-action-btn mj-btn-cyan"
+                              >
+                                <Target size={14} /> Talent matches {!premiumStatus.isPremium && <Crown size={12} />}
+                              </button>
+                              <button
+                                onClick={event => {
+                                  event.currentTarget.closest('details')?.removeAttribute('open');
+                                  if (job.isFeatured) setPromoteTarget({ job });
+                                  else openPremiumPath(() => setPromoteTarget({ job }));
+                                }}
+                                className="mj-action-btn mj-btn-cyan"
+                              >
+                                <Megaphone size={14} /> {job.isFeatured
+                                  ? `Manage promotion · ends ${job.featuredUntil ? formatDate(job.featuredUntil) : ''}`
+                                  : 'Promote'} {!premiumStatus.isPremium && !job.isFeatured && <Crown size={12} />}
+                              </button>
+                              <button
+                                onClick={event => {
+                                  event.currentTarget.closest('details')?.removeAttribute('open');
+                                  openPremiumPath(() => void createAiInterview(job));
+                                }}
+                                disabled={premiumActionBusy}
+                                className="mj-action-btn mj-btn-cyan"
+                              >
+                                <Bot size={14} /> {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Enabling interview…' : 'Enable AI interview'} {!premiumStatus.isPremium && <Crown size={12} />}
+                              </button>
+                            </div>
+                          </details>
+                        </>
+                      )}
+                      {canPublish(job) && (
+                        <button
+                          onClick={() => patchStatus(job, JobPostStatus.Open, t('myJobs.publishSuccess'))}
+                          disabled={isPending}
+                          className="mj-action-btn mj-btn-green"
+                        >
+                          <Send size={14} /> {t('myJobs.publish')}
+                        </button>
+                      )}
+                      {canClose(job) && (
+                        <button
+                          onClick={() => patchStatus(job, JobPostStatus.Closed, t('myJobs.closeSuccess'))}
+                          disabled={isPending}
+                          className="mj-action-btn mj-btn-green"
+                        >
+                          <Ban size={14} /> {t('myJobs.close')}
+                        </button>
+                      )}
+                      {canCancel(job) && (
+                        <button
+                          onClick={() => patchStatus(job, JobPostStatus.Cancelled, t('myJobs.cancelSuccess'))}
+                          disabled={isPending}
+                          className="mj-action-btn mj-btn-red"
+                        >
+                          <XCircle size={14} /> {t('myJobs.cancel')}
+                        </button>
+                      )}
+                      {!statusKnown && (
+                        <span className="text-xs text-muted-foreground">{t('myJobs.statusActionsUnavailable')}</span>
+                      )}
+                      {canChangeVisibility(job) ? (
+                        <select
+                          value={job.visibility ?? ''}
+                          onChange={event => patchVisibility(job, Number(event.target.value) as JobPostVisibility)}
+                          disabled={isPending || job.visibility === 3}
+                          className="mj-action-btn"
+                          style={{ border: '1px solid rgba(0,0,0,0.08)', background: 'rgba(0,0,0,0.04)', color: '#374151' }}
+                        >
+                          <option value={JobPostVisibility.Public}>{t('myJobs.visibility.public')}</option>
+                          <option value={JobPostVisibility.Private}>{t('myJobs.visibility.private')}</option>
+                          <option value={JobPostVisibility.InviteOnly}>{t('myJobs.visibility.inviteOnly')}</option>
+                          {job.visibility === 3 && <option value={3}>{t('myJobs.visibility.lockedByAdmin')}</option>}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{t('myJobs.visibilityActionsUnavailable')}</span>
                       )}
                     </div>
                   </div>
-                  <div className="text-right ml-4">
-                    <p className="text-2xl font-bold text-green">
-                      ${job.budget.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-muted capitalize">{job.budgetType}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 pt-4 border-t border-white/5">
-                  <div>
-                    <p className="text-xs text-muted mb-1">Proposals</p>
-                    <p className="text-sm font-semibold text-primary flex items-center gap-1">
-                      <Users size={14} />
-                      {job.proposalsCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted mb-1">Views</p>
-                    <p className="text-sm font-semibold text-primary flex items-center gap-1">
-                      <Eye size={14} />
-                      {job.viewsCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted mb-1">Posted</p>
-                    <p className="text-sm font-semibold text-primary flex items-center gap-1">
-                      <Calendar size={14} />
-                      {formatDate(job.createdAt)}
-                    </p>
-                  </div>
-                  {job.deadline && (
-                    <div>
-                      <p className="text-xs text-muted mb-1">Deadline</p>
-                      <p className="text-sm font-semibold text-primary flex items-center gap-1">
-                        <Calendar size={14} />
-                        {formatDate(job.deadline)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2 pt-4 border-t border-white/5">
-                  <button
-                    onClick={() => navigate(`/jobs/${job.id}`)}
-                    className="btn-ghost-cyan px-4 py-2 text-xs flex items-center gap-1.5"
-                  >
-                    <Eye size={14} />
-                    View Details
-                  </button>
-                  {job.proposalsCount > 0 && (
-                    <button
-                      onClick={() => navigate(`/proposals?job=${job.id}`)}
-                      className="btn-ghost-cyan px-4 py-2 text-xs flex items-center gap-1.5"
-                    >
-                      <Users size={14} />
-                      View Proposals ({job.proposalsCount})
-                    </button>
-                  )}
-                  {job.status === 'open' && (
-                    <>
-                      <button
-                        onClick={() => navigate(`/jobs/edit/${job.id}`)}
-                        className="btn-ghost-cyan px-4 py-2 text-xs flex items-center gap-1.5"
-                      >
-                        <Edit size={14} />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setShowCloseModal(job)}
-                        className="btn-ghost-green px-4 py-2 text-xs flex items-center gap-1.5"
-                      >
-                        <CheckCircle size={14} />
-                        Mark as Closed
-                      </button>
-                      <button
-                        onClick={() => setShowCancelModal(job)}
-                        className="btn-ghost-red px-4 py-2 text-xs flex items-center gap-1.5"
-                      >
-                        <Ban size={14} />
-                        Cancel Job
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {filteredJobs.length === 0 && (
-              <div className="glass-card p-12 text-center">
-                <Briefcase size={48} className="mx-auto mb-4 text-muted" />
-                <p className="text-lg font-semibold text-primary mb-2">No jobs found</p>
-                <p className="text-sm text-secondary mb-6">Start by posting your first job</p>
-                <button
-                  onClick={() => navigate('/jobs/post')}
-                  className="btn-cyan px-6 py-3"
-                >
-                  Post a Job
-                </button>
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Close Job Modal */}
-      {showCloseModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCloseModal(null)}>
-          <div className="glass-card max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-green/20 flex items-center justify-center">
-                <CheckCircle size={24} className="text-green" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-primary">Close Job Posting</h2>
-                <p className="text-xs text-muted">Mark this job as completed</p>
-              </div>
-            </div>
-
-            <div className="glass-card p-4 mb-6">
-              <p className="text-sm font-bold text-primary mb-2">{showCloseModal.title}</p>
-              <p className="text-xs text-secondary">ID: {showCloseModal.id}</p>
-            </div>
-
-            <div className="bg-green/10 border border-green/20 rounded-lg p-4 mb-6">
-              <p className="text-sm text-primary mb-1">
-                Closing this job will:
-              </p>
-              <ul className="text-xs text-secondary space-y-1 ml-4">
-                <li>• Stop accepting new proposals</li>
-                <li>• Mark the job as successfully completed</li>
-                <li>• Hide it from job search results</li>
-              </ul>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCloseModal(null)}
-                className="btn-ghost-cyan flex-1 px-6 py-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleCloseJob(showCloseModal.id)}
-                className="btn-green flex-1 px-6 py-2 flex items-center justify-center gap-2"
-              >
-                <CheckCircle size={16} />
-                Close Job
-              </button>
-            </div>
-          </div>
-        </div>
+      {inviteJobId && (
+        <InviteFreelancersAfterPostModal
+          jobPostId={inviteJobId}
+          jobTitle={inviteJobTitle}
+          onClose={() => {
+            setInviteJobId(null);
+            setInviteJobTitle(undefined);
+          }}
+        />
       )}
-
-      {/* Cancel Job Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCancelModal(null)}>
-          <div className="glass-card max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-red/20 flex items-center justify-center">
-                <Ban size={24} className="text-red" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-primary">Cancel Job Posting</h2>
-                <p className="text-xs text-muted">This action cannot be undone</p>
-              </div>
-            </div>
-
-            <div className="glass-card p-4 mb-6">
-              <p className="text-sm font-bold text-primary mb-2">{showCancelModal.title}</p>
-              <p className="text-xs text-secondary mb-2">ID: {showCancelModal.id}</p>
-              <p className="text-xs text-muted">{showCancelModal.proposalsCount} proposals received</p>
-            </div>
-
-            <div className="bg-red/10 border border-red/20 rounded-lg p-4 mb-6">
-              <p className="text-sm font-semibold text-primary mb-1">Warning</p>
-              <p className="text-xs text-secondary">
-                Cancelling this job will permanently remove it and notify all freelancers who submitted proposals.
-                Consider closing the job instead if it was completed successfully.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCancelModal(null)}
-                className="btn-ghost-cyan flex-1 px-6 py-2"
-              >
-                Keep Job
-              </button>
-              <button
-                onClick={() => handleCancelJob(showCancelModal.id)}
-                className="btn-red flex-1 px-6 py-2 flex items-center justify-center gap-2"
-              >
-                <Ban size={16} />
-                Cancel Job
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {promoteTarget && <div className="premium-modal" onClick={() => setPromoteTarget(undefined)}><div className="premium-modal-box premium-modal-box-wide" onClick={event => event.stopPropagation()}><JobPromotionStudio entitled={premiumStatus.isPremium} initialJob={promoteTarget.job} onComplete={promotion => {
+        setJobs(current => current.map(job => job.jobPostsId === promotion.jobPostId ? { ...job, isFeatured: true, featuredUntil: promotion.featuredUntil } : job));
+        setPromoteTarget(undefined);
+      }} onDeactivated={promotion => {
+        setJobs(current => current.map(job => job.jobPostsId === promotion.jobPostId ? { ...job, isFeatured: false, featuredUntil: promotion.featuredUntil } : job));
+        setPromoteTarget(undefined);
+      }} /><div className="premium-modal-actions"><button className="premium-button secondary" onClick={() => setPromoteTarget(undefined)}>Close</button></div></div></div>}
     </AppLayout>
   );
 }

@@ -9,12 +9,6 @@ export enum CompanySize {
   Large = 3,
 }
 
-export enum ExperienceLevel {
-  Entry = 0,
-  Intermediate = 1,
-  Expert = 2,
-}
-
 export enum Availability {
   FullTime = 0,
   PartTime = 1,
@@ -53,6 +47,15 @@ export interface PortfolioItemDto {
   description?: string;
   projectUrl?: string;
   imageUrl?: string;
+  projectDate?: string;
+}
+
+export interface PortfolioItemInputDto {
+  title: string;
+  description?: string;
+  projectUrl?: string;
+  imageUrl?: string;
+  projectDate?: string;
 }
 
 export interface WorkExperienceDto {
@@ -64,72 +67,161 @@ export interface WorkExperienceDto {
   endDate?: string;
 }
 
+export interface WorkExperienceInputDto {
+  companyName: string;
+  jobTitle: string;
+  startDate: string;
+  endDate?: string;
+  description?: string;
+}
+
 export interface FreelancerProfileDto {
-  freelancerProfileId: string;
+  freelancerProfileId?: string;
+  freelancerProfilesId?: string;
   userId: string;
   title?: string;
   bio?: string;
-  hourlyRate?: number;
-  experienceLevel?: number;
   availability?: number;
   location?: string;
   profileCompletionScore?: number;
   createdAt: string;
   updatedAt?: string;
+  majorId?: string | null;
+  majorName?: string | null;
+  categories: FreelancerProfileCategoryDto[];
+}
+
+export interface FreelancerProfileCategoryDto {
+  majorCategoryId: string;
+  categoryId: string;
+  name: string;
 }
 
 export interface FreelancerProfileDetailDto extends FreelancerProfileDto {
   userFullName?: string;
   userEmail?: string;
   userAvatar?: string;
+  rating?: number;
+  eloPoints?: number;
+  showProVerifiedBadge?: boolean;
+  premiumUntil?: string | null;
+  tierName?: string | null;
+  tierProgress?: number | null;
   skills: FreelancerSkillDto[];
   portfolioItems: PortfolioItemDto[];
   workExperiences: WorkExperienceDto[];
 }
 
+export type FreelancerDirectorySort = 'featured' | 'rating' | 'elo' | 'newest';
+
+export interface FreelancerDirectoryQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  skills?: readonly string[];
+  availabilityStatus?: string;
+  minRating?: number;
+  sort?: FreelancerDirectorySort;
+}
+
+export interface PaginatedList<T> {
+  items: T[];
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export interface FreelancerSummaryDto {
+  freelancerProfilesId: string;
+  userId: string;
+  userFullName?: string | null;
+  userAvatar?: string | null;
+  title?: string | null;
+  bio?: string | null;
+  availability?: number | null;
+  location?: string | null;
+  majorId?: string | null;
+  majorName?: string | null;
+  rating: number;
+  eloPoints: number;
+  isPremium: boolean;
+  isIdentityVerified: boolean;
+  showProVerifiedBadge: boolean;
+  premiumUntil?: string | null;
+  tierName?: string | null;
+  tierProgress: number;
+  createdAt: string;
+  updatedAt?: string | null;
+  skills: FreelancerSkillDto[];
+  categories: FreelancerProfileCategoryDto[];
+}
+
 export interface UpdateClientProfileDto {
-  CompanyName: string;
-  CompanyWebsite?: string;
-  CompanySize: number;
-  Industry: string;
-  CompanyDescription?: string;
-  Location: string;
+  companyName: string;
+  companyWebsite?: string;
+  companySize: number;
+  industry: string;
+  companyDescription?: string;
+  location: string;
 }
 
 export interface UpdateFreelancerProfileDto {
   title: string;
   bio: string;
-  hourlyRate: number;
-  experienceLevel: number;
   availability: number;
   location: string;
+  majorId: string;
+  categoryIds: string[];
+  skillIds?: string[];
+}
+
+export interface ClientProfileDetailDto {
+  clientProfilesId: string;
+  userId: string;
+  companyName?: string | null;
+  companyWebsite?: string | null;
+  companySize?: number | null;
+  industry?: string | null;
+  companyDescription?: string | null;
+  location?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  userFullName?: string | null;
+  userEmail?: string | null;
+  userAvatar?: string | null;
+  eloPoints?: number;
 }
 
 export interface ClientProfileResponseDto {
-  id: string;
-  user_id: string;
-  company_name: string;
-  company_website?: string;
-  company_size: number;
+  clientProfilesId: string;
+  userId: string;
+  companyName: string;
+  companyWebsite?: string;
+  companySize: number;
   industry: string;
-  company_description?: string;
+  companyDescription?: string;
   location: string;
-  created_at: string;
-  updated_at: string;
+  eloPoints?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FreelancerProfileResponseDto {
-  id: string;
-  user_id: string;
+  freelancerProfilesId: string;
+  userId: string;
   title: string;
   bio: string;
-  hourlyRate: number;
-  experienceLevel: number;
   availability: number;
   location: string;
   profileCompletionScore: number;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
+  majorId?: string | null;
+  majorName?: string | null;
+  categories: FreelancerProfileCategoryDto[];
+  skills: FreelancerSkillDto[];
 }
 
 export interface FreelancerProfile {
@@ -137,8 +229,6 @@ export interface FreelancerProfile {
   user_id: string;
   title: string;
   bio: string;
-  hourly_rate: number;
-  experience_level: ExperienceLevel;
   availability: Availability;
   location: string;
   profile_completion_score: number;
@@ -192,3 +282,22 @@ export interface FreelancerSkill {
   years_of_experience: number;
   proficiency_level: ProficiencyLevel;
 }
+
+export interface UserProfileDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  avatar?: string | null;
+  phoneNumber?: string | null;
+  preferredLanguage?: string | null;
+  role: number;
+}
+
+export interface UpdateUserProfileDto {
+  fullName: string;
+  email: string;
+  avatar?: string | null;
+  phoneNumber?: string | null;
+  preferredLanguage?: string | null;
+}
+

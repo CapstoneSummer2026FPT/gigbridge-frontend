@@ -1,0 +1,217 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&family=Inter:wght@100..900&display=swap');
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-surface-container-lowest: var(--card);
+  --color-surface-container-low: var(--background);
+  --color-surface-container: var(--muted);
+  --color-surface-container-high: var(--secondary);
+  --color-surface-container-highest: var(--muted);
+
+  --color-outline: var(--muted-foreground);
+  --color-outline-variant: var(--border);
+
+  --color-on-surface: var(--foreground);
+  --color-on-surface-variant: var(--muted-foreground);
+
+  --color-tertiary: var(--gb-purple);
+  --color-tertiary-container: var(--secondary);
+  --color-on-tertiary: var(--primary-foreground);
+
+  --font-body-lg: "Inter", sans-serif;
+  --font-headline-lg-mobile: "Hanken Grotesk", sans-serif;
+  --font-label-md: "Inter", sans-serif;
+  --font-display-lg: "Hanken Grotesk", sans-serif;
+  --font-headline-lg: "Hanken Grotesk", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-headline-sm: "Hanken Grotesk", sans-serif;
+  --font-headline-md: "Hanken Grotesk", sans-serif;
+
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+
+  --spacing-gutter: 24px;
+  --spacing-margin-desktop: 40px;
+  --spacing-base: 4px;
+  --spacing-margin-mobile: 16px;
+  --spacing-card-padding: 24px;
+}
+
+:root {
+  --spacing-gutter: 24px;
+  --spacing-margin-desktop: 40px;
+  --spacing-base: 4px;
+  --spacing-margin-mobile: 16px;
+  --spacing-card-padding: 24px;
+}
+
+.glass-overlay {
+  background: var(--gb-glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--gb-glass-border);
+  color: var(--foreground);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-overlay:hover {
+  background: var(--gb-glass-hover);
+}
+
+.bento-card {
+  background-color: var(--card);
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-card-padding);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.bento-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.05);
+  border-color: rgba(23, 130, 252, 0.25);
+}
+
+.black .bento-card:hover {
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.3);
+  border-color: rgba(159, 75, 255, 0.3);
+}
+
+.review-card {
+  background: linear-gradient(145deg, var(--card), var(--background));
+  border: 1px solid var(--border);
+}
+
+/* Bento Grid Spacing Structure */
+.grid-bento {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: var(--spacing-gutter);
+}
+
+@media (min-width: 768px) {
+  .grid-bento {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-bento {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+/* Custom classes for typography */
+.font-body-lg {
+  font-family: var(--font-body-lg);
+}
+
+.font-headline-lg-mobile {
+  font-family: var(--font-headline-lg-mobile);
+}
+
+.font-label-md {
+  font-family: var(--font-label-md);
+}
+
+.font-display-lg {
+  font-family: var(--font-display-lg);
+}
+
+.font-headline-lg {
+  font-family: var(--font-headline-lg);
+}
+
+.font-body-md {
+  font-family: var(--font-body-md);
+}
+
+.font-headline-sm {
+  font-family: var(--font-headline-sm);
+}
+
+.font-headline-md {
+  font-family: var(--font-headline-md);
+}
+
+/* Custom override for font size classes */
+.text-display-lg {
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.text-headline-lg {
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.text-headline-md {
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.text-headline-sm {
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.text-body-lg {
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.text-body-md {
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.text-label-md {
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Centralized dynamic helper styles */
+.score-circle {
+  stroke-dasharray: 263.89;
+  stroke-dashoffset: calc(263.89 - (var(--score-percent, 0) / 100) * 263.89);
+}
+
+.progress-bar-fill {
+  width: var(--progress-width, 0%);
+}
+
+.portfolio-project-image {
+  background-image: var(--bg-image);
+}
+
+/* Badge icon colors styling */
+.badge-icon-green {
+  color: #22C55E;
+}
+
+.badge-icon-blue {
+  color: #0077FF;
+}
+
+.badge-icon-amber {
+  color: #F59E0B;
+}
+
+.badge-icon-purple {
+  color: #9F4BFF;
+}

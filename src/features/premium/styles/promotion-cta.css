@@ -1,0 +1,39 @@
+.premium-promotion-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #10b981, #0891b2);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.18);
+}
+
+.premium-promotion-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, 0.28);
+}
+
+.premium-promotion-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-color: rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(8, 145, 178, 0.06));
+}
+
+.premium-promotion-banner .premium-promotion-cta {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .premium-promotion-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .premium-promotion-banner .premium-promotion-cta {
+    width: 100%;
+  }
+}

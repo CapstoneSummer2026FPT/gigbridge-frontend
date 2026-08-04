@@ -1,0 +1,398 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.cdnfonts.com/css/general-sans");
+
+@font-face {
+  font-family: "circular-web";
+  src: url("/fonts/circularweb-book.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "zentry";
+  src: url("/fonts/zentry-regular.woff2") format("woff2");
+}
+
+.contracts-page-custom-bg {
+  font-family: "General Sans", "Plus Jakarta Sans", sans-serif !important;
+}
+
+.font-zentry {
+  font-family: var(--font-zentry) !important;
+}
+
+.premium-gradient-text {
+  background: linear-gradient(135deg, #494BE7 0%, #0077FF 50%, #9F4BFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
+
+/* Premium redone styles for Manage Milestones Screen */
+
+:root {
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.manage-milestones-wrapper {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Back navigation button */
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--gb-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.back-button:hover {
+  background: rgba(73, 75, 231, 0.12);
+  border-color: rgba(73, 75, 231, 0.3);
+  color: var(--brand);
+  transform: translateX(-2px);
+}
+
+/* Ambient Glowing Orbs (Depth Layer) */
+.client-dash-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.orb-purple {
+  top: 5%;
+  right: 5%;
+  width: 320px;
+  height: 320px;
+  background: var(--gb-purple);
+  animation: pulseOrbPurple 14s infinite alternate ease-in-out;
+}
+
+.orb-cyan {
+  bottom: 25%;
+  left: -5%;
+  width: 380px;
+  height: 380px;
+  background: var(--gb-cyan);
+  animation: pulseOrbCyan 18s infinite alternate ease-in-out;
+}
+
+.orb-blue {
+  top: 40%;
+  right: 25%;
+  width: 280px;
+  height: 280px;
+  background: var(--gb-cyan);
+  animation: pulseOrbBlue 16s infinite alternate ease-in-out;
+}
+
+@keyframes pulseOrbPurple {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.08; }
+  100% { transform: translate(40px, -30px) scale(1.2); opacity: 0.15; }
+}
+
+@keyframes pulseOrbCyan {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.08; }
+  100% { transform: translate(-50px, 40px) scale(1.25); opacity: 0.18; }
+}
+
+@keyframes pulseOrbBlue {
+  0% { transform: translate(0, 0) scale(1.1); opacity: 0.05; }
+  100% { transform: translate(30px, 50px) scale(0.95); opacity: 0.12; }
+}
+
+/* High-End Glassmorphism Card Override */
+.glass-card {
+  background: color-mix(in srgb, var(--card) 75%, transparent) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid var(--gb-border) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 
+              inset 0 1px 1px rgba(255, 255, 255, 0.15),
+              0 8px 32px rgba(0, 0, 0, 0.02) !important;
+  border-radius: 1.5rem !important;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.glass-card:hover {
+  background: color-mix(in srgb, var(--surface-hover) 85%, transparent) !important;
+  border-color: var(--gb-border-hover) !important;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.08), 
+              0 10px 40px rgba(0, 0, 0, 0.04) !important;
+  transform: translateY(-2px);
+  z-index: 10 !important;
+}
+
+.black .glass-card,
+[data-theme="dark"] .glass-card {
+  background: color-mix(in srgb, var(--card) 65%, transparent) !important;
+  border: 1px solid var(--gb-border) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.03),
+              0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+}
+
+.black .glass-card:hover,
+[data-theme="dark"] .glass-card:hover {
+  background: color-mix(in srgb, var(--surface-hover) 75%, transparent) !important;
+  border-color: var(--gb-border-hover) !important;
+  box-shadow: 0 25px 45px -10px rgba(0, 0, 0, 0.5), 
+              0 15px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Budget overview cards */
+.budget-stat {
+  position: relative;
+  background: color-mix(in srgb, var(--card) 60%, transparent) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--gb-border) !important;
+  border-radius: 20px;
+  padding: 1.25rem 1.5rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.budget-stat:hover {
+  transform: translateY(-3px);
+  background: color-mix(in srgb, var(--surface-hover) 75%, transparent) !important;
+  box-shadow: var(--shadow-md);
+}
+
+.budget-stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: #3B82F6;
+}
+
+.budget-stat.stat-budget::before { background: #3B82F6; }
+.budget-stat.stat-allocated::before { background: #A855F7; }
+.budget-stat.stat-remaining::before { background: #10B981; }
+.budget-stat.stat-completion::before { background: #F59E0B; }
+
+.budget-stat.stat-budget:hover { border-color: rgba(59, 130, 246, 0.3) !important; }
+.budget-stat.stat-allocated:hover { border-color: rgba(168, 85, 247, 0.3) !important; }
+.budget-stat.stat-remaining:hover { border-color: rgba(16, 185, 129, 0.3) !important; }
+.budget-stat.stat-completion:hover { border-color: rgba(245, 158, 11, 0.3) !important; }
+
+/* Form inputs styling under Glass cards */
+.form-input-custom {
+  background: color-mix(in srgb, var(--background) 95%, black 5%) !important;
+  border: 1px solid var(--gb-border) !important;
+  border-radius: 12px;
+  color: var(--text-primary) !important;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  outline: none !important;
+  width: 100%;
+}
+
+.form-input-custom:focus {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px rgba(73, 75, 231, 0.2) !important;
+  background: color-mix(in srgb, var(--background) 70%, transparent) !important;
+}
+
+[data-theme="dark"] .form-input-custom,
+.black .form-input-custom {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #f5f6f8 !important;
+}
+
+[data-theme="light"] .form-input-custom,
+.white .form-input-custom {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #19191b !important;
+}
+
+.form-input-custom::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6;
+}
+
+/* Bulletproof primary button styling */
+.btn-primary-custom {
+  background-color: var(--brand) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(73, 75, 231, 0.25) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-primary-custom:hover {
+  background-color: var(--brand-hover) !important;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(73, 75, 231, 0.35) !important;
+}
+
+.btn-primary-custom:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Timeline Vertical Line */
+.milestones-list {
+  position: relative;
+}
+
+/* Workflow status classes */
+.milestone-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.milestone-status-badge.status-0 { /* Pending */
+  background: rgba(245, 158, 11, 0.12);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.milestone-status-badge.status-3 { /* Not Started */
+  background: rgba(142, 144, 165, 0.12);
+  color: var(--text-muted);
+  border: 1px solid rgba(142, 144, 165, 0.25);
+}
+
+.milestone-status-badge.status-4 { /* In Progress */
+  background: rgba(59, 130, 246, 0.12);
+  color: #3B82F6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.milestone-status-badge.status-5 { /* Submitted for Review */
+  background: rgba(168, 85, 247, 0.12);
+  color: #A855F7;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.milestone-status-badge.status-1 { /* Approved */
+  background: rgba(16, 185, 129, 0.12);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.milestone-status-badge.status-2 { /* Paid */
+  background: rgba(16, 185, 129, 0.2);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.milestone-status-badge.status-6 { /* Revision Required */
+  background: rgba(239, 68, 68, 0.12);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Spinner component */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.05);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive updates */
+@media (max-width: 768px) {
+  .budget-overview {
+    grid-template-cols: 1fr;
+  }
+}
+
+/* Milestone Card Glass Style */
+.milestone-card {
+  position: relative;
+  background: color-mix(in srgb, var(--card) 75%, transparent) !important;
+  backdrop-filter: blur(16px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(130%) !important;
+  border: 1px solid var(--gb-border) !important;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.milestone-card:hover {
+  background: color-mix(in srgb, var(--surface-hover) 85%, transparent) !important;
+  border-color: var(--gb-border-hover) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}
+
+.milestone-card.expanded {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  background: color-mix(in srgb, var(--card) 85%, transparent) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.black .milestone-card,
+[data-theme="dark"] .milestone-card {
+  background: color-mix(in srgb, var(--card) 65%, transparent) !important;
+  border: 1px solid var(--gb-border) !important;
+}
+
+.black .milestone-card:hover,
+[data-theme="dark"] .milestone-card:hover {
+  background: color-mix(in srgb, var(--surface-hover) 75%, transparent) !important;
+  border-color: var(--gb-border-hover) !important;
+}
+
+.black .milestone-card.expanded,
+[data-theme="dark"] .milestone-card.expanded {
+  background: color-mix(in srgb, var(--card) 75%, transparent) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
-import { ArrowLeft, BookOpen, User, Briefcase, Search, FileText, MessageSquare, DollarSign, Shield, Bot, Star, CheckCircle } from 'lucide-react';
+import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
+import { ArrowLeft, BookOpen, User, Briefcase, Search, MessageSquare, Shield, Bot, Star, CheckCircle } from 'lucide-react';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 
 const GUIDES = {
   'For Freelancers': [
@@ -69,7 +71,7 @@ const GUIDES = {
     },
     {
       title: 'Payment & Budgeting',
-      icon: <DollarSign size={20} />,
+      icon: <GCoinIcon size={20} />,
       color: 'green',
       steps: [
         { title: 'Set Your Budget', desc: 'Use AI Market Insights to understand typical rates for your project type.' },
@@ -122,6 +124,7 @@ const GUIDES = {
 
 export default function GuideScreen() {
   const navigate = useNavigate();
+  const { saveScrollPosition } = useScrollRestoration();
   const [activeCategory, setActiveCategory] = useState<keyof typeof GUIDES>('For Freelancers');
   const [activeGuide, setActiveGuide] = useState(0);
 
@@ -134,7 +137,10 @@ export default function GuideScreen() {
         <div className="max-w-6xl mx-auto">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}
             className="btn-ghost-cyan px-4 py-2 mb-8 text-sm flex items-center gap-2"
           >
             <ArrowLeft size={16} />

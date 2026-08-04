@@ -19,7 +19,14 @@ function figmaAssetResolver() {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  server: {
+    // Bind one dual-stack listener so a second Vite process cannot silently
+    // reuse the same port on the other localhost address family.
+    host: '::',
+    port: 5173,
+    strictPort: true,
+  },
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
@@ -34,6 +41,16 @@ export default defineConfig({
     },
   },
 
+  // Keep diagnostics available while developing without shipping API errors,
+  // identifiers, or verbose SignalR traces to production browsers.
+  esbuild: mode === 'production'
+    ? { drop: ['console', 'debugger'] }
+    : undefined,
+  build: {
+    // Prevent orphaned hashed chunks from older builds being deployed.
+    emptyOutDir: true,
+  },
+
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
-})
+}))

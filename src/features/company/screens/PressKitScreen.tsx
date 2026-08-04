@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
+import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
 import { ArrowLeft, Download, FileText, Image, Zap, Mail } from 'lucide-react';
 
 const ASSETS = [
@@ -54,13 +55,14 @@ const KEY_STATS = [
   { label: 'Active Freelancers', value: '52,847' },
   { label: 'Active Clients', value: '18,234' },
   { label: 'Projects Completed', value: '134,562' },
-  { label: 'Total Paid Out', value: '$28.4M' },
+  { label: 'Total Paid Out', value: '28.4M G-coin' },
   { label: 'Average Match Time', value: '<2 hours' },
   { label: 'Success Rate', value: '96.4%' },
 ];
 
 export default function PressKitScreen() {
   const navigate = useNavigate();
+  const { saveScrollPosition } = useScrollRestoration();
 
   return (
     <GuestLayout>
@@ -68,7 +70,10 @@ export default function PressKitScreen() {
         <div className="max-w-6xl mx-auto">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}
             className="btn-ghost-cyan px-4 py-2 mb-8 text-sm flex items-center gap-2"
           >
             <ArrowLeft size={16} />

@@ -14,11 +14,11 @@
 
 ## ✦ Core Features
 
-* **AI Matching** — Automated talent recommendation pipelines and AI interview simulation engines.
-* **Real-time Sync** — Live WebSocket communication for instant messaging and notification delivery using SignalR.
-* **Milestone Contracts** — End-to-end digital agreement lifecycle including secure e-signing and payment processing.
-* **Internationalization** — Native localized multi-language architecture (English / Vietnamese).
-* **Market Analytics** — Interactive dashboards mapping industry trends, salary structures, and regional metrics.
+- **AI Matching** — Automated talent recommendation pipelines and AI interview simulation engines.
+- **Real-time Sync** — Live WebSocket communication for instant messaging and notification delivery using SignalR.
+- **Milestone Contracts** — End-to-end digital agreement lifecycle including secure e-signing and payment processing.
+- **Internationalization** — Native localized multi-language architecture (English / Vietnamese).
+- **Market Analytics** — Interactive dashboards mapping industry trends, salary structures, and regional metrics.
 
 ---
 
@@ -55,6 +55,7 @@ src/
 ```
 
 ### Module Boundary Layout
+
 Inside `features/`, every domain feature encapsulates its own assets to keep the modules cohesive and self-contained:
 
 ```
@@ -70,9 +71,9 @@ features/<module-name>/
 
 ## 🛠️ Stack & Technologies
 
-* **Core Runtime** — React 18, Vite 6, TypeScript
-* **UI Components** — Radix UI Headless Primitives, Material UI (MUI 7)
-* **Styling & Layout** — Tailwind CSS v4, Custom Design Tokens
-* **Navigation** — React Router v7
-* **Data Flow** — Axios HTTP Client, SignalR Client WebSockets
-* **Interactive Elements** — Recharts, GSAP, Motion
+- **Core Runtime** — React 18, Vite 6, TypeScript
+- **UI Components** — Radix UI Headless Primitives, Material UI (MUI 7)
+- **Styling & Layout** — Tailwind CSS v4, Custom Design Tokens
+- **Navigation** — React Router v7
+- **Data Flow** — Axios HTTP Client, SignalR Client WebSockets
+- **Interactive Elements** — Recharts, GSAP, Motion

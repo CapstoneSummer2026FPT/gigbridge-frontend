@@ -3,46 +3,329 @@
  * External CSS for ClientDashboardScreen component
  */
 
-/* ── Header Section ── */
+/* ── Common Visual Tokens & Bento Grid ── */
+.client-dash-bento-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.client-dash-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--gb-border);
+}
+
+.client-dash-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  border-color: var(--gb-border-hover);
+}
+
+/* ── High-End Glassmorphism Card Override ── */
+.glass-card {
+  background: color-mix(in srgb, var(--card) 75%, transparent) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid var(--gb-border) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04), 
+              inset 0 1px 1px rgba(255, 255, 255, 0.15),
+              0 8px 32px rgba(0, 0, 0, 0.02) !important;
+  border-radius: 1.5rem !important;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.glass-card:hover {
+  background: color-mix(in srgb, var(--surface-hover) 85%, transparent) !important;
+  border-color: var(--gb-border-hover) !important;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.08), 
+              0 10px 40px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="dark"] .glass-card {
+  background: color-mix(in srgb, var(--card) 65%, transparent) !important;
+  border: 1px solid var(--gb-border) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.03),
+              0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(24px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%) !important;
+}
+
+[data-theme="dark"] .glass-card:hover {
+  background: color-mix(in srgb, var(--surface-hover) 75%, transparent) !important;
+  border-color: var(--gb-border-hover) !important;
+  box-shadow: 0 25px 45px -10px rgba(0, 0, 0, 0.5), 
+              0 15px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ── Ambient Glowing Orbs (Depth Layer) ── */
+.client-dash-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.orb-purple {
+  top: 5%;
+  right: 5%;
+  width: 320px;
+  height: 320px;
+  background: var(--gb-purple);
+  animation: pulseOrbPurple 14s infinite alternate ease-in-out;
+}
+
+.orb-cyan {
+  bottom: 25%;
+  left: -5%;
+  width: 380px;
+  height: 380px;
+  background: var(--gb-cyan);
+  animation: pulseOrbCyan 18s infinite alternate ease-in-out;
+}
+
+.orb-blue {
+  top: 40%;
+  right: 25%;
+  width: 280px;
+  height: 280px;
+  background: var(--gb-cyan);
+  animation: pulseOrbBlue 16s infinite alternate ease-in-out;
+}
+
+@keyframes pulseOrbPurple {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.08; }
+  100% { transform: translate(30px, -20px) scale(1.15); opacity: 0.14; }
+}
+
+@keyframes pulseOrbCyan {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.08; }
+  100% { transform: translate(-40px, 30px) scale(1.2); opacity: 0.16; }
+}
+
+@keyframes pulseOrbBlue {
+  0% { transform: translate(0, 0) scale(1.1); opacity: 0.05; }
+  100% { transform: translate(20px, 40px) scale(0.9); opacity: 0.11; }
+}
+
+/* ── Hero Welcome Banner (Acrylic design) ── */
+.client-dash-hero {
+  position: relative;
+  background: linear-gradient(135deg, rgba(73, 75, 231, 0.09) 0%, rgba(0, 119, 255, 0.04) 50%, rgba(159, 75, 255, 0.07) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(73, 75, 231, 0.18);
+  box-shadow: inset 0 0 20px rgba(73, 75, 231, 0.06), 0 8px 32px rgba(0, 0, 0, 0.03);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .client-dash-hero {
+  background: linear-gradient(135deg, rgba(73, 75, 231, 0.15) 0%, rgba(0, 119, 255, 0.08) 50%, rgba(159, 75, 255, 0.12) 100%);
+  border-color: rgba(73, 75, 231, 0.3);
+  box-shadow: inset 0 0 30px rgba(73, 75, 231, 0.1), 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
 .client-dash-greeting {
   color: var(--gb-text-secondary);
 }
 
 .client-dash-highlight {
   color: var(--gb-cyan);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
 }
 
-/* ── Stats & Charts ── */
-.client-dash-chart-desc {
-  color: var(--gb-text-secondary);
+/* ── Stats Grid ── */
+.client-dash-stat-glow-cyan:hover {
+  border-color: rgba(0, 240, 255, 0.4) !important;
+  box-shadow: 0 10px 25px rgba(0, 240, 255, 0.08), 0 0 12px rgba(0, 240, 255, 0.05);
+}
+.client-dash-stat-glow-purple:hover {
+  border-color: rgba(159, 75, 255, 0.4) !important;
+  box-shadow: 0 10px 25px rgba(159, 75, 255, 0.08), 0 0 12px rgba(159, 75, 255, 0.05);
+}
+.client-dash-stat-glow-green:hover {
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  box-shadow: 0 10px 25px rgba(34, 197, 94, 0.08), 0 0 12px rgba(34, 197, 94, 0.05);
+}
+.client-dash-stat-glow-amber:hover {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.08), 0 0 12px rgba(245, 158, 11, 0.05);
 }
 
-/* ── Wallet Section ── */
+/* ── 3D Interactive Wallet Credit Card ── */
+.client-dash-wallet-card-container {
+  perspective: 1200px;
+}
+
+.client-dash-wallet-card {
+  position: relative;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, #090e1a 0%, #15143a 50%, #290d3b 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25), 
+              inset 0 1px 1px rgba(255, 255, 255, 0.15),
+              0 0 15px rgba(0, 119, 255, 0.15);
+  transform-style: preserve-3d;
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale3d(1, 1, 1);
+  transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease;
+}
+
+.client-dash-wallet-card::before {
+  content: '';
+  position: absolute;
+  bottom: -20%;
+  right: -10%;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(159, 75, 255, 0.35) 0%, transparent 70%);
+  filter: blur(15px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.client-dash-wallet-card::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.3) 0%, transparent 70%);
+  filter: blur(15px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.client-dash-wallet-card:hover {
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale3d(1.02, 1.02, 1.02);
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.35), 
+              inset 0 1px 1px rgba(255, 255, 255, 0.25),
+              0 0 25px rgba(159, 75, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.client-dash-wallet-sheen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: radial-gradient(circle 180px at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.18), transparent 75%);
+  z-index: 3;
+}
+
+.client-dash-wallet-chip {
+  width: 38px;
+  height: 28px;
+  background: linear-gradient(135deg, #ffd700, #bfa100);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+}
+
+.client-dash-wallet-chip::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border: 1px solid rgba(0,0,0,0.15);
+  background-image: 
+    linear-gradient(90deg, transparent 50%, rgba(0,0,0,0.2) 50%),
+    linear-gradient(0deg, transparent 50%, rgba(0,0,0,0.2) 50%);
+  background-size: 8px 8px;
+}
+
 .client-dash-wallet-label {
-  color: var(--gb-text-secondary);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .client-dash-wallet-icon {
   color: var(--gb-cyan);
+  filter: drop-shadow(0 0 6px var(--gb-cyan));
 }
 
 .client-dash-wallet-desc {
-  color: var(--gb-text-secondary);
+  color: rgba(255, 255, 255, 0.5);
 }
 
-/* ── Quick Actions ── */
-.client-dash-action-btn {
+/* ── Quick Actions Grid ── */
+.client-dash-quick-grid {
+  display: grid;
+  grid-template-cols: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+
+.client-dash-action-btn-new {
   background: var(--gb-glass-bg);
   border: 1px solid var(--gb-border);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.client-dash-action-btn-new:hover {
+  transform: translateY(-3px);
+  background: var(--gb-glass-hover);
+  border-color: rgba(159, 75, 255, 0.4);
+  box-shadow: 0 8px 20px rgba(159, 75, 255, 0.08);
+}
+
+.client-dash-action-btn-new:hover .client-dash-action-icon {
+  color: var(--gb-purple);
+  transform: scale(1.1);
 }
 
 .client-dash-action-icon {
   color: var(--gb-text-secondary);
+  transition: all 0.2s ease;
+}
+
+/* ── Spend Chart Card ── */
+.client-dash-chart-desc {
+  color: var(--gb-text-secondary);
+}
+
+.chart-header-tabs {
+  background: var(--gb-bg-tertiary);
+  border: 1px solid var(--gb-border);
+  border-radius: 0.5rem;
+  padding: 2px;
+}
+
+.chart-tab-btn {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+  color: var(--gb-text-secondary);
+}
+
+.chart-tab-btn.active {
+  background: var(--background);
+  color: var(--gb-cyan);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  font-weight: 600;
 }
 
 /* ── Active Jobs ── */
 .client-dash-link-cyan {
   color: var(--gb-cyan);
+  font-weight: 500;
+}
+
+.client-dash-link-cyan:hover {
+  text-decoration: underline;
+  filter: brightness(1.1);
 }
 
 .client-dash-job-card {
@@ -50,14 +333,46 @@
   border: 1px solid var(--gb-border);
 }
 
+.client-dash-job-card:hover {
+  border-color: rgba(0, 119, 255, 0.3);
+  background: var(--gb-glass-hover);
+  box-shadow: 0 6px 15px rgba(0, 119, 255, 0.05);
+}
+
 .client-dash-job-meta {
   color: var(--gb-text-secondary);
+}
+
+.pulse-dot-green {
+  width: 6px;
+  height: 6px;
+  background-color: var(--gb-green);
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: pulseGreen 1.5s infinite;
+}
+
+@keyframes pulseGreen {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
 }
 
 /* ── Recent Activity ── */
 .client-dash-activity-icon-bg {
   background: var(--gb-glass-hover);
   border: 1px solid var(--gb-border);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
 
 .client-dash-activity-time {
@@ -80,13 +395,110 @@
   color: var(--gb-green);
 }
 
-/* ── AI Suggestions ── */
+.activity-item-hover {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  border-radius: 0.75rem;
+}
+
+.activity-item-hover:hover {
+  background: var(--gb-glass-hover);
+  transform: translateX(3px);
+}
+
+/* ── AI Suggestions Radar ── */
 .client-dash-ai-bg {
-  background: linear-gradient(135deg, rgba(159, 75, 255, 0.06), rgba(0, 119, 255, 0.04));
+  position: relative;
+  background: linear-gradient(135deg, rgba(159, 75, 255, 0.06) 0%, rgba(0, 119, 255, 0.04) 100%) !important;
+  border: 1px solid rgba(159, 75, 255, 0.15) !important;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .client-dash-ai-bg {
+  background: linear-gradient(135deg, rgba(159, 75, 255, 0.12) 0%, rgba(0, 119, 255, 0.06) 100%) !important;
+  border-color: rgba(159, 75, 255, 0.25) !important;
+}
+
+/* Radar Scan Backdrop Graphic */
+.ai-radar-graphic {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 500px;
+  height: 500px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.12;
+  z-index: 0;
+  border: 1px solid rgba(159, 75, 255, 0.3);
+}
+
+.ai-radar-circle-1 {
+  position: absolute;
+  top: 15%; left: 15%; right: 15%; bottom: 15%;
+  border: 1px dashed rgba(159, 75, 255, 0.25);
+  border-radius: 50%;
+  animation: radarRotate 15s infinite linear;
+}
+
+.ai-radar-circle-2 {
+  position: absolute;
+  top: 30%; left: 30%; right: 30%; bottom: 30%;
+  border: 1px solid rgba(0, 119, 255, 0.2);
+  border-radius: 50%;
+}
+
+.ai-radar-sweep-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 250px;
+  height: 250px;
+  background: conic-gradient(from 0deg, var(--gb-purple) 0%, transparent 40%, transparent 100%);
+  border-radius: 50%;
+  transform-origin: 0px 0px;
+  transform: translate(0px, 0px) rotate(0deg);
+  margin-top: 0px;
+  margin-left: 0px;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: radarSweepConic 4s infinite linear;
+  z-index: 1;
+}
+
+@keyframes radarSweepConic {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.ai-radar-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  margin-left: -10px;
+  background: var(--gb-purple);
+  border-radius: 50%;
+  box-shadow: 0 0 15px var(--gb-purple);
+  animation: radarPing 3s infinite ease-out;
+}
+
+@keyframes radarPing {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(20);
+    opacity: 0;
+  }
 }
 
 .client-dash-ai-icon {
   color: var(--gb-purple);
+  filter: drop-shadow(0 0 5px rgba(159, 75, 255, 0.5));
 }
 
 .client-dash-ai-desc {
@@ -96,6 +508,14 @@
 .client-dash-ai-card {
   background: var(--gb-glass-bg);
   border: 1px solid var(--gb-border);
+  position: relative;
+  z-index: 2;
+}
+
+.client-dash-ai-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(159, 75, 255, 0.4);
+  box-shadow: 0 8px 25px rgba(159, 75, 255, 0.08), 0 0 10px rgba(159, 75, 255, 0.05);
 }
 
 .client-dash-ai-budget {
@@ -107,7 +527,101 @@
 }
 
 .client-dash-ai-post-btn {
-  background: rgba(0, 119, 255, 0.08);
-  border: 1px solid rgba(0, 119, 255, 0.2);
+  background: var(--gb-glass-bg);
+  border: 1px solid var(--gb-cyan);
   color: var(--gb-cyan);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+.client-dash-ai-post-btn:hover {
+  background: var(--brand-soft);
+  color: var(--gb-purple);
+  border-color: var(--gb-purple);
+  box-shadow: 0 4px 15px rgba(73, 75, 231, 0.15);
+}
+
+/* Match Score Ring (SVG circle) */
+.match-score-ring-svg {
+  transform: rotate(-90deg);
+}
+
+.match-score-ring-bg {
+  fill: none;
+  stroke: var(--gb-border);
+  stroke-width: 3;
+}
+
+.match-score-ring-bar {
+  fill: none;
+  stroke: var(--gb-purple);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+/* ── Responsive Mobile Enhancements ── */
+@media (max-width: 768px) {
+  .client-dash-quick-grid {
+    grid-template-cols: repeat(2, 1fr);
+  }
+  
+  .glass-card {
+    border-radius: 1rem !important;
+    padding: 1.25rem !important;
+  }
+  
+  .client-dash-hero {
+    border-radius: 1rem !important;
+    padding: 1.25rem !important;
+  }
+
+  .orb-purple, .orb-cyan, .orb-blue {
+    opacity: 0.05 !important;
+    filter: blur(60px) !important;
+  }
+}
+
+/* ── Avant-Garde Redesign Styles ── */
+.avant-garde-heading {
+  letter-spacing: -0.05em;
+  line-height: 0.85;
+}
+
+.hero-text-overlay {
+  background: linear-gradient(180deg, var(--text-primary) 0%, rgba(25, 25, 27, 0.45) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .hero-text-overlay {
+  background: linear-gradient(180deg, var(--text-primary) 0%, rgba(245, 246, 248, 0.45) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.elo-blob {
+  animation: morph 20s ease-in-out infinite;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%);
+  box-shadow: 0 40px 100px -20px rgba(73, 75, 231, 0.3);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes morph {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+}
+
+/* Parallax/interactive shift on hover using CSS variables set by use3DTilt */
+.glass-card:hover .elo-blob:nth-child(1) {
+  transform: translate(calc(var(--ry, 0deg) * 2), calc(var(--rx, 0deg) * -2)) scale(1.05);
+}
+
+.glass-card:hover .elo-blob:nth-child(2) {
+  transform: translate(calc(var(--ry, 0deg) * -1.5), calc(var(--rx, 0deg) * 1.5)) scale(1.1) blur(24px);
+}
+
+.client-dash-success-ring {
+  filter: drop-shadow(0 0 8px var(--brand));
+}
+
+

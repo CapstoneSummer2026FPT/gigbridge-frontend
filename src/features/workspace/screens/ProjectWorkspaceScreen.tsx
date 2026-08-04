@@ -1,393 +1,1909 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Send, Paperclip, Bot, CheckCircle, Clock, DollarSign, Files, ChevronRight, X, MessageSquare } from 'lucide-react';
+import {
+  ArrowLeft, Ban, Send, AlertTriangle,
+  Paperclip, Smile, CheckCircle, Circle, Download,
+  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks
+} from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { useApp } from '../../../app/providers/AppProvider';
-import { DB, SEED_PROJECTS, SEED_MESSAGES } from '../../../mock_backend';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
+import { ContractProductHandoffSourceType, ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { UserRole } from '../../../types/models/User';
+import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
+import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
+import {
+  ContractReportIssueType,
+  ContractReportResolutionAction,
+  ContractReportStatus,
+} from '../../../types/models/ReportContract';
+import '../styles/project-workspace-screen.css';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import { disputeGetAPI } from '../../../api/disputeAPI';
+import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { ServiceFeeDialog } from '../../../shared/components/ServiceFeeDialog';
+import { EarlyWithdrawalDialog } from '../../../shared/components/EarlyWithdrawalDialog';
+import { calculateServiceFee, isInsufficientServiceFeeError } from '../../../shared/utils/serviceFee';
+import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
+import { useReportContract, RaiseIssueModal, ReportList, ReportDetailModal } from '../../../features/report-contracts';
+import { toast } from 'sonner';
+import {
+  parseReportSystemMessageMetadata,
+  type ReportSystemMessageMetadata,
+} from '../utils/reportSystemMessage';
+import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
+import '../../reviews/styles/reviews-screen.css';
 
-const AI_QUICK_SUGGESTIONS = [
-  'Summarize project progress',
-  'Draft status update for client',
-  'Suggest next milestone steps',
-  'Review code quality guidelines',
-];
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
+  const url = handoff.sourceType === ContractProductHandoffSourceType.Link
+    ? handoff.externalUrl
+    : handoff.fileUrl;
+
+  return url?.trim() || null;
+};
+
+const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: Translate): string =>
+  handoff.sourceType === ContractProductHandoffSourceType.Link
+    ? t('workspace.workMaterialsLink')
+    : handoff.fileName || t('workspace.workMaterialsFile');
+
+const REPORT_ISSUE_KEYS: Record<number, string> = {
+  [ContractReportIssueType.PaymentIssue]: 'workspace.reportIssueTypePaymentIssue',
+  [ContractReportIssueType.MilestoneIssue]: 'workspace.reportIssueTypeMilestoneIssue',
+  [ContractReportIssueType.Delay]: 'workspace.reportIssueTypeDelay',
+  [ContractReportIssueType.PoorQuality]: 'workspace.reportIssueTypePoorQuality',
+  [ContractReportIssueType.CommunicationProblem]: 'workspace.reportIssueTypeCommunicationProblem',
+  [ContractReportIssueType.ScopeChange]: 'workspace.reportIssueTypeScopeChange',
+  [ContractReportIssueType.Other]: 'workspace.reportIssueTypeOther',
+};
+
+const REPORT_ACTION_KEYS: Record<number, string> = {
+  [ContractReportResolutionAction.AcceptIssue]: 'workspace.reportActionAcceptIssue',
+  [ContractReportResolutionAction.ProvideExplanation]: 'workspace.reportActionProvideExplanation',
+  [ContractReportResolutionAction.ProposeResolution]: 'workspace.reportActionProposeResolution',
+  [ContractReportResolutionAction.RejectIssue]: 'workspace.reportActionRejectIssue',
+};
+
+const REPORT_STATUS_KEYS: Record<number, string> = {
+  [ContractReportStatus.Pending]: 'workspace.reportStatusPending',
+  [ContractReportStatus.WaitingReporterConfirmation]: 'workspace.reportStatusWaitingConfirmation',
+  [ContractReportStatus.Resolved]: 'workspace.reportStatusResolved',
+  [ContractReportStatus.Escalated]: 'workspace.reportStatusEscalated',
+};
+
+const getReportSystemSummary = (event: ReportSystemMessageMetadata, t: Translate): string => {
+  const actor = event.actorName || event.actorRole || t('workspace.reportParticipant');
+  if (event.eventType === 'created') return t('workspace.reportSystemCreatedSummary', { actor });
+  if (event.eventType === 'resolved') return t('workspace.reportSystemResolvedSummary');
+
+  switch (event.resolutionAction) {
+    case ContractReportResolutionAction.AcceptIssue:
+      return t('workspace.reportSystemAcceptedSummary', { actor });
+    case ContractReportResolutionAction.ProvideExplanation:
+      return t('workspace.reportSystemExplainedSummary', { actor });
+    case ContractReportResolutionAction.ProposeResolution:
+      return t('workspace.reportSystemProposedSummary', { actor });
+    case ContractReportResolutionAction.RejectIssue:
+      return t('workspace.reportSystemRejectedSummary', { actor });
+    default:
+      return t('workspace.reportSystemUpdatedSummary', { actor });
+  }
+};
+
+const getReportSystemDetail = (event: ReportSystemMessageMetadata): string | null => {
+  if (event.resolutionAction === ContractReportResolutionAction.ProvideExplanation) return event.explanation;
+  if (event.resolutionAction === ContractReportResolutionAction.ProposeResolution) return event.proposedResolution;
+  if (event.resolutionAction === ContractReportResolutionAction.RejectIssue) return event.rejectReason;
+  return null;
+};
 
 export default function ProjectWorkspaceScreen() {
-  const { id } = useParams();
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, role } = useApp();
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState(SEED_MESSAGES);
-  const [showAI, setShowAI] = useState(false);
-  const [aiMessage, setAiMessage] = useState('');
-  const [aiChat, setAiChat] = useState<{ role: string; content: string }[]>([
-    { role: 'ai', content: 'Hello! I\'m your AI Work Assistant. I can help you with project updates, code reviews, milestone planning, and much more. What do you need today?' }
-  ]);
-  const [activeTab, setActiveTab] = useState<'chat' | 'milestones' | 'files'>('chat');
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const { contractId } = useParams<{ contractId: string }>();
+  const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
+  const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
+  const [showProfilePopover, setShowProfilePopover] = useState(false);
+  const [submitModal, setSubmitModal] = useState<{ milestoneId: string; title: string } | null>(null);
+  const [submitDescription, setSubmitDescription] = useState('');
+  const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmittingDeliverable, setIsSubmittingDeliverable] = useState(false);
+  const [milestoneActionPendingId, setMilestoneActionPendingId] = useState<string | null>(null);
+  const [milestoneActionError, setMilestoneActionError] = useState<{ milestoneId: string; message: string } | null>(null);
+  const [withdrawDialogMilestone, setWithdrawDialogMilestone] = useState<{
+    milestoneId: string;
+    title: string;
+    availableAmount: number;
+  } | null>(null);
+  const [endProjectModalOpen, setEndProjectModalOpen] = useState(false);
+  const [endProjectFeeMode, setEndProjectFeeMode] = useState<'confirmation' | 'insufficient'>('confirmation');
+  const [endProjectBalance, setEndProjectBalance] = useState<number | null>(null);
+  const [isLoadingEndProjectBalance, setIsLoadingEndProjectBalance] = useState(false);
+  const [isEndingProject, setIsEndingProject] = useState(false);
+  const [endProjectError, setEndProjectError] = useState<string | null>(null);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [productMode, setProductMode] = useState<'file' | 'link'>('file');
+  const [productNote, setProductNote] = useState('');
+  const [productFile, setProductFile] = useState<File | null>(null);
+  const [productLink, setProductLink] = useState('');
+  const [productError, setProductError] = useState<string | null>(null);
+  const [isSendingProduct, setIsSendingProduct] = useState(false);
+  const [raiseIssueModalOpen, setRaiseIssueModalOpen] = useState(false);
+  const [reportListOpen, setReportListOpen] = useState(false);
+  const [viewReportId, setViewReportId] = useState<string | null>(null);
+  const [unavailableReportId, setUnavailableReportId] = useState<string | null>(null);
+  const [activeDisputeId, setActiveDisputeId] = useState<string | null>(null);
+  const profilePopoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const withdrawalRequestInFlightRef = useRef(false);
+  const submitFileInputRef = useRef<HTMLInputElement>(null);
+  const productFileInputRef = useRef<HTMLInputElement>(null);
 
-  const project = SEED_PROJECTS[0];
-  const client = DB.getUserById(project.clientId);
-  const freelancer = DB.getUserById(project.freelancerId);
-  const partner = role === 'client' ? freelancer : client;
+  const {
+    user,
+    isClient,
+    activeProjectId,
+    setActiveProjectId,
+    showInfo,
+    setShowInfo,
+    messageInput,
+    setMessageInput,
+    isFavorited,
+    setIsFavorited,
+    isBlocked,
+    setIsBlocked,
+    project,
+    activeContract,
+    productHandoffs,
+    earlyStartRequests,
+    workspaceProjects,
+    currentProjData,
+    partnerName,
+    partnerAvatar,
+    partnerTitle,
+    partnerCompany,
+    partnerUserId,
+    isPartnerOnline,
+    projectMessages,
+    reviewPromptContractId,
+    clearReviewPrompt,
+    refreshWorkspace,
+    handleSendMessage,
+    handleSimulateAttachment,
+    handleOpenMilestoneEditor,
+    handleRequestMilestoneUnlock,
+    handleWithdrawMilestone,
+    handleUpdateWorkItem,
+    handleRespondEarlyStart,
+    handleEndProject,
+    handleSubmitMilestoneDeliverable,
+    handleSubmitProductHandoff,
+    chatEndRef,
+  } = useProjectWorkspace(contractId || '');
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  const {
+    reports: contractReports,
+    isLoading: isLoadingReports,
+    createReport,
+    isCreatingReport: isCreatingReport,
+    selectedReport,
+    loadReportDetail,
+    isLoadingDetail: isLoadingReportDetail,
+    respondToReport,
+    isRespondingReport,
+    confirmResolution,
+    isConfirmingReport,
+    escalateToDispute,
+    isEscalatingReport,
+    loadReports,
+    error: reportError,
+    clearSelectedReport,
+  } = useReportContract();
+  const workspaceContractId = activeProjectId || contractId || '';
+  const isFreelancer = user?.role === UserRole.Freelancer;
+  const allMilestonesSubmittedOrApproved = project.milestones.length > 0 &&
+    project.milestones.every(milestone => milestone.status === 'submitted' || milestone.status === 'approved');
+  const allMilestonesApproved = project.milestones.length > 0 &&
+    project.milestones.every(milestone => milestone.status === 'approved');
+  const showEndProjectButton = isClient &&
+    activeContract?.status === ContractStatus.Active &&
+    allMilestonesSubmittedOrApproved;
+  const isContractDisputed = activeContract?.status === ContractStatus.Disputed;
+  const isWorkspaceViewOnly = activeContract?.status === ContractStatus.Completed;
+  const isWorkspaceLocked = isWorkspaceViewOnly || isContractDisputed;
+  const showFreelancerPayoutCard = !isClient &&
+    activeContract?.status === ContractStatus.Completed &&
+    allMilestonesApproved;
+  const completedJobAmount = project.milestones.reduce((sum, milestone) => sum + milestone.amount, 0);
+  const endProjectServiceFee = calculateServiceFee(completedJobAmount);
+  const reviewRole = isClient ? UserRole.Client : UserRole.Freelancer;
 
-  const sendMessage = () => {
-    if (!message.trim()) return;
-    const newMsg = {
-      id: `msg_${Date.now()}`, conversationId: 'conv_1', senderId: user?.id || '',
-      content: message, type: 'text' as const, createdAt: new Date().toISOString(), isRead: false,
-    };
-    setMessages(prev => [...prev, newMsg]);
-    setMessage('');
-    setTimeout(() => {
-      const reply = {
-        id: `msg_${Date.now() + 1}`, conversationId: 'conv_1', senderId: partner?.id || '',
-        content: 'Got it, thanks for the update! I\'ll review this shortly and get back to you.', type: 'text' as const,
-        createdAt: new Date().toISOString(), isRead: false,
-      };
-      setMessages(prev => [...prev, reply]);
-    }, 1500);
+  useEffect(() => {
+    if (endProjectModalOpen || !reviewPromptContractId || !activeContract?.canReview || !user?.id) return;
+    if (reviewPromptContractId !== activeContract.contractsId) return;
+
+    const dismissedKey = `gigbridge-review-prompt-dismissed:${user.id}:${reviewPromptContractId}`;
+    if (sessionStorage.getItem(dismissedKey) !== '1') {
+      setReviewDialogOpen(true);
+    }
+  }, [activeContract, endProjectModalOpen, reviewPromptContractId, user?.id]);
+
+  useEffect(() => {
+    setRaiseIssueModalOpen(false);
+    setReportListOpen(false);
+    setViewReportId(null);
+    setUnavailableReportId(null);
+    clearSelectedReport();
+  }, [workspaceContractId, clearSelectedReport]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!workspaceContractId || !isContractDisputed) {
+      setActiveDisputeId(null);
+      return;
+    }
+    void disputeGetAPI.getActiveDispute(workspaceContractId).then(response => {
+      if (!cancelled) setActiveDisputeId(response.success ? response.data?.id ?? null : null);
+    });
+    return () => { cancelled = true; };
+  }, [isContractDisputed, workspaceContractId]);
+
+  const resetSubmitModal = () => {
+    setSubmitModal(null);
+    setSubmitDescription('');
+    setSubmitFile(null);
+    setSubmitError(null);
+    setIsSubmittingDeliverable(false);
+    if (submitFileInputRef.current) {
+      submitFileInputRef.current.value = '';
+    }
   };
 
-  const sendAIMessage = async () => {
-    if (!aiMessage.trim()) return;
-    const userMsg = aiMessage;
-    setAiChat(prev => [...prev, { role: 'user', content: userMsg }]);
-    setAiMessage('');
-    await new Promise(r => setTimeout(r, 1000));
-    const responses: Record<string, string> = {
-      default: 'Based on your project progress (35% complete), you\'re on track to meet the deadline. Milestone 2 is in progress. The next recommended step is to complete the product listing components and begin the cart functionality.',
-    };
-    const aiReply = responses[userMsg.toLowerCase()] || responses.default;
-    setAiChat(prev => [...prev, { role: 'ai', content: aiReply }]);
+  const openSubmitModal = (milestone: { id: string; title: string }) => {
+    setSubmitModal({ milestoneId: milestone.id, title: milestone.title });
+    setSubmitDescription('');
+    setSubmitFile(null);
+    setSubmitError(null);
   };
 
-  const completedMilestones = project.milestones.filter(m => m.status === 'paid' || m.status === 'approved').length;
+  const handleSelectSubmitFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSubmitError(null);
+
+    if (!file) {
+      setSubmitFile(null);
+      return;
+    }
+
+    if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
+      setSubmitFile(null);
+      setSubmitError(t('workspace.fileSizeValidationError'));
+      if (submitFileInputRef.current) {
+        submitFileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setSubmitFile(file);
+  };
+
+  const handleSubmitDeliverable = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!submitModal) return;
+
+    const trimmedDescription = submitDescription.trim();
+
+    if (trimmedDescription.length > 5000) {
+      setSubmitError(t('workspace.descriptionMaxLengthError'));
+      return;
+    }
+
+    if (!submitFile) {
+      setSubmitError(t('workspace.chooseFileBeforeSubmitError'));
+      return;
+    }
+
+    setIsSubmittingDeliverable(true);
+    setSubmitError(null);
+
+    const result = await handleSubmitMilestoneDeliverable(submitModal.milestoneId, {
+      description: trimmedDescription,
+      file: submitFile,
+    });
+
+    if (!result.success) {
+      setSubmitError(result.message || t('workspace.failedSubmitDeliverableError'));
+      setIsSubmittingDeliverable(false);
+      return;
+    }
+
+    resetSubmitModal();
+  };
+
+  const resetProductModal = () => {
+    setProductModalOpen(false);
+    setProductMode('file');
+    setProductNote('');
+    setProductFile(null);
+    setProductLink('');
+    setProductError(null);
+    setIsSendingProduct(false);
+    if (productFileInputRef.current) {
+      productFileInputRef.current.value = '';
+    }
+  };
+
+  const handleSelectProductFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setProductError(null);
+
+    if (!file) {
+      setProductFile(null);
+      return;
+    }
+
+    if (file.size <= 0 || file.size > 100 * 1024 * 1024) {
+      setProductFile(null);
+      setProductError(t('workspace.fileSizeValidationError'));
+      if (productFileInputRef.current) {
+        productFileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setProductFile(file);
+  };
+
+  const handleSendProductMaterials = async (event: FormEvent) => {
+    event.preventDefault();
+
+    const trimmedNote = productNote.trim();
+    const trimmedLink = productLink.trim();
+
+    if (trimmedNote.length > 2000) {
+      setProductError(t('workspace.noteMaxLengthError'));
+      return;
+    }
+
+    if (productMode === 'file' && !productFile) {
+      setProductError(t('workspace.chooseFileBeforeSendError'));
+      return;
+    }
+
+    if (productMode === 'link') {
+      try {
+        const url = new URL(trimmedLink);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          throw new Error(t('workspace.invalidUrlProtocolError'));
+        }
+      } catch {
+        setProductError(t('workspace.enterValidHttpLinkError'));
+        return;
+      }
+    }
+
+    setIsSendingProduct(true);
+    setProductError(null);
+
+    const result = await handleSubmitProductHandoff({
+      note: trimmedNote,
+      file: productMode === 'file' ? productFile : null,
+      externalUrl: productMode === 'link' ? trimmedLink : undefined,
+    });
+
+    if (!result.success) {
+      setProductError(result.message || t('workspace.failedSendMaterialsError'));
+      setIsSendingProduct(false);
+      return;
+    }
+
+    resetProductModal();
+    setActiveTab('files');
+    setShowInfo(true);
+  };
+
+
+
+  const handleWorkItemTransition = async (milestoneId: string, workItemId: string, status: ContractWorkItemStatus) => {
+    setMilestoneActionPendingId(milestoneId);
+    setMilestoneActionError(null);
+    const progressNote = window.prompt('Progress note (optional)') || undefined;
+    const result = await handleUpdateWorkItem(milestoneId, workItemId, status, progressNote);
+    if (!result.success) {
+      setMilestoneActionError({
+        milestoneId,
+        message: result.message || 'Work item could not be updated.',
+      });
+    }
+    setMilestoneActionPendingId(null);
+  };
+
+  const handleRequestPendingMilestoneUnlock = async (milestoneId: string) => {
+    const reason = window.prompt('Why should this next milestone start early?')?.trim();
+    if (!reason) return;
+    setMilestoneActionPendingId(milestoneId);
+    setMilestoneActionError(null);
+    const result = await handleRequestMilestoneUnlock(milestoneId, reason);
+    if (!result.success) {
+      setMilestoneActionError({
+        milestoneId,
+        message: result.message || t('workspace.failedRequestUnlockError'),
+      });
+    }
+    setMilestoneActionPendingId(null);
+  };
+
+  const openWithdrawDialog = (milestoneId: string, title: string, availableAmount: number) => {
+    setMilestoneActionError(null);
+    setWithdrawDialogMilestone({ milestoneId, title, availableAmount });
+  };
+
+  const closeWithdrawDialog = () => {
+    if (milestoneActionPendingId === withdrawDialogMilestone?.milestoneId) return;
+    setWithdrawDialogMilestone(null);
+  };
+
+  const confirmMilestoneWithdrawal = async () => {
+    if (!withdrawDialogMilestone || milestoneActionPendingId || withdrawalRequestInFlightRef.current) return;
+
+    const { milestoneId } = withdrawDialogMilestone;
+    withdrawalRequestInFlightRef.current = true;
+    setMilestoneActionPendingId(milestoneId);
+    setMilestoneActionError(null);
+    try {
+      const result = await handleWithdrawMilestone(milestoneId);
+
+      if (result.success) {
+        setWithdrawDialogMilestone(null);
+        toast.success(result.message || t('earlyWithdrawal.success'));
+      } else {
+        setMilestoneActionError({
+          milestoneId,
+          message: result.message || t('workspace.failedWithdrawFundsError'),
+        });
+        if (result.statusCode === 409) {
+          setWithdrawDialogMilestone(null);
+        }
+      }
+    } catch {
+      setMilestoneActionError({
+        milestoneId,
+        message: t('workspace.failedWithdrawFundsError'),
+      });
+    } finally {
+      withdrawalRequestInFlightRef.current = false;
+      setMilestoneActionPendingId(null);
+    }
+  };
+
+  const handleToggleReportList = useCallback(() => {
+    if (reportListOpen) {
+      setReportListOpen(false);
+      setViewReportId(null);
+      clearSelectedReport();
+      return;
+    }
+
+    setReportListOpen(true);
+    if (workspaceContractId) {
+      void loadReports(workspaceContractId);
+    }
+  }, [clearSelectedReport, loadReports, reportListOpen, workspaceContractId]);
+
+  const handleCloseReportList = useCallback(() => {
+    setReportListOpen(false);
+    setViewReportId(null);
+    clearSelectedReport();
+  }, [clearSelectedReport]);
+
+  const handleCreateContractReport = useCallback(
+    async (input: {
+      issueType: number;
+      description: string;
+      desiredResolution: string;
+      milestoneId?: string | null;
+      attachments?: File[];
+    }) => {
+      if (!workspaceContractId) {
+        return { success: false, message: t('workspace.failedSubmitReportError') };
+      }
+
+      const response = await createReport(workspaceContractId, input);
+      return { success: response.success, message: response.message };
+    },
+    [createReport, t, workspaceContractId],
+  );
+
+  const handleViewContractReport = useCallback(
+    async (reportId: string) => {
+      if (!workspaceContractId) return;
+      setViewReportId(reportId);
+      setUnavailableReportId(null);
+      const response = await loadReportDetail(workspaceContractId, reportId);
+      if (!response?.success || !response.data) {
+        setUnavailableReportId(reportId);
+        setViewReportId(null);
+      }
+    },
+    [loadReportDetail, workspaceContractId],
+  );
+
+  const handleCloseReportDetail = useCallback(() => {
+    setViewReportId(null);
+    clearSelectedReport();
+  }, [clearSelectedReport]);
+
+  const handleRespondToContractReport = useCallback(
+    async (input: {
+      resolutionAction: number;
+      explanation?: string | null;
+      proposedResolution?: string | null;
+      rejectReason?: string | null;
+      attachments?: File[];
+    }) => {
+      if (!workspaceContractId || !viewReportId) {
+        return { success: false, message: t('workspace.reportResponseFailed') };
+      }
+
+      const response = await respondToReport(workspaceContractId, viewReportId, input);
+      return { success: response.success, message: response.message };
+    },
+    [respondToReport, t, viewReportId, workspaceContractId],
+  );
+
+  const handleConfirmContractReport = useCallback(
+    async (isAccepted: boolean) => {
+      if (!workspaceContractId || !viewReportId) {
+        return { success: false, message: t('workspace.reportConfirmationFailed') };
+      }
+
+      const response = await confirmResolution(workspaceContractId, viewReportId, isAccepted);
+      return { success: response.success, message: response.message };
+    },
+    [confirmResolution, t, viewReportId, workspaceContractId],
+  );
+
+  const handleEscalateContractReport = useCallback(async (input: EscalateReportToDisputeInput) => {
+    if (!workspaceContractId || !selectedReport) {
+      return { success: false, message: t('workspace.disputeEscalationFailed') };
+    }
+    const response = await escalateToDispute(workspaceContractId, selectedReport.id, input);
+    if (response.success && response.data) setActiveDisputeId(response.data.id);
+    return {
+      success: response.success,
+      message: response.message,
+      disputeId: response.data?.id,
+    };
+  }, [escalateToDispute, selectedReport, t, workspaceContractId]);
+
+  const openEndProjectDialog = async () => {
+    setEndProjectError(null);
+    setEndProjectFeeMode('confirmation');
+    setEndProjectBalance(null);
+    setEndProjectModalOpen(true);
+    setIsLoadingEndProjectBalance(true);
+
+    const response = await walletGetAPI.getMyWallet();
+    if (response.success && response.data) {
+      // End-project service fee is an in-platform payment, spendable from either pool.
+      setEndProjectBalance(response.data.totalSpendableGigCoin);
+    } else {
+      setEndProjectError(response.message || t('workspace.unableLoadGigCoinBalance'));
+    }
+    setIsLoadingEndProjectBalance(false);
+  };
+
+  const closeEndProjectDialog = () => {
+    if (isEndingProject) return;
+    setEndProjectModalOpen(false);
+  };
+
+  const closeReviewDialog = () => {
+    if (activeContract?.contractsId && user?.id) {
+      sessionStorage.setItem(
+        `gigbridge-review-prompt-dismissed:${user.id}:${activeContract.contractsId}`,
+        '1',
+      );
+    }
+    setReviewDialogOpen(false);
+    clearReviewPrompt();
+  };
+
+  const handleReviewSubmitted = () => {
+    setReviewDialogOpen(false);
+    clearReviewPrompt();
+    void refreshWorkspace();
+  };
+
+  const handleConfirmEndProject = async () => {
+    if (endProjectBalance === null) return;
+    if (endProjectBalance < endProjectServiceFee) {
+      setEndProjectFeeMode('insufficient');
+      return;
+    }
+
+    setIsEndingProject(true);
+    setEndProjectError(null);
+    const result = await handleEndProject();
+    if (!result.success) {
+      if (isInsufficientServiceFeeError(result.message)) {
+        setEndProjectFeeMode('insufficient');
+        setIsEndingProject(false);
+        return;
+      }
+
+      setEndProjectError(result.message || t('workspace.failedEndProjectError'));
+      setIsEndingProject(false);
+      return;
+    }
+
+    setIsEndingProject(false);
+    setEndProjectModalOpen(false);
+    window.dispatchEvent(new Event('gigbridge-wallet-updated'));
+  };
 
   return (
-    <AppLayout fullWidth>
-      <div className="flex flex-col md:flex-row h-[calc(100vh-4rem)]">
-        {/* Left Sidebar - Project Info */}
-        <div className="hidden md:flex flex-col w-72 flex-shrink-0 p-4 overflow-y-auto border-r border-primary">
-          {/* Project Header */}
-          <div className="mb-5">
-            <h2 className="text-primary font-semibold text-sm mb-1">{project.title}</h2>
-            <div className="flex items-center gap-2">
-              <span className="badge-green text-xs">Active</span>
-              <span className="text-xs text-secondary">{project.progress}% complete</span>
-            </div>
-            <div className="progress-bar-gb mt-2">
-              <div className="progress-bar-gb-fill" style={{ width: `${project.progress}%` }} />
-            </div>
-          </div>
-
-          {/* Partner Info */}
-          <div className="p-3 rounded-xl mb-5 bg-secondary border border-primary">
-            <p className="text-xs mb-2 text-secondary">{role === 'client' ? 'Freelancer' : 'Client'}</p>
-            <div className="flex items-center gap-2">
-              <img src={partner?.avatar} alt={partner?.name} className="w-8 h-8 rounded-lg" />
-              <div>
-                <p className="text-primary text-sm font-medium">{partner?.name}</p>
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-medium" />
-                  <p className="text-xs text-green">Online</p>
-                </div>
-              </div>
+    <AppLayout fullWidth hideAIWidget>
+      <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
+        {/* Top Header */}
+        <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm flex-shrink-0">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => navigate('/projects')}
+              className="flex items-center gap-2 text-muted-foreground hover:text-[var(--gb-cyan)] transition-colors group cursor-pointer"
+            >
+              <ArrowLeft size={18} />
+              <span className="font-semibold text-sm">{t('workspace.back')}</span>
+            </button>
+            <div className="flex flex-col">
+              <h1 className="font-headline-md text-base font-bold text-foreground">{currentProjData.titleLong}</h1>
+              <button
+                onClick={() => navigate(isClient ? `/jobs/my-jobs/${project.jobId}` : `/jobs/${project.jobId}`)}
+                className="text-[10px] text-[var(--gb-cyan)] font-bold hover:underline uppercase tracking-widest text-left mt-0.5 cursor-pointer"
+              >
+                {t('workspace.viewJobDetail')}
+              </button>
             </div>
           </div>
-
-          {/* Milestones Overview */}
-          <div className="mb-5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-primary text-sm font-semibold">Milestones</p>
-              <p className="text-xs text-secondary">{completedMilestones}/{project.milestones.length}</p>
-            </div>
-            <div className="space-y-2">
-              {project.milestones.map((m, i) => {
-                const statusColor = { paid: '#22C55E', approved: '#22C55E', in_progress: '#0077FF', submitted: '#F59E0B', pending: '#8892A4' }[m.status] || '#8892A4';
-                return (
-                  <div key={m.id} className="flex items-start gap-2 p-2 rounded-lg"
-                    style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${statusColor}20` }}>
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: statusColor + '20', border: `1px solid ${statusColor}` }}>
-                      {(m.status === 'paid' || m.status === 'approved') ? (
-                        <CheckCircle size={10} style={{ color: statusColor }} />
-                      ) : (
-                        <span className="text-[8px] font-bold" style={{ color: statusColor }}>{i + 1}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-primary truncate">{m.title}</p>
-                      <p className="text-[10px]" style={{ color: statusColor }}>{m.status.replace('_', ' ')}</p>
-                    </div>
-                    <p className="text-xs font-semibold text-green">${m.amount.toLocaleString()}</p>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-4">
+            {isClient && activeContract?.status === ContractStatus.Active && (
+              <button
+                onClick={() => setProductModalOpen(true)}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-green-500/20 transition-all uppercase tracking-widest cursor-pointer flex items-center gap-2"
+                title={t('workspace.sendMaterialsTooltip')}
+              >
+                <Upload size={14} />
+                <span>{t('workspace.sendMaterialsButton')}</span>
+              </button>
+            )}
+            {activeContract?.status === ContractStatus.Active && workspaceContractId && (
+              <>
+                <button
+                  onClick={() => setRaiseIssueModalOpen(true)}
+                  className="rc-raise-issue-btn"
+                  title={t('workspace.raiseIssue')}
+                >
+                  <AlertTriangle size={14} />
+                  <span>{t('workspace.raiseIssue')}</span>
+                </button>
+                <button
+                  onClick={handleToggleReportList}
+                  className={`font-bold text-[10px] px-4 py-2 rounded-full transition-all uppercase tracking-widest cursor-pointer border ${
+                    reportListOpen
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+                      : 'bg-muted border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <FileText size={14} className="inline mr-1" />
+                  {t('workspace.issueReports')}
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => navigate(`/contracts/${project.contractId || contractId || ''}`)}
+              className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-lg shadow-blue-500/20 transition-all uppercase tracking-widest cursor-pointer"
+            >
+              {t('workspace.viewContract')}
+            </button>
           </div>
+        </header>
 
-          {/* Budget */}
-          <div className="p-3 rounded-xl mb-5" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
-            <p className="text-xs mb-1 text-secondary">Budget Status</p>
-            <p className="text-lg font-black text-green">
-              ${project.paidAmount.toLocaleString()} <span className="text-sm opacity-60">/ ${project.totalBudget.toLocaleString()}</span>
-            </p>
-            <div className="progress-bar-gb mt-2">
-              <div className="progress-bar-gb-fill" style={{ width: `${(project.paidAmount / project.totalBudget) * 100}%` }} />
-            </div>
-            <p className="text-xs mt-1 text-secondary">{Math.round((project.paidAmount / project.totalBudget) * 100)}% paid</p>
+        {activeContract?.status === ContractStatus.PendingEscrow && (
+          <div className="px-8 py-2 border-b border-amber-500/20 bg-amber-500/10 text-xs font-semibold text-amber-700 flex items-center gap-2">
+            <CreditCard size={14} />
+            <span>{t('workspace.escrowPending')}</span>
           </div>
+        )}
 
-          {/* AI Assistant Button */}
+        {/* Mobile Navigation Tabs (visible only on mobile/tablet) */}
+        <div className="flex lg:hidden border-b border-border bg-card flex-shrink-0">
           <button
-            onClick={() => setShowAI(!showAI)}
-            className="flex items-center gap-2 p-3 rounded-xl transition-all"
-            style={{ background: showAI ? 'rgba(159,75,255,0.15)' : 'rgba(159,75,255,0.06)', border: showAI ? '1px solid rgba(159,75,255,0.4)' : '1px solid rgba(159,75,255,0.2)', color: '#9F4BFF' }}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-              <Bot size={14} style={{ color: '#0A0F1C' }} />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-semibold">AI Work Assistant</p>
-              <p className="text-xs text-secondary">Ask anything about the project</p>
-            </div>
+            onClick={() => setMobileTab('list')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+              mobileTab === 'list'
+                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            {t('workspace.conversations')}
+          </button>
+          <button
+            onClick={() => setMobileTab('milestones')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+              mobileTab === 'milestones'
+                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            {t('workspace.milestones')}
+          </button>
+          <button
+            onClick={() => setMobileTab('chat')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all cursor-pointer ${
+              mobileTab === 'chat'
+                ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5 font-semibold'
+                : 'border-transparent text-muted-foreground'
+            }`}
+          >
+            {t('workspace.chatFiles')}
           </button>
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
-          <div className="flex items-center justify-between px-5 py-3"
-            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="flex items-center gap-3">
-              <img src={partner?.avatar} alt={partner?.name} className="w-9 h-9 rounded-xl" />
-              <div>
-                <p className="text-primary font-semibold text-sm">{partner?.name}</p>
-                <p className="text-xs text-green">● Online</p>
-              </div>
+        {/* 3-Column Messaging Workspace */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Column 1: Conversations List (Left Pane) */}
+          <section className={`w-80 border-r border-border flex flex-col bg-card flex-shrink-0 lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}>
+            <div className="p-4 border-b border-border flex justify-between items-center">
+              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">{t('workspace.recentWorkspace')}</span>
             </div>
-            <div className="flex items-center gap-2">
-              {['chat', 'milestones', 'files'].map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab as any)}
-                  className="px-3 py-1.5 rounded-lg text-xs capitalize transition-all"
-                  style={{
-                    background: activeTab === tab ? 'rgba(0,240,255,0.12)' : 'rgba(255,255,255,0.04)',
-                    border: activeTab === tab ? '1px solid rgba(0,240,255,0.3)' : '1px solid rgba(255,255,255,0.06)',
-                    color: activeTab === tab ? '#0077FF' : '#8892A4',
-                  }}>
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Messages */}
-          {activeTab === 'chat' && (
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {messages.map(msg => {
-                const isMe = msg.senderId === user?.id;
-                const sender = DB.getUserById(msg.senderId);
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {workspaceProjects.map(proj => {
+                const isActive = proj.id === activeProjectId;
                 return (
-                  <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                    {!isMe && (
-                      <img src={sender?.avatar} alt="" className="w-8 h-8 rounded-xl flex-shrink-0 mt-1" />
-                    )}
-                    <div className={`max-w-lg ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                      {msg.type === 'file' ? (
-                        <div className="flex items-center gap-2 p-3 rounded-xl"
-                          style={{ background: isMe ? 'rgba(0,240,255,0.12)' : 'rgba(255,255,255,0.06)', border: `1px solid ${isMe ? 'rgba(0,240,255,0.25)' : 'rgba(255,255,255,0.1)'}` }}>
-                          <Files size={16} className="text-cyan" />
-                          <span className="text-primary text-sm">{msg.fileName}</span>
+                  <div
+                    key={proj.id}
+                    onClick={() => {
+                      setActiveProjectId(proj.id);
+                      navigate(`/workspace/${proj.id}`);
+                    }}
+                    className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''}`}
+                  >
+                    <div className="flex gap-3">
+                      <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
+                        <img alt={proj.partnerName} className="w-12 h-12 rounded-full object-cover" src={proj.partnerAvatar} />
+                        {proj.online && (
+                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full"></span>
+                        )}
+                      </UserProfileLink>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <h3 className="font-headline-sm text-sm truncate font-semibold">
+                            <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>{proj.partnerName}</UserProfileLink>
+                          </h3>
+                          <span className="text-[10px] text-muted-foreground">{proj.time}</span>
                         </div>
-                      ) : (
-                        <div className="px-4 py-2.5 rounded-2xl text-sm"
-                          style={{
-                            background: isMe ? 'linear-gradient(135deg, rgba(0,240,255,0.2), rgba(0,150,255,0.15))' : 'rgba(255,255,255,0.06)',
-                            border: isMe ? '1px solid rgba(0,240,255,0.25)' : '1px solid rgba(255,255,255,0.08)',
-                            color: 'white', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                          }}>
-                          {msg.content}
-                        </div>
+                        {proj.status === ContractStatus.Disputed && (
+                          <span className="workspace-disputed-badge">
+                            <LockKeyhole size={11} /> {t('workspace.disputedBadge')}
+                          </span>
+                        )}
+                        <p className={`text-xs truncate ${proj.unread ? 'text-foreground font-semibold animate-pulse' : 'text-muted-foreground'}`}>
+                          {proj.latestMessage}
+                        </p>
+                      </div>
+                      {proj.unread && (
+                        <span className="w-2 h-2 bg-[var(--gb-cyan)] rounded-full self-center"></span>
                       )}
-                      <p className="text-[10px]" style={{ color: '#4B5563' }}>
-                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
                     </div>
                   </div>
                 );
               })}
-              <div ref={chatEndRef} />
             </div>
-          )}
+          </section>
 
-          {activeTab === 'milestones' && (
-            <div className="flex-1 overflow-y-auto p-5">
-              <div className="space-y-4">
-                {project.milestones.map((m, i) => {
-                  const statusColor = { paid: '#22C55E', approved: '#22C55E', in_progress: '#0077FF', submitted: '#F59E0B', pending: '#8892A4' }[m.status] || '#8892A4';
-                  return (
-                    <div key={m.id} className="glass-card p-5">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                            style={{ background: statusColor + '20', border: `1px solid ${statusColor}40` }}>
-                            <span className="text-sm font-bold" style={{ color: statusColor }}>{i + 1}</span>
-                          </div>
-                          <div>
-                            <h3 className="text-primary font-semibold">{m.title}</h3>
-                            <p className="text-xs capitalize" style={{ color: statusColor }}>{m.status.replace('_', ' ')}</p>
-                          </div>
-                        </div>
-                        <p className="text-xl font-black text-green">${m.amount.toLocaleString()}</p>
-                      </div>
-                      <p className="text-sm text-secondary">{m.description}</p>
-                      <p className="text-xs mt-2 text-secondary">Due: {m.dueDate}</p>
-                      {m.status === 'in_progress' && role === 'freelancer' && (
-                        <button className="btn-cyan mt-3 px-4 py-2 text-sm">Submit for Review</button>
-                      )}
-                      {m.status === 'submitted' && role === 'client' && (
-                        <div className="flex gap-2 mt-3">
-                          <button className="btn-cyan px-4 py-2 text-sm">Approve & Pay</button>
-                          <button className="btn-ghost-cyan px-4 py-2 text-sm">Request Changes</button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'files' && (
-            <div className="flex-1 overflow-y-auto p-5">
-              <div className="glass-card p-4 mb-4">
-                <p className="text-sm font-semibold text-primary mb-3">Shared Files</p>
-                {[
-                  { name: 'architecture-diagram.pdf', size: '2.4 MB', date: 'Apr 2' },
-                  { name: 'ui-wireframes.fig', size: '8.1 MB', date: 'Apr 5' },
-                  { name: 'api-spec.yml', size: '156 KB', date: 'Apr 8' },
-                ].map(file => (
-                  <div key={file.name} className="flex items-center justify-between p-3 rounded-xl mb-2"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="flex items-center gap-3">
-                      <Files size={16} className="text-cyan" />
-                      <div>
-                        <p className="text-primary text-sm font-medium">{file.name}</p>
-                        <p className="text-xs text-secondary">{file.size} · {file.date}</p>
-                      </div>
-                    </div>
-                    <button className="text-xs text-cyan">Download</button>
-                  </div>
-                ))}
-              </div>
-              <div className="upload-zone">
-                <Files size={24} className="mx-auto mb-2 text-secondary" />
-                <p className="text-sm text-primary">Drop files or click to upload</p>
-              </div>
-            </div>
-          )}
-
-          {/* Message Input */}
-          {activeTab === 'chat' && (
-            <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <div className="flex items-end gap-3">
-                <button className="p-2.5 rounded-xl flex-shrink-0 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#8892A4' }}>
-                  <Paperclip size={18} />
-                </button>
-                <div className="flex-1 relative">
-                  <textarea value={message} onChange={e => setMessage(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                    placeholder="Type a message... (Enter to send)"
-                    rows={1} className="input-gb w-full px-4 py-3 resize-none text-sm" />
-                </div>
-                <button
-                  onClick={() => setShowAI(true)}
-                  className="p-2.5 rounded-xl flex-shrink-0 transition-all"
-                  style={{ background: 'rgba(159,75,255,0.1)', border: '1px solid rgba(159,75,255,0.25)', color: '#9F4BFF' }}>
-                  <Bot size={18} />
-                </button>
-                <button onClick={sendMessage} disabled={!message.trim()}
-                  className="btn-cyan p-2.5 rounded-xl flex-shrink-0 disabled:opacity-40">
-                  <Send size={18} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* AI Assistant Sidebar */}
-        {showAI && (
-          <div className="w-80 flex flex-col flex-shrink-0"
-            style={{ borderLeft: '1px solid rgba(159,75,255,0.2)', background: 'rgba(10,15,28,0.8)' }}>
-            {/* AI Header */}
-            <div className="flex items-center justify-between p-4"
-              style={{ borderBottom: '1px solid rgba(159,75,255,0.15)' }}>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center animate-orb"
-                  style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-                  <Bot size={14} style={{ color: '#0A0F1C' }} />
+          {/* Column 2: Milestone Management (Center Pane) */}
+          <section className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm lg:flex ${mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'}`}>
+            {/* Header */}
+            <div className="glass-header px-6 py-4 border-b border-border flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)]">
+                  <CreditCard size={20} />
                 </div>
                 <div>
-                  <p className="text-primary text-sm font-semibold">AI Work Assistant</p>
-                  <p className="text-xs text-green">● Active</p>
+                  <h2 className="font-headline-sm text-sm font-semibold">{t('workspace.milestoneManagement')}</h2>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                    {t('workspace.trackDeliverables', { title: currentProjData.title })}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setShowAI(false)} className="text-secondary">
-                <X size={16} />
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleOpenMilestoneEditor}
+                  className="bg-card hover:bg-muted border border-border text-foreground font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <ListChecks size={15} />
+                  <span>{t('workspace.milestoneDetails')}</span>
+                </button>
+                {showEndProjectButton && (
+                  <button
+                    onClick={openEndProjectDialog}
+                    disabled={!allMilestonesApproved}
+                    className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
+                    title={allMilestonesApproved ? t('workspace.releaseEscrowTooltip') : t('workspace.approveAllTooltip')}
+                  >
+                    <CheckCircle size={16} />
+                    <span>{t('workspace.endProject')}</span>
+                  </button>
+                )}
+                {activeContract?.canReview && (
+                  <button
+                    type="button"
+                    onClick={() => setReviewDialogOpen(true)}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Star size={16} />
+                    <span>{t(isClient ? 'reviews.leaveForFreelancer' : 'reviews.leaveForClient')}</span>
+                  </button>
+                )}
+                {activeContract?.hasReviewedByCurrentUser && activeContract.status === ContractStatus.Completed && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600">
+                    <CheckCircle size={15} /> {t('reviews.reviewed')}
+                  </span>
+                )}
+                <button
+                  onClick={() => setShowInfo(!showInfo)}
+                  className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-all cursor-pointer ${showInfo ? 'bg-[var(--gb-cyan)]/10 border-[var(--gb-cyan)]/30 text-[var(--gb-cyan)]' : 'text-muted-foreground'}`}
+                  title={t('workspace.toggleChatInfo')}
+                >
+                  <Info size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Dashboard stats */}
+            <div className="p-6 bg-card/50 border-b border-border grid grid-cols-3 gap-4">
+              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.totalMilestones')}</span>
+                <span className="text-xl font-bold mt-1">{project.milestones.length}</span>
+              </div>
+              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.projectProgress')}</span>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
+                    <div className="bg-[var(--gb-cyan)] h-full rounded-full" style={{ width: `${project.progress}%` }}></div>
+                  </div>
+                  <span className="text-xs font-bold">{project.progress}%</span>
+                </div>
+              </div>
+              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.paidAmount')}</span>
+                <span className="text-xl font-bold mt-1 text-green-500"><GigCoinAmount amount={project.paidAmount || 0} /></span>
+              </div>
+            </div>
+
+            {showFreelancerPayoutCard && (
+              <div className="workspace-receive-money-card" role="status" aria-live="polite">
+                <div className="workspace-receive-money-icon">
+                  <Wallet size={22} />
+                </div>
+                <div className="workspace-receive-money-copy">
+                  <span>{t('workspace.finalPayout')}</span>
+                  <h3>{t('workspace.finalPayoutReconciliation')}</h3>
+                  <p>{t('workspace.finalPayoutNotice')}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/wallet/history')}
+                  className="workspace-receive-money-button"
+                >
+                  {t('workspace.viewWalletHistory')}
+                </button>
+              </div>
+            )}
+
+            {/* Milestones timeline/list */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+              {project.milestones.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                  <p className="text-sm">{t('workspace.noMilestones')}</p>
+                </div>
+              ) : (
+                project.milestones.map((milestone, idx) => {
+                  const isCompleted = milestone.status === 'approved';
+                  const isInProgress = milestone.status === 'in_progress';
+                  const isSubmitted = milestone.status === 'submitted';
+                  const isPending = milestone.status === 'pending';
+                  const isReleasedInFull = milestone.amount > 0 && milestone.releasedAmount >= milestone.amount;
+                  const withdrawalEligibility = getEarlyWithdrawalEligibility(
+                    project.milestones,
+                    milestone,
+                    activeContract?.status,
+                    isFreelancer,
+                  );
+                  const showFreelancerWithdraw = isFreelancer &&
+                    withdrawalEligibility.isContractActive &&
+                    withdrawalEligibility.isApproved &&
+                    !withdrawalEligibility.isAtCap;
+                  const showEarlyWithdrawalCap = isFreelancer &&
+                    withdrawalEligibility.isApproved &&
+                    withdrawalEligibility.isAtCap &&
+                    !isReleasedInFull;
+                  const workItems = milestone.workItems || [];
+                  const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
+                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress && allWorkItemsCompleted;
+                  const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
+                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
+                  const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
+                  const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
+
+                  return (
+                    <div
+                      key={milestone.id || idx}
+                      className={`border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${
+                        isCompleted
+                          ? 'bg-card border-green-500/20'
+                          : isInProgress
+                          ? 'bg-card border-[var(--gb-cyan)]/50 ring-1 ring-[var(--gb-cyan)]/25'
+                          : 'bg-muted/10 opacity-90 border-border'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="mt-1">
+                            {isCompleted ? (
+                              <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
+                            ) : isInProgress ? (
+                              <div className="w-5 h-5 rounded-full border-2 border-[var(--gb-cyan)] flex items-center justify-center flex-shrink-0">
+                                <div className="w-2.5 h-2.5 bg-[var(--gb-cyan)] rounded-full animate-pulse"></div>
+                              </div>
+                            ) : (
+                              <Circle size={20} className="text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground">{milestone.title}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">{milestone.description || t('workspace.noDescription')}</p>
+                            
+                            <div className="flex flex-wrap items-center gap-4 mt-3 text-[11px] text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <span className="font-semibold text-foreground">{t('workspace.amount')}:</span> <GigCoinAmount amount={milestone.amount} />
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <span className="font-semibold text-foreground">{t('workspace.released')}</span> <GigCoinAmount amount={milestone.releasedAmount} />
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <span className="font-semibold text-foreground">{t('workspace.dueDate')}:</span> {milestone.dueDate}
+                              </span>
+                              {milestone.completedAt && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <span className="font-semibold text-foreground">{t('workspace.completed')}:</span> {new Date(milestone.completedAt).toLocaleDateString()}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                            isCompleted
+                              ? 'bg-green-500/10 text-green-500'
+                              : isInProgress
+                              ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] animate-pulse'
+                              : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {milestone.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2 border-t border-border pt-4">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Work Breakdown Structure</h4>
+                        {workItems.map((workItem, workIndex) => {
+                          const status = Number(workItem.status);
+                          const canStartWork = !isWorkspaceLocked && !isClient && isInProgress && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
+                          const canCompleteWork = !isWorkspaceLocked && !isClient && isInProgress && status === ContractWorkItemStatus.InProgress;
+                          return <div key={workItem.workItemId} className="rounded-lg border border-border bg-background p-3">
+                            <div className="flex flex-wrap items-start justify-between gap-2"><div><strong className="text-xs">{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-[11px] text-muted-foreground">{workItem.description}</p>}</div><span className="rounded bg-muted px-2 py-1 text-[10px] font-bold">{ContractWorkItemStatus[status] || status}</span></div>
+                            {workItem.progressNote && <p className="mt-2 text-[11px]"><strong>Progress:</strong> {workItem.progressNote}</p>}
+                            {(canStartWork || canCompleteWork) && <button type="button" onClick={() => handleWorkItemTransition(milestone.id, workItem.workItemId, canCompleteWork ? ContractWorkItemStatus.Completed : ContractWorkItemStatus.InProgress)} disabled={isMilestoneActionPending} className="mt-2 rounded border border-border px-3 py-1.5 text-[10px] font-bold hover:bg-muted disabled:opacity-50">{canCompleteWork ? 'Mark completed' : status === ContractWorkItemStatus.RevisionRequired ? 'Start revision' : 'Start work item'}</button>}
+                          </div>;
+                        })}
+                      </div>
+
+                      {(isInProgress || isSubmitted || canFreelancerRequestUnlock || showFreelancerWithdraw || showEarlyWithdrawalCap || (!isClient && isCompleted && isReleasedInFull)) && (
+                        <div className="mt-4 pt-4 border-t border-border flex items-center justify-between gap-4">
+                          <div className="flex-1 max-w-xs">
+                            {showFreelancerWithdraw ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {t('earlyWithdrawal.availableBeforeEnd')} <GigCoinAmount amount={withdrawalEligibility.availableAmount} />
+                              </span>
+                            ) : !isClient && isCompleted && isReleasedInFull ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('workspace.releasedInFull')}
+                              </span>
+                            ) : showEarlyWithdrawalCap ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('earlyWithdrawal.maximumReached')}
+                              </span>
+                            ) : (isInProgress || isSubmitted) ? (
+                              <>
+                                <div className="flex justify-between text-[10px] mb-1">
+                                  <span className="text-muted-foreground">{t('workspace.progress')}</span>
+                                  <span className="font-bold text-[var(--gb-cyan)]">{isSubmitted ? '90%' : '65%'}</span>
+                                </div>
+                                <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
+                                  <div className={`bg-[var(--gb-cyan)] h-full rounded-full ${isSubmitted ? 'w-[90%]' : 'w-[65%]'}`}></div>
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {t('workspace.waitingClientUnlock')}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            {canClientReview ? (
+                              <button
+                                onClick={() => navigate(`/contracts/${workspaceContractId}/milestones/${milestone.id}/approve`)}
+                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                              >
+                                {t('workspace.reviewMilestone')}
+                              </button>
+                            ) : canFreelancerSubmit ? (
+                              <button
+                                onClick={() => openSubmitModal(milestone)}
+                                className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                              >
+                                {t('workspace.submitDeliverable')}
+                              </button>
+                            ) : canFreelancerRequestUnlock ? (
+                              <button
+                                onClick={() => handleRequestPendingMilestoneUnlock(milestone.id)}
+                                disabled={isMilestoneActionPending}
+                                className="bg-card hover:bg-muted disabled:opacity-60 text-foreground border border-border px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                              >
+                                {isMilestoneActionPending ? t('workspace.requesting') : 'Request early start'}
+                              </button>
+                            ) : showFreelancerWithdraw ? (
+                              <button
+                                type="button"
+                                onClick={() => openWithdrawDialog(milestone.id, milestone.title, withdrawalEligibility.availableAmount)}
+                                disabled={isMilestoneActionPending || !withdrawalEligibility.meetsApprovalThreshold}
+                                title={withdrawalEligibility.meetsApprovalThreshold
+                                  ? t('earlyWithdrawal.actionTooltip')
+                                  : t('earlyWithdrawal.thresholdTooltip', {
+                                      approved: withdrawalEligibility.approvedMilestones,
+                                      required: withdrawalEligibility.requiredApprovedMilestones,
+                                    })}
+                                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm cursor-pointer"
+                              >
+                                {isMilestoneActionPending ? t('earlyWithdrawal.submitting') : t('earlyWithdrawal.action')}
+                              </button>
+                            ) : !isClient && isCompleted && isReleasedInFull ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('workspace.releasedInFull')}
+                              </span>
+                            ) : showEarlyWithdrawalCap ? (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">
+                                {t('earlyWithdrawal.maximumReached')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                {isSubmitted ? t('workspace.waitingClientReview') : t('workspace.waitingFreelancer')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {milestoneActionError?.milestoneId === milestone.id && (
+                        <div className="mt-3 text-[11px] font-semibold text-red-500">
+                          {milestoneActionError.message}
+                        </div>
+                      )}
+                      {showFreelancerWithdraw && !withdrawalEligibility.meetsApprovalThreshold && (
+                        <div className="mt-3 text-[11px] font-semibold text-amber-600">
+                          {t('earlyWithdrawal.thresholdWarning', {
+                            approved: withdrawalEligibility.approvedMilestones,
+                            required: withdrawalEligibility.requiredApprovedMilestones,
+                          })}
+                        </div>
+                      )}
+                      {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
+                      {!isWorkspaceLocked && isClient && earlyStartRequest && <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs"><strong>Early start requested</strong><p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p><div className="mt-2 flex gap-2"><button type="button" disabled={isMilestoneActionPending} onClick={async () => { setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not approve request.' }); setMilestoneActionPendingId(null); }} className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">Approve</button><button type="button" disabled={isMilestoneActionPending} onClick={async () => { const note = window.prompt('Rejection note') || undefined; setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not reject request.' }); setMilestoneActionPendingId(null); }} className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500">Reject</button></div></div>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          {/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files) */}
+          <aside
+            className={`border-l border-border flex flex-col bg-card overflow-hidden transition-all duration-300 flex-shrink-0
+              lg:${ showInfo ? 'w-[450px] xl:w-[480px] opacity-100' : 'w-0 opacity-0 pointer-events-none' }
+              ${mobileTab === 'chat' ? 'flex flex-1' : 'hidden lg:flex'}
+              ${!showInfo ? 'lg:w-0 lg:opacity-0 lg:pointer-events-none' : ''}
+            `}
+          >
+            {/* 2 Tabs at the top */}
+            <div className="flex border-b border-border bg-card">
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'chat'
+                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <MessageSquare size={14} />
+                <span>{t('nav.messages')}</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider text-center border-b-2 transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'files'
+                    ? 'border-[var(--gb-cyan)] text-[var(--gb-cyan)] bg-[var(--gb-cyan)]/5'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <FileText size={14} />
+                <span>{t('workspace.sharedFiles')}</span>
               </button>
             </div>
 
-            {/* AI Chat */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {aiChat.map((msg, i) => (
-                <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  {msg.role === 'ai' && (
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-                      <Bot size={10} style={{ color: '#0A0F1C' }} />
+            {/* Tab content area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {activeTab === 'chat' && (
+                <div className="flex-1 flex flex-col overflow-hidden relative">
+                  {/* Chat Header */}
+                  <div className="glass-header px-4 py-3 border-b border-border flex justify-between items-center flex-shrink-0">
+                    {/* Partner info with JS-state hover popover */}
+                    <div
+                      className="flex items-center gap-3 relative cursor-pointer py-1"
+                      onMouseEnter={() => {
+                        if (profilePopoverTimeout.current) clearTimeout(profilePopoverTimeout.current);
+                        setShowProfilePopover(true);
+                      }}
+                      onMouseLeave={() => {
+                        profilePopoverTimeout.current = setTimeout(() => setShowProfilePopover(false), 150);
+                      }}
+                    >
+                      <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex items-center gap-3">
+                        <span className="relative">
+                          <img alt={partnerName} className="w-8 h-8 rounded-full object-cover" src={partnerAvatar} />
+                          {isPartnerOnline && (
+                            <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 border border-card rounded-full"></span>
+                          )}
+                        </span>
+                        <span>
+                          <h2 className="text-xs font-semibold">{partnerName}</h2>
+                          <p className="text-[9px] text-green-500 font-semibold uppercase tracking-widest">
+                            {isPartnerOnline ? t('workspace.online') : t('workspace.offline')} • {partnerTitle}
+                          </p>
+                        </span>
+                      </UserProfileLink>
+
+                      {/* Hover Popover — stays open while hovered */}
+                      {showProfilePopover && (
+                        <div
+                          className="absolute left-0 top-full w-64 bg-card border border-border rounded-xl shadow-2xl p-4 z-[80]"
+                          onMouseEnter={() => {
+                            if (profilePopoverTimeout.current) clearTimeout(profilePopoverTimeout.current);
+                          }}
+                          onMouseLeave={() => {
+                            profilePopoverTimeout.current = setTimeout(() => setShowProfilePopover(false), 150);
+                          }}
+                        >
+                          <div className="text-center">
+                            <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'}>
+                              <img alt={partnerName} className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
+                              <h3 className="font-bold text-xs text-foreground">{partnerName}</h3>
+                            </UserProfileLink>
+                            <p className="text-[9px] text-muted-foreground mb-3">{partnerTitle} at {partnerCompany}</p>
+                            <div className="flex justify-center gap-2 mb-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const path = getProfilePath(partnerUserId, isClient ? 'freelancer' : 'client');
+                                  if (path) navigate(path);
+                                }}
+                                className="text-[8px] font-bold px-3 py-1 rounded-full bg-secondary text-foreground hover:bg-muted uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                {t('workspace.viewProfile')}
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsFavorited(!isFavorited);
+                                }}
+                                className={`text-[8px] font-bold px-3 py-1 rounded-full uppercase tracking-wider transition-all cursor-pointer ${
+                                  isFavorited ? 'bg-[var(--gb-cyan)] text-white' : 'bg-secondary text-foreground hover:bg-muted'
+                                }`}
+                              >
+                                {isFavorited ? t('workspace.favorited') : t('workspace.favorite')}
+                              </button>
+                            </div>
+                            <div className="border-t border-border pt-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsBlocked(!isBlocked);
+                                  alert(isBlocked ? t('workspace.contactUnblocked') : t('workspace.contactBlocked'));
+                                }}
+                                className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border font-bold text-[9px] uppercase tracking-widest transition-all cursor-pointer ${
+                                  isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
+                                }`}
+                              >
+                                <Ban size={10} />
+                                {isBlocked ? t('workspace.unblockContact') : t('workspace.blockContact')}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Messages list */}
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
+                    <div className="flex justify-center mb-1">
+                      <span className="bg-muted px-2.5 py-0.5 rounded-full text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">
+                        {t('workspace.chatHeader')}
+                      </span>
+                    </div>
+
+                    {projectMessages.map((msg, index) => {
+                      const isMe = msg.senderId === user?.id || (msg.senderId === 'client' && isClient) || (msg.senderId === 'freelancer' && !isClient);
+                      const reportEvent = parseReportSystemMessageMetadata(msg.metadata);
+                      const isSystemMessage = msg.type === 'system';
+
+                      if (reportEvent) {
+                        const detail = getReportSystemDetail(reportEvent);
+                        const isSelected = viewReportId === reportEvent.reportId;
+                        const isUnavailable = unavailableReportId === reportEvent.reportId;
+                        const titleKey = reportEvent.eventType === 'created'
+                          ? 'workspace.reportSystemCreatedTitle'
+                          : reportEvent.eventType === 'resolved'
+                            ? 'workspace.reportSystemResolvedTitle'
+                            : 'workspace.reportSystemUpdatedTitle';
+
+                        return (
+                          <div key={msg.id || index} className="flex justify-center self-stretch">
+                            <div
+                              id={`report-system-${reportEvent.reportId}`}
+                              className={`w-full max-w-md rounded-xl border bg-card p-4 shadow-sm transition-all ${
+                                isSelected
+                                  ? 'border-amber-500 ring-2 ring-amber-500/20'
+                                  : 'border-amber-500/30'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  {reportEvent.eventType === 'resolved' ? (
+                                    <CheckCircle size={18} className="text-green-500" />
+                                  ) : (
+                                    <AlertTriangle size={18} className="text-amber-500" />
+                                  )}
+                                  <h4 className="text-sm font-bold text-foreground">{t(titleKey)}</h4>
+                                </div>
+                                <span className={`rc-status rc-status-${reportEvent.status}`}>
+                                  {t(REPORT_STATUS_KEYS[reportEvent.status] || 'workspace.reportStatusPending')}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                {getReportSystemSummary(reportEvent, t)}
+                              </p>
+
+                              {reportEvent.eventType === 'created' && (
+                                <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3 text-xs">
+                                  <div>
+                                    <strong>{t('workspace.reportSystemReason')}:</strong>{' '}
+                                    {t(REPORT_ISSUE_KEYS[reportEvent.issueType] || 'workspace.reportIssueTypeOther')}
+                                  </div>
+                                  <div>
+                                    <strong>{t('workspace.reportDesiredResolution')}:</strong>{' '}
+                                    {reportEvent.desiredResolution}
+                                  </div>
+                                  <div>
+                                    <strong>{t('workspace.reportDescription')}:</strong>{' '}
+                                    {reportEvent.description}
+                                  </div>
+                                </div>
+                              )}
+
+                              {reportEvent.eventType === 'updated' && (
+                                <div className="mt-3 space-y-2 rounded-lg bg-muted/50 p-3 text-xs">
+                                  <div>
+                                    <strong>{t('workspace.reportSystemAction')}:</strong>{' '}
+                                    {reportEvent.resolutionAction === null
+                                      ? t('workspace.reportSystemUpdatedTitle')
+                                      : t(REPORT_ACTION_KEYS[reportEvent.resolutionAction])}
+                                  </div>
+                                  {detail && (
+                                    <div>
+                                      <strong>{t('workspace.reportSystemReason')}:</strong> {detail}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {reportEvent.eventType === 'resolved' && (
+                                <p className="mt-3 rounded-lg bg-green-500/10 p-3 text-xs font-medium text-green-600">
+                                  {t('workspace.reportSystemResolvedBody')}
+                                </p>
+                              )}
+
+                              {isUnavailable ? (
+                                <p className="mt-3 text-xs font-semibold text-red-500">
+                                  {t('workspace.reportUnavailable')}
+                                </p>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleViewContractReport(reportEvent.reportId)}
+                                  disabled={isLoadingReportDetail && isSelected}
+                                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-600 transition hover:bg-amber-500/10 disabled:opacity-50"
+                                >
+                                  {isLoadingReportDetail && isSelected
+                                    ? t('common.loading')
+                                    : t('workspace.reportView')}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (isSystemMessage) {
+                        return (
+                          <div key={msg.id || index} className="flex justify-center self-stretch">
+                            <div className="max-w-md rounded-full border border-border bg-muted/80 px-4 py-1.5 text-center text-xs font-medium text-muted-foreground">
+                              {msg.content}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={msg.id || index} className={`flex items-end gap-2 max-w-[85%] ${isMe ? 'self-end flex-row-reverse' : ''}`}>
+                          {!isMe && (
+                            <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex-shrink-0">
+                              <img alt="" className="w-7 h-7 rounded-full object-cover" src={partnerAvatar} />
+                            </UserProfileLink>
+                          )}
+                          <div className="flex flex-col gap-1">
+                            {msg.type === 'file' ? (
+                              <div className="bg-card p-3 rounded-xl shadow-sm border border-border max-w-[280px]">
+                                <p className="text-xs text-foreground mb-2">{msg.content}</p>
+                                <div className="rounded-lg overflow-hidden border border-border">
+                                  {msg.fileUrl ? (
+                                    <img alt="Attachment" className="w-full h-32 object-cover" src={msg.fileUrl} />
+                                  ) : (
+                                    <div className="w-full h-24 bg-muted flex items-center justify-center">
+                                      <FileText size={24} className="text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="bg-muted p-1.5 flex justify-between items-center text-[9px] text-muted-foreground">
+                                    <span className="truncate max-w-[150px]">{msg.fileName}</span>
+                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(t('workspace.downloadSim', { name: msg.fileName }))} />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className={`p-3 rounded-xl shadow-sm border text-xs leading-relaxed ${isMe ? 'bg-[var(--gb-cyan)] text-white border-transparent rounded-br-none' : 'bg-card text-foreground border-border rounded-bl-none'}`}>
+                                <p>{msg.content}</p>
+                              </div>
+                            )}
+                            <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                              <span className="text-[9px] text-muted-foreground">
+                                {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                              {isMe && (
+                                <span className="text-[10px] text-[var(--gb-cyan)] font-bold">✓✓</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Input area */}
+                  {isWorkspaceLocked ? (
+                    <div className="p-4 bg-muted/50 border-t border-border text-center text-xs font-semibold text-muted-foreground">
+                      {isContractDisputed ? (
+                        <div className="workspace-dispute-lock">
+                          <AlertTriangle size={18} />
+                          <div>
+                            <strong>{t('workspace.disputeLockedTitle')}</strong>
+                            <p>{t('workspace.disputeLockedDescription')}</p>
+                          </div>
+                          {activeDisputeId && (
+                            <button type="button" onClick={() => navigate(`/contracts/${workspaceContractId}/disputes/${activeDisputeId}`)}>
+                              {t('workspace.openDispute')}
+                            </button>
+                          )}
+                        </div>
+                      ) : t('workspace.viewOnlyNotice')}
+                    </div>
+                  ) : (
+                  <div className="p-3 bg-card border-t border-border flex-shrink-0">
+                    <div className="flex flex-col border border-border rounded-xl bg-card relative focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]/25 transition-all">
+                      <textarea
+                        className="w-full bg-transparent border-none focus:outline-none p-3 resize-none min-h-[44px] text-xs focus:ring-0"
+                        placeholder={t('workspace.typeMessagePlaceholder')}
+                        rows={1}
+                        value={messageInput ?? ''}
+                        onChange={e => setMessageInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                      />
+
+                      <div className="flex justify-between items-center px-3 pb-2">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={handleSimulateAttachment}
+                            className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
+                            title={t('workspace.attachFile')}
+                          >
+                            <Paperclip size={14} />
+                          </button>
+                          <button
+                            onClick={() => setMessageInput(prev => `${prev ?? ''}😊`)}
+                            className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-[var(--gb-cyan)] hover:bg-muted rounded-full transition-all cursor-pointer"
+                            title={t('workspace.addEmoji')}
+                          >
+                            <Smile size={14} />
+                          </button>
+                        </div>
+                        <button
+                          onClick={handleSendMessage}
+                          className="bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white h-8 px-4 rounded-full flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 shadow-md shadow-blue-500/20 cursor-pointer"
+                        >
+                          <span>{t('workspace.send')}</span>
+                          <Send size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   )}
-                  <div className="px-3 py-2 rounded-xl text-xs leading-relaxed"
-                    style={{
-                      background: msg.role === 'ai' ? 'rgba(159,75,255,0.08)' : 'rgba(0,240,255,0.1)',
-                      border: `1px solid ${msg.role === 'ai' ? 'rgba(159,75,255,0.2)' : 'rgba(0,240,255,0.2)'}`,
-                      color: 'white', maxWidth: '85%',
-                    }}>
-                    {msg.content}
+                </div>
+              )}
+
+              {activeTab === 'files' && (
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('workspace.sharedFiles')}</h4>
+                    <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">{t('workspace.seeAll')}</button>
+                  </div>
+                  <div className="space-y-3">
+                    {productHandoffs.map(handoff => {
+                      const productUrl = getProductHandoffUrl(handoff);
+                      const isLink = handoff.sourceType === ContractProductHandoffSourceType.Link;
+
+                      return (
+                        <button
+                          type="button"
+                          key={handoff.contractProductHandoffId}
+                          onClick={productUrl ? () => window.open(productUrl, '_blank', 'noopener,noreferrer') : undefined}
+                          disabled={!productUrl}
+                          aria-label={t('workspace.openHandoffAria', { defaultValue: `Open ${getProductHandoffLabel(handoff, t)} version ${handoff.version}`, label: getProductHandoffLabel(handoff, t), version: handoff.version })}
+                          className={`w-full text-left flex items-center gap-3 p-3 bg-[var(--gb-cyan)]/5 rounded-lg transition-all border border-[var(--gb-cyan)]/20 ${
+                            productUrl ? 'cursor-pointer hover:bg-[var(--gb-cyan)]/10' : 'cursor-default opacity-70'
+                          }`}
+                        >
+                          <div className="w-9 h-9 rounded bg-[var(--gb-cyan)]/10 flex items-center justify-center flex-shrink-0 text-[var(--gb-cyan)]">
+                            {isLink ? <Link2 size={18} /> : <FileText size={18} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-bold truncate text-foreground">
+                              {getProductHandoffLabel(handoff, t)}
+                            </p>
+                            <p className="text-[9px] text-muted-foreground truncate">
+                              {t('workspace.version', { version: handoff.version })}
+                              {handoff.note ? ` - ${handoff.note}` : ''}
+                            </p>
+                          </div>
+                          {productUrl && (
+                            <Download size={14} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                    {[
+                      { name: 'Contract_Alex_J.pdf', size: '2.4 MB', date: 'Oct 14', icon: <FileText className="text-red-500" /> },
+                      { name: 'UI_Moodboard_v1.zip', size: '18.5 MB', date: 'Oct 13', icon: <ImageIcon className="text-[var(--gb-cyan)]" /> },
+                      { name: 'Project_Timeline.xlsx', size: '120 KB', date: 'Oct 11', icon: <Table className="text-green-500" /> }
+                    ].map(file => (
+                      <div
+                        key={file.name}
+                        onClick={() => alert(t('workspace.downloadSim', { name: file.name }))}
+                        className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
+                      >
+                        <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                          {file.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold truncate text-foreground">{file.name}</p>
+                          <p className="text-[9px] text-muted-foreground">{file.size} • {file.date}</p>
+                        </div>
+                        <Download size={14} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <EarlyWithdrawalDialog
+        open={Boolean(withdrawDialogMilestone)}
+        milestoneTitle={withdrawDialogMilestone?.title || ''}
+        availableAmount={withdrawDialogMilestone?.availableAmount || 0}
+        submitting={Boolean(withdrawDialogMilestone && milestoneActionPendingId === withdrawDialogMilestone.milestoneId)}
+        error={withdrawDialogMilestone && milestoneActionError?.milestoneId === withdrawDialogMilestone.milestoneId
+          ? milestoneActionError.message
+          : null}
+        onConfirm={confirmMilestoneWithdrawal}
+        onCancel={closeWithdrawDialog}
+      />
+
+      <ServiceFeeDialog
+        open={endProjectModalOpen}
+        mode={endProjectFeeMode}
+        action="endProject"
+        jobAmount={completedJobAmount}
+        serviceFee={endProjectServiceFee}
+        balance={endProjectBalance}
+        loadingBalance={isLoadingEndProjectBalance}
+        submitting={isEndingProject}
+        error={endProjectError}
+        onConfirm={handleConfirmEndProject}
+        onCancel={closeEndProjectDialog}
+        onTopUp={() => {
+          setEndProjectModalOpen(false);
+          navigate('/wallet/deposit');
+        }}
+      />
+
+      <ProjectReviewDialog
+        open={reviewDialogOpen}
+        contract={activeContract}
+        role={reviewRole}
+        onClose={closeReviewDialog}
+        onSubmitted={handleReviewSubmitted}
+      />
+
+      {submitModal && (
+        <div className="workspace-submit-modal-backdrop" role="presentation">
+          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-submit-title">
+            <div className="workspace-submit-modal-header">
+              <div>
+                <h3 id="workspace-submit-title">{t('workspace.submitDeliverableModalTitle')}</h3>
+                <p>{submitModal.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={resetSubmitModal}
+                className="workspace-submit-icon-button"
+                title={t('common.close')}
+                disabled={isSubmittingDeliverable}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            {/* Quick suggestions */}
-            <div className="px-4 pb-2 flex flex-wrap gap-1">
-              {AI_QUICK_SUGGESTIONS.map(s => (
-                <button key={s} onClick={() => { setAiMessage(s); }}
-                  className="text-[10px] px-2 py-1 rounded-lg transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#8892A4' }}>
-                  {s}
+            <form onSubmit={handleSubmitDeliverable} className="workspace-submit-form">
+              {submitError && (
+                <div className="workspace-submit-error">
+                  <AlertCircle size={16} />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
+              <div className="workspace-submit-field">
+                  <label htmlFor="workspace-deliverable-file">{t('workspace.fileSourceOption')}</label>
+                  <input
+                    ref={submitFileInputRef}
+                    id="workspace-deliverable-file"
+                    type="file"
+                    onChange={handleSelectSubmitFile}
+                    disabled={isSubmittingDeliverable}
+                  />
+                  {submitFile && (
+                    <div className="workspace-submit-file">
+                      <FileText size={15} />
+                      <span>{submitFile.name}</span>
+                      <strong>{(submitFile.size / (1024 * 1024)).toFixed(2)} MB</strong>
+                    </div>
+                  )}
+                </div>
+
+              <div className="workspace-submit-field">
+                <label htmlFor="workspace-deliverable-description">{t('workspace.descriptionField')}</label>
+                <textarea
+                  id="workspace-deliverable-description"
+                  value={submitDescription ?? ''}
+                  onChange={(event) => setSubmitDescription(event.target.value)}
+                  maxLength={5000}
+                  rows={4}
+                  placeholder={t('workspace.addNotesPlaceholder')}
+                  disabled={isSubmittingDeliverable}
+                />
+                <span className="workspace-submit-count">{(submitDescription ?? '').length}/5000</span>
+              </div>
+
+              <div className="workspace-submit-actions">
+                <button
+                  type="button"
+                  className="workspace-submit-secondary"
+                  onClick={resetSubmitModal}
+                  disabled={isSubmittingDeliverable}
+                >
+                  {t('common.cancel')}
                 </button>
-              ))}
-            </div>
-
-            {/* AI Input */}
-            <div className="p-4 pt-2" style={{ borderTop: '1px solid rgba(159,75,255,0.1)' }}>
-              <div className="flex items-center gap-2">
-                <input value={aiMessage} onChange={e => setAiMessage(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') sendAIMessage(); }}
-                  placeholder="Ask your AI assistant..." className="input-gb flex-1 px-3 py-2 text-xs" />
-                <button onClick={sendAIMessage} className="btn-purple p-2 rounded-xl text-xs">
-                  <Send size={14} />
+                <button
+                  type="submit"
+                  className="workspace-submit-primary"
+                  disabled={
+                    isSubmittingDeliverable ||
+                    !submitFile
+                  }
+                >
+                  {isSubmittingDeliverable ? (
+                    <>
+                      <Loader2 size={15} className="workspace-submit-spin" />
+                      {t('workspace.submitting')}
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={15} />
+                      {t('common.submit')}
+                    </>
+                  )}
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {productModalOpen && (
+        <div className="workspace-submit-modal-backdrop" role="presentation">
+          <div className="workspace-submit-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-product-title">
+            <div className="workspace-submit-modal-header">
+              <div>
+                <h3 id="workspace-product-title">{t('workspace.sendMaterialsModalTitle')}</h3>
+                <p>{t('workspace.sendMaterialsModalDesc')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={resetProductModal}
+                className="workspace-submit-icon-button"
+                title={t('common.close')}
+                disabled={isSendingProduct}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendProductMaterials} className="workspace-submit-form">
+              {productError && (
+                <div className="workspace-submit-error">
+                  <AlertCircle size={16} />
+                  <span>{productError}</span>
+                </div>
+              )}
+
+              <div className="workspace-submit-mode" role="tablist" aria-label="Work material source">
+                <button
+                  type="button"
+                  className={productMode === 'file' ? 'active' : ''}
+                  onClick={() => {
+                    setProductMode('file');
+                    setProductLink('');
+                    setProductError(null);
+                  }}
+                >
+                  <Upload size={15} />
+                  {t('workspace.fileSourceOption')}
+                </button>
+                <button
+                  type="button"
+                  className={productMode === 'link' ? 'active' : ''}
+                  onClick={() => {
+                    setProductMode('link');
+                    setProductFile(null);
+                    setProductError(null);
+                    if (productFileInputRef.current) {
+                      productFileInputRef.current.value = '';
+                    }
+                  }}
+                >
+                  <Link2 size={15} />
+                  {t('workspace.linkSourceOption')}
+                </button>
+              </div>
+
+              {productMode === 'file' ? (
+                <div className="workspace-submit-field">
+                  <label htmlFor="workspace-product-file">{t('workspace.workMaterialFileField')}</label>
+                  <input
+                    ref={productFileInputRef}
+                    id="workspace-product-file"
+                    type="file"
+                    onChange={handleSelectProductFile}
+                    disabled={isSendingProduct}
+                  />
+                  {productFile && (
+                    <div className="workspace-submit-file">
+                      <FileText size={15} />
+                      <span>{productFile.name}</span>
+                      <strong>{(productFile.size / (1024 * 1024)).toFixed(2)} MB</strong>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="workspace-submit-field">
+                  <label htmlFor="workspace-product-link">{t('workspace.workMaterialLinkField')}</label>
+                  <input
+                    id="workspace-product-link"
+                    type="url"
+                    value={productLink ?? ''}
+                    onChange={(event) => setProductLink(event.target.value)}
+                    placeholder="https://..."
+                    disabled={isSendingProduct}
+                  />
+                </div>
+              )}
+
+              <div className="workspace-submit-field">
+                <label htmlFor="workspace-product-note">{t('workspace.noteField')}</label>
+                <textarea
+                  id="workspace-product-note"
+                  value={productNote ?? ''}
+                  onChange={(event) => setProductNote(event.target.value)}
+                  maxLength={2000}
+                  rows={4}
+                  placeholder={t('workspace.describeMaterialsPlaceholder')}
+                  disabled={isSendingProduct}
+                />
+                <span className="workspace-submit-count">{(productNote ?? '').length}/2000</span>
+              </div>
+
+              <div className="workspace-submit-actions">
+                <button
+                  type="button"
+                  className="workspace-submit-secondary"
+                  onClick={resetProductModal}
+                  disabled={isSendingProduct}
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="workspace-submit-primary"
+                  disabled={
+                    isSendingProduct ||
+                    (productMode === 'file' && !productFile) ||
+                    (productMode === 'link' && !productLink.trim())
+                  }
+                >
+                  {isSendingProduct ? (
+                    <>
+                      <Loader2 size={15} className="workspace-submit-spin" />
+                      {t('workspace.sending')}
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={15} />
+                      {t('workspace.sendButton')}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {workspaceContractId && (
+        <RaiseIssueModal
+          contractId={workspaceContractId}
+          isOpen={raiseIssueModalOpen}
+          onClose={() => setRaiseIssueModalOpen(false)}
+          onSubmit={handleCreateContractReport}
+          isSubmitting={isCreatingReport}
+        />
+      )}
+
+      {reportListOpen && (
+        <div className="rc-modal-backdrop" role="presentation" onClick={handleCloseReportList}>
+          <div
+            className="rc-modal rc-modal-wide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rc-report-list-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="rc-modal-header">
+              <div>
+                <h3 id="rc-report-list-title">{t('workspace.issueReports')}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseReportList}
+                className="rc-icon-button"
+                title={t('common.close')}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {reportError && (
+              <div className="rc-form">
+                <div className="rc-error">
+                  <AlertCircle size={16} />
+                  <span>{reportError}</span>
+                </div>
+              </div>
+            )}
+            <ReportList
+              reports={contractReports}
+              isLoading={isLoadingReports}
+              currentUserId={user?.id ?? ''}
+              onViewReport={handleViewContractReport}
+            />
+          </div>
+        </div>
+      )}
+
+      {viewReportId && isLoadingReportDetail && (
+        <div className="rc-modal-backdrop" role="presentation">
+          <div className="rc-modal" role="status" aria-live="polite">
+            <div className="rc-list-loading">
+              <Loader2 size={20} className="rc-spin" />
+              <span>{t('common.loading')}</span>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {viewReportId && selectedReport?.id === viewReportId && !isLoadingReportDetail && (
+        <ReportDetailModal
+          report={selectedReport}
+          contractTitle={activeContract?.title || project.title}
+          currentUserId={user?.id ?? ''}
+          isOpen
+          onClose={handleCloseReportDetail}
+          onRespond={handleRespondToContractReport}
+          onConfirm={handleConfirmContractReport}
+          onEscalate={handleEscalateContractReport}
+          onDisputeCreated={(disputeId) => navigate(`/contracts/${workspaceContractId}/disputes/${disputeId}`)}
+          isResponding={isRespondingReport}
+          isConfirming={isConfirmingReport}
+          isEscalating={isEscalatingReport}
+        />
+      )}
     </AppLayout>
   );
 }

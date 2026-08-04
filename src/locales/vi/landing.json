@@ -1,0 +1,44 @@
+{
+  "landing": {
+    "hero": {
+      "tagline": "Khám Phá Freelancer Tài Năng",
+      "tagline2": "Kết Nối Qua Hệ Thống Ghép Nối Thông Minh",
+      "findWork": "Tìm Việc Làm",
+      "hireTalent": "Tuyển Nhân Tài"
+    },
+    "about": {
+      "welcome": "Chào Mừng Đến Gigbridge",
+      "animatedTitle": "Kết nối nhân t<b>à</b>i <br /> với dự án một cách đổi m<b>ớ</b>i",
+      "subtext1": "Không chỉ là một bảng việc làm thông thường — đây là cỗ máy kết nối đáng tin cậy.",
+      "subtext2": "Gigbridge thu hẹp khoảng cách giữa nhân tài chuyên môn và doanh nghiệp cần giải pháp chất lượng cao, kết hợp bảo vệ hợp đồng, milestone an toàn và ghép nối thông minh."
+    },
+    "features": {
+      "sectionLabel": "Vào Tầng Ghép Nối",
+      "sectionDesc": "Hòa mình vào một hệ sinh thái thống nhất nơi freelancer xây dựng danh tiếng và khách hàng tìm được nhân tài hàng đầu không ma sát.",
+      "matchmakingTitle": "ghép n<b>ố</b>i thông minh",
+      "matchmakingDesc": "Cỗ máy ghép nối thông minh kết nối hồ sơ freelancer với yêu cầu dự án phù hợp dựa trên kỹ năng và lịch sử công việc.",
+      "escrowTitle": "ký q<b>u</b>ỹ an toàn",
+      "escrowDesc": "Ký quỹ theo milestone và ví an toàn đảm bảo nhà phát triển được thanh toán cho công việc được duyệt và khách hàng nhận được sản phẩm chất lượng.",
+      "contractsTitle": "hợp đ<b>ồ</b>ng",
+      "contractsDesc": "Bảo vệ sự hợp tác bằng các mẫu hợp đồng điện tử e-sign có giá trị pháp lý, tích hợp trực tiếp vào quy trình làm việc.",
+      "aiPilotTitle": "trợ lý A<b>I</b>",
+      "aiPilotDesc": "Công cụ phỏng vấn AI và trợ lý AI giúp sàng lọc ứng viên và xây dựng phạm vi dự án chi tiết một cách nhanh chóng.",
+      "expandingTitle": "Hệ sinh thái đang m<b>ở</b> rộng.",
+      "explore": "khám phá",
+      "featureAlt": "Minh Họa Tính Năng",
+      "workspaceAlt": "Minh Họa Workspace"
+    },
+    "story": {
+      "label": "cầu nối an toàn",
+      "animatedTitle": "câu ch<b>u</b>yện về <br /> sự tin t<b>ư</b>ởng",
+      "desc": "Nơi doanh nghiệp và người sáng tạo gặp nhau, đó là Gigbridge. Khám phá sự dễ dàng của thanh toán milestone an toàn, hợp đồng có hiệu lực pháp lý và ghép nối thông minh, cùng hoạt động trong một quy trình rõ ràng.",
+      "cta": "xem hướng dẫn sử dụng"
+    },
+    "contact": {
+      "label": "Tham Gia Gigbridge",
+      "animatedTitle": "cùng nhau x<b>â</b>y dựng <br /> kỷ nguyên mới <br /> của hợp t<b>á</b>c.",
+      "cta": "bắt đầu ngay",
+      "imageAlt": "hình ảnh minh họa"
+    }
+  }
+}

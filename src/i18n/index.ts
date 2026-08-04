@@ -15,8 +15,8 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
 // Import translation files
-import enCommon from '../locales/en/common.json';
-import viCommon from '../locales/vi/common.json';
+import en from '../locales/en';
+import vi from '../locales/vi';
 
 // Define supported languages
 export const SUPPORTED_LANGUAGES = {
@@ -27,7 +27,7 @@ export const SUPPORTED_LANGUAGES = {
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
 // Default fallback language (Vietnamese)
-export const DEFAULT_LANGUAGE: SupportedLanguage = 'vi';
+const DEFAULT_LANGUAGE: SupportedLanguage = 'vi';
 
 /**
  * Language detection configuration
@@ -71,16 +71,35 @@ i18n
   .init({
     // Language resources
     resources: {
-      en: {
-        common: enCommon,
-      },
-      vi: {
-        common: viCommon,
-      },
+      en,
+      vi,
     },
 
     // Default namespace
     defaultNS: 'common',
+
+    // Fallback namespaces to allow single namespace or global key resolution
+    fallbackNS: [
+      'common',
+      'auth',
+      'admin',
+      'jobs',
+      'proposals',
+      'contracts',
+      'profile',
+      'wallet',
+      'ai',
+      'landing',
+      'disputes',
+      'reviews',
+      'premium',
+      'workspace',
+      'dashboard',
+      'messages',
+      'settings',
+      'notifications',
+      'talentMatching',
+    ],
 
     // Fallback language when detected language is not supported
     fallbackLng: (code) => {
@@ -102,20 +121,9 @@ i18n
     // Language detector options
     detection: languageDetectorOptions,
 
-    // Interpolation options
+    // React already escapes interpolated values.
     interpolation: {
-      // React already escapes values, so we don't need to escape again
       escapeValue: false,
-
-      // Format values (e.g., numbers, dates)
-      format: (value, format, lng) => {
-        if (format === 'uppercase') return value.toUpperCase();
-        if (format === 'lowercase') return value.toLowerCase();
-        if (value instanceof Date) {
-          return new Intl.DateTimeFormat(lng).format(value);
-        }
-        return value;
-      },
     },
 
     // React options
@@ -146,4 +154,7 @@ i18n.on('languageChanged', (lng) => {
   document.documentElement.lang = lng;
 });
 
-export default i18n;
+// Immediately sync initial detected language to document.documentElement.lang
+if (i18n.language) {
+  document.documentElement.lang = i18n.language;
+}

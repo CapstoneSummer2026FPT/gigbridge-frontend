@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { User, UserRole } from '../../types/models/User';
+import type { User } from '../../types/models/User';
+import { UserRole } from '../../types/models/User';
 import type { ClientProfile, FreelancerProfile } from '../../types/models/Profile';
 import type { ApiResponse } from '../../types/common';
-import type { LoginResponse, UserDTO } from '../../types/models/Auth';
+import type { LoginResponse, RegisterRequest, UserDTO } from '../../types/models/Auth';
 import { authAPI } from '../../api/authAPI';
+import { secureStorage } from '../../shared/utils/secureStorage';
 
 export type AppTheme = 'black' | 'white';
 
@@ -20,26 +22,92 @@ interface AppContextValue {
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
   login: (email: string, password: string) => Promise<UserRole>;
-  signup: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
+  signup: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    verificationTicket: string,
+  ) => Promise<void>;
   googleLogin: (authCode: string, role?: UserRole, isFromSignIn?: boolean) => Promise<UserRole>;
-  logout: () => void;
+  logout: (redirectPath?: string) => void;
   completeOnboarding: (profileData: any) => Promise<void>;
   markSetupComplete: () => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
+const getField = <T,>(source: any, camelCaseKey: string, pascalCaseKey: string): T | undefined =>
+  source?.[camelCaseKey] ?? source?.[pascalCaseKey];
+
+const normalizeRole = (value: unknown): UserRole => {
+  if (typeof value === 'number' && Number.isInteger(value) && value in UserRole) {
+    return value as UserRole;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    const numericRole = Number(normalized);
+
+    if (Number.isInteger(numericRole) && numericRole in UserRole) {
+      return numericRole as UserRole;
+    }
+
+    if (normalized === 'client') return UserRole.Client;
+    if (normalized === 'freelancer') return UserRole.Freelancer;
+    if (normalized === 'admin') return UserRole.Admin;
+  }
+
+  throw new Error('Your account does not have a valid role set up yet. Please register with a role or contact support.');
+};
+
+const mapUserDTOToUser = (userDTO: UserDTO | any): User => {
+  const fullName = getField<string>(userDTO, 'fullName', 'FullName') ?? '';
+  const createdAt = getField<string>(userDTO, 'createdAt', 'CreatedAt') ?? new Date().toISOString();
+  const updatedAt = getField<string | null>(userDTO, 'updatedAt', 'UpdatedAt') ?? createdAt;
+
+  return {
+    id: String(getField<string>(userDTO, 'userId', 'UserId') ?? ''),
+    email: getField<string>(userDTO, 'email', 'Email') ?? '',
+    first_name: fullName.split(' ')[0] || '',
+    last_name: fullName.split(' ')[1] || '',
+    full_name: fullName,
+    phone_number: getField<string | null>(userDTO, 'phoneNumber', 'PhoneNumber') ?? null,
+    role: normalizeRole(getField(userDTO, 'role', 'Role')),
+    is_email_verified: Boolean(getField<boolean>(userDTO, 'isEmailVerified', 'IsEmailVerified')),
+    is_active: getField<boolean>(userDTO, 'isActive', 'IsActive') ?? true,
+    is_setup: Boolean(getField<boolean>(userDTO, 'isSetup', 'IsSetup')),
+    preferred_language: getField<string | null>(userDTO, 'preferredLanguage', 'PreferredLanguage') || 'en',
+    last_login_at: null,
+    login_failed_time: null,
+    access_failed_count: 0,
+    elo_points: getField<number>(userDTO, 'eloPoints', 'EloPoints') ?? 100,
+    gigcoin_balance: 0,
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+};
+
+const getLoginData = (response: ApiResponse<LoginResponse>) => {
+  const loginData = response.data as any;
+
+  return {
+    userDTO: loginData?.user ?? loginData?.User,
+    token: loginData?.token ?? loginData?.Token,
+  };
+};
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRoleState] = useState<UserRole | null>(null);
-  const [theme, setThemeState] = useState<AppTheme>('black');
+  const [theme, setThemeState] = useState<AppTheme>('white');
   const [isLoading, setIsLoading] = useState(true);
   const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [freelancerProfile, setFreelancerProfile] = useState<FreelancerProfile | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('gigbridge_theme') as AppTheme;
-    const initialTheme = savedTheme && (savedTheme === 'black' || savedTheme === 'white') ? savedTheme : 'black';
+    const initialTheme = savedTheme && (savedTheme === 'black' || savedTheme === 'white') ? savedTheme : 'white';
     setThemeState(initialTheme);
     document.documentElement.classList.add(initialTheme);
 
@@ -48,25 +116,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         let savedUser = null;
         let savedRole = null;
 
-        const sessionData = localStorage.getItem('gigbridge_session');
-        const gigbridgeUserData = localStorage.getItem('gigbridge_user');
+        const sessionData = secureStorage.getItem<{ user: User; role: UserRole }>('gigbridge_session');
+        const gigbridgeUserData = secureStorage.getItem<User>('gigbridge_user');
 
         if (sessionData) {
-          const parsed = JSON.parse(sessionData);
-          savedUser = parsed.user;
-          savedRole = parsed.role;
+          savedUser = sessionData.user;
+          savedRole = sessionData.role;
         } else if (gigbridgeUserData) {
-          savedUser = JSON.parse(gigbridgeUserData);
+          savedUser = gigbridgeUserData;
           savedRole = savedUser?.role;
         }
 
         if (savedUser) {
-          setUser(savedUser);
-          setRoleState(savedRole);
+          const normalizedRole = normalizeRole(savedRole ?? savedUser.role);
+          setUser({ ...savedUser, role: normalizedRole });
+          setRoleState(normalizedRole);
         }
       } catch (_e) {
-        localStorage.removeItem('gigbridge_session');
-        localStorage.removeItem('gigbridge_user');
+        secureStorage.removeItem('gigbridge_session');
+        secureStorage.removeItem('gigbridge_user');
         localStorage.removeItem('access_token');
       } finally {
         setIsLoading(false);
@@ -91,11 +159,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setRole = useCallback((newRole: UserRole) => {
     setRoleState(newRole);
     // Update stored role
-    const savedUser = localStorage.getItem('gigbridge_user');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
+    const user = secureStorage.getItem<User>('gigbridge_user');
+    if (user) {
       user.role = newRole;
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      secureStorage.setItem('gigbridge_user', user);
     }
   }, []);
 
@@ -111,37 +178,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authAPI.login({ email, password });
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
-      
+
       if (!apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.message || 'Login failed');
+        const err = new Error(apiResponse.message || 'Login failed') as any;
+        err.errors = apiResponse.errors;
+        throw err;
       }
 
-      const { user: userDTO, token } = apiResponse.data;
-      const user: User = {
-        id: userDTO.userId,
-        email: userDTO.email,
-        first_name: userDTO.fullName.split(' ')[0],
-        last_name: userDTO.fullName.split(' ')[1] || '',
-        full_name: userDTO.fullName,
-        phone_number: userDTO.phoneNumber || null,
-        role: userDTO.role as UserRole,
-        is_email_verified: userDTO.isEmailVerified,
-        is_active: userDTO.isActive,
-        is_setup: userDTO.isSetup,
-        preferred_language: userDTO.preferredLanguage || 'en',
-        last_login_at: null,
-        login_failed_time: null,
-        access_failed_count: 0,
-        gigcoin_balance: 0,
-        created_at: userDTO.createdAt,
-        updated_at: userDTO.updatedAt || userDTO.createdAt,
-      };
+      const { userDTO, token } = getLoginData(apiResponse);
+      const user = mapUserDTOToUser(userDTO);
 
       setUser(user);
       setRoleState(user.role);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
+      secureStorage.setItem('gigbridge_session', { user, role: user.role });
       localStorage.setItem('access_token', token);
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      secureStorage.setItem('gigbridge_user', user);
 
       return user.role;
     } catch (error) {
@@ -150,52 +201,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, fullName: string, role: UserRole) => {
+  const signup = useCallback(async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    verificationTicket: string,
+  ) => {
     try {
-      const registerData = { 
-        email, 
-        password, 
+      const registerData: RegisterRequest = {
+        email,
+        password,
         confirmPassword: password,
         fullName,
-        role 
+        role,
+        verificationTicket,
       };
-      const response = await (authAPI.register as (data: any) => Promise<ApiResponse<UserDTO>>)(registerData);
-      const apiResponse = response as unknown as ApiResponse<UserDTO>;
-      
+      const apiResponse = await authAPI.register(registerData);
+
       if (!apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.message || 'Registration failed');
+        const err = new Error(apiResponse.message || 'Registration failed') as any;
+        err.errors = apiResponse.errors;
+        throw err;
       }
 
-      const userDTO = apiResponse.data;
-      const user: User = {
-        id: userDTO.userId,
-        email: userDTO.email,
-        first_name: userDTO.fullName.split(' ')[0],
-        last_name: userDTO.fullName.split(' ')[1] || '',
-        full_name: userDTO.fullName,
-        phone_number: userDTO.phoneNumber || null,
-        role: userDTO.role as UserRole,
-        is_email_verified: userDTO.isEmailVerified,
-        is_active: userDTO.isActive,
-        is_setup: userDTO.isSetup,
-        preferred_language: userDTO.preferredLanguage || 'en',
-        last_login_at: null,
-        login_failed_time: null,
-        access_failed_count: 0,
-        gigcoin_balance: 0,
-        created_at: userDTO.createdAt,
-        updated_at: userDTO.updatedAt || userDTO.createdAt,
-      };
+      const user = mapUserDTOToUser(apiResponse.data);
 
       setUser(user);
       setRoleState(user.role);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      secureStorage.setItem('gigbridge_session', { user, role: user.role });
+      secureStorage.setItem('gigbridge_user', user);
+      
+      // Automatically log the user in after registration to acquire tokens
+      await login(email, password);
     } catch (error) {
       console.error('Signup error:', error);
       throw error;
     }
-  }, []);
+  }, [login]);
 
   const googleLogin = useCallback(async (authCode: string, role?: UserRole, isFromSignIn?: boolean): Promise<UserRole> => {
     try {
@@ -203,35 +246,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const apiResponse = response as unknown as ApiResponse<LoginResponse>;
       
       if (!apiResponse.success || !apiResponse.data) {
-        throw new Error(apiResponse.message || 'Google Login failed');
+        const err = new Error(apiResponse.message || 'Google Login failed') as any;
+        err.errors = apiResponse.errors;
+        throw err;
       }
 
-      const { user: userDTO, token } = apiResponse.data;
-      const user: User = {
-        id: userDTO.userId,
-        email: userDTO.email,
-        first_name: userDTO.fullName.split(' ')[0],
-        last_name: userDTO.fullName.split(' ')[1] || '',
-        full_name: userDTO.fullName,
-        phone_number: userDTO.phoneNumber || null,
-        role: userDTO.role as UserRole,
-        is_email_verified: userDTO.isEmailVerified,
-        is_active: userDTO.isActive,
-        is_setup: userDTO.isSetup,
-        preferred_language: userDTO.preferredLanguage || 'en',
-        last_login_at: null,
-        login_failed_time: null,
-        access_failed_count: 0,
-        gigcoin_balance: 0,
-        created_at: userDTO.createdAt,
-        updated_at: userDTO.updatedAt || userDTO.createdAt,
-      };
+      const { userDTO, token } = getLoginData(apiResponse);
+      const user = mapUserDTOToUser(userDTO);
 
       setUser(user);
       setRoleState(user.role);
-      localStorage.setItem('gigbridge_session', JSON.stringify({ user, role: user.role }));
+      secureStorage.setItem('gigbridge_session', { user, role: user.role });
       localStorage.setItem('access_token', token);
-      localStorage.setItem('gigbridge_user', JSON.stringify(user));
+      secureStorage.setItem('gigbridge_user', user);
 
       return user.role;
     } catch (error) {
@@ -240,14 +267,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((redirectPath?: string) => {
     setUser(null);
     setRoleState(null);
     setClientProfile(null);
     setFreelancerProfile(null);
-    localStorage.removeItem('gigbridge_session');
-    localStorage.removeItem('gigbridge_user');
+    secureStorage.removeItem('gigbridge_session');
+    secureStorage.removeItem('gigbridge_user');
     localStorage.removeItem('access_token');
+    if (redirectPath) {
+      window.location.href = redirectPath;
+    }
   }, []);
 
   const completeOnboarding = useCallback(async (profileData: any) => {

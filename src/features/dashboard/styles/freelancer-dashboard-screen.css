@@ -1,76 +1,301 @@
 /**
  * Freelancer Dashboard Screen Styles
- * External CSS for FreelancerDashboardScreen component
+ * Avant-Garde design system — mirrors ClientDashboardScreen
  */
 
-/* ── Header Section ── */
-.freelancer-dash-header-bg {
-  background: linear-gradient(135deg, rgba(0, 119, 255, 0.05), rgba(159, 75, 255, 0.05));
+/* ── Ambient Glowing Orbs ── */
+.freelancer-dash-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.freelancer-dash-greeting {
-  color: var(--gb-text-secondary);
+.freelancer-orb-purple {
+  top: 8%;
+  left: 5%;
+  width: 320px;
+  height: 320px;
+  background: var(--brand);
+  animation: flOrb1 14s infinite alternate ease-in-out;
 }
 
-.freelancer-dash-star-icon {
-  color: var(--gb-amber);
+.freelancer-orb-cyan {
+  bottom: 20%;
+  right: -5%;
+  width: 380px;
+  height: 380px;
+  background: var(--brand-hover);
+  animation: flOrb2 18s infinite alternate ease-in-out;
 }
 
-.freelancer-dash-review-count {
-  color: var(--gb-text-secondary);
+.freelancer-orb-blue {
+  top: 45%;
+  left: 30%;
+  width: 260px;
+  height: 260px;
+  background: var(--brand);
+  animation: flOrb3 16s infinite alternate ease-in-out;
 }
 
-/* ── Charts & Stats ── */
+@keyframes flOrb1 {
+  0%   { transform: translate(0, 0) scale(1);    opacity: 0.08; }
+  100% { transform: translate(25px, -20px) scale(1.15); opacity: 0.14; }
+}
+@keyframes flOrb2 {
+  0%   { transform: translate(0, 0) scale(1);    opacity: 0.08; }
+  100% { transform: translate(-30px, 25px) scale(1.2); opacity: 0.16; }
+}
+@keyframes flOrb3 {
+  0%   { transform: translate(0, 0) scale(1.05); opacity: 0.05; }
+  100% { transform: translate(15px, 35px) scale(0.9);  opacity: 0.1; }
+}
+
+/* ── Hero Typography ── */
+.freelancer-avant-heading {
+  letter-spacing: -0.05em;
+  line-height: 0.85;
+}
+
+.freelancer-hero-text {
+  background: linear-gradient(180deg, var(--text-primary) 0%, rgba(25,25,27,0.4) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .freelancer-hero-text {
+  background: linear-gradient(180deg, var(--text-primary) 0%, rgba(245,246,248,0.4) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Stagger-up entrance animation */
+.fl-stagger-up {
+  animation: flStaggerUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes flStaggerUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Profile Strength Gauge Ring ── */
+.freelancer-dash-gauge-ring {
+  filter: drop-shadow(0 0 8px var(--brand));
+}
+
+/* ── Bento Stat Tiles ── */
+.freelancer-bento-stat {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.freelancer-bento-stat:hover {
+  transform: translateY(-4px);
+}
+
+/* ── Earnings Chart ── */
 .freelancer-dash-chart-desc {
-  color: var(--gb-text-secondary);
+  color: var(--text-secondary);
 }
 
 .freelancer-dash-chart-growth {
-  color: var(--gb-green);
+  color: var(--success);
 }
 
-/* ── Hourly Rate Card ── */
-.freelancer-dash-rate-label {
-  color: var(--gb-text-secondary);
+/* ── Earnings period tab bar ── */
+.fl-chart-header-tabs {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 2px;
 }
 
-.freelancer-dash-market-avg {
-  color: var(--gb-green);
+.fl-chart-tab-btn {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+  color: var(--text-secondary);
 }
 
-/* ── AI Insights ── */
+.fl-chart-tab-btn.active {
+  background: var(--background);
+  color: var(--brand);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  font-weight: 700;
+}
+
+/* ── AI Career Insights — Radar Section ── */
 .freelancer-dash-ai-bg {
-  background: linear-gradient(135deg, rgba(159, 75, 255, 0.06), rgba(0, 119, 255, 0.04));
-  border: 1px solid rgba(159, 75, 255, 0.2);
+  position: relative;
+  background: linear-gradient(135deg, rgba(73,75,231,0.06) 0%, rgba(63,65,208,0.04) 100%) !important;
+  border: 1px solid rgba(73,75,231,0.15) !important;
+  overflow: hidden;
 }
 
-.freelancer-dash-ai-icon-bg {
-  background: linear-gradient(135deg, #0077FF, #9F4BFF);
+[data-theme="dark"] .freelancer-dash-ai-bg {
+  background: linear-gradient(135deg, rgba(73,75,231,0.12) 0%, rgba(63,65,208,0.06) 100%) !important;
+  border-color: rgba(73,75,231,0.25) !important;
+}
+
+.fl-ai-radar-graphic {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 500px; height: 500px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.1;
+  z-index: 0;
+  border: 1px solid rgba(73,75,231,0.3);
+}
+
+.fl-ai-radar-circle {
+  position: absolute;
+  top: 15%; left: 15%; right: 15%; bottom: 15%;
+  border: 1px dashed rgba(73,75,231,0.25);
+  border-radius: 50%;
+  animation: flRadarRotate 15s infinite linear;
+}
+@keyframes flRadarRotate {
+  to { transform: rotate(360deg); }
+}
+
+.fl-ai-radar-sweep {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 250px; height: 250px;
+  background: conic-gradient(from 0deg, var(--brand) 0%, transparent 40%, transparent 100%);
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  animation: flRadarSweep 4s infinite linear;
+  z-index: 1;
+}
+@keyframes flRadarSweep {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 .freelancer-dash-ai-icon {
-  color: #0A0F1C;
+  color: var(--brand);
+  filter: drop-shadow(0 0 5px rgba(73,75,231,0.5));
 }
 
 .freelancer-dash-ai-insight-card {
   background: var(--gb-glass-bg);
-  border: 1px solid var(--gb-border);
+  border: 1px solid var(--border);
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Recommended Jobs ── */
-.freelancer-dash-jobs-icon {
-  color: var(--gb-cyan);
+.freelancer-dash-ai-insight-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(73,75,231,0.4);
+  box-shadow: 0 8px 25px rgba(73,75,231,0.08);
 }
 
-.freelancer-dash-jobs-link {
-  color: var(--gb-cyan);
+/* ── Match Score Rings (reused from client) ── */
+.match-score-ring-svg {
+  transform: rotate(-90deg);
+}
+.match-score-ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 3;
+}
+.match-score-ring-bar {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
 }
 
+/* ── Recommended Jobs (Elite style) ── */
 .freelancer-dash-job-card {
-  background: var(--gb-glass-bg);
-  border: 1px solid var(--gb-border);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s;
+}
+
+.freelancer-dash-job-card:hover {
+  transform: translateX(8px);
+  border-color: rgba(73,75,231,0.3);
 }
 
 .freelancer-dash-job-meta {
-  color: var(--gb-text-secondary);
+  color: var(--text-secondary);
 }
+
+.freelancer-dash-jobs-icon {
+  color: var(--brand);
+}
+
+.freelancer-dash-jobs-link {
+  color: var(--brand);
+  transition: opacity 0.2s;
+}
+.freelancer-dash-jobs-link:hover {
+  opacity: 0.75;
+}
+
+/* ── Activity Signals Timeline ── */
+.freelancer-signals-dot {
+  position: absolute;
+  left: 0; top: 0.125rem;
+  width: 1.625rem; height: 1.625rem;
+  border-radius: 9999px;
+  background: var(--background);
+  border: 4px solid var(--brand);
+  transition: transform 0.2s;
+}
+
+.freelancer-signals-item:hover .freelancer-signals-dot {
+  transform: scale(1.15);
+}
+
+/* ── Header Section ── */
+.freelancer-dash-header-bg {
+  background: linear-gradient(135deg, rgba(73,75,231,0.09) 0%, rgba(63,65,208,0.04) 50%, rgba(73,75,231,0.07) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(73,75,231,0.18);
+}
+
+[data-theme="dark"] .freelancer-dash-header-bg {
+  background: linear-gradient(135deg, rgba(73,75,231,0.15) 0%, rgba(63,65,208,0.08) 50%, rgba(73,75,231,0.12) 100%);
+  border-color: rgba(73,75,231,0.3);
+}
+
+.freelancer-dash-greeting {
+  color: var(--text-secondary);
+}
+
+.freelancer-dash-star-icon {
+  color: var(--warning);
+}
+
+.freelancer-dash-review-count {
+  color: var(--text-muted);
+}
+
+/* ── Preferred Pricing / Market Rate Card ── */
+.freelancer-dash-rate-label {
+  color: var(--text-muted);
+}
+
+.freelancer-dash-market-avg {
+  color: var(--success);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .freelancer-orb-purple,
+  .freelancer-orb-cyan,
+  .freelancer-orb-blue {
+    opacity: 0.05 !important;
+    filter: blur(60px) !important;
+  }
+}
+.premium-dashboard-link{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem .85rem;border-radius:.75rem;color:var(--text-secondary);font-size:.8rem;font-weight:800;transition:color .2s,background .2s}
+.premium-dashboard-link:hover{color:var(--gb-purple,#7c3aed);background:rgba(124,58,237,.08)}

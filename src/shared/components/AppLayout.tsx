@@ -2,15 +2,29 @@ import React, { useState } from 'react';
 import { TopNav } from './TopNav';
 import { Sidebar } from './Sidebar';
 import { useApp } from '../../app/providers/AppProvider';
+import { AIAssistantWidget } from '../../features/ai-assistant';
+import { MeshGradientBackground } from './MeshGradientBackground';
 import '../styles/AppLayout.css';
 
 interface AppLayoutProps {
   children: React.ReactNode;
   showSidebar?: boolean;
   fullWidth?: boolean;
+  excludeMeshGradient?: boolean;
+  hideAIWidget?: boolean;
+  hideTopNav?: boolean;
+  mainClassName?: string;
 }
 
-export function AppLayout({ children, showSidebar = true, fullWidth = false }: AppLayoutProps) {
+export function AppLayout({
+  children,
+  showSidebar = true,
+  fullWidth = false,
+  excludeMeshGradient = false,
+  hideAIWidget = false,
+  hideTopNav = false,
+  mainClassName = '',
+}: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Safely get app context - might throw if not within provider
@@ -23,7 +37,7 @@ export function AppLayout({ children, showSidebar = true, fullWidth = false }: A
     user = null;
   }
   
-  const hasSidebar = showSidebar && !!user;
+  const hasSidebar = !hideTopNav && showSidebar && !!user;
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -35,9 +49,11 @@ export function AppLayout({ children, showSidebar = true, fullWidth = false }: A
 
   return (
     <div className="app-layout">
-      <TopNav onMenuClick={toggleSidebar} showMenuButton={hasSidebar} />
+      {!hideTopNav ? (
+        <TopNav onMenuClick={toggleSidebar} showMenuButton={hasSidebar} />
+      ) : null}
 
-      <div className="app-layout-content">
+      <div className={`app-layout-content ${hideTopNav ? 'no-top-nav' : ''}`}>
         {hasSidebar && (
           <>
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
@@ -53,22 +69,42 @@ export function AppLayout({ children, showSidebar = true, fullWidth = false }: A
         )}
 
         <main
-          className={`app-layout-main ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''}`}
+          className={`app-layout-main ${hideTopNav ? 'no-top-nav' : ''} ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
         >
-          {children}
+          {excludeMeshGradient ? (
+            children
+          ) : (
+            <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6">
+              {children}
+            </MeshGradientBackground>
+          )}
         </main>
       </div>
+
+      {user && !hideTopNav && !hideAIWidget && <AIAssistantWidget />}
     </div>
   );
 }
 
 // Guest layout (no sidebar)
-export function GuestLayout({ children }: { children: React.ReactNode }) {
+export function GuestLayout({
+  children,
+  excludeMeshGradient = false,
+}: {
+  children: React.ReactNode;
+  excludeMeshGradient?: boolean;
+}) {
   return (
     <div className="guest-layout">
       <TopNav />
       <main className="guest-layout-main">
-        {children}
+        {excludeMeshGradient ? (
+          children
+        ) : (
+          <MeshGradientBackground className="min-h-[calc(100vh-6rem)] p-3 sm:p-6 m-2 sm:m-4">
+            {children}
+          </MeshGradientBackground>
+        )}
       </main>
     </div>
   );

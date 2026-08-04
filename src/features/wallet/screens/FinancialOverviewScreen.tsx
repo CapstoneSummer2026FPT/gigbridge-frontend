@@ -1,236 +1,325 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router';
-import { TrendingUp, DollarSign, Briefcase, CheckCircle, Clock, Calendar, Download, Eye, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import {
+  AlertCircle,
+  Calendar,
+  Download,
+  Landmark,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react';
+import { walletGetAPI } from '../../../api/walletAPI/GET';
+import type {
+  FinancialOverviewPeriod,
+  FinancialOverviewResponse,
+  FinancialTransactionCategory,
+} from '../../../types/models/Financial';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import '../../admin/styles/admin-users-screen.css';
+import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import '../styles/financial-overview-screen.css';
 
-// Mock data for milestones and earnings
-const MILESTONE_DATA = [
-  { id: 'mil_1', jobTitle: 'E-commerce Website Redesign', client: 'TechCorp Inc.', amount: 1200, status: 'completed', completedAt: '2026-05-10', projectId: 'proj_1' },
-  { id: 'mil_2', jobTitle: 'Mobile App Development', client: 'StartupXYZ', amount: 2500, status: 'completed', completedAt: '2026-05-05', projectId: 'proj_2' },
-  { id: 'mil_3', jobTitle: 'Logo Design Package', client: 'Brand Studios', amount: 450, status: 'completed', completedAt: '2026-04-28', projectId: 'proj_3' },
-  { id: 'mil_4', jobTitle: 'API Integration', client: 'DataFlow Inc.', amount: 800, status: 'pending', dueDate: '2026-05-25', projectId: 'proj_4' },
-  { id: 'mil_5', jobTitle: 'Content Writing - 10 Articles', client: 'BlogMaster', amount: 350, status: 'completed', completedAt: '2026-04-20', projectId: 'proj_5' },
-  { id: 'mil_6', jobTitle: 'SEO Optimization', client: 'MarketGrowth', amount: 650, status: 'in_progress', projectId: 'proj_6' },
-];
+const PERIODS: FinancialOverviewPeriod[] = ['day', 'month', 'year'];
 
-const EARNINGS_TREND = [
-  { month: 'Jan', earnings: 3200 },
-  { month: 'Feb', earnings: 4100 },
-  { month: 'Mar', earnings: 3800 },
-  { month: 'Apr', earnings: 5200 },
-  { month: 'May', earnings: 4950 },
-];
-
-const EARNINGS_BY_CATEGORY = [
-  { name: 'Web Development', value: 45, color: '#0077FF' },
-  { name: 'Mobile Apps', value: 30, color: '#9F4BFF' },
-  { name: 'Design', value: 15, color: '#22C55E' },
-  { name: 'Writing', value: 10, color: '#F59E0B' },
-];
+const formatAxisAmount = (value: number) => {
+  const absolute = Math.abs(value);
+  if (absolute >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (absolute >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return String(value);
+};
 
 export default function FinancialOverviewScreen() {
-  const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('month');
+  const { t, i18n } = useTranslation();
+  const [period, setPeriod] = useState<FinancialOverviewPeriod>('month');
+  const [overview, setOverview] = useState<FinancialOverviewResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const periodLabel = t(`financialOverview.periods.${period}`);
 
-  const stats = useMemo(() => {
-    const completed = MILESTONE_DATA.filter(m => m.status === 'completed');
-    const pending = MILESTONE_DATA.filter(m => m.status === 'pending');
-    const inProgress = MILESTONE_DATA.filter(m => m.status === 'in_progress');
+  useEffect(() => {
+    let cancelled = false;
 
-    const totalEarnings = completed.reduce((sum, m) => sum + m.amount, 0);
-    const pendingEarnings = pending.reduce((sum, m) => sum + m.amount, 0);
-    const avgPerMilestone = completed.length > 0 ? totalEarnings / completed.length : 0;
+    const loadOverview = async () => {
+      setLoading(true);
+      setError(null);
+      const response = await walletGetAPI.getFinancialOverview(period);
+      if (cancelled) return;
 
-    return {
-      totalEarnings,
-      pendingEarnings,
-      completedMilestones: completed.length,
-      pendingMilestones: pending.length,
-      inProgressMilestones: inProgress.length,
-      avgPerMilestone,
-      totalMilestones: MILESTONE_DATA.length,
+      if (!response.success || !response.data) {
+        setError(response.message || t('financialOverview.loadError'));
+        setLoading(false);
+        return;
+      }
+
+      setOverview(response.data);
+      setLoading(false);
     };
-  }, []);
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'completed') return <span className="badge-green text-xs">Completed</span>;
-    if (status === 'pending') return <span className="badge-amber text-xs">Pending</span>;
-    return <span className="badge-cyan text-xs">In Progress</span>;
-  };
+    void loadOverview();
+    return () => {
+      cancelled = true;
+    };
+  }, [period, reloadKey, t]);
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+  const isClient = overview?.role === 'Client';
+  const roleKicker = overview
+    ? isClient ? t('financialOverview.clientFinance') : t('financialOverview.freelancerFinance')
+    : t('financialOverview.accountFinance');
+  const statusLabels = useMemo<Record<FinancialTransactionCategory, string>>(() => ({
+    escrow: t('financialOverview.status.inEscrow'),
+    released: isClient ? t('financialOverview.status.paid') : t('financialOverview.status.received'),
+    refund: t('financialOverview.status.refunded'),
+    serviceFee: t('financialOverview.status.serviceFee'),
+  }), [isClient, t]);
+  const progressData = useMemo(() => {
+    if (!overview || overview.totalContractValue <= 0) return [];
+    const completed = Math.min(overview.progressAmount, overview.totalContractValue);
+    return [
+      { name: isClient ? t('financialOverview.status.paid') : t('financialOverview.status.received'), value: completed, color: '#22C55E' },
+      { name: t('financialOverview.status.remaining'), value: Math.max(0, overview.totalContractValue - completed), color: '#F59E0B' },
+    ].filter(item => item.value > 0);
+  }, [isClient, overview, t]);
+  const isEmpty = Boolean(overview) &&
+    overview!.totalAmount === 0 &&
+    overview!.totalServiceFeePaid === 0 &&
+    overview!.totalContractValue === 0 &&
+    overview!.recentTransactions.length === 0;
+
+  const exportOverview = () => {
+    if (!overview) return;
+
+    const rows: Array<Array<string | number>> = [
+      [t('financialOverview.title'), overview.role],
+      [t('financialOverview.csv.period'), t(`financialOverview.periods.${overview.period}`)],
+      [t('financialOverview.csv.periodStartUtc'), overview.periodStartUtc],
+      [t('financialOverview.csv.periodEndUtc'), overview.periodEndUtc],
+      [isClient ? t('financialOverview.totalSpent') : t('financialOverview.totalEarnings'), overview.totalAmount],
+      [isClient ? t('financialOverview.averageSpending') : t('financialOverview.averageEarnings'), overview.averageAmount],
+      [isClient ? t('financialOverview.status.paid') : t('financialOverview.status.received'), overview.progressAmount],
+      [t('financialOverview.totalContractValue'), overview.totalContractValue],
+      [t('financialOverview.csv.progressPercentage'), overview.progressPercentage],
+      [t('financialOverview.serviceFeePaid'), overview.totalServiceFeePaid],
+      [],
+      [t('financialOverview.csv.trend')],
+      [t('financialOverview.csv.period'), isClient ? t('financialOverview.status.paid') : t('financialOverview.status.received'), t('financialOverview.status.escrowFunded'), t('financialOverview.status.serviceFee')],
+      ...overview.trendPoints.map(point => [
+        point.period,
+        point.paidOrReceivedAmount,
+        point.escrowFundedAmount,
+        point.serviceFeeAmount,
+      ]),
+      [],
+      [t('financialOverview.recentTransactions')],
+      [t('financialOverview.csv.date'), t('financialOverview.csv.project'), t('financialOverview.csv.category'), t('financialOverview.csv.amount')],
+      ...overview.recentTransactions.map(transaction => [
+        transaction.occurredAt,
+        transaction.project,
+        statusLabels[transaction.category],
+        transaction.signedAmount,
+      ]),
+    ];
+    const csv = rows
+      .map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `financial-overview-${overview.role.toLowerCase()}-${overview.period}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
     <AppLayout>
-      <div className="w-full max-w-[100vw] overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp size={20} className="text-green" />
-                <span className="badge-green text-xs">Earnings</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-primary">Financial Overview</h1>
-              <p className="text-sm text-secondary mt-1">Track your earnings from milestones</p>
+      <div className="financial-overview-page">
+        <header className="financial-overview-header">
+          <div>
+            <div className="financial-overview-kicker">
+              <Landmark size={18} />
+              {roleKicker}
             </div>
-            <div className="flex gap-2">
-              <button className="btn-ghost-cyan px-4 py-2 text-sm flex items-center gap-2">
-                <Download size={14} />
-                Export
-              </button>
-            </div>
+            <h1>{t('financialOverview.title')}</h1>
+            <p>
+              {!overview
+                ? t('financialOverview.loadingDescription')
+                : isClient
+                ? t('financialOverview.clientDescription')
+                : t('financialOverview.freelancerDescription')}
+              {' '}{t('financialOverview.amountsInGigCoin')}
+            </p>
           </div>
+          <button
+            type="button"
+            className="financial-overview-export"
+            onClick={exportOverview}
+            disabled={!overview || loading || isEmpty}
+          >
+            <Download size={16} />
+            {t('financialOverview.export')}
+          </button>
+        </header>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
-            {[
-              { label: 'Total Earnings', value: `$${stats.totalEarnings.toLocaleString()}`, icon: <DollarSign size={16} />, color: 'green', trend: '+18%' },
-              { label: 'Pending', value: `$${stats.pendingEarnings.toLocaleString()}`, icon: <Clock size={16} />, color: 'amber', trend: `${stats.pendingMilestones}` },
-              { label: 'Completed', value: stats.completedMilestones.toString(), icon: <CheckCircle size={16} />, color: 'green', trend: `${stats.completedMilestones}` },
-              { label: 'In Progress', value: stats.inProgressMilestones.toString(), icon: <Briefcase size={16} />, color: 'cyan', trend: `${stats.inProgressMilestones}` },
-              { label: 'Avg/Milestone', value: `$${stats.avgPerMilestone.toFixed(0)}`, icon: <TrendingUp size={16} />, color: 'purple', trend: '+12%' },
-              { label: 'This Month', value: '$4,950', icon: <Calendar size={16} />, color: 'green', trend: '+8%' },
-            ].map(stat => (
-              <div key={stat.label} className="stat-card">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-secondary truncate">{stat.label}</p>
-                  <span className={`icon-${stat.color} flex-shrink-0`}>{stat.icon}</span>
-                </div>
-                <p className="text-xl sm:text-2xl font-bold text-primary mb-1">{stat.value}</p>
-                <p className="text-xs text-green">{stat.trend}</p>
-              </div>
-            ))}
-          </div>
+        <div className="financial-range-tabs financial-overview-period-tabs" aria-label={t('financialOverview.periodAriaLabel')}>
+          {PERIODS.map(item => (
+            <button
+              type="button"
+              key={item}
+              className={period === item ? 'active' : ''}
+              onClick={() => setPeriod(item)}
+              disabled={loading && period === item}
+              title={t(`financialOverview.periods.${item}`)}
+            >
+              {t(`financialOverview.tabs.${item}`)}
+            </button>
+          ))}
+        </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Earnings Trend */}
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-semibold text-primary">Earnings Trend</h3>
-                <div className="role-toggle text-xs">
-                  <button
-                    onClick={() => setTimeRange('month')}
-                    className={`role-toggle-btn text-xs px-3 py-1 ${timeRange === 'month' ? 'active' : ''}`}
-                  >
-                    Month
-                  </button>
-                  <button
-                    onClick={() => setTimeRange('quarter')}
-                    className={`role-toggle-btn text-xs px-3 py-1 ${timeRange === 'quarter' ? 'active' : ''}`}
-                  >
-                    Quarter
-                  </button>
-                  <button
-                    onClick={() => setTimeRange('year')}
-                    className={`role-toggle-btn text-xs px-3 py-1 ${timeRange === 'year' ? 'active' : ''}`}
-                  >
-                    Year
-                  </button>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={EARNINGS_TREND}>
-                  <XAxis dataKey="month" tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={{ background: '#0D1526', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, color: 'white' }} formatter={(v: number) => [`$${v.toLocaleString()}`, 'Earnings']} />
-                  <Line type="monotone" dataKey="earnings" stroke="#22C55E" strokeWidth={3} dot={{ fill: '#22C55E', r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Earnings by Category */}
-            <div className="glass-card p-6">
-              <h3 className="font-semibold text-primary mb-5">Earnings by Category</h3>
-              <div className="flex items-center gap-8">
-                <div className="flex-shrink-0">
-                  <PieChart width={180} height={180}>
-                    <Pie data={EARNINGS_BY_CATEGORY} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value">
-                      {EARNINGS_BY_CATEGORY.map((entry, i) => (
-                        <Cell key={`cell-${i}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </div>
-                <div className="flex-1 space-y-3">
-                  {EARNINGS_BY_CATEGORY.map(item => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ background: item.color }} />
-                        <span className="text-sm text-primary">{item.name}</span>
-                      </div>
-                      <span className="text-sm font-semibold text-primary">{item.value}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Milestones List */}
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-semibold text-primary">Recent Milestones</h3>
-              <button
-                onClick={() => navigate('/workspace/proj_1')}
-                className="text-xs text-cyan hover:underline"
-              >
-                View All Projects
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {MILESTONE_DATA.map(milestone => (
-                <div key={milestone.id} className="glass-card p-4 hover:border-cyan/30 transition-all">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <p className="text-sm font-bold text-primary">{milestone.jobTitle}</p>
-                        {getStatusBadge(milestone.status)}
-                      </div>
-                      <p className="text-xs text-secondary mb-1">{milestone.client}</p>
-                      <p className="text-xs text-muted">ID: {milestone.id}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-xl font-bold ${milestone.status === 'completed' ? 'text-green' : 'text-amber'}`}>
-                        ${milestone.amount.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex items-center gap-4 text-xs text-muted">
-                      <span className="flex items-center gap-1">
-                        <Calendar size={12} />
-                        {milestone.status === 'completed'
-                          ? `Completed: ${formatDate(milestone.completedAt!)}`
-                          : milestone.status === 'pending'
-                          ? `Due: ${formatDate(milestone.dueDate!)}`
-                          : 'In Progress'}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => navigate(`/workspace/${milestone.projectId}`)}
-                      className="text-xs text-cyan hover:underline flex items-center gap-1"
-                    >
-                      <Eye size={12} />
-                      View Project
-                    </button>
-                  </div>
+        {loading && !overview ? (
+          <section className="financial-overview-state">
+            <Loader2 size={24} className="financial-overview-spin" />
+            <strong>{t('financialOverview.loading')}</strong>
+          </section>
+        ) : error ? (
+          <section className="financial-overview-state error">
+            <AlertCircle size={24} />
+            <strong>{t('financialOverview.loadErrorTitle')}</strong>
+            <p>{error}</p>
+            <button type="button" onClick={() => setReloadKey(value => value + 1)}>
+              <RefreshCw size={15} /> {t('financialOverview.retry')}
+            </button>
+          </section>
+        ) : overview && isEmpty ? (
+          <section className="financial-overview-state">
+            <Wallet size={26} />
+            <strong>{t('financialOverview.emptyTitle', { period: periodLabel.toLocaleLowerCase(i18n.resolvedLanguage) })}</strong>
+            <p>{t('financialOverview.emptyDescription')}</p>
+          </section>
+        ) : overview ? (
+          <>
+            <section className={`financial-overview-stats ${loading ? 'is-refreshing' : ''}`}>
+              {[
+                {
+                  label: isClient ? t('financialOverview.totalSpent') : t('financialOverview.totalEarnings'),
+                  value: formatGigCoin(overview.totalAmount),
+                  icon: isClient ? <TrendingDown size={18} /> : <TrendingUp size={18} />,
+                  tone: 'cyan',
+                },
+                {
+                  label: isClient ? t('financialOverview.averageSpending') : t('financialOverview.averageEarnings'),
+                  value: formatGigCoin(overview.averageAmount),
+                  icon: <TrendingUp size={18} />,
+                  tone: 'green',
+                },
+                {
+                  label: isClient ? t('financialOverview.paymentProgress') : t('financialOverview.earningsProgress'),
+                  value: `${formatGigCoin(overview.progressAmount)} / ${formatGigCoin(overview.totalContractValue)} (${overview.progressPercentage}%)`,
+                  icon: <ShieldCheck size={18} />,
+                  tone: 'amber',
+                },
+                {
+                  label: t('financialOverview.serviceFeePaid'),
+                  value: formatGigCoin(overview.totalServiceFeePaid),
+                  icon: <Wallet size={18} />,
+                  tone: 'purple',
+                },
+              ].map(stat => (
+                <div key={stat.label} className="financial-stat-card">
+                  <span className={stat.tone}>{stat.icon}</span>
+                  <small>{stat.label}</small>
+                  <strong>{stat.value}</strong>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
+            </section>
+
+            <section className="financial-overview-grid">
+              <div className="financial-chart-card wide">
+                <div className="financial-chart-head">
+                  <div>
+                    <h2>{isClient ? t('financialOverview.paymentTrends') : t('financialOverview.earningsTrends')}</h2>
+                    <p>{t('financialOverview.trendsDescription', { period: periodLabel.toLocaleLowerCase(i18n.resolvedLanguage) })}</p>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={overview.trendPoints}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
+                    <XAxis dataKey="period" tick={{ fill: '#8892A4', fontSize: 12 }} />
+                    <YAxis tick={{ fill: '#8892A4', fontSize: 12 }} tickFormatter={formatAxisAmount} />
+                    <Tooltip formatter={(value) => formatGigCoin(Number(value))} contentStyle={{ background: '#0D1526', border: '1px solid rgba(0,119,255,0.25)', borderRadius: 10, color: 'white' }} />
+                    <Bar dataKey="paidOrReceivedAmount" name={isClient ? t('financialOverview.status.paid') : t('financialOverview.status.received')} fill="#22C55E" radius={[6, 6, 0, 0]} />
+                    {isClient && <Bar dataKey="escrowFundedAmount" name={t('financialOverview.status.escrowFunded')} fill="#F59E0B" radius={[6, 6, 0, 0]} />}
+                    <Bar dataKey="serviceFeeAmount" name={t('financialOverview.status.serviceFee')} fill="#9F4BFF" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="financial-chart-card">
+                <div className="financial-chart-head">
+                  <div>
+                    <h2>{isClient ? t('financialOverview.paymentProgress') : t('financialOverview.earningsProgress')}</h2>
+                    <p>{t('financialOverview.progressOf', { current: formatGigCoin(overview.progressAmount), total: formatGigCoin(overview.totalContractValue) })}</p>
+                  </div>
+                </div>
+                {progressData.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie data={progressData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92}>
+                          {progressData.map(item => <Cell key={item.name} fill={item.color} />)}
+                        </Pie>
+                        <Tooltip formatter={(value) => formatGigCoin(Number(value))} contentStyle={{ background: '#0D1526', border: '1px solid rgba(159,75,255,0.25)', borderRadius: 10, color: 'white' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="financial-legend">
+                      {progressData.map(item => (
+                        <span key={item.name}><i style={{ background: item.color }} />{item.name}</span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="financial-chart-empty">{t('financialOverview.noProgress')}</div>
+                )}
+              </div>
+            </section>
+
+            <section className="financial-table-card">
+              <div className="financial-chart-head">
+                <div>
+                  <h2>{t('financialOverview.recentTransactions')}</h2>
+                  <p>{t('financialOverview.transactionsDescription')}</p>
+                </div>
+              </div>
+              {overview.recentTransactions.length > 0 ? (
+                <div className="financial-transaction-list">
+                  {overview.recentTransactions.map(transaction => (
+                    <article key={transaction.walletTransactionId}>
+                      <div>
+                        <strong>{statusLabels[transaction.category]}</strong>
+                        <span>
+                          <Calendar size={13} />
+                          {new Date(transaction.occurredAt).toLocaleString(i18n.resolvedLanguage?.startsWith('vi') ? 'vi-VN' : 'en-US', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                          {' · '}{transaction.project}
+                        </span>
+                      </div>
+                      <span className={`financial-status ${transaction.category}`}>
+                        {statusLabels[transaction.category]}
+                      </span>
+                      <b className={transaction.signedAmount >= 0 ? 'positive' : 'negative'}>
+                        {formatGigCoin(transaction.signedAmount)}
+                      </b>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="financial-chart-empty">{t('financialOverview.noTransactions')}</div>
+              )}
+            </section>
+          </>
+        ) : null}
       </div>
     </AppLayout>
   );

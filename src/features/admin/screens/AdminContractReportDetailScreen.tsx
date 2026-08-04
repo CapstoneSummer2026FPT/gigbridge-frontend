@@ -1,0 +1,364 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router';
+import { adminGetAPI } from '../../../api/adminAPI/GET';
+import { adminPostAPI } from '../../../api/adminAPI/POST';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { ContractReportAdminResolutionAction, ContractReportInformationTarget, type AdminContractReportDetail } from '../../../types/models/AdminContractReport';
+import '../styles/admin-phase-one.css';
+import { AppLayout } from '../../../shared/components/AppLayout';
+
+type Action = 'info' | 'close' | 'dismiss' | 'escalate' | 'link' | 'note' | null;
+const stateNames = ['Open', 'Under review', 'Awaiting information', 'Closed', 'Dismissed', 'Escalated', 'Linked to dispute'];
+
+const json = (v?: string) => {
+  if (!v) return '';
+  try {
+    return JSON.stringify(JSON.parse(v), null, 2);
+  } catch {
+    return v;
+  }
+};
+
+export default function AdminContractReportDetailScreen() {
+  const { reportId = '' } = useParams();
+  const [data, setData] = useState<AdminContractReportDetail>();
+  const [error, setError] = useState('');
+  const [action, setAction] = useState<Action>(null);
+  const [reason, setReason] = useState('');
+  const [extra, setExtra] = useState('');
+  const [target, setTarget] = useState(ContractReportInformationTarget.Both);
+  const [due, setDue] = useState('');
+  const [disputeId, setDisputeId] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    const r = await adminGetAPI.getContractReportDetail(reportId);
+    if (r.success && r.data) {
+      setData(r.data);
+    } else {
+      setError(r.message || 'Unable to load Contract Report.');
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, [reportId]);
+
+  const apply = async () => {
+    if (!action || !reason.trim()) return;
+    setBusy(true);
+    setError('');
+    let r;
+    if (action === 'info') {
+      r = await adminPostAPI.requestContractReportInformation(reportId, {
+        requestId: crypto.randomUUID(),
+        target,
+        message: reason,
+        requestedEvidenceOrClarification: extra || undefined,
+        dueAt: due ? new Date(due).toISOString() : undefined,
+      });
+    } else if (action === 'close') {
+      r = await adminPostAPI.closeContractReport(reportId, {
+        resolutionAction: ContractReportAdminResolutionAction.ResolvedByParties,
+        resolutionSummary: reason,
+        internalNote: extra || undefined,
+      });
+    } else if (action === 'dismiss') {
+      r = await adminPostAPI.dismissContractReport(reportId, {
+        reason,
+        internalNote: extra || undefined,
+      });
+    } else if (action === 'note') {
+      r = await adminPostAPI.addContractReportNote(reportId, reason);
+    } else if (action === 'link') {
+      r = await adminPostAPI.linkContractReportDispute(reportId, disputeId, reason);
+    } else {
+      r = await adminPostAPI.escalateContractReport(reportId, {
+        title: `Contract Report: ${data?.contractTitle || ''}`,
+        description: data?.description || reason,
+        claimedAmount: data?.milestone?.amount,
+        requestedResolution: data?.desiredResolution || reason,
+        urgency: 0,
+        reason,
+      });
+    }
+
+    setBusy(false);
+    if (r.success && r.data) {
+      setData(r.data);
+      setAction(null);
+      setReason('');
+      setExtra('');
+      setDisputeId('');
+    } else {
+      setError(r.message || 'Action failed.');
+    }
+  };
+
+  const assign = async () => {
+    setBusy(true);
+    const r = await adminPostAPI.assignContractReport(reportId);
+    setBusy(false);
+    if (r.success && r.data) {
+      setData(r.data);
+    } else {
+      setError(r.message || 'Assignment failed.');
+    }
+  };
+
+  const download = async (id: string) => {
+    const r = await adminGetAPI.getContractReportAttachmentDownload(reportId, id);
+    if (r.success && r.data) {
+      window.open(r.data.downloadUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      setError(r.message || 'Download failed.');
+    }
+  };
+
+  if (!data) {
+    return (
+      <AppLayout>
+        <main className="admin-phase">
+          {error ? <div className="admin-phase__error">{error}</div> : <p>Loading Contract Report…</p>}
+        </main>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout>
+      <main className="admin-phase">
+        <div className="admin-phase__header">
+          <div>
+            <Link to="/admin/reports/contracts">← Contract Reports</Link>
+            <h1>{data.contractTitle}</h1>
+            <p>{data.description}</p>
+          </div>
+          <span className="admin-phase__badge">{stateNames[data.adminReviewStatus]}</span>
+        </div>
+        {error && <div className="admin-phase__error">{error}</div>}
+
+        <section className="admin-phase__panel">
+          <div className="admin-phase__actions">
+            {data.canAssign && (
+              <button type="button" disabled={busy} onClick={assign}>
+                {data.assignedAdminId ? 'Reassign to me' : 'Assign to me'}
+              </button>
+            )}
+            {data.canRequestInformation && (
+              <button type="button" onClick={() => setAction('info')}>Request information</button>
+            )}
+            {data.canClose && (
+              <button type="button" onClick={() => setAction('close')}>Close</button>
+            )}
+            {data.canDismiss && (
+              <button type="button" onClick={() => setAction('dismiss')}>Dismiss</button>
+            )}
+            {data.canEscalate && (
+              <button type="button" className="danger" onClick={() => setAction('escalate')}>Escalate to new Dispute</button>
+            )}
+            {data.canLinkDispute && (
+              <button type="button" onClick={() => setAction('link')}>Link existing Dispute</button>
+            )}
+            <button type="button" onClick={() => setAction('note')}>Add internal note</button>
+            {data.relatedDisputeId && (
+              <Link to={`/admin/disputes/${data.relatedDisputeId}`}>Open related Dispute</Link>
+            )}
+          </div>
+        </section>
+
+        <section className="admin-phase__panel admin-phase__grid">
+          <div className="admin-phase__stat">
+            <small>Reporter</small>
+            <UserProfileLink userId={data.reporter.userId} role={data.reporter.role}>
+              {data.reporter.name}
+            </UserProfileLink>{' '}
+            <Link to={`/admin/users?preview=${encodeURIComponent(data.reporter.userId)}`}>(manage)</Link>
+            <small>{data.reporter.role} · {data.reporter.violationCount} violations</small>
+          </div>
+          <div className="admin-phase__stat">
+            <small>Respondent</small>
+            {data.respondent ? (
+              <>
+                <UserProfileLink userId={data.respondent.userId} role={data.respondent.role}>
+                  {data.respondent.name}
+                </UserProfileLink>{' '}
+                <Link to={`/admin/users?preview=${encodeURIComponent(data.respondent.userId)}`}>(manage)</Link>
+              </>
+            ) : (
+              'None'
+            )}
+            <small>{data.respondent?.role}</small>
+          </div>
+          <div className="admin-phase__stat">
+            <small>Contract</small>
+            <Link to={`/admin/contracts?contractId=${encodeURIComponent(data.contractId)}`}>
+              {data.contractTitle}
+            </Link>
+            <small>Status {data.contractStatus} · budget {data.contractBudget}</small>
+          </div>
+          <div className="admin-phase__stat">
+            <small>Job / Proposal</small>
+            {data.jobPostTitle}
+            <small>{data.proposalId || 'No source Proposal'}</small>
+          </div>
+        </section>
+
+        {data.milestone && (
+          <section className="admin-phase__panel">
+            <h2>Milestone</h2>
+            <div className="admin-phase__grid">
+              <div>{data.milestone.title}<small>Status {data.milestone.status}</small></div>
+              <div>Amount {data.milestone.amount}<small>Released {data.milestone.releasedAmount}</small></div>
+              <div>Refunded {data.milestone.refundAmount}<small>Penalty {data.milestone.penaltyAmount}</small></div>
+            </div>
+          </section>
+        )}
+
+        <section className="admin-phase__panel">
+          <h2>Participant response</h2>
+          <p><strong>Desired resolution:</strong> {data.desiredResolution}</p>
+          <p><strong>Explanation:</strong> {data.explanation || 'No response'}</p>
+          <p><strong>Proposed resolution:</strong> {data.proposedResolution || 'None'}</p>
+          <p><strong>Rejection:</strong> {data.rejectReason || 'None'}</p>
+        </section>
+
+        <section className="admin-phase__panel">
+          <h2>Evidence</h2>
+          {data.attachments.map(x => (
+            <p key={x.attachmentId}>
+              <button type="button" onClick={() => download(x.attachmentId)}>Download {x.fileName}</button>{' '}
+              <small>{x.contentType} · {Math.ceil(x.fileSize / 1024)} KB · {x.uploadedByName || 'Reporter'}{x.copiedToDispute ? ' · copied to Dispute' : ''}</small>
+            </p>
+          ))}
+          {!data.attachments.length && <p>No attachments.</p>}
+        </section>
+
+        <section className="admin-phase__panel">
+          <h2>Financial context (read-only)</h2>
+          <div className="admin-phase__grid">
+            <div>Required {data.escrowRequired}</div>
+            <div>Funded {data.escrowFunded}</div>
+            <div>Released {data.escrowReleased}</div>
+            <div>Remaining {data.escrowRemaining}</div>
+          </div>
+          <details>
+            <summary>Escrow transactions ({data.escrowTransactions.length})</summary>
+            {data.escrowTransactions.map(x => (
+              <p key={x.transactionId}>Type {x.type}: {x.amount} · status {x.status}</p>
+            ))}
+          </details>
+          <details>
+            <summary>Wallet transactions ({data.walletTransactions.length})</summary>
+            {data.walletTransactions.map(x => (
+              <p key={x.transactionId}>Type {x.type}: {x.amount} · status {x.status}</p>
+            ))}
+          </details>
+        </section>
+
+        <section className="admin-phase__panel">
+          <h2>Investigation messages</h2>
+          {data.messages.map(x => (
+            <p key={x.messageId}>
+              <strong>{x.senderName || 'System'}</strong> <small>{new Date(x.sentAt).toLocaleString()}</small>
+              <br />
+              {x.content}
+            </p>
+          ))}
+          {!data.messages.length && <p>No messages in the investigation window.</p>}
+        </section>
+
+        <section className="admin-phase__panel">
+          <h2>Information requests</h2>
+          {data.informationRequests.map(x => (
+            <p key={x.informationRequestId}>
+              <strong>{x.targetName}</strong>: {x.message}
+              <small>Status {x.status}{x.dueAt ? ` · due ${new Date(x.dueAt).toLocaleString()}` : ''}</small>
+            </p>
+          ))}
+          {!data.informationRequests.length && <p>No information requests.</p>}
+        </section>
+
+        <section className="admin-phase__panel">
+          <h2>Internal notes</h2>
+          {data.internalNotes.map(x => (
+            <p key={x.noteId}>
+              <strong>{x.adminName}</strong> <small>{new Date(x.createdAt).toLocaleString()}</small>
+              <br />
+              {x.content}
+            </p>
+          ))}
+          {!data.internalNotes.length && <p>No internal notes.</p>}
+        </section>
+
+        <section className="admin-phase__panel">
+          <h2>Audit history</h2>
+          {data.auditHistory.map(x => (
+            <details key={x.auditId}>
+              <summary>{new Date(x.createdAt).toLocaleString()} · {x.adminName || x.adminId} · {x.action}</summary>
+              <pre>OLD {json(x.oldValues)}{`\n`}NEW {json(x.newValues)}</pre>
+              <small>Correlation {x.correlationId}</small>
+            </details>
+          ))}
+          {!data.auditHistory.length && <p>No Admin audit events.</p>}
+        </section>
+
+        {action && (
+          <div className="admin-phase__modal" role="dialog" aria-modal="true">
+            <div className="admin-phase__panel">
+              <h2>
+                {action === 'info'
+                  ? 'Request information'
+                  : action === 'note'
+                  ? 'Internal note'
+                  : action === 'link'
+                  ? 'Link existing Dispute'
+                  : `${action[0].toUpperCase()}${action.slice(1)} Contract Report`}
+              </h2>
+              {action === 'info' && (
+                <>
+                  <select value={target} onChange={e => setTarget(Number(e.target.value))}>
+                    <option value={0}>Reporter</option>
+                    <option value={1}>Respondent</option>
+                    <option value={2}>Both</option>
+                  </select>
+                  <input type="datetime-local" value={due} onChange={e => setDue(e.target.value)} />
+                </>
+              )}
+              {action === 'link' && (
+                <input
+                  value={disputeId}
+                  onChange={e => setDisputeId(e.target.value)}
+                  placeholder="Existing Dispute ID"
+                />
+              )}
+              <textarea
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                placeholder={action === 'info' ? 'Required message' : 'Required reason or summary'}
+              />
+              {(action === 'info' || action === 'close' || action === 'dismiss') && (
+                <textarea
+                  value={extra}
+                  onChange={e => setExtra(e.target.value)}
+                  placeholder={action === 'info' ? 'Requested evidence or clarification' : 'Optional internal note'}
+                />
+              )}
+              <div className="admin-phase__actions">
+                <button type="button" onClick={() => setAction(null)}>Cancel</button>
+                <button
+                  type="button"
+                  className={action === 'dismiss' || action === 'escalate' ? 'danger' : 'primary'}
+                  disabled={busy || !reason.trim() || (action === 'link' && !disputeId.trim())}
+                  onClick={apply}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </AppLayout>
+  );
+}

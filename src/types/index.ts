@@ -13,6 +13,7 @@ export * from './models/Category';
 
 // Jobs
 export * from './models/Job';
+export * from './jobInvitation';
 
 // Proposals
 export * from './models/Proposal';
@@ -20,17 +21,20 @@ export * from './models/Proposal';
 // Contracts & Milestones
 export * from './models/Contract';
 
-// Messages & Reviews
-export * from './models/Message';
+// Messages. The legacy Message.Review shape is intentionally not re-exported
+// because the canonical review contract lives in models/Job.
+export {
+  type Message,
+} from './models/Message';
 
 // Disputes
 export * from './models/Dispute';
 
-// Notifications
-export * from './models/Notification';
+// FAQs
+export * from './models/FAQ';
 
-// Audit Logs
-export * from './models/AuditLog';
+// Reports
+export * from './models/Report';
 
-// Projects (legacy compatibility)
-export * from './models/Project';
+// Wallets & Financial Overview
+export * from './models/Financial';

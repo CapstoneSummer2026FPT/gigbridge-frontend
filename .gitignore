@@ -47,7 +47,16 @@ coverage/
 .parcel-cache/
 dist-ssr/
 *.local
+repomix-output.*
 
 # OS
 Thumbs.db
 .DS_Store
+
+# Taste skill
+taste-skill/
+
+SKILL.md
+
+.env.example
+*.md

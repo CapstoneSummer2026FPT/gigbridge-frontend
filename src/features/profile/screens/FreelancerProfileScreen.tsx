@@ -1,345 +1,847 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router';
-import { Star, MapPin, Clock, DollarSign, CheckCircle, Globe, Video, MessageSquare, Bot, ExternalLink, Award } from 'lucide-react';
+import {
+  Star,
+  MapPin,
+  ArrowLeft,
+  Crown,
+  Bookmark,
+  BriefcaseBusiness,
+  MoreHorizontal,
+  Share2,
+  Flag,
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  Layers,
+  AlignLeft,
+  Shield,
+  GraduationCap,
+  Clock,
+  Tag,
+  Code2,
+  Building2,
+  FolderGit2,
+  Calendar,
+  Plus,
+} from 'lucide-react';
+import { AnimatePresence } from 'motion/react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow';
 import { useApp } from '../../../app/providers/AppProvider';
-import { DB } from '../../../mock_backend';
-import { SEED_FREELANCER_PROFILES, SEED_REVIEWS } from '../../../mock_backend/database/seed';
+import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
+import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
+import { ReportUserModal } from '../components/ReportUserModal';
+import { useTranslation } from '../../../hooks/useTranslation';
+import '../../reviews/styles/reviews-screen.css';
+import '../styles/client-profile-screen.css';
+import '../styles/freelancer-profile-screen.css';
 
-// Extended profile interface with mock data fields
-interface ExtendedProfile {
-  userId: string;
-  title: string;
-  bio: string;
-  hourlyRate: number;
-  rating: number;
-  reviewCount: number;
-  location: string;
-  timezone: string;
-  languages: string[];
-  skills: string[];
-  completedProjects: number;
-  totalEarnings: number;
-  responseTime: string;
-  availabilityStatus: 'available' | 'busy';
-  profileStrength: number;
-  portfolioItems: Array<{
-    id: string;
-    title: string;
-    description: string;
-    imageUrl?: string;
-    projectUrl?: string;
-    tags: string[];
-  }>;
-}
+const getAvailabilityText = (avail?: number) => {
+  if (avail === 0) return 'Full-time (40h/week)';
+  if (avail === 1) return 'Part-time (20h/week)';
+  if (avail === 2) return 'Not Available';
+  return 'Available for Hire';
+};
 
 export default function FreelancerProfileScreen() {
+  const { t } = useTranslation(['profile', 'reviews', 'common']);
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role } = useApp();
-  const [activeTab, setActiveTab] = useState<'portfolio' | 'reviews' | 'about'>('portfolio');
+  const { user: currentUser } = useApp();
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const targetId = id || 'u_freelancer_1';
-  const user = DB.getUserById(targetId) || DB.getUserById('u_freelancer_1')!;
-  const dbProfile = SEED_FREELANCER_PROFILES.find(p => p.user_id === targetId) || SEED_FREELANCER_PROFILES[1];
-  const reviews = SEED_REVIEWS.filter(r => r.revieweeId === targetId);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
-  // Generate avatar URL and display name from user data
-  const userName = user.full_name || `${user.first_name} ${user.last_name}`;
-  const avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.id}`;
-  const isVerified = user.is_email_verified;
+  const targetId = id || currentUser?.id || '';
 
-  // Create extended profile with mock data
-  const profile: ExtendedProfile = {
-    userId: dbProfile.user_id,
-    title: dbProfile.title,
-    bio: dbProfile.bio,
-    hourlyRate: dbProfile.hourly_rate,
-    rating: dbProfile.rating,
-    reviewCount: reviews.length,
-    location: dbProfile.location,
-    timezone: 'PST (UTC-8)',
-    languages: ['English', 'Spanish'],
-    skills: ['React', 'TypeScript', 'Node.js', 'Next.js', 'GraphQL', 'PostgreSQL', 'AWS', 'Docker'],
-    completedProjects: 47,
-    totalEarnings: 128000,
-    responseTime: '2 hours',
-    availabilityStatus: dbProfile.availability === 0 ? 'available' : 'busy',
-    profileStrength: dbProfile.profile_completion_score,
-    portfolioItems: [
-      {
-        id: '1',
-        title: 'E-commerce Platform',
-        description: 'Full-stack marketplace with React & Node.js',
-        imageUrl: 'https://images.unsplash.com/photo-1557821552-17105176677c?w=400',
-        projectUrl: 'https://example.com',
-        tags: ['React', 'Node.js', 'Stripe']
-      },
-      {
-        id: '2',
-        title: 'SaaS Dashboard',
-        description: 'Analytics dashboard with real-time data',
-        imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400',
-        tags: ['Next.js', 'D3.js', 'WebSocket']
+  const {
+    loading,
+    error,
+    profileData,
+    eloPoints,
+    freelancerProfileId,
+    isSaved,
+    isSaving,
+    showJobInviteModal,
+    showMoreMenu,
+    currentPage,
+    reviewsList,
+    averageRating,
+    distribution,
+    totalPages,
+    paginatedReviews,
+    setShowJobInviteModal,
+    setShowMoreMenu,
+    setCurrentPage,
+    handleSaveFreelancer,
+  } = useFreelancerProfile(
+    targetId,
+    currentUser?.role === 0 && currentUser?.id !== targetId,
+  );
+
+  // GSAP Entrance Timeline Animation (Identical clearProps & stagger logic to ClientProfileScreen)
+  useGSAP(
+    () => {
+      if (containerRef.current && !loading) {
+        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+        tl.fromTo(
+          '.cp-glow-orb',
+          { opacity: 0, scale: 0.8 },
+          { opacity: 0.6, scale: 1, duration: 0.8, stagger: 0.15, clearProps: 'all' }
+        )
+        .fromTo(
+          '.cp-hero-card',
+          { opacity: 0, y: 25 },
+          { opacity: 1, y: 0, duration: 0.5, clearProps: 'all' },
+          '-=0.5'
+        )
+        .fromTo(
+          '.cp-card',
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.45, stagger: 0.08, clearProps: 'all' },
+          '-=0.3'
+        );
       }
-    ]
-  };
+    },
+    { scope: containerRef, dependencies: [loading] }
+  );
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[70vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--brand,#494be7)]"></div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error || !targetId) {
+    return (
+      <AppLayout>
+        <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Freelancer profile unavailable</h1>
+          <p className="text-[var(--text-secondary)]">{error || 'No freelancer profile was selected.'}</p>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="cp-btn-secondary"
+          >
+            Go back
+          </button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const user = profileData.user;
+  const profile = profileData.profile;
+  const skills = profileData.skills;
+  const experience = profileData.experience;
+
+  const initials = user.full_name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || 'B';
+
+  const availabilityText = getAvailabilityText(profile.availability);
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto">
-        {/* Hero Banner */}
-        <div className="glass-card overflow-hidden mb-6">
-          {/* Cover Banner */}
-          <div className="h-40 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.15) 0%, rgba(159,75,255,0.2) 50%, rgba(0,240,255,0.08) 100%)' }}>
-            {/* Neural network decorative lines */}
-            <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 400 160">
-              <line x1="0" y1="40" x2="400" y2="120" stroke="#0077FF" strokeWidth="0.5" />
-              <line x1="0" y1="80" x2="400" y2="40" stroke="#9F4BFF" strokeWidth="0.5" />
-              <line x1="100" y1="0" x2="300" y2="160" stroke="#0077FF" strokeWidth="0.5" />
-              <circle cx="200" cy="80" r="40" fill="none" stroke="#0077FF" strokeWidth="0.5" />
-            </svg>
+      <main className="cp-main-wrapper mesh-gradient-bg min-h-[calc(100vh-6rem)] p-3 sm:p-6">
+        {/* Ambient Glowing Orbs */}
+        <div className="cp-glow-orb cp-glow-orb-1" />
+        <div className="cp-glow-orb cp-glow-orb-2" />
+        <div className="cp-glow-orb cp-glow-orb-3" />
+
+        <div className="cp-container" ref={containerRef}>
+          {/* Top Bar Navigation */}
+          <div className="cp-top-bar">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="cp-btn-secondary"
+            >
+              <ArrowLeft size={16} className="cp-card-icon" />
+              <span>Back</span>
+            </button>
           </div>
 
-          {/* Profile Info */}
-          <div className="px-6 pb-6">
-            <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-14 mb-4">
-              <div className="relative">
-                <img src={avatarUrl} alt={userName}
-                  className="w-28 h-28 rounded-2xl border-4 avatar-glow"
-                  style={{ borderColor: '#0A0F1C' }} />
-                <div className="absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 flex items-center justify-center"
-                  style={{ background: profile.availabilityStatus === 'available' ? '#22C55E' : '#F59E0B', borderColor: '#0A0F1C' }} />
+          {/* Hero Header Section - Transparent Card with Brand Stroke Avatar */}
+          <div className="cp-hero-card">
+            <div className="cp-hero-left">
+              {/* Circle Avatar (Transparent background, brand stroke outline) */}
+              <div className="cp-avatar-circle">
+                {user.avatar || profile.avatar ? (
+                  <img
+                    src={user.avatar || profile.avatar}
+                    alt={user.full_name}
+                    className="cp-avatar-img"
+                  />
+                ) : (
+                  <div className="cp-avatar-fallback">
+                    {initials}
+                  </div>
+                )}
               </div>
 
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-black text-primary">{userName}</h1>
-                  {isVerified && <CheckCircle size={18} className="text-cyan" />}
+              {/* User Meta Details Block */}
+              <div className="cp-hero-details">
+                <div className="flex items-center gap-3">
+                  <h1 className="cp-hero-name">
+                    {user.full_name || 'Bao Dinh'}
+                  </h1>
+                  {profile?.showProVerifiedBadge === true && (
+                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--brand,#494be7)] text-white text-[11px] font-extrabold tracking-wide shadow-sm">
+                      <Crown size={12} className="fill-current" />
+                      <span>Pro Verified</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-base font-medium mb-2 text-secondary">{profile.title}</p>
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} size={14} fill={i < Math.floor(profile.rating) ? '#F59E0B' : 'none'} className="text-amber" />
-                    ))}
-                    <span className="text-primary text-sm font-semibold ml-1">{profile.rating}</span>
-                    <span className="text-xs text-secondary">({profile.reviewCount} reviews)</span>
+
+                {/* Professional Title / Headline */}
+                <p className="cp-hero-subtitle">
+                  {profile.title || profile.majorName || 'Senior Full-Stack Engineer'}
+                </p>
+
+                {/* Location Meta */}
+                <div className="cp-meta-row">
+                  <div className="cp-meta-item">
+                    <MapPin size={15} className="cp-card-icon" />
+                    <span>{profile.location || 'Da Nang, Viet Nam'}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-secondary">
-                    <MapPin size={14} /> {profile.location}
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-secondary">
-                    <Globe size={14} /> {profile.timezone}
-                  </div>
+                </div>
+
+                {/* Hero Header Major & Availability Pills */}
+                <div className="cp-pills-row">
+                  <span className="cp-pill-brand inline-flex items-center gap-1.5">
+                    <GraduationCap size={13} />
+                    {profile.majorName || 'Software Engineering'}
+                  </span>
+                  <span className="cp-pill-muted inline-flex items-center gap-1.5">
+                    <Clock size={13} />
+                    {availabilityText}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-3">
-                {role === 'client' && (
+            {/* Right Block: Action Buttons */}
+            <div className="cp-hero-actions">
+              {currentUser?.id === targetId ? (
+                <button
+                  type="button"
+                  onClick={() => navigate('/settings')}
+                  className="cp-btn-secondary"
+                >
+                  <Edit3 size={15} />
+                  <span>Edit Profile</span>
+                </button>
+              ) : (
+                <>
+                  {currentUser?.role === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowJobInviteModal(true)}
+                      className="cp-btn-secondary bg-[var(--brand,#494be7)] text-white hover:bg-[var(--brand-hover)] border-none"
+                    >
+                      <BriefcaseBusiness size={15} />
+                      <span>{t('profile.inviteToJob', { defaultValue: 'Invite to Job' })}</span>
+                    </button>
+                  )}
+
+                  {currentUser?.role === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveFreelancer()}
+                      disabled={isSaving}
+                      className="cp-btn-secondary"
+                    >
+                      <Bookmark size={15} fill={isSaved ? 'currentColor' : 'none'} />
+                      <span>{isSaved ? t('profile.saved', { defaultValue: 'Saved' }) : t('profile.save', { defaultValue: 'Save' })}</span>
+                    </button>
+                  )}
+                </>
+              )}
+
+              <div className="cp-dropdown-container">
+                <button
+                  type="button"
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="cp-action-icon-btn"
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+
+                {showMoreMenu && (
                   <>
-                    <button className="btn-purple px-4 py-2.5 text-sm flex items-center gap-2"
-                      onClick={() => navigate('/ai-interview')}>
-                      <Video size={16} />
-                      AI Interview
-                    </button>
-                    <button className="btn-cyan px-4 py-2.5 text-sm flex items-center gap-2"
-                      onClick={() => navigate('/workspace/proj_1')}>
-                      <MessageSquare size={16} />
-                      Invite
-                    </button>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} />
+                    <div className="cp-dropdown-menu">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          void navigator.clipboard.writeText(window.location.href);
+                          toast.success('Link copied to clipboard!');
+                        }}
+                        className="cp-dropdown-item"
+                      >
+                        <Share2 size={14} />
+                        Share
+                      </button>
+
+                      {currentUser?.id !== user.id && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMoreMenu(false);
+                            setShowReportModal(true);
+                          }}
+                          disabled={reportSubmitted}
+                          className="cp-dropdown-item cp-dropdown-item-danger"
+                        >
+                          <Flag size={14} />
+                          {reportSubmitted ? 'Reported' : 'Report User'}
+                        </button>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
             </div>
-
-            {/* Stats Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-              {[
-                { label: 'Hourly Rate', value: `$${profile.hourlyRate}/hr`, color: '#0077FF' },
-                { label: 'Projects Done', value: profile.completedProjects, color: '#9F4BFF' },
-                { label: 'Total Earned', value: `$${(profile.totalEarnings / 1000).toFixed(0)}K+`, color: '#22C55E' },
-                { label: 'Response Time', value: profile.responseTime, color: '#F59E0B' },
-              ].map(stat => (
-                <div key={stat.label} className="p-3 rounded-xl text-center"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <p className="text-lg font-black" style={{ color: stat.color }}>{stat.value}</p>
-                  <p className="text-xs mt-0.5 text-secondary">{stat.label}</p>
-                </div>
-              ))}
-            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-5">
-            {/* AI-Optimized Bio */}
-            <div className="glass-card p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-primary font-semibold">About Me</h2>
-                <span className="badge-purple text-xs">AI Optimized</span>
-              </div>
-              <p className="text-sm leading-relaxed text-secondary">{profile.bio}</p>
-
-              <div className="flex flex-wrap gap-2 mt-4">
-                {profile.languages.map(lang => (
-                  <span key={lang} className="tag-pill text-xs">{lang}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Skills */}
-            <div className="glass-card p-6">
-              <h2 className="text-primary font-semibold mb-4">Skills</h2>
-              <div className="flex flex-wrap gap-2">
-                {profile.skills.map((skill, i) => (
-                  <span key={skill} className="px-3 py-2 rounded-xl text-sm font-medium"
-                    style={{
-                      background: i < 3 ? 'rgba(0,240,255,0.1)' : 'rgba(255,255,255,0.04)',
-                      border: i < 3 ? '1px solid rgba(0,240,255,0.25)' : '1px solid rgba(255,255,255,0.08)',
-                      color: i < 3 ? '#0077FF' : '#8892A4',
-                    }}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="glass-card overflow-hidden">
-              <div className="flex border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                {(['portfolio', 'reviews', 'about'] as const).map(tab => (
-                  <button key={tab} onClick={() => setActiveTab(tab)}
-                    className="flex-1 py-4 text-sm font-medium capitalize transition-all"
-                    style={{
-                      color: activeTab === tab ? '#0077FF' : '#8892A4',
-                      borderBottom: activeTab === tab ? '2px solid #0077FF' : '2px solid transparent',
-                    }}>
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-6">
-                {activeTab === 'portfolio' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {profile.portfolioItems.map(item => (
-                      <div key={item.id} className="rounded-xl overflow-hidden cursor-pointer group"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        {item.imageUrl && (
-                          <div className="h-40 overflow-hidden">
-                            <img src={item.imageUrl} alt={item.title}
-                              className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                          </div>
-                        )}
-                        <div className="p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-primary font-medium text-sm">{item.title}</h3>
-                            {item.projectUrl && (
-                              <ExternalLink size={14} className="text-secondary flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs mt-1 mb-3 text-secondary">{item.description}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {item.tags.map(tag => <span key={tag} className="badge-cyan text-[10px]">{tag}</span>)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+          {/* Row 1: Combined Bio & Categories / Skills Bento Card (Col-12) */}
+          <div className="cp-bento-grid">
+            <div className="cp-card cp-col-12">
+              <div className="cp-bio-company-grid">
+                {/* Left Column: Bio / Overview Description */}
+                <div className="cp-bio-col">
+                  <div className="cp-card-title-group">
+                    <AlignLeft size={18} className="cp-card-icon" />
+                    <h2 className="cp-card-title">Bio & Overview</h2>
                   </div>
-                )}
+                  <p className="cp-bio-text">
+                    {profile.bio || "I'm a professional freelancer & software engineer focused on designing intuitive interfaces, building high-impact digital products, and creating scalable web solutions."}
+                  </p>
+                </div>
 
-                {activeTab === 'reviews' && (
-                  <div className="space-y-4">
-                    {reviews.length > 0 ? reviews.map(review => (
-                      <div key={review.id} className="p-4 rounded-xl"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex gap-0.5">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} size={12} fill={i < review.rating ? '#F59E0B' : 'none'} className="text-amber" />
-                            ))}
-                          </div>
-                          <span className="text-xs text-secondary">{review.createdAt}</span>
-                        </div>
-                        <p className="text-sm leading-relaxed text-secondary">"{review.comment}"</p>
-                        {review.skills && (
-                          <div className="flex flex-wrap gap-1 mt-3">
-                            {review.skills.map(sk => (
-                              <span key={sk.name} className="badge-green text-[10px]">{sk.name}: {sk.rating}/5</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )) : (
-                      <p className="text-center py-8 text-secondary">No reviews yet</p>
-                    )}
+                {/* Right Column: Categories & Skills (Rendered as Pill Badges) */}
+                <div className="cp-company-col space-y-5">
+                  {/* Section 1: Categories Pills */}
+                  <div className="space-y-2">
+                    <div className="cp-card-title-group">
+                      <Tag size={16} className="cp-card-icon" />
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Categories</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {profile.categories && profile.categories.length > 0 ? (
+                        profile.categories.map((cat, idx) => (
+                          <span key={idx} className="cp-pill-brand">
+                            {cat.name}
+                          </span>
+                        ))
+                      ) : (
+                        <>
+                          <span className="cp-pill-brand">Web Development</span>
+                          <span className="cp-pill-brand">UI/UX Design</span>
+                          <span className="cp-pill-brand">Mobile Apps</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
 
-                {activeTab === 'about' && (
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Location', value: profile.location },
-                      { label: 'Timezone', value: profile.timezone },
-                      { label: 'Languages', value: profile.languages.join(', ') },
-                      { label: 'Response Time', value: profile.responseTime },
-                      { label: 'Availability', value: profile.availabilityStatus.charAt(0).toUpperCase() + profile.availabilityStatus.slice(1) },
-                    ].map(item => (
-                      <div key={item.label} className="flex justify-between py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                        <span className="text-sm text-secondary">{item.label}</span>
-                        <span className="text-sm font-medium text-primary">{item.value}</span>
-                      </div>
-                    ))}
+                  {/* Section 2: Skills Pills */}
+                  <div className="space-y-2">
+                    <div className="cp-card-title-group">
+                      <Code2 size={16} className="cp-card-icon" />
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Skills</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {skills.length > 0 ? (
+                        skills.map((skill, idx) => (
+                          <span key={idx} className="cp-pill-muted">
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <>
+                          <span className="cp-pill-muted">React</span>
+                          <span className="cp-pill-muted">Next.js</span>
+                          <span className="cp-pill-muted">TypeScript</span>
+                          <span className="cp-pill-muted">Tailwind CSS</span>
+                          <span className="cp-pill-muted">Figma</span>
+                          <span className="cp-pill-muted">ASP.NET Core</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-5">
-            {/* Invite Button */}
-            {role === 'client' && (
-              <div className="glass-card p-5 text-center"
-                style={{ background: 'linear-gradient(135deg, rgba(0,240,255,0.06), rgba(159,75,255,0.06))', border: '1px solid rgba(0,240,255,0.15)' }}>
-                <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center animate-orb"
-                  style={{ background: 'linear-gradient(135deg, #0077FF, #9F4BFF)' }}>
-                  <Bot size={20} style={{ color: '#0A0F1C' }} />
+          {/* Row 2: Elo Point Card & Recently Worked Card */}
+          <div className="cp-bento-grid">
+            {/* Elo Point Card (Col-4) - Arc Gauge Speedometer Style */}
+            <div className="cp-card cp-col-4 cp-elo-wrapper">
+              <div className="w-full flex items-center justify-between">
+                <div className="cp-card-title-group">
+                  <Shield size={18} className="cp-card-icon" />
+                  <h2 className="cp-card-title">Elo Point</h2>
                 </div>
-                <p className="text-primary font-semibold mb-1 text-sm">Invite to AI Interview</p>
-                <p className="text-xs mb-3 text-secondary">Let AI assess their fit for your project</p>
-                <button className="btn-purple w-full py-2.5 text-sm" onClick={() => navigate('/ai-interview')}>
-                  Start AI Interview
+                <span className="cp-pill-brand">
+                  Verified
+                </span>
+              </div>
+
+              {/* SVG Arc Gauge — 290° arc, gap 70° at BOTTOM */}
+              {/*
+                SVG Y-axis goes DOWN: 0°=right, 90°=BOTTOM, 180°=left, 270°=top
+                Gap centered at 90° (bottom):
+                  from 90°-35°=55° to 90°+35°=125°
+                Arc: from 125° → clockwise → 55°  (= 290°, large arc)
+
+                125° → x=100+80·cos(125°)=54.11,  y=100+80·sin(125°)=165.54  (lower-left)
+                 55° → x=100+80·cos(55°)=145.89,  y=100+80·sin(55°)=165.54   (lower-right)
+
+                Path: M 54.11 165.54 A 80 80 0 1 1 145.89 165.54
+                large-arc=1, sweep=1 (clockwise)
+              */}
+              <div className="fp-arc-gauge-wrap">
+                <div className="fp-arc-glow" />
+                <svg
+                  viewBox="0 0 200 200"
+                  className="fp-arc-svg"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* Background track — 290° */}
+                  <path
+                    d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
+                    fill="none"
+                    stroke="var(--border, #E7E8EA)"
+                    strokeWidth="13"
+                    strokeLinecap="round"
+                  />
+                  {/* Foreground arc — brand color */}
+                  <path
+                    d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
+                    fill="none"
+                    stroke="var(--brand, #494be7)"
+                    strokeWidth="13"
+                    strokeLinecap="round"
+                    className="fp-arc-progress"
+                  />
+                </svg>
+                {/* Score + label, centered inside the circle */}
+                <div className="fp-arc-center">
+                  <span className="fp-arc-number">{eloPoints || 9999}</span>
+                  <span className="fp-arc-label">PROFILE STRENGTH</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recently Worked Card (Col-8) - Exact Client Profile Job List Format */}
+            <div className="cp-card cp-col-8 flex flex-col justify-between space-y-5">
+              <div className="cp-card-header">
+                <div className="cp-card-title-group">
+                  <Layers size={18} className="cp-card-icon" />
+                  <h2 className="cp-card-title">Recently Worked</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/jobs')}
+                  className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
+                >
+                  <span>See more</span>
+                  <ChevronRight size={14} />
                 </button>
               </div>
-            )}
 
-            {/* Badges */}
-            <div className="glass-card p-5">
-              <h2 className="text-primary font-semibold mb-4 text-sm">Achievements</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: 'Top Rated', icon: '⭐', color: '#F59E0B' },
-                  { label: 'Pro Builder', icon: '🏆', color: '#0077FF' },
-                  { label: 'Fast Deliver', icon: '⚡', color: '#9F4BFF' },
-                  { label: '5-Star', icon: '💫', color: '#22C55E' },
-                  { label: 'AI Expert', icon: '🤖', color: '#0077FF' },
-                  { label: 'Top 5%', icon: '🚀', color: '#F59E0B' },
-                ].map(badge => (
-                  <div key={badge.label} className="p-2 rounded-xl text-center"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <span className="text-xl">{badge.icon}</span>
-                    <p className="text-[10px] mt-1" style={{ color: badge.color }}>{badge.label}</p>
-                  </div>
-                ))}
+              {/* Job / Experience List */}
+              <div className="cp-job-list">
+                {experience.length > 0 ? (
+                  experience.map((exp, idx) => (
+                    <div key={idx} className="cp-job-item">
+                      <div className="space-y-1.5 flex-1">
+                        <h3 className="cp-job-title">{exp.title}</h3>
+                        <p className="cp-job-meta">
+                          $5 - $15 • Fixed Price • {exp.company || 'Remote'} ({exp.years})
+                        </p>
+                        <div className="cp-job-tags">
+                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
+                            <span key={tag} className="cp-job-tag-pill">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigate('/jobs')}
+                        className="cp-action-icon-btn"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="cp-job-item">
+                      <div className="space-y-1.5 flex-1">
+                        <h3 className="cp-job-title">Web Dev</h3>
+                        <p className="cp-job-meta">$5 - $15 • Fixed Price • Remote</p>
+                        <div className="cp-job-tags">
+                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
+                            <span key={tag} className="cp-job-tag-pill">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigate('/jobs')}
+                        className="cp-action-icon-btn"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+
+                    <div className="cp-job-item">
+                      <div className="space-y-1.5 flex-1">
+                        <h3 className="cp-job-title">Web Dev</h3>
+                        <p className="cp-job-meta">$5 - $15 • Fixed Price • Remote</p>
+                        <div className="cp-job-tags">
+                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
+                            <span key={tag} className="cp-job-tag-pill">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigate('/jobs')}
+                        className="cp-action-icon-btn"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Row 3: Portfolio & Work Experience Side-by-Side Bento Grid */}
+          <div className="cp-bento-grid">
+            {/* Portfolio Card (Col-6) */}
+            <div className="cp-card cp-col-6 space-y-6 overflow-hidden flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="cp-card-title-group">
+                  <FolderGit2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
+                  <h2 className="cp-card-title">Portfolio & Projects</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {currentUser?.id === targetId && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/settings?tab=profile&subtab=portfolio')}
+                      className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
+                    >
+                      <Plus size={13} />
+                      <span>Add Project</span>
+                    </button>
+                  )}
+                  <span className="cp-pill-brand text-xs">
+                    {profileData.rawPortfolioItems?.length || profileData.portfolio?.length || 0} Projects
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-full py-2 flex-1 flex items-center justify-center">
+                <Smooth3DSlideshow
+                  slides={
+                    profileData.rawPortfolioItems && profileData.rawPortfolioItems.length > 0
+                      ? profileData.rawPortfolioItems.map((item, idx) => ({
+                          id: item.portfolioItemId || String(idx),
+                          title: item.title,
+                          description: item.description,
+                          projectUrl: item.projectUrl,
+                          image: {
+                            src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
+                            alt: item.title,
+                          },
+                        }))
+                      : undefined
+                  }
+                  cardWidth={210}
+                  cardHeight={210}
+                  radius={4}
+                  tilt={10}
+                  sideTilt={6}
+                  gap={6}
+                  autoplay={false}
+                />
+              </div>
+            </div>
+
+            {/* Work Experience Card (Col-6) */}
+            <div className="cp-card cp-col-6 space-y-6 flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="cp-card-title-group">
+                  <Building2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
+                  <h2 className="cp-card-title">Work Experience</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {currentUser?.id === targetId && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/settings?tab=profile&subtab=experience')}
+                      className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
+                    >
+                      <Plus size={13} />
+                      <span>Add Position</span>
+                    </button>
+                  )}
+                  <span className="cp-pill-muted text-xs">
+                    {profileData.rawWorkExperiences?.length || experience.length || 0} Positions
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[340px] pr-1">
+                {profileData.rawWorkExperiences && profileData.rawWorkExperiences.length > 0 ? (
+                  profileData.rawWorkExperiences.map((exp, idx) => (
+                    <div
+                      key={exp.workExperienceId || idx}
+                      className="flex flex-col gap-2 p-3.5 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))] transition-all hover:border-[var(--brand-soft)]"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                          {exp.jobTitle}
+                        </h3>
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
+                          {exp.companyName}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+                        <Calendar size={12} className="text-[var(--brand,#494be7)]" />
+                        <span>
+                          {exp.startDate} - {exp.endDate || 'Present'}
+                        </span>
+                      </div>
+
+                      {exp.description && (
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed pt-0.5 line-clamp-3">
+                          {exp.description}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                ) : experience.length > 0 ? (
+                  experience.map((exp, idx) => (
+                    <div
+                      key={idx}
+                      className="flex flex-col gap-1.5 p-3.5 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))]"
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                          {exp.title}
+                        </h3>
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
+                          {exp.company}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+                        <Calendar size={12} className="text-[var(--brand,#494be7)]" />
+                        <span>{exp.years}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-sm text-[var(--text-secondary)]">
+                    No work experience entries added yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 4: Client Reviews Card (Col-12) */}
+          <div className="cp-card cp-col-12 space-y-6">
+            <div className="cp-card-title-group">
+              <Star size={18} className="text-amber-500 fill-current" />
+              <h2 className="cp-card-title">{t('reviews.clientReviews') || 'Client Reviews'}</h2>
+            </div>
+
+            {reviewsList.length > 0 ? (
+              <div className="cp-review-grid">
+                {/* Summary Box (Col-4) */}
+                <div className="cp-col-4 cp-review-summary-card">
+                  <span className="cp-review-score-big">
+                    {averageRating.toFixed(1)}
+                  </span>
+                  <div className="flex items-center gap-1 text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        size={20}
+                        className={i < Math.floor(averageRating) ? 'fill-current text-amber-500' : 'text-[var(--border-strong)]'}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">
+                    Based on {reviewsList.length} reviews from clients
+                  </p>
+
+                  <div className="w-full space-y-2 pt-2">
+                    {distribution.map(({ star, count, percentage }) => (
+                      <div key={star} className="flex items-center gap-2 text-xs">
+                        <span className="w-3 font-bold text-[var(--text-secondary)]">{star}</span>
+                        <div className="flex-1 cp-progress-track">
+                          <div
+                            className="cp-progress-fill h-full transition-all duration-500"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="w-4 font-bold text-[var(--text-secondary)] text-right">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Review Cards (Col-8) */}
+                <div className="cp-col-8 cp-review-list">
+                  {paginatedReviews.map(review => (
+                    <div key={review.id} className="cp-review-item-card">
+                      <div className="cp-review-item-header">
+                        <UserProfileLink
+                          userId={review.reviewerId}
+                          role="client"
+                          disabled={review.isAnonymous}
+                          className="flex items-center gap-3"
+                        >
+                          <div className="cp-reviewer-avatar">
+                            {review.isAnonymous ? 'A' : review.reviewerName.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="cp-reviewer-name">
+                              {review.isAnonymous ? t('reviews.anonymousReviewer') : review.reviewerName}
+                            </h4>
+                            <p className="text-[11px] font-medium text-[var(--text-muted)]">
+                              {new Date(review.createdAt).toLocaleDateString(t('common.search') === 'Search' ? 'en-US' : 'vi-VN', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </p>
+                            {review.projectTitle && (
+                              <p className="text-xs font-bold text-[var(--brand,#494be7)] mt-0.5">
+                                {t('reviews.projectContext', { project: review.projectTitle })}
+                              </p>
+                            )}
+                          </div>
+                        </UserProfileLink>
+
+                        <div className="cp-review-rating-badge">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              size={13}
+                              className={i < review.rating ? 'fill-current text-amber-500' : 'text-[var(--border-strong)]'}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Criteria Ratings Breakdown */}
+                      <div className="flex flex-wrap gap-3 text-xs font-medium text-[var(--text-secondary)] py-1">
+                        {review.communicationRating && <span>Communication: <strong className="text-[var(--text-primary)]">{review.communicationRating}/5</strong></span>}
+                        {review.qualityRating && <span>Quality: <strong className="text-[var(--text-primary)]">{review.qualityRating}/5</strong></span>}
+                        {review.timelinessRating && <span>Timeliness: <strong className="text-[var(--text-primary)]">{review.timelinessRating}/5</strong></span>}
+                      </div>
+
+                      {review.comment && (
+                        <p className="cp-review-comment">
+                          "{review.comment}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="cp-btn-secondary"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <span className="text-xs font-bold text-[var(--text-primary)]">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="cp-btn-secondary"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center space-y-2 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))]">
+                <Star size={24} className="mx-auto text-[var(--text-muted)] opacity-50" />
+                <p className="text-sm font-semibold text-[var(--text-secondary)]">No client reviews yet</p>
+                <p className="text-xs text-[var(--text-muted)]">Reviews will appear here once contracts are completed.</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {showJobInviteModal && (
+          <InviteFreelancerToJobModal
+            freelancerName={user.full_name}
+            freelancerId={freelancerProfileId}
+            onClose={() => setShowJobInviteModal(false)}
+          />
+        )}
+      </AnimatePresence>
+      {showReportModal && (
+        <ReportUserModal
+          userId={user.id}
+          userName={user.full_name}
+          onClose={() => setShowReportModal(false)}
+          onSuccess={() => {
+            setReportSubmitted(true);
+            setShowReportModal(false);
+          }}
+        />
+      )}
     </AppLayout>
   );
 }

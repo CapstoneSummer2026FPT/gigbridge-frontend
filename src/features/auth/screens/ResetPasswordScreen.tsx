@@ -1,16 +1,31 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { Lock, Eye, EyeOff, ArrowRight, Zap, Bot, Star, CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router';
+import { Lock, Eye, EyeOff, ArrowRight, CheckCircle, AlertCircle, Mail } from 'lucide-react';
 import { authAPI } from '../../../api/authAPI';
 import { toast } from 'sonner';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+import { getErrorMessage } from '../../../shared/utils/errorUtils';
 import '../styles/auth-screen.css';
+import { useTranslation } from '../../../hooks/useTranslation';
+
 
 export default function ResetPasswordScreen() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const { t } = useTranslation();
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { email?: string; otp?: string } | null;
+
+  const [email] = useState(state?.email || '');
+  const [otp] = useState(state?.otp || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,36 +33,16 @@ export default function ResetPasswordScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [isTokenValid, setIsTokenValid] = useState<boolean | null>(null);
+  const [isOtpValid, setIsOtpValid] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem('reset_password_email') || '';
-    setEmail(savedEmail);
-
-    // Validate the token upon page load
-    const validateToken = async () => {
-      if (!token) {
-        setIsTokenValid(false);
-        setError('Reset token is missing or invalid.');
-        return;
-      }
-
-      try {
-        const response = await authAPI.validateResetToken({ token });
-        if (response.success) {
-          setIsTokenValid(true);
-        } else {
-          setIsTokenValid(false);
-          setError('Reset token is expired or invalid.');
-        }
-      } catch (err: any) {
-        setIsTokenValid(false);
-        setError(err.message || 'Reset token verification failed.');
-      }
-    };
-
-    validateToken();
-  }, [token]);
+    if (!email || !otp) {
+      setIsOtpValid(false);
+      setError('Please verify your email and obtain an OTP code first.');
+    } else {
+      setIsOtpValid(true);
+    }
+  }, [email, otp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,8 +53,17 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (!otp) {
+      setError('OTP verification code is required.');
+      return;
+    }
+
+    const meetsPasswordPolicy =
+      /^(?=\S{8,}$)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).*$/.test(newPassword);
+    if (!meetsPasswordPolicy) {
+      setError(
+        'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.',
+      );
       return;
     }
 
@@ -72,136 +76,195 @@ export default function ResetPasswordScreen() {
 
     try {
       const response = await authAPI.resetPassword({
-        passwordResetToken: token,
+        otp,
         email,
         newPassword
       });
 
       if (response.success) {
-        setSuccess(true);
-        localStorage.removeItem('reset_password_email');
+        if (isMounted.current) {
+          setSuccess(true);
+        }
         toast.success('Password reset successfully!');
       } else {
-        setError(response.message || 'Failed to reset password.');
+        if (isMounted.current) {
+          setError(getErrorMessage(response));
+        }
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
+    } catch (err: unknown) {
+      if (isMounted.current) {
+        setError(getErrorMessage(err));
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
+  // GSAP Entrance Animations
+  useGSAP(() => {
+    // Left panel slide-in
+    gsap.from('.auth-left-panel', {
+      xPercent: -100,
+      duration: 1,
+      ease: 'power4.out',
+    });
+
+    // Left panel text / branding staggered fade-in
+    gsap.from('.auth-left-content-animate', {
+      opacity: 0,
+      y: 30,
+      stagger: 0.1,
+      duration: 0.8,
+      ease: 'power3.out',
+      delay: 0.2,
+    });
+
+    // Right form card slide/fade
+    gsap.from('.auth-form-card', {
+      opacity: 0,
+      scale: 0.96,
+      y: 20,
+      duration: 0.9,
+      ease: 'power3.out',
+    });
+
+    // Form elements staggered slide
+    gsap.from('.auth-form-animate', {
+      opacity: 0,
+      y: 15,
+      stagger: 0.07,
+      duration: 0.7,
+      ease: 'power3.out',
+      delay: 0.15,
+    });
+  }, []);
+
   return (
     <div className="min-h-screen flex auth-container">
-      {/* Left Panel - Illustration */}
-      <div className="hidden lg:flex flex-col flex-1 relative overflow-hidden p-10 auth-left-panel">
-        <div className="absolute top-20 left-20 w-80 h-80 rounded-full opacity-10 animate-float auth-orb-cyan" />
-        <div className="absolute bottom-40 right-10 w-60 h-60 rounded-full opacity-10 animate-float auth-orb-purple" />
+      {/* Background ambient orbs */}
+      <div className="absolute top-20 left-10 w-96 h-96 rounded-full auth-orb-cyan pointer-events-none" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full auth-orb-purple pointer-events-none" />
 
-        <div className="flex items-center gap-3 mb-auto">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center auth-logo-bg">
-            <Zap size={22} className="auth-logo-icon" />
-          </div>
-          <span className="text-primary text-xl font-black">GigBridge</span>
-          <span className="badge-cyan">AI</span>
-        </div>
+      {/* Left Panel - Premium Zentry Aesthetic with Full Image & Gradient */}
+      <div className="hidden lg:flex flex-col flex-1 relative overflow-hidden p-12 auth-left-panel select-none"
+        style={{
+          backgroundImage: "url('/img/about.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}>
+        {/* Gradient Overlay: dark on the left to transparent on the right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent pointer-events-none z-1" />
 
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <div className="relative mb-8">
-            <div className="w-32 h-32 rounded-full mx-auto flex items-center justify-center animate-orb auth-ai-avatar">
-              <Bot size={56} className="auth-ai-avatar-icon" />
-            </div>
-            <div className="absolute -top-4 -right-4 w-8 h-8 rounded-full flex items-center justify-center auth-orb-green">
-              <CheckCircle size={14} className="auth-orb-green-icon" />
-            </div>
-            <div className="absolute -bottom-2 -left-4 w-8 h-8 rounded-full flex items-center justify-center auth-orb-amber">
-              <Star size={14} fill="#F59E0B" className="auth-orb-amber-icon" />
-            </div>
+        <div className="relative z-10 flex flex-col h-full justify-between">
+          {/* Logo / Header */}
+          <div className="flex items-center gap-3 auth-left-content-animate cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/img/logo.png" className="w-10 h-10 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text logo-text-white text-xl font-black tracking-wider select-none">{t('app.name')}</span>
           </div>
 
-          <h2 className="text-3xl font-black text-primary mb-4">Choose New Password</h2>
-          <p className="text-base max-w-sm auth-description">
-            Almost done! Enter a strong password to finish securing your account.
+          {/* Big Title & Description (White Text) */}
+          <div className="max-w-md my-auto text-left auth-left-content-animate">
+            <h2 className="text-4xl xl:text-5xl font-zentry font-black tracking-wider text-white mb-6 uppercase leading-tight">
+              {t('auth.careerPartner')}
+            </h2>
+            <p className="text-lg text-white/80 leading-relaxed font-medium">
+              {t('auth.careerPartnerDesc')}
+            </p>
+          </div>
+
+          {/* Footer */}
+          <p className="text-xs text-white/50 auth-left-content-animate">
+            © 2026 {t('app.name')} · {t('footer.privacyPolicy')} · {t('footer.termsOfService')}
           </p>
         </div>
-
-        <p className="text-xs text-center mt-auto auth-footer-text">
-          © 2026 GigBridge AI · Privacy · Terms
-        </p>
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center auth-logo-bg">
-              <Zap size={16} className="auth-logo-icon" />
-            </div>
-            <span className="text-primary font-bold">GigBridge</span>
+      {/* Right Panel - Glassmorphic Form Card */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 auth-right-panel">
+        <div className="w-full max-w-md auth-form-card p-8 lg:p-10">
+          <div className="flex items-center gap-2 mb-8 lg:hidden cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/img/logo.png" className="w-8 h-8 object-contain" alt={`${t('app.name')} Logo`} />
+            <span className="logo-text font-bold tracking-wider select-none">{t('app.name')}</span>
           </div>
 
-          <h1 className="text-3xl font-black text-primary mb-2">Reset password</h1>
-          <p className="mb-8 auth-subtitle">Choose your new secure password</p>
+          <h1 className="text-2xl lg:text-3xl font-zentry font-black tracking-wider text-primary mb-2 uppercase auth-form-animate">
+            {t('auth.resetPassword')}
+          </h1>
+          <p className="mb-8 auth-subtitle auth-form-animate">{t('auth.resetPasswordSubtitle')}</p>
 
-          {isTokenValid === null ? (
-            <div className="flex flex-col items-center justify-center py-10 space-y-4">
+          {isOtpValid === null ? (
+            <div className="flex flex-col items-center justify-center py-10 space-y-4 auth-form-animate">
               <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-              <p className="text-sm text-secondary">Verifying reset token...</p>
+              <p className="text-sm text-secondary">{t('auth.verifyingRequestState')}</p>
             </div>
-          ) : isTokenValid === false ? (
-            <div className="space-y-6">
+          ) : isOtpValid === false ? (
+            <div className="space-y-6 auth-form-animate">
               <div className="p-4 rounded-xl text-sm flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
                 <AlertCircle size={18} className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Invalid Reset Token</p>
-                  <p className="mt-1 text-xs opacity-90">{error}</p>
+                  <p className="font-semibold">{t('auth.verificationRequired')}</p>
+                  <p className="mt-1 text-xs opacity-90" style={{ whiteSpace: 'pre-line' }}>{error}</p>
                 </div>
               </div>
               <button onClick={() => navigate('/auth/forgot-password')} className="btn-cyan w-full py-3">
-                Request New Reset Link
+                {t('auth.forgotPasswordTitle')}
               </button>
             </div>
           ) : success ? (
-            <div className="space-y-6">
+            <div className="space-y-6 auth-form-animate">
               <div className="p-4 rounded-xl text-sm flex items-start gap-3" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#22C55E' }}>
                 <CheckCircle size={18} className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold">Password Reset Successful</p>
-                  <p className="mt-1 text-xs opacity-90">Your password has been successfully updated. You can now sign in using your new credentials.</p>
+                  <p className="font-semibold">{t('auth.passwordResetSuccess')}</p>
+                  <p className="mt-1 text-xs opacity-90">{t('auth.passwordResetSuccessDesc')}</p>
                 </div>
               </div>
               <button onClick={() => navigate('/auth/login')} className="btn-cyan w-full py-3">
-                Sign In
+                {t('auth.login')}
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444' }}>
+                <div className="px-4 py-3 rounded-xl text-sm flex items-start gap-2 auth-form-animate" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', whiteSpace: 'pre-line' }}>
                   <AlertCircle size={16} className="shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
               )}
 
-              {/* Email Address - Input if not in localStorage, read-only if it is */}
-              <div className="relative">
+              {/* Email Address - Read-only from state */}
+              <div className="relative auth-form-animate">
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type="email"
-                  placeholder="Email address"
+                  placeholder={t('auth.email')}
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
                   className="input-gb w-full py-3 auth-input-with-icon"
-                  disabled={isLoading || !!localStorage.getItem('reset_password_email')}
+                  disabled={true}
                   required
                 />
               </div>
 
-              <div className="relative">
+              {/* OTP Code - Read-only from state */}
+              <div className="relative auth-form-animate">
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
+                <input
+                  type="text"
+                  placeholder={t('auth.verified') + ' ' + t('auth.otpCode')}
+                  value={otp}
+                  className="input-gb w-full py-3 auth-input-with-icon"
+                  disabled={true}
+                  required
+                />
+              </div>
+
+              <div className="relative auth-form-animate">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="New password"
+                  placeholder={t('auth.newPassword')}
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both"
@@ -213,11 +276,11 @@ export default function ResetPasswordScreen() {
                 </button>
               </div>
 
-              <div className="relative">
+              <div className="relative auth-form-animate">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 auth-input-icon" />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm new password"
+                  placeholder={t('auth.confirmNewPassword')}
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   className="input-gb w-full py-3 auth-input-with-icon auth-input-with-icon-both"
@@ -229,12 +292,12 @@ export default function ResetPasswordScreen() {
                 </button>
               </div>
 
-              <button type="submit" disabled={isLoading} className="btn-cyan w-full py-3 flex items-center justify-center gap-2">
+              <button type="submit" disabled={isLoading} className="btn-cyan w-full py-3 flex items-center justify-center gap-2 auth-form-animate">
                 {isLoading ? (
                   <div className="w-5 h-5 rounded-full border-2 border-[#0A0F1C] border-t-transparent animate-spin" />
                 ) : (
                   <>
-                    Reset Password
+                    {t('auth.resetPassword')}
                     <ArrowRight size={18} />
                   </>
                 )}

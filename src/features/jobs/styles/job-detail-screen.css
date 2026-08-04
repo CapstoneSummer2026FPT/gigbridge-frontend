@@ -1,53 +1,480 @@
 /**
- * Job Detail Screen Styles
+ * Job Detail Screen — Dense Premium Layout
  */
 
-.job-detail-meta {
-  color: var(--gb-text-secondary);
+/* ── Page ── */
+.jd-page {
+  padding: 2rem 1rem 4rem;
 }
 
-.job-detail-icon {
-  color: var(--gb-cyan);
+/* ── Breadcrumb ── */
+.jd-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+.jd-breadcrumb a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.jd-breadcrumb a:hover { color: var(--brand); }
+
+/* ── Stagger entrance ── */
+.jd-stagger { animation: jdFadeUp 0.55s cubic-bezier(0.16,1,0.3,1) both; }
+.jd-d1 { animation-delay: 0.03s; }
+.jd-d2 { animation-delay: 0.06s; }
+.jd-d3 { animation-delay: 0.09s; }
+.jd-d4 { animation-delay: 0.12s; }
+.jd-d5 { animation-delay: 0.15s; }
+@keyframes jdFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.job-detail-desc {
-  color: var(--gb-text-secondary);
+/* ── Header card ── */
+.jd-header {
+  position: relative;
+  overflow: hidden;
+}
+.jd-header::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand), #9f4bff, #f59e0b);
+  z-index: 1;
+}
+.jd-header-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+.jd-header-orb-1 {
+  top: -50px; right: -30px;
+  width: 260px; height: 260px;
+  background: var(--brand);
+  opacity: 0.06;
+  animation: jdOrb 14s infinite alternate ease-in-out;
+}
+.jd-header-orb-2 {
+  bottom: -40px; left: -30px;
+  width: 200px; height: 200px;
+  background: rgba(159,75,255,0.8);
+  opacity: 0.04;
+  animation: jdOrb 18s infinite alternate-reverse ease-in-out;
+}
+@keyframes jdOrb {
+  from { transform: translate(0,0) scale(1); }
+  to   { transform: translate(15px,-10px) scale(1.12); }
 }
 
-.job-detail-section-title {
-  color: var(--foreground);
+/* ── Title ── */
+.jd-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text-primary);
 }
 
-.job-detail-list-item {
-  color: var(--gb-text-secondary);
+/* ── Status badges ── */
+.jd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.jd-status-open      { color: #15803d; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.25); }
+.jd-status-draft     { color: #6b7280; background: rgba(107,114,128,0.12); border: 1px solid rgba(107,114,128,0.2); }
+.jd-status-closed    { color: #dc2626; background: rgba(239,68,68,0.10); border: 1px solid rgba(239,68,68,0.2); }
+.jd-status-cancelled { color: #d97706; background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.2); }
+.jd-status-in_progress { color: #1e40af; background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.2); }
+
+/* ── Meta pills ── */
+.jd-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.jd-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
 }
 
-.job-detail-proposal-bg {
-  background: linear-gradient(135deg, rgba(0, 119, 255, 0.06), rgba(159, 75, 255, 0.04));
+/* ── Inline stat row (compact) ── */
+.jd-stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+.jd-stat-item {
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s, transform 0.2s;
+}
+.jd-stat-item:hover {
+  border-color: rgba(73,75,231,0.25);
+  transform: translateY(-1px);
+}
+.jd-stat-label {
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.jd-stat-value {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
-.job-detail-proposal-count {
-  color: var(--gb-text-secondary);
+/* ── AI Match inline bar ── */
+.jd-ai-strip {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, rgba(73,75,231,0.06), rgba(159,75,255,0.04));
+  border: 1px solid rgba(73,75,231,0.15);
+}
+.jd-ai-gauge {
+  position: relative;
+  width: 48px; height: 48px;
+  flex-shrink: 0;
+}
+.jd-gauge-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+.jd-gauge-bar {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgba(73,75,231,0.4));
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+.jd-ai-factors {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+.jd-factor-bar-track {
+  height: 3px;
+  border-radius: 99px;
+  background: var(--border);
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.jd-factor-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--brand), #9f4bff);
 }
 
-.job-detail-client-card {
+/* ── Section title ── */
+.jd-section-title {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.jd-section-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--brand);
+  flex-shrink: 0;
+}
+
+/* ── Description ── */
+.jd-desc-text {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.85;
+  white-space: pre-line;
+}
+
+/* ── Skill chips ── */
+.jd-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(73,75,231,0.06);
+  color: var(--brand);
+  border: 1px solid rgba(73,75,231,0.15);
+  transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+  cursor: default;
+}
+.jd-skill-chip:hover {
+  background: rgba(73,75,231,0.14);
+  border-color: var(--brand);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(73,75,231,0.1);
+}
+
+/* ── Sidebar ── */
+.jd-sidebar {
+  position: sticky;
+  top: 5.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Avatar ring ── */
+.jd-avatar-ring {
+  width: 48px; height: 48px;
+  border-radius: 0.75rem;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--brand), #9f4bff);
+  flex-shrink: 0;
+}
+.jd-avatar-inner {
+  width: 100%; height: 100%;
+  border-radius: calc(0.75rem - 2px);
+  background: var(--background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1rem;
+  color: var(--brand);
+}
+
+/* ── Client stat row ── */
+.jd-client-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.jd-client-row:last-child { border-bottom: none; }
+
+/* ── GigCoin card ── */
+.jd-gigcoin-card {
+  padding: 0.85rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, rgba(168,85,247,0.07), rgba(73,75,231,0.04));
+  border: 1px solid rgba(168,85,247,0.2);
+  margin-bottom: 0.85rem;
+}
+
+/* ── Proposal banner ── */
+.jd-proposal-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.75rem;
+  background: rgba(34,197,94,0.06);
+  border: 1px solid rgba(34,197,94,0.2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #15803d;
+  margin-bottom: 0.6rem;
+}
+
+/* ── Apply button (with sheen) ── */
+.jd-btn-apply {
+  width: 100%;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: white;
+  background: linear-gradient(135deg, var(--brand), #3f41d0);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 24px rgba(73,75,231,0.28);
+  transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  position: relative;
+  overflow: hidden;
+}
+.jd-btn-apply::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 200%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: left 0.5s;
+}
+.jd-btn-apply:hover::before { left: 100%; }
+.jd-btn-apply:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(73,75,231,0.38);
+}
+.jd-btn-apply:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.jd-btn-secondary {
+  width: 100%;
+  padding: 0.7rem;
+  border-radius: 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid var(--border);
   background: var(--gb-glass-bg);
-  border: 1px solid var(--gb-border);
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+.jd-btn-secondary:hover {
+  border-color: rgba(73,75,231,0.35);
+  transform: translateY(-1px);
 }
 
-.job-detail-star-icon {
-  color: var(--gb-amber);
-}
-
-
-.text-red {
+.jd-btn-danger {
+  width: 100%;
+  padding: 0.7rem;
+  border-radius: 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid rgba(239,68,68,0.25);
+  background: rgba(239,68,68,0.05);
   color: #ef4444;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.jd-btn-danger:hover:not(:disabled) {
+  background: rgba(239,68,68,0.1);
 }
 
-.text-green {
-  color: #22c55e;
+/* ── Client action buttons ── */
+.jd-btn-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, var(--brand), #3f41d0);
+  color: white;
+  box-shadow: 0 4px 12px rgba(73,75,231,0.22);
+  transition: all 0.2s;
+}
+.jd-btn-edit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(73,75,231,0.3);
 }
 
-.text-purple {
-  color: #a855f7;
+.jd-btn-manage {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid rgba(159,75,255,0.3);
+  background: rgba(159,75,255,0.06);
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+.jd-btn-manage:hover {
+  border-color: rgba(159,75,255,0.5);
+}
+.jd-btn-manage .jd-count {
+  background: #9f4bff;
+  color: white;
+  font-size: 0.58rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+/* ── Similar job card ── */
+.jd-similar-card {
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.jd-similar-card:hover {
+  border-color: rgba(73,75,231,0.3);
+  transform: translateX(4px);
+  background: rgba(73,75,231,0.03);
+}
+
+/* ── Verified badge ── */
+.jd-verified {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.6rem;
+  background: rgba(34,197,94,0.06);
+  border: 1px solid rgba(34,197,94,0.2);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #15803d;
+  margin-top: 0.75rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .jd-stat-row { grid-template-columns: repeat(2, 1fr); }
+  .jd-sidebar { position: static; }
+}
+@media (max-width: 640px) {
+  .jd-page { padding: 1rem 0.75rem 3rem; }
+  .jd-stat-row { grid-template-columns: 1fr 1fr; }
+  .jd-ai-factors { grid-template-columns: 1fr; }
 }

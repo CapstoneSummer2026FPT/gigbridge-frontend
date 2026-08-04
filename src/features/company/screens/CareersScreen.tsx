@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router';
 import { GuestLayout } from '../../../shared/components/AppLayout';
-import { ArrowLeft, Briefcase, MapPin, Clock, DollarSign, Users, Code, Palette, BarChart2, Shield } from 'lucide-react';
+import { useScrollRestoration } from '../../../hooks/useScrollRestoration';
+import { ArrowLeft, Briefcase, MapPin, Clock, Code, Palette, BarChart2, Shield } from 'lucide-react';
+import GCoinIcon from '../../../shared/components/GCoinIcon';
 
 const JOB_OPENINGS = [
   {
@@ -8,7 +10,7 @@ const JOB_OPENINGS = [
     department: 'Engineering',
     location: 'San Francisco, CA / Remote',
     type: 'Full-time',
-    salary: '$150k - $200k',
+    salary: '150k - 200k G-coin',
     icon: <Code size={20} />,
     color: 'cyan',
     description: 'Build the next generation of our AI-powered marketplace platform.'
@@ -18,7 +20,7 @@ const JOB_OPENINGS = [
     department: 'Design',
     location: 'Remote',
     type: 'Full-time',
-    salary: '$120k - $160k',
+    salary: '120k - 160k G-coin',
     icon: <Palette size={20} />,
     color: 'purple',
     description: 'Design beautiful, intuitive experiences for freelancers and clients.'
@@ -28,7 +30,7 @@ const JOB_OPENINGS = [
     department: 'AI/ML',
     location: 'San Francisco, CA',
     type: 'Full-time',
-    salary: '$160k - $220k',
+    salary: '160k - 220k G-coin',
     icon: <BarChart2 size={20} />,
     color: 'green',
     description: 'Improve our AI matching algorithms and build new intelligent features.'
@@ -38,7 +40,7 @@ const JOB_OPENINGS = [
     department: 'Security',
     location: 'Remote',
     type: 'Full-time',
-    salary: '$140k - $190k',
+    salary: '140k - 190k G-coin',
     icon: <Shield size={20} />,
     color: 'amber',
     description: 'Keep our platform secure and protect our community from fraud.'
@@ -50,7 +52,7 @@ const BENEFITS = [
   '💰 Competitive salary and equity package',
   '🏖️ Unlimited PTO and flexible work hours',
   '💻 Latest MacBook Pro and work-from-home stipend',
-  '🎓 $5,000 annual learning & development budget',
+  '🎓 5,000 G-coin annual learning & development budget',
   '🌍 Remote-first culture with global team',
   '🍕 Team lunches and quarterly offsites',
   '🚀 Work on cutting-edge AI technology',
@@ -58,6 +60,7 @@ const BENEFITS = [
 
 export default function CareersScreen() {
   const navigate = useNavigate();
+  const { saveScrollPosition } = useScrollRestoration();
 
   return (
     <GuestLayout>
@@ -65,7 +68,10 @@ export default function CareersScreen() {
         <div className="max-w-6xl mx-auto">
           {/* Back Button */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              saveScrollPosition();
+              navigate('/');
+            }}
             className="btn-ghost-cyan px-4 py-2 mb-8 text-sm flex items-center gap-2"
           >
             <ArrowLeft size={16} />
@@ -148,7 +154,7 @@ export default function CareersScreen() {
                             <span>{job.type}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <DollarSign size={12} />
+                            <GCoinIcon size={12} />
                             <span>{job.salary}</span>
                           </div>
                         </div>

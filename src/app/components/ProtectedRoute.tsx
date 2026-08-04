@@ -1,10 +1,12 @@
 import { Navigate } from 'react-router';
 import { useApp } from '../providers/AppProvider';
+import { UserRole } from '../../types/models/User';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   requireSetup?: boolean;
+  allowedRoles?: readonly UserRole[];
 }
 
 /**
@@ -18,7 +20,8 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ 
   children, 
   requireAuth = false,
-  requireSetup = false 
+  requireSetup = false,
+  allowedRoles,
 }: ProtectedRouteProps) {
   let appContext;
   try {
@@ -28,7 +31,6 @@ export function ProtectedRoute({
   }
 
   const user = appContext?.user || null;
-  const role = appContext?.role || null;
   const isLoading = appContext?.isLoading || false;
 
   // Still loading user data
@@ -38,9 +40,21 @@ export function ProtectedRoute({
 
   // User is authenticated
   if (user) {
+    const hasCompletedSetup = user.role === UserRole.Admin || user.is_setup;
+
     // User needs to complete setup
-    if (!user.is_setup && requireSetup) {
+    if (!hasCompletedSetup && requireSetup) {
       return <Navigate to="/onboarding/profile-setup" replace />;
+    }
+
+    if (allowedRoles && !allowedRoles.includes(user.role)) {
+      const dashboardPath = user.role === UserRole.Admin
+        ? '/admin'
+        : user.role === UserRole.Client
+          ? '/client/dashboard'
+          : '/freelancer/dashboard';
+
+      return <Navigate to={dashboardPath} replace />;
     }
 
     // User is setup, render the page
@@ -69,7 +83,6 @@ export function PublicRoute({ children }: { children: React.ReactNode }) {
   }
 
   const user = appContext?.user || null;
-  const role = appContext?.role || null;
   const isLoading = appContext?.isLoading || false;
 
   // Still loading
@@ -79,17 +92,19 @@ export function PublicRoute({ children }: { children: React.ReactNode }) {
 
   // User is authenticated, redirect to appropriate dashboard
   if (user) {
+    if (user.role === UserRole.Admin) {
+      return <Navigate to="/admin" replace />;
+    }
+
     if (!user.is_setup) {
       return <Navigate to="/onboarding/profile-setup" replace />;
     }
 
     // Redirect to role-based dashboard
-    if (user.role === 0) {
+    if (user.role === UserRole.Client) {
       return <Navigate to="/client/dashboard" replace />;
-    } else if (user.role === 1) {
+    } else if (user.role === UserRole.Freelancer) {
       return <Navigate to="/freelancer/dashboard" replace />;
-    } else if (user.role === 2) {
-      return <Navigate to="/admin" replace />;
     }
   }
 

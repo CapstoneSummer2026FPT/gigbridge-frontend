@@ -1,0 +1,12 @@
+{
+  "disputes": {
+    "chatTitle": "Dispute conversation",
+    "chatLoading": "Loading conversation...",
+    "chatEmpty": "No messages yet. Start the dispute conversation below.",
+    "chatPlaceholder": "Write a message about this dispute...",
+    "chatSend": "Send",
+    "chatUnavailable": "The dispute conversation is not available yet.",
+    "chatLoadFailed": "Unable to load the dispute conversation.",
+    "chatSendFailed": "Unable to send the message."
+  }
+}

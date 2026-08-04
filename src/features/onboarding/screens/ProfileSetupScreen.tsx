@@ -1,21 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronRight, Building, MapPin, Globe, Briefcase, DollarSign, Award, Sparkles } from 'lucide-react';
+import { ChevronRight, Building, MapPin, Globe, Briefcase, Sparkles, Tags, RefreshCw } from 'lucide-react';
 import { useApp } from '../../../app/providers/AppProvider';
 import { GuestLayout } from '../../../shared/components/AppLayout';
-import { profilePutAPI } from '../../../api/profileAPI';
+import { profilePutAPI, profileGetAPI } from '../../../api/profileAPI';
+import { UserRole } from '../../../types/models/User';
 import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../../types/models/Profile';
+import type { CategoryOptionDto, MajorDto } from '../../../types/models/Category';
+import { jobAPI } from '../../../api/jobAPI';
+import { secureStorage } from '../../../shared/utils/secureStorage';
 import '../styles/profile-setup-screen.css';
 
-const INDUSTRIES = [
+const INDUSTRIES_FALLBACK = [
   'Technology', 'Finance', 'Healthcare', 'E-commerce', 'Education', 
   'Marketing', 'Real Estate', 'Entertainment', 'Manufacturing', 'Other'
 ];
 
-const EXPERIENCE_LEVELS = [
-  { value: 0, label: 'Entry Level (0-2 years)' },
-  { value: 1, label: 'Intermediate (3-5 years)' },
-  { value: 2, label: 'Expert (5+ years)' },
+const COMPANY_SIZES_FALLBACK = [
+  { id: 0, name: 'Solo (1-9 employees)' },
+  { id: 1, name: 'Small (10-49 employees)' },
+  { id: 2, name: 'Medium (50-249 employees)' },
+  { id: 3, name: 'Large (250+ employees)' }
 ];
 
 const AVAILABILITY = [
@@ -41,25 +46,105 @@ export default function ProfileSetupScreen() {
   const role = appContext?.role ?? 0;
   const markSetupComplete = appContext?.markSetupComplete || (() => {});
 
-  // Client form data
+  const [companySizes, setCompanySizes] = useState<{ id: number; name: string }[]>(COMPANY_SIZES_FALLBACK);
+  const [industries, setIndustries] = useState<string[]>(INDUSTRIES_FALLBACK);
+  const [majors, setMajors] = useState<MajorDto[]>([]);
+  const [categories, setCategories] = useState<CategoryOptionDto[]>([]);
+  const [isTaxonomyLoading, setIsTaxonomyLoading] = useState(false);
+  const [taxonomyError, setTaxonomyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (role === 0) { // Client
+      const fetchLookups = async () => {
+        try {
+          const [sizesRes, indRes] = await Promise.all([
+            profileGetAPI.getCompanySizes(),
+            profileGetAPI.getIndustries()
+          ]);
+          if (sizesRes.success && sizesRes.data) {
+            setCompanySizes(sizesRes.data);
+          }
+          if (indRes.success && indRes.data) {
+            setIndustries(indRes.data);
+          }
+        } catch (err) {
+          console.error('Failed to load lookups from BE:', err);
+        }
+      };
+      fetchLookups();
+    }
+  }, [role]);
+
+  const loadMajors = async () => {
+    setIsTaxonomyLoading(true);
+    setTaxonomyError(null);
+    try {
+      const response = await jobAPI.getMajors();
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load majors.');
+      }
+      setMajors(response.data);
+    } catch (err) {
+      setMajors([]);
+      setTaxonomyError((err as Error).message || 'Failed to load majors.');
+    } finally {
+      setIsTaxonomyLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (role === UserRole.Freelancer) {
+      void loadMajors();
+    }
+  }, [role]);
+
   const [clientData, setClientData] = useState({
-    CompanyName: '',
-    CompanyWebsite: '',
-    CompanySize: 0,
-    Industry: '',
-    Location: '',
-    CompanyDescription: '',
+    companyName: '',
+    companyWebsite: '',
+    companySize: 0,
+    industry: '',
+    location: '',
+    companyDescription: '',
   });
 
   // Freelancer form data
   const [freelancerData, setFreelancerData] = useState<UpdateFreelancerProfileDto>({
     title: '',
     bio: '',
-    hourlyRate: 0,
-    experienceLevel: 0,
     availability: 0,
     location: '',
+    majorId: '',
+    categoryIds: [],
   });
+
+  const handleMajorChange = async (majorId: string) => {
+    setFreelancerData(current => ({ ...current, majorId, categoryIds: [] }));
+    setCategories([]);
+    setTaxonomyError(null);
+    if (!majorId) return;
+
+    setIsTaxonomyLoading(true);
+    try {
+      const response = await jobAPI.getCategoriesByMajor(majorId);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to load categories.');
+      }
+      setCategories(response.data);
+    } catch (err) {
+      setTaxonomyError((err as Error).message || 'Failed to load categories.');
+    } finally {
+      setIsTaxonomyLoading(false);
+    }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    setFreelancerData(current => ({
+      ...current,
+      categoryIds: current.categoryIds.includes(categoryId)
+        ? current.categoryIds.filter(id => id !== categoryId)
+        : [...current.categoryIds, categoryId],
+    }));
+  };
 
   const isClient = role === 0;
   const totalSteps = 2;
@@ -71,33 +156,28 @@ export default function ProfileSetupScreen() {
       const profileData = isClient ? clientData : freelancerData;
       
       // Save profile (backend will automatically set isSetup = true)
-      console.log('Saving profile...');
       if (isClient) {
         const response = await profilePutAPI.updateClientProfile(profileData as UpdateClientProfileDto);
         if (!response.success) {
           throw new Error(response.message || 'Failed to save profile');
         }
-        console.log('Profile saved successfully');
       } else {
         const response = await profilePutAPI.updateFreelancerProfile(profileData as UpdateFreelancerProfileDto);
         if (!response.success) {
           throw new Error(response.message || 'Failed to save profile');
         }
-        console.log('Profile saved successfully');
       }
       
-      // Update localStorage
-      const userStr = localStorage.getItem('gigbridge_user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
+      // Update secureStorage
+      const user = secureStorage.getItem<Record<string, unknown>>('gigbridge_user');
+      if (user) {
         user.is_setup = true;
-        localStorage.setItem('gigbridge_user', JSON.stringify(user));
+        secureStorage.setItem('gigbridge_user', user);
         
-        const sessionStr = localStorage.getItem('gigbridge_session');
-        if (sessionStr) {
-          const session = JSON.parse(sessionStr);
+        const session = secureStorage.getItem<{ user: Record<string, unknown>; role: unknown }>('gigbridge_session');
+        if (session) {
           session.user.is_setup = true;
-          localStorage.setItem('gigbridge_session', JSON.stringify(session));
+          secureStorage.setItem('gigbridge_session', session);
         }
       }
       
@@ -105,11 +185,10 @@ export default function ProfileSetupScreen() {
       markSetupComplete();
       
       // Navigate to dashboard
-      console.log('Navigating to dashboard...');
       navigate(isClient ? '/client/dashboard' : '/freelancer/dashboard');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Setup failed:', error);
-      setError((error as any).message || 'Failed to complete setup. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to complete setup. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -117,13 +196,25 @@ export default function ProfileSetupScreen() {
 
   const canProceed = () => {
     if (isClient) {
-      if (step === 1) return clientData.CompanyName && clientData.Industry;
-      return clientData.Location;
+      if (step === 1) return clientData.companyName && clientData.industry;
+      return clientData.location;
     } else {
-      if (step === 1) return freelancerData.title && freelancerData.hourlyRate && freelancerData.hourlyRate > 0;
+      if (step === 1) {
+        return Boolean(
+          freelancerData.title.trim() &&
+          freelancerData.majorId &&
+          freelancerData.categoryIds.length > 0 &&
+          !isTaxonomyLoading &&
+          !taxonomyError
+        );
+      }
       return freelancerData.location && freelancerData.bio;
     }
   };
+
+  if (role === UserRole.Admin) {
+    return null;
+  }
 
   return (
     <GuestLayout>
@@ -173,8 +264,8 @@ export default function ProfileSetupScreen() {
                   </label>
                   <input
                     type="text"
-                    value={clientData.CompanyName}
-                    onChange={e => setClientData({ ...clientData, CompanyName: e.target.value })}
+                    value={clientData.companyName}
+                    onChange={e => setClientData({ ...clientData, companyName: e.target.value })}
                     placeholder="Enter your company name"
                     className="input-gb"
                   />
@@ -186,12 +277,12 @@ export default function ProfileSetupScreen() {
                     Industry *
                   </label>
                   <select
-                    value={clientData.Industry}
-                    onChange={e => setClientData({ ...clientData, Industry: e.target.value })}
+                    value={clientData.industry}
+                    onChange={e => setClientData({ ...clientData, industry: e.target.value })}
                     className="input-gb"
                   >
                     <option value="">Select an industry</option>
-                    {INDUSTRIES.map(ind => (
+                    {industries.map(ind => (
                       <option key={ind} value={ind}>{ind}</option>
                     ))}
                   </select>
@@ -204,8 +295,8 @@ export default function ProfileSetupScreen() {
                   </label>
                   <input
                     type="url"
-                    value={clientData.CompanyWebsite}
-                    onChange={e => setClientData({ ...clientData, CompanyWebsite: e.target.value })}
+                    value={clientData.companyWebsite}
+                    onChange={e => setClientData({ ...clientData, companyWebsite: e.target.value })}
                     placeholder="https://yourcompany.com"
                     className="input-gb"
                   />
@@ -214,17 +305,19 @@ export default function ProfileSetupScreen() {
                 <div className="form-group">
                   <label className="form-label">
                     <Briefcase size={16} />
-                    Company Size (Number of Employees)
+                    Company Size *
                   </label>
-                  <input
-                    type="number"
-                    value={clientData.CompanySize || ''}
-                    onChange={e => setClientData({ ...clientData, CompanySize: parseInt(e.target.value) || 0 })}
-                    placeholder="e.g., 10"
-                    min="0"
+                  <select
+                    value={clientData.companySize}
+                    onChange={e => setClientData({ ...clientData, companySize: parseInt(e.target.value) || 0 })}
                     className="input-gb"
-                  />
+                  >
+                    {companySizes.map(size => (
+                      <option key={size.id} value={size.id}>{size.name}</option>
+                    ))}
+                  </select>
                 </div>
+
               </div>
             )}
 
@@ -239,8 +332,8 @@ export default function ProfileSetupScreen() {
                   </label>
                   <input
                     type="text"
-                    value={clientData.Location}
-                    onChange={e => setClientData({ ...clientData, Location: e.target.value })}
+                    value={clientData.location}
+                    onChange={e => setClientData({ ...clientData, location: e.target.value })}
                     placeholder="City, Country"
                     className="input-gb"
                   />
@@ -249,13 +342,14 @@ export default function ProfileSetupScreen() {
                 <div className="form-group">
                   <label className="form-label">Company Description</label>
                   <textarea
-                    value={clientData.CompanyDescription}
-                    onChange={e => setClientData({ ...clientData, CompanyDescription: e.target.value })}
+                    value={clientData.companyDescription}
+                    onChange={e => setClientData({ ...clientData, companyDescription: e.target.value })}
                     placeholder="Tell us about your company..."
                     rows={4}
                     className="input-gb"
                   />
                 </div>
+
               </div>
             )}
           </div>
@@ -284,36 +378,58 @@ export default function ProfileSetupScreen() {
 
                 <div className="form-group">
                   <label className="form-label">
-                    <DollarSign size={16} />
-                    Hourly Rate (USD) *
+                    <Briefcase size={16} />
+                    Major *
                   </label>
-                  <input
-                    type="number"
-                    value={freelancerData.hourlyRate || ''}
-                    onChange={e => setFreelancerData({ ...freelancerData, hourlyRate: parseFloat(e.target.value) || 0 })}
-                    placeholder="50"
-                    min="0"
+                  <select
+                    value={freelancerData.majorId}
+                    onChange={event => void handleMajorChange(event.target.value)}
                     className="input-gb"
-                  />
+                    disabled={isTaxonomyLoading && majors.length === 0}
+                  >
+                    <option value="">{isTaxonomyLoading && majors.length === 0 ? 'Loading majors...' : 'Select your major'}</option>
+                    {majors.map(major => (
+                      <option key={major.majorId} value={major.majorId}>{major.name}</option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">
-                    <Award size={16} />
-                    Experience Level
-                  </label>
-                  <div className="radio-group">
-                    {EXPERIENCE_LEVELS.map(level => (
-                      <button
-                        key={level.value}
-                        onClick={() => setFreelancerData({ ...freelancerData, experienceLevel: level.value })}
-                        className={`radio-button ${freelancerData.experienceLevel === level.value ? 'radio-button-active' : ''}`}
-                      >
-                        {level.label}
-                      </button>
-                    ))}
+                {freelancerData.majorId && (
+                  <div className="form-group">
+                    <label className="form-label">
+                      <Tags size={16} />
+                      Categories *
+                    </label>
+                    {isTaxonomyLoading ? (
+                      <p className="taxonomy-help">Loading categories...</p>
+                    ) : categories.length > 0 ? (
+                      <div className="taxonomy-category-grid">
+                        {categories.map(category => (
+                          <label key={category.categoryId} className={`taxonomy-category-option ${freelancerData.categoryIds.includes(category.categoryId) ? 'taxonomy-category-option-selected' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={freelancerData.categoryIds.includes(category.categoryId)}
+                              onChange={() => toggleCategory(category.categoryId)}
+                            />
+                            <span>{category.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="taxonomy-help">No active categories are available for this major.</p>
+                    )}
+                    <p className="taxonomy-help">Select one or more categories that best match your work.</p>
                   </div>
-                </div>
+                )}
+
+                {taxonomyError && (
+                  <div className="taxonomy-error" role="alert">
+                    <span>{taxonomyError}</span>
+                    <button type="button" onClick={() => freelancerData.majorId ? void handleMajorChange(freelancerData.majorId) : void loadMajors()}>
+                      <RefreshCw size={14} /> Retry
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
