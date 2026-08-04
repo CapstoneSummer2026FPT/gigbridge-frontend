@@ -811,7 +811,10 @@ export function usePostJob() {
     const promise = jobAPI.generateAIHiringPlan({
       clientPrompt: promptText,
       title: jobTitle || '',
-      description: jobDescription || ''
+      description: jobDescription || '',
+      budgetMin: generatedData.budgetMin,
+      budgetMax: generatedData.budgetMax,
+      estimatedDuration: generatedData.estimatedDuration,
     }).then(response => {
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to generate hiring plan.');
@@ -884,6 +887,7 @@ export function usePostJob() {
         categoryName: generatedData.categoryName || '',
       });
 
+      const duration = parseJobDuration(generatedData.estimatedDuration);
       setForm(prev => ({
         ...prev,
         title: generatedData.title || prev.title,
@@ -893,11 +897,12 @@ export function usePostJob() {
         skillIds: generatedSkillIds,
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
+        budget: toStringValue(generatedData.budgetMin ?? generatedData.budgetMax) || prev.budget,
         currency: prev.currency || GIGCOIN_CURRENCY_CODE,
-        estimatedDurationValue: prev.estimatedDurationValue || '2',
-        estimatedDurationUnit: prev.estimatedDurationUnit || 'weeks',
+        estimatedDurationValue: duration.value || prev.estimatedDurationValue || '2',
+        estimatedDurationUnit: duration.unit || prev.estimatedDurationUnit || 'weeks',
         visibility: String(JobPostVisibility.Public),
-        deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        deadline: prev.deadline || new Date(Date.now() + (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         isAigenerated: true,
       }));
 

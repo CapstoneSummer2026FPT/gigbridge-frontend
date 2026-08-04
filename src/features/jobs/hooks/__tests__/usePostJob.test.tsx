@@ -572,6 +572,9 @@ describe('usePostJob hook skills conversion', () => {
         categoryName: 'Web Dev',
         skills: [],
         customSkills: [],
+        budgetMin: 500,
+        budgetMax: 500,
+        estimatedDuration: '3 weeks',
       };
 
       vi.mocked(jobAPI.generateAIDetails).mockResolvedValue(successResponse(mockPendingDetails));
@@ -591,11 +594,17 @@ describe('usePostJob hook skills conversion', () => {
 
       expect(result.current.isReviewModalOpen).toBe(false);
       expect(result.current.form.title).toBe('Background Generated SaaS Dashboard');
+      expect(result.current.form.budget).toBe('500');
+      expect(result.current.form.estimatedDurationValue).toBe('3');
+      expect(result.current.form.estimatedDurationUnit).toBe('weeks');
 
       expect(jobAPI.generateAIHiringPlan).toHaveBeenCalledWith({
         clientPrompt: 'Build a SaaS Dashboard',
         title: 'Background Generated SaaS Dashboard',
         description: 'Need a dashboard',
+        budgetMin: 500,
+        budgetMax: 500,
+        estimatedDuration: '3 weeks',
       });
 
       let submitPromise: any;

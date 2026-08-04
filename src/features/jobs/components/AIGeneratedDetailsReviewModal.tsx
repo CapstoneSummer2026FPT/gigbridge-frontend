@@ -57,6 +57,20 @@ export function AIGeneratedDetailsReviewModal({ isOpen, data, onClose, onApprove
             </div>
           </div>
 
+          {/* Budget & Timeline */}
+          <div className="job-post-review-grid">
+            <div className="job-post-review-section">
+              <label className="job-post-review-label">Expected Budget</label>
+              <div className="job-post-review-value">
+                {data.budgetMax ? `${data.budgetMin} - ${data.budgetMax} GC` : (data.budgetMin ? `${data.budgetMin} GC` : 'N/A')}
+              </div>
+            </div>
+            <div className="job-post-review-section">
+              <label className="job-post-review-label">Estimated Duration</label>
+              <div className="job-post-review-value">{data.estimatedDuration || 'N/A'}</div>
+            </div>
+          </div>
+
           {/* Skills */}
           <div className="job-post-review-section">
             <label className="job-post-review-label">

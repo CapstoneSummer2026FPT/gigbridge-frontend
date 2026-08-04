@@ -359,12 +359,18 @@ export interface GenerateJobDescriptionDetailsResponse {
   skills: GeneratedJobSkillDto[];
   customSkills: string[];
   description: string;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  estimatedDuration?: string | null;
 }
 
 export interface GenerateJobHiringPlanRequest {
   clientPrompt: string;
   title: string;
   description: string;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  estimatedDuration?: string | null;
 }
 
 export interface GenerateJobHiringPlanResponse {
