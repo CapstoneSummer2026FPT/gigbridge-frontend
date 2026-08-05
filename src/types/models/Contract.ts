@@ -202,19 +202,19 @@ export interface ContractChangeRequestDto {
   changeRequestId: string;
   contractId: string;
   requestedByUserId: string;
-    reason: string;
-    requestedChanges: string;
-    responseNote?: string | null;
-    clarificationRequestNote?: string | null;
-    clarificationResponseNote?: string | null;
+  reason: string;
+  requestedChanges: string;
+  responseNote?: string | null;
+  clarificationRequestNote?: string | null;
+  clarificationResponseNote?: string | null;
   affectedMilestoneIds: string[];
   affectedWorkItemIds: string[];
   status: ContractChangeRequestStatus | number;
-    createdAt: string;
-    respondedAt?: string | null;
-    clarifiedAt?: string | null;
-    canRespond: boolean;
-    canClarify: boolean;
+  createdAt: string;
+  respondedAt?: string | null;
+  clarifiedAt?: string | null;
+  canRespond: boolean;
+  canClarify: boolean;
 }
 
 export interface ContractAmendmentWorkItemDto {
@@ -246,9 +246,9 @@ export interface ContractAmendmentDetailDto {
   revisionNumber: number;
   reason: string;
   originalTotalBudget: number;
-    proposedTotalBudget: number;
-    budgetDelta: number;
-    reviewNote?: string | null;
+  proposedTotalBudget: number;
+  budgetDelta: number;
+  reviewNote?: string | null;
   status: ContractAmendmentStatus | number;
   signatureCount: number;
   createdAt: string;

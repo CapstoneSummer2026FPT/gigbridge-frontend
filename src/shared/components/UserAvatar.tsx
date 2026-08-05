@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { profileGetAPI } from '../../api/profileAPI/GET';
 
 interface UserAvatarProps {
   name: string;
   src?: string | null;
+  userId?: string | null;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   premium?: boolean;
   className?: string;
@@ -21,20 +23,69 @@ const initialsFor = (name: string) => {
   return `${parts[0]?.[0] ?? ''}${parts.length > 1 ? parts.at(-1)?.[0] ?? '' : ''}`.toUpperCase();
 };
 
-export function UserAvatar({ name, src, size = 'md', premium = false, className = '' }: UserAvatarProps) {
+export function UserAvatar({
+  name,
+  src,
+  userId,
+  size = 'md',
+  premium = false,
+  className = '',
+}: UserAvatarProps) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [src]);
+  const [fetchedSrc, setFetchedSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  // Fetch avatar by userId if src is not provided
+  useEffect(() => {
+    if (src || !userId) {
+      setFetchedSrc(null);
+      return;
+    }
+
+    let isMounted = true;
+    profileGetAPI
+      .getUserById(userId)
+      .then(res => {
+        if (isMounted && res.success && res.data?.avatar) {
+          setFetchedSrc(res.data.avatar);
+        }
+      })
+      .catch(() => {
+        /* Fallback silently to initials */
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [src, userId]);
+
+  const effectiveSrc = src || fetchedSrc;
   const initials = useMemo(() => initialsFor(name), [name]);
-  const classes = `${sizeClasses[size]} shrink-0 overflow-hidden rounded-full border border-[var(--border-strong)] bg-gradient-to-br from-[var(--brand)] to-[var(--brand-hover)] text-white ${premium ? 'admin-premium-avatar' : ''} ${className}`;
+
+  // Outer wrapper with gradient stroke (background to mint from theme)
+  const outerClasses = `${sizeClasses[size]} shrink-0 inline-block p-[2px] rounded-full bg-gradient-to-br from-[var(--background)] to-[var(--mint)] ${
+    premium ? 'admin-premium-avatar' : ''
+  } ${className}`;
 
   return (
-    <span className={classes} role="img" aria-label={`${name || 'User'} avatar`}>
-      {src && !failed ? (
-        <img className="h-full w-full object-cover" src={src} alt="" onError={() => setFailed(true)} />
-      ) : (
-        <span className="flex h-full w-full items-center justify-center font-bold" aria-hidden="true">{initials}</span>
-      )}
+    <span className={outerClasses} role="img" aria-label={`${name || 'User'} avatar`}>
+      <span className="flex h-full w-full items-center justify-center rounded-full overflow-hidden bg-[var(--background)] text-[var(--text-primary)]">
+        {effectiveSrc && !failed ? (
+          <img
+            className="h-full w-full object-cover"
+            src={effectiveSrc}
+            alt=""
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center font-bold" aria-hidden="true">
+            {initials}
+          </span>
+        )}
+      </span>
     </span>
   );
 }
-

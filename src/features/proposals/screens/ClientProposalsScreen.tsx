@@ -1,4 +1,6 @@
 import { useRef } from 'react';
+import { gsap } from 'gsap';
+import { useGSAP } from '@gsap/react';
 import {
   ArrowLeft,
   Brain,
@@ -154,6 +156,69 @@ export default function ClientProposalsScreen() {
       { selector: '.cps-gsap-main', y: 24, duration: 0.5 },
     ],
   });
+
+  const modalContainerRef = useRef<HTMLDivElement>(null);
+  const tabContentRef = useRef<HTMLDivElement>(null);
+
+  // GSAP Modal Entrance Animation (following SKILL.md autoAlpha & matchMedia rules)
+  useGSAP(() => {
+    if (!evalModalOpen || !modalContainerRef.current) return;
+
+    const mm = gsap.matchMedia();
+    mm.add({
+      reduceMotion: "(prefers-reduced-motion: reduce)",
+      all: "(min-width: 0px)"
+    }, (context) => {
+      const { reduceMotion } = context.conditions!;
+      const mult = reduceMotion ? 0 : 1;
+
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      tl.fromTo(
+        '.cps-modal-backdrop',
+        { autoAlpha: 0 },
+        { autoAlpha: 1, duration: 0.3 * mult, ease: 'power2.out' }
+      );
+
+      tl.fromTo(
+        '.cps-modal-card',
+        { autoAlpha: 0, y: reduceMotion ? 0 : 32, scale: reduceMotion ? 1 : 0.94 },
+        { autoAlpha: 1, y: 0, scale: 1, duration: 0.4 * mult, ease: 'back.out(1.4)' },
+        '-=0.15'
+      );
+
+      tl.fromTo(
+        '.cps-modal-anim-header',
+        { autoAlpha: 0, y: reduceMotion ? 0 : 12 },
+        { autoAlpha: 1, y: 0, duration: 0.3 * mult, stagger: 0.05 * mult, ease: 'power2.out' },
+        '-=0.2'
+      );
+    });
+
+    return () => mm.revert();
+  }, { scope: modalContainerRef, dependencies: [evalModalOpen] });
+
+  // GSAP Tab Switch Animation
+  useGSAP(() => {
+    if (!evalModalOpen || !tabContentRef.current) return;
+
+    const mm = gsap.matchMedia();
+    mm.add({
+      reduceMotion: "(prefers-reduced-motion: reduce)",
+      all: "(min-width: 0px)"
+    }, (context) => {
+      const { reduceMotion } = context.conditions!;
+      if (reduceMotion) return;
+
+      gsap.fromTo(
+        tabContentRef.current,
+        { autoAlpha: 0, y: 12 },
+        { autoAlpha: 1, y: 0, duration: 0.3, ease: 'power2.out', clearProps: 'transform,opacity' }
+      );
+    });
+
+    return () => mm.revert();
+  }, { scope: tabContentRef, dependencies: [modalTab] });
 
   const detailMilestoneTotal = detail?.milestonePlans?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ?? 0;
 
@@ -486,57 +551,82 @@ export default function ClientProposalsScreen() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* ── Proposal Detail & Evaluation Modal ──────────────────────────── */}
+        {/* ── Proposal Detail & Evaluation Modal (GSAP Enhanced) ────────── */}
         {evalModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="proposal-modal-title">
-            <div className="relative w-full max-w-4xl rounded-3xl border border-border bg-background shadow-2xl p-6 text-text-primary max-h-[90vh] flex flex-col">
-              
-              {/* Modal Header */}
-              <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 id="proposal-modal-title" className="text-lg font-black text-text-primary truncate">
-                      {detail?.freelancerName || proposals.find(p => p.proposalsId === activeId)?.freelancerName || 'Freelancer Proposal'}
-                    </h3>
-                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-black ${badgeClass(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status))}`}>
-                      {getStatusLabel(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)}
-                    </span>
+          <div ref={modalContainerRef}>
+            <div
+              className="cps-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 overflow-y-auto"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="proposal-modal-title"
+              onClick={e => {
+                if (e.target === e.currentTarget && !rejectProposalId) setEvalModalOpen(false);
+              }}
+            >
+              <div className="cps-modal-card relative w-full max-w-4xl rounded-3xl border border-border bg-background shadow-2xl p-6 text-text-primary max-h-[90vh] flex flex-col overflow-hidden">
+                
+                {/* Modal Header */}
+                <div className="flex flex-wrap items-center justify-between border-b border-border pb-4 gap-3">
+                  <div className="cps-modal-anim-header min-w-0">
+                    <div className="flex items-center gap-2.5">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                        <Sparkles size={16} />
+                      </span>
+                      <h3 id="proposal-modal-title" className="text-lg font-black text-text-primary truncate">
+                        {detail?.freelancerName || proposals.find(p => p.proposalsId === activeId)?.freelancerName || 'Freelancer Proposal'}
+                      </h3>
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-black ${badgeClass(Number(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status))}`}>
+                        {getStatusLabel(detail?.status ?? proposals.find(p => p.proposalsId === activeId)?.status)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-muted mt-1 font-semibold flex flex-wrap items-center gap-2">
+                      <span>{t('proposalReview.columns.offer')}: <strong className="text-brand font-extrabold">{formatGigCoin(detail?.proposedBudget || proposals.find(p => p.proposalsId === activeId)?.proposedBudget || 0)}</strong></span>
+                      <span>·</span>
+                      <span>Milestones: <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">{formatGigCoin(detailMilestoneTotal)}</strong></span>
+                      <span>·</span>
+                      <span>Duration: <strong className="text-text-primary font-bold">{detail?.proposedDuration || proposals.find(p => p.proposalsId === activeId)?.proposedDuration || 'N/A'}</strong></span>
+                    </p>
                   </div>
-                  <p className="text-xs text-text-muted mt-0.5 font-semibold">
-                    Proposed rate: <strong className="text-brand">{formatGigCoin(detail?.proposedBudget || proposals.find(p => p.proposalsId === activeId)?.proposedBudget || 0)}</strong> · Milestones: {formatGigCoin(detailMilestoneTotal)} · {detail?.proposedDuration || proposals.find(p => p.proposalsId === activeId)?.proposedDuration || 'N/A'}
-                  </p>
+
+                  {/* Modal Tabs & Close */}
+                  <div className="cps-modal-anim-header flex items-center gap-3">
+                    <div className="flex items-center rounded-xl border border-border bg-surface-muted/60 p-1 text-xs font-bold shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setModalTab('userAnswers')}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition-all cursor-pointer ${modalTab === 'userAnswers' ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30 dark:text-amber-400 shadow-xs' : 'text-text-muted hover:text-text-primary'}`}
+                      >
+                        <FileQuestion size={14} /> Interview Answers
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModalTab('proposalDetails')}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition-all cursor-pointer ${modalTab === 'proposalDetails' ? 'bg-brand/20 text-brand border border-brand/30 shadow-xs' : 'text-text-muted hover:text-text-primary'}`}
+                      >
+                        <FileText size={14} /> Proposal Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModalTab('aiReport')}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition-all cursor-pointer ${modalTab === 'aiReport' ? 'bg-purple-500/20 text-purple-600 border border-purple-500/30 dark:text-purple-400 shadow-xs' : 'text-text-muted hover:text-text-primary'}`}
+                      >
+                        <Brain size={14} /> AI Evaluation Report
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setEvalModalOpen(false)}
+                      aria-label="Close modal"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-background text-text-muted hover:border-brand/40 hover:text-brand transition cursor-pointer"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Modal Tabs & Close */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center rounded-xl border border-border bg-surface-muted/50 p-1 text-xs font-bold">
-                    <button
-                      type="button"
-                      onClick={() => setModalTab('userAnswers')}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition cursor-pointer ${modalTab === 'userAnswers' ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30 dark:text-amber-400' : 'text-text-muted hover:text-text-primary'}`}
-                    >
-                      <FileQuestion size={14} /> Interview Answers
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setModalTab('proposalDetails')}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition cursor-pointer ${modalTab === 'proposalDetails' ? 'bg-brand/20 text-brand border border-brand/30' : 'text-text-muted hover:text-text-primary'}`}
-                    >
-                      <FileText size={14} /> Proposal Details
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setModalTab('aiReport')}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-extrabold transition cursor-pointer ${modalTab === 'aiReport' ? 'bg-purple-500/20 text-purple-600 border border-purple-500/30 dark:text-purple-400' : 'text-text-muted hover:text-text-primary'}`}
-                    >
-                      <Brain size={14} /> AI Evaluation Report
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 custom-scrollbar">
+                {/* Modal Body */}
+                <div ref={tabContentRef} className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 custom-scrollbar">
                 {modalTab === 'userAnswers' && (
                   <>
                     {evalLoading && (
@@ -791,6 +881,7 @@ export default function ClientProposalsScreen() {
 
             </div>
           </div>
+        </div>
         )}
       </div>
     </AppLayout>

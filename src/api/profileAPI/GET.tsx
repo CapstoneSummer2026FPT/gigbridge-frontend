@@ -5,6 +5,7 @@ import type {
   FreelancerProfileDetailDto,
   FreelancerSummaryDto,
   PaginatedList,
+  PublicUserProfileDto,
   UserProfileDto,
 } from '../../types/models/Profile';
 
@@ -34,6 +35,10 @@ export const profileGetAPI = {
 
   getMyUserProfile: async () => {
     return await apiService.get<UserProfileDto>('profile/user/me');
+  },
+
+  getUserById: async (userId: string) => {
+    return await apiService.get<PublicUserProfileDto>(`profile/user/${userId}`);
   },
 
   getMyClientProfile: async () => {

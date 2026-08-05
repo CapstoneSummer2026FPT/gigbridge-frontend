@@ -1,26 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
-@import url("https://fonts.cdnfonts.com/css/general-sans");
-
-@font-face {
-  font-family: "circular-web";
-  src: url("/fonts/circularweb-book.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "zentry";
-  src: url("/fonts/zentry-regular.woff2") format("woff2");
-}
 
 /* Base Body Styles */
 body {
-  font-family: "General Sans", "Plus Jakarta Sans", sans-serif;
+  font-family: "Plus Jakarta Sans", sans-serif;
 }
 
-/* Avant-Garde Redesign Styles from Client Dashboard */
+/* Avant-Garde Redesign Styles */
 .avant-garde-heading {
-  font-family: var(--font-zentry) !important;
-  letter-spacing: -0.05em;
-  line-height: 0.85;
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
 }
 
 .hero-text-overlay {
@@ -45,7 +34,7 @@ body {
   display: inline-block;
 }
 
-/* Ambient Glowing Orbs (Depth Layer) */
+/* Ambient Glowing Orbs */
 .client-dash-glow-orb {
   position: absolute;
   border-radius: 50%;
@@ -99,7 +88,7 @@ body {
 
 /* High-End Glassmorphism Card Override */
 .glass-card {
-  background: color-mix(in srgb, var(--card) 75%, transparent) !important;
+  background: color-mix(in srgb, var(--card) 85%, transparent) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1px solid var(--gb-border) !important;
@@ -111,8 +100,8 @@ body {
 }
 
 .glass-card:hover {
-  background: color-mix(in srgb, var(--surface-hover) 85%, transparent) !important;
-  border-color: var(--gb-border-hover) !important;
+  background: color-mix(in srgb, var(--surface-hover) 90%, transparent) !important;
+  border-color: var(--gb-cyan) !important;
   box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.08), 
               0 10px 40px rgba(0, 0, 0, 0.04) !important;
   transform: translateY(-2px);
@@ -121,7 +110,7 @@ body {
 
 .black .glass-card,
 [data-theme="dark"] .glass-card {
-  background: color-mix(in srgb, var(--card) 65%, transparent) !important;
+  background: color-mix(in srgb, var(--card) 75%, transparent) !important;
   border: 1px solid var(--gb-border) !important;
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4), 
               inset 0 1px 0 rgba(255, 255, 255, 0.03),
@@ -132,15 +121,15 @@ body {
 
 .black .glass-card:hover,
 [data-theme="dark"] .glass-card:hover {
-  background: color-mix(in srgb, var(--surface-hover) 75%, transparent) !important;
-  border-color: var(--gb-border-hover) !important;
+  background: color-mix(in srgb, var(--surface-hover) 85%, transparent) !important;
+  border-color: var(--gb-cyan) !important;
   box-shadow: 0 25px 45px -10px rgba(0, 0, 0, 0.5), 
               0 15px 40px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Bulletproof primary button styling */
+/* Primary Button Styling */
 .btn-primary-custom {
-  background-color: var(--brand) !important;
+  background: var(--brand) !important;
   color: white !important;
   border: none !important;
   box-shadow: 0 4px 12px rgba(73, 75, 231, 0.25) !important;
@@ -148,7 +137,7 @@ body {
 }
 
 .btn-primary-custom:hover {
-  background-color: var(--brand-hover) !important;
+  opacity: 0.9 !important;
   transform: translateY(-1.5px);
   box-shadow: 0 6px 16px rgba(73, 75, 231, 0.35) !important;
 }
@@ -160,227 +149,68 @@ body {
   box-shadow: none !important;
 }
 
-/* Badge Styling */
+/* Status Badge - Uniform solid text color with distinct background tints */
 .status-badge {
   display: inline-flex;
   align-items: center;
   padding: 0.35rem 0.85rem;
   border-radius: 9999px;
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: 900 !important;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
   box-shadow: 0 4px 10px rgba(0,0,0,0.02);
   transition: all 0.2s ease;
-  font-family: "circular-web", sans-serif;
+  color: var(--gb-text-primary) !important;
+  font-family: "Plus Jakarta Sans", sans-serif !important;
 }
 
 /* Contract status badge modifiers */
 .status-badge.contract-status-active {
-  background-color: rgba(16, 185, 129, 0.12);
-  color: #10B981;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.1);
+  background-color: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
 .status-badge.contract-status-completed {
-  background-color: rgba(59, 130, 246, 0.12);
-  color: #3B82F6;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.1);
+  background-color: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.4);
 }
 
 .status-badge.contract-status-cancelled {
-  background-color: rgba(239, 68, 68, 0.12);
-  color: #EF4444;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.1);
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
 }
 
 .status-badge.contract-status-disputed {
-  background-color: rgba(245, 158, 11, 0.12);
-  color: #F59E0B;
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.1);
+  background-color: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .status-badge.contract-status-pending,
 .status-badge.contract-status-pending-escrow,
 .status-badge.contract-status-pending-confirmation {
-  background-color: rgba(245, 158, 11, 0.12);
-  color: #F59E0B;
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.1);
+  background-color: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .status-badge.contract-status-draft,
 .status-badge.contract-status-pending-signature {
-  background-color: rgba(168, 85, 247, 0.12);
-  color: #A855F7;
-  border: 1px solid rgba(168, 85, 247, 0.25);
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.1);
+  background-color: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
 }
 
-.status-badge.contract-status-unknown {
-  background-color: rgba(100, 116, 139, 0.12);
-  color: #64748B;
-  border: 1px solid rgba(100, 116, 139, 0.25);
-}
-
-/* Form controls under Glass Cards */
-.glass-card input[type="text"],
-.glass-card input[type="number"],
-.glass-card input[type="date"],
-.glass-card textarea {
-  background: color-mix(in srgb, var(--background) 50%, transparent) !important;
-  border: 1px solid var(--gb-border) !important;
-  border-radius: 12px;
-  color: var(--text-primary) !important;
-  padding: 0.75rem 1rem;
-  font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  outline: none !important;
-}
-
-.glass-card input[type="text"]:focus,
-.glass-card input[type="number"]:focus,
-.glass-card input[type="date"]:focus,
-.glass-card textarea:focus {
-  border-color: var(--brand) !important;
-  box-shadow: 0 0 0 3px rgba(73, 75, 231, 0.2) !important;
-  background: color-mix(in srgb, var(--background) 70%, transparent) !important;
-}
-
-/* Custom premium scrollbar for textareas */
-.glass-card textarea::-webkit-scrollbar {
-  width: 6px;
-}
-.glass-card textarea::-webkit-scrollbar-track {
-  background: transparent;
-}
-.glass-card textarea::-webkit-scrollbar-thumb {
-  background: var(--gb-border-hover);
-  border-radius: 99px;
-}
-
-/* Milestone Status Classes */
-.milestone-status {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3rem 0.65rem;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.01);
-}
-
-.milestone-status-paid {
-  background-color: rgba(16, 185, 129, 0.12);
-  color: #10B981;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-.milestone-status-approved {
-  background-color: rgba(59, 130, 246, 0.12);
-  color: #3B82F6;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.milestone-status-pending,
-.milestone-status-submitted,
-.milestone-status-in-progress,
-.milestone-status-revision {
-  background-color: rgba(245, 158, 11, 0.12);
-  color: #F59E0B;
-  border: 1px solid rgba(245, 158, 11, 0.2);
-}
-
-/* Glow Pulses */
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.9;
-    transform: scale(1.12);
-  }
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 2.5s infinite ease-in-out;
-}
-
-/* Timeline specific layouts */
-.timeline-card-glow {
-  position: relative;
-  overflow: hidden;
-}
-
-.timeline-card-glow::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.2), transparent);
-}
-
-/* Profile hover avatar halo */
-.profile-avatar-halo {
-  position: relative;
-  transition: all 0.3s ease;
-}
-.profile-avatar-halo:hover {
-  box-shadow: 0 0 0 4px rgba(73, 75, 231, 0.15);
-  transform: scale(1.03);
-}
-
-/* Custom scrollbars for scrollable panels */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--gb-border);
-  border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--gb-border-hover);
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-/* Back navigation button */
+/* Back Button */
 .back-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--gb-bg-secondary);
   border: 1px solid var(--gb-border);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--gb-text-secondary);
+  transition: all 0.2s ease;
 }
 
 .back-button:hover {
-  background: rgba(73, 75, 231, 0.12);
-  border-color: rgba(73, 75, 231, 0.3);
-  color: var(--brand);
+  border-color: var(--gb-cyan);
+  color: var(--gb-cyan);
+  background: rgba(0, 119, 255, 0.1);
   transform: translateX(-2px);
 }

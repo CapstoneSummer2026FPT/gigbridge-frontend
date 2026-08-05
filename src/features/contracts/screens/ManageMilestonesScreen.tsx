@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router';
 import {
   Plus, Edit, Trash2, AlertCircle, CheckCircle2, Clock,
   Calendar, ChevronDown, Save, X, Eye, ArrowLeft, Layers, ShieldAlert,
-  TrendingUp, Send
+  TrendingUp, Send, Sparkles
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
@@ -20,6 +20,8 @@ import '../styles/manage-milestones-screen.css';
 import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { EarlyWithdrawalDialog } from '../../../shared/components/EarlyWithdrawalDialog';
 import { getEarlyWithdrawalEligibility } from '../../../shared/utils/earlyWithdrawal';
+import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 
 interface MilestoneFormData {
   title: string;
@@ -61,7 +63,19 @@ export default function ManageMilestonesScreen() {
   const [withdrawingMilestoneId, setWithdrawingMilestoneId] = useState<string | null>(null);
   const [withdrawDialogMilestone, setWithdrawDialogMilestone] = useState<Milestone | null>(null);
   const [withdrawalError, setWithdrawalError] = useState<{ milestoneId: string; message: string } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const withdrawalRequestInFlightRef = useRef(false);
+
+  // GSAP entrance animation
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.ms-gsap-header', y: 20, duration: 0.55 },
+      { selector: '.ms-gsap-main', y: 24, duration: 0.5 },
+      { selector: '.ms-gsap-sidebar', y: 24, duration: 0.5, stagger: 0.1 },
+    ],
+  });
   const isClient = role === UserRole.Client;
   const isFreelancer = role === UserRole.Freelancer;
   const canEditMilestones = Boolean(isClient && contract && (
@@ -103,7 +117,11 @@ export default function ManageMilestonesScreen() {
       // Fetch milestones
       const milestonesResponse = await contractGetAPI.getMilestonesByContract(contractId);
       if (milestonesResponse.success && milestonesResponse.data) {
-        setMilestones(milestonesResponse.data);
+        const list = milestonesResponse.data;
+        setMilestones(list);
+        if (list.length > 0) {
+          setExpandedMilestoneId(prev => prev || list[0].id);
+        }
       } else {
         setMilestones([]);
       }
@@ -486,13 +504,8 @@ export default function ManageMilestonesScreen() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="manage-milestones-wrapper">
-          <div className="loading-container">
-            <div className="spinner"></div>
-            <p>{t('contracts.loadingMilestones')}</p>
-          </div>
-        </div>
+      <AppLayout fullWidth>
+        <LemniscateBloomLoader label={t('contracts.loadingMilestones')} />
       </AppLayout>
     );
   }
@@ -530,41 +543,37 @@ export default function ManageMilestonesScreen() {
   };
 
   return (
-    <AppLayout excludeMeshGradient>
-      <div className="bg-background h-auto lg:h-[calc(100vh-7.5rem)] flex flex-col relative w-full lg:overflow-hidden text-left font-sans">
+    <AppLayout fullWidth>
+      <div ref={containerRef} className="bg-background min-h-[calc(100vh-4rem)] flex flex-col text-left font-sans text-text-primary">
         
-        {/* Structural Typography & Ambient Orbs in Background */}
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
-          <div className="client-dash-glow-orb orb-purple absolute" />
-          <div className="client-dash-glow-orb orb-cyan absolute" />
-          <div className="client-dash-glow-orb orb-blue absolute" />
-
-          <div className="absolute -top-10 -left-10 text-[20vw] font-black text-primary/[0.008] dark:text-primary/[0.004] avant-garde-heading uppercase leading-none">
-            MILESTONES
-          </div>
-        </div>
-
-        <div className="relative z-10 flex-1 flex flex-col max-w-[1600px] w-full mx-auto px-4 md:px-8 py-6 lg:overflow-hidden min-h-0">
-          
-          {/* Shrunken, Compact Header Top-Bar */}
-          <header className="flex items-center justify-between border-b border-border/30 pb-4 mb-5 shrink-0">
-            <div className="flex items-center gap-3">
+        {/* Top Header Bar */}
+        <header className="ms-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
+          <div className="mx-auto flex max-w-[1600px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               <button
+                type="button"
                 onClick={() => navigate(-1)}
-                className="back-button shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                className="back-button shrink-0 w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer shadow-xs"
                 title="Go back"
               >
-                <ArrowLeft size={15} />
+                <ArrowLeft size={16} />
               </button>
-              {contract && (
-                <h1 className="text-sm font-semibold text-text-secondary flex items-center">
-                  <span className="font-bold text-primary truncate max-w-md md:max-w-xl">{contract.title}</span>
-                  <span className="mx-2 text-text-subtle">/</span>
-                  <span className="text-text-primary font-black uppercase tracking-wider text-xs">{t('contracts.milestones')}</span>
+              <div className="min-w-0">
+                <div className="mb-0.5 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-brand">
+                  <Sparkles size={13} />
+                  {t('contracts.milestonesManagement', { defaultValue: 'Milestones Management' })}
+                </div>
+                <h1 className="text-xl sm:text-2xl font-black text-text-primary flex flex-wrap items-center gap-2.5 truncate">
+                  <span className="truncate max-w-[200px] md:max-w-xl">{contract?.title}</span>
+                  <span className="text-brand italic font-light">Milestones</span>
                 </h1>
-              )}
+              </div>
             </div>
-          </header>
+          </div>
+        </header>
+
+        {/* Main Content Workspace */}
+        <main className="mx-auto max-w-[1600px] w-full space-y-6 px-4 py-6 lg:px-8 flex-1">
 
           {/* Messages */}
           {(successMessage || error) && (
@@ -604,7 +613,7 @@ export default function ManageMilestonesScreen() {
           <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 overflow-y-auto lg:overflow-hidden">
             
             {/* Left Column: Milestones List & Form (scrollable) */}
-            <div className="col-span-12 lg:col-span-8 flex flex-col lg:h-full min-h-0 lg:overflow-hidden">
+            <div className="ms-gsap-main col-span-12 lg:col-span-8 flex flex-col lg:h-full min-h-0 lg:overflow-hidden">
               
               {/* Create/Edit Form panel */}
               {isClient && showCreateForm && (
@@ -810,52 +819,101 @@ export default function ManageMilestonesScreen() {
                                     <ChevronDown size={14} />
                                   </button>
                                 </div>
+                              </div>                              {/* Card Body - Collapsed / Preview info */}
+                              <div className="px-4 pl-6 pb-3 pt-0 border-t border-border/10 mt-0.5 flex flex-col gap-2 text-[11px] text-text-muted font-semibold">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 text-text-muted">
+                                    <Calendar size={12} className="text-brand" />
+                                    <span>{t('contracts.dueDate')}: <strong className="text-text-primary">{formatContractDate(milestone.due_date)}</strong></span>
+                                  </div>
+
+                                  {milestone.workItems && milestone.workItems.length > 0 && (
+                                    <span className="px-2 py-0.5 bg-brand/10 text-brand border border-brand/20 rounded-full text-[10px] font-extrabold flex items-center gap-1">
+                                      <Layers size={10} />
+                                      {milestone.workItems.length} Work Item(s)
+                                    </span>
+                                  )}
+                                </div>
+
+                                {milestone.description && (
+                                  <p className="text-xs text-text-secondary font-medium line-clamp-2 bg-surface-muted/30 p-2.5 rounded-xl border border-border/50">
+                                    {milestone.description}
+                                  </p>
+                                )}
                               </div>
- 
-                              {/* Card Body - Collapsed (Due Date display only) */}
-                              <div className="px-4 pl-6 pb-3 pt-0 border-t border-border/10 mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-semibold">
-                                <Calendar size={12} />
-                                <span>{t('contracts.dueDate')}: {formatContractDate(milestone.due_date)}</span>
-                              </div>
- 
+
                               {/* Card Body - Expanded Details & Workflows */}
                               {isExpanded && (
-                                <div className="px-4 pl-6 pb-4 pt-3 border-t border-border/30 bg-secondary/5 flex flex-col gap-3 text-xs">
+                                <div className="px-4 pl-6 pb-4 pt-3 border-t border-border/30 bg-surface-muted/20 flex flex-col gap-3 text-xs">
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
                                     <div className="flex flex-col">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.amount')}</span>
-                                      <span className="font-bold text-foreground mt-0.5">{formatContractAmount(milestone.amount)}</span>
+                                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">{t('contracts.amount')}</span>
+                                      <span className="font-extrabold text-brand text-sm mt-0.5">{formatContractAmount(milestone.amount)}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.deadline')}</span>
-                                      <span className="font-semibold text-foreground mt-0.5">{formatContractDate(milestone.due_date)}</span>
+                                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">{t('contracts.deadline')}</span>
+                                      <span className="font-semibold text-text-primary mt-0.5">{formatContractDate(milestone.due_date)}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.status')}</span>
-                                      <span className="font-semibold text-foreground mt-0.5">
+                                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">{t('contracts.status')}</span>
+                                      <span className="font-semibold text-text-primary mt-0.5">
                                         {getMilestoneDisplayLabel(milestone)}
                                       </span>
                                     </div>
                                     {milestone.paid_at && (
                                       <div className="flex flex-col">
-                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.paidAt')}</span>
+                                        <span className="text-[9px] font-black text-text-muted uppercase tracking-wider">{t('contracts.paidAt')}</span>
                                         <span className="font-semibold text-emerald-500 mt-0.5">{formatContractDate(milestone.paid_at)}</span>
                                       </div>
                                     )}
                                   </div>
- 
+
+                                  {/* Deliverables / Acceptance Criteria if present */}
+                                  {milestone.deliverables && (
+                                    <div className="p-3 bg-background rounded-xl border border-border space-y-1 text-left">
+                                      <span className="text-[9px] font-black text-brand uppercase tracking-wider block">Deliverables</span>
+                                      <p className="text-xs text-text-secondary font-medium leading-relaxed">{milestone.deliverables}</p>
+                                    </div>
+                                  )}
+
+                                  {milestone.acceptanceCriteria && (
+                                    <div className="p-3 bg-background rounded-xl border border-border space-y-1 text-left">
+                                      <span className="text-[9px] font-black text-amber-500 uppercase tracking-wider block">Acceptance Criteria</span>
+                                      <p className="text-xs text-text-secondary font-medium leading-relaxed">{milestone.acceptanceCriteria}</p>
+                                    </div>
+                                  )}
+
+                                  {/* Work Items WBS List */}
+                                  {milestone.workItems && milestone.workItems.length > 0 && (
+                                    <div className="p-3 bg-background rounded-xl border border-border space-y-2 text-left">
+                                      <span className="text-[9px] font-black text-text-muted uppercase tracking-wider block">
+                                        Work Breakdown Structure ({milestone.workItems.length})
+                                      </span>
+                                      <div className="space-y-1.5">
+                                        {milestone.workItems.map((item, idx) => (
+                                          <div key={item.workItemId || idx} className="flex items-center justify-between p-2 rounded-lg bg-surface-muted/40 text-xs font-semibold">
+                                            <span className="text-text-primary truncate">{item.title}</span>
+                                            {item.estimatedDuration && (
+                                              <span className="text-[10px] text-text-muted shrink-0">{item.estimatedDuration}</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {/* Status Workflow Controls */}
                                   {contract && contract.status === ContractStatus.Active && (
-                                    <div className="p-3 bg-secondary/10 border border-border/20 rounded-lg text-left flex flex-col gap-2">
-                                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.workflow')}</span>
-                                      <div className="flex flex-wrap gap-1.5">
+                                    <div className="p-3 bg-brand/5 border border-brand/20 rounded-xl text-left flex flex-col gap-2">
+                                      <span className="text-[9px] font-black text-brand uppercase tracking-wider">{t('contracts.workflow')}</span>
+                                      <div className="flex flex-wrap gap-2">
                                         {isFreelancer && milestone.status === MilestoneStatus.InProgress && (
                                           <button
                                             type="button"
                                             onClick={() => navigate(`/contracts/${contractId}/deliverables/${milestone.id}`)}
-                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                            className="px-3 py-2 bg-brand text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs hover:bg-brand-hover"
                                           >
-                                            <CheckCircle2 size={10} />
+                                            <CheckCircle2 size={13} />
                                             {t('contracts.submitDeliverables')}
                                           </button>
                                         )}
@@ -864,15 +922,15 @@ export default function ManageMilestonesScreen() {
                                             type="button"
                                             disabled={isSubmitting}
                                             onClick={() => navigate(`/contracts/${contractId}/milestones/${milestone.id}/approve`)}
-                                            className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                            className="px-3 py-2 bg-brand text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 shadow-xs hover:bg-brand-hover"
                                           >
-                                            <Eye size={10} />
+                                            <Eye size={13} />
                                             {t('contracts.reviewSubmittedWork')}
                                           </button>
                                         )}
                                         {isFreelancer && withdrawalEligibility.isApproved && !isReleasedInFull && (
                                           withdrawalEligibility.isAtCap ? (
-                                            <span className="px-2.5 py-1.5 text-[10px] font-bold text-emerald-600">
+                                            <span className="px-3 py-2 text-xs font-black text-emerald-600">
                                               {t('earlyWithdrawal.maximumReached')}
                                             </span>
                                           ) : (
@@ -886,9 +944,9 @@ export default function ManageMilestonesScreen() {
                                                     approved: withdrawalEligibility.approvedMilestones,
                                                     required: withdrawalEligibility.requiredApprovedMilestones,
                                                   })}
-                                              className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 rounded-md text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
+                                              className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                              <GigCoinLogo size={10} />
+                                              <GigCoinLogo size={12} />
                                               {t('earlyWithdrawal.action')} ({formatContractAmount(withdrawalEligibility.availableAmount)})
                                             </button>
                                           )
@@ -909,28 +967,29 @@ export default function ManageMilestonesScreen() {
                                       )}
                                     </div>
                                   )}
-                                  {/* Actions panel */}
+                                  
+                                  {/* Actions panel for Edit/Delete */}
                                   {isClient && (
-                                  <div className="flex gap-2 border-t border-border/10 pt-3 mt-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleEditClick(milestone)}
-                                      className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-lg font-bold flex items-center gap-1 cursor-pointer"
-                                      disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
-                                    >
-                                      <Edit size={11} />
-                                      {t('common.edit')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteMilestone(milestone.id)}
-                                      className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 rounded-lg font-bold flex items-center gap-1 cursor-pointer"
-                                      disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
-                                    >
-                                      <Trash2 size={11} />
-                                      {t('common.delete')}
-                                    </button>
-                                  </div>
+                                    <div className="flex gap-2 border-t border-border pt-3 mt-1 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditClick(milestone)}
+                                        className="px-3 py-1.5 bg-surface-muted hover:bg-brand/10 border border-border hover:border-brand/40 text-text-primary hover:text-brand rounded-xl font-bold flex items-center gap-1.5 cursor-pointer text-xs transition"
+                                        disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
+                                      >
+                                        <Edit size={12} />
+                                        {t('common.edit')}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteMilestone(milestone.id)}
+                                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer text-xs transition"
+                                        disabled={!canEditMilestones || !canEditMilestone(milestone.status)}
+                                      >
+                                        <Trash2 size={12} />
+                                        {t('common.delete')}
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -945,7 +1004,7 @@ export default function ManageMilestonesScreen() {
             </div>
 
             {/* Right Column: Stacked KPI Overview Summary Panel */}
-            <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:h-full min-h-0 lg:overflow-y-auto pb-6 lg:pb-0 shrink-0">
+            <div className="ms-gsap-sidebar col-span-12 lg:col-span-4 flex flex-col gap-4 lg:h-full min-h-0 lg:overflow-y-auto pb-6 lg:pb-0 shrink-0">
               
               {/* Stacked KPI list in side panel */}
               <div className="glass-card p-5 flex flex-col gap-4 text-left">
@@ -954,6 +1013,34 @@ export default function ManageMilestonesScreen() {
                 </h3>
 
                 <div className="flex flex-col gap-3">
+                  {/* Allocation Progress Bar */}
+                  <div className="space-y-1.5 pb-2 border-b border-border">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                      <span className="text-text-muted">Allocation Progress</span>
+                      <span className={isBudgetExceeded ? 'text-rose-500 font-extrabold' : 'text-brand font-extrabold'}>
+                        {contract?.totalBudget && contract.totalBudget > 0
+                          ? Math.min(100, Math.round((totalMilestoneAmount / contract.totalBudget) * 100))
+                          : 0}%
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-surface-muted border border-border rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          isBudgetExceeded
+                            ? 'bg-rose-500'
+                            : (totalMilestoneAmount === (contract?.totalBudget || 0) && (contract?.totalBudget || 0) > 0)
+                            ? 'bg-emerald-500'
+                            : 'bg-gradient-to-r from-brand to-indigo-500'
+                        }`}
+                        style={{
+                          width: `${contract?.totalBudget && contract.totalBudget > 0
+                            ? Math.min(100, Math.round((totalMilestoneAmount / contract.totalBudget) * 100))
+                            : 0}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   {/* Total Budget */}
                   <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/20 hover:border-blue-500/20 transition-all">
                     <div>
@@ -1058,7 +1145,7 @@ export default function ManageMilestonesScreen() {
             </div>
           </div>
 
-        </div>
+        </main>
       </div>
         <EarlyWithdrawalDialog
           open={Boolean(withdrawDialogMilestone)}
