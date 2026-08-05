@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProposalStatus, type ProposalDetailDto } from '../../../types/models/Proposal';
-import CreateProposalScreen from './CreateProposalScreen';
+import CreateProposalScreen from '../screens/CreateProposalScreen';
 
 const navigateMock = vi.fn();
 const {

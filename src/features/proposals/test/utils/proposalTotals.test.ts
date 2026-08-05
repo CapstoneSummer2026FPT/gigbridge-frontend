@@ -4,7 +4,7 @@ import {
   calculateProposalDuration,
   parseProposalDuration,
   proposalDurationsEqual,
-} from './proposalTotals';
+} from '../../utils/proposalTotals';
 
 describe('proposal totals', () => {
   it('sums milestone amounts with currency precision', () => {
