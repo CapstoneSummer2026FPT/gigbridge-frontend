@@ -18,6 +18,7 @@ import {
   type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
+  durationToWeeks,
   formatJobDuration,
   isValidJobDurationValue,
   parseJobDuration,
@@ -111,6 +112,17 @@ export const shouldConfirmBudgetOverride = (budgetValue: string, milestonePlanTo
   const expected = Number(budgetValue);
   return expected > 0 && milestonePlanTotal > expected;
 };
+
+/**
+ * True when the milestone plan's total duration (in weeks) exceeds the job
+ * post's estimated duration (in weeks) — the "duration-exceeded" confirmation
+ * is shown alongside the budget one. A missing/zero estimated duration means
+ * there is nothing to exceed, so no confirmation is shown.
+ */
+export const shouldConfirmDurationOverride = (
+  milestoneTotalWeeks: number,
+  expectedDurationWeeks: number,
+): boolean => expectedDurationWeeks > 0 && milestoneTotalWeeks > expectedDurationWeeks;
 
 interface PostJobValidationIssue {
   message: string;
@@ -246,6 +258,7 @@ export function usePostJob() {
   const [isBudgetExceededPromptOpen, setIsBudgetExceededPromptOpen] = useState(false);
   const [pendingBudgetSubmitMode, setPendingBudgetSubmitMode] = useState<PostJobSubmitMode | null>(null);
   const budgetOverrideRef = useRef<string | null>(null);
+  const durationOverrideRef = useRef(false);
   const [leaveAction, setLeaveAction] = useState<LeaveAction>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [jobPostId, setJobPostId] = useState<string | null>(initialJobPostId);
@@ -322,6 +335,21 @@ export function usePostJob() {
     () => milestonePlans.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [milestonePlans]
   );
+
+  const milestoneTotalWeeks = useMemo(
+    () => milestonePlans.reduce((sum, milestone) => {
+      const { value, unit } = parseJobDuration(milestone.estimatedDuration);
+      return sum + durationToWeeks(value, unit);
+    }, 0),
+    [milestonePlans]
+  );
+
+  const expectedDurationWeeks = form.estimatedDurationValue
+    ? durationToWeeks(form.estimatedDurationValue, form.estimatedDurationUnit)
+    : 0;
+
+  const isBudgetExceeded = shouldConfirmBudgetOverride(form.budget, milestonePlanTotal);
+  const isDurationExceeded = shouldConfirmDurationOverride(milestoneTotalWeeks, expectedDurationWeeks);
 
   const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
@@ -1024,12 +1052,15 @@ export function usePostJob() {
     questions?: QuestionInput[];
     milestonePlans?: JobPostMilestonePlanDto[];
   }): SaveDraftJobPostRequest => {
-    // A confirmed budget override (milestone total) takes precedence over the
-    // current form value — the immediate post-confirm save runs in the same
-    // tick as setForm, so form.budget would still hold the stale expected budget.
+    // Confirmed overrides (milestone total / total duration) take precedence
+    // over the current form values — the immediate post-confirm save runs in
+    // the same tick as setForm, so the form fields would still hold the stale
+    // expected values.
     const budgetValue = budgetOverrideRef.current !== null
       ? Number(budgetOverrideRef.current)
       : form.budget ? Number(form.budget) : null;
+    const durationValue = durationOverrideRef.current ? String(milestoneTotalWeeks) : form.estimatedDurationValue;
+    const durationUnit: JobDurationUnit = durationOverrideRef.current ? 'weeks' : form.estimatedDurationUnit;
     const finalQuestions = overrides?.questions || questions;
     const finalMilestones = overrides?.milestonePlans || milestonePlans;
     const questionsWithOrderOverrides = finalQuestions.map((question, index) => ({ ...question, orderIndex: index }));
@@ -1041,7 +1072,7 @@ export function usePostJob() {
       budgetMin: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       budgetMax: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       currency: form.currency.trim() || GIGCOIN_CURRENCY_CODE,
-      estimatedDuration: formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit),
+      estimatedDuration: formatJobDuration(durationValue, durationUnit),
       visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,
       endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
       isAigenerated: form.isAigenerated,
@@ -1288,11 +1319,14 @@ export function usePostJob() {
       }
     }
 
-    // When the milestone plan total exceeds the client's expected budget, ask
-    // before saving so the job post budget is only raised by explicit consent.
-    if ((mode === 'review' || mode === 'publish')
-      && shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)
-      && budgetOverrideRef.current === null) {
+    // When the milestone plan total exceeds the client's expected budget or
+    // total duration, ask before saving so the job post fields are only
+    // raised by explicit consent.
+    const budgetNeedsConfirm = shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)
+      && budgetOverrideRef.current === null;
+    const durationNeedsConfirm = shouldConfirmDurationOverride(milestoneTotalWeeks, expectedDurationWeeks)
+      && !durationOverrideRef.current;
+    if ((mode === 'review' || mode === 'publish') && (budgetNeedsConfirm || durationNeedsConfirm)) {
       setPendingBudgetSubmitMode(mode);
       setIsBudgetExceededPromptOpen(true);
       return { status: 'budget-exceeded' };
@@ -1417,15 +1451,26 @@ export function usePostJob() {
     } finally {
       setSubmitMode(null);
       budgetOverrideRef.current = null;
+      durationOverrideRef.current = false;
     }
   };
 
   const handleBudgetExceededConfirm = (): Promise<PostJobSubmitResult> => {
-    budgetOverrideRef.current = String(milestonePlanTotal);
-    setForm(current => ({
-      ...current,
-      budget: String(milestonePlanTotal),
-    }));
+    if (shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)) {
+      budgetOverrideRef.current = String(milestonePlanTotal);
+      setForm(current => ({
+        ...current,
+        budget: String(milestonePlanTotal),
+      }));
+    }
+    if (shouldConfirmDurationOverride(milestoneTotalWeeks, expectedDurationWeeks)) {
+      durationOverrideRef.current = true;
+      setForm(current => ({
+        ...current,
+        estimatedDurationValue: String(milestoneTotalWeeks),
+        estimatedDurationUnit: 'weeks',
+      }));
+    }
     setIsBudgetExceededPromptOpen(false);
     const mode = pendingBudgetSubmitMode;
     setPendingBudgetSubmitMode(null);
@@ -1523,6 +1568,10 @@ export function usePostJob() {
     isUploadingAttachment,
     attachmentError,
     milestonePlanTotal,
+    milestoneTotalWeeks,
+    expectedDurationWeeks,
+    isBudgetExceeded,
+    isDurationExceeded,
     setMilestonePlans,
     uploadAttachment,
     deleteAttachment,
@@ -1559,6 +1608,7 @@ export function usePostJob() {
     handleBudgetExceededConfirm,
     handleBudgetExceededCancel,
     shouldConfirmBudgetOverride,
+    shouldConfirmDurationOverride,
     navigateWizard,
     flushAutosave,
     retryAutosave,

@@ -85,11 +85,28 @@ vi.mock('../components/PostJobLeavePrompt', () => ({
 }));
 
 vi.mock('../components/PostJobBudgetExceededPrompt', () => ({
-  PostJobBudgetExceededPrompt: ({ isOpen, total, expected }: {
+  PostJobBudgetExceededPrompt: ({
+    isOpen,
+    isBudgetExceeded,
+    budgetTotal,
+    budgetExpected,
+    isDurationExceeded,
+    durationTotal,
+    durationExpected,
+  }: {
     isOpen: boolean;
-    total: string;
-    expected: string;
-  }) => (isOpen ? <div data-testid="budget-prompt">{total}|{expected}</div> : null),
+    isBudgetExceeded: boolean;
+    budgetTotal: string;
+    budgetExpected: string;
+    isDurationExceeded: boolean;
+    durationTotal: string;
+    durationExpected: string;
+  }) => (isOpen ? (
+    <div data-testid="budget-prompt">
+      <span data-testid="budget-line">{isBudgetExceeded ? `${budgetTotal}|${budgetExpected}` : 'none'}</span>
+      <span data-testid="duration-line">{isDurationExceeded ? `${durationTotal}|${durationExpected}` : 'none'}</span>
+    </div>
+  ) : null),
 }));
 
 const buildHookValue = () => ({
@@ -118,6 +135,10 @@ const buildHookValue = () => ({
   handleDragEnd: vi.fn(),
   MAX_QUESTION_LENGTH: 1000,
   milestonePlanTotal: 200,
+  milestoneTotalWeeks: 0,
+  expectedDurationWeeks: 3,
+  isBudgetExceeded: false,
+  isDurationExceeded: false,
   isActionDisabled: false,
   isLeavePromptOpen: false,
   leaveAction: null,
@@ -153,11 +174,27 @@ describe('PostJobMilestonesScreen', () => {
     mockUsePostJob.mockReturnValue({
       ...buildHookValue(),
       isBudgetExceededPromptOpen: true,
+      isBudgetExceeded: true,
     });
 
     render(<PostJobMilestonesScreen />);
 
-    expect(screen.getByTestId('budget-prompt')).toHaveTextContent('200 G-coin|100 G-coin');
+    expect(screen.getByTestId('budget-line')).toHaveTextContent('200 G-coin|100 G-coin');
+    expect(screen.getByTestId('duration-line')).toHaveTextContent('none');
+  });
+
+  it('renders the duration-exceeded prompt line with milestone and estimated duration when open', () => {
+    mockUsePostJob.mockReturnValue({
+      ...buildHookValue(),
+      isBudgetExceededPromptOpen: true,
+      isDurationExceeded: true,
+      milestoneTotalWeeks: 7,
+    });
+
+    render(<PostJobMilestonesScreen />);
+
+    expect(screen.getByTestId('budget-line')).toHaveTextContent('none');
+    expect(screen.getByTestId('duration-line')).toHaveTextContent('7 weeks|3 weeks');
   });
 
   it('calls submitDraftFlow with review from the primary action', () => {
@@ -175,6 +212,7 @@ describe('PostJobMilestonesScreen', () => {
         { amount: 0, orderIndex: 0, workItems: [], estimatedDuration: '2 weeks' },
         { amount: 0, orderIndex: 1, workItems: [], estimatedDuration: '2 weeks' },
       ] as EditableMilestonePlan[],
+      milestoneTotalWeeks: 4,
     });
 
     render(<PostJobMilestonesScreen />);
@@ -195,6 +233,7 @@ describe('PostJobMilestonesScreen', () => {
     mockUsePostJob.mockReturnValue({
       ...buildHookValue(),
       form: { ...buildHookValue().form, estimatedDurationValue: '' },
+      expectedDurationWeeks: 0,
     });
 
     render(<PostJobMilestonesScreen />);

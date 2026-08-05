@@ -234,9 +234,11 @@
     "complete": "hoàn thành",
     "notProvided": "Chưa cung cấp",
     "budgetExceeded": {
-      "title": "Tổng số tiền milestone vượt quá ExpectedBudget",
-      "desc": "Tổng số tiền milestone {{total}} vượt quá ExpectedBudget {{expected}}. Bạn có muốn tiếp tục không?",
-      "confirm": "Cập nhật ngân sách & tiếp tục"
+      "title": "Kế hoạch milestone vượt dự kiến",
+      "budgetDesc": "Tổng tiền milestone {{total}} vượt ngân sách dự kiến {{expected}}.",
+      "durationDesc": "Tổng thời gian milestone {{total}} vượt thời gian dự kiến {{expected}}.",
+      "question": "Bạn có muốn tiếp tục không?",
+      "confirm": "Cập nhật & tiếp tục"
     },
     "autosave": {
       "idle": "Đang chờ lưu",

@@ -28,6 +28,7 @@ export default function PostJobReviewScreen() {
     form, selectedOfficialSkills, selectedMajorName, selectedCategoryName,
     previewTitle, errorMessage, isActionDisabled, isDraftInitializing,
     draftError, questions, milestonePlans, milestonePlanTotal,
+    milestoneTotalWeeks, isBudgetExceeded, isDurationExceeded,
     attachments,
     isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
     handleLeaveSaveDraft, handleLeaveDiscardDraft, cancelBlockedNavigation,
@@ -149,8 +150,14 @@ export default function PostJobReviewScreen() {
           />
           <PostJobBudgetExceededPrompt
             isOpen={isBudgetExceededPromptOpen}
-            total={formatGigCoin(milestonePlanTotal)}
-            expected={formatGigCoin(Number(form.budget) || 0)}
+            isBudgetExceeded={isBudgetExceeded}
+            budgetTotal={formatGigCoin(milestonePlanTotal)}
+            budgetExpected={formatGigCoin(Number(form.budget) || 0)}
+            isDurationExceeded={isDurationExceeded}
+            durationTotal={`${milestoneTotalWeeks} ${t('postJob.durationUnits.weeks')}`}
+            durationExpected={form.estimatedDurationValue
+              ? `${form.estimatedDurationValue} ${t(`postJob.durationUnits.${form.estimatedDurationUnit}`)}`
+              : ''}
             onConfirm={handleBudgetExceededConfirm}
             onCancel={handleBudgetExceededCancel}
           />

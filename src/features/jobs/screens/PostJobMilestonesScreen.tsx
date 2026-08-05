@@ -12,7 +12,7 @@ import { PostJobWizardShell } from '../components/PostJobWizardShell';
 import { QuestionRequiredToggle } from '../components/QuestionRequiredToggle';
 import { usePostJob, type PostJobRouteState } from '../hooks/usePostJob';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
-import { durationToWeeks, JOB_DURATION_UNITS, parseJobDuration } from '../utils/jobDuration';
+import { JOB_DURATION_UNITS } from '../utils/jobDuration';
 
 export default function PostJobMilestonesScreen() {
   const navigate = useNavigate();
@@ -24,7 +24,8 @@ export default function PostJobMilestonesScreen() {
     milestonePlans, setMilestonePlans, milestoneErrors, setMilestoneErrors,
     expandedMilestone, setExpandedMilestone, questions, setQuestions,
     draggedIndex, updateQuestion, handleDragStart, handleDragOver, handleDragEnd,
-    MAX_QUESTION_LENGTH, milestonePlanTotal, isActionDisabled,
+    MAX_QUESTION_LENGTH, milestonePlanTotal, milestoneTotalWeeks, expectedDurationWeeks,
+    isBudgetExceeded, isDurationExceeded, isActionDisabled,
     isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
     handleLeaveSaveDraft, handleLeaveDiscardDraft, cancelBlockedNavigation,
     submitDraftFlow, renderSubmitLabel, retryAutosave, navigateWizard,
@@ -58,13 +59,6 @@ export default function PostJobMilestonesScreen() {
   const estimatedDuration = form.estimatedDurationValue
     ? `${form.estimatedDurationValue} ${t(`postJob.durationUnits.${form.estimatedDurationUnit}`)}`
     : null;
-  const expectedDurationWeeks = form.estimatedDurationValue
-    ? durationToWeeks(form.estimatedDurationValue, form.estimatedDurationUnit)
-    : 0;
-  const milestoneTotalWeeks = milestonePlans.reduce((sum, milestone) => {
-    const { value, unit } = parseJobDuration(milestone.estimatedDuration);
-    return sum + durationToWeeks(value, unit);
-  }, 0);
 
   return (
     <PostJobWizardShell
@@ -112,8 +106,12 @@ export default function PostJobMilestonesScreen() {
           />
           <PostJobBudgetExceededPrompt
             isOpen={isBudgetExceededPromptOpen}
-            total={formatGigCoin(milestonePlanTotal)}
-            expected={formatGigCoin(Number(form.budget) || 0)}
+            isBudgetExceeded={isBudgetExceeded}
+            budgetTotal={formatGigCoin(milestonePlanTotal)}
+            budgetExpected={formatGigCoin(Number(form.budget) || 0)}
+            isDurationExceeded={isDurationExceeded}
+            durationTotal={`${milestoneTotalWeeks} ${t('postJob.durationUnits.weeks')}`}
+            durationExpected={estimatedDuration || ''}
             onConfirm={handleBudgetExceededConfirm}
             onCancel={handleBudgetExceededCancel}
           />
