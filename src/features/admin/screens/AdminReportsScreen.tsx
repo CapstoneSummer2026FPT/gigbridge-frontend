@@ -10,6 +10,7 @@ import {
   Flag,
   MoreVertical,
   Search,
+  ShieldCheck,
   ShieldAlert,
   X,
   XCircle,
@@ -26,6 +27,7 @@ import {
   type ReportSummaryDto,
 } from '../../../types/models/Report';
 import '../styles/admin-users-screen.css';
+import '../styles/admin-reports-screen.css';
 
 type ReportAction = 'review' | 'dismiss' | 'resolve' | 'resolve-action';
 
@@ -240,15 +242,27 @@ export default function AdminReportsScreen() {
     };
 
     return (
-      <button
-        onClick={toggleMenu}
-        className="p-2 rounded-lg glass-button hover:bg-amber/10 transition-colors"
-        title="More Actions"
-        aria-label="More report actions"
-        aria-expanded={openActionMenu?.report.id === report.id}
-      >
-        <MoreVertical size={16} className="text-amber" />
-      </button>
+      <div className="admin-reports__row-actions">
+        {report.reportedEntityType === 'User' && (
+          <Link
+            to={`/admin/reports/accounts/${report.id}`}
+            className="admin-reports__enforcement-link"
+            aria-label={`Account enforcement for ${report.targetSummary?.title || report.reportedEntityId}`}
+          >
+            <ShieldCheck size={15} />
+            <span>Account enforcement</span>
+          </Link>
+        )}
+        <button
+          onClick={toggleMenu}
+          className="admin-reports__more-button"
+          title="More actions"
+          aria-label="More report actions"
+          aria-expanded={openActionMenu?.report.id === report.id}
+        >
+          <MoreVertical size={17} />
+        </button>
+      </div>
     );
   };
 
@@ -351,42 +365,50 @@ export default function AdminReportsScreen() {
           </div>
         )}
 
-        <div className="glass-card p-4 mb-6">
+        <div className="glass-card p-4 mb-6 admin-reports__filter-card">
           <form
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3"
+            className="admin-reports__filters"
             onSubmit={(event) => {
               event.preventDefault();
               setSearch(searchDraft.trim());
             }}
           >
-            <div className="relative xl:col-span-2">
-              <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <label className="admin-reports__search-field">
+              <span className="sr-only">Search reports</span>
+              <Search size={18} aria-hidden="true" />
               <input
-                className="input-gb w-full py-2.5 pl-10 pr-3 text-sm"
+                className="input-gb"
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
                 placeholder="Search people, reason, note, or target ID"
               />
-            </div>
-            <select
-              className="input-gb px-3 py-2.5 text-sm"
-              value={status}
-              onChange={(event) => setStatus(event.target.value === '' ? '' : Number(event.target.value) as ReportStatus)}
-            >
-              <option value="">All statuses</option>
-              {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-            <select
-              className="input-gb px-3 py-2.5 text-sm"
-              value={type}
-              onChange={(event) => setType(event.target.value === '' ? '' : Number(event.target.value) as ReportType)}
-            >
-              <option value="">All reasons</option>
-              {Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-            <div className="flex gap-2">
+            </label>
+            <label className="admin-reports__select-field">
+              <span>Status</span>
               <select
-                className="input-gb px-3 py-2.5 text-sm flex-1"
+                className="input-gb"
+                value={status}
+                onChange={(event) => setStatus(event.target.value === '' ? '' : Number(event.target.value) as ReportStatus)}
+              >
+                <option value="">All statuses</option>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className="admin-reports__select-field">
+              <span>Reason</span>
+              <select
+                className="input-gb"
+                value={type}
+                onChange={(event) => setType(event.target.value === '' ? '' : Number(event.target.value) as ReportType)}
+              >
+                <option value="">All reasons</option>
+                {Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className="admin-reports__select-field">
+              <span>Target</span>
+              <select
+                className="input-gb"
                 value={entityType}
                 onChange={(event) => {
                   setEntityType(event.target.value as ReportedEntityType | '');
@@ -399,7 +421,26 @@ export default function AdminReportsScreen() {
                 <option value="JobPost">Job posts</option>
                 <option value="Review">Reviews</option>
               </select>
-              <button type="submit" className="btn-cyan px-4 py-2.5 text-sm">Search</button>
+            </label>
+            <div className="admin-reports__filter-actions">
+              {(searchDraft || search || status !== '' || type !== '' || entityType !== '' || entityId) && (
+                <button
+                  type="button"
+                  className="admin-reports__clear-button"
+                  onClick={() => {
+                    setSearchDraft('');
+                    setSearch('');
+                    setStatus('');
+                    setType('');
+                    clearQuickFilter();
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+              <button type="submit" className="btn-cyan admin-reports__search-button">
+                <Search size={16} /> Search
+              </button>
             </div>
           </form>
         </div>
@@ -433,14 +474,6 @@ export default function AdminReportsScreen() {
                         <p className="text-sm font-semibold text-primary hover:text-cyan">{report.targetSummary?.title || report.reportedEntityId}</p>
                         <p className="text-xs text-secondary">{report.reportedEntityType}</p>
                       </button>
-                      {report.reportedEntityType === 'User' && (
-                        <Link
-                          to={`/admin/reports/accounts/${report.id}`}
-                          className="inline-block mt-1.5 text-xs font-medium text-cyan hover:text-cyan/80"
-                        >
-                          Account enforcement
-                        </Link>
-                      )}
                     </td>
                     <td className="p-4 min-w-44">
                       <p className="text-sm text-primary"><UserProfileLink userId={report.reporter.id} role={report.reporter.role}>{report.reporter.fullName}</UserProfileLink></p>
@@ -452,7 +485,7 @@ export default function AdminReportsScreen() {
                     </td>
                     <td className="p-4"><span className={`${statusBadgeClass(report.status)} text-xs`}>{STATUS_LABELS[report.status]}</span></td>
                     <td className="p-4 text-xs text-secondary whitespace-nowrap">{formatDate(report.createdAt)}</td>
-                    <td className="p-4 min-w-44">
+                    <td className="p-4 min-w-64">
                       {renderActions(report)}
                     </td>
                   </tr>
@@ -474,12 +507,7 @@ export default function AdminReportsScreen() {
               </div>
               <p className="text-sm text-primary mb-2">{report.reason}</p>
               <p className="text-xs text-secondary mb-4">Reported by <UserProfileLink userId={report.reporter.id} role={report.reporter.role}>{report.reporter.fullName}</UserProfileLink> · {formatDate(report.createdAt)}</p>
-              {report.reportedEntityType === 'User' && (
-                <Link to={`/admin/reports/accounts/${report.id}`} className="inline-block mb-3 text-xs font-medium text-cyan hover:text-cyan/80">
-                  Account enforcement
-                </Link>
-              )}
-              <div className="mt-3">{renderActions(report)}</div>
+              <div className="admin-reports__mobile-actions">{renderActions(report)}</div>
             </div>
           ))}
         </div>
