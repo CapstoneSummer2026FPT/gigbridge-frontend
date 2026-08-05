@@ -100,14 +100,14 @@ export default function ClientProfileScreen() {
     return (
       <AppLayout>
         <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 px-6 text-center bg-[var(--background)] text-[var(--text-primary)]">
-          <h1 className="text-2xl font-extrabold text-[var(--text-primary)]">Client profile unavailable</h1>
+          <h1 className="text-2xl font-extrabold text-[var(--text-primary)]">{t('profile.edit.loadError')}</h1>
           <p className="text-[var(--text-secondary)]">{error || 'No client profile was selected.'}</p>
           <button
             type="button"
             onClick={() => navigate(-1)}
             className="rounded-xl bg-[var(--brand,#494be7)] px-5 py-2.5 font-bold text-white shadow-md hover:bg-[var(--brand-hover,#3f41d0)] transition-all cursor-pointer"
           >
-            Go back
+            {t('profile.back')}
           </button>
         </div>
       </AppLayout>
@@ -141,7 +141,7 @@ export default function ClientProfileScreen() {
               className="cp-btn-secondary"
             >
               <ArrowLeft size={16} className="cp-card-icon" />
-              <span>Back</span>
+              <span>{t('profile.back')}</span>
             </button>
           </div>
 
@@ -219,7 +219,7 @@ export default function ClientProfileScreen() {
                   className="cp-btn-secondary"
                 >
                   <Edit3 size={15} />
-                  <span>Edit Profile</span>
+                  <span>{t('profile.editProfile')}</span>
                 </button>
               )}
 
@@ -241,12 +241,12 @@ export default function ClientProfileScreen() {
                         onClick={() => {
                           setShowMoreMenu(false);
                           void navigator.clipboard.writeText(window.location.href);
-                          alert('Link copied to clipboard!');
+                          alert(t('profile.linkCopied'));
                         }}
                         className="cp-dropdown-item"
                       >
                         <Share2 size={14} />
-                        Share
+                        {t('profile.share')}
                       </button>
 
                       {currentUser?.id !== user.id && (
@@ -260,7 +260,7 @@ export default function ClientProfileScreen() {
                           className="cp-dropdown-item cp-dropdown-item-danger"
                         >
                           <Flag size={14} />
-                          {reportSubmitted ? 'Reported' : 'Report User'}
+                          {reportSubmitted ? t('profile.reported') : t('profile.reportUser')}
                         </button>
                       )}
                     </div>
@@ -279,7 +279,7 @@ export default function ClientProfileScreen() {
                 <div className="cp-bio-col">
                   <div className="cp-card-title-group">
                     <AlignLeft size={18} className="cp-card-icon" />
-                    <h2 className="cp-card-title">Bio & Overview</h2>
+                    <h2 className="cp-card-title">{t('profile.bioOverview')}</h2>
                   </div>
                   <p className="cp-bio-text">
                     {profile.company_description || "I'm professional designer & business leader focused on building high-impact digital products and leading innovation."}
@@ -290,20 +290,20 @@ export default function ClientProfileScreen() {
                 <div className="cp-company-col">
                   <div className="cp-card-title-group">
                     <Briefcase size={18} className="cp-card-icon" />
-                    <h2 className="cp-card-title">Company Info</h2>
+                    <h2 className="cp-card-title">{t('profile.companyInfo')}</h2>
                   </div>
 
                   <div className="cp-info-list">
                     <div className="cp-info-item">
                       <span className="cp-info-label">
-                        <MapPin size={14} className="cp-card-icon" /> Location
+                        <MapPin size={14} className="cp-card-icon" /> {t('profile.location')}
                       </span>
                       <span className="cp-info-val">{profile.location || 'Da Nang, Viet Nam'}</span>
                     </div>
 
                     <div className="cp-info-item">
                       <span className="cp-info-label">
-                        <Globe size={14} className="cp-card-icon" /> Website
+                        <Globe size={14} className="cp-card-icon" /> {t('profile.website')}
                       </span>
                       <span className="cp-info-val cp-info-val-brand">
                         {profile.company_website || 'www.uiuxdesign.com'}
@@ -312,21 +312,21 @@ export default function ClientProfileScreen() {
 
                     <div className="cp-info-item">
                       <span className="cp-info-label">
-                        <Users size={14} className="cp-card-icon" /> Company Size
+                        <Users size={14} className="cp-card-icon" /> {t('profile.companySize')}
                       </span>
                       <span className="cp-info-val">{getCompanySizeLabel(profile.company_size)}</span>
                     </div>
 
                     <div className="cp-info-item">
                       <span className="cp-info-label">
-                        <Briefcase size={14} className="cp-card-icon" /> Industry
+                        <Briefcase size={14} className="cp-card-icon" /> {t('profile.industry')}
                       </span>
                       <span className="cp-info-val">{profile.industry || 'Thiết kế & Sáng tạo số'}</span>
                     </div>
 
                     <div className="cp-info-item">
                       <span className="cp-info-label">
-                        <Mail size={14} className="cp-card-icon" /> Email
+                        <Mail size={14} className="cp-card-icon" /> {t('profile.email')}
                       </span>
                       <span className="cp-info-val cp-info-val-brand">{user.email}</span>
                     </div>
@@ -344,10 +344,10 @@ export default function ClientProfileScreen() {
               <div className="w-full flex items-center justify-between">
                 <div className="cp-card-title-group">
                   <Shield size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">Elo Point</h2>
+                  <h2 className="cp-card-title">{t('profile.eloPoint')}</h2>
                 </div>
                 <span className="cp-pill-brand">
-                  Verified
+                  {t('profile.verified')}
                 </span>
               </div>
 
@@ -377,7 +377,7 @@ export default function ClientProfileScreen() {
                 </svg>
                 <div className="fp-arc-center">
                   <span className="fp-arc-number">{eloPoints || 9999}</span>
-                  <span className="fp-arc-label">PROFILE STRENGTH</span>
+                  <span className="fp-arc-label">{t('profile.profileStrength')}</span>
                 </div>
               </div>
             </div>
@@ -387,14 +387,14 @@ export default function ClientProfileScreen() {
               <div className="cp-card-header">
                 <div className="cp-card-title-group">
                   <JobIcon size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">Job List</h2>
+                  <h2 className="cp-card-title">{t('profile.jobList')}</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigate('/jobs')}
                   className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
                 >
-                  <span>See more</span>
+                  <span>{t('profile.seeMore')}</span>
                   <ChevronRight size={14} />
                 </button>
               </div>
@@ -462,7 +462,7 @@ export default function ClientProfileScreen() {
           <div className="cp-card cp-col-12 space-y-6">
             <div className="cp-card-title-group">
               <Star size={18} className="text-amber-500 fill-current" />
-              <h2 className="cp-card-title">{t('reviews.clientReviews') || 'Client Reviews'}</h2>
+              <h2 className="cp-card-title">{t('profile.freelancerReviews')}</h2>
             </div>
 
             {reviewsList.length > 0 ? (
@@ -482,7 +482,7 @@ export default function ClientProfileScreen() {
                     ))}
                   </div>
                   <p className="text-xs font-semibold text-[var(--text-secondary)]">
-                    Based on {reviewsList.length} reviews from freelancers
+                    {t('profile.basedOnReviewsFreelancer', { count: reviewsList.length })}
                   </p>
 
                   <div className="w-full space-y-2 pt-2">

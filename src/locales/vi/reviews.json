@@ -34,6 +34,8 @@
     "leaveForClient": "Đánh giá client",
     "reviewed": "Đã đánh giá",
     "anonymousReviewer": "Người đánh giá ẩn danh",
+    "clientReviews": "Đánh giá từ khách hàng",
+    "freelancerReviews": "Đánh giá từ freelancer",
     "freelancerProfileSection": "Đánh giá từ client",
     "clientProfileSection": "Đánh giá từ freelancer",
     "basedOnReviews": "Dựa trên {{count}} đánh giá",

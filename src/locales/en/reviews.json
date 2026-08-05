@@ -34,6 +34,8 @@
     "leaveForClient": "Review client",
     "reviewed": "Reviewed",
     "anonymousReviewer": "Anonymous Reviewer",
+    "clientReviews": "Client Reviews",
+    "freelancerReviews": "Freelancer Reviews",
     "freelancerProfileSection": "Client reviews",
     "clientProfileSection": "Freelancer reviews",
     "basedOnReviews": "Based on {{count}} reviews",
