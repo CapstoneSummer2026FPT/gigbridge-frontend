@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, MouseEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
-import { motion } from 'motion/react';
+import { useRef } from 'react';
+import { Link } from 'react-router';
 import {
   AlertCircle,
   Calendar,
@@ -10,40 +8,28 @@ import {
   Eye,
   FileCheck,
   FileText,
-  Loader,
+  RotateCcw,
   Search,
+  Sparkles,
   UserRoundCheck,
   X,
+  Layers,
+  Clock,
+  Award,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { esignGetAPI } from '../../../api/esignAPI/GET';
 import type {
   ESignDocumentDto,
   ESignDocumentListItemDto,
-  ESignDocumentListPageDto,
 } from '../../../types/models/ESign';
-import {
-  ESignerRole,
-  ESignDocumentStatus,
-  SignatureStatus,
-} from '../../../types/models/ESign';
+import { ESignDocumentStatus } from '../../../types/models/ESign';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
+import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
+import { useESignContracts, type StatusFilter } from '../hooks/useESignContracts';
+import type { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/manage-contract-screen.css';
 import '../styles/esign-contracts-screen.css';
-
-type StatusFilter = 'all' | ESignDocumentStatus;
-
-const PAGE_SIZE = 20;
-
-const STATUS_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: ESignDocumentStatus.Draft, label: 'Draft' },
-  { value: ESignDocumentStatus.PendingSignatures, label: 'Pending' },
-  { value: ESignDocumentStatus.PartiallySigned, label: 'Partially signed' },
-  { value: ESignDocumentStatus.FullySigned, label: 'Fully signed' },
-  { value: ESignDocumentStatus.Expired, label: 'Expired' },
-  { value: ESignDocumentStatus.Voided, label: 'Voided' },
-];
 
 const formatDateTime = (value?: string | null): string => {
   if (!value) return 'Not recorded';
@@ -71,10 +57,13 @@ const getStatusLabel = (status: number): string => {
 const getShortId = (value: string): string =>
   value ? `${value.slice(0, 8)}...${value.slice(-4)}` : 'N/A';
 
-interface GroupedDocuments {
-  jobPostId: string;
-  documents: ESignDocumentListItemDto[];
-}
+const statusBadgeClass = (status: number) => {
+  if (status === ESignDocumentStatus.FullySigned) return 'border border-emerald-500/40 bg-emerald-500/15 text-text-primary font-black';
+  if (status === ESignDocumentStatus.PartiallySigned) return 'border border-blue-500/40 bg-blue-500/20 text-text-primary font-black';
+  if (status === ESignDocumentStatus.PendingSignatures) return 'border border-amber-500/40 bg-amber-500/15 text-text-primary font-black';
+  if (status === ESignDocumentStatus.Expired || status === ESignDocumentStatus.Voided) return 'border border-rose-500/40 bg-rose-500/15 text-text-primary font-black';
+  return 'border border-border bg-slate-500/15 text-text-primary font-black';
+};
 
 interface DocumentRowProps {
   document: ESignDocumentListItemDto;
@@ -83,35 +72,40 @@ interface DocumentRowProps {
 }
 
 function DocumentRow({ document, isSelected, onSelect }: DocumentRowProps): JSX.Element {
-  const handleSelect = (): void => {
-    onSelect(document.documentId);
-  };
-
   return (
     <button
       type="button"
-      onClick={handleSelect}
-      className={`esign-document-row ${isSelected ? 'active' : ''}`}
+      onClick={() => onSelect(document.documentId)}
+      className={`w-full text-left rounded-2xl border p-4 transition cursor-pointer flex flex-col gap-2 ${
+        isSelected
+          ? 'border-brand bg-brand/5 shadow-sm'
+          : 'border-border bg-background hover:border-brand/40 hover:bg-surface-muted/30'
+      }`}
     >
-      <div className="esign-document-row-main">
-        <div className="esign-document-icon">
-          <FileText size={18} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3>{document.title}</h3>
-          <div className="esign-document-meta">
-            <span>{document.documentCode || 'No document code'}</span>
-            <span>Contract {getShortId(document.contractId ?? '')}</span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <FileText size={18} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-xs font-extrabold text-text-primary truncate">{document.title}</h3>
+            <p className="text-[11px] font-semibold text-text-muted mt-0.5 truncate">
+              {document.documentCode || 'No document code'} · Contract {getShortId(document.contractId ?? '')}
+            </p>
           </div>
         </div>
-      </div>
 
-      <div className="esign-document-row-side">
-        <span className={`esign-status status-${document.documentStatus}`}>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${statusBadgeClass(document.documentStatus)}`}>
           {getStatusLabel(document.documentStatus)}
         </span>
-        <span className="esign-signed-date">{formatDateTime(document.currentUserSignedAt)}</span>
       </div>
+
+      {document.currentUserSignedAt && (
+        <div className="text-[10px] font-bold text-text-muted border-t border-border/40 pt-1.5 flex items-center justify-between">
+          <span>Signed at</span>
+          <span>{formatDateTime(document.currentUserSignedAt)}</span>
+        </div>
+      )}
     </button>
   );
 }
@@ -124,6 +118,7 @@ interface PreviewPanelProps {
   isAdmin: boolean;
   isDownloading: boolean;
   downloadError: string | null;
+  t: ReturnType<typeof useTranslation>['t'];
   onDownload: () => void;
   onRetry: () => void;
 }
@@ -136,26 +131,30 @@ function PreviewPanel({
   isAdmin,
   isDownloading,
   downloadError,
+  t,
   onDownload,
   onRetry,
 }: PreviewPanelProps): JSX.Element {
   if (isLoading) {
     return (
-      <div className="esign-preview-state">
-        <Loader size={28} className="spinner" />
-        <p>Loading e-sign contract...</p>
+      <div className="flex min-h-[400px] flex-col items-center justify-center p-8 my-auto">
+        <LemniscateBloomLoader label={t('contracts.legal.loadingDocument')} size={48} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="esign-preview-state error">
-        <AlertCircle size={32} />
-        <h3>Unable to load document</h3>
-        <p>{error}</p>
-        <button type="button" className="esign-secondary-action" onClick={onRetry}>
-          Try again
+      <div className="flex min-h-[400px] flex-col items-center justify-center p-8 my-auto space-y-3 text-center">
+        <AlertCircle size={36} className="text-rose-500" />
+        <h3 className="text-sm font-black text-text-primary">{t('contracts.legal.loadError')}</h3>
+        <p className="text-xs font-semibold text-text-muted">{error}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer"
+        >
+          <RotateCcw size={14} /> {t('contracts.legal.retry')}
         </button>
       </div>
     );
@@ -163,445 +162,358 @@ function PreviewPanel({
 
   if (!document) {
     return (
-      <div className="esign-preview-state">
-        <Eye size={34} />
-        <h3>Select an e-sign contract</h3>
-        <p>Choose a contract from the list to preview the read-only document.</p>
+      <div className="flex min-h-[400px] flex-col items-center justify-center p-8 my-auto space-y-2 text-center">
+        <Eye size={40} className="text-text-muted/40" />
+        <h3 className="text-sm font-black text-text-primary">{t('contracts.legal.viewDocument')}</h3>
+        <p className="text-xs font-semibold text-text-muted">{t('contracts.legal.documentDescription')}</p>
       </div>
     );
   }
 
   return (
-    <div className="esign-preview-content">
-      <div className="esign-preview-header">
+    <div className="flex flex-col h-full space-y-4">
+      {/* Header Info */}
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div>
-          <span className="esign-eyebrow">Read-only preview</span>
-          <h2>{fallbackItem?.title || document.documentCode}</h2>
-          <p>Job Post {getShortId(document.jobPostId)} · Document {document.documentCode}</p>
+          <span className="text-[10px] font-black uppercase tracking-wider text-brand">Read-only document</span>
+          <h2 className="text-base font-extrabold text-text-primary mt-0.5">{fallbackItem?.title || document.documentCode}</h2>
+          <p className="text-xs font-semibold text-text-muted">Job Post {getShortId(document.jobPostId)} · Code {document.documentCode}</p>
         </div>
-        <div className="esign-preview-actions">
-          {!isAdmin && fallbackItem?.canCurrentUserSign && fallbackItem.contractId ? (
-            <Link className="esign-primary-action" to={`/contracts/${fallbackItem.contractId}/sign`}>
-              Sign now
+
+        <div className="flex items-center gap-2">
+          {!isAdmin && fallbackItem?.canCurrentUserSign && fallbackItem.contractId && (
+            <Link
+              to={`/contracts/${fallbackItem.contractId}/sign`}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-white hover:bg-amber-600 transition cursor-pointer shadow-sm"
+            >
+              <CheckCircle2 size={14} /> {t('contracts.legal.viewAndSign')}
             </Link>
-          ) : null}
-          {!isAdmin && fallbackItem?.currentUserSignedAt && document.status !== ESignDocumentStatus.FullySigned ? (
-            <span className="esign-waiting">Waiting for the other party</span>
-          ) : null}
-          {fallbackItem?.hasFinalArtifact ? (
+          )}
+
+          {!isAdmin && fallbackItem?.currentUserSignedAt && document.status !== ESignDocumentStatus.FullySigned && (
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-extrabold text-amber-600 dark:text-amber-400">
+              <Clock size={14} /> {t('contracts.legal.status.pending')}
+            </span>
+          )}
+
+          {fallbackItem?.hasFinalArtifact && (
             <button
               type="button"
-              className="esign-secondary-action"
               onClick={onDownload}
               disabled={isDownloading}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer disabled:opacity-50"
             >
-              {isDownloading ? <Loader size={16} className="spinner" /> : <Download size={16} />}
-              {isDownloading ? 'Downloading...' : downloadError ? 'Retry DOCX' : 'Download DOCX'}
+              <Download size={14} />
+              {isDownloading ? t('contracts.legal.downloading') : t('contracts.legal.downloadSignedDocument')}
             </button>
-          ) : null}
+          )}
         </div>
       </div>
 
-      {downloadError ? <p className="esign-download-error" role="alert">{downloadError}</p> : null}
+      {downloadError && (
+        <p className="text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3" role="alert">
+          {downloadError}
+        </p>
+      )}
 
-      <div className="esign-signature-strip">
-        <span className="esign-pill">
-          <CheckCircle2 size={14} />
+      {/* Signature Pill Indicators */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs ${statusBadgeClass(document.status)}`}>
+          <CheckCircle2 size={13} />
           {getStatusLabel(document.status)}
         </span>
-        <span className={`esign-pill ${fallbackItem?.hasClientSigned ? '' : 'pending'}`}>
-          <UserRoundCheck size={14} />
+        <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold ${fallbackItem?.hasClientSigned ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+          <UserRoundCheck size={13} />
           Client: {fallbackItem?.hasClientSigned ? 'Signed' : 'Pending'}
         </span>
-        <span className={`esign-pill ${fallbackItem?.hasFreelancerSigned ? '' : 'pending'}`}>
-          <UserRoundCheck size={14} />
+        <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold ${fallbackItem?.hasFreelancerSigned ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+          <UserRoundCheck size={13} />
           Freelancer: {fallbackItem?.hasFreelancerSigned ? 'Signed' : 'Pending'}
         </span>
-        <span className="esign-pill">
-          <Calendar size={14} />
-          Finalized {formatDateTime(document.finalizedAt)}
+        <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-muted/50 px-3 py-1 text-xs font-bold text-text-muted">
+          <Calendar size={13} />
+          {formatDateTime(document.finalizedAt)}
         </span>
       </div>
 
-      <iframe
-        title="Read-only e-sign contract document"
-        className="esign-preview-frame"
-        sandbox=""
-        srcDoc={document.renderedHtmlContent}
-      />
+      {/* Frame Preview */}
+      <div className="flex-1 min-h-[460px] rounded-2xl border border-border bg-white overflow-hidden shadow-inner">
+        <iframe
+          title="Read-only e-sign contract document"
+          className="w-full h-full border-0 min-h-[460px]"
+          sandbox=""
+          srcDoc={document.renderedHtmlContent}
+        />
+      </div>
     </div>
   );
 }
 
 export default function ESignContractsScreen(): JSX.Element {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isAdmin = location.pathname.startsWith('/admin');
-  const requestedDocumentId = useMemo(
-    () => new URLSearchParams(location.search).get('document'),
-    [location.search]
-  );
-  const [page, setPage] = useState<ESignDocumentListPageDto | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<ESignDocumentDto | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [loadingList, setLoadingList] = useState(true);
-  const [loadingDocument, setLoadingDocument] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
-  const [documentError, setDocumentError] = useState<string | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
-  const listRequestId = useRef(0);
-  const documentRequestId = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const loadDocuments = useCallback(async (): Promise<void> => {
-    const requestId = ++listRequestId.current;
-    setLoadingList(true);
-    setListError(null);
+  const {
+    t,
+    isAdmin,
+    page,
+    selectedDocumentId,
+    selectedDocument,
+    searchQuery,
+    statusFilter,
+    loadingList,
+    loadingDocument,
+    listError,
+    documentError,
+    downloadError,
+    downloadingDocumentId,
+    groupedDocuments,
+    selectedItem,
+    totalDocuments,
+    fullySignedCount,
+    artifactCount,
+    loadDocuments,
+    loadDocument,
+    handleSelectDocument,
+    handleClearSearch,
+    handleSearchChange,
+    handleStatusChange,
+    handlePreviousPage,
+    handleNextPage,
+    handleDownload,
+  } = useESignContracts();
 
-    const params = {
-      page: pageNumber,
-      pageSize: PAGE_SIZE,
-      status: statusFilter === 'all' ? undefined : statusFilter,
-      q: searchQuery.trim() || undefined,
-    };
-    const response = isAdmin
-      ? await esignGetAPI.getAdminDocuments(params)
-      : await esignGetAPI.getMyDocuments(params);
+  // GSAP Entrance Animation
+  usePageGSAP({
+    containerRef,
+    loading: loadingList && !page,
+    groups: [
+      { selector: '.esign-gsap-header', y: 20, duration: 0.55 },
+      { selector: '.esign-gsap-metrics', y: 16, duration: 0.5, stagger: 0.08 },
+      { selector: '.esign-gsap-main', y: 24, duration: 0.5 },
+    ],
+  });
 
-    if (requestId !== listRequestId.current) return;
-
-    if (!response.success || !response.data) {
-      setPage(null);
-      setListError(response.message || 'Failed to load e-sign contracts.');
-      setLoadingList(false);
-      return;
-    }
-
-    setPage(response.data);
-    setLoadingList(false);
-  }, [isAdmin, pageNumber, searchQuery, statusFilter]);
-
-  const loadDocument = useCallback(async (documentId: string): Promise<void> => {
-    const requestId = ++documentRequestId.current;
-    setSelectedDocumentId(documentId);
-    setSelectedDocument(null);
-    setDocumentError(null);
-    setDownloadError(null);
-    setLoadingDocument(true);
-
-    const response = await esignGetAPI.getDocumentById(documentId);
-
-    if (requestId !== documentRequestId.current) return;
-
-    if (!response.success || !response.data) {
-      setDocumentError(response.message || 'Failed to load e-sign document.');
-      setLoadingDocument(false);
-      return;
-    }
-
-    setSelectedDocument(response.data);
-    setLoadingDocument(false);
-  }, []);
-
-  const handleSelectDocument = useCallback((documentId: string): void => {
-    if (requestedDocumentId === documentId) {
-      void loadDocument(documentId);
-      return;
-    }
-
-    const params = new URLSearchParams(location.search);
-    params.set('document', documentId);
-    navigate(
-      { pathname: location.pathname, search: params.toString() },
-      { replace: true }
-    );
-  }, [loadDocument, location.pathname, location.search, navigate, requestedDocumentId]);
-
-  useEffect(() => {
-    void loadDocuments();
-  }, [loadDocuments]);
-
-  useEffect(() => {
-    if (requestedDocumentId) {
-      void loadDocument(requestedDocumentId);
-    }
-  }, [loadDocument, requestedDocumentId]);
-
-  useEffect(() => {
-    const items = page?.items ?? [];
-    const firstDocument = items[0];
-
-    if (requestedDocumentId) {
-      return;
-    }
-
-    if (!firstDocument) {
-      documentRequestId.current += 1;
-      setSelectedDocumentId(null);
-      setSelectedDocument(null);
-      setDocumentError(null);
-      setLoadingDocument(false);
-      return;
-    }
-
-    if (!selectedDocumentId || !items.some((item) => item.documentId === selectedDocumentId)) {
-      void loadDocument(firstDocument.documentId);
-    }
-  }, [loadDocument, page?.items, requestedDocumentId, selectedDocumentId]);
-
-  const groupedDocuments = useMemo<GroupedDocuments[]>(() => {
-    const groups = new Map<string, ESignDocumentListItemDto[]>();
-    for (const document of page?.items ?? []) {
-      const group = groups.get(document.jobPostId) ?? [];
-      group.push(document);
-      groups.set(document.jobPostId, group);
-    }
-
-    return Array.from(groups, ([jobPostId, documents]) => ({ jobPostId, documents }));
-  }, [page?.items]);
-
-  const selectedItem = useMemo<ESignDocumentListItemDto | null>(() => {
-    const listedDocument =
-      page?.items.find(document => document.documentId === selectedDocumentId) ?? null;
-    if (listedDocument || !selectedDocument) {
-      return listedDocument;
-    }
-
-    const clientSignature = selectedDocument.signatures.find(
-      signature => signature.signerRole === ESignerRole.Client
-    );
-    const freelancerSignature = selectedDocument.signatures.find(
-      signature => signature.signerRole === ESignerRole.Freelancer
-    );
-    const currentUserSignature = selectedDocument.signatures.find(
-      signature => signature.signerRole === selectedDocument.currentUserSignerRole
-    );
-
-    return {
-      documentId: selectedDocument.documentId,
-      jobPostId: selectedDocument.jobPostId,
-      contractId: selectedDocument.contractId,
-      documentCode: selectedDocument.documentCode,
-      documentType: 'Contract',
-      title: selectedDocument.documentCode || 'E-sign contract',
-      documentStatus: selectedDocument.status,
-      currentUserSignerRole: selectedDocument.currentUserSignerRole,
-      currentUserSignedAt:
-        currentUserSignature?.status === SignatureStatus.Signed
-          ? currentUserSignature.signedAt ?? null
-          : null,
-      hasClientSigned: clientSignature?.status === SignatureStatus.Signed,
-      hasFreelancerSigned: freelancerSignature?.status === SignatureStatus.Signed,
-      canCurrentUserSign: selectedDocument.canCurrentUserSign,
-      hasFinalArtifact: selectedDocument.hasFinalArtifact,
-      finalizedDocumentFileName: selectedDocument.finalizedDocumentFileName ?? null,
-      signatureCount: selectedDocument.signatures.length,
-      finalizedAt: selectedDocument.finalizedAt ?? null,
-      exportedPdfUrl: selectedDocument.exportedPdfUrl ?? null,
-      createdAt: selectedDocument.createdAt,
-      updatedAt: selectedDocument.updatedAt ?? null,
-    };
-  }, [page?.items, selectedDocument, selectedDocumentId]);
-
-  const handleClearSearch = (): void => {
-    setSearchQuery('');
-    setPageNumber(1);
-  };
-
-  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    setSearchQuery(event.target.value);
-    setPageNumber(1);
-  };
-
-  const handleStatusChange = (event: MouseEvent<HTMLButtonElement>): void => {
-    const value = event.currentTarget.value;
-    setStatusFilter(value === 'all' ? 'all' : Number(value) as ESignDocumentStatus);
-    setPageNumber(1);
-  };
-
-  const handlePreviousPage = (): void => {
-    setPageNumber((current) => Math.max(1, current - 1));
-  };
-
-  const handleNextPage = (): void => {
-    setPageNumber((current) => current + 1);
-  };
-
-  const handleDownload = async (): Promise<void> => {
-    if (!selectedItem?.hasFinalArtifact) return;
-
-    setDownloadingDocumentId(selectedItem.documentId);
-    setDownloadError(null);
-    const response = await esignGetAPI.downloadDocument(selectedItem.documentId);
-
-    if (!response.success || !response.data) {
-      setDownloadError(response.message || 'Failed to download the finalized contract.');
-      setDownloadingDocumentId(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(response.data);
-    const anchor = window.document.createElement('a');
-    anchor.href = url;
-    anchor.download = selectedItem.finalizedDocumentFileName || `${selectedItem.documentCode || 'GigBridge-contract'}.docx`;
-    window.document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    setDownloadingDocumentId(null);
-  };
-
-  const totalDocuments = page?.totalCount ?? 0;
-  const fullySignedCount = page?.items.filter(
-    (document) => document.documentStatus === ESignDocumentStatus.FullySigned
-  ).length ?? 0;
-  const artifactCount = page?.items.filter((document) => document.hasFinalArtifact).length ?? 0;
+  const statusPills: Array<{ value: StatusFilter; label: string; icon: React.ReactNode; colorClass: string }> = [
+    { value: 'all', label: t('contracts.allContracts'), icon: <Layers size={14} />, colorClass: 'bg-brand text-white shadow-sm' },
+    { value: ESignDocumentStatus.Draft, label: t('contracts.legal.status.draft'), icon: <FileText size={14} />, colorClass: 'bg-slate-600 text-white shadow-sm' },
+    { value: ESignDocumentStatus.PendingSignatures, label: t('contracts.legal.status.pending'), icon: <Clock size={14} />, colorClass: 'bg-amber-500 text-white shadow-sm' },
+    { value: ESignDocumentStatus.PartiallySigned, label: t('contracts.legal.status.partial'), icon: <FileCheck size={14} />, colorClass: 'bg-blue-600 text-white shadow-sm' },
+    { value: ESignDocumentStatus.FullySigned, label: t('contracts.legal.status.signed'), icon: <Award size={14} />, colorClass: 'bg-emerald-600 text-white shadow-sm' },
+  ];
 
   return (
-    <AppLayout>
-      <div className="esign-contracts-page">
-        <ContractAreaTabs />
-
-        <motion.header
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="esign-contracts-header"
-        >
-          <div>
-            <span className="esign-eyebrow">
-              <FileCheck size={14} />
-              Contract archive
-            </span>
-            <h1>E-sign Contracts</h1>
-            <p>Review, sign, preview, and download your contract documents.</p>
-          </div>
-
-          <div className="esign-summary-grid">
+    <AppLayout fullWidth>
+      <div ref={containerRef} className="min-h-[calc(100vh-4rem)] bg-background text-text-primary">
+        
+        {/* Top Header Bar */}
+        <header className="esign-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
+          <div className="mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <span>Total</span>
-              <strong>{totalDocuments}</strong>
-            </div>
-            <div>
-              <span>Fully signed</span>
-              <strong>{fullySignedCount}</strong>
-            </div>
-            <div>
-              <span>DOCX ready</span>
-              <strong>{artifactCount}</strong>
-            </div>
-          </div>
-        </motion.header>
-
-        <section className="esign-toolbar">
-          <div className="esign-search">
-            <Search size={16} />
-            <input
-              value={searchQuery}
-              onChange={handleSearchChange}
-              aria-label="Search e-sign contracts"
-              placeholder={isAdmin
-                ? 'Search by title, code, name, or email...'
-                : 'Search by title or document code...'}
-            />
-            {searchQuery ? (
-              <button type="button" onClick={handleClearSearch} title="Clear search">
-                <X size={14} />
-              </button>
-            ) : null}
-          </div>
-
-          <div className="esign-status-tabs" role="tablist" aria-label="E-sign document status">
-            {STATUS_OPTIONS.map((option) => (
-              <button
-                key={String(option.value)}
-                type="button"
-                role="tab"
-                value={String(option.value)}
-                aria-selected={statusFilter === option.value}
-                onClick={handleStatusChange}
-                className={statusFilter === option.value ? 'active' : ''}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {listError ? (
-          <div className="esign-list-error">
-            <AlertCircle size={18} />
-            <span>{listError}</span>
-            <button type="button" onClick={() => void loadDocuments()}>Try again</button>
-          </div>
-        ) : null}
-
-        <div className="esign-content-grid">
-          <section className="esign-list-panel" aria-label="E-sign contracts">
-            {loadingList ? (
-              <div className="esign-preview-state compact">
-                <Loader size={26} className="spinner" />
-                <p>Loading contracts...</p>
+              <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-brand">
+                <Sparkles size={14} />
+                {t('contracts.legal.title')}
               </div>
-            ) : groupedDocuments.length === 0 ? (
-              <div className="esign-preview-state compact">
-                <FileText size={32} />
-                <h3>No e-sign contracts found</h3>
-                <p>Your contract documents will appear here when they are ready for review.</p>
-              </div>
-            ) : (
-              groupedDocuments.map((group) => (
-                <div key={group.jobPostId} className="esign-job-group">
-                  <div className="esign-job-group-header">
-                    <span>Job Post</span>
-                    <strong>{getShortId(group.jobPostId)}</strong>
-                  </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
+                E-Sign <span className="text-brand italic font-light">Contracts</span>
+              </h1>
+              <p className="mt-0.5 text-xs font-semibold text-text-muted">{t('contracts.esignSubtitle')}</p>
+            </div>
 
-                  <div className="esign-document-list">
-                    {group.documents.map((document) => (
-                      <DocumentRow
-                        key={document.documentId}
-                        document={document}
-                        isSelected={document.documentId === selectedDocumentId}
-                        onSelect={handleSelectDocument}
-                      />
-                    ))}
-                  </div>
+            {/* Navigation Tabs bar */}
+            <ContractAreaTabs />
+          </div>
+        </header>
+
+        {/* Main Workspace */}
+        <main className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 lg:px-8">
+          
+          {/* Summary Metric Cards */}
+          <section aria-label="E-sign Metrics" className="esign-gsap-metrics grid grid-cols-3 gap-3 xl:grid-cols-3">
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">Total Documents</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{totalDocuments}</p>
                 </div>
-              ))
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                  <FileText size={20} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.legal.status.signed')}</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{fullySignedCount}</p>
+                </div>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 size={20} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">DOCX Ready</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{artifactCount}</p>
+                </div>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <Download size={20} />
+                </span>
+              </div>
+            </article>
+          </section>
+
+          {/* Controls & Grid Panel */}
+          <section className="esign-gsap-main rounded-2xl border border-border bg-background shadow-sm overflow-hidden min-h-[640px] flex flex-col justify-between">
+            
+            {/* Search & Selectable Status Pills Toolbar */}
+            <div className="border-b border-border p-4 space-y-4 shrink-0">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                
+                {/* Horizontal Status Pills */}
+                <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+                  {statusPills.map(pill => {
+                    const isSelected = statusFilter === pill.value;
+                    return (
+                      <button
+                        key={String(pill.value)}
+                        type="button"
+                        onClick={() => handleStatusChange(pill.value)}
+                        className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? pill.colorClass
+                            : 'border border-border bg-surface-muted/40 text-text-muted hover:border-brand/40 hover:text-text-primary'
+                        }`}
+                      >
+                        {pill.icon}
+                        {pill.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Search Bar */}
+                <div className="flex items-center gap-2 sm:w-72 shrink-0">
+                  <label className="relative flex-1">
+                    <span className="sr-only">{t('contracts.searchPlaceholder')}</span>
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+                    <input
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      placeholder={isAdmin ? 'Search title, code, email...' : t('contracts.searchPlaceholder')}
+                      className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-xs font-bold text-text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm"
+                    />
+                  </label>
+
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-muted/50 text-brand hover:bg-surface-muted transition cursor-pointer"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Content Grid: Left List (1/3) & Right Preview (2/3) */}
+            <div className="grid gap-6 p-4 lg:grid-cols-12 flex-1 min-h-[500px]">
+              
+              {/* Document List Side */}
+              <div className="lg:col-span-4 border-r border-border/60 pr-4 space-y-4 max-h-[640px] overflow-y-auto custom-scrollbar">
+                {listError && (
+                  <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs font-bold text-rose-500 flex items-center justify-between">
+                    <span>{listError}</span>
+                    <button type="button" onClick={() => void loadDocuments()} className="underline cursor-pointer">
+                      {t('contracts.retry')}
+                    </button>
+                  </div>
+                )}
+
+                {loadingList ? (
+                  <div className="flex min-h-[300px] items-center justify-center p-8">
+                    <LemniscateBloomLoader label={t('contracts.loading')} size={40} />
+                  </div>
+                ) : groupedDocuments.length === 0 ? (
+                  <div className="flex min-h-[300px] flex-col items-center justify-center p-8 text-center space-y-2">
+                    <FileText size={36} className="text-text-muted/40" />
+                    <h3 className="text-xs font-extrabold text-text-primary">{t('contracts.noContractsFound')}</h3>
+                    <p className="text-[11px] font-semibold text-text-muted">{t('contracts.contractsAppearHere')}</p>
+                  </div>
+                ) : (
+                  groupedDocuments.map(group => (
+                    <div key={group.jobPostId} className="space-y-2">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-text-muted px-1 flex items-center justify-between">
+                        <span>Job Post</span>
+                        <span className="font-mono text-text-primary">{getShortId(group.jobPostId)}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {group.documents.map(doc => (
+                          <DocumentRow
+                            key={doc.documentId}
+                            document={doc}
+                            isSelected={doc.documentId === selectedDocumentId}
+                            onSelect={handleSelectDocument}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Document Preview Side */}
+              <div className="lg:col-span-8 pl-2">
+                <PreviewPanel
+                  document={selectedDocument}
+                  isLoading={loadingDocument}
+                  error={documentError}
+                  fallbackItem={selectedItem}
+                  isAdmin={isAdmin}
+                  isDownloading={downloadingDocumentId === selectedDocumentId}
+                  downloadError={downloadError}
+                  t={t}
+                  onDownload={handleDownload}
+                  onRetry={() => {
+                    if (selectedDocumentId) void loadDocument(selectedDocumentId);
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Pagination Controls Footer */}
+            {page && page.totalPages > 1 && (
+              <div className="border-t border-border p-4 bg-background flex items-center justify-between shrink-0">
+                <div className="text-xs font-bold text-text-muted">
+                  Page {page.pageNumber} of {page.totalPages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!page.hasPreviousPage}
+                    onClick={handlePreviousPage}
+                    className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand disabled:opacity-40 transition cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!page.hasNextPage}
+                    onClick={handleNextPage}
+                    className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand disabled:opacity-40 transition cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             )}
           </section>
-
-          <section className="esign-preview-panel" aria-label="E-sign contract preview">
-            <PreviewPanel
-              document={selectedDocument}
-              isLoading={loadingDocument}
-              error={documentError}
-              fallbackItem={selectedItem}
-              isAdmin={isAdmin}
-              isDownloading={downloadingDocumentId === selectedDocumentId}
-              downloadError={downloadError}
-              onDownload={handleDownload}
-              onRetry={() => {
-                if (selectedDocumentId) void loadDocument(selectedDocumentId);
-              }}
-            />
-          </section>
-        </div>
-
-        {page && page.totalPages > 1 ? (
-          <nav className="esign-pagination" aria-label="E-sign contract pages">
-            <button type="button" onClick={handlePreviousPage} disabled={!page.hasPreviousPage}>
-              Previous
-            </button>
-            <span>Page {page.pageNumber} of {page.totalPages}</span>
-            <button type="button" onClick={handleNextPage} disabled={!page.hasNextPage}>
-              Next
-            </button>
-          </nav>
-        ) : null}
+        </main>
       </div>
     </AppLayout>
   );

@@ -1,859 +1,444 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Search, Filter, Eye, AlertCircle, ChevronDown, Calendar, 
-  User, CheckCircle2, Clock, PenTool, ListChecks, 
-  Star, ShieldAlert, X, ChevronRight, TrendingUp, Layers
+import { useRef } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Eye,
+  Layers,
+  ListChecks,
+  PenTool,
+  RotateCcw,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { UserProfileLink } from '../../../shared/components/UserProfileLink';
-import { contractGetAPI } from '../../../api/contractAPI/GET';
-import { useApp } from '../../../app/providers/AppProvider';
-import { useTranslation } from '../../../hooks/useTranslation';
-import type { ContractDto, ContractQueryParams, Milestone } from '../../../types/models/Contract';
-import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
-import { 
-  getContractStatusLabel, 
-  getContractStatusClass, 
-  getMilestoneStatusLabel, 
-  formatContractAmount, 
+import { ContractStatus } from '../../../types/models/Contract';
+import {
+  getContractStatusLabel,
+  formatContractAmount,
   formatContractDate,
-  calculateMilestoneCompletion,
 } from '../../../shared/utils/contractUtils';
-import '../styles/manage-contract-screen.css';
-import { GigCoinLogo } from '../../../shared/components/GigCoinAmount';
+import { MilestoneDetailCard } from '../components/MilestoneDetailCard';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
+import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { useManageContracts, type ContractWithMilestones } from '../hooks/useManageContracts';
+import '../styles/manage-contract-screen.css';
 
-interface MilestoneDisplay extends Milestone {
-  percentageComplete: number;
-  isOverdue: boolean;
-}
-
-interface ContractWithMilestones extends ContractDto {
-  milestones?: MilestoneDisplay[];
-}
-
-const CONTRACT_STATUSES = [
-  { value: ContractStatus.Draft, label: 'Draft' },
-  { value: ContractStatus.PendingSignature, label: 'Pending Signature' },
-  { value: ContractStatus.Active, label: 'Active' },
-  { value: ContractStatus.Completed, label: 'Completed' },
-  { value: ContractStatus.Cancelled, label: 'Cancelled' },
-  { value: ContractStatus.Disputed, label: 'Disputed' },
-];
-
-const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
-  const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
-  const isCompleted = milestone.status === MilestoneStatus.Approved;
-
-  return {
-    ...milestone,
-    percentageComplete: calculateMilestoneCompletion(milestone.status),
-    isOverdue: Boolean(dueDate && !isCompleted && dueDate < new Date()),
-  };
+const badgeClass = (status: number) => {
+  if (status === ContractStatus.Active) return 'border border-emerald-500/40 bg-emerald-500/15 text-text-primary font-black';
+  if (status === ContractStatus.Completed) return 'border border-blue-500/40 bg-blue-500/20 text-text-primary font-black';
+  if (status === ContractStatus.Cancelled || status === ContractStatus.Disputed) return 'border border-rose-500/40 bg-rose-500/15 text-text-primary font-black';
+  if (status === ContractStatus.Draft) return 'border border-border bg-slate-500/15 text-text-primary font-black';
+  return 'border border-amber-500/40 bg-amber-500/15 text-text-primary font-black';
 };
 
 export default function ManageContractScreen() {
-  const navigate = useNavigate();
-  const { user } = useApp();
-  const { t } = useTranslation();
-  const [contracts, setContracts] = useState<ContractWithMilestones[]>([]);
-  const [filteredContracts, setFilteredContracts] = useState<ContractWithMilestones[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<ContractStatus | 'All'>('All');
-  const [showFilters, setShowFilters] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const { t } = useTranslation(['contracts', 'common']);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load contracts and milestones from API
-  useEffect(() => {
-    const loadContracts = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params: ContractQueryParams = {
-          pageIndex: 0,
-          pageSize: 50,
-        };
-        const response = await contractGetAPI.getMyContracts(params);
+  const {
+    navigate,
+    contracts,
+    filteredContracts,
+    pagedContracts,
+    totalPages,
+    currentPage,
+    setCurrentPage,
+    loading,
+    error,
+    searchQuery,
+    setSearchQuery,
+    selectedStatus,
+    setSelectedStatus,
+    expandedContractId,
+    toggleExpand,
+    resetFilters,
+    stats,
+    loadContracts,
+  } = useManageContracts();
 
-        if (!response.success) {
-          setContracts([]);
-          setError(response.message || 'Failed to load contracts.');
-          return;
-        }
+  // GSAP Entrance Animation
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.mcs-gsap-header', y: 20, duration: 0.55 },
+      { selector: '.mcs-gsap-metrics', y: 16, duration: 0.5, stagger: 0.08 },
+      { selector: '.mcs-gsap-main', y: 24, duration: 0.5 },
+    ],
+  });
 
-        const contractsWithMilestones = await Promise.all(
-          (response.data || []).map(async (contract): Promise<ContractWithMilestones> => {
-            const milestonesResponse = await contractGetAPI.getMilestonesByContract(contract.contractsId);
-
-            return {
-              ...contract,
-              milestones: milestonesResponse.success
-                ? (milestonesResponse.data || []).map(mapMilestoneForDisplay)
-                : [],
-            };
-          })
-        );
-
-        setContracts(contractsWithMilestones);
-      } catch (err: unknown) {
-        setContracts([]);
-        setError(err instanceof Error ? err.message : 'Failed to load contracts.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user?.id) {
-      loadContracts();
-    } else {
-      setContracts([]);
-      setLoading(false);
-    }
-  }, [user?.id]);
-
-  // Filter contracts
-  useEffect(() => {
-    let result = contracts;
-
-    // Status filter
-    if (selectedStatus !== 'All') {
-      result = result.filter(c => c.status === selectedStatus);
-    }
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(c =>
-        c.title.toLowerCase().includes(query) ||
-        (c.freelancerName && c.freelancerName.toLowerCase().includes(query)) ||
-        (c.freelancerProfilesId && c.freelancerProfilesId.toLowerCase().includes(query))
-      );
-    }
-
-    setFilteredContracts(result);
-    setCurrentPage(1); // Reset to first page when filtering
-  }, [contracts, selectedStatus, searchQuery]);
-
-  const getStatusBadgeClass = (status: ContractStatus) => {
-    return `status-badge ${getContractStatusClass(status)}`;
-  };
-
-  const calculateMilestoneStats = (contract: ContractWithMilestones) => {
-    if (!contract.milestones || contract.milestones.length === 0) {
-      return { total: 0, completed: 0, pending: 0, total_budget: 0, progress: 0 };
-    }
-
-    const completed = contract.milestones.filter(m => m.status === MilestoneStatus.Approved).length;
-    const pending = contract.milestones.filter(m => m.status !== MilestoneStatus.Approved).length;
-    const total = contract.milestones.length;
-    const total_budget = contract.milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-    const progress = Math.round((completed / total) * 100);
-
-    return { total, completed, pending, total_budget, progress };
-  };
-
-  const handleViewDetails = (contractId: string) => {
-    navigate(`/contracts/${contractId}`, { state: { tab: 'details' } });
-  };
-
-  // Calculate dashboard summary metrics
-  const calculateDashboardStats = () => {
-    const activeContracts = contracts.filter(c => c.status === ContractStatus.Active);
-    const totalBudget = contracts.reduce((sum, c) => sum + (c.totalBudget || 0), 0);
-    
-    let totalMilestones = 0;
-    let completedMilestones = 0;
-    contracts.forEach(c => {
-      if (c.milestones) {
-        totalMilestones += c.milestones.length;
-        completedMilestones += c.milestones.filter(m => m.status === MilestoneStatus.Approved).length;
-      }
-    });
-    const milestoneRate = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
-
-    return {
-      activeCount: activeContracts.length,
-      totalCount: contracts.length,
-      totalBudget,
-      milestoneRate,
-    };
-  };
-
-  const dashboardStats = calculateDashboardStats();
-
-  const getStatusColorHex = (status: ContractStatus) => {
-    switch(status) {
-      case ContractStatus.Active: return '#22C55E';
-      case ContractStatus.Completed: return '#0077FF';
-      case ContractStatus.Cancelled: return '#EF4444';
-      case ContractStatus.Disputed: return '#F59E0B';
-      default: return '#9F4BFF';
-    }
-  };
-
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-10 animate-pulse">
-          <div className="text-center py-10 text-muted-foreground font-semibold">{t('contracts.loading')}</div>
-          {/* Header Shimmer */}
-          <div className="space-y-3 mb-10">
-            <div className="h-12 bg-muted/65 rounded-2xl w-1/4" />
-            <div className="h-5 bg-muted/40 rounded-xl w-2/5" />
-          </div>
-
-          {/* KPI Cards Shimmer */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-28 bg-card border border-border/50 rounded-[2.5rem] p-6 flex items-center gap-5">
-                <div className="w-14 h-14 bg-muted rounded-2xl" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-muted rounded w-1/2" />
-                  <div className="h-6 bg-muted rounded w-3/4" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Controls Shimmer */}
-          <div className="h-16 bg-card border border-border/50 rounded-2xl w-full mb-8" />
-
-          {/* List Shimmer */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[1, 2].map(i => (
-              <div key={i} className="bg-card border border-border/50 rounded-[2.5rem] p-6 space-y-6">
-                <div className="flex justify-between items-center">
-                  <div className="h-6 bg-muted rounded w-1/2" />
-                  <div className="h-8 bg-muted rounded w-1/4" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-10 bg-muted/50 rounded-xl" />
-                  <div className="h-10 bg-muted/50 rounded-xl" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-muted/50 rounded w-1/3" />
-                  <div className="h-3 bg-muted rounded w-full" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / itemsPerPage));
-  const paginatedContracts = filteredContracts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const statusPills: Array<{ value: ContractStatus | 'All'; label: string; icon: React.ReactNode; colorClass: string }> = [
+    { value: 'All', label: t('contracts.allContracts'), icon: <Layers size={14} />, colorClass: 'bg-brand text-white shadow-sm' },
+    { value: ContractStatus.Active, label: t('contracts.active'), icon: <Zap size={14} />, colorClass: 'bg-emerald-600 text-white shadow-sm' },
+    { value: ContractStatus.PendingSignature, label: t('contracts.pendingSignature'), icon: <Clock size={14} />, colorClass: 'bg-amber-500 text-white shadow-sm' },
+    { value: ContractStatus.Completed, label: t('contracts.completed'), icon: <CheckCircle2 size={14} />, colorClass: 'bg-blue-600 text-white shadow-sm' },
+    { value: ContractStatus.Draft, label: t('contracts.legal.status.draft'), icon: <PenTool size={14} />, colorClass: 'bg-slate-600 text-white shadow-sm' },
+    { value: ContractStatus.Disputed, label: t('contracts.disputeTerms'), icon: <ShieldAlert size={14} />, colorClass: 'bg-rose-600 text-white shadow-sm' },
+  ];
 
   return (
-    <AppLayout>
-      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-10 relative">
-        <ContractAreaTabs />
+    <AppLayout fullWidth>
+      <div ref={containerRef} className="min-h-[calc(100vh-4rem)] bg-background text-text-primary">
         
-        {/* Glow decorative background elements */}
-        <div className="absolute top-0 right-[10%] w-[350px] h-[350px] rounded-full bg-gradient-to-br from-blue-500/5 to-purple-500/5 blur-3xl -z-10 pointer-events-none" />
-        <div className="absolute top-[40%] left-[5%] w-[250px] h-[250px] rounded-full bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 blur-3xl -z-10 pointer-events-none" />
-
-        {/* Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-10 text-left"
-        >
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
-            <Layers size={12} />
-            {t('contracts.contractPortal')}
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-muted-foreground bg-clip-text text-transparent uppercase">
-            {t('contracts.contractManagement')}
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl text-base md:text-lg font-medium">
-            {t('contracts.monitorSubtitle')}
-          </p>
-        </motion.div>
-
-        {/* KPI Summary Cards */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
-        >
-          {/* Card 1 */}
-          <motion.div 
-            whileHover={{ y: -5, scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            className="kpi-card-custom group bg-card hover:bg-card/90 border border-border/50 hover:border-blue-500/30 rounded-[2rem] p-6 shadow-md hover:shadow-xl transition-all duration-300 flex items-center gap-5 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-bl-full translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform duration-300" />
-            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/15 flex items-center justify-center shrink-0">
-              <TrendingUp size={24} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('contracts.active')}</span>
-              <span className="text-3xl font-black text-foreground mt-1">
-                {dashboardStats.activeCount}{' '}
-                <span className="text-sm text-muted-foreground font-semibold">/ {dashboardStats.totalCount} {t('projects.title').toLowerCase()}</span>
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Card 2 */}
-          <motion.div 
-            whileHover={{ y: -5, scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            className="kpi-card-custom group bg-card hover:bg-card/90 border border-border/50 hover:border-purple-500/30 rounded-[2rem] p-6 shadow-md hover:shadow-xl transition-all duration-300 flex items-center gap-5 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-bl-full translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform duration-300" />
-            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-500 border border-purple-500/15 flex items-center justify-center shrink-0">
-              <GigCoinLogo size={24} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('contracts.totalCommittedValue')}</span>
-              <span className="text-3xl font-black text-foreground mt-1">
-                {formatContractAmount(dashboardStats.totalBudget)}
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Card 3 */}
-          <motion.div 
-            whileHover={{ y: -5, scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            className="kpi-card-custom group bg-card hover:bg-card/90 border border-border/50 hover:border-emerald-500/30 rounded-[2rem] p-6 shadow-md hover:shadow-xl transition-all duration-300 flex items-center gap-5 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full translate-x-2 -translate-y-2 group-hover:scale-110 transition-transform duration-300" />
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/15 flex items-center justify-center shrink-0 relative">
-              <CheckCircle2 size={24} />
-              <motion.span 
-                animate={{ scale: [1, 1.2, 1], opacity: [0.8, 1, 0.8] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="absolute top-3 right-3 w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10B981]"
-              />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('contracts.milestoneCompletion')}</span>
-              <span className="text-3xl font-black text-foreground mt-1">
-                {dashboardStats.milestoneRate}%
-              </span>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Global Notifications */}
-        <AnimatePresence>
-          {successMessage && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-2xl p-4 mb-6 flex items-center justify-between shadow-lg"
-            >
-              <div className="flex items-center gap-3">
-                <CheckCircle2 size={20} />
-                <p className="font-semibold text-sm">{successMessage}</p>
+        {/* Top Header Bar */}
+        <header className="mcs-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
+          <div className="mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-brand">
+                <Sparkles size={14} />
+                {t('contracts.contractManagement')}
               </div>
-              <button 
-                onClick={() => setSuccessMessage(null)}
-                className="p-1 text-emerald-500/60 hover:text-emerald-500 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </motion.div>
-          )}
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
+                Contract <span className="text-brand italic font-light">Management</span>
+              </h1>
+              <p className="mt-0.5 text-xs font-semibold text-text-muted">{t('contracts.monitorSubtitle')}</p>
+            </div>
 
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="bg-destructive/10 border border-destructive/20 text-destructive rounded-2xl p-4 mb-6 flex items-center justify-between shadow-lg"
-            >
-              <div className="flex items-center gap-3">
-                <AlertCircle size={20} />
-                <p className="font-semibold text-sm">{error}</p>
-              </div>
-              <button 
-                onClick={() => setError(null)}
-                className="p-1 text-destructive/60 hover:text-destructive cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Search & Filter Controls Panel */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-card/75 border border-border/50 rounded-2xl p-4 mb-6 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between shadow-md backdrop-blur-md"
-        >
-          {/* Search Box */}
-          <div className="relative flex-1 max-w-lg">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('contracts.searchPlaceholder')}
-              className="w-full pl-11 pr-12 py-3 bg-secondary/30 hover:bg-secondary/40 focus:bg-card border border-border/50 focus:border-blue-500/50 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/10 text-sm font-semibold text-foreground placeholder:text-muted-foreground transition-all duration-300"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X size={14} />
-              </button>
-            )}
+            {/* Navigation Tabs bar */}
+            <ContractAreaTabs />
           </div>
+        </header>
 
-          {/* Toggle Filter Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-5 py-3 border rounded-xl flex items-center justify-center gap-2.5 font-bold text-sm transition-all duration-300 cursor-pointer shadow-sm
-              ${showFilters 
-                ? 'bg-blue-500 border-blue-500 text-white shadow-blue-500/20' 
-                : 'bg-secondary/40 border-border/50 hover:bg-secondary/80 text-foreground'
-              }`}
-          >
-            <Filter size={16} />
-            {t('contracts.filterStatus')}
-          </motion.button>
-        </motion.div>
-
-        {/* Expandable Filter Panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden bg-card/45 border border-border/40 rounded-2xl shadow-inner backdrop-blur-sm"
-            >
-              <div className="p-6">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-4">
-                  {t('contracts.filterStatus')}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setSelectedStatus('All')}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border
-                      ${selectedStatus === 'All' 
-                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' 
-                        : 'bg-secondary/35 border-border/40 text-muted-foreground hover:text-foreground hover:border-border-hover'
-                      }`}
-                  >
-                    {t('contracts.allContracts')}
-                  </button>
-                  {CONTRACT_STATUSES.map(status => (
-                    <button
-                      key={status.value}
-                      onClick={() => setSelectedStatus(status.value)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border
-                        ${selectedStatus === status.value 
-                          ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' 
-                          : 'bg-secondary/35 border-border/40 text-muted-foreground hover:text-foreground hover:border-border-hover'
-                        }`}
-                    >
-                      {t('contracts.status.' + status.value, { defaultValue: status.label })}
-                    </button>
-                  ))}
+        {/* Main Workspace */}
+        <main className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 lg:px-8">
+          
+          {/* Summary Metric Cards */}
+          <section aria-label="Contract Metrics" className="mcs-gsap-metrics grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.active')}</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{stats.activeCount}</p>
                 </div>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <Zap size={20} />
+                </span>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </article>
 
-        {/* Contracts Container / List Grid */}
-        <div className="w-full">
-          {filteredContracts.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center py-16 px-6 bg-card/30 border border-border/40 rounded-[2.5rem] border-dashed text-center"
-            >
-              <div className="w-16 h-16 rounded-full bg-muted/50 text-muted-foreground flex items-center justify-center mb-4 border border-border/40">
-                <Search size={24} />
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.pendingSignature')}</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{stats.pendingCount}</p>
+                </div>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Clock size={20} />
+                </span>
               </div>
-              <h3 className="text-xl font-bold text-foreground">
-                {searchQuery ? t('contracts.noContractsMatched') : t('contracts.noContractsFound')}
-              </h3>
-              <p className="text-muted-foreground text-sm mt-1 max-w-sm">
-                {searchQuery 
-                  ? t('contracts.tryModifyingSearch') 
-                  : t('contracts.contractsFromProposals')}
-              </p>
-              {searchQuery && (
-                <button
-                  onClick={() => { setSearchQuery(''); setSelectedStatus('All'); }}
-                  className="mt-5 px-5 py-2.5 bg-blue-500 text-white rounded-xl text-sm font-semibold hover:bg-blue-600 transition-all cursor-pointer shadow-md shadow-blue-500/10"
-                >
-                  {t('contracts.clearAllFilters')}
-                </button>
-              )}
-            </motion.div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {paginatedContracts.map((contract, index) => {
-                const milestoneStats = calculateMilestoneStats(contract);
-                const isExpanded = expandedContractId === contract.contractsId;
-                const name = contract.freelancerName || contract.freelancerProfilesId || 'Unknown Freelancer';
-                const initials = name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .substring(0, 2)
-                  .toUpperCase();
-                const statusColor = getStatusColorHex(contract.status);
+            </article>
 
-                return (
-                  <motion.div
-                    key={contract.contractsId}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: (index % itemsPerPage) * 0.05 }}
-                    className="bg-card hover:bg-card/95 border border-border/55 hover:border-blue-500/20 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden relative flex flex-col"
-                  >
-                    {/* Horizontal left border color depending on status */}
-                    <div 
-                      className="absolute left-0 top-0 bottom-0 w-1.5" 
-                      style={{ backgroundColor: statusColor }}
-                    />
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.completed')}</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{stats.completedCount}</p>
+                </div>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <CheckCircle2 size={20} />
+                </span>
+              </div>
+            </article>
 
-                    {/* Main Row Content */}
-                    <div className="p-5 pl-7 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      {/* Left Block: Avatar Initials & Contract Info */}
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div 
-                          className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0 text-white shadow-sm"
-                          style={{ 
-                            background: `linear-gradient(135deg, ${statusColor}dd, ${statusColor})`,
-                          }}
-                        >
-                          {initials}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 
-                            onClick={() => handleViewDetails(contract.contractsId)}
-                            className="text-base font-bold text-foreground truncate hover:text-blue-500 transition-colors cursor-pointer"
-                          >
-                            {contract.title}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground font-semibold">
-                            <span className="text-foreground flex items-center gap-1.5">
-                              <User size={13} className="text-muted-foreground" />
-                              <UserProfileLink userId={contract.freelancerUserId} role="freelancer">{name}</UserProfileLink>
-                            </span>
-                            <span className="h-3 w-px bg-border/60 hidden sm:inline" />
-                            <span className="flex items-center gap-1.5">
-                              <Calendar size={13} />
-                              {formatContractDate(contract.startDate)}
-                              {contract.endDate && ` - ${formatContractDate(contract.endDate)}`}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">{t('contracts.totalCommittedValue')}</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-brand">{formatContractAmount(stats.totalCommittedValue)}</p>
+                </div>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                  <TrendingUp size={20} />
+                </span>
+              </div>
+            </article>
+          </section>
 
-                      {/* Center Block: Budget & Progress */}
-                      <div className="flex flex-wrap items-center gap-6 lg:gap-10 shrink-0">
-                        {/* Budget */}
-                        <div className="flex flex-col min-w-[90px]">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">{t('contracts.budget')}</span>
-                          <span className="text-sm font-black text-foreground mt-0.5">
-                            {formatContractAmount(contract.totalBudget)}
-                          </span>
-                        </div>
+          {/* Main Controls & Contracts Table/List */}
+          <section className="mcs-gsap-main rounded-2xl border border-border bg-background shadow-sm overflow-hidden min-h-[600px] flex flex-col justify-between">
+            
+            {/* Search & Selectable Status Pills Toolbar */}
+            <div className="border-b border-border p-4 space-y-4 shrink-0">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                
+                {/* Horizontal Selectable Status Pills */}
+                <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+                  {statusPills.map(pill => {
+                    const isSelected = selectedStatus === pill.value;
+                    const count = pill.value === 'All'
+                      ? stats.totalCount
+                      : contracts.filter(c => Number(c.status) === pill.value).length;
 
-                        {/* Progress */}
-                        {milestoneStats.total > 0 && (
-                          <div className="flex flex-col min-w-[150px] w-full sm:w-auto">
-                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider mb-1">
-                              <span className="text-muted-foreground">{t('contracts.milestones', { progress: milestoneStats.progress })}</span>
-                              <span className="text-blue-500 font-bold">{t('contracts.milestonesPaid', { completed: milestoneStats.completed, total: milestoneStats.total })}</span>
-                            </div>
-                            <div className="h-1.5 bg-secondary border border-border/40 rounded-full overflow-hidden w-full">
-                              <div 
-                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
-                                style={{ width: `${milestoneStats.progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right Block: Status & Expand Action */}
-                      <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0 border-t border-border/20 pt-3 lg:border-t-0 lg:pt-0">
-                        <span className={getStatusBadgeClass(contract.status)}>
-                          {t('contracts.status.' + contract.status, { defaultValue: getContractStatusLabel(contract.status) })}
-                        </span>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleViewDetails(contract.contractsId)}
-                            className="p-2 bg-secondary/50 hover:bg-blue-500/10 border border-border/50 hover:border-blue-500/30 rounded-xl flex items-center justify-center text-muted-foreground hover:text-blue-500 transition-all duration-200 cursor-pointer"
-                            title={t('contracts.viewDetails')}
-                          >
-                            <Eye size={16} />
-                          </button>
-
-                          <button
-                            onClick={() => setExpandedContractId(isExpanded ? null : contract.contractsId)}
-                            className={`p-2 bg-secondary/50 border border-border/50 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer
-                              ${isExpanded ? 'bg-secondary border-foreground/30 rotate-180' : ''}`}
-                            title={isExpanded ? t('contracts.collapse') : t('contracts.expand')}
-                          >
-                            <ChevronDown size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expandable Section with Milestones List */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                          className="overflow-hidden border-t border-border/50 bg-secondary/10"
-                        >
-                          <div className="p-5 pl-7 flex flex-col gap-4">
-                            {/* Milestones detail List */}
-                            {contract.milestones && contract.milestones.length > 0 && (
-                              <div className="flex flex-col gap-2">
-                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                                  {t('contracts.milestoneBreakdown')}
-                                </span>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                                  {contract.milestones.map((milestone, idx) => (
-                                    <div 
-                                      key={milestone.id} 
-                                      className="flex items-center justify-between p-3 bg-card border border-border/30 rounded-xl gap-3 text-xs"
-                                    >
-                                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <div className="w-5 h-5 rounded-full bg-purple-500/10 border border-purple-500/25 text-purple-500 flex items-center justify-center text-[10px] font-bold shrink-0">
-                                          #{idx + 1}
-                                        </div>
-                                        <div className="flex flex-col min-width-0 flex-1">
-                                          <h5 className="font-bold text-foreground truncate">{milestone.title}</h5>
-                                          <span className="text-[10px] text-muted-foreground mt-0.5 font-medium">
-                                            {t('contracts.duePrefix')}: {formatContractDate(milestone.due_date)}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-3 shrink-0">
-                                        <span className="font-bold text-foreground">{formatContractAmount(milestone.amount)}</span>
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-card border border-border/40 rounded-lg font-bold text-[10px]">
-                                          {milestone.status === MilestoneStatus.Approved ? (
-                                            <>
-                                              <CheckCircle2 size={12} className="text-emerald-500" />
-                                              <span className="text-emerald-500">{t('contracts.milestoneStatus.' + milestone.status, { defaultValue: getMilestoneStatusLabel(milestone.status) })}</span>
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Clock size={12} className="text-amber-500 animate-pulse" />
-                                              <span className="text-amber-500">{t('contracts.milestoneStatus.' + milestone.status, { defaultValue: getMilestoneStatusLabel(milestone.status) })}</span>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Description block */}
-                            {contract.description && (
-                              <div className="flex flex-col gap-1.5">
-                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                                  {t('contracts.scopeSummary')}
-                                </span>
-                                <p className="text-xs text-muted-foreground leading-relaxed p-3 bg-card border border-border/30 rounded-xl italic">
-                                  {contract.description}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Contract Action Controls */}
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              <button
-                                onClick={() => handleViewDetails(contract.contractsId)}
-                                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-md shadow-blue-500/10 flex items-center gap-1.5"
-                              >
-                                {t('contracts.viewPortal')}
-                                <ChevronRight size={14} />
-                              </button>
-                              
-                              {contract.status === ContractStatus.PendingSignature && (
-                                <button
-                                  onClick={() => navigate(`/contracts/${contract.contractsId}/sign`)}
-                                  className="px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/25 text-purple-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
-                                >
-                                  <PenTool size={13} />
-                                  {t('contracts.signContract')}
-                                </button>
-                              )}
-                              
-                              {contract.status === ContractStatus.Active && (
-                                <button
-                                  onClick={() => navigate(`/contracts/${contract.contractsId}/milestones`)}
-                                  className="px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/25 text-cyan-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
-                                >
-                                  <ListChecks size={13} />
-                                  {t('contracts.milestonesSchedule')}
-                                </button>
-                              )}
-                              
-                              {contract.canReview && (
-                                <button
-                                  onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
-                                  className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
-                                >
-                                  <Star size={13} />
-                                  {t('reviews.leaveForFreelancer')}
-                                </button>
-                              )}
-                              {contract.hasReviewedByCurrentUser && contract.status === ContractStatus.Completed && (
-                                <span className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5">
-                                  <CheckCircle2 size={13} />
-                                  {t('reviews.reviewed')}
-                                </span>
-                              )}
-                              
-                              {contract.status === ContractStatus.Disputed && (
-                                <button
-                                  onClick={() => navigate(`/contracts/${contract.contractsId}`)}
-                                  className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-500 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
-                                >
-                                  <ShieldAlert size={13} />
-                                  {t('contracts.disputeTerms')}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Pagination Controls */}
-        {filteredContracts.length > 0 && (
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-card border border-border/50 rounded-2xl p-4 shadow-sm">
-            {/* Left side: showing items text */}
-            <div className="text-xs text-muted-foreground font-semibold">
-              {t('contracts.showingContracts', {
-                start: (currentPage - 1) * itemsPerPage + 1,
-                end: Math.min(currentPage * itemsPerPage, filteredContracts.length),
-                total: filteredContracts.length
-              })}
-            </div>
-
-            {/* Center side: Page buttons */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="p-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
-                title="First Page"
-              >
-                &laquo;
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
-              >
-                {t('contracts.prev')}
-              </button>
-
-              {/* Dynamic Page Numbers */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
-                .map((page, idx, arr) => {
-                  const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
-                  return (
-                    <div key={page} className="flex items-center gap-1">
-                      {showEllipsis && <span className="text-muted-foreground px-1 text-xs">...</span>}
+                    return (
                       <button
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                          currentPage === page
-                            ? 'bg-blue-500 border-blue-500 text-white shadow-sm shadow-blue-500/10'
-                            : 'border-border/50 bg-secondary/20 hover:bg-secondary'
+                        key={String(pill.value)}
+                        type="button"
+                        onClick={() => setSelectedStatus(pill.value)}
+                        className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? pill.colorClass
+                            : 'border border-border bg-surface-muted/40 text-text-muted hover:border-brand/40 hover:text-text-primary'
                         }`}
                       >
-                        {page}
+                        {pill.icon}
+                        {pill.label}
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-muted text-text-muted'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Search Bar & Clear Filter */}
+                <div className="flex items-center gap-2 sm:w-72 shrink-0">
+                  <label className="relative flex-1">
+                    <span className="sr-only">{t('contracts.searchPlaceholder')}</span>
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={16} />
+                    <input
+                      value={searchQuery}
+                      onChange={event => setSearchQuery(event.target.value)}
+                      placeholder={t('contracts.searchPlaceholder')}
+                      className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-xs font-bold text-text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm"
+                    />
+                  </label>
+
+                  {(searchQuery || selectedStatus !== 'All') && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      title={t('contracts.clearAllFilters')}
+                      aria-label={t('contracts.clearAllFilters')}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-muted/50 text-brand hover:bg-surface-muted transition cursor-pointer"
+                    >
+                      <RotateCcw size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Contracts List / Loader / Empty state */}
+            <div className="flex-1 flex flex-col justify-between min-h-0">
+              {loading ? (
+                <div className="flex min-h-[360px] items-center justify-center p-12 my-auto">
+                  <LemniscateBloomLoader label={t('contracts.loading')} size={52} />
+                </div>
+              ) : error ? (
+                <div className="p-12 text-center my-auto space-y-3">
+                  <AlertCircle className="mx-auto text-rose-500" size={36} />
+                  <p role="alert" className="font-extrabold text-text-primary text-sm">{error}</p>
+                  <button
+                    type="button"
+                    onClick={() => void loadContracts()}
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer"
+                  >
+                    <RotateCcw size={14} /> {t('contracts.retry')}
+                  </button>
+                </div>
+              ) : filteredContracts.length === 0 ? (
+                <div className="p-12 text-center my-auto space-y-3">
+                  <Layers className="mx-auto text-text-muted/40" size={40} />
+                  <h3 className="font-extrabold text-text-primary text-base">{t('contracts.noContractsMatched')}</h3>
+                  <p className="text-xs font-semibold text-text-muted">{t('contracts.tryModifyingSearch')}</p>
+                  {(searchQuery || selectedStatus !== 'All') && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      className="mt-2 text-xs font-extrabold text-brand hover:underline cursor-pointer"
+                    >
+                      {t('contracts.clearAllFilters')}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="divide-y divide-border p-4 space-y-4">
+                    {pagedContracts.map(contract => (
+                      <ClientContractCardItem
+                        key={contract.contractsId}
+                        contract={contract}
+                        t={t}
+                        expanded={expandedContractId === contract.contractsId}
+                        onToggleExpand={() => toggleExpand(contract.contractsId)}
+                        onNavigate={path => navigate(path)}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  <div className="mt-auto border-t border-border">
+                    <div className="p-4 bg-background flex items-center justify-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background hover:border-brand/40 hover:text-brand disabled:opacity-40 transition-all cursor-pointer font-bold text-xs"
+                      >
+                        &lt;
+                      </button>
+
+                      <span className="text-xs font-bold text-text-muted px-2">
+                        {currentPage} / {totalPages}
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background hover:border-brand/40 hover:text-brand disabled:opacity-40 transition-all cursor-pointer font-bold text-xs"
+                      >
+                        &gt;
                       </button>
                     </div>
-                  );
-                })}
 
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
-              >
-                {t('contracts.next')}
-              </button>
-              <button
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-                className="p-2 border border-border/50 rounded-lg text-xs font-bold bg-secondary/20 hover:bg-secondary disabled:opacity-40 disabled:hover:bg-secondary/20 cursor-pointer transition-colors"
-                title="Last Page"
-              >
-                &raquo;
-              </button>
+                    <div className="border-t border-border px-4 py-3 text-xs font-semibold text-text-muted">
+                      {t('contracts.showingContracts', {
+                        start: (currentPage - 1) * 5 + 1,
+                        end: Math.min(currentPage * 5, filteredContracts.length),
+                        total: filteredContracts.length,
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-
-            {/* Right side: Items per page dropdown */}
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-              <span>{t('contracts.show')}</span>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="bg-secondary/40 border border-border/50 rounded-lg py-1.5 px-3 focus:outline-none focus:border-blue-500 font-bold text-foreground cursor-pointer transition-colors"
-              >
-                {[5, 10, 20, 50].map((size) => (
-                  <option key={size} value={size}>
-                    {size} {t('contracts.rows')}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+          </section>
+        </main>
       </div>
     </AppLayout>
+  );
+}
+
+function ClientContractCardItem({
+  contract,
+  t,
+  expanded,
+  onToggleExpand,
+  onNavigate,
+}: {
+  contract: ContractWithMilestones;
+  t: ReturnType<typeof useTranslation>['t'];
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  const status = Number(contract.status);
+
+  const completedMilestones = contract.milestones?.filter(m => m.status === 3).length || 0;
+  const totalMilestones = contract.milestones?.length || 0;
+  const progressPercent = totalMilestones ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+
+  return (
+    <article className="rounded-2xl border border-border bg-background p-5 shadow-sm transition hover:border-brand/40 space-y-4">
+      {/* Card Top Row */}
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5">
+            <h3 className="truncate text-base font-extrabold text-text-primary">
+              {contract.title || t('contracts.contract')}
+            </h3>
+            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] ${badgeClass(status)}`}>
+              {getContractStatusLabel(status)}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-text-muted font-semibold flex flex-wrap items-center gap-2">
+            <span>ID: <strong className="text-text-primary font-mono">{contract.contractsId}</strong></span>
+            <span>·</span>
+            <span>Created: <strong className="text-text-primary font-bold">{formatContractDate(contract.createdAt)}</strong></span>
+          </p>
+        </div>
+
+        <div className="text-right">
+          <p className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('contracts.totalCommittedValue')}</p>
+          <p className="text-lg font-black text-brand">{formatContractAmount(contract.totalBudget)}</p>
+        </div>
+      </div>
+
+      {/* Progress Bar & Milestone Info */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-text-muted">{t('contracts.milestoneCompletion')}</span>
+            <span className="text-brand font-black">{progressPercent}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-surface-muted overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-brand to-mint transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 text-xs font-bold text-text-muted">
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={14} />
+            {t('contracts.milestonesPaidCount', { milestonesPaid: completedMilestones })}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-muted/50 px-3 py-1.5 text-text-primary">
+            {t('contracts.milestones')}: {totalMilestones}
+          </span>
+        </div>
+      </div>
+
+      {/* Action Buttons Footer */}
+      <div className="flex flex-wrap items-center justify-between border-t border-border/60 pt-4 gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Manage Milestones Button */}
+          <button
+            type="button"
+            onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold text-white transition cursor-pointer shadow-sm"
+            style={{ background: 'var(--brand)' }}
+          >
+            <ListChecks size={14} /> {t('contracts.manageMilestones')}
+          </button>
+
+          {/* View Details Button */}
+          <button
+            type="button"
+            onClick={() => onNavigate(`/contracts/${contract.contractsId}`)}
+            className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer"
+          >
+            <Eye size={14} /> {t('contracts.viewDetails')}
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-brand hover:underline cursor-pointer"
+        >
+          {expanded ? t('contracts.collapse') : t('contracts.milestoneBreakdown')}
+          <ChevronDown className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} size={14} />
+        </button>
+      </div>
+
+      {/* Expanded Milestone Breakdown */}
+      {expanded && (
+        <div className="rounded-2xl border border-border bg-surface-muted/30 p-4 space-y-3">
+          <h4 className="text-xs font-extrabold uppercase tracking-wider text-text-primary border-b border-border pb-2">
+            {t('contracts.milestonesSchedule')}
+          </h4>
+          {contract.milestones?.length ? (
+            <div className="space-y-2">
+              {contract.milestones.map((m, idx) => (
+                <MilestoneDetailCard
+                  key={m.id || idx}
+                  milestone={m}
+                  index={idx}
+                  onSubmitDeliverable={() => onNavigate(`/contracts/${contract.contractsId}`)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted font-semibold">{t('contracts.noMilestonesPlanned')}</p>
+          )}
+        </div>
+      )}
+    </article>
   );
 }
