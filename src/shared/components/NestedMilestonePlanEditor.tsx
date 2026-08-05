@@ -124,11 +124,22 @@ const parseStructuredDuration = (
   units: readonly MilestoneDurationUnitOption[],
 ) => {
   const fallbackUnit = units[0]?.value || '';
-  const match = value?.trim().match(/^(\d+)\s+([a-z]+)$/i);
+  if (!value?.trim()) return { amount: '', unit: fallbackUnit };
+
+  const match = value.trim().match(/^(\d+)\s+(.+)$/u);
   if (!match) return { amount: '', unit: fallbackUnit };
 
-  const rawUnit = match[2].toLowerCase().replace(/s$/, '');
-  const unit = units.find(option => option.value.toLowerCase().replace(/s$/, '') === rawUnit);
+  const rawUnit = match[2].trim().toLowerCase().replace(/s$/, '');
+  const normalizedUnitKey =
+    ['week', 'tuần', 'tuan'].includes(rawUnit) ? 'weeks' :
+    ['month', 'tháng', 'thang'].includes(rawUnit) ? 'months' :
+    ['year', 'năm', 'nam'].includes(rawUnit) ? 'years' : null;
+
+  const targetKey = normalizedUnitKey || rawUnit;
+  const unit = units.find(option =>
+    option.value.toLowerCase().replace(/s$/, '') === targetKey.replace(/s$/, '')
+    || option.value.toLowerCase() === targetKey
+  );
   return unit ? { amount: match[1], unit: unit.value } : { amount: '', unit: fallbackUnit };
 };
 

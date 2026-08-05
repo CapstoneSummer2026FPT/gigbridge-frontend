@@ -8,6 +8,15 @@ describe('jobDuration utilities', () => {
     expect(parseJobDuration('3 years')).toEqual({ value: '3', unit: 'years' });
   });
 
+  it('parses Vietnamese duration units', () => {
+    expect(parseJobDuration('2 tuần')).toEqual({ value: '2', unit: 'weeks' });
+    expect(parseJobDuration('1 tháng')).toEqual({ value: '1', unit: 'months' });
+    expect(parseJobDuration('3 năm')).toEqual({ value: '3', unit: 'years' });
+    expect(parseJobDuration('2 tuan')).toEqual({ value: '2', unit: 'weeks' });
+    expect(parseJobDuration('1 thang')).toEqual({ value: '1', unit: 'months' });
+    expect(parseJobDuration('3 nam')).toEqual({ value: '3', unit: 'years' });
+  });
+
   it('parses legacy duration ranges by using the first number', () => {
     expect(parseJobDuration('2-4 weeks')).toEqual({ value: '2', unit: 'weeks' });
   });
