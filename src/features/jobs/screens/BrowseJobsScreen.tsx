@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { useGSAP } from '@gsap/react';
-import { gsap } from 'gsap';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -79,16 +78,18 @@ export default function BrowseJobsScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isFreelancer = role === UserRole.Freelancer;
 
-  // GSAP Entrance Animations
-  useGSAP(() => {
-    if (containerRef.current) {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-      tl.fromTo('.browse-jobs-header-card', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4 })
-        .fromTo('.browse-category-pill', { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, stagger: 0.03, duration: 0.35 }, '-=0.2')
-        .fromTo('.browse-jobs-job-card', { opacity: 0, y: 25 }, { opacity: 1, y: 0, stagger: 0.05, duration: 0.4, clearProps: 'transform,opacity' }, '-=0.2')
-        .fromTo('.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', { opacity: 0, x: 20 }, { opacity: 1, x: 0, stagger: 0.08, duration: 0.4, clearProps: 'transform,opacity' }, '-=0.3');
-    }
-  }, { scope: containerRef, dependencies: [loading, allJobs.length] });
+  // Reusable GSAP Entrance Hook
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.browse-jobs-header-card', y: 20, duration: 0.4 },
+      { selector: '.browse-category-pill', scale: 0.9, stagger: 0.03, duration: 0.35 },
+      { selector: '.browse-jobs-job-card', y: 25, stagger: 0.05, duration: 0.4, clearProps: 'transform,opacity' },
+      { selector: '.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', x: 20, stagger: 0.08, duration: 0.4, clearProps: 'transform,opacity' },
+    ],
+    dependencies: [allJobs.length],
+  });
 
   useEffect(() => {
     let isMounted = true;

@@ -18,8 +18,7 @@ import {
   Briefcase as JobIcon,
   AlignLeft,
 } from 'lucide-react';
-import { useGSAP } from '@gsap/react';
-import { gsap } from 'gsap';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -58,33 +57,16 @@ export default function ClientProfileScreen() {
     setCurrentPage,
   } = useClientProfile(targetId);
 
-  // GSAP Entrance Animation with clearProps for 100% Perfect Alignment
-  useGSAP(
-    () => {
-      if (!loading && profileData) {
-        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-        tl.fromTo(
-          '.cp-hero-card',
-          { opacity: 0, y: 15 },
-          { opacity: 1, y: 0, duration: 0.45, clearProps: 'all' }
-        )
-        .fromTo(
-          '.cp-avatar-circle',
-          { opacity: 0, scale: 0.7 },
-          { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(1.7)', clearProps: 'all' },
-          '-=0.25'
-        )
-        .fromTo(
-          '.cp-card',
-          { opacity: 0, y: 15 },
-          { opacity: 1, y: 0, duration: 0.45, stagger: 0.08, clearProps: 'all' },
-          '-=0.2'
-        );
-      }
-    },
-    { scope: containerRef, dependencies: [loading, profileData] }
-  );
+  // Reusable GSAP Entrance Hook
+  usePageGSAP({
+    containerRef,
+    loading: loading || !profileData,
+    groups: [
+      { selector: '.cp-hero-card', y: 15, duration: 0.45, clearProps: 'all' },
+      { selector: '.cp-avatar-circle', scale: 0.7, duration: 0.45, ease: 'back.out(1.7)', clearProps: 'all' },
+      { selector: '.cp-card', y: 15, duration: 0.45, stagger: 0.08, clearProps: 'all' },
+    ],
+  });
 
   if (loading) {
     return (

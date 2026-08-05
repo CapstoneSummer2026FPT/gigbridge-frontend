@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { sortProposalReviewJobs } from '../components/ClientProposalJobSidebar';
-import ClientProposalsScreen from './ClientProposalsScreen';
+import ClientProposalsScreen from '../screens/ClientProposalsScreen';
 
 const mocks = vi.hoisted(() => ({
   locationSearch: '?job=job-1',

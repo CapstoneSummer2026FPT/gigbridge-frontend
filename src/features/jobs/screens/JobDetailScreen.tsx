@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { useGSAP } from '@gsap/react';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { toast } from 'sonner';
 import {
   Clock, Users, Globe, CheckCircle,
@@ -65,59 +65,35 @@ export default function JobDetailScreen() {
   const gC = 2 * Math.PI * gR;
   const gOff = gC * (1 - matchScore / 100);
 
-  // GSAP Animations
-  useGSAP(() => {
-    if (loading || !job) return;
-
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-      // Entrance animation sequence
-      tl.fromTo('.jd-gsap-hero',
-        { y: 24, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6 }
-      );
-
-      tl.fromTo('.jd-gsap-ai',
-        { y: 16, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.45 },
-        '-=0.25'
-      );
-
-      tl.fromTo('.jd-factor-fill',
+  // Reusable GSAP Entrance Hook
+  usePageGSAP({
+    containerRef,
+    loading: loading || !job,
+    groups: [
+      { selector: '.jd-gsap-hero', y: 24, duration: 0.6 },
+      { selector: '.jd-gsap-ai', y: 16, duration: 0.45 },
+      { selector: '.jd-gsap-card', y: 20, duration: 0.5, stagger: 0.08 },
+      { selector: '.jd-gsap-sidebar', y: 20, duration: 0.5, stagger: 0.1 },
+    ],
+    onAnimate: (_context, mult) => {
+      gsap.fromTo('.jd-factor-fill',
         { width: '0%' },
         {
           width: (_i, target: HTMLElement) => target.dataset.width || '0%',
-          duration: 0.85,
-          stagger: 0.1,
+          duration: 0.85 * mult,
+          stagger: 0.1 * mult,
           ease: 'power2.out'
-        },
-        '-=0.2'
+        }
       );
-
-      tl.fromTo('.jd-gsap-card',
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.08 },
-        '-=0.35'
-      );
-
-      tl.fromTo('.jd-gsap-sidebar',
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.08 },
-        '-=0.4'
-      );
-
       if (matchScore > 0) {
-        tl.fromTo('.jd-gauge-bar',
+        gsap.fromTo('.jd-gauge-bar',
           { strokeDashoffset: gC },
-          { strokeDashoffset: gOff, duration: 1.2, ease: 'power2.out' },
-          '-=0.7'
+          { strokeDashoffset: gOff, duration: 1.2 * mult, ease: 'power2.out' }
         );
       }
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, { scope: containerRef, dependencies: [loading, job?.id] });
+    },
+    dependencies: [job?.id],
+  });
 
   // Share job link
   const handleShare = () => {
