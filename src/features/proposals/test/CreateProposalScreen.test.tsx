@@ -29,16 +29,74 @@ vi.mock('../../../shared/components/AppLayout', () => ({
   AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
+const { translateMock } = vi.hoisted(() => ({
+  translateMock: (key: string) => {
+    const translations: Record<string, string> = {
+      'createProposal.submitProposalTitle': 'Project Proposal',
+      'createProposal.editProposalTitle': 'Project Proposal',
+      'createProposal.coverLetterLabel': 'Introduction',
+      'createProposal.solutionStrategyLabel': 'Your Proposal Approach',
+      'proposalMilestoneEditor.title': 'Milestones and payment plan',
+      'proposalMilestoneEditor.advancedDetails': 'Advanced details',
+      'proposalMilestoneEditor.acceptanceCriteria': 'Acceptance criteria',
+      'proposalMilestoneEditor.workBreakdown': 'Work Breakdown Structure',
+      'proposalMilestoneEditor.addWorkItem': 'Add work item',
+      'createProposal.saveDraft': 'Save Draft',
+      'createProposal.submitProposal': 'Submit Proposal',
+      'createProposal.back': 'Back',
+      'createProposal.viewFullJob': 'View full job',
+      'createProposal.editProposal': 'Edit Proposal',
+      'createProposal.newProposal': 'New Proposal',
+      'createProposal.status': 'Status',
+      'createProposal.submitting': 'Submitting...',
+      'createProposal.errCoverLetterMinLength': 'Introduction must be at least 50 characters.',
+      'createProposal.errApproachMinLength': 'Your Proposal Approach must be at least 50 characters.',
+      'proposalMilestoneEditor.defaultAcceptanceCriteria': 'The client accepts this milestone when its deliverable is complete and meets the project requirements.',
+    };
+    return translations[key] ?? key;
+  }
+}));
+
+vi.mock('../../../hooks/useTranslation', () => ({
+  useTranslation: () => ({
+    t: translateMock,
+  }),
+}));
+
 vi.mock('../../../shared/components/MarkdownEditor', () => ({
   MarkdownEditor: ({
     label,
+    placeholder,
     value,
+    error,
     onChange,
   }: {
     label: string;
+    placeholder?: string;
     value: string;
+    error?: string;
     onChange: (value: string) => void;
-  }) => <div>{label} Markdown editor<textarea aria-label={label} value={value} onChange={event => onChange(event.target.value)} /></div>,
+  }) => {
+    let derivedLabel = label;
+    if (!label && placeholder) {
+      if (placeholder.includes('coverLetter')) {
+        derivedLabel = 'Introduction';
+      } else if (placeholder.includes('solution') || placeholder.includes('strategy')) {
+        derivedLabel = 'Your Proposal Approach';
+      }
+    }
+    return (
+      <div>
+        {derivedLabel} Markdown editor
+        <textarea
+          aria-label={derivedLabel}
+          value={value}
+          onChange={event => onChange(event.target.value)}
+        />
+        {error && <p>{error}</p>}
+      </div>
+    );
+  },
 }));
 
 vi.mock('../../../api/jobAPI/GET', () => ({
