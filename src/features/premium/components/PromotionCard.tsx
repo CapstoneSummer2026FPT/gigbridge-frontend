@@ -3,20 +3,36 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import type { PromotionCardInput } from '../types';
 import '../styles/promotion-card.css';
 
-const sanitizeImageUrl = (value?: string): string => {
-  if (!value) return '';
+function sanitizeImageUrl(url?: string): string {
+  if (!url) return '';
+  const trimmed = String(url).trim();
+  if (!trimmed) return '';
+
+  if (trimmed.startsWith('/')) return trimmed;
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:image/')) return trimmed;
+
   try {
-    const parsed = new URL(value, window.location.origin);
-    return ['blob:', 'https:', 'http:'].includes(parsed.protocol) ? value : '';
+    const parsed = new URL(trimmed, window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return encodeURI(parsed.href);
+    }
   } catch {
     return '';
   }
-};
 
-const sanitizeText = (text?: string): string => {
+  return '';
+}
+
+function sanitizeText(text?: string): string {
   if (!text) return '';
-  return text.replace(/<[^>]*>?/gm, '').trim();
-};
+  const clean = String(text).trim();
+  return clean
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export function PromotionCard({
   card,
@@ -34,10 +50,10 @@ export function PromotionCard({
   onSelectCarousel?: (index: number) => void;
 }) {
   const { t } = useTranslation();
-  const safePhotoUrl = sanitizeImageUrl(card.photoUrl);
-  const safeDisplayName = sanitizeText(card.displayName);
-  const safeJobTitle = sanitizeText(card.jobTitle);
-  const safeQuote = sanitizeText(card.quote);
+  const safePhotoUrl = sanitizeImageUrl(card?.photoUrl);
+  const safeDisplayName = sanitizeText(card?.displayName);
+  const safeJobTitle = sanitizeText(card?.jobTitle);
+  const safeQuote = sanitizeText(card?.quote);
 
   return (
     <article className="promotion-profile-card">

@@ -2,18 +2,22 @@ import { ArrowUpRight, Clock3 } from 'lucide-react';
 import type { PublicJobPromotionCardDto } from '../../../types/models/Job';
 import '../styles/promotion-card.css';
 
-function safeUrl(url?: string): string {
-  if (!url) return '';
-  const trimmed = url.trim();
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:image/') ||
-    trimmed.startsWith('/')
-  ) {
-    return trimmed;
+const REMOTE_IMAGE_PROTOCOLS = new Set(['http:', 'https:']);
+
+function sanitizeImageUrl(imageUrl: string, allowBlob: boolean): string | undefined {
+  const trimmed = imageUrl.trim();
+  if (!trimmed) return undefined;
+
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    const allowedProtocol = REMOTE_IMAGE_PROTOCOLS.has(parsed.protocol) ||
+      (allowBlob && parsed.protocol === 'blob:');
+    return allowedProtocol
+      ? parsed.href.replace(/[<"']/g, character => encodeURIComponent(character))
+      : undefined;
+  } catch {
+    return undefined;
   }
-  return '';
 }
 
 export function PromotedJobCard({
@@ -33,11 +37,11 @@ export function PromotedJobCard({
   preview?: boolean;
   imageStyle?: React.CSSProperties;
 }) {
-  const safeImageUrl = safeUrl(card.imageUrl);
+  const safeImageUrl = sanitizeImageUrl(card.imageUrl, preview);
 
   return <article className="promotion-profile-card promoted-job-card">
     {preview && <span className="promotion-preview-badge">Live preview</span>}
-    <img src={safeImageUrl} alt={card.title || ''} className="promotion-profile-photo" style={imageStyle} />
+    <img src={safeImageUrl} alt="" className="promotion-profile-photo" style={imageStyle} />
     <div className="promotion-profile-shade" />
     <div className="promotion-profile-content promoted-job-content">
       <p className="promotion-profile-kicker">Promoted job</p>

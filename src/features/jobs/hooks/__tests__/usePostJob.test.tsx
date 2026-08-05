@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { shouldConfirmBudgetOverride, usePostJob, type PostJobRouteState } from '../usePostJob';
+import { shouldConfirmBudgetOverride, shouldConfirmDurationOverride, usePostJob, type PostJobRouteState } from '../usePostJob';
 import { jobAPI } from '../../../../api/jobAPI';
 import { JobPostStatus, type GenerateJobHiringPlanResponse } from '../../../../types/models/Job';
 import type { ApiResponse } from '../../../../types/common';
@@ -640,11 +640,11 @@ describe('usePostJob hook skills conversion', () => {
       estimatedDurationValue: '3',
     };
 
-    const validMilestone = (amount: number) => ({
+    const validMilestone = (amount: number, estimatedDuration = '2 weeks') => ({
       title: 'Vendor onboarding workflow',
       description: '',
       amount,
-      estimatedDuration: '2 weeks',
+      estimatedDuration,
       dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
       deliverables: 'Working onboarding workflow',
       acceptanceCriteria: 'A vendor can complete every onboarding step',
@@ -658,6 +658,13 @@ describe('usePostJob hook skills conversion', () => {
       expect(shouldConfirmBudgetOverride('100', 99)).toBe(false);
       expect(shouldConfirmBudgetOverride('0', 200)).toBe(false);
       expect(shouldConfirmBudgetOverride('', 200)).toBe(false);
+    });
+
+    it('only confirms a duration override when a positive estimated duration is exceeded', () => {
+      expect(shouldConfirmDurationOverride(4, 3)).toBe(true);
+      expect(shouldConfirmDurationOverride(3, 3)).toBe(false);
+      expect(shouldConfirmDurationOverride(2, 3)).toBe(false);
+      expect(shouldConfirmDurationOverride(4, 0)).toBe(false);
     });
 
     it('keeps the step-1 expected budget instead of overwriting it with the milestone total', async () => {
@@ -780,6 +787,42 @@ describe('usePostJob hook skills conversion', () => {
       }));
       expect(jobAPI.updateJobPostStatus).toHaveBeenCalledWith('job-1', { status: JobPostStatus.Open });
       expect(mockNavigate).toHaveBeenCalledWith('/jobs/my-jobs');
+    });
+
+    it('blocks review when only the milestone duration exceeds the estimate, and confirm raises the job estimated duration', async () => {
+      vi.mocked(jobAPI.getSkillsByCategory).mockResolvedValue(successResponse([]));
+      const { result } = renderHook(() => usePostJob());
+
+      act(() => {
+        // Budget (500) is above the milestone total (200) — only duration is exceeded.
+        result.current.setForm(prev => ({ ...prev, ...projectFormPatch, budget: '500' }));
+        result.current.setMilestonePlans([validMilestone(200, '6 weeks')]);
+      });
+
+      let reviewResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        reviewResult = await result.current.submitDraftFlow('review');
+      });
+
+      expect(reviewResult).toEqual({ status: 'budget-exceeded' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(true);
+      expect(jobAPI.saveDraftJobPost).not.toHaveBeenCalled();
+
+      let confirmResult: Awaited<ReturnType<typeof result.current.submitDraftFlow>> | undefined;
+      await act(async () => {
+        confirmResult = await result.current.handleBudgetExceededConfirm();
+      });
+
+      expect(confirmResult).toEqual({ status: 'success' });
+      expect(result.current.isBudgetExceededPromptOpen).toBe(false);
+      expect(result.current.form.budget).toBe('500');
+      expect(result.current.form.estimatedDurationValue).toBe('6');
+      expect(result.current.form.estimatedDurationUnit).toBe('weeks');
+      expect(jobAPI.saveDraftJobPost).toHaveBeenCalledWith('job-1', expect.objectContaining({
+        budgetMin: 500,
+        budgetMax: 500,
+        estimatedDuration: '6 weeks',
+      }));
     });
   });
 });

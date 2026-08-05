@@ -173,7 +173,10 @@ export function useJobDetail() {
         const data = await jobGetAPI.getJobById(activeJobPostId);
         setJob(data.job);
 
-        let fetchedClient: ClientIdentity | null = null;
+        let fetchedClient: ClientIdentity | null = (data.job.clientId || data.job.clientFullName) ? {
+          id: data.job.clientId,
+          fullName: data.job.clientFullName || 'Client',
+        } : null;
         let fetchedClientProfile: ClientProfileDetailDto | null = null;
 
         if (data.job.clientId) {
@@ -182,8 +185,8 @@ export function useJobDetail() {
             if (profileRes.success && profileRes.data) {
               const apiData = profileRes.data;
               fetchedClient = {
-                id: apiData.userId,
-                fullName: apiData.userFullName || 'Client',
+                id: apiData.userId || data.job.clientId,
+                fullName: apiData.userFullName || data.job.clientFullName || 'Client',
               };
               fetchedClientProfile = apiData;
             }

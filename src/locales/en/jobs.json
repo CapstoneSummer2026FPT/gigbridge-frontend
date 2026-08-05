@@ -238,9 +238,11 @@
     "complete": "complete",
     "notProvided": "Not provided",
     "budgetExceeded": {
-      "title": "Milestone total exceeds expected budget",
-      "desc": "The milestone total {{total}} exceeds your expected budget {{expected}}. Do you want to continue?",
-      "confirm": "Update budget & continue"
+      "title": "Milestone plan exceeds expectations",
+      "budgetDesc": "The milestone total {{total}} exceeds your expected budget {{expected}}.",
+      "durationDesc": "The milestone total {{total}} exceeds your estimated duration {{expected}}.",
+      "question": "Do you want to continue?",
+      "confirm": "Update & continue"
     },
     "autosave": {
       "idle": "Changes pending",

@@ -41,11 +41,11 @@ import '../../reviews/styles/reviews-screen.css';
 import '../styles/client-profile-screen.css';
 import '../styles/freelancer-profile-screen.css';
 
-const getAvailabilityText = (avail?: number) => {
-  if (avail === 0) return 'Full-time (40h/week)';
-  if (avail === 1) return 'Part-time (20h/week)';
-  if (avail === 2) return 'Not Available';
-  return 'Available for Hire';
+const getAvailabilityText = (avail?: number, t?: (key: string) => string) => {
+  if (avail === 0) return t ? t('profile.availability.fullTime') : 'Full-time (40h/week)';
+  if (avail === 1) return t ? t('profile.availability.partTime') : 'Part-time (20h/week)';
+  if (avail === 2) return t ? t('profile.availability.notAvailable') : 'Not Available';
+  return t ? t('profile.availability.available') : 'Available for Hire';
 };
 
 export default function FreelancerProfileScreen() {
@@ -127,14 +127,14 @@ export default function FreelancerProfileScreen() {
     return (
       <AppLayout>
         <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Freelancer profile unavailable</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('profile.edit.loadError')}</h1>
           <p className="text-[var(--text-secondary)]">{error || 'No freelancer profile was selected.'}</p>
           <button
             type="button"
             onClick={() => navigate(-1)}
             className="cp-btn-secondary"
           >
-            Go back
+            {t('profile.back')}
           </button>
         </div>
       </AppLayout>
@@ -153,7 +153,7 @@ export default function FreelancerProfileScreen() {
     .map(part => part[0]?.toUpperCase())
     .join('') || 'B';
 
-  const availabilityText = getAvailabilityText(profile.availability);
+  const availabilityText = getAvailabilityText(profile.availability, t);
 
   return (
     <AppLayout>
@@ -172,7 +172,7 @@ export default function FreelancerProfileScreen() {
               className="cp-btn-secondary"
             >
               <ArrowLeft size={16} className="cp-card-icon" />
-              <span>Back</span>
+              <span>{t('profile.back')}</span>
             </button>
           </div>
 
@@ -203,7 +203,7 @@ export default function FreelancerProfileScreen() {
                   {profile?.showProVerifiedBadge === true && (
                     <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--brand,#494be7)] text-white text-[11px] font-extrabold tracking-wide shadow-sm">
                       <Crown size={12} className="fill-current" />
-                      <span>Pro Verified</span>
+                      <span>{t('profile.proVerified')}</span>
                     </div>
                   )}
                 </div>
@@ -244,7 +244,7 @@ export default function FreelancerProfileScreen() {
                   className="cp-btn-secondary"
                 >
                   <Edit3 size={15} />
-                  <span>Edit Profile</span>
+                  <span>{t('profile.editProfile')}</span>
                 </button>
               ) : (
                 <>
@@ -291,12 +291,12 @@ export default function FreelancerProfileScreen() {
                         onClick={() => {
                           setShowMoreMenu(false);
                           void navigator.clipboard.writeText(window.location.href);
-                          toast.success('Link copied to clipboard!');
+                          toast.success(t('profile.linkCopied'));
                         }}
                         className="cp-dropdown-item"
                       >
                         <Share2 size={14} />
-                        Share
+                        {t('profile.share')}
                       </button>
 
                       {currentUser?.id !== user.id && (
@@ -310,7 +310,7 @@ export default function FreelancerProfileScreen() {
                           className="cp-dropdown-item cp-dropdown-item-danger"
                         >
                           <Flag size={14} />
-                          {reportSubmitted ? 'Reported' : 'Report User'}
+                          {reportSubmitted ? t('profile.reported') : t('profile.reportUser')}
                         </button>
                       )}
                     </div>
@@ -328,7 +328,7 @@ export default function FreelancerProfileScreen() {
                 <div className="cp-bio-col">
                   <div className="cp-card-title-group">
                     <AlignLeft size={18} className="cp-card-icon" />
-                    <h2 className="cp-card-title">Bio & Overview</h2>
+                    <h2 className="cp-card-title">{t('profile.bioOverview')}</h2>
                   </div>
                   <p className="cp-bio-text">
                     {profile.bio || "I'm a professional freelancer & software engineer focused on designing intuitive interfaces, building high-impact digital products, and creating scalable web solutions."}
@@ -341,7 +341,7 @@ export default function FreelancerProfileScreen() {
                   <div className="space-y-2">
                     <div className="cp-card-title-group">
                       <Tag size={16} className="cp-card-icon" />
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Categories</h3>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('profile.categories')}</h3>
                     </div>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {profile.categories && profile.categories.length > 0 ? (
@@ -364,7 +364,7 @@ export default function FreelancerProfileScreen() {
                   <div className="space-y-2">
                     <div className="cp-card-title-group">
                       <Code2 size={16} className="cp-card-icon" />
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Skills</h3>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('profile.skills')}</h3>
                     </div>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {skills.length > 0 ? (
@@ -397,26 +397,13 @@ export default function FreelancerProfileScreen() {
               <div className="w-full flex items-center justify-between">
                 <div className="cp-card-title-group">
                   <Shield size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">Elo Point</h2>
+                  <h2 className="cp-card-title">{t('profile.eloPoint')}</h2>
                 </div>
                 <span className="cp-pill-brand">
-                  Verified
+                  {t('profile.verified')}
                 </span>
               </div>
 
-              {/* SVG Arc Gauge — 290° arc, gap 70° at BOTTOM */}
-              {/*
-                SVG Y-axis goes DOWN: 0°=right, 90°=BOTTOM, 180°=left, 270°=top
-                Gap centered at 90° (bottom):
-                  from 90°-35°=55° to 90°+35°=125°
-                Arc: from 125° → clockwise → 55°  (= 290°, large arc)
-
-                125° → x=100+80·cos(125°)=54.11,  y=100+80·sin(125°)=165.54  (lower-left)
-                 55° → x=100+80·cos(55°)=145.89,  y=100+80·sin(55°)=165.54   (lower-right)
-
-                Path: M 54.11 165.54 A 80 80 0 1 1 145.89 165.54
-                large-arc=1, sweep=1 (clockwise)
-              */}
               <div className="fp-arc-gauge-wrap">
                 <div className="fp-arc-glow" />
                 <svg
@@ -424,7 +411,6 @@ export default function FreelancerProfileScreen() {
                   className="fp-arc-svg"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  {/* Background track — 290° */}
                   <path
                     d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
                     fill="none"
@@ -432,7 +418,6 @@ export default function FreelancerProfileScreen() {
                     strokeWidth="13"
                     strokeLinecap="round"
                   />
-                  {/* Foreground arc — brand color */}
                   <path
                     d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
                     fill="none"
@@ -442,10 +427,9 @@ export default function FreelancerProfileScreen() {
                     className="fp-arc-progress"
                   />
                 </svg>
-                {/* Score + label, centered inside the circle */}
                 <div className="fp-arc-center">
                   <span className="fp-arc-number">{eloPoints || 9999}</span>
-                  <span className="fp-arc-label">PROFILE STRENGTH</span>
+                  <span className="fp-arc-label">{t('profile.profileStrength')}</span>
                 </div>
               </div>
             </div>
@@ -455,14 +439,14 @@ export default function FreelancerProfileScreen() {
               <div className="cp-card-header">
                 <div className="cp-card-title-group">
                   <Layers size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">Recently Worked</h2>
+                  <h2 className="cp-card-title">{t('profile.recentlyWorked')}</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigate('/jobs')}
                   className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
                 >
-                  <span>See more</span>
+                  <span>{t('profile.seeMore')}</span>
                   <ChevronRight size={14} />
                 </button>
               </div>
@@ -553,7 +537,7 @@ export default function FreelancerProfileScreen() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="cp-card-title-group">
                   <FolderGit2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
-                  <h2 className="cp-card-title">Portfolio & Projects</h2>
+                  <h2 className="cp-card-title">{t('profile.portfolioProjects')}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   {currentUser?.id === targetId && (
@@ -563,11 +547,11 @@ export default function FreelancerProfileScreen() {
                       className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
                     >
                       <Plus size={13} />
-                      <span>Add Project</span>
+                      <span>{t('profile.addProject')}</span>
                     </button>
                   )}
                   <span className="cp-pill-brand text-xs">
-                    {profileData.rawPortfolioItems?.length || profileData.portfolio?.length || 0} Projects
+                    {t('profile.projectsCount', { count: profileData.rawPortfolioItems?.length || profileData.portfolio?.length || 0 })}
                   </span>
                 </div>
               </div>
@@ -604,7 +588,7 @@ export default function FreelancerProfileScreen() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="cp-card-title-group">
                   <Building2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
-                  <h2 className="cp-card-title">Work Experience</h2>
+                  <h2 className="cp-card-title">{t('profile.workExperience')}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   {currentUser?.id === targetId && (
@@ -614,11 +598,11 @@ export default function FreelancerProfileScreen() {
                       className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
                     >
                       <Plus size={13} />
-                      <span>Add Position</span>
+                      <span>{t('profile.addPosition')}</span>
                     </button>
                   )}
                   <span className="cp-pill-muted text-xs">
-                    {profileData.rawWorkExperiences?.length || experience.length || 0} Positions
+                    {t('profile.positionsCount', { count: profileData.rawWorkExperiences?.length || experience.length || 0 })}
                   </span>
                 </div>
               </div>
@@ -675,7 +659,7 @@ export default function FreelancerProfileScreen() {
                   ))
                 ) : (
                   <div className="p-6 text-center text-sm text-[var(--text-secondary)]">
-                    No work experience entries added yet.
+                    {t('profile.noWorkExperience')}
                   </div>
                 )}
               </div>
@@ -686,7 +670,7 @@ export default function FreelancerProfileScreen() {
           <div className="cp-card cp-col-12 space-y-6">
             <div className="cp-card-title-group">
               <Star size={18} className="text-amber-500 fill-current" />
-              <h2 className="cp-card-title">{t('reviews.clientReviews') || 'Client Reviews'}</h2>
+              <h2 className="cp-card-title">{t('profile.clientReviews')}</h2>
             </div>
 
             {reviewsList.length > 0 ? (
@@ -706,7 +690,7 @@ export default function FreelancerProfileScreen() {
                     ))}
                   </div>
                   <p className="text-xs font-semibold text-[var(--text-secondary)]">
-                    Based on {reviewsList.length} reviews from clients
+                    {t('profile.basedOnReviewsClient', { count: reviewsList.length })}
                   </p>
 
                   <div className="w-full space-y-2 pt-2">

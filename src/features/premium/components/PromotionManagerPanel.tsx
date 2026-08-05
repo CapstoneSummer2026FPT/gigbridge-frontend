@@ -179,7 +179,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
         <button className="premium-button" disabled={busy || !canBoost} onClick={() => void boost()}>{t('premiumPromotion.boost')}</button>
         <button className="premium-button danger" disabled={busy} onClick={() => void end()}>{t('premiumPromotion.endNow')}</button>
       </section>}
-    <div><PromotionCard card={activeCard} preview={!manager.active} carouselCount={1} carouselIndex={0} /></div>
+      <div className="promotion-manager-preview"><PromotionCard card={activeCard} preview={!manager.active} carouselCount={1} carouselIndex={0} /></div>
     <section className="premium-card promotion-history"><h3>{t('premiumPromotion.queueHistory')}</h3>{[
       ...(manager.active ? [manager.active] : []), ...manager.queued, ...manager.history,
     ].map(item => <div className="premium-row" key={item.id}><div><strong>{item.displayName}</strong><div className="premium-muted">{new Date(item.startsAt).toLocaleDateString()} – {new Date(item.endsAt).toLocaleDateString()}</div></div><span className={`promotion-status ${item === manager.active ? 'ongoing' : item.status === PromotionStatus.Pending ? 'queued' : 'ended'}`}>{item === manager.active ? t('premiumPromotion.ongoing') : item.status === PromotionStatus.Pending ? t('premiumPromotion.queued') : t('premiumPromotion.ended')}</span></div>)}</section>
