@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type {
   ProposalMilestonePlanDto,
   ProposalWorkBreakdownItemDto,
-} from '../../../types/models/Proposal';
+} from '../../../../types/models/Proposal';
 import {
   deriveMilestoneDuration,
   extractCustomWorkItems,
   resolveProposalMilestonePlan,
-} from './proposalMilestonePlan';
+} from '../../utils/proposalMilestonePlan';
 
 const milestone = (
   orderIndex: number,

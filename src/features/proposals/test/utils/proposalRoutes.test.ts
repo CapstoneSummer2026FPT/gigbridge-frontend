@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getProposalCreatePath } from './proposalRoutes';
+import { getProposalCreatePath } from '../../utils/proposalRoutes';
 
 describe('getProposalCreatePath', () => {
   it('routes Apply Now to the Phase 2 proposal editor', () => {

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
+import { CustomSelect } from '../../../shared/components/CustomSelect';
 
 export type JobSort = 'proposals' | 'updated' | 'created' | 'title';
 type JobStatusFilter = 'all' | '0' | '1' | '2' | '3';
@@ -21,7 +22,7 @@ interface ClientProposalJobSidebarProps {
 }
 
 const inputClass =
-  'h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15';
+  'h-10 w-full rounded-xl border border-border bg-background px-3 text-xs font-bold text-text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm cursor-pointer';
 const focusClass =
   'outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
@@ -111,7 +112,7 @@ export default function ClientProposalJobSidebar({
   return (
     <aside
       aria-label={t('proposalReview.projectSidebar.label')}
-      className="min-w-0 lg:sticky lg:top-20 lg:h-[calc(100vh-6.5rem)] lg:self-start"
+      className="min-w-0 lg:sticky lg:top-20 lg:self-start"
     >
       <button
         type="button"
@@ -142,7 +143,7 @@ export default function ClientProposalJobSidebar({
 
       <div
         id="proposal-project-list"
-        className={`${mobileOpen ? 'mt-3 block' : 'hidden'} overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:mt-0 lg:flex lg:h-full lg:flex-col`}
+        className={`${mobileOpen ? 'mt-3 block' : 'hidden'} overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:mt-0 lg:flex lg:flex-col lg:max-h-[720px]`}
       >
         <div className="border-b border-border p-4">
           <div className="flex items-start justify-between gap-3">
@@ -181,38 +182,35 @@ export default function ClientProposalJobSidebar({
             />
           </label>
 
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <select
-              aria-label={t('proposalReview.projectSidebar.status')}
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <CustomSelect
+              ariaLabel={t('proposalReview.projectSidebar.status')}
               value={status}
-              onChange={event => setStatus(event.target.value as JobStatusFilter)}
-              className={inputClass}
-            >
-              <option value="all">{t('proposalReview.projectSidebar.statuses.all')}</option>
-              <option value="0">{t('proposalReview.jobStatuses.draft')}</option>
-              <option value="1">{t('proposalReview.jobStatuses.open')}</option>
-              <option value="2">{t('proposalReview.jobStatuses.closed')}</option>
-              <option value="3">{t('proposalReview.jobStatuses.cancelled')}</option>
-            </select>
-            <div className="relative">
-              <ArrowDownAZ className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
-              <select
-                aria-label={t('proposalReview.projectSidebar.sort')}
-                value={sort}
-                onChange={event => setSort(event.target.value as JobSort)}
-                className={`${inputClass} appearance-none pl-9 pr-8`}
-              >
-                <option value="proposals">{t('proposalReview.projectSidebar.sorts.proposals')}</option>
-                <option value="updated">{t('proposalReview.projectSidebar.sorts.updated')}</option>
-                <option value="created">{t('proposalReview.projectSidebar.sorts.created')}</option>
-                <option value="title">{t('proposalReview.projectSidebar.sorts.title')}</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
-            </div>
+              onChange={val => setStatus(val as JobStatusFilter)}
+              options={[
+                { value: 'all', label: t('proposalReview.projectSidebar.statuses.all') },
+                { value: '0', label: t('proposalReview.jobStatuses.draft') },
+                { value: '1', label: t('proposalReview.jobStatuses.open') },
+                { value: '2', label: t('proposalReview.jobStatuses.closed') },
+                { value: '3', label: t('proposalReview.jobStatuses.cancelled') },
+              ]}
+            />
+            <CustomSelect
+              ariaLabel={t('proposalReview.projectSidebar.sort')}
+              value={sort}
+              onChange={val => setSort(val as JobSort)}
+              leftIcon={<ArrowDownAZ size={15} />}
+              options={[
+                { value: 'proposals', label: t('proposalReview.projectSidebar.sorts.proposals') },
+                { value: 'updated', label: t('proposalReview.projectSidebar.sorts.updated') },
+                { value: 'created', label: t('proposalReview.projectSidebar.sorts.created') },
+                { value: 'title', label: t('proposalReview.projectSidebar.sorts.title') },
+              ]}
+            />
           </div>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto p-2" aria-label={t('proposalReview.projectSidebar.navigation')}>
+        <nav className="min-h-0 flex-1 overflow-y-auto p-2 lg:max-h-[520px] custom-scrollbar" aria-label={t('proposalReview.projectSidebar.navigation')}>
           {!jobs.length ? (
             <div className="px-3 py-10 text-center">
               <BriefcaseBusiness className="mx-auto text-muted-foreground" size={28} />

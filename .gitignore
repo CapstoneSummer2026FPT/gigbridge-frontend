@@ -53,10 +53,10 @@ repomix-output.*
 Thumbs.db
 .DS_Store
 
-# Taste skill
+skill
 taste-skill/
-
 SKILL.md
+.agents/
 
 .env.example
 *.md

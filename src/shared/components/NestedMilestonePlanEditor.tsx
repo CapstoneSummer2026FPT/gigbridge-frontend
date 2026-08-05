@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { formatGigCoin } from '../utils/gigcoin';
 
 export interface EditablePlanWorkItem {
@@ -197,6 +197,33 @@ export function NestedMilestonePlanEditor({
     }
     setExpanded(expanded === index ? null : index);
   };
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const sourceIndex = Number(e.dataTransfer.getData('text/plain'));
+    if (isNaN(sourceIndex) || sourceIndex === targetIndex || sourceIndex < 0 || sourceIndex >= value.length) {
+      setDraggedIndex(null);
+      return;
+    }
+    const next = [...value];
+    const [removed] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, removed);
+    onChange(normalize(next));
+    setDraggedIndex(null);
+  };
+
   const total = value.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const inputClass = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)]/30';
   const hintClass = 'mt-1.5 block text-[11px] font-normal normal-case leading-relaxed text-muted-foreground';
@@ -210,27 +237,6 @@ export function NestedMilestonePlanEditor({
     updateMilestone(milestoneIndex, {
       workItems: value[milestoneIndex].workItems.map((item, itemIndex) => itemIndex === workIndex ? { ...item, ...patch } : item),
     });
-  const moveMilestone = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= value.length) return;
-    const next = [...value];
-    [next[index], next[target]] = [next[target], next[index]];
-    onChange(normalize(next));
-    onAdvancedIndexesChange?.(advancedIndexes.map(advancedIndex => {
-      if (advancedIndex === index) return target;
-      if (advancedIndex === target) return index;
-      return advancedIndex;
-    }));
-    if (multipleExpansionEnabled) {
-      setOpenIndexes(openIndexes.map(openIndex => {
-        if (openIndex === index) return target;
-        if (openIndex === target) return index;
-        return openIndex;
-      }));
-    } else {
-      setExpanded(target);
-    }
-  };
   const deleteMilestone = (index: number) => {
     onChange(normalize(value.filter((_, itemIndex) => itemIndex !== index)));
     onAdvancedIndexesChange?.(advancedIndexes
@@ -285,16 +291,31 @@ export function NestedMilestonePlanEditor({
         const errorFor = (field: string) => errors[`${index}.${field}`];
         const fieldClass = (field: string) => `${inputClass} ${errorFor(field) ? 'border-red-500 focus:ring-red-500' : ''}`;
         return (
-          <article key={milestone.id || index} className={`overflow-hidden rounded-lg border bg-card ${Object.keys(errors).some(key => key.startsWith(`${index}.`)) ? 'border-red-500/60' : 'border-border'}`}>
+          <article
+            key={milestone.id || index}
+            onDragOver={readOnly ? undefined : handleDragOver}
+            onDrop={readOnly ? undefined : (e) => handleDrop(e, index)}
+            className={`overflow-hidden rounded-lg border bg-card transition-all ${
+              draggedIndex === index ? 'opacity-50 border-brand border-dashed' : ''
+            } ${Object.keys(errors).some(key => key.startsWith(`${index}.`)) ? 'border-red-500/60' : 'border-border'}`}
+          >
             <div className="flex items-center gap-2 p-3 sm:p-4">
+              {!readOnly && (
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  className="cursor-grab active:cursor-grabbing p-1 rounded text-text-muted hover:text-brand hover:bg-surface-muted transition-colors shrink-0"
+                  title="Drag to reorder milestone"
+                >
+                  <GripVertical size={16} />
+                </div>
+              )}
               <button type="button" onClick={() => toggleMilestone(index)} aria-expanded={isExpanded} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{index + 1}</span>
                 <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{milestone.title?.trim() || `${uiCopy.untitledMilestone || 'Untitled milestone'} ${index + 1}`}</strong><span className="text-xs text-muted-foreground">{formatGigCoin(Number(milestone.amount) || 0)}{simplifiedMilestoneFields ? ` · ${uiCopy.derivedDuration || 'Duration'}: ${milestone.estimatedDuration || '—'}` : showWorkItems ? ` · ${milestone.workItems.length} ${uiCopy.workItems || 'work item(s)'}` : ''}</span></span>
               </button>
               {!readOnly && <div className="flex shrink-0 gap-1">
-                <button type="button" title={uiCopy.moveUp || 'Move up'} disabled={index === 0} onClick={() => moveMilestone(index, -1)} className="rounded p-2 hover:bg-muted disabled:opacity-30"><ArrowUp size={15} /></button>
-                <button type="button" title={uiCopy.moveDown || 'Move down'} disabled={index === value.length - 1} onClick={() => moveMilestone(index, 1)} className="rounded p-2 hover:bg-muted disabled:opacity-30"><ArrowDown size={15} /></button>
                 <button type="button" title={uiCopy.deleteMilestone || 'Delete milestone'} onClick={() => deleteMilestone(index)} className="rounded p-2 text-red-500 hover:bg-red-500/10"><Trash2 size={15} /></button>
               </div>}
             </div>
