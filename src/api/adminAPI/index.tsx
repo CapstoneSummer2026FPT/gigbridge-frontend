@@ -51,5 +51,16 @@ export const adminAPI = {
   deleteJobPost: adminDeleteAPI.deleteJobPost,
   deleteTemplate: adminDeleteAPI.deleteTemplate,
   deleteMilestone: adminDeleteAPI.deleteMilestone,
+
+  // Elo management
+  getAdminEloHistory: adminGetAPI.getAdminEloHistory,
+  getAdminEloUserHistory: adminGetAPI.getAdminEloUserHistory,
+  getAdminEloUserSummary: adminGetAPI.getAdminEloUserSummary,
+  getAdminEloAppeals: adminGetAPI.getAdminEloAppeals,
+  getAdminEloAppealDetail: adminGetAPI.getAdminEloAppealDetail,
+  getEloPolicy: adminGetAPI.getEloPolicy,
+  resolveEloAppeal: adminPostAPI.resolveEloAppeal,
+  applyAdminEloAdjustment: adminPostAPI.applyAdminEloAdjustment,
+  updateEloPolicy: adminPutAPI.updateEloPolicy,
 };
 

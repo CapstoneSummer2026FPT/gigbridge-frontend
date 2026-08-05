@@ -8,6 +8,7 @@ import AdminDashboardScreen from './AdminDashboardScreen';
 vi.mock('../../../hooks/useTranslation', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
+    i18n: { language: 'en' },
   }),
 }));
 vi.mock('../../../shared/components/AppLayout', () => ({ AppLayout: ({ children }: { children: React.ReactNode }) => <>{children}</> }));

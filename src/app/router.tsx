@@ -55,6 +55,10 @@ const AdminContractTemplatesScreen = lazy(() => import('../features/admin/screen
 const AdminAssetsScreen = lazy(() => import('../features/admin/screens/AdminAssetsScreen'));
 const AdminFAQManagementScreen = lazy(() => import('../features/admin/screens/AdminFAQManagementScreen'));
 const AdminDisputeManagementScreen = lazy(() => import('../features/admin/screens/AdminDisputeManagementScreen'));
+const AdminEloOverviewScreen = lazy(() => import('../features/admin/screens/AdminEloOverviewScreen'));
+const AdminEloHistoryScreen = lazy(() => import('../features/admin/screens/AdminEloHistoryScreen'));
+const AdminEloAppealsScreen = lazy(() => import('../features/admin/screens/AdminEloAppealsScreen'));
+const AdminEloAppealDetailScreen = lazy(() => import('../features/admin/screens/AdminEloAppealDetailScreen'));
 const DisputeDetailScreen = lazy(() => import('../features/disputes/screens/DisputeDetailScreen'));
 const NotificationsScreen = lazy(() => import('../features/notifications/screens/NotificationsScreen'));
 const CreateReviewScreen = lazy(() => import('../features/reviews/screens/CreateReviewScreen'));
@@ -86,6 +90,7 @@ const ManageMilestonesScreen = lazy(() => import('../features/contracts/screens/
 const SignatureWorkflowScreen = lazy(() => import('../features/contracts/screens/SignatureWorkflowScreen'));
 const SubmitMilestoneDeliverableScreen = lazy(() => import('../features/contracts/screens/SubmitMilestoneDeliverableScreen'));
 const ViewContractDetailsScreen = lazy(() => import('../features/contracts/screens/ViewContractDetailsScreen'));
+const EloHistoryScreen = lazy(() => import('../features/elo/screens/EloHistoryScreen'));
 
 // Import router styles
 import './styles/router.css';
@@ -298,9 +303,14 @@ export const router = createBrowserRouter([
       { path: 'admin/withdrawals', element: <AdminRoute><AdminWithdrawalsScreen /></AdminRoute> },
       { path: 'admin/analytics', element: <AdminRoute><AdminAnalyticsScreen /></AdminRoute> },
       { path: 'admin/notifications', element: <AdminRoute><AdminNotificationsScreen /></AdminRoute> },
+      { path: 'admin/elo', element: <AdminRoute><AdminEloOverviewScreen /></AdminRoute> },
+      { path: 'admin/elo/history', element: <AdminRoute><AdminEloHistoryScreen /></AdminRoute> },
+      { path: 'admin/elo/appeals', element: <AdminRoute><AdminEloAppealsScreen /></AdminRoute> },
+      { path: 'admin/elo/appeals/:appealId', element: <AdminRoute><AdminEloAppealDetailScreen /></AdminRoute> },
 
       // Notifications - requires authentication
       { path: 'notifications', element: <ProtectedRoute requireAuth><NotificationsScreen /></ProtectedRoute> },
+      { path: 'elo', element: <ProtectedRoute requireAuth><EloHistoryScreen /></ProtectedRoute> },
       { path: 'reviews/create', element: <ProtectedRoute requireAuth requireSetup><CreateReviewScreen /></ProtectedRoute> },
       { path: 'reviews', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><MyReviewsScreen /></ProtectedRoute> },
 

@@ -1,0 +1,108 @@
+.elo-page { width: min(1100px, 100%); margin: 0 auto; padding: 1.5rem 0 2.5rem; color: var(--gb-text-primary); }
+.elo-page > header span.elo-eyebrow { color: var(--gb-cyan); font-size: .7rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.elo-page > header h1 { margin: .2rem 0; font-size: 2rem; font-weight: 900; }
+.elo-page > header p { margin: 0; color: var(--gb-text-secondary); }
+
+.elo-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; margin: 1.1rem 0; }
+.elo-summary-card { display: flex; align-items: center; gap: .8rem; padding: 1rem 1.1rem; border: 1px solid var(--gb-border); border-radius: .8rem; background: var(--gb-glass-bg); }
+.elo-summary-icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .7rem; flex: none; }
+.elo-summary-icon.cyan { color: var(--gb-cyan); background: color-mix(in srgb, var(--gb-cyan) 12%, transparent); }
+.elo-summary-icon.green { color: #16a34a; background: color-mix(in srgb, #16a34a 12%, transparent); }
+.elo-summary-icon.red { color: #dc2626; background: color-mix(in srgb, #dc2626 12%, transparent); }
+.elo-summary-card strong { display: block; font-size: 1.35rem; line-height: 1.1; }
+.elo-summary-card span { color: var(--gb-text-secondary); font-size: .72rem; font-weight: 700; }
+.elo-summary-card .elo-plus { color: #16a34a; }
+.elo-summary-card .elo-minus { color: #dc2626; }
+
+.elo-tabs { display: flex; gap: .4rem; margin: 1rem 0 .75rem; }
+.elo-tab { padding: .5rem .9rem; border: 1px solid var(--gb-border); border-radius: 999px; color: var(--gb-text-secondary); background: transparent; font-weight: 800; font-size: .8rem; cursor: pointer; }
+.elo-tab.active { color: white; border-color: var(--gb-cyan); background: var(--gb-cyan); }
+
+.elo-filter-tabs { display: flex; flex-wrap: wrap; gap: .4rem; }
+.elo-filter-tab { padding: .4rem .8rem; border: 1px solid var(--gb-border); border-radius: 999px; color: var(--gb-text-secondary); background: var(--gb-glass-bg); font-weight: 700; font-size: .75rem; cursor: pointer; }
+.elo-filter-tab.active { color: var(--gb-cyan); border-color: var(--gb-cyan); background: color-mix(in srgb, var(--gb-cyan) 10%, transparent); }
+
+.elo-error { margin-top: .75rem; padding: .7rem; border-radius: .55rem; color: #b91c1c; background: #fee2e2; }
+.elo-notice { margin-top: .75rem; padding: .7rem; border-radius: .55rem; color: #166534; background: #dcfce7; }
+
+.elo-list { display: flex; flex-direction: column; gap: .5rem; margin-top: 1rem; }
+.elo-row { border: 1px solid var(--gb-border); border-radius: .75rem; background: var(--gb-glass-bg); }
+.elo-row-main { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: .9rem; padding: .8rem 1rem; }
+.elo-delta { min-width: 5.5rem; text-align: right; font-weight: 900; font-size: 1.05rem; white-space: nowrap; }
+.elo-delta.gained { color: #16a34a; }
+.elo-delta.lost { color: #dc2626; }
+.elo-row-title { font-weight: 800; font-size: .86rem; }
+.elo-row-meta { display: flex; flex-wrap: wrap; gap: .3rem .7rem; margin-top: .2rem; color: var(--gb-text-secondary); font-size: .72rem; }
+.elo-row-date { color: var(--gb-text-secondary); font-size: .75rem; white-space: nowrap; }
+.elo-row-actions { display: flex; gap: .45rem; }
+.elo-link-button { display: inline-flex; align-items: center; gap: .3rem; border: 0; color: var(--gb-cyan); background: transparent; font-weight: 800; font-size: .78rem; cursor: pointer; }
+.elo-appeal-button { padding: .42rem .7rem; border: 1px solid var(--gb-cyan); border-radius: .55rem; color: var(--gb-cyan); background: transparent; font-weight: 800; font-size: .75rem; cursor: pointer; }
+.elo-empty { padding: 2.5rem 1rem; color: var(--gb-text-secondary); text-align: center; }
+
+.elo-detail { padding: 0 1rem 1rem; }
+.elo-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+.elo-detail-grid > div { padding: .65rem .75rem; border: 1px solid var(--gb-border); border-radius: .6rem; }
+.elo-detail-grid small { display: block; color: var(--gb-text-secondary); font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.elo-detail-grid strong { font-size: .85rem; word-break: break-word; }
+.elo-detail-full { grid-column: 1 / -1; }
+.elo-appeal-badge { display: inline-block; margin-top: .6rem; padding: .3rem .6rem; border-radius: 999px; font-size: .7rem; font-weight: 900; }
+.elo-appeal-badge.pending { color: #92400e; background: #fef3c7; }
+.elo-appeal-badge.resolved { color: #166534; background: #dcfce7; }
+.elo-appeal-badge.rejected { color: #991b1b; background: #fee2e2; }
+
+.elo-pagination { display: flex; align-items: center; justify-content: center; gap: .8rem; margin-top: 1.1rem; }
+.elo-pagination button { padding: .45rem .9rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: var(--gb-glass-bg); font-weight: 800; cursor: pointer; }
+.elo-pagination button:disabled { opacity: .45; cursor: default; }
+.elo-pagination span { color: var(--gb-text-secondary); font-size: .8rem; font-weight: 700; }
+
+.elo-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(15,23,42,.55); }
+.elo-modal { width: min(540px, 100%); max-height: 92vh; overflow-y: auto; padding: 1.4rem; border: 1px solid var(--gb-border); border-radius: .9rem; color: var(--gb-text-primary); background: var(--gb-bg-primary); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.elo-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
+.elo-modal-header h2 { margin: 0; font-size: 1.3rem; }
+.elo-modal-header p { margin: .25rem 0 0; color: var(--gb-text-secondary); font-size: .8rem; }
+.elo-modal-close { border: 0; color: var(--gb-text-secondary); background: transparent; cursor: pointer; }
+.elo-modal label { display: block; margin-top: .9rem; font-size: .78rem; font-weight: 800; }
+.elo-modal textarea { width: 100%; min-height: 7rem; margin-top: .4rem; padding: .65rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: inherit; background: var(--gb-bg-primary); resize: vertical; font: inherit; }
+.elo-modal textarea:focus { outline: 2px solid var(--gb-cyan); outline-offset: 1px; }
+.elo-modal small.elo-help { display: block; margin-top: .3rem; color: var(--gb-text-secondary); font-size: .7rem; }
+.elo-modal-actions { display: flex; justify-content: flex-end; gap: .55rem; margin-top: 1.2rem; }
+.elo-modal-actions button { padding: .6rem 1rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: transparent; font-weight: 800; cursor: pointer; }
+.elo-modal-actions button.primary { border-color: var(--gb-cyan); color: white; background: var(--gb-cyan); }
+.elo-modal-actions button:disabled { opacity: .55; cursor: default; }
+
+.elo-file-picker { margin-top: .4rem; }
+.elo-file-picker-input { display: none; }
+.elo-file-picker-button { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border: 1px dashed var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: var(--gb-glass-bg); font-weight: 800; font-size: .78rem; cursor: pointer; }
+.elo-file-picker-button:disabled { opacity: .5; cursor: default; }
+.elo-file-picker-hint { display: block; margin-top: .3rem; color: var(--gb-text-secondary); font-size: .7rem; }
+.elo-file-picker-list { display: flex; flex-direction: column; gap: .35rem; margin-top: .5rem; }
+.elo-file-picker-item { display: flex; align-items: center; gap: .5rem; padding: .45rem .6rem; border: 1px solid var(--gb-border); border-radius: .5rem; font-size: .76rem; }
+.elo-file-picker-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.elo-file-picker-item small { color: var(--gb-text-secondary); }
+.elo-file-picker-item button { display: grid; place-items: center; border: 0; color: var(--gb-text-secondary); background: transparent; cursor: pointer; }
+
+.elo-appeal-card { display: flex; flex-direction: column; gap: .5rem; padding: .95rem 1rem; border: 1px solid var(--gb-border); border-radius: .75rem; background: var(--gb-glass-bg); }
+.elo-appeal-card-head { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+.elo-appeal-card-head strong { font-size: .86rem; }
+.elo-appeal-status { padding: .25rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 900; }
+.elo-appeal-status.status-0 { color: #92400e; background: #fef3c7; }
+.elo-appeal-status.status-1 { color: #1e40af; background: #dbeafe; }
+.elo-appeal-status.status-2, .elo-appeal-status.status-3 { color: #166534; background: #dcfce7; }
+.elo-appeal-status.status-4 { color: #991b1b; background: #fee2e2; }
+.elo-appeal-status.status-5 { color: var(--gb-text-secondary); background: var(--gb-glass-bg); }
+.elo-appeal-card p.elo-appeal-reason { margin: 0; color: var(--gb-text-secondary); font-size: .8rem; white-space: pre-wrap; }
+.elo-appeal-card-meta { display: flex; flex-wrap: wrap; gap: .3rem .9rem; color: var(--gb-text-secondary); font-size: .72rem; }
+.elo-appeal-card-actions { display: flex; justify-content: flex-end; }
+
+@media (max-width: 900px) {
+  .elo-summary { grid-template-columns: repeat(2, 1fr); }
+  .elo-row-main { grid-template-columns: minmax(0, 1fr) auto; }
+  .elo-delta { grid-column: 1; grid-row: 1; }
+  .elo-row-date { display: none; }
+  .elo-row-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+@media (max-width: 520px) {
+  .elo-summary { grid-template-columns: 1fr; }
+  .elo-detail-grid { grid-template-columns: 1fr; }
+  .elo-detail-full { grid-column: auto; }
+}

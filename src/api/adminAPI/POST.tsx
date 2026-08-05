@@ -12,6 +12,12 @@ import type { MessageResponse } from '../messageAPI/GET';
 import type { EnforcementPayload } from '../../types/models/AdminPhase1';
 import type { AdminContractReportDetail, ContractReportAdminResolutionAction, ContractReportInformationTarget } from '../../types/models/AdminContractReport';
 import type { AdminProposalDetail } from '../../types/models/AdminProposal';
+import type {
+  AdminEloAdjustmentPayload,
+  AdminResolveEloAppealPayload,
+  EloAppeal,
+  EloTransaction,
+} from '../../types/elo';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -207,4 +213,11 @@ export const adminPostAPI = {
     return apiService.post<WithdrawalResponse>(`admin/withdrawals/${withdrawalId}/retry`);
   },
 
+  // --- Elo management ---
+
+  resolveEloAppeal: (appealId: string, payload: AdminResolveEloAppealPayload): Promise<ApiResponse<EloAppeal>> =>
+    apiService.post(`${Admin_Api_Base_Url}/elo/appeals/${appealId}/resolve`, payload),
+
+  applyAdminEloAdjustment: (payload: AdminEloAdjustmentPayload): Promise<ApiResponse<EloTransaction | null>> =>
+    apiService.post(`${Admin_Api_Base_Url}/elo/adjustments`, payload),
 };

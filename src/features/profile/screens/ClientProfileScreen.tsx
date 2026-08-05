@@ -380,6 +380,17 @@ export default function ClientProfileScreen() {
                   <span className="fp-arc-label">{t('profile.profileStrength')}</span>
                 </div>
               </div>
+
+              {currentUser?.id === targetId && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/elo')}
+                  className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none mt-3 mx-auto"
+                >
+                  <span>{t('profile.eloHistoryLink')}</span>
+                  <ChevronRight size={14} />
+                </button>
+              )}
             </div>
 
             {/* Job List Card (Col-8) */}

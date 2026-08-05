@@ -3,6 +3,7 @@ import type { ApiResponse } from '../../types/common';
 import type { FAQCategoryDto, FAQDto, UpdateFAQCategoryPayload, UpdateFAQPayload } from '../../types/models/FAQ';
 import type { AdminUserDto, UpdateUserPayload } from '../../types/models/User';
 import type { AccountReportDetail, AccountReportResolutionAction, UserViolationType } from '../../types/models/AdminPhase1';
+import type { EloPolicy } from '../../types/elo';
 
 const Admin_Api_Base_Url = '/admin';
 
@@ -69,5 +70,8 @@ export const adminPutAPI = {
   ): Promise<ApiResponse<any>> => {
     return apiService.put<any>(`${Admin_Api_Base_Url}/contracts/${contractId}`, payload);
   },
+
+  updateEloPolicy: (payload: EloPolicy): Promise<ApiResponse<EloPolicy>> =>
+    apiService.put(`${Admin_Api_Base_Url}/elo/policy`, payload),
 };
 
