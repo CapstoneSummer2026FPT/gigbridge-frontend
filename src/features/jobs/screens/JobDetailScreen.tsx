@@ -384,11 +384,7 @@ export default function JobDetailScreen() {
             {/* Job Description Card */}
             <div className="jd-glass-card rounded-2xl p-6 md:p-8 jd-gsap-card">
               <h2 className="jd-section-title">{t('jobDetail.jobDescription')}</h2>
-<<<<<<< HEAD
               <div className="jd-desc-text whitespace-pre-line">{renderDescription(job.description)}</div>
-=======
-              <div className="jd-desc-content">{job.description}</div>
->>>>>>> 6e6015bfcb8c8d0aac0679d1f0be13eba3d8dbee
             </div>
 
             {/* Baseline Milestone Plan */}
