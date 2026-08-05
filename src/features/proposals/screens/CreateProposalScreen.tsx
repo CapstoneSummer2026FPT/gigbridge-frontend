@@ -391,7 +391,7 @@ export default function CreateProposalScreen() {
               <h2 className="cps-section-title">{t('createProposal.section3Title')}</h2>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="cps-budget-box">
+                <div className="cps-budget-box" aria-label="Calculated proposal budget">
                   <span className="block text-[11px] font-extrabold uppercase tracking-wider text-text-secondary mb-1">
                     {t('createProposal.proposedRate')}
                   </span>
@@ -406,7 +406,7 @@ export default function CreateProposalScreen() {
                   </div>
                 </div>
 
-                <div className="cps-budget-box">
+                <div className="cps-budget-box" aria-label="Overall proposal duration">
                   <span className="block text-[11px] font-extrabold uppercase tracking-wider text-text-secondary mb-1">
                     {t('createProposal.estimatedDuration')}
                   </span>

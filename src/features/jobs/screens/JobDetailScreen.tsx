@@ -18,6 +18,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
+import { renderDescription } from '../utils/descriptionFormatter';
 
 export default function JobDetailScreen() {
   const { t } = useTranslation();
@@ -359,7 +360,7 @@ export default function JobDetailScreen() {
             {/* Job Description Card */}
             <div className="jd-glass-card rounded-2xl p-6 md:p-8 jd-gsap-card">
               <h2 className="jd-section-title">{t('jobDetail.jobDescription')}</h2>
-              <div className="jd-desc-content">{job.description}</div>
+              <div className="jd-desc-text whitespace-pre-line">{renderDescription(job.description)}</div>
             </div>
 
             {/* Baseline Milestone Plan */}

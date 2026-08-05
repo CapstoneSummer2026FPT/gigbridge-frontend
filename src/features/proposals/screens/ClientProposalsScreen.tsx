@@ -144,7 +144,9 @@ export default function ClientProposalsScreen() {
     setProposalReloadKey,
     isBusy,
     canClientAct,
+    runManualEvaluation,
   } = useClientProposals();
+
 
   // GSAP Entrance animation
   usePageGSAP({
@@ -157,68 +159,6 @@ export default function ClientProposalsScreen() {
     ],
   });
 
-  const modalContainerRef = useRef<HTMLDivElement>(null);
-  const tabContentRef = useRef<HTMLDivElement>(null);
-
-  // GSAP Modal Entrance Animation (following SKILL.md autoAlpha & matchMedia rules)
-  useGSAP(() => {
-    if (!evalModalOpen || !modalContainerRef.current) return;
-
-    const mm = gsap.matchMedia();
-    mm.add({
-      reduceMotion: "(prefers-reduced-motion: reduce)",
-      all: "(min-width: 0px)"
-    }, (context) => {
-      const { reduceMotion } = context.conditions!;
-      const mult = reduceMotion ? 0 : 1;
-
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-      tl.fromTo(
-        '.cps-modal-backdrop',
-        { autoAlpha: 0 },
-        { autoAlpha: 1, duration: 0.3 * mult, ease: 'power2.out' }
-      );
-
-      tl.fromTo(
-        '.cps-modal-card',
-        { autoAlpha: 0, y: reduceMotion ? 0 : 32, scale: reduceMotion ? 1 : 0.94 },
-        { autoAlpha: 1, y: 0, scale: 1, duration: 0.4 * mult, ease: 'back.out(1.4)' },
-        '-=0.15'
-      );
-
-      tl.fromTo(
-        '.cps-modal-anim-header',
-        { autoAlpha: 0, y: reduceMotion ? 0 : 12 },
-        { autoAlpha: 1, y: 0, duration: 0.3 * mult, stagger: 0.05 * mult, ease: 'power2.out' },
-        '-=0.2'
-      );
-    });
-
-    return () => mm.revert();
-  }, { scope: modalContainerRef, dependencies: [evalModalOpen] });
-
-  // GSAP Tab Switch Animation
-  useGSAP(() => {
-    if (!evalModalOpen || !tabContentRef.current) return;
-
-    const mm = gsap.matchMedia();
-    mm.add({
-      reduceMotion: "(prefers-reduced-motion: reduce)",
-      all: "(min-width: 0px)"
-    }, (context) => {
-      const { reduceMotion } = context.conditions!;
-      if (reduceMotion) return;
-
-      gsap.fromTo(
-        tabContentRef.current,
-        { autoAlpha: 0, y: 12 },
-        { autoAlpha: 1, y: 0, duration: 0.3, ease: 'power2.out', clearProps: 'transform,opacity' }
-      );
-    });
-
-    return () => mm.revert();
-  }, { scope: tabContentRef, dependencies: [modalTab] });
 
   const detailMilestoneTotal = detail?.milestonePlans?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ?? 0;
 
@@ -743,8 +683,27 @@ export default function ClientProposalsScreen() {
                         {evalError}
                       </div>
                     )}
+                    {!evalLoading && !evalResult && (
+                      <div className="rounded-xl border border-border bg-muted/10 p-6 text-center text-xs text-muted-foreground space-y-4">
+                        <Brain size={32} className="mx-auto text-purple-500/60" />
+                        <div>
+                          <p className="font-semibold text-foreground">No AI Evaluation Interview Report available.</p>
+                          {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
+                            <p className="text-muted-foreground mt-1">This proposal has not been evaluated by AI yet.</p>
+                          )}
+                        </div>
+                        {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
+                          <button
+                            onClick={() => activeId && runManualEvaluation(activeId)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md cursor-pointer border-none"
+                          >
+                            <Brain size={14} /> Evaluate Proposal with AI
+                          </button>
+                        )}
+                      </div>
+                    )}
 
-                    {!evalLoading && rawAnswers.length > 0 && evalResult && (
+                    {!evalLoading && evalResult && (
                       <div className="space-y-6">
                         {/* Summary Card */}
                         <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5 space-y-4">

@@ -9,13 +9,13 @@ export interface JobDurationParts {
 
 export const DEFAULT_JOB_DURATION_UNIT: JobDurationUnit = 'weeks';
 
-const DURATION_PATTERN = /^\s*(\d+)(?:\s*[-–]\s*\d+)?\s*(week|weeks|month|months|year|years)\s*$/i;
+const DURATION_PATTERN = /^\s*(\d+)(?:\s*[-–]\s*\d+)?\s*(week|weeks|month|months|year|years|tuần|tuan|tháng|thang|năm|nam)\s*$/iu;
 
 const normalizeDurationUnit = (unit: string): JobDurationUnit | null => {
   const normalized = unit.trim().toLowerCase();
-  if (normalized === 'week' || normalized === 'weeks') return 'weeks';
-  if (normalized === 'month' || normalized === 'months') return 'months';
-  if (normalized === 'year' || normalized === 'years') return 'years';
+  if (['week', 'weeks', 'tuần', 'tuan'].includes(normalized)) return 'weeks';
+  if (['month', 'months', 'tháng', 'thang'].includes(normalized)) return 'months';
+  if (['year', 'years', 'năm', 'nam'].includes(normalized)) return 'years';
   return null;
 };
 
