@@ -162,9 +162,11 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
   const label = (key: string, fallback: string) => t(key, { defaultValue: fallback });
   return ADMIN_GROUPS.map(group => {
     const managers = ADMIN_MANAGERS.filter(manager => manager.showInNavigation && manager.group === group.id);
-    const reportEntries = managers.filter(manager => manager.parentId === 'reports');
+    const parentIds = [...new Set(managers.flatMap(manager => (manager.parentId ? [manager.parentId] : [])))];
+    // Root items are those without a parent group; parents and their children
+    // collapse into a single expandable nav entry (e.g. Reports, Elo).
     const items = managers
-      .filter(manager => manager.parentId !== 'reports')
+      .filter(manager => !manager.parentId)
       .map(manager => ({
         id: manager.id,
         label: label(manager.labelKey, manager.fallbackLabel),
@@ -172,24 +174,26 @@ function getAdminNavSections(t: any, openReportCount: number | null): NavSection
         path: manager.path,
       } as NavItem));
 
-    if (reportEntries.length > 0) {
-      const reportManager = reportEntries.find(manager => manager.id === 'reports')!;
+    parentIds.forEach(parentId => {
+      const parent = managers.find(manager => manager.id === parentId);
+      if (!parent) return;
+      const children = managers.filter(manager => manager.parentId === parentId);
       items.push({
-        id: 'reports',
-        label: label(reportManager.labelKey, reportManager.fallbackLabel),
-        icon: React.createElement(reportManager.icon, { size: 18 }),
-        path: reportManager.path,
-        badge: openReportCount === null ? undefined : openReportCount.toString(),
-        badgeType: 'red',
-        badgeLabel: 'Open reports',
-        children: reportEntries.map(manager => ({
+        id: parent.id,
+        label: label(parent.labelKey, parent.fallbackLabel),
+        icon: React.createElement(parent.icon, { size: 18 }),
+        path: parent.path,
+        badge: parentId === 'reports' && openReportCount !== null ? openReportCount.toString() : undefined,
+        badgeType: parentId === 'reports' ? 'red' : undefined,
+        badgeLabel: parentId === 'reports' ? 'Open reports' : undefined,
+        children: children.map(manager => ({
           id: manager.id,
           label: label(manager.labelKey, manager.fallbackLabel),
           icon: React.createElement(manager.icon, { size: 18 }),
           path: manager.path,
         })),
       });
-    }
+    });
 
     return { title: label(group.labelKey, group.fallbackLabel), items };
   }).filter(section => section.items.length > 0);

@@ -5,9 +5,12 @@ import {
   Bell,
   Briefcase,
   FileCheck2,
+  FileQuestion,
   FileText,
   Flag,
+  Gauge,
   HelpCircle,
+  History,
   Layers,
   LayoutDashboard,
   Settings,
@@ -37,7 +40,7 @@ export interface AdminManagerDefinition {
   group: AdminManagerGroup;
   showInNavigation: boolean;
   showOnDashboard: boolean;
-  parentId?: 'reports';
+  parentId?: 'reports' | 'elo';
 }
 
 export const ADMIN_GROUPS: ReadonlyArray<{
@@ -68,6 +71,9 @@ export const ADMIN_MANAGERS: readonly AdminManagerDefinition[] = [
   { id: 'analytics', labelKey: 'nav.platformAnalytics', fallbackLabel: 'Platform Analytics', descriptionKey: 'adminDashboard.descriptions.analytics', fallbackDescription: 'Track platform revenue, transactions, and marketplace opportunities', path: '/admin/analytics', icon: BarChart3, group: 'contracts', showInNavigation: true, showOnDashboard: true },
   { id: 'withdrawals', labelKey: 'nav.withdrawals', fallbackLabel: 'Withdrawals', descriptionKey: 'adminDashboard.descriptions.withdrawals', fallbackDescription: 'Review and reconcile withdrawal requests', path: '/admin/withdrawals', icon: Banknote, group: 'contracts', showInNavigation: true, showOnDashboard: true },
   { id: 'disputes', labelKey: 'nav.disputeManagement', fallbackLabel: 'Disputes', descriptionKey: 'adminDashboard.descriptions.disputes', fallbackDescription: 'Resolve disputes using evidence and financial context', path: '/admin/disputes', icon: Shield, group: 'moderation', showInNavigation: true, showOnDashboard: true },
+  { id: 'elo', labelKey: 'adminElo.nav', fallbackLabel: 'Elo Management', descriptionKey: 'adminDashboard.descriptions.elo', fallbackDescription: 'Review Elo ledgers, resolve appeals, and configure the dispute penalty', path: '/admin/elo', icon: Gauge, group: 'moderation', showInNavigation: true, showOnDashboard: true, parentId: 'elo' },
+  { id: 'elo-history', labelKey: 'adminElo.navHistory', fallbackLabel: 'Elo History', descriptionKey: 'adminDashboard.descriptions.eloHistory', fallbackDescription: 'Inspect every Elo transaction across the platform', path: '/admin/elo/history', icon: History, group: 'moderation', showInNavigation: true, showOnDashboard: true, parentId: 'elo' },
+  { id: 'elo-appeals', labelKey: 'adminElo.navAppeals', fallbackLabel: 'Elo Appeals', descriptionKey: 'adminDashboard.descriptions.eloAppeals', fallbackDescription: 'Review and resolve Elo point appeals', path: '/admin/elo/appeals', icon: FileQuestion, group: 'moderation', showInNavigation: true, showOnDashboard: true, parentId: 'elo' },
   { id: 'faqs', labelKey: 'nav.faqManagement', fallbackLabel: 'FAQ Management', descriptionKey: 'adminDashboard.descriptions.faqs', fallbackDescription: 'Maintain public help content', path: '/admin/faq-management', icon: HelpCircle, group: 'configuration', showInNavigation: true, showOnDashboard: true },
   { id: 'contract-templates', labelKey: 'nav.contractTemplates', fallbackLabel: 'Contract Templates', descriptionKey: 'adminDashboard.descriptions.templates', fallbackDescription: 'Maintain reusable contract templates', path: '/admin/contract-templates', icon: Settings, group: 'configuration', showInNavigation: true, showOnDashboard: true },
   { id: 'notifications', labelKey: 'nav.notifications', fallbackLabel: 'Notifications', descriptionKey: 'adminDashboard.descriptions.notifications', fallbackDescription: 'Publish and review administrator notifications', path: '/admin/notifications', icon: Bell, group: 'monitoring', showInNavigation: true, showOnDashboard: true },

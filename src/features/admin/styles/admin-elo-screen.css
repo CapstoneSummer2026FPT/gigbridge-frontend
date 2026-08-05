@@ -1,0 +1,114 @@
+.admin-elo-page { width: min(1240px, 100%); margin: 0 auto; padding: 1.25rem 0 2rem; color: var(--gb-text-primary); }
+.admin-elo-page > header span.admin-elo-eyebrow { color: var(--gb-cyan); font-size: .7rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.admin-elo-page > header h1 { margin: .2rem 0; font-size: 2rem; font-weight: 900; }
+.admin-elo-page > header p { margin: 0; color: var(--gb-text-secondary); }
+
+.admin-elo-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; margin: 1rem 0; }
+.admin-elo-summary div { display: flex; flex-direction: column; padding: 1rem; border: 1px solid var(--gb-border); border-radius: .75rem; background: var(--gb-glass-bg); }
+.admin-elo-summary strong { font-size: 1.5rem; }
+.admin-elo-summary span { color: var(--gb-text-secondary); font-size: .75rem; }
+.admin-elo-summary strong.gained { color: #16a34a; }
+.admin-elo-summary strong.lost { color: #dc2626; }
+
+.admin-elo-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1rem; margin-top: 1rem; align-items: start; }
+.admin-elo-policy-card, .admin-elo-quick-card { padding: 1.1rem; border: 1px solid var(--gb-border); border-radius: .8rem; background: var(--gb-glass-bg); }
+.admin-elo-policy-card h3, .admin-elo-quick-card h3 { margin: 0 0 .5rem; font-size: .95rem; }
+.admin-elo-policy-row { display: flex; align-items: center; justify-content: space-between; padding: .55rem 0; border-bottom: 1px solid var(--gb-border); font-size: .82rem; }
+.admin-elo-policy-row:last-of-type { border-bottom: 0; }
+.admin-elo-policy-row span { color: var(--gb-text-secondary); font-weight: 700; }
+.admin-elo-policy-row strong { text-transform: capitalize; }
+.admin-elo-policy-help { margin: .6rem 0 .8rem; color: var(--gb-text-secondary); font-size: .75rem; line-height: 1.45; }
+.admin-elo-quick-links { display: flex; flex-direction: column; gap: .5rem; }
+.admin-elo-quick-link { display: flex; align-items: center; gap: .5rem; padding: .65rem .8rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); text-decoration: none; font-weight: 800; font-size: .82rem; }
+.admin-elo-quick-link:hover { border-color: var(--gb-cyan); color: var(--gb-cyan); }
+
+.admin-elo-filters { display: grid; grid-template-columns: minmax(260px, 2fr) repeat(2, minmax(150px, 1fr)); gap: .55rem; padding: .75rem; border: 1px solid var(--gb-border); border-radius: .75rem; background: var(--gb-glass-bg); }
+.admin-elo-filters select, .admin-elo-search { min-height: 2.6rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: var(--gb-bg-primary); }
+.admin-elo-filters select { padding: 0 .55rem; }
+.admin-elo-search { display: flex; align-items: center; gap: .4rem; padding-left: .65rem; }
+.admin-elo-search input { min-width: 0; flex: 1; border: 0; outline: 0; color: inherit; background: transparent; }
+.admin-elo-search button { align-self: stretch; padding: 0 .7rem; border: 0; border-left: 1px solid var(--gb-border); color: white; background: var(--gb-cyan); font-weight: 800; cursor: pointer; }
+
+.admin-elo-error { margin-top: .75rem; padding: .7rem; border-radius: .55rem; color: #b91c1c; background: #fee2e2; }
+.admin-elo-notice { margin-top: .75rem; padding: .7rem; border-radius: .55rem; color: #166534; background: #dcfce7; }
+
+.admin-elo-table-wrap { overflow-x: auto; margin-top: 1rem; border: 1px solid var(--gb-border); border-radius: .8rem; background: var(--gb-glass-bg); }
+.admin-elo-table { width: 100%; min-width: 860px; border-collapse: collapse; }
+.admin-elo-table th, .admin-elo-table td { padding: .75rem; border-bottom: 1px solid var(--gb-border); text-align: left; vertical-align: middle; }
+.admin-elo-table th { color: var(--gb-text-secondary); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; }
+.admin-elo-table td { font-size: .82rem; }
+.admin-elo-table td small { display: block; margin-top: .15rem; color: var(--gb-text-secondary); }
+.admin-elo-empty { padding: 2rem !important; color: var(--gb-text-secondary); text-align: center !important; }
+.admin-elo-delta { font-weight: 900; white-space: nowrap; }
+.admin-elo-delta.gained { color: #16a34a; }
+.admin-elo-delta.lost { color: #dc2626; }
+.admin-elo-row-actions { display: flex; gap: .6rem; }
+.admin-elo-link-button { display: inline-flex; align-items: center; gap: .3rem; border: 0; color: var(--gb-cyan); background: transparent; font-weight: 800; font-size: .78rem; cursor: pointer; }
+.admin-elo-adjust-button { padding: .42rem .7rem; border: 1px solid var(--gb-cyan); border-radius: .55rem; color: var(--gb-cyan); background: transparent; font-weight: 800; font-size: .74rem; cursor: pointer; }
+.admin-elo-status { display: inline-block; padding: .25rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 900; white-space: nowrap; }
+.admin-elo-status.status-0 { color: #92400e; background: #fef3c7; }
+.admin-elo-status.status-1 { color: #1e40af; background: #dbeafe; }
+.admin-elo-status.status-2, .admin-elo-status.status-3 { color: #166534; background: #dcfce7; }
+.admin-elo-status.status-4 { color: #991b1b; background: #fee2e2; }
+.admin-elo-status.status-5 { color: var(--gb-text-secondary); background: var(--gb-glass-bg); }
+.admin-elo-pagination { display: flex; align-items: center; justify-content: center; gap: .8rem; margin-top: 1.1rem; }
+.admin-elo-pagination button { padding: .45rem .9rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: var(--gb-glass-bg); font-weight: 800; cursor: pointer; }
+.admin-elo-pagination button:disabled { opacity: .45; cursor: default; }
+.admin-elo-pagination span { color: var(--gb-text-secondary); font-size: .8rem; font-weight: 700; }
+
+.admin-elo-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(15,23,42,.55); }
+.admin-elo-modal { width: min(560px, 100%); max-height: 92vh; overflow-y: auto; padding: 1.4rem; border: 1px solid var(--gb-border); border-radius: .9rem; color: var(--gb-text-primary); background: var(--gb-bg-primary); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+.admin-elo-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
+.admin-elo-modal-header h2 { margin: 0; font-size: 1.3rem; }
+.admin-elo-modal-header p { margin: .25rem 0 0; color: var(--gb-text-secondary); font-size: .8rem; }
+.admin-elo-modal-close { border: 0; color: var(--gb-text-secondary); background: transparent; cursor: pointer; }
+.admin-elo-modal label { display: block; margin-top: .9rem; font-size: .78rem; font-weight: 800; }
+.admin-elo-modal input[type='text'], .admin-elo-modal input[type='number'], .admin-elo-modal textarea, .admin-elo-modal select { width: 100%; margin-top: .4rem; padding: .6rem .65rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: inherit; background: var(--gb-bg-primary); font: inherit; }
+.admin-elo-modal textarea { min-height: 5.5rem; resize: vertical; }
+.admin-elo-modal input:focus, .admin-elo-modal textarea:focus, .admin-elo-modal select:focus { outline: 2px solid var(--gb-cyan); outline-offset: 1px; }
+.admin-elo-modal small.admin-elo-help { display: block; margin-top: .3rem; color: var(--gb-text-secondary); font-size: .7rem; }
+.admin-elo-detail-card label { display: block; margin-top: .9rem; font-size: .78rem; font-weight: 800; }
+.admin-elo-detail-card input[type='number'], .admin-elo-detail-card textarea { width: 100%; margin-top: .4rem; padding: .6rem .65rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: inherit; background: var(--gb-bg-primary); font: inherit; }
+.admin-elo-detail-card textarea { min-height: 5.5rem; resize: vertical; }
+.admin-elo-detail-card input:focus, .admin-elo-detail-card textarea:focus { outline: 2px solid var(--gb-cyan); outline-offset: 1px; }
+.admin-elo-detail-card small.admin-elo-help { display: block; margin-top: .3rem; color: var(--gb-text-secondary); font-size: .7rem; }
+.admin-elo-modal-actions { display: flex; justify-content: flex-end; gap: .55rem; margin-top: 1.2rem; }
+.admin-elo-modal-actions button { padding: .6rem 1rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: transparent; font-weight: 800; cursor: pointer; }
+.admin-elo-modal-actions button.primary { border-color: var(--gb-cyan); color: white; background: var(--gb-cyan); }
+.admin-elo-modal-actions button:disabled { opacity: .55; cursor: default; }
+.admin-elo-segmented { display: flex; gap: .5rem; margin-top: .4rem; }
+.admin-elo-segmented button { flex: 1; padding: .6rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: var(--gb-glass-bg); font-weight: 800; font-size: .8rem; cursor: pointer; }
+.admin-elo-segmented button.active { border-color: var(--gb-cyan); color: var(--gb-cyan); background: color-mix(in srgb, var(--gb-cyan) 10%, transparent); }
+
+.admin-elo-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1rem; margin-top: 1.1rem; align-items: start; }
+.admin-elo-detail-card { padding: 1.1rem; border: 1px solid var(--gb-border); border-radius: .8rem; background: var(--gb-glass-bg); }
+.admin-elo-detail-card h3 { margin: 0 0 .7rem; font-size: .95rem; }
+.admin-elo-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+.admin-elo-detail-grid > div { padding: .65rem .75rem; border: 1px solid var(--gb-border); border-radius: .6rem; }
+.admin-elo-detail-grid small { display: block; color: var(--gb-text-secondary); font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.admin-elo-detail-grid strong { font-size: .85rem; word-break: break-word; }
+.admin-elo-detail-full { grid-column: 1 / -1; }
+.admin-elo-evidence-list { display: flex; flex-direction: column; gap: .4rem; }
+.admin-elo-evidence-item { display: flex; align-items: center; gap: .5rem; padding: .55rem .7rem; border: 1px solid var(--gb-border); border-radius: .55rem; font-size: .8rem; }
+.admin-elo-evidence-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-elo-evidence-item small { color: var(--gb-text-secondary); }
+.admin-elo-resolution-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem; margin-top: .4rem; }
+.admin-elo-resolution-options button { padding: .6rem; border: 1px solid var(--gb-border); border-radius: .55rem; color: var(--gb-text-primary); background: var(--gb-glass-bg); font-weight: 800; font-size: .78rem; text-align: left; cursor: pointer; }
+.admin-elo-resolution-options button.active { border-color: var(--gb-cyan); color: var(--gb-cyan); background: color-mix(in srgb, var(--gb-cyan) 10%, transparent); }
+.admin-elo-user-mini { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .6rem; }
+.admin-elo-user-mini strong { font-size: .95rem; }
+.admin-elo-user-mini span { color: var(--gb-text-secondary); font-size: .78rem; word-break: break-word; }
+
+@media (max-width: 1000px) {
+  .admin-elo-layout, .admin-elo-detail-layout { grid-template-columns: 1fr; }
+  .admin-elo-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-elo-search { grid-column: 1 / -1; }
+}
+@media (max-width: 650px) {
+  .admin-elo-summary { grid-template-columns: repeat(2, 1fr); }
+  .admin-elo-filters { grid-template-columns: 1fr; }
+  .admin-elo-search { grid-column: auto; }
+  .admin-elo-detail-grid { grid-template-columns: 1fr; }
+  .admin-elo-detail-full { grid-column: auto; }
+  .admin-elo-resolution-options { grid-template-columns: 1fr; }
+}
