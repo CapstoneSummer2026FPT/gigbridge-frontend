@@ -25,6 +25,7 @@ import {
 } from '../../../api/externalAPI/aiInterviewAPI';
 import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
 import { ProposalStatus } from '../../../types/models/Proposal';
+import { toast } from 'sonner';
 import '../styles/ai-interview-screen.css';
 
 type InterviewStage = 'intro' | 'interview' | 'results';
@@ -528,6 +529,9 @@ export default function AIInterviewScreen() {
             setAnswerState('review');
             return;
           }
+          toast.success(t('aiInterview.proposal.submitted') || 'Proposal submitted successfully!');
+          navigate('/proposals', { state: { submittedProposalId: proposalId } });
+          return;
         } catch (err) {
           setActionError('Failed to submit proposal. Please try again.');
           setAnswerState('review');
