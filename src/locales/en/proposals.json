@@ -70,6 +70,8 @@
     "skipAndContinue": "Skip & Continue"
   },
   "proposalReview": {
+    "titleWord1": "Proposal",
+    "titleWord2": "Review",
     "back": "Back to client dashboard",
     "eyebrow": "Hiring workspace",
     "title": "Proposal review",
@@ -376,5 +378,27 @@
     "errLoadProposal": "Proposal could not be loaded.",
     "errMissingJobId": "Project request id is missing.",
     "errLoadJob": "Project request could not be loaded."
+  },
+  "inbox": {
+    "titleWord1": "My",
+    "titleWord2": "Proposals",
+    "subtitle": "Track and manage your submitted applications",
+    "applications": "Applications",
+    "dashboard": "Dashboard",
+    "loading": "Loading applications...",
+    "noProposals": "No applications found",
+    "noProposalsDesc": "You have not submitted any proposals yet. Browse project requests to find your next opportunity.",
+    "browseJobs": "Browse Jobs",
+    "selectProposal": "Select an application from the list to view full details.",
+    "yourBid": "Your Bid",
+    "duration": "Duration",
+    "coverLetter": "Your Cover Letter",
+    "submittedOn": "Submitted {{date}}",
+    "continueEditing": "Continue Editing",
+    "withdraw": "Withdraw",
+    "viewAnswers": "View Answers",
+    "enterNegotiation": "Enter Negotiation",
+    "openingNegotiation": "Opening...",
+    "withdrawnSuccess": "Proposal withdrawn successfully."
   }
 }

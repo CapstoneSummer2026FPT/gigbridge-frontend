@@ -70,7 +70,9 @@
     "skipAndContinue": "Bỏ qua & tiếp tục"
   },
   "proposalReview": {
-    "back": "Quay lại bảng điều khiển client",
+    "titleWord1": "Xem Xét",
+    "titleWord2": "Đề Xuất",
+    "back": "Quay lại bảng điều khiển khách hàng",
     "eyebrow": "Không gian tuyển dụng",
     "title": "Đánh giá đề xuất",
     "subtitle": "So sánh ứng viên, xem kế hoạch thực hiện và lựa chọn đề xuất phù hợp.",
@@ -376,5 +378,27 @@
     "errLoadProposal": "Không thể tải thông tin đề xuất.",
     "errMissingJobId": "Thiếu thông tin ID yêu cầu dự án.",
     "errLoadJob": "Không thể tải yêu cầu dự án."
+  },
+  "inbox": {
+    "titleWord1": "Đề Xuất",
+    "titleWord2": "Của Tôi",
+    "subtitle": "Theo dõi và quản lý các đơn ứng tuyển đã nộp của bạn",
+    "applications": "Đơn ứng tuyển",
+    "dashboard": "Bảng điều khiển",
+    "loading": "Đang tải đơn ứng tuyển...",
+    "noProposals": "Không có đơn ứng tuyển nào",
+    "noProposalsDesc": "Bạn chưa nộp đề xuất nào. Hãy khám phá danh sách công việc để tìm cơ hội tiếp theo.",
+    "browseJobs": "Khám phá công việc",
+    "selectProposal": "Chọn một đơn ứng tuyển trong danh sách để xem chi tiết.",
+    "yourBid": "Mức giá đề xuất",
+    "duration": "Thời gian hoàn thành",
+    "coverLetter": "Thư giới thiệu của bạn",
+    "submittedOn": "Đã nộp ngày {{date}}",
+    "continueEditing": "Tiếp tục chỉnh sửa",
+    "withdraw": "Rút đề xuất",
+    "viewAnswers": "Xem câu trả lời",
+    "enterNegotiation": "Vào thương lượng",
+    "openingNegotiation": "Đang mở...",
+    "withdrawnSuccess": "Đã rút đề xuất thành công."
   }
 }
