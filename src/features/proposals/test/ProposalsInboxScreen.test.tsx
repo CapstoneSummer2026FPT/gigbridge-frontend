@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserRole } from '../../../types';
-import ProposalsInboxScreen from './ProposalsInboxScreen';
+import ProposalsInboxScreen from '../screens/ProposalsInboxScreen';
 
 let activeRole = UserRole.Client;
 
@@ -9,11 +9,11 @@ vi.mock('../../../app/providers/AppProvider', () => ({
   useApp: () => ({ role: activeRole }),
 }));
 
-vi.mock('./ClientProposalsScreen', () => ({
+vi.mock('../screens/ClientProposalsScreen', () => ({
   default: () => <div>Phase 2 proposal comparison</div>,
 }));
 
-vi.mock('./FreelancerProposalsScreen', () => ({
+vi.mock('../screens/FreelancerProposalsScreen', () => ({
   default: () => <div>Freelancer proposal inbox</div>,
 }));
 

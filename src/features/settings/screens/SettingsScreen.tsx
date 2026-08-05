@@ -4,6 +4,7 @@ import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { GeneralTab } from '../components/GeneralTab';
 import { SecurityTab } from '../components/SecurityTab';
 import { PaymentTab } from '../components/PaymentTab';
@@ -25,31 +26,15 @@ export default function SettingsScreen() {
     { id: 'preferences', label: t('settings.preferences'), icon: <Globe size={18} /> },
   ];
 
-  // GSAP Entrance Animations
-  useGSAP(
-    () => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-      tl.fromTo(
-        '.settings-header',
-        { opacity: 0, y: -25 },
-        { opacity: 1, y: 0, duration: 0.5 }
-      )
-        .fromTo(
-          '.settings-sidebar-item',
-          { opacity: 0, x: -20 },
-          { opacity: 1, x: 0, duration: 0.4, stagger: 0.08 },
-          '-=0.3'
-        )
-        .fromTo(
-          '.settings-tab-panel',
-          { opacity: 0, y: 20, scale: 0.98 },
-          { opacity: 1, y: 0, scale: 1, duration: 0.5 },
-          '-=0.3'
-        );
-    },
-    { scope: containerRef }
-  );
+  // Reusable GSAP Entrance Hook
+  usePageGSAP({
+    containerRef,
+    groups: [
+      { selector: '.settings-header', y: -25, duration: 0.5 },
+      { selector: '.settings-sidebar-item', x: -20, duration: 0.4, stagger: 0.08 },
+      { selector: '.settings-tab-panel', y: 20, scale: 0.98, duration: 0.5 },
+    ],
+  });
 
   // GSAP Tab Change Transition
   useGSAP(

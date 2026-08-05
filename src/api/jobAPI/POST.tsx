@@ -46,9 +46,10 @@ export const jobPostAPI = {
   },
 
   generateAIHiringPlan: async (
-    data: GenerateJobHiringPlanRequest
+    data: GenerateJobHiringPlanRequest,
+    signal?: AbortSignal,
   ): Promise<ApiResponse<GenerateJobHiringPlanResponse>> => {
-    return apiService.post<GenerateJobHiringPlanResponse>(`${jobPostsUrl}/ai/generate/hiring-plan`, data);
+    return apiService.post<GenerateJobHiringPlanResponse>(`${jobPostsUrl}/ai/generate/hiring-plan`, data, {}, signal);
   },
 
   promoteJobPost: async (jobPostId: string, data: PromoteJobPostRequest): Promise<ApiResponse<JobPostPromotionDto>> =>

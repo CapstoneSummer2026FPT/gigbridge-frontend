@@ -84,7 +84,7 @@ export const proposalPostAPI = {
     proposalId: string,
     onlyIfCached: boolean = false
   ): Promise<ApiResponse<VettingEvaluationResponseDto>> => {
-    const url = `${proposalsUrl}/${proposalId}/ai-interview-judging${onlyIfCached ? '?onlyIfCached=true' : ''}`;
+    const url = `${proposalsUrl}/${proposalId}/answer-evaluation${onlyIfCached ? '?onlyIfCached=true' : ''}`;
     const response = await apiService.post<RawVettingEvaluationResponse>(url);
     if (response.success && response.data) {
       const raw = response.data;

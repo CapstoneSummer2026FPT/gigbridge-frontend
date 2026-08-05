@@ -27,8 +27,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
-import { useGSAP } from '@gsap/react';
-import { gsap } from 'gsap';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow';
@@ -85,33 +84,16 @@ export default function FreelancerProfileScreen() {
     currentUser?.role === 0 && currentUser?.id !== targetId,
   );
 
-  // GSAP Entrance Timeline Animation (Identical clearProps & stagger logic to ClientProfileScreen)
-  useGSAP(
-    () => {
-      if (containerRef.current && !loading) {
-        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-        tl.fromTo(
-          '.cp-glow-orb',
-          { opacity: 0, scale: 0.8 },
-          { opacity: 0.6, scale: 1, duration: 0.8, stagger: 0.15, clearProps: 'all' }
-        )
-        .fromTo(
-          '.cp-hero-card',
-          { opacity: 0, y: 25 },
-          { opacity: 1, y: 0, duration: 0.5, clearProps: 'all' },
-          '-=0.5'
-        )
-        .fromTo(
-          '.cp-card',
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.45, stagger: 0.08, clearProps: 'all' },
-          '-=0.3'
-        );
-      }
-    },
-    { scope: containerRef, dependencies: [loading] }
-  );
+  // Reusable GSAP Entrance Hook
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.cp-glow-orb', scale: 0.8, duration: 0.8, stagger: 0.15, clearProps: 'all' },
+      { selector: '.cp-hero-card', y: 25, duration: 0.5, clearProps: 'all' },
+      { selector: '.cp-card', y: 20, duration: 0.45, stagger: 0.08, clearProps: 'all' },
+    ],
+  });
 
   if (loading) {
     return (

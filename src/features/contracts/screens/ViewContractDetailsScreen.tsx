@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Lock, AlertCircle } from 'lucide-react';
+import { Lock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { disputeGetAPI } from '../../../api/disputeAPI';
@@ -12,6 +12,8 @@ import type { Dispute } from '../../../types/models/Dispute';
 import { ClientContractDetails } from '../components/ClientContractDetails';
 import { FreelancerContractDetails } from '../components/FreelancerContractDetails';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
+import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 
 interface AuditTrailEntry {
   id: string;
@@ -56,7 +58,8 @@ export default function ViewContractDetailsScreen() {
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
   const { user } = useApp();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['contracts', 'common']);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // State
   const [contract, setContract] = useState<ContractDetailsData | null>(null);
@@ -68,6 +71,17 @@ export default function ViewContractDetailsScreen() {
   const [activeDispute, setActiveDispute] = useState<Dispute | null>(null);
   const [activeDisputeError, setActiveDisputeError] = useState<string | null>(null);
   const [activeDisputeLoading, setActiveDisputeLoading] = useState(false);
+
+  // GSAP Entrance animation
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.vcd-gsap-header', y: 20, duration: 0.55 },
+      { selector: '.vcd-gsap-main', y: 24, duration: 0.5 },
+      { selector: '.vcd-gsap-sidebar', y: 24, duration: 0.5, stagger: 0.1 },
+    ],
+  });
 
   // Determine user role relative to contract
   useEffect(() => {
@@ -103,6 +117,7 @@ export default function ViewContractDetailsScreen() {
   const loadContractDetails = useCallback(async () => {
     if (!contractId) {
       setError(t('contracts.noContractIdParam'));
+      setLoading(false);
       return;
     }
 
@@ -117,7 +132,6 @@ export default function ViewContractDetailsScreen() {
       if (apiResponse.success && apiResponse.data) {
         const contractData = apiResponse.data as ContractDetailsData;
         
-        // Fetch milestones for this contract from API
         const shouldLoadActiveDispute = user?.role === UserRole.Client || user?.role === UserRole.Freelancer;
         const [milestonesResponse, activeDisputeResponse] = await Promise.all([
           contractGetAPI.getMilestonesByContract(contractId),
@@ -136,7 +150,7 @@ export default function ViewContractDetailsScreen() {
             setActiveDispute(activeDisputeResponse.data ?? null);
           } else {
             setActiveDispute(null);
-            setActiveDisputeError(activeDisputeResponse.message || 'Unable to check active disputes.');
+            setActiveDisputeError(activeDisputeResponse.message || t('contracts.checkingDispute'));
           }
         } else {
           setActiveDispute(null);
@@ -148,7 +162,6 @@ export default function ViewContractDetailsScreen() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : t('contracts.anErrorOccurred');
       setError(errorMsg);
-      console.error('Failed to load contract details:', err);
     } finally {
       setLoading(false);
       setActiveDisputeLoading(false);
@@ -156,7 +169,7 @@ export default function ViewContractDetailsScreen() {
   }, [contractId, t, user?.role]);
 
   useEffect(() => {
-    loadContractDetails();
+    void loadContractDetails();
   }, [loadContractDetails]);
 
   useContractReadyForEscrowEvent(
@@ -217,17 +230,18 @@ export default function ViewContractDetailsScreen() {
   if (!contractId) {
     return (
       <AppLayout>
-        <div className="w-full max-w-md mx-auto py-20 px-6 text-center">
-          <div className="w-16 h-16 bg-destructive/10 text-destructive border border-destructive/20 rounded-full flex items-center justify-center mx-auto mb-5">
-            <AlertCircle size={28} />
+        <div className="w-full max-w-md mx-auto py-20 px-6 text-center space-y-4">
+          <div className="w-16 h-16 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">{t('contracts.invalidContract')}</h2>
-          <p className="text-muted-foreground text-sm mt-2">{t('contracts.noContractIdParam')}</p>
+          <h2 className="text-xl font-extrabold text-text-primary">{t('contracts.invalidContract')}</h2>
+          <p className="text-xs font-semibold text-text-muted">{t('contracts.noContractIdParam')}</p>
           <button 
+            type="button"
             onClick={() => navigate('/contracts')} 
-            className="btn-primary-custom mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer"
           >
-            {t('contracts.backToContracts')}
+            <ArrowLeft size={14} /> {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>
@@ -236,20 +250,9 @@ export default function ViewContractDetailsScreen() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-10 animate-pulse space-y-8">
-          <div className="text-center py-10 text-muted-foreground font-semibold">{t('contracts.loading')}</div>
-          <div className="bg-card border border-border/50 rounded-3xl p-8 h-48 w-full" />
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-8 space-y-8">
-              <div className="bg-card border border-border/50 rounded-3xl p-8 h-60 w-full" />
-              <div className="bg-card border border-border/50 rounded-3xl p-8 h-80 w-full" />
-            </div>
-            <div className="lg:col-span-4 space-y-8">
-              <div className="bg-card border border-border/50 rounded-3xl p-8 h-40 w-full" />
-              <div className="bg-card border border-border/50 rounded-3xl p-8 h-64 w-full" />
-            </div>
-          </div>
+      <AppLayout fullWidth>
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-12 bg-background">
+          <LemniscateBloomLoader label={t('contracts.loadingContract')} size={56} />
         </div>
       </AppLayout>
     );
@@ -258,17 +261,18 @@ export default function ViewContractDetailsScreen() {
   if (error || !contract) {
     return (
       <AppLayout>
-        <div className="w-full max-w-md mx-auto py-20 px-6 text-center">
-          <div className="w-16 h-16 bg-destructive/10 text-destructive border border-destructive/20 rounded-full flex items-center justify-center mx-auto mb-5">
-            <AlertCircle size={28} />
+        <div className="w-full max-w-md mx-auto py-20 px-6 text-center space-y-4">
+          <div className="w-16 h-16 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">{t('contracts.unableToLoadContract')}</h2>
-          <p className="text-muted-foreground text-sm mt-2">{error || t('contracts.contractNotFound')}</p>
+          <h2 className="text-xl font-extrabold text-text-primary">{t('contracts.unableToLoadContract')}</h2>
+          <p className="text-xs font-semibold text-text-muted">{error || t('contracts.contractNotFound')}</p>
           <button 
+            type="button"
             onClick={() => navigate('/contracts')} 
-            className="btn-primary-custom mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer"
           >
-            {t('contracts.backToContracts')}
+            <ArrowLeft size={14} /> {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>
@@ -278,65 +282,61 @@ export default function ViewContractDetailsScreen() {
   if (!hasAccess()) {
     return (
       <AppLayout>
-        <div className="w-full max-w-md mx-auto py-20 px-6 text-center">
-          <div className="w-16 h-16 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-5">
-            <Lock size={28} />
+        <div className="w-full max-w-md mx-auto py-20 px-6 text-center space-y-4">
+          <div className="w-16 h-16 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-full flex items-center justify-center mx-auto">
+            <Lock size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-foreground">{t('contracts.accessDenied')}</h2>
-          <p className="text-muted-foreground text-sm mt-2">{t('contracts.noPermissionResource')}</p>
+          <h2 className="text-xl font-extrabold text-text-primary">{t('contracts.accessDenied')}</h2>
+          <p className="text-xs font-semibold text-text-muted">{t('contracts.noPermissionResource')}</p>
           <button 
+            type="button"
             onClick={() => navigate('/contracts')} 
-            className="btn-primary-custom mt-6 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer"
           >
-            {t('contracts.backToContracts')}
+            <ArrowLeft size={14} /> {t('contracts.backToContracts')}
           </button>
         </div>
       </AppLayout>
     );
   }
 
-  if (userRole === 'client') {
-    return (
-      <ClientContractDetails
-        contract={contract}
-        milestones={milestones}
-        auditTrail={auditTrail}
-        onRefresh={loadContractDetails}
-        activeDispute={activeDispute}
-        activeDisputeError={activeDisputeError}
-        activeDisputeLoading={activeDisputeLoading}
-        onRetryDispute={loadContractDetails}
-      />
-    );
-  }
-
-  if (userRole === 'freelancer') {
-    return (
-      <FreelancerContractDetails
-        contract={contract}
-        milestones={milestones}
-        auditTrail={auditTrail}
-        onRefresh={loadContractDetails}
-        activeDispute={activeDispute}
-        activeDisputeError={activeDisputeError}
-        activeDisputeLoading={activeDisputeLoading}
-        onRetryDispute={loadContractDetails}
-      />
-    );
-  }
-
-  // Fallback for Admin / others
   return (
-    <ClientContractDetails
-      contract={contract}
-      milestones={milestones}
-      auditTrail={auditTrail}
-      onRefresh={loadContractDetails}
-      isAdminOverride={userRole === 'admin'}
-      activeDispute={null}
-      activeDisputeError={null}
-      activeDisputeLoading={false}
-      onRetryDispute={loadContractDetails}
-    />
+    <div ref={containerRef}>
+      {userRole === 'client' ? (
+        <ClientContractDetails
+          contract={contract}
+          milestones={milestones}
+          auditTrail={auditTrail}
+          onRefresh={loadContractDetails}
+          activeDispute={activeDispute}
+          activeDisputeError={activeDisputeError}
+          activeDisputeLoading={activeDisputeLoading}
+          onRetryDispute={loadContractDetails}
+        />
+      ) : userRole === 'freelancer' ? (
+        <FreelancerContractDetails
+          contract={contract}
+          milestones={milestones}
+          auditTrail={auditTrail}
+          onRefresh={loadContractDetails}
+          activeDispute={activeDispute}
+          activeDisputeError={activeDisputeError}
+          activeDisputeLoading={activeDisputeLoading}
+          onRetryDispute={loadContractDetails}
+        />
+      ) : (
+        <ClientContractDetails
+          contract={contract}
+          milestones={milestones}
+          auditTrail={auditTrail}
+          onRefresh={loadContractDetails}
+          isAdminOverride={userRole === 'admin'}
+          activeDispute={null}
+          activeDisputeError={null}
+          activeDisputeLoading={false}
+          onRetryDispute={loadContractDetails}
+        />
+      )}
+    </div>
   );
 }

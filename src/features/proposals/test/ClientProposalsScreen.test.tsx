@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { sortProposalReviewJobs } from '../components/ClientProposalJobSidebar';
-import ClientProposalsScreen from './ClientProposalsScreen';
+import ClientProposalsScreen from '../screens/ClientProposalsScreen';
 
 const mocks = vi.hoisted(() => ({
   locationSearch: '?job=job-1',
@@ -487,6 +487,8 @@ describe('ClientProposalsScreen', () => {
     const modal = await openProposal(user);
 
     expect(await within(modal).findByText(/No freelancer Interview Answers available/i)).toBeInTheDocument();
+
+    mocks.evaluateProposalAnswers.mockClear();
 
     await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
     expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();

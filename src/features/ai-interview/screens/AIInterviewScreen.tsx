@@ -23,6 +23,8 @@ import {
   aiInterviewAPI,
   type AiInterviewQuestionResponse,
 } from '../../../api/externalAPI/aiInterviewAPI';
+import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
+import { ProposalStatus } from '../../../types/models/Proposal';
 import '../styles/ai-interview-screen.css';
 
 type InterviewStage = 'intro' | 'interview' | 'results';
@@ -33,6 +35,7 @@ interface InterviewRouteState {
   jobPostId?: string;
   jobTitle?: string;
   interviewDefinitionId?: string | null;
+  proposalId?: string;
   job?: {
     id?: string;
     jobPostsId?: string;
@@ -176,6 +179,11 @@ export default function AIInterviewScreen() {
   ), [routeJobPostId, routeState.job?.id, routeState.job?.jobPostsId, routeState.jobPostId, searchParams]);
   const jobTitle = routeState.jobTitle || routeState.job?.title;
   const interviewDefinitionId = searchParams.get('definitionId') || routeState.interviewDefinitionId;
+  const proposalId = useMemo(() => (
+    searchParams.get('proposalId')
+    || routeState.proposalId
+    || ''
+  ), [searchParams, routeState.proposalId]);
 
   const [stage, setStage] = useState<InterviewStage>('intro');
   const [sessionId, setSessionId] = useState('');
@@ -509,6 +517,23 @@ export default function AIInterviewScreen() {
 
     const completed = responseValue<boolean>(data, 'isCompleted', 'is_completed') ?? false;
     if (completed) {
+      if (proposalId) {
+        setAnswerState('submitting');
+        try {
+          const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, {
+            status: ProposalStatus.Pending,
+          });
+          if (!statusResponse.success) {
+            setActionError(statusResponse.message || 'Proposal could not be submitted.');
+            setAnswerState('review');
+            return;
+          }
+        } catch (err) {
+          setActionError('Failed to submit proposal. Please try again.');
+          setAnswerState('review');
+          return;
+        }
+      }
       setStage('results');
       setAnswerState('idle');
       return;
@@ -947,7 +972,18 @@ export default function AIInterviewScreen() {
 
               <div className="ai-complete-actions">
                 <button className="ai-secondary-action" onClick={() => navigate('/jobs/browse')}>{t('aiInterview.actions.browseMoreJobs')}</button>
-                <button className="ai-primary-action" onClick={() => navigate('/freelancer/dashboard')}>{t('aiInterview.actions.goToDashboard')}</button>
+                <button
+                  className="ai-primary-action"
+                  onClick={() => {
+                    if (proposalId) {
+                      navigate('/proposals', { state: { submittedProposalId: proposalId } });
+                    } else {
+                      navigate('/freelancer/dashboard');
+                    }
+                  }}
+                >
+                  {proposalId ? t('aiInterview.actions.goToProposals') : t('aiInterview.actions.goToDashboard')}
+                </button>
               </div>
             </section>
           </div>
