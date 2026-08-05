@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useBlocker, useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { toast } from 'sonner';
 import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
 import { jobAPI } from '../../../api/jobAPI';
@@ -296,7 +297,11 @@ export function usePostJob() {
   });
   const [backgroundHiringPlanStatus, setBackgroundHiringPlanStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [backgroundHiringPlanError, setBackgroundHiringPlanError] = useState<string | null>(null);
-  const backgroundHiringPlanPromiseRef = useRef<Promise<{ milestones: JobPostMilestonePlanDto[]; questions: QuestionInput[] }> | null>(null);
+  const backgroundHiringPlanPromiseRef = useRef<Promise<{ milestones: JobPostMilestonePlanDto[]; questions: QuestionInput[] } | null> | null>(null);
+  // Tracks the current generation so stale Flow 2 results (Scenarios 2 & 3) are silently discarded
+  const generationIdRef = useRef(0);
+  // Cancels the in-flight HTTP fetch (Browser → ASP.NET) when user re-prompts
+  const hiringPlanAbortRef = useRef<AbortController | null>(null);
 
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
@@ -650,6 +655,9 @@ export function usePostJob() {
     setMilestonePlans([]);
     setAttachments([]);
     setAttachmentError(null);
+    hiringPlanAbortRef.current?.abort('Draft reset');
+    hiringPlanAbortRef.current = null;
+    generationIdRef.current += 1;
     backgroundHiringPlanPromiseRef.current = null;
     setBackgroundHiringPlanStatus('idle');
     setBackgroundHiringPlanError(null);
@@ -797,6 +805,16 @@ export function usePostJob() {
       return;
     }
 
+    // Cancel any in-flight Flow 2 from a previous generation before starting a new Flow 1.
+    // AbortController kills the HTTP leg (Browser → ASP.NET); generationIdRef discards
+    // any result that somehow still arrives (Scenarios 2 & 3 where the LLM keeps running).
+    hiringPlanAbortRef.current?.abort('User re-prompted AI');
+    hiringPlanAbortRef.current = null;
+    generationIdRef.current += 1;
+    backgroundHiringPlanPromiseRef.current = null;
+    setBackgroundHiringPlanStatus('idle');
+    setIsHiringPlanGenerated(false);
+
     setErrorMessage(null);
     setIsGeneratingInstant(true);
     try {
@@ -810,6 +828,7 @@ export function usePostJob() {
 
       setAiClientPrompt(promptText);
       setPendingGeneratedDetails(response.data);
+      // Open the lightweight success modal — user confirms before prefill + Flow 2 start
       setIsReviewModalOpen(true);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
@@ -824,11 +843,19 @@ export function usePostJob() {
     if (!pendingGeneratedDetails) return;
     const generatedData = pendingGeneratedDetails;
 
+    // Capture this generation's ID — used to detect stale results from Scenarios 2 & 3
+    // where the LLM keeps generating even after the HTTP request was aborted.
+    const myGenerationId = generationIdRef.current;
+
     setIsReviewModalOpen(false);
     setIsInstantJobMode(true);
     setIsHiringPlanGenerated(false);
 
-    // Start background generation of hiring plan immediately
+    // Create a new AbortController for this generation's Flow 2 HTTP request.
+    // Aborted on next re-prompt (handleGenerateInstantJob) or draft reset.
+    const abortController = new AbortController();
+    hiringPlanAbortRef.current = abortController;
+
     const promptText = aiClientPrompt;
     const jobTitle = generatedData.title;
     const jobDescription = generatedData.description;
@@ -843,7 +870,13 @@ export function usePostJob() {
       budgetMin: generatedData.budgetMin,
       budgetMax: generatedData.budgetMax,
       estimatedDuration: generatedData.estimatedDuration,
-    }).then(response => {
+    }, abortController.signal).then(response => {
+      // Guard: if user has re-prompted since this Flow 2 started, discard the result silently.
+      // This handles Scenarios 2 & 3 where the LLM result still arrives despite the abort.
+      if (myGenerationId !== generationIdRef.current) {
+        return null;
+      }
+
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to generate hiring plan.');
       }
@@ -872,6 +905,14 @@ export function usePostJob() {
 
       return { milestones: nextMilestones, questions: nextQuestions };
     }).catch(error => {
+      // Intentional abort (user re-prompted) — do not show an error, just clean up silently.
+      if (axios.isCancel(error) || (error instanceof Error && error.name === 'CanceledError')) {
+        return null;
+      }
+      // Stale result guard (extra safety) — discard without error
+      if (myGenerationId !== generationIdRef.current) {
+        return null;
+      }
       const planErrorMsg = error instanceof Error ? error.message : 'An error occurred generating hiring plan.';
       setBackgroundHiringPlanStatus('error');
       setBackgroundHiringPlanError(planErrorMsg);
@@ -1355,8 +1396,10 @@ export function usePostJob() {
             setIsGeneratingPlan(true);
             try {
               const result = await backgroundHiringPlanPromiseRef.current;
-              finalMilestones = result.milestones;
-              finalQuestions = result.questions;
+              if (result) {
+                finalMilestones = result.milestones;
+                finalQuestions = result.questions;
+              }
             } catch (planError) {
               backgroundHiringPlanPromiseRef.current = null;
               setBackgroundHiringPlanStatus('error');

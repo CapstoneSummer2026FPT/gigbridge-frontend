@@ -1,118 +1,79 @@
-import { X, Sparkles, Check, Briefcase, Wrench } from 'lucide-react';
+import { X, Sparkles, Check } from 'lucide-react';
 import type { GenerateJobDescriptionDetailsResponse } from '../../../types/models/Job';
-import { renderDescription } from '../utils/descriptionFormatter';
 
 interface Props {
   isOpen: boolean;
-  data: GenerateJobDescriptionDetailsResponse | null;
-  onClose: () => void;
-  onApprove: () => void;
+  data?: GenerateJobDescriptionDetailsResponse | null;
+  onClose?: () => void;
+  onApprove?: () => void;
+  onOk?: () => void;
+  onCancel?: () => void;
 }
 
-export function AIGeneratedDetailsReviewModal({ isOpen, data, onClose, onApprove }: Props) {
-  if (!isOpen || !data) return null;
+export function AIGeneratedDetailsReviewModal({
+  isOpen,
+  data,
+  onClose,
+  onApprove,
+  onOk,
+  onCancel,
+}: Props) {
+  if (!isOpen) return null;
+
+  const handleConfirm = onOk || onApprove || (() => {});
+  const handleDismiss = onCancel || onClose || (() => {});
 
   return (
     <div className="job-post-modal-overlay" role="dialog" aria-modal="true">
-      <div className="job-post-modal-backdrop" onClick={onClose} />
-      <div className="job-post-modal-container">
+      <div className="job-post-modal-backdrop" onClick={handleDismiss} />
+      <div className="job-post-modal-container max-w-md">
         {/* Decorative top gradient border */}
         <div className="job-post-modal-accent-bar" />
 
         {/* Modal Header */}
-        <div className="job-post-modal-header">
+        <div className="job-post-modal-header border-b-0 pb-2">
           <div className="job-post-modal-header-title">
             <div className="job-post-modal-icon-sparkle">
-              <Sparkles size={20} />
+              <Sparkles size={22} className="text-primary-500" />
             </div>
             <div>
-              <h3>Review AI Job Post</h3>
-              <p>Check details before pre-filling your project draft</p>
+              <h3 className="text-lg font-bold text-foreground">AI Job Post Generated</h3>
             </div>
           </div>
-          <button type="button" className="job-post-modal-close-btn" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="job-post-modal-close-btn"
+            onClick={handleDismiss}
+            aria-label="Close"
+          >
             <X size={20} />
           </button>
         </div>
 
         {/* Modal Content */}
-        <div className="job-post-modal-content">
-          {/* Job Title */}
-          <div className="job-post-review-section">
-            <label className="job-post-review-label">
-              <Briefcase size={16} className="inline mr-1 text-primary-500" /> Job Title
-            </label>
-            <div className="job-post-review-value title-value">{data.title}</div>
-          </div>
-
-          {/* Major & Category */}
-          <div className="job-post-review-grid">
-            <div className="job-post-review-section">
-              <label className="job-post-review-label">Major</label>
-              <div className="job-post-review-value">{data.majorName || 'N/A'}</div>
+        <div className="job-post-modal-content py-3 text-sm text-muted-foreground leading-relaxed">
+          <p>
+            Your AI job description, budget, timeline, and skill requirements have been created successfully.
+          </p>
+          <p className="mt-2 font-medium text-foreground">
+            Click <strong>Apply to Form</strong> to prefill these details into your draft, where you can inspect and edit them directly.
+          </p>
+          {data?.title && (
+            <div className="mt-3 rounded-lg border border-border/80 bg-muted/30 p-2.5 text-xs">
+              <span className="font-semibold text-foreground">Suggested Title: </span>
+              <span className="text-muted-foreground">{data.title}</span>
             </div>
-            <div className="job-post-review-section">
-              <label className="job-post-review-label">Category</label>
-              <div className="job-post-review-value">{data.categoryName || 'N/A'}</div>
-            </div>
-          </div>
-
-          {/* Budget & Timeline */}
-          <div className="job-post-review-grid">
-            <div className="job-post-review-section">
-              <label className="job-post-review-label">Expected Budget</label>
-              <div className="job-post-review-value">
-                {data.budgetMin !== undefined && data.budgetMin !== null ? (
-                  data.budgetMin === data.budgetMax ? `${data.budgetMin} GC` : `${data.budgetMin} - ${data.budgetMax} GC`
-                ) : 'N/A'}
-              </div>
-            </div>
-            <div className="job-post-review-section">
-              <label className="job-post-review-label">Estimated Duration</label>
-              <div className="job-post-review-value">{data.estimatedDuration || 'N/A'}</div>
-            </div>
-          </div>
-
-          {/* Skills */}
-          <div className="job-post-review-section">
-            <label className="job-post-review-label">
-              <Wrench size={16} className="inline mr-1 text-primary-500" /> Required Skills
-            </label>
-            <div className="job-post-skills-flex">
-              {data.skills.map((skill) => (
-                <span key={skill.skillsId} className="job-post-skill-badge system">
-                  {skill.name}
-                </span>
-              ))}
-              {data.customSkills?.map((skill, idx) => (
-                <span key={`custom-${idx}`} className="job-post-skill-badge custom">
-                  {skill} (Custom)
-                </span>
-              ))}
-              {data.skills.length === 0 && (!data.customSkills || data.customSkills.length === 0) && (
-                <span className="text-gray-400 text-sm">No skills specified</span>
-              )}
-            </div>
-          </div>
-
-          <div className="job-post-review-section">
-            <label className="job-post-review-label">Job Description</label>
-            <div className="job-post-review-desc-container">
-              <div className="job-post-review-desc-text whitespace-pre-line text-sm leading-6">
-                {renderDescription(data.description)}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="job-post-modal-footer">
-          <button type="button" className="job-post-btn-secondary" onClick={onClose}>
+        <div className="job-post-modal-footer pt-3">
+          <button type="button" className="job-post-btn-secondary" onClick={handleDismiss}>
             Cancel
           </button>
-          <button type="button" className="job-post-btn-primary" onClick={onApprove}>
-            <Check size={18} className="mr-2" />
-            Approve & Prefill
+          <button type="button" className="job-post-btn-primary" onClick={handleConfirm}>
+            <Check size={18} className="mr-2 inline" />
+            Apply to Form
           </button>
         </div>
       </div>
