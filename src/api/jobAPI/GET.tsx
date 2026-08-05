@@ -147,6 +147,7 @@ const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
 const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   id: job.jobPostsId,
   clientId: job.clientProfilesId,
+  clientFullName: job.clientFullName,
   title: job.title,
   description: job.description,
   category: job.categoryName || 'All',

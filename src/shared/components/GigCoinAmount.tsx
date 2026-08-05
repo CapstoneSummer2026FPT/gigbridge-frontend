@@ -21,7 +21,18 @@ export function GigCoinAmount({ amount, className = '', iconClassName = '', pref
 }
 
 export function GigCoinBudget({ min, max, className = '' }: GigCoinBudgetProps) {
-  if (min !== undefined && min !== null && max !== undefined && max !== null) return <span className={`inline-flex items-center gap-1 whitespace-nowrap ${className}`}><GigCoinAmount amount={min} /><span>-</span><GigCoinAmount amount={max} /></span>;
+  if (min !== undefined && min !== null && max !== undefined && max !== null) {
+    if (min === max) {
+      return <GigCoinAmount amount={min} className={className} />;
+    }
+    return (
+      <span className={`inline-flex items-center gap-1 whitespace-nowrap ${className}`}>
+        <GigCoinAmount amount={min} />
+        <span>-</span>
+        <GigCoinAmount amount={max} />
+      </span>
+    );
+  }
   if (min !== undefined && min !== null) return <GigCoinAmount amount={min} prefix="From" className={className} />;
   if (max !== undefined && max !== null) return <GigCoinAmount amount={max} prefix="Up to" className={className} />;
   return <span className={className}>Not set</span>;

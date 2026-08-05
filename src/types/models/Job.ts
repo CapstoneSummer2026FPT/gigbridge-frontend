@@ -56,6 +56,7 @@ export interface JobPostAttachment {
 export interface Job {
   id: string;
   clientId: string;
+  clientFullName?: string | null;
   title: string;
   description: string;
   category: string;
