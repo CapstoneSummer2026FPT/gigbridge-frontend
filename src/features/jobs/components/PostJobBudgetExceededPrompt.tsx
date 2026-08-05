@@ -3,23 +3,36 @@ import { AlertTriangle, CheckCircle2, X } from 'lucide-react';
 
 interface PostJobBudgetExceededPromptProps {
   isOpen: boolean;
+  /** Whether the milestone plan total exceeds the expected budget. */
+  isBudgetExceeded: boolean;
   /** Formatted milestone plan total, e.g. "200 G-coin". */
-  total: string;
+  budgetTotal: string;
   /** Formatted expected budget, e.g. "100 G-coin". */
-  expected: string;
+  budgetExpected: string;
+  /** Whether the milestone plan total duration exceeds the estimated duration. */
+  isDurationExceeded: boolean;
+  /** Formatted milestone total duration, e.g. "7 weeks". */
+  durationTotal: string;
+  /** Formatted estimated duration, e.g. "4 weeks". */
+  durationExpected: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /**
  * Confirm/Cancel dialog shown when the milestone plan total exceeds the
- * client's expected budget. Confirm raises the job post expected budget to the
- * milestone total and continues; Cancel aborts the submission.
+ * client's expected budget and/or estimated duration. Confirm raises the job
+ * post fields to the milestone totals and continues; Cancel aborts the
+ * submission.
  */
 export function PostJobBudgetExceededPrompt({
   isOpen,
-  total,
-  expected,
+  isBudgetExceeded,
+  budgetTotal,
+  budgetExpected,
+  isDurationExceeded,
+  durationTotal,
+  durationExpected,
   onConfirm,
   onCancel,
 }: PostJobBudgetExceededPromptProps) {
@@ -49,9 +62,15 @@ export function PostJobBudgetExceededPrompt({
             <h2 className="text-base font-extrabold tracking-tight text-foreground mb-1">
               {t('postJobWizard.budgetExceeded.title')}
             </h2>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t('postJobWizard.budgetExceeded.desc', { total, expected })}
-            </p>
+            <div className="grid gap-1.5 text-xs leading-relaxed text-muted-foreground">
+              {isBudgetExceeded && (
+                <p>{t('postJobWizard.budgetExceeded.budgetDesc', { total: budgetTotal, expected: budgetExpected })}</p>
+              )}
+              {isDurationExceeded && (
+                <p>{t('postJobWizard.budgetExceeded.durationDesc', { total: durationTotal, expected: durationExpected })}</p>
+              )}
+              <p>{t('postJobWizard.budgetExceeded.question')}</p>
+            </div>
           </div>
         </div>
 
