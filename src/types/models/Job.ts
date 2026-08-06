@@ -56,6 +56,8 @@ export interface JobPostAttachment {
 export interface Job {
   id: string;
   clientId: string;
+  clientUserId?: string | null;
+  userId?: string | null;
   clientFullName?: string | null;
   title: string;
   description: string;
@@ -232,6 +234,11 @@ export interface JobPostMilestonePlanDto {
 export interface JobPostDetailDto {
   jobPostsId: string;
   clientProfilesId: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  avatar?: string | null;
+  phoneNumber?: string | null;
   clientFullName?: string | null;
   title: string;
   description: string;
@@ -245,11 +252,11 @@ export interface JobPostDetailDto {
   currency?: string | null;
   estimatedDuration?: string | null;
   location?: string | null;
+  status?: JobStatus | number | null;
+  visibility?: number | null;
   endDate?: string | null;
   createdAt: string;
   eloPoints?: number;
-  status?: JobStatus | number | null;
-  visibility?: number | null;
   skills: JobPostSkillDto[];
   customSkillNames: string[];
   attachments: JobPostAttachmentDto[];

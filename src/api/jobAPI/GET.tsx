@@ -88,7 +88,10 @@ const formatPostedAt = (createdAt?: string): string => {
 
 const toLegacyJobFromSummary = (job: JobPostSummaryDto): Job => ({
   id: job.jobPostsId,
-  clientId: '',
+  clientId: job.clientProfilesId || '',
+  userId: (job as any).userId || (job as any).clientUserId || null,
+  clientUserId: (job as any).userId || (job as any).clientUserId || null,
+  clientFullName: job.clientFullName || null,
   title: job.title,
   description: job.descriptionPreview,
   category: job.categoryName || 'All',
@@ -124,6 +127,8 @@ const toLegacyStatusFromJobPost = (status: number | string | null | undefined): 
 const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
   id: job.jobPostsId,
   clientId: job.clientProfilesId,
+  userId: (job as any).userId || (job as any).clientUserId || null,
+  clientUserId: (job as any).userId || (job as any).clientUserId || null,
   title: job.title,
   description: job.description,
   category: job.categoryName || 'All',
@@ -147,7 +152,9 @@ const toLegacyJobFromMyJob = (job: GetMyJobPostDto): Job => ({
 const toLegacyJobFromDetail = (job: JobPostDetailDto): Job => ({
   id: job.jobPostsId,
   clientId: job.clientProfilesId,
-  clientFullName: job.clientFullName,
+  userId: job.userId,
+  clientUserId: job.userId,
+  clientFullName: job.clientFullName || job.fullName || 'Client',
   title: job.title,
   description: job.description,
   category: job.categoryName || 'All',

@@ -38,12 +38,9 @@ export function UserAvatar({
     setFailed(false);
   }, [src]);
 
-  const isPlaceholderSrc = typeof src === 'string' && src.includes('dicebear.com');
-  const realSrc = isPlaceholderSrc ? null : src;
-
-  // Fetch avatar by userId if realSrc is not provided
+  // Fetch avatar by userId if src is not provided
   useEffect(() => {
-    if (realSrc || !userId) {
+    if (src || !userId) {
       setFetchedSrc(null);
       return;
     }
@@ -63,15 +60,14 @@ export function UserAvatar({
     return () => {
       isMounted = false;
     };
-  }, [realSrc, userId]);
+  }, [src, userId]);
 
-  const effectiveSrc = realSrc || fetchedSrc || (isPlaceholderSrc ? src : null);
+  const effectiveSrc = src || fetchedSrc;
   const initials = useMemo(() => initialsFor(name), [name]);
 
   // Outer wrapper with gradient stroke (background to mint from theme)
-  const outerClasses = `${sizeClasses[size]} shrink-0 inline-block p-[2px] rounded-full bg-gradient-to-br from-[var(--background)] to-[var(--mint)] ${
-    premium ? 'admin-premium-avatar' : ''
-  } ${className}`;
+  const outerClasses = `${sizeClasses[size]} shrink-0 inline-block p-[2px] rounded-full bg-gradient-to-br from-[var(--background)] to-[var(--mint)] ${premium ? 'admin-premium-avatar' : ''
+    } ${className}`;
 
   return (
     <span className={outerClasses} role="img" aria-label={`${name || 'User'} avatar`}>
