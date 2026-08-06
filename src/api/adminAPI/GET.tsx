@@ -15,6 +15,17 @@ import type { AdminContractReportDetail, AdminContractReportListParams, AdminCon
 import type { AdminProposalDetail, AdminProposalListItem, AdminProposalListParams, PageResult as ProposalPage } from '../../types/models/AdminProposal';
 import type { SystemTrackingSnapshot } from '../../types/systemTracking';
 import type { AdminDashboardDays, AdminDashboardSummary } from '../../types/adminDashboard';
+import type {
+  AdminEloAppealDetail,
+  AdminEloAppealRow,
+  AdminEloAppealsQuery,
+  AdminEloHistoryQuery,
+  AdminEloTransactionRow,
+  AdminEloUserSummary,
+  EloHistoryQuery,
+  EloPolicy,
+  PaginatedElo,
+} from '../../types/elo';
 import {
   normalizeAdminDisputeDetail,
   normalizeAdminDisputeListResult,
@@ -165,6 +176,26 @@ export const adminGetAPI = {
   getContractMilestones: async (contractId: string): Promise<ApiResponse<any[]>> => {
     return apiService.get<any[]>(`${Admin_Api_Base_Url}/milestones/contract/${contractId}`);
   },
+
+  // --- Elo management ---
+
+  getAdminEloHistory: (params: AdminEloHistoryQuery = {}): Promise<ApiResponse<PaginatedElo<AdminEloTransactionRow>>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/history`, params),
+
+  getAdminEloUserHistory: (userId: string, params: EloHistoryQuery = {}): Promise<ApiResponse<PaginatedElo<AdminEloTransactionRow>>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/users/${userId}/history`, params),
+
+  getAdminEloUserSummary: (userId: string): Promise<ApiResponse<AdminEloUserSummary>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/users/${userId}/summary`),
+
+  getAdminEloAppeals: (params: AdminEloAppealsQuery = {}): Promise<ApiResponse<PaginatedElo<AdminEloAppealRow>>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/appeals`, params),
+
+  getAdminEloAppealDetail: (appealId: string): Promise<ApiResponse<AdminEloAppealDetail>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/appeals/${appealId}`),
+
+  getEloPolicy: (): Promise<ApiResponse<EloPolicy>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/policy`),
 };
 
 

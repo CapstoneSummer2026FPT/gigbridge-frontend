@@ -416,6 +416,36 @@ export function usePostJob() {
     }
   }, [isInstantJobMode]);
 
+  // Dynamically shift milestone due dates sequentially when form.deadline changes
+  useEffect(() => {
+    if (!form.deadline || milestonePlans.length === 0) return;
+
+    let previousDueDate = form.deadline;
+    let modified = false;
+
+    const nextMilestones = milestonePlans.map(milestone => {
+      // If a milestone is missing dueDate, or is before/equal to closing date, or is out of order:
+      if (!milestone.dueDate || milestone.dueDate <= form.deadline || (previousDueDate && milestone.dueDate <= previousDueDate)) {
+        const duration = parseJobDuration(milestone.estimatedDuration);
+        const weeks = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 4.333 : duration.unit === 'years' ? 52 : 1) : 2;
+        const days = Math.ceil(weeks * 7);
+        
+        const start = previousDueDate ? new Date(previousDueDate) : new Date(form.deadline);
+        const newDueDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        previousDueDate = newDueDate;
+        modified = true;
+        return { ...milestone, dueDate: newDueDate };
+      }
+      previousDueDate = milestone.dueDate;
+      return milestone;
+    });
+
+    if (modified) {
+      setMilestonePlans(nextMilestones);
+    }
+  }, [form.deadline, milestonePlans]);
+
   useEffect(() => {
     let isMounted = true;
     setIsMajorsLoading(true);
@@ -863,6 +893,10 @@ export function usePostJob() {
     setBackgroundHiringPlanStatus('loading');
     setBackgroundHiringPlanError(null);
 
+    const duration = parseJobDuration(generatedData.estimatedDuration);
+    const durationDays = (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 2;
+    const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     const promise = jobAPI.generateAIHiringPlan({
       clientPrompt: promptText,
       title: jobTitle || '',
@@ -870,6 +904,7 @@ export function usePostJob() {
       budgetMin: generatedData.budgetMin,
       budgetMax: generatedData.budgetMax,
       estimatedDuration: generatedData.estimatedDuration,
+      proposalClosingDate: computedDeadline,
     }, abortController.signal).then(response => {
       // Guard: if user has re-prompted since this Flow 2 started, discard the result silently.
       // This handles Scenarios 2 & 3 where the LLM result still arrives despite the abort.
@@ -956,7 +991,6 @@ export function usePostJob() {
         categoryName: generatedData.categoryName || '',
       });
 
-      const duration = parseJobDuration(generatedData.estimatedDuration);
       setForm(prev => ({
         ...prev,
         title: generatedData.title || prev.title,
@@ -971,7 +1005,7 @@ export function usePostJob() {
         estimatedDurationValue: duration.value || prev.estimatedDurationValue || '2',
         estimatedDurationUnit: duration.unit || prev.estimatedDurationUnit || 'weeks',
         visibility: String(JobPostVisibility.Public),
-        deadline: prev.deadline || new Date(Date.now() + (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        deadline: computedDeadline,
         isAigenerated: true,
       }));
 
@@ -1410,10 +1444,22 @@ export function usePostJob() {
           } else {
             setIsGeneratingPlan(true);
             try {
+              const durationWeeks = form.estimatedDurationValue ? Number(form.estimatedDurationValue) * (form.estimatedDurationUnit === 'months' ? 4.333 : form.estimatedDurationUnit === 'years' ? 52 : 1) : 2;
+              const durationDays = Math.ceil(durationWeeks * 7) * 2;
+              const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+              
+              if (!form.deadline) {
+                setForm(prev => ({ ...prev, deadline: computedDeadline }));
+              }
+
               const planResponse = await jobAPI.generateAIHiringPlan({
                 clientPrompt: aiClientPrompt,
                 title: form.title,
-                description: form.description
+                description: form.description,
+                budgetMin: form.budget ? Number(form.budget) : undefined,
+                budgetMax: form.budget ? Number(form.budget) : undefined,
+                estimatedDuration: form.estimatedDurationValue ? formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit) || undefined : undefined,
+                proposalClosingDate: computedDeadline,
               });
 
               if (!planResponse.success || !planResponse.data) {

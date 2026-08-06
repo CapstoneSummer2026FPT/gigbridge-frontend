@@ -75,6 +75,8 @@ const buttonFocus = 'outline-none focus-visible:ring-2 focus-visible:ring-brand 
 export default function ClientProposalsScreen() {
   const { t } = useTranslation(['proposals', 'jobs', 'common']);
   const containerRef = useRef<HTMLDivElement>(null);
+  const modalContainerRef = useRef<HTMLDivElement>(null);
+  const tabContentRef = useRef<HTMLDivElement>(null);
 
   const {
     navigate,

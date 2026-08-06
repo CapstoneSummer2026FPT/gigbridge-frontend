@@ -37,12 +37,13 @@ describe('Admin proposal management',()=>{
       ? {success:true,statusCode:200,message:'ok',data:{items:[secondItem],pageNumber:2,pageSize:20,totalCount:21,totalPages:2,hasPreviousPage:true,hasNextPage:false}} as never
       : {success:true,statusCode:200,message:'ok',data:{items:[proposalItem],pageNumber:1,pageSize:20,totalCount:21,totalPages:2,hasPreviousPage:false,hasNextPage:true}} as never;
   });
+  const paginationSummary = (text: string) => screen.getByText((_content, element) => element?.tagName === 'P' && element.textContent === text);
   render(<MemoryRouter><AdminProposalsScreen/></MemoryRouter>);
   await waitFor(()=>expect(screen.getByText('API build')).toBeInTheDocument());
-  expect(screen.getByText('Page 1 of 2 · 21 proposals')).toBeInTheDocument();
+  expect(paginationSummary('Showing 1-20 of 21 matching proposals')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Next'}));
   await waitFor(()=>expect(adminGetAPI.getProposals).toHaveBeenLastCalledWith(expect.objectContaining({page:2})));
-  expect(screen.getByText('Page 2 of 2 · 21 proposals')).toBeInTheDocument();
+  expect(paginationSummary('Showing 21-21 of 21 matching proposals')).toBeInTheDocument();
  });
  it('shows an error state with a working retry button',async()=>{
   vi.mocked(adminGetAPI.getProposals).mockResolvedValue({success:false,statusCode:500,message:'boom',data:undefined} as never);

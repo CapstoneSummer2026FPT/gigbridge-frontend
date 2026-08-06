@@ -372,6 +372,7 @@ export interface GenerateJobHiringPlanRequest {
   budgetMin?: number | null;
   budgetMax?: number | null;
   estimatedDuration?: string | null;
+  proposalClosingDate: string;
 }
 
 export interface GenerateJobHiringPlanResponse {

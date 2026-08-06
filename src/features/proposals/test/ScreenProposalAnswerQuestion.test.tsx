@@ -123,7 +123,7 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
 
     render(<ScreenProposalAnswerQuestion />);
 
-    const startButton = await screen.findByRole('button', { name: /start interview/i });
+    const startButton = await screen.findByRole('button', { name: /bắt đầu phỏng vấn/i });
     expect(screen.queryByText(/secure interview mode/i)).not.toBeInTheDocument();
 
     fireEvent.click(startButton);
@@ -132,12 +132,12 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
       expect(startQuestionTimerMock).toHaveBeenCalledWith('proposal-1', 'question-1');
     });
     expect(requestFullscreenMock).not.toHaveBeenCalled();
-    expect(screen.getByPlaceholderText('Write your answer...')).toBeEnabled();
+    expect(screen.getByPlaceholderText('Viết câu trả lời của bạn tại đây...')).toBeEnabled();
   });
 
   it('does not block copy or paste browser events', async () => {
     render(<ScreenProposalAnswerQuestion />);
-    await screen.findByRole('button', { name: /start interview/i });
+    await screen.findByRole('button', { name: /bắt đầu phỏng vấn/i });
 
     const copyEvent = new Event('copy', { bubbles: true, cancelable: true });
     const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
@@ -165,9 +165,9 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
     render(<ScreenProposalAnswerQuestion />);
 
     expect(await screen.findByText('Introduction must be at least 50 characters.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /start interview/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /bắt đầu phỏng vấn/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /edit proposal details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /sửa đề xuất/i }));
     expect(navigateMock).toHaveBeenCalledWith('/proposals/proposal-1/edit');
     expect(startQuestionTimerMock).not.toHaveBeenCalled();
   });
@@ -194,8 +194,8 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
     });
 
     render(<ScreenProposalAnswerQuestion />);
-    fireEvent.click(await screen.findByRole('button', { name: /start interview/i }));
-    const skipButton = await screen.findByRole('button', { name: /skip & continue/i });
+    fireEvent.click(await screen.findByRole('button', { name: /bắt đầu phỏng vấn/i }));
+    const skipButton = await screen.findByRole('button', { name: /skip/i });
     fireEvent.click(skipButton);
 
     await waitFor(() => expect(completeQuestionTimerMock).toHaveBeenCalledWith(
@@ -207,7 +207,7 @@ describe('ScreenProposalAnswerQuestion without anti-cheat', () => {
 
   it('does not allow a required question to continue with a blank answer', async () => {
     render(<ScreenProposalAnswerQuestion />);
-    fireEvent.click(await screen.findByRole('button', { name: /start interview/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /bắt đầu phỏng vấn/i }));
     fireEvent.click(await screen.findByRole('button', { name: /continue interview/i }));
 
     expect(await screen.findByText('Answer is required for question 1.')).toBeInTheDocument();
