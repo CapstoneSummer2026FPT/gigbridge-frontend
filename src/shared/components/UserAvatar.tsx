@@ -38,9 +38,12 @@ export function UserAvatar({
     setFailed(false);
   }, [src]);
 
-  // Fetch avatar by userId if src is not provided
+  const isPlaceholderSrc = typeof src === 'string' && src.includes('dicebear.com');
+  const realSrc = isPlaceholderSrc ? null : src;
+
+  // Fetch avatar by userId if realSrc is not provided
   useEffect(() => {
-    if (src || !userId) {
+    if (realSrc || !userId) {
       setFetchedSrc(null);
       return;
     }
@@ -60,9 +63,9 @@ export function UserAvatar({
     return () => {
       isMounted = false;
     };
-  }, [src, userId]);
+  }, [realSrc, userId]);
 
-  const effectiveSrc = src || fetchedSrc;
+  const effectiveSrc = realSrc || fetchedSrc || (isPlaceholderSrc ? src : null);
   const initials = useMemo(() => initialsFor(name), [name]);
 
   // Outer wrapper with gradient stroke (background to mint from theme)

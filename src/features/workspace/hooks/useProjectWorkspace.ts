@@ -46,7 +46,7 @@ interface WorkspaceProjectListItem {
   id: string;
   title: string;
   partnerName: string;
-  partnerAvatar: string;
+  partnerAvatar: string | null;
   partnerUserId?: string | null;
   latestMessage: string;
   time: string;
@@ -101,8 +101,6 @@ const getPartnerName = (contract: ContractDto, isClient: boolean): string =>
     ? contract.freelancerName || contract.freelancerEmail || 'Freelancer'
     : contract.clientName || contract.clientEmail || 'Client';
 
-const getAvatarUrl = (name: string): string =>
-  `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
 
 const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status'] => {
   switch (status) {
@@ -168,7 +166,7 @@ const mapContractListItem = (contract: ContractDto, isClient: boolean): Workspac
     id: contract.contractsId,
     title: contract.jobTitle || contract.title,
     partnerName,
-    partnerAvatar: getAvatarUrl(partnerName),
+    partnerAvatar: null,
     partnerUserId: isClient ? contract.freelancerUserId : contract.clientUserId,
     latestMessage: contract.status === ContractStatus.Active
       ? 'Workspace is open.'
@@ -477,7 +475,7 @@ export function useProjectWorkspace(initialContractId: string) {
     title: project.title,
     titleLong: project.title,
     partnerName: activeContract ? getPartnerName(activeContract, isClient) : 'Partner',
-    partnerAvatar: getAvatarUrl(activeContract ? getPartnerName(activeContract, isClient) : 'Partner'),
+    partnerAvatar: null,
     partnerUserId: activeContract
       ? (isClient ? activeContract.freelancerUserId : activeContract.clientUserId)
       : null,
