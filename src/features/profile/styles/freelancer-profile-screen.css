@@ -369,13 +369,26 @@
   width: 100%;
 }
 
-.fp-col-12 { grid-column: span 12 / span 12; }
-.fp-col-8  { grid-column: span 12 / span 12; }
-.fp-col-4  { grid-column: span 12 / span 12; }
+.fp-col-12 {
+  grid-column: span 12 / span 12;
+}
+
+.fp-col-8 {
+  grid-column: span 12 / span 12;
+}
+
+.fp-col-4 {
+  grid-column: span 12 / span 12;
+}
 
 @media (min-width: 1024px) {
-  .fp-col-8 { grid-column: span 8 / span 8; }
-  .fp-col-4 { grid-column: span 4 / span 4; }
+  .fp-col-8 {
+    grid-column: span 8 / span 8;
+  }
+
+  .fp-col-4 {
+    grid-column: span 4 / span 4;
+  }
 }
 
 /* Standard Bento Card */
@@ -719,11 +732,9 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(
-    ellipse at center,
-    var(--brand-soft, rgba(73, 75, 231, 0.2)) 0%,
-    transparent 65%
-  );
+  background: radial-gradient(ellipse at center,
+      var(--brand-soft, rgba(73, 75, 231, 0.2)) 0%,
+      transparent 65%);
   pointer-events: none;
   z-index: 0;
 }
@@ -745,8 +756,13 @@
 }
 
 @keyframes fp-arc-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /*
@@ -783,4 +799,78 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--brand, #494be7);
+}
+
+/* ==========================================================================
+   Mobile Responsive Adjustments (< 640px)
+   ========================================================================== */
+@media (max-width: 639px) {
+  .fp-container {
+    gap: 1.25rem;
+  }
+
+  .fp-hero-card {
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+  }
+
+  .fp-hero-left {
+    align-items: center;
+    text-align: center;
+  }
+
+  .fp-avatar-circle {
+    width: 6.5rem;
+    height: 6.5rem;
+  }
+
+  .fp-avatar-fallback {
+    font-size: 2.25rem;
+  }
+
+  .fp-hero-details {
+    align-items: center;
+    text-align: center;
+  }
+
+  .fp-meta-row,
+  .fp-pills-row {
+    justify-content: center;
+  }
+
+  .fp-hero-actions {
+    width: 100%;
+    justify-content: center;
+    align-self: center;
+  }
+
+  .fp-card {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .fp-card-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .fp-arc-gauge-wrap {
+    max-width: 220px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .fp-info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .fp-info-val-brand {
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-all;
+  }
 }

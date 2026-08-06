@@ -382,15 +382,19 @@
   .cp-col-7 {
     grid-column: span 7 / span 7;
   }
+
   .cp-col-5 {
     grid-column: span 5 / span 5;
   }
+
   .cp-col-4 {
     grid-column: span 4 / span 4;
   }
+
   .cp-col-8 {
     grid-column: span 8 / span 8;
   }
+
   .cp-col-6 {
     grid-column: span 6 / span 6;
   }
@@ -757,4 +761,73 @@
   font-style: italic;
   line-height: 1.6;
   margin: 0;
+}
+
+/* ==========================================================================
+   Mobile Responsive Adjustments (< 640px)
+   ========================================================================== */
+@media (max-width: 639px) {
+  .cp-container {
+    gap: 1.25rem;
+  }
+
+  .cp-hero-card {
+    align-items: center;
+    text-align: center;
+    gap: 1.25rem;
+  }
+
+  .cp-hero-left {
+    align-items: center;
+    text-align: center;
+  }
+
+  .cp-avatar-circle {
+    width: 6.5rem;
+    height: 6.5rem;
+  }
+
+  .cp-avatar-fallback {
+    font-size: 2.25rem;
+  }
+
+  .cp-hero-details {
+    align-items: center;
+    text-align: center;
+  }
+
+  .cp-meta-row,
+  .cp-pills-row {
+    justify-content: center;
+  }
+
+  .cp-hero-actions {
+    width: 100%;
+    justify-content: center;
+    align-self: center;
+  }
+
+  .cp-card {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .cp-card-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cp-info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .cp-info-val-brand {
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-all;
+  }
 }

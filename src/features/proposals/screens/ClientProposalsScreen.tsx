@@ -75,8 +75,6 @@ const buttonFocus = 'outline-none focus-visible:ring-2 focus-visible:ring-brand 
 export default function ClientProposalsScreen() {
   const { t } = useTranslation(['proposals', 'jobs', 'common']);
   const containerRef = useRef<HTMLDivElement>(null);
-  const modalContainerRef = useRef<HTMLDivElement>(null);
-  const tabContentRef = useRef<HTMLDivElement>(null);
 
   const {
     navigate,
@@ -144,7 +142,6 @@ export default function ClientProposalsScreen() {
     setProposalReloadKey,
     isBusy,
     canClientAct,
-    runManualEvaluation,
   } = useClientProposals();
 
 
@@ -493,7 +490,7 @@ export default function ClientProposalsScreen() {
 
         {/* ── Proposal Detail & Evaluation Modal (GSAP Enhanced) ────────── */}
         {evalModalOpen && (
-          <div ref={modalContainerRef}>
+          <div>
             <div
               className="cps-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 overflow-y-auto"
               role="dialog"
@@ -566,7 +563,7 @@ export default function ClientProposalsScreen() {
                 </div>
 
                 {/* Modal Body */}
-                <div ref={tabContentRef} className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto mt-4 pr-1 space-y-6 custom-scrollbar">
                 {modalTab === 'userAnswers' && (
                   <>
                     {evalLoading && (
@@ -694,7 +691,7 @@ export default function ClientProposalsScreen() {
                         </div>
                         {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
                           <button
-                            onClick={() => activeId && runManualEvaluation(activeId)}
+                            onClick={() => activeId && openProposalModal(activeId)}
                             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md cursor-pointer border-none"
                           >
                             <Brain size={14} /> Evaluate Proposal with AI

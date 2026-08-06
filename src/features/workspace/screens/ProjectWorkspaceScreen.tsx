@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
@@ -776,7 +777,7 @@ export default function ProjectWorkspaceScreen() {
                   >
                     <div className="flex gap-3">
                       <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
-                        <img alt={proj.partnerName} className="w-12 h-12 rounded-full object-cover" src={proj.partnerAvatar} />
+                        <UserAvatar name={proj.partnerName} src={proj.partnerAvatar} userId={proj.partnerUserId} size="md" />
                         {proj.online && (
                           <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full"></span>
                         )}
@@ -1182,7 +1183,7 @@ export default function ProjectWorkspaceScreen() {
                     >
                       <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex items-center gap-3">
                         <span className="relative">
-                          <img alt={partnerName} className="w-8 h-8 rounded-full object-cover" src={partnerAvatar} />
+                          <UserAvatar name={partnerName} src={partnerAvatar} userId={partnerUserId} size="sm" />
                           {isPartnerOnline && (
                             <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 border border-card rounded-full"></span>
                           )}
@@ -1208,7 +1209,7 @@ export default function ProjectWorkspaceScreen() {
                         >
                           <div className="text-center">
                             <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'}>
-                              <img alt={partnerName} className="w-12 h-12 rounded-full mx-auto mb-2 border-2 border-[var(--gb-cyan)] object-cover" src={partnerAvatar} />
+                              <UserAvatar name={partnerName} src={partnerAvatar} userId={partnerUserId} size="lg" className="mx-auto mb-2" />
                               <h3 className="font-bold text-xs text-foreground">{partnerName}</h3>
                             </UserProfileLink>
                             <p className="text-[9px] text-muted-foreground mb-3">{partnerTitle} at {partnerCompany}</p>
@@ -1381,7 +1382,7 @@ export default function ProjectWorkspaceScreen() {
                         <div key={msg.id || index} className={`flex items-end gap-2 max-w-[85%] ${isMe ? 'self-end flex-row-reverse' : ''}`}>
                           {!isMe && (
                             <UserProfileLink userId={partnerUserId} role={isClient ? 'freelancer' : 'client'} className="flex-shrink-0">
-                              <img alt="" className="w-7 h-7 rounded-full object-cover" src={partnerAvatar} />
+                              <UserAvatar name={partnerName} src={partnerAvatar} userId={partnerUserId} size="sm" />
                             </UserProfileLink>
                           )}
                           <div className="flex flex-col gap-1">

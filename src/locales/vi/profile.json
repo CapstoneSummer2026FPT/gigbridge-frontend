@@ -83,6 +83,8 @@
     "companySize": "Quy mô công ty",
     "email": "Email",
     "jobList": "Danh sách công việc",
+    "noOpenJobsClient": "Khách hàng chưa có công việc nào đang mở.",
+    "noOpenJobsOwner": "Bạn chưa có công việc nào đang mở.",
     "basedOnReviewsClient": "Dựa trên {{count}} đánh giá từ khách hàng",
     "basedOnReviewsFreelancer": "Dựa trên {{count}} đánh giá từ freelancer",
     "availability": {

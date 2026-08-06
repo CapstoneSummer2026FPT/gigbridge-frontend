@@ -11,6 +11,7 @@ import { UserRole } from '../../../types/models/User';
 import type { Dispute } from '../../../types/models/Dispute';
 import { ClientContractDetails } from '../components/ClientContractDetails';
 import { FreelancerContractDetails } from '../components/FreelancerContractDetails';
+import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import { useContractReadyForEscrowEvent } from '../hooks/useContractReadyForEscrowEvent';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
@@ -71,6 +72,7 @@ export default function ViewContractDetailsScreen() {
   const [activeDispute, setActiveDispute] = useState<Dispute | null>(null);
   const [activeDisputeError, setActiveDisputeError] = useState<string | null>(null);
   const [activeDisputeLoading, setActiveDisputeLoading] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   // GSAP Entrance animation
   usePageGSAP({
@@ -312,6 +314,7 @@ export default function ViewContractDetailsScreen() {
           activeDisputeError={activeDisputeError}
           activeDisputeLoading={activeDisputeLoading}
           onRetryDispute={loadContractDetails}
+          onOpenReviewModal={() => setIsReviewModalOpen(true)}
         />
       ) : userRole === 'freelancer' ? (
         <FreelancerContractDetails
@@ -323,6 +326,7 @@ export default function ViewContractDetailsScreen() {
           activeDisputeError={activeDisputeError}
           activeDisputeLoading={activeDisputeLoading}
           onRetryDispute={loadContractDetails}
+          onOpenReviewModal={() => setIsReviewModalOpen(true)}
         />
       ) : (
         <ClientContractDetails
@@ -335,8 +339,20 @@ export default function ViewContractDetailsScreen() {
           activeDisputeError={null}
           activeDisputeLoading={false}
           onRetryDispute={loadContractDetails}
+          onOpenReviewModal={() => setIsReviewModalOpen(true)}
         />
       )}
+
+      <ProjectReviewDialog
+        open={isReviewModalOpen}
+        contract={contract}
+        role={userRole === 'client' ? UserRole.Client : UserRole.Freelancer}
+        onClose={() => setIsReviewModalOpen(false)}
+        onSubmitted={() => {
+          setIsReviewModalOpen(false);
+          void loadContractDetails();
+        }}
+      />
     </div>
   );
 }
