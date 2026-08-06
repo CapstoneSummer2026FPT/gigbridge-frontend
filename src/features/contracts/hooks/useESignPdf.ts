@@ -3,6 +3,7 @@ import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { esignPostAPI } from '../../../api/esignAPI/POST';
 import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { SignatureStatus } from '../../../types/models/ESign';
+import { sanitizePdfHtml } from '../utils/pdfHtmlSanitizer';
 
 const safeFileName = (document: ESignDocumentDto): string =>
   document.contractId
@@ -31,7 +32,7 @@ const buildPdfSource = (document: ESignDocumentDto): PdfSource => {
   const root = window.document.createElement('div');
   root.style.cssText = 'width:794px;box-sizing:border-box;background:#fff;color:#111;padding:42px;font-family:Arial,sans-serif;';
   const content = window.document.createElement('div');
-  content.innerHTML = document.renderedHtmlContent;
+  content.appendChild(sanitizePdfHtml(document.renderedHtmlContent));
   root.appendChild(content);
 
   const signed = document.signatures.filter(signature => signature.status === SignatureStatus.Signed);
