@@ -449,7 +449,7 @@ export function useProjectWorkspace(initialContractId: string) {
     if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
 
     if (previousConversationId && previousConversationId !== nextConversationId) {
-      void connection.invoke('LeaveConversation', previousConversationId).catch(() => {});
+      void connection.invoke('LeaveConversation', previousConversationId).catch(() => { });
     }
     if (nextConversationId && previousConversationId !== nextConversationId) {
       void connection.invoke('JoinConversation', nextConversationId).catch(joinError => {
@@ -459,7 +459,7 @@ export function useProjectWorkspace(initialContractId: string) {
 
     return () => {
       if (nextConversationId && conversationIdRef.current === nextConversationId) {
-        void connection.invoke('LeaveConversation', nextConversationId).catch(() => {});
+        void connection.invoke('LeaveConversation', nextConversationId).catch(() => { });
       }
     };
   }, [project.conversationId]);

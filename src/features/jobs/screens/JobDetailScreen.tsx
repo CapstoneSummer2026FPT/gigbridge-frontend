@@ -17,6 +17,7 @@ import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { NestedMilestonePlanEditor, type EditableMilestonePlan } from '../../../shared/components/NestedMilestonePlanEditor';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { renderDescription } from '../utils/descriptionFormatter';
 
@@ -148,7 +149,8 @@ export default function JobDetailScreen() {
   }
 
   // Client profile navigation path
-  const clientProfilePath = getProfilePath(client?.id ?? null, 'client');
+  const clientProfileUserId = clientProfile?.userId || client?.id || job?.userId || job?.clientUserId || null;
+  const clientProfilePath = getProfilePath(clientProfileUserId, 'client');
 
   return (
     <AppLayout>
@@ -174,9 +176,8 @@ export default function JobDetailScreen() {
             <div className="flex items-center gap-2 shrink-0">
               {role === UserRole.Freelancer && (
                 <button
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted/80 backdrop-blur-md ${
-                    isSavingSavedJob ? 'opacity-60 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted/80 backdrop-blur-md ${isSavingSavedJob ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
                   onClick={toggleSavedJob}
                   disabled={isSavingSavedJob}
                   title={isSaved ? 'Remove from saved' : 'Save job'}
@@ -427,11 +428,10 @@ export default function JobDetailScreen() {
                       <div className="flex items-center gap-2 shrink-0">
                         {sj.aiMatchScore && (
                           <span
-                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                              sj.aiMatchScore >= 90
-                                ? 'bg-success/12 text-success border border-success/25'
-                                : 'bg-warning/12 text-warning border border-warning/25'
-                            }`}
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${sj.aiMatchScore >= 90
+                              ? 'bg-success/12 text-success border border-success/25'
+                              : 'bg-warning/12 text-warning border border-warning/25'
+                              }`}
                           >
                             {sj.aiMatchScore}%
                           </span>
@@ -542,17 +542,11 @@ export default function JobDetailScreen() {
               <div className="jd-glass-card rounded-2xl p-6 jd-gsap-sidebar">
                 <h3 className="jd-section-title">{t('jobDetail.aboutClient')}</h3>
 
-                <UserProfileLink userId={clientProfile?.userId || client?.id} role="client" className="flex items-center gap-3.5 mb-4 group">
-                  <div className="jd-avatar-ring">
-                    {clientProfile?.userAvatar ? (
-                      <img src={clientProfile.userAvatar} alt={client?.fullName || 'Client'} className="w-full h-full object-cover rounded-[calc(0.75rem-2px)]" />
-                    ) : (
-                      <div className="jd-avatar-inner">{client?.fullName ? client.fullName.charAt(0).toUpperCase() : '?'}</div>
-                    )}
-                  </div>
+                <UserProfileLink userId={clientProfileUserId} role="client" className="flex items-center gap-3.5 mb-4 group">
+                  <UserAvatar name={client?.fullName || job?.clientFullName || 'Client'} src={clientProfile?.userAvatar} userId={clientProfileUserId} size="md" />
                   <div className="min-w-0">
                     <p className="text-text-primary font-bold text-sm truncate group-hover:text-brand transition-colors">
-                      {client?.fullName || 'Client'}
+                      {client?.fullName || job?.clientFullName || 'Client'}
                     </p>
                     <p className="text-[11px] text-text-muted font-medium truncate flex items-center gap-1 mt-0.5">
                       <Building2 size={12} className="text-brand shrink-0" />

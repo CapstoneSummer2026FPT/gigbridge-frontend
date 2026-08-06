@@ -148,7 +148,7 @@ const getActionUrl = (
     case 'dispute':
       return userRole === 2 ? '/admin/disputes' : '/contracts';
     case 'review':
-      return referenceId ? `/reviews/create?contractId=${referenceId}` : '/reviews/create';
+      return referenceId ? `/contracts/${referenceId}` : '/contracts';
     case 'schedule':
       return metadata?.schemaVersion >= 1 && metadata.conversationId && metadata.scheduleMessageId
         ? `/messages?conversationId=${metadata.conversationId}&messageId=${metadata.scheduleMessageId}`

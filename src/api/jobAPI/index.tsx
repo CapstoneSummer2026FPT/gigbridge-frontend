@@ -10,6 +10,7 @@ export const jobAPI = {
   getSkillsByCategory: jobGetAPI.getSkillsByCategory,
   getMyJobPostById: jobGetAPI.getMyJobPostById,
   getMyJobPosts: jobGetAPI.getMyJobPosts,
+  getClientOpenJobPosts: jobGetAPI.getClientOpenJobPosts,
   getJobPromotionPolicy: jobGetAPI.getJobPromotionPolicy,
   getJobPromotionFeed: jobGetAPI.getJobPromotionFeed,
   getMyDraftJobPosts: jobGetAPI.getMyDraftJobPosts,

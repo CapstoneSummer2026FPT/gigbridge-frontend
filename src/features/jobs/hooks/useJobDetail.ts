@@ -66,10 +66,13 @@ const toJobFromClientDetail = (dto: GetMyJobPostDetailDto): Job => ({
 const toJobFromDetail = (dto: JobPostDetailDto): Job => ({
   id: dto.jobPostsId,
   clientId: dto.clientProfilesId,
+  userId: dto.userId,
+  clientUserId: dto.userId,
+  clientFullName: dto.clientFullName || dto.fullName || 'Client',
   title: dto.title,
   description: dto.description,
   category: dto.categoryName || 'All',
-  skills: dto.skills?.map(s => s.skillName) || [],
+  skills: dto.skills?.map((s: { skillName?: string; name?: string }) => s.skillName || s.name || '') || [],
   budgetMin: dto.budgetMin ?? 0,
   budgetMax: dto.budgetMax ?? 0,
   jobType: 'fixed',
@@ -173,19 +176,22 @@ export function useJobDetail() {
         const data = await jobGetAPI.getJobById(activeJobPostId);
         setJob(data.job);
 
-        let fetchedClient: ClientIdentity | null = (data.job.clientId || data.job.clientFullName) ? {
-          id: data.job.clientId,
+        const clientUserId = data.job.userId || data.job.clientUserId;
+        const targetIdToQuery = clientUserId || data.job.clientId;
+
+        let fetchedClient: ClientIdentity | null = (targetIdToQuery || data.job.clientFullName) ? {
+          id: targetIdToQuery,
           fullName: data.job.clientFullName || 'Client',
         } : null;
         let fetchedClientProfile: ClientProfileDetailDto | null = null;
 
-        if (data.job.clientId) {
+        if (targetIdToQuery) {
           try {
-            const profileRes = await profileGetAPI.getClientProfile(data.job.clientId);
+            const profileRes = await profileGetAPI.getClientProfile(targetIdToQuery);
             if (profileRes.success && profileRes.data) {
               const apiData = profileRes.data;
               fetchedClient = {
-                id: apiData.userId || data.job.clientId,
+                id: apiData.userId || targetIdToQuery,
                 fullName: apiData.userFullName || data.job.clientFullName || 'Client',
               };
               fetchedClientProfile = apiData;

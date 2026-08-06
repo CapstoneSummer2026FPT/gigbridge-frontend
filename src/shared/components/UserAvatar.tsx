@@ -66,9 +66,8 @@ export function UserAvatar({
   const initials = useMemo(() => initialsFor(name), [name]);
 
   // Outer wrapper with gradient stroke (background to mint from theme)
-  const outerClasses = `${sizeClasses[size]} shrink-0 inline-block p-[2px] rounded-full bg-gradient-to-br from-[var(--background)] to-[var(--mint)] ${
-    premium ? 'admin-premium-avatar' : ''
-  } ${className}`;
+  const outerClasses = `${sizeClasses[size]} shrink-0 inline-block p-[2px] rounded-full bg-gradient-to-br from-[var(--background)] to-[var(--mint)] ${premium ? 'admin-premium-avatar' : ''
+    } ${className}`;
 
   return (
     <span className={outerClasses} role="img" aria-label={`${name || 'User'} avatar`}>

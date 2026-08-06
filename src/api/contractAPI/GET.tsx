@@ -492,4 +492,32 @@ export const contractGetAPI = {
 
   getEarlyStartRequests: async (contractId: string): Promise<ApiResponse<MilestoneEarlyStartRequest[]>> =>
     apiService.get<MilestoneEarlyStartRequest[]>(`contracts/${contractId}/milestones/early-start-requests`),
+
+  /**
+   * GET /api/Contracts/my-completed-projects
+   * Freelancer-only completed projects.
+   */
+  getMyCompletedProjects: async (): Promise<ApiResponse<FreelancerCompletedProjectDto[]>> =>
+    apiService.get<FreelancerCompletedProjectDto[]>(`${contractsUrl}/my-completed-projects`),
 };
+
+export interface FreelancerCompletedProjectDto {
+  contractId: string;
+  jobPostsId: string;
+  totalBudget: number;
+  status: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  completedAt?: string | null;
+  clientName: string;
+  canReview: boolean;
+  hasReviewedByCurrentUser: boolean;
+  jobPost?: {
+    jobPostsId: string;
+    title: string;
+    description?: string;
+    skills?: Array<{ skillsId: string; name?: string; skillName?: string }>;
+    categoryName?: string;
+    majorName?: string;
+  } | null;
+}

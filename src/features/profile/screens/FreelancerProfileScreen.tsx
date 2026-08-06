@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router';
 import {
@@ -36,9 +36,179 @@ import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
 import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
 import { ReportUserModal } from '../components/ReportUserModal';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { formatGigCoinRange } from '../../../shared/utils/gigcoin';
+import type { FreelancerCompletedProjectDto } from '../../../api/contractAPI/GET';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/client-profile-screen.css';
 import '../styles/freelancer-profile-screen.css';
+
+interface FreelancerCompletedProjectsCarouselProps {
+  completedProjects: FreelancerCompletedProjectDto[];
+  loading: boolean;
+}
+
+function FreelancerCompletedProjectsCarousel({ completedProjects, loading }: FreelancerCompletedProjectsCarouselProps) {
+  const navigate = useNavigate();
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const itemsPerPage = 2;
+  const totalSlides = Math.max(1, Math.ceil(completedProjects.length / itemsPerPage));
+
+  useEffect(() => {
+    setActiveSlide(0);
+  }, [completedProjects.length]);
+
+  useEffect(() => {
+    if (totalSlides <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % totalSlides);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [totalSlides, isPaused]);
+
+  if (loading) {
+    return (
+      <div className="space-y-3 py-4">
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-3 py-1">
+            <div className="h-4 bg-[var(--surface-muted)] rounded w-3/4" />
+            <div className="h-3 bg-[var(--surface-muted)] rounded w-1/2" />
+          </div>
+        </div>
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-3 py-1">
+            <div className="h-4 bg-[var(--surface-muted)] rounded w-3/4" />
+            <div className="h-3 bg-[var(--surface-muted)] rounded w-1/2" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (completedProjects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[140px] my-auto text-center p-6">
+        <p className="text-[var(--text-muted)] text-xs font-semibold">
+          Chưa có dự án nào hoàn thành gần đây.
+        </p>
+      </div>
+    );
+  }
+
+  const currentPair = completedProjects.slice(activeSlide * itemsPerPage, (activeSlide + 1) * itemsPerPage);
+
+  return (
+    <div
+      className="flex-1 flex flex-col justify-start space-y-3 min-h-[145px]"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <div className="cp-job-list flex flex-col justify-start items-stretch gap-2.5 transition-all duration-500 ease-in-out flex-1">
+        {currentPair.map(proj => {
+          const title = proj.jobPost?.title || 'Dự án đã hoàn thành';
+          const budgetText = formatGigCoinRange(proj.totalBudget, proj.totalBudget);
+          const categoryName = proj.jobPost?.categoryName || proj.jobPost?.majorName || 'Hoàn thành';
+          const skillsList = proj.jobPost?.skills?.map(s => s.skillName || s.name || '') || [];
+          const targetJobId = proj.jobPostsId || proj.jobPost?.jobPostsId;
+
+          return (
+            <div
+              key={proj.contractId}
+              onClick={() => {
+                if (targetJobId) {
+                  navigate(`/jobs/${targetJobId}`);
+                }
+              }}
+              className="group relative flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-[var(--surface)] via-[var(--surface)] to-[var(--surface-muted)]/40 hover:to-[var(--surface-hover)] border border-[var(--border)] hover:border-[var(--brand,#494be7)]/60 shadow-2xs hover:shadow-sm transition-all duration-300 cursor-pointer overflow-hidden"
+            >
+              {/* Left active green indicator bar */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 group-hover:bg-emerald-400 transition-all duration-300" />
+
+              <div className="space-y-1.5 flex-1 min-w-0 pl-1">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <h3 className="truncate font-black text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--brand,#494be7)] transition-colors">
+                    {title}
+                  </h3>
+                  <span className="shrink-0 text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20 shadow-2xs">
+                    {budgetText}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-semibold truncate">
+                  <span className="shrink-0 text-[var(--text-secondary)] font-bold">
+                    Khách hàng: {proj.clientName || 'N/A'}
+                  </span>
+                  <span className="text-[var(--border-strong,#a1a1aa)]">•</span>
+                  <span className="shrink-0">{categoryName}</span>
+                  {skillsList.length > 0 && (
+                    <>
+                      <span className="text-[var(--border-strong,#a1a1aa)]">•</span>
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        {skillsList.slice(0, 3).map(tag => (
+                          <span
+                            key={tag}
+                            className="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-[var(--surface-muted)] text-[var(--text-muted)] border border-[var(--border)] group-hover:border-[var(--brand,#494be7)]/30 group-hover:text-[var(--brand,#494be7)] transition-colors"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 w-7 h-7 rounded-lg bg-[var(--surface)] border border-[var(--border)] group-hover:bg-[var(--brand,#494be7)] group-hover:text-white group-hover:border-[var(--brand,#494be7)] transition-all duration-300 flex items-center justify-center shadow-2xs">
+                <ChevronRight size={15} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pagination indicators & controls if > 1 slide */}
+      {totalSlides > 1 && (
+        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: totalSlides }).map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setActiveSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  index === activeSlide
+                    ? 'w-6 bg-emerald-500'
+                    : 'w-2 bg-[var(--border-strong,#d4d4d8)] hover:bg-emerald-500/50'
+                }`}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveSlide(prev => (prev === 0 ? totalSlides - 1 : prev - 1))}
+              className="p-1 hover:text-emerald-500 cursor-pointer"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span>
+              {activeSlide + 1} / {totalSlides}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveSlide(prev => (prev + 1) % totalSlides)}
+              className="p-1 hover:text-emerald-500 cursor-pointer"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const getAvailabilityText = (avail?: number, t?: (key: string) => string) => {
   if (avail === 0) return t ? t('profile.availability.fullTime') : 'Full-time (40h/week)';
@@ -75,6 +245,8 @@ export default function FreelancerProfileScreen() {
     distribution,
     totalPages,
     paginatedReviews,
+    completedProjects,
+    completedLoading,
     setShowJobInviteModal,
     setShowMoreMenu,
     setCurrentPage,
@@ -178,7 +350,7 @@ export default function FreelancerProfileScreen() {
 
               {/* User Meta Details Block */}
               <div className="cp-hero-details">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
                   <h1 className="cp-hero-name">
                     {user.full_name || 'Bao Dinh'}
                   </h1>
@@ -427,99 +599,19 @@ export default function FreelancerProfileScreen() {
               )}
             </div>
 
-            {/* Recently Worked Card (Col-8) - Exact Client Profile Job List Format */}
+            {/* Recently Worked Card (Col-8) */}
             <div className="cp-card cp-col-8 flex flex-col justify-between space-y-5">
-              <div className="cp-card-header">
+              <div className="cp-card-header flex items-center justify-between">
                 <div className="cp-card-title-group">
                   <Layers size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">{t('profile.recentlyWorked')}</h2>
+                  <h2 className="cp-card-title">
+                    {t('profile.recentlyWorked')} {completedProjects.length > 0 ? `(${completedProjects.length})` : ''}
+                  </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/jobs')}
-                  className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
-                >
-                  <span>{t('profile.seeMore')}</span>
-                  <ChevronRight size={14} />
-                </button>
               </div>
 
-              {/* Job / Experience List */}
-              <div className="cp-job-list">
-                {experience.length > 0 ? (
-                  experience.map((exp, idx) => (
-                    <div key={idx} className="cp-job-item">
-                      <div className="space-y-1.5 flex-1">
-                        <h3 className="cp-job-title">{exp.title}</h3>
-                        <p className="cp-job-meta">
-                          $5 - $15 • Fixed Price • {exp.company || 'Remote'} ({exp.years})
-                        </p>
-                        <div className="cp-job-tags">
-                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                            <span key={tag} className="cp-job-tag-pill">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate('/jobs')}
-                        className="cp-action-icon-btn"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <>
-                    <div className="cp-job-item">
-                      <div className="space-y-1.5 flex-1">
-                        <h3 className="cp-job-title">Web Dev</h3>
-                        <p className="cp-job-meta">$5 - $15 • Fixed Price • Remote</p>
-                        <div className="cp-job-tags">
-                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                            <span key={tag} className="cp-job-tag-pill">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate('/jobs')}
-                        className="cp-action-icon-btn"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-
-                    <div className="cp-job-item">
-                      <div className="space-y-1.5 flex-1">
-                        <h3 className="cp-job-title">Web Dev</h3>
-                        <p className="cp-job-meta">$5 - $15 • Fixed Price • Remote</p>
-                        <div className="cp-job-tags">
-                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                            <span key={tag} className="cp-job-tag-pill">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate('/jobs')}
-                        className="cp-action-icon-btn"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              {/* Dynamic Completed Projects Carousel */}
+              <FreelancerCompletedProjectsCarousel completedProjects={completedProjects} loading={completedLoading} />
             </div>
           </div>
 
