@@ -11,6 +11,11 @@ export enum ESignDocumentStatus {
   Voided = 5,
 }
 
+export interface ESignPdfArtifactDto {
+  documentId: string;
+  fileName: string;
+}
+
 export enum SignatureStatus {
   Pending = 0,
   Signed = 1,
@@ -97,6 +102,7 @@ export interface ESignDocumentDto {
   canCurrentUserSign: boolean;
   hasFinalArtifact: boolean;
   finalizedDocumentFileName?: string | null;
+  hasPdfArtifact?: boolean;
   createdAt: string;
   updatedAt?: string | null;
   signatures: ESignSignatureDto[];
@@ -117,6 +123,7 @@ export interface ESignDocumentListItemDto {
   canCurrentUserSign: boolean;
   hasFinalArtifact: boolean;
   finalizedDocumentFileName?: string | null;
+  hasPdfArtifact?: boolean;
   signatureCount: number;
   finalizedAt?: string | null;
   exportedPdfUrl?: string | null;
