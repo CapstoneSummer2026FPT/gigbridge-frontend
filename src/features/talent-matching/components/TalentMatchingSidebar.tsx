@@ -1,4 +1,5 @@
-import { Check } from 'lucide-react';
+import { useState } from 'react';
+import { Check, ChevronDown } from 'lucide-react';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { GetMyJobPostDto } from '../../../types/models/Job';
 import type { ViewStage } from '../hooks/useSmartTalentMatching';
@@ -37,6 +38,7 @@ export function TalentMatchingSidebar({
   setPageSize,
 }: TalentMatchingSidebarProps) {
   const { t } = useTranslation();
+  const [isCategoryOpen, setIsCategoryOpen] = useState(true);
 
   return (
     <aside
@@ -121,51 +123,73 @@ export function TalentMatchingSidebar({
         </div>
       )}
 
-      {/* 3. Category Filter Chips */}
+      {/* 3. Collapsible Category Filter */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-            {t('talentMatching.category')}
-          </label>
-          {majorCategoryId && (
+        <div
+          className="flex items-center justify-between cursor-pointer select-none py-0.5 group"
+          onClick={() => setIsCategoryOpen(prev => !prev)}
+        >
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-text-muted cursor-pointer group-hover:text-text-primary transition-colors">
+              {t('talentMatching.category')}
+            </label>
+            {majorCategoryId && (
+              <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {majorCategoryId && (
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  setMajorCategoryId(null);
+                }}
+                className="text-[10px] font-bold text-brand hover:underline"
+              >
+                {t('talentMatching.clear')}
+              </button>
+            )}
+            <ChevronDown
+              size={14}
+              className={`text-text-muted group-hover:text-text-primary transition-transform duration-200 ${
+                isCategoryOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </div>
+        </div>
+
+        {isCategoryOpen && (
+          <div className="flex flex-col gap-1.5 pt-1">
             <button
               onClick={() => setMajorCategoryId(null)}
-              className="text-[10px] font-bold text-brand hover:underline"
-            >
-              {t('talentMatching.clear')}
-            </button>
-          )}
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <button
-            onClick={() => setMajorCategoryId(null)}
-            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-              !majorCategoryId
-                ? 'bg-brand text-white shadow-sm shadow-brand/25'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border border-border/50'
-            }`}
-          >
-            {t('talentMatching.allCategories')}
-          </button>
-          {categoryOptions.map(option => (
-            <button
-              key={option.id}
-              onClick={() => setMajorCategoryId(majorCategoryId === option.id ? null : option.id)}
-              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-2 ${
-                majorCategoryId === option.id
-                  ? 'bg-brand/10 text-brand border border-brand/30'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border border-transparent'
+              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                !majorCategoryId
+                  ? 'bg-brand text-white shadow-sm shadow-brand/25'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border border-border/50'
               }`}
             >
-              <span className="truncate">{option.name}</span>
-              {majorCategoryId === option.id && (
-                <span className="w-4 h-4 rounded-full bg-brand flex items-center justify-center shrink-0">
-                  <Check size={10} className="text-white" />
-                </span>
-              )}
+              {t('talentMatching.allCategories')}
             </button>
-          ))}
-        </div>
+            {categoryOptions.map(option => (
+              <button
+                key={option.id}
+                onClick={() => setMajorCategoryId(majorCategoryId === option.id ? null : option.id)}
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-between gap-2 ${
+                  majorCategoryId === option.id
+                    ? 'bg-brand/10 text-brand border border-brand/30'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-muted border border-transparent'
+                }`}
+              >
+                <span className="truncate">{option.name}</span>
+                {majorCategoryId === option.id && (
+                  <span className="w-4 h-4 rounded-full bg-brand flex items-center justify-center shrink-0">
+                    <Check size={10} className="text-white" />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 4. Items Per Page Filter (Moved to the very bottom) */}

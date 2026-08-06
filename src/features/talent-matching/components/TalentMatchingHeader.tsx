@@ -24,7 +24,7 @@ export function TalentMatchingHeader({
   role,
   onViewPremium,
 }: TalentMatchingHeaderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <>
@@ -34,7 +34,11 @@ export function TalentMatchingHeader({
             <Sparkles size={14} /> {t('talentMatching.discoveryEyebrow')}
           </div>
           <h1 className="text-3xl font-black text-text-primary leading-tight">
-            {t('talentMatching.pageTitle')}
+            {i18n.language === 'vi' ? (
+              <>Tìm kiếm <span className="font-serif italic font-normal text-brand">nhân tài phù hợp</span> cho dự án</>
+            ) : (
+              <>Find the <span className="font-serif italic font-normal text-brand">right freelancer</span> for your project</>
+            )}
           </h1>
           <p className="text-text-secondary text-sm mt-1.5 max-w-xl">
             {t('talentMatching.pageSubtitle')}
