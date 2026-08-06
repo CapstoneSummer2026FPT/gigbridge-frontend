@@ -449,6 +449,8 @@
     "unableUpdateStatus": "Unable to update JobPost status.",
     "unableUpdateVisibility": "Unable to update JobPost visibility.",
     "visibilityUpdated": "Visibility updated.",
+    "aiInterviewEnabled": "AI interview enabled.",
+    "aiInterviewDisabled": "AI interview disabled.",
     "publishSuccess": "JobPost published.",
     "closeSuccess": "JobPost closed.",
     "cancelSuccess": "JobPost cancelled.",

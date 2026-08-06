@@ -135,7 +135,19 @@ export default function MyJobsScreen() {
     setPremiumActionBusy(false);
     if (!response.success || !response.data) return toast.error(response.message || 'Unable to configure the AI interview.');
     setInterviewTarget(undefined);
-    toast.success(`AI interview enabled with ${response.data.questionCount} questions.`);
+    updateLocalJob(job.jobPostsId, { hasAiInterview: true });
+    toast.success(t('myJobs.aiInterviewEnabled') || 'AI interview enabled.');
+  };
+
+  const disableAiInterview = async (job: GetMyJobPostDto) => {
+    setInterviewTarget(job);
+    setPremiumActionBusy(true);
+    const response = await jobAPI.disableAiInterview(job.jobPostsId);
+    setPremiumActionBusy(false);
+    if (!response.success) return toast.error(response.message || 'Unable to disable the AI interview.');
+    setInterviewTarget(undefined);
+    updateLocalJob(job.jobPostsId, { hasAiInterview: false });
+    toast.success(t('myJobs.aiInterviewDisabled') || 'AI interview disabled.');
   };
 
   const counts = useMemo(() => {
@@ -365,6 +377,11 @@ export default function MyJobsScreen() {
                           <span className="mj-badge mj-badge-progress" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             {visibilityIcon(job.visibility)} {visibilityLabel(job.visibility, t)}
                           </span>
+                          {job.hasAiInterview && (
+                            <span className="mj-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--brand)', color: 'white' }}>
+                              <Bot size={13} /> {t('jobs.aiInterviewTag') || 'AI Interview'}
+                            </span>
+                          )}
                         </div>
                         {!isCompact && (
                           <p className="mj-job-desc" style={{ marginBottom: 12 }}>{job.description}</p>
@@ -470,16 +487,30 @@ export default function MyJobsScreen() {
                                   ? `Manage promotion · ends ${job.featuredUntil ? formatDate(job.featuredUntil) : ''}`
                                   : 'Promote'} {!premiumStatus.isPremium && !job.isFeatured && <Crown size={12} />}
                               </button>
-                              <button
-                                onClick={event => {
-                                  event.currentTarget.closest('details')?.removeAttribute('open');
-                                  openPremiumPath(() => void createAiInterview(job));
-                                }}
-                                disabled={premiumActionBusy}
-                                className="mj-action-btn mj-btn-cyan"
-                              >
-                                <Bot size={14} /> {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Enabling interview…' : 'Enable AI interview'} {!premiumStatus.isPremium && <Crown size={12} />}
-                              </button>
+                              {job.hasAiInterview ? (
+                                <button
+                                  onClick={event => {
+                                    event.currentTarget.closest('details')?.removeAttribute('open');
+                                    void disableAiInterview(job);
+                                  }}
+                                  disabled={premiumActionBusy}
+                                  className="mj-action-btn mj-btn-cyan"
+                                  style={{ color: 'var(--danger,#ef4444)' }}
+                                >
+                                  <Bot size={14} /> {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Disabling interview…' : 'Disable AI interview'}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={event => {
+                                    event.currentTarget.closest('details')?.removeAttribute('open');
+                                    openPremiumPath(() => void createAiInterview(job));
+                                  }}
+                                  disabled={premiumActionBusy}
+                                  className="mj-action-btn mj-btn-cyan"
+                                >
+                                  <Bot size={14} /> {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Enabling interview…' : 'Enable AI interview'} {!premiumStatus.isPremium && <Crown size={12} />}
+                                </button>
+                              )}
                             </div>
                           </details>
                         </>

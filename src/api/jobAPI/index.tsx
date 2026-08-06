@@ -35,4 +35,5 @@ export const jobAPI = {
   deleteEmptyDraftJobPost: jobDeleteAPI.deleteEmptyDraftJobPost,
   deleteJobPostQuestion: jobDeleteAPI.deleteJobPostQuestion,
   deleteJobPostAttachment: jobDeleteAPI.deleteJobPostAttachment,
+  disableAiInterview: jobDeleteAPI.disableAiInterview,
 };

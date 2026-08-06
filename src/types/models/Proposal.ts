@@ -172,6 +172,10 @@ export interface ProposalDetailDto {
   outOfScope?: string | null;
   workBreakdownItems?: ProposalWorkBreakdownItemDto[];
   milestonePlans?: ProposalMilestonePlanDto[];
+  hasAiInterview?: boolean;
+  aiInterviewCompleted?: boolean;
+  aiInterviewInProgress?: boolean;
+  aiInterviewDefinitionId?: string | null;
 }
 
 export interface CreateProposalRequest {
