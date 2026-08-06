@@ -411,7 +411,7 @@ export default function FreelancerProposalsScreen() {
 
                   {activeProposal.hasAiInterview
                     && !activeProposal.aiInterviewCompleted
-                    && [ProposalStatus.Draft, ProposalStatus.Pending, ProposalStatus.Shortlisted, ProposalStatus.Accepted].includes(Number(activeProposal.status)) && (
+                    && Number(activeProposal.status) === ProposalStatus.Draft && (
                     <button
                       type="button"
                       onClick={() => navigate(`/ai-interview/${encodeURIComponent(activeProposal.jobPostsId)}`, {

@@ -196,6 +196,7 @@ export interface GetMyJobPostDto {
   isFeatured?: boolean;
   featuredUntil?: string | null;
   setupProgress?: JobPostSetupProgressDto | null;
+  hasAiInterview?: boolean;
 }
 
 export interface JobPostSkillDto {

@@ -445,6 +445,8 @@
     "unableUpdateStatus": "Không thể cập nhật trạng thái bài đăng.",
     "unableUpdateVisibility": "Không thể cập nhật quyền hiển thị của bài đăng.",
     "visibilityUpdated": "Quyền hiển thị đã được cập nhật.",
+    "aiInterviewEnabled": "Đã bật phỏng vấn AI.",
+    "aiInterviewDisabled": "Đã tắt phỏng vấn AI.",
     "publishSuccess": "Bài đăng đã được tuyển.",
     "closeSuccess": "Bài đăng đã đóng tuyển.",
     "cancelSuccess": "Bài đăng đã được hủy.",
