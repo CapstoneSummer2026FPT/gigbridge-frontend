@@ -245,15 +245,26 @@ export function useCreateProposal() {
   const persistDraft = async () => {
     const payload = proposalPayload();
     if (draftProposalId) {
+      // Proposals that are already submitted are read-only — never PUT them.
+      if (!canEditProposal(proposal?.status)) return draftProposalId;
       const response = await proposalPutAPI.updateProposal(draftProposalId, payload);
       if (!response.success) { setError(response.message || t('createProposal.errLoadProposal')); return null; }
       return draftProposalId;
     }
     if (!resolvedJobPostId) { setError(t('createProposal.errMissingJobId')); return null; }
     const response = await proposalPostAPI.createProposal({ jobPostsId: resolvedJobPostId, ...payload });
-    if (!response.success || !response.data) { setError(response.message || t('createProposal.errLoadProposal')); return null; }
-    setProposal({ proposalId: response.data, jobPostId: resolvedJobPostId, freelancerProfileId: '', status: ProposalStatus.Draft, ...payload });
-    return response.data;
+    if (response.success && response.data) {
+      setProposal({ proposalId: response.data, jobPostId: resolvedJobPostId, freelancerProfileId: '', status: ProposalStatus.Draft, ...payload });
+      return response.data;
+    }
+    // Hydration may have missed an existing proposal; recover it instead of erroring.
+    const existing = await proposalGetAPI.getMyProposalByJobPost(resolvedJobPostId);
+    if (existing.success && existing.data) {
+      hydrateProposal(existing.data);
+      return existing.data.proposalId;
+    }
+    setError(response.message || t('createProposal.errLoadProposal'));
+    return null;
   };
 
   const handleSaveDraft = async () => {
@@ -272,6 +283,12 @@ export function useCreateProposal() {
       toast.error(validation);
       return setError(validation);
     }
+    // Already-submitted proposals are read-only: don't re-PUT or re-enter the interview.
+    if (proposal && !canEditProposal(proposal.status)) {
+      toast.info(t('createProposal.readOnlyNotice', { status: getStatusLabel(proposal.status) }));
+      navigate('/proposals', { state: { submittedProposalId: proposal.proposalId } });
+      return;
+    }
     setSubmitting(true); setError('');
     const savedId = await persistDraft();
     if (!savedId || !resolvedJobPostId) return setSubmitting(false);
@@ -289,7 +306,7 @@ export function useCreateProposal() {
     }
     if ((questionsResponse.data || []).length > 0) {
       setSubmitting(false);
-      navigate(`/proposals/create/${resolvedJobPostId}/questions`, { state: { proposalId: savedId, jobPostId: resolvedJobPostId } });
+      navigate(`/proposals/create/${resolvedJobPostId}/questions?proposalId=${savedId}`, { state: { proposalId: savedId, jobPostId: resolvedJobPostId } });
       return;
     }
     const response = await proposalPatchAPI.updateProposalStatus(savedId, { status: ProposalStatus.Pending });
