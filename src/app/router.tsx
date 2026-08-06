@@ -57,7 +57,6 @@ const AdminFAQManagementScreen = lazy(() => import('../features/admin/screens/Ad
 const AdminDisputeManagementScreen = lazy(() => import('../features/admin/screens/AdminDisputeManagementScreen'));
 const DisputeDetailScreen = lazy(() => import('../features/disputes/screens/DisputeDetailScreen'));
 const NotificationsScreen = lazy(() => import('../features/notifications/screens/NotificationsScreen'));
-const CreateReviewScreen = lazy(() => import('../features/reviews/screens/CreateReviewScreen'));
 const MyReviewsScreen = lazy(() => import('../features/reviews/screens/MyReviewsScreen'));
 const SmartTalentMatchingScreen = lazy(() => import('../features/talent-matching/screens/SmartTalentMatchingScreen'));
 const AboutScreen = lazy(() => import('../features/company/screens/AboutScreen'));
@@ -301,7 +300,7 @@ export const router = createBrowserRouter([
 
       // Notifications - requires authentication
       { path: 'notifications', element: <ProtectedRoute requireAuth><NotificationsScreen /></ProtectedRoute> },
-      { path: 'reviews/create', element: <ProtectedRoute requireAuth requireSetup><CreateReviewScreen /></ProtectedRoute> },
+      { path: 'reviews/create', element: <Navigate to="/contracts" replace /> },
       { path: 'reviews', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><MyReviewsScreen /></ProtectedRoute> },
 
       // Company Pages - public

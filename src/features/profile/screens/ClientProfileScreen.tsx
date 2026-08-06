@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   Star,
@@ -26,9 +26,181 @@ import { useClientProfile } from '../hooks/useClientProfile';
 import { ReportUserModal } from '../components/ReportUserModal';
 import { getCompanySizeLabel } from '../utils/profileUtils';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { formatGigCoinRange } from '../../../shared/utils/gigcoin';
+import type { JobPostSummaryDto } from '../../../types/models/Job';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/client-profile-screen.css';
 import '../styles/freelancer-profile-screen.css';
+
+interface ClientJobCarouselProps {
+  jobs: JobPostSummaryDto[];
+  loading: boolean;
+  isOwner?: boolean;
+}
+
+function ClientJobCarousel({ jobs, loading, isOwner }: ClientJobCarouselProps) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const itemsPerPage = 2;
+  const totalSlides = Math.max(1, Math.ceil(jobs.length / itemsPerPage));
+
+  // Reset to slide 0 when jobs list changes
+  useEffect(() => {
+    setActiveSlide(0);
+  }, [jobs.length]);
+
+  // Auto 3s slide rotation
+  useEffect(() => {
+    if (totalSlides <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % totalSlides);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [totalSlides, isPaused]);
+
+  if (loading) {
+    return (
+      <div className="space-y-3 py-4">
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-3 py-1">
+            <div className="h-4 bg-[var(--surface-muted)] rounded w-3/4" />
+            <div className="h-3 bg-[var(--surface-muted)] rounded w-1/2" />
+          </div>
+        </div>
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-3 py-1">
+            <div className="h-4 bg-[var(--surface-muted)] rounded w-3/4" />
+            <div className="h-3 bg-[var(--surface-muted)] rounded w-1/2" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (jobs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[140px] my-auto text-center p-6">
+        <p className="text-[var(--text-muted)] text-xs font-semibold">
+          {isOwner
+            ? t('profile.noOpenJobsOwner', { defaultValue: 'Bạn chưa có công việc nào đang mở.' })
+            : t('profile.noOpenJobsClient', { defaultValue: 'Khách hàng chưa có công việc nào đang mở.' })}
+        </p>
+      </div>
+    );
+  }
+
+  const currentPair = jobs.slice(activeSlide * itemsPerPage, (activeSlide + 1) * itemsPerPage);
+
+  return (
+    <div
+      className="flex-1 flex flex-col justify-start space-y-3 min-h-[145px]"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <div className="cp-job-list flex flex-col justify-start items-stretch gap-2.5 transition-all duration-500 ease-in-out flex-1">
+        {currentPair.map(job => {
+          const skillsList =
+            job.skills?.map((s: any) => s.skillName || s.name || '') || job.skillNames || job.customSkillNames || [];
+          const budgetText = formatGigCoinRange(job.budgetMin, job.budgetMax);
+
+          return (
+            <div
+              key={job.jobPostsId}
+              onClick={() => navigate(`/jobs/${job.jobPostsId}`)}
+              className="group relative flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-[var(--surface)] via-[var(--surface)] to-[var(--surface-muted)]/40 hover:to-[var(--surface-hover)] border border-[var(--border)] hover:border-[var(--brand,#494be7)]/60 shadow-2xs hover:shadow-sm transition-all duration-300 cursor-pointer overflow-hidden"
+            >
+              {/* Left active indicator bar */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-[var(--brand,#494be7)] transition-all duration-300" />
+
+              <div className="space-y-1.5 flex-1 min-w-0 pl-1">
+                {/* Title & Budget */}
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <h3 className="truncate font-black text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--brand,#494be7)] transition-colors">
+                    {job.title}
+                  </h3>
+                  <span className="shrink-0 text-[11px] font-black text-[var(--brand,#494be7)] bg-[var(--brand-soft,rgba(73,75,231,0.12))] px-2.5 py-0.5 rounded-lg border border-[var(--brand-border,rgba(73,75,231,0.25))] shadow-2xs">
+                    {budgetText}
+                  </span>
+                </div>
+
+                {/* Meta & Skills */}
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-semibold truncate">
+                  {(job.categoryName || job.majorName) && (
+                    <span className="shrink-0 text-[var(--text-secondary)] font-bold">
+                      {job.categoryName || job.majorName}
+                    </span>
+                  )}
+                  {skillsList.length > 0 && (
+                    <>
+                      <span className="text-[var(--border-strong,#a1a1aa)]">•</span>
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        {skillsList.slice(0, 3).map(tag => (
+                          <span
+                            key={tag}
+                            className="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-[var(--surface-muted)] text-[var(--text-muted)] border border-[var(--border)] group-hover:border-[var(--brand,#494be7)]/30 group-hover:text-[var(--brand,#494be7)] transition-colors"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Hover Action Icon */}
+              <div className="shrink-0 w-7 h-7 rounded-lg bg-[var(--surface)] border border-[var(--border)] group-hover:bg-[var(--brand,#494be7)] group-hover:text-white group-hover:border-[var(--brand,#494be7)] transition-all duration-300 flex items-center justify-center shadow-2xs">
+                <ChevronRight size={15} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pagination indicators & controls if > 1 slide */}
+      {totalSlides > 1 && (
+        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: totalSlides }).map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setActiveSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${index === activeSlide
+                    ? 'w-6 bg-[var(--brand,#494be7)]'
+                    : 'w-2 bg-[var(--border-strong,#d4d4d8)] hover:bg-[var(--brand,#494be7)]/50'
+                  }`}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveSlide(prev => (prev === 0 ? totalSlides - 1 : prev - 1))}
+              className="p-1 hover:text-[var(--brand,#494be7)] cursor-pointer"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span>
+              {activeSlide + 1} / {totalSlides}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveSlide(prev => (prev + 1) % totalSlides)}
+              className="p-1 hover:text-[var(--brand,#494be7)] cursor-pointer"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ClientProfileScreen() {
   const { t } = useTranslation();
@@ -53,6 +225,8 @@ export default function ClientProfileScreen() {
     distribution,
     totalPages,
     paginatedReviews,
+    clientJobs,
+    jobsLoading,
     setShowMoreMenu,
     setCurrentPage,
   } = useClientProfile(targetId);
@@ -366,77 +540,26 @@ export default function ClientProfileScreen() {
 
             {/* Job List Card (Col-8) */}
             <div className="cp-card cp-col-8 flex flex-col justify-between space-y-5">
-              <div className="cp-card-header">
+              <div className="cp-card-header flex items-center justify-between">
                 <div className="cp-card-title-group">
                   <JobIcon size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">{t('profile.jobList')}</h2>
+                  <h2 className="cp-card-title">
+                    {t('profile.jobList')} {clientJobs.length > 0 ? `(${clientJobs.length})` : ''}
+                  </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/jobs')}
-                  className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
-                >
-                  <span>{t('profile.seeMore')}</span>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-
-              {/* Job Cards */}
-              <div className="cp-job-list">
-                {/* Sample Job Card 1 */}
-                <div className="cp-job-item">
-                  <div className="space-y-1.5 flex-1">
-                    <h3 className="cp-job-title">
-                      Web Dev
-                    </h3>
-                    <p className="cp-job-meta">
-                      $5 - $15 • Fixed Price • Remote
-                    </p>
-                    <div className="cp-job-tags">
-                      {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                        <span key={tag} className="cp-job-tag-pill">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
+                {currentUser?.id === targetId && (
                   <button
                     type="button"
-                    onClick={() => navigate('/jobs')}
-                    className="cp-action-icon-btn"
+                    onClick={() => navigate('/jobs/post')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--brand,#494be7)] hover:bg-[var(--brand-hover,#3f41d0)] text-white text-xs font-extrabold shadow-sm transition-all cursor-pointer border-none"
                   >
-                    <ChevronRight size={18} />
+                    <span>+ Đăng công việc</span>
                   </button>
-                </div>
-
-                {/* Sample Job Card 2 */}
-                <div className="cp-job-item">
-                  <div className="space-y-1.5 flex-1">
-                    <h3 className="cp-job-title">
-                      Web Dev
-                    </h3>
-                    <p className="cp-job-meta">
-                      $5 - $15 • Fixed Price • Remote
-                    </p>
-                    <div className="cp-job-tags">
-                      {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                        <span key={tag} className="cp-job-tag-pill">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate('/jobs')}
-                    className="cp-action-icon-btn"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
+                )}
               </div>
+
+              {/* Dynamic Job Carousel */}
+              <ClientJobCarousel jobs={clientJobs} loading={jobsLoading} isOwner={currentUser?.id === targetId} />
             </div>
           </div>
 

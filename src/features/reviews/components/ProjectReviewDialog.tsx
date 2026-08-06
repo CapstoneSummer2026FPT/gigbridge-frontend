@@ -276,7 +276,7 @@ export function ProjectReviewDialog({ open, contract, role, onClose, onSubmitted
             </div>
 
             {/* Sliders */}
-            <div className="space-y-6" role="group" aria-label="Rating criteria">
+            <div className="space-y-8 sm:space-y-9" role="group" aria-label="Rating criteria">
               <fieldset className="border-none p-0 m-0">
                 <legend className="sr-only">{t('reviews.communication')}</legend>
                 <SliderRow

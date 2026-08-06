@@ -6,7 +6,7 @@ import {
   AlertCircle, CheckCircle, Clock,
   FileText, Calendar, ArrowLeft, Shield,
   ListChecks, Copy, Check, FileCheck, ChevronDown,
-  Star, ShieldAlert, Edit3, Sparkles, Eye, Mail, LoaderCircle, RefreshCw, Users,
+  Star, ShieldAlert, Edit3, Sparkles, Eye, Mail, LoaderCircle, RefreshCw, Users, Zap, ChevronRight,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
@@ -52,6 +52,7 @@ interface FreelancerContractDetailsProps {
   activeDisputeError: string | null;
   activeDisputeLoading: boolean;
   onRetryDispute: () => void;
+  onOpenReviewModal?: () => void;
 }
 
 export function FreelancerContractDetails({
@@ -64,6 +65,7 @@ export function FreelancerContractDetails({
   activeDisputeError,
   activeDisputeLoading,
   onRetryDispute,
+  onOpenReviewModal,
 }: FreelancerContractDetailsProps) {
   const navigate = useNavigate();
   const { t } = useTranslation(['contracts', 'common', 'reviews']);
@@ -780,53 +782,86 @@ export function FreelancerContractDetails({
               </div>
 
               {/* Quick Actions Panel */}
-              <div className="glass-card p-6 space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-wider text-text-muted border-b border-border pb-3">
-                  {t('contracts.quickActions')}
-                </h3>
-                <div className="space-y-3">
+              <div className="relative overflow-hidden rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-md p-5 space-y-4">
+                {/* Background Ambient Glow */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--brand,#494be7)]/10 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex items-center justify-between border-b border-[var(--border)]/70 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--brand,#494be7)]/10 text-[var(--brand,#494be7)] flex items-center justify-center">
+                      <Zap size={15} className="fill-[var(--brand,#494be7)]/20" />
+                    </div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-primary)]">
+                      {t('contracts.quickActions')}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 relative z-10">
+                  {/* Manage Milestones / Workspace (Brand Indigo Gradient: Dark to Light) */}
                   <button
                     type="button"
                     onClick={() => navigate(`/workspace/${contract.contractsId}`)}
-                    className="w-full py-3 px-4 rounded-xl font-extrabold text-xs text-white transition cursor-pointer shadow-xs flex items-center justify-center gap-2 border-none"
-                    style={{ background: 'var(--brand)' }}
+                    className="group relative w-full py-3 px-3.5 rounded-xl font-black text-xs text-white bg-gradient-to-r from-[#3f41d0] via-[var(--brand,#494be7)] to-[#6366f1] hover:from-[#3436be] hover:to-[var(--brand,#494be7)] hover:shadow-lg hover:shadow-[var(--brand,#494be7)]/25 transition-all duration-300 flex items-center justify-between cursor-pointer border-none overflow-hidden"
                   >
-                    <ListChecks size={16} />
-                    {t('contracts.manageMilestones')}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0">
+                        <ListChecks size={15} />
+                      </div>
+                      <span className="truncate">{t('contracts.manageMilestones')}</span>
+                    </div>
+                    <ChevronRight size={15} className="group-hover:translate-x-1 transition-transform shrink-0" />
                   </button>
 
+                  {/* Review Partner (Golden Amber Gradient: Dark to Light) */}
                   {contract.canReview && (
                     <button
                       type="button"
-                      onClick={() => navigate(`/reviews/create?contractId=${contract.contractsId}`)}
-                      className="w-full py-3 px-4 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 rounded-xl font-extrabold text-xs transition cursor-pointer flex items-center justify-center gap-2"
+                      onClick={() => (onOpenReviewModal ? onOpenReviewModal() : navigate(`/reviews/create?contractId=${contract.contractsId}`))}
+                      className="group relative w-full py-3 px-3.5 rounded-xl font-black text-xs text-white bg-gradient-to-r from-orange-600 via-amber-600 to-amber-400 hover:from-orange-700 hover:to-amber-500 hover:shadow-lg hover:shadow-amber-500/25 transition-all duration-300 flex items-center justify-between cursor-pointer border-none overflow-hidden"
                     >
-                      <Star size={16} />
-                      {t('reviews.leaveForClient')}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0">
+                          <Star size={15} className="fill-white" />
+                        </div>
+                        <span className="truncate">{t('reviews.leaveForClient')}</span>
+                      </div>
+                      <ChevronRight size={15} className="group-hover:translate-x-1 transition-transform shrink-0" />
                     </button>
                   )}
 
+                  {/* Reviewed Status (Emerald Green Gradient: Dark to Light) */}
                   {contract.hasReviewedByCurrentUser && contract.status === ContractStatus.Completed && (
-                    <div className="w-full py-3 px-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2">
-                      <CheckCircle size={16} />
-                      {t('reviews.reviewed')}
+                    <div className="relative w-full py-3 px-3.5 rounded-xl font-black text-xs text-white bg-gradient-to-r from-emerald-800 via-emerald-600 to-teal-400 shadow-sm flex items-center justify-between overflow-hidden">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0">
+                          <CheckCircle size={15} />
+                        </div>
+                        <span className="truncate">{t('reviews.reviewed')}</span>
+                      </div>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-white/20">OK</span>
                     </div>
                   )}
 
+                  {/* Dispute Status / Retry (Rose Red Gradient) */}
                   {!isAdminOverride && activeDisputeLoading && (
-                    <div className="w-full py-3 border border-border rounded-xl text-text-muted text-xs font-extrabold flex items-center justify-center gap-2">
-                      <LoaderCircle size={16} className="animate-spin" />
-                      {t('contracts.checkingDispute', { defaultValue: 'Checking dispute status…' })}
+                    <div className="relative w-full py-3 px-3.5 rounded-xl font-black text-xs text-white bg-slate-700 dark:bg-slate-800 flex items-center justify-between overflow-hidden">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0">
+                          <LoaderCircle size={15} className="animate-spin" />
+                        </div>
+                        <span>{t('contracts.checkingDispute', { defaultValue: 'Checking dispute status…' })}</span>
+                      </div>
                     </div>
                   )}
 
                   {!isAdminOverride && !activeDisputeLoading && activeDisputeError && (
-                    <div className="w-full p-3 bg-rose-500/10 border border-rose-500/30 text-rose-500 rounded-xl text-xs font-extrabold space-y-2">
+                    <div className="w-full p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-500 rounded-xl text-xs font-extrabold space-y-2">
                       <p className="m-0">{activeDisputeError}</p>
                       <button
                         type="button"
                         onClick={onRetryDispute}
-                        className="w-full py-1.5 bg-background border border-rose-500/30 rounded-lg flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-2 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-lg flex items-center justify-center gap-2 cursor-pointer font-black border-none"
                       >
                         <RefreshCw size={14} /> {t('common.retry', { defaultValue: 'Retry' })}
                       </button>
@@ -837,10 +872,15 @@ export function FreelancerContractDetails({
                     <button
                       type="button"
                       onClick={() => navigate(`/disputes/${activeDispute.id}`)}
-                      className="w-full py-3 px-4 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-500 rounded-xl font-extrabold text-xs cursor-pointer transition flex items-center justify-center gap-2"
+                      className="group relative w-full py-3 px-3.5 rounded-xl font-black text-xs text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 hover:shadow-lg hover:shadow-rose-600/25 transition-all duration-300 flex items-center justify-between cursor-pointer border-none overflow-hidden"
                     >
-                      <ShieldAlert size={16} />
-                      {t('contracts.viewDispute', { defaultValue: 'View Dispute Case' })}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-white/20 text-white flex items-center justify-center shrink-0">
+                          <ShieldAlert size={15} />
+                        </div>
+                        <span className="truncate">{t('contracts.viewDispute', { defaultValue: 'View Dispute Case' })}</span>
+                      </div>
+                      <ChevronRight size={15} className="group-hover:translate-x-1 transition-transform shrink-0" />
                     </button>
                   )}
                 </div>

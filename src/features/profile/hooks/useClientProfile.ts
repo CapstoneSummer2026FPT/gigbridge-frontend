@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { profileGetAPI } from '../../../api/profileAPI/GET';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
-import type { Review } from '../../../types/models/Job';
+import { jobGetAPI } from '../../../api/jobAPI/GET';
+import type { Review, JobPostSummaryDto } from '../../../types/models/Job';
 
 type ReviewViewModel = {
   id: string;
@@ -139,8 +140,62 @@ export function useClientProfile(targetId: string) {
         setCurrentPage(1);
       }
     };
-
     fetchReviews();
+  }, [targetId]);
+
+  // Fetch open jobs for client
+  const [clientJobs, setClientJobs] = useState<JobPostSummaryDto[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!targetId) {
+      setClientJobs([]);
+      setJobsLoading(false);
+      return;
+    }
+    setJobsLoading(true);
+
+    const fetchJobs = async () => {
+      try {
+        const res = await jobGetAPI.getClientOpenJobPosts(targetId);
+        if (!cancelled && res.success && res.data && res.data.length > 0) {
+          setClientJobs(res.data);
+          return;
+        }
+
+        // Fallback: If owner or endpoint returned empty, try getMyJobPosts
+        const myJobsRes = await jobGetAPI.getMyJobPosts();
+        if (!cancelled && myJobsRes.success && myJobsRes.data) {
+          const openJobs = myJobsRes.data
+            .filter((j: any) => j.status === 1 || String(j.status).toLowerCase() === 'open')
+            .map((j: any) => ({
+              jobPostsId: j.jobPostsId,
+              title: j.title,
+              descriptionPreview: j.description || j.descriptionPreview || '',
+              budgetMin: j.budgetMin,
+              budgetMax: j.budgetMax,
+              createdAt: j.createdAt,
+              skills: j.skills || [],
+              skillNames: j.skillNames || [],
+              categoryName: j.categoryName || j.category?.name,
+              majorName: j.majorName || j.major?.name,
+            }));
+          setClientJobs(openJobs as any);
+        } else {
+          if (!cancelled) setClientJobs([]);
+        }
+      } catch {
+        if (!cancelled) setClientJobs([]);
+      } finally {
+        if (!cancelled) setJobsLoading(false);
+      }
+    };
+
+    fetchJobs();
+    return () => {
+      cancelled = true;
+    };
   }, [targetId]);
 
   const averageRating = reviewsList.length
@@ -173,6 +228,8 @@ export function useClientProfile(targetId: string) {
     distribution,
     totalPages,
     paginatedReviews,
+    clientJobs,
+    jobsLoading,
     setShowMoreMenu,
     setCurrentPage,
   };

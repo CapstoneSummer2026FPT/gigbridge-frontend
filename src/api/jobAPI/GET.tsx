@@ -272,6 +272,17 @@ export const jobGetAPI = {
   },
 
   /**
+   * GET /api/JobPosts/client/{userId}
+   * Get open job posts for a specific client.
+   */
+  getClientOpenJobPosts: async (
+    userId: string,
+    params: { pageIndex?: number; pageSize?: number } = {}
+  ): Promise<ApiResponse<JobPostSummaryDto[]>> => {
+    return apiService.get<JobPostSummaryDto[]>(`${jobPostsUrl}/client/${userId}`, params);
+  },
+
+  /**
    * GET /api/JobPosts/my-jobs/{jobPostId}
    * Client-owned job post detail.
    */

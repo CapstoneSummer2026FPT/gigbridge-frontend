@@ -82,6 +82,8 @@
     "companySize": "Company Size",
     "email": "Email",
     "jobList": "Job List",
+    "noOpenJobsClient": "This client has no open job posts yet.",
+    "noOpenJobsOwner": "You have no open job posts yet.",
     "basedOnReviewsClient": "Based on {{count}} reviews from clients",
     "basedOnReviewsFreelancer": "Based on {{count}} reviews from freelancers",
     "availability": {

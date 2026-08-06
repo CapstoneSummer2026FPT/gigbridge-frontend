@@ -174,9 +174,8 @@ export default function JobDetailScreen() {
             <div className="flex items-center gap-2 shrink-0">
               {role === UserRole.Freelancer && (
                 <button
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted/80 backdrop-blur-md ${
-                    isSavingSavedJob ? 'opacity-60 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center border border-border hover:border-brand hover:text-brand transition-all bg-surface-muted/80 backdrop-blur-md ${isSavingSavedJob ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
                   onClick={toggleSavedJob}
                   disabled={isSavingSavedJob}
                   title={isSaved ? 'Remove from saved' : 'Save job'}
@@ -427,11 +426,10 @@ export default function JobDetailScreen() {
                       <div className="flex items-center gap-2 shrink-0">
                         {sj.aiMatchScore && (
                           <span
-                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                              sj.aiMatchScore >= 90
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${sj.aiMatchScore >= 90
                                 ? 'bg-success/12 text-success border border-success/25'
                                 : 'bg-warning/12 text-warning border border-warning/25'
-                            }`}
+                              }`}
                           >
                             {sj.aiMatchScore}%
                           </span>
