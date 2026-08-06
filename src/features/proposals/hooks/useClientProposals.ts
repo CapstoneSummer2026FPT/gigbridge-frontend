@@ -374,6 +374,34 @@ export function useClientProposals() {
     loadEvaluation(proposalId);
   };
 
+  const runManualEvaluation = async (proposalId: string) => {
+    try {
+      setEvalLoading(true);
+      setEvalError('');
+      const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, false);
+      if (evalRes && evalRes.success && evalRes.data) {
+        const evaluation = evalRes.data;
+        setEvalResult(evaluation);
+        setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
+          ...p,
+          aiScore: evaluation.score,
+          aiSummary: evaluation.summary,
+          aiRecommendedHire: evaluation.recommendedHire,
+          aiTechnicalSkills: evaluation.technicalSkills,
+          aiSoftSkills: evaluation.softSkills,
+          aiEvaluatedAt: new Date().toISOString()
+        } : p));
+      } else {
+        setEvalError(evalRes.message || 'Failed to evaluate proposal.');
+      }
+    } catch (err: unknown) {
+      setEvalError(err instanceof Error ? err.message : 'An error occurred during evaluation.');
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+
   const isBusy = (id: string, action: BusyAction) => busyAction === actionKey(id, action);
   const canClientAct = (status: number) => selectedJobCanNegotiate && [ProposalStatus.Pending, ProposalStatus.Shortlisted].includes(status);
 
@@ -444,5 +472,6 @@ export function useClientProposals() {
     setProposalReloadKey,
     isBusy,
     canClientAct,
+    runManualEvaluation,
   };
 }

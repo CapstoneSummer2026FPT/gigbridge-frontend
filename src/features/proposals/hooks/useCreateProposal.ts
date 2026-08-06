@@ -275,6 +275,13 @@ export function useCreateProposal() {
     setSubmitting(true); setError('');
     const savedId = await persistDraft();
     if (!savedId || !resolvedJobPostId) return setSubmitting(false);
+
+    if (jobPost?.hasAiInterview) {
+      setSubmitting(false);
+      navigate(`/ai-interview/${resolvedJobPostId}?proposalId=${savedId}`);
+      return;
+    }
+
     const questionsResponse = await jobGetAPI.getJobPostQuestions(resolvedJobPostId);
     if (!questionsResponse.success) {
       setSubmitting(false);

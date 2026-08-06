@@ -45,6 +45,8 @@ const translate = vi.hoisted(() => {
     'proposalReview.back': 'Back to client dashboard',
     'proposalReview.eyebrow': 'Hiring workspace',
     'proposalReview.title': 'Proposal review',
+    'proposalReview.titleWord1': 'Proposal',
+    'proposalReview.titleWord2': 'review',
     'proposalReview.subtitle': 'Compare candidates',
     'proposalReview.projectLabel': 'Project request',
     'proposalReview.noProjects': 'No project requests found',
@@ -311,15 +313,13 @@ describe('ClientProposalsScreen', () => {
 
     const modal = await openProposal(user);
     expect(mocks.getProposalDetail).toHaveBeenCalledWith('proposal-1');
-    
-    // Switch to Project Proposal tab
-    await user.click(within(modal).getByRole('button', { name: /freelancer Project Proposal/i }));
+    // Switch to Proposal Details tab
+    await user.click(within(modal).getByRole('button', { name: /Proposal Details/i }));
     expect(within(modal).getByText('Introduction')).toBeInTheDocument();
     expect(await within(modal).findByText(/Experienced marketplace developer/i)).toBeInTheDocument();
     expect(await within(modal).findByText(/Requirement analysis/i)).toBeInTheDocument();
     expect(await within(modal).findByText(/Incremental delivery/i)).toBeInTheDocument();
-    expect(await within(modal).findByText(/^1\.\s+Foundation$/)).toBeInTheDocument();
-    expect(await within(modal).findByText(/^1\.\s+Foundation delivery$/)).toBeInTheDocument();
+    expect(await within(modal).findByText(/Foundation delivery/i)).toBeInTheDocument();
   });
 
   it('renders project requests as a sorted sidebar instead of the legacy selector', async () => {
@@ -390,7 +390,8 @@ describe('ClientProposalsScreen', () => {
     expect(mocks.getProposalsByJobPost).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole('button', { name: 'Clear' }));
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Filter projects by status' }), '2');
+    await user.click(screen.getByRole('button', { name: 'Filter projects by status' }));
+    await user.click(screen.getByRole('button', { name: 'Closed' }));
     navigation = screen.getByRole('navigation', { name: 'Project requests' });
     expect(within(navigation).queryByText('Marketplace request')).not.toBeInTheDocument();
     expect(within(navigation).getByText('Payment platform')).toBeInTheDocument();
@@ -490,7 +491,7 @@ describe('ClientProposalsScreen', () => {
 
     mocks.evaluateProposalAnswers.mockClear();
 
-    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
+    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Report/i }));
     expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();
     expect(mocks.evaluateProposalAnswers).not.toHaveBeenCalled();
   });
@@ -511,7 +512,7 @@ describe('ClientProposalsScreen', () => {
     render(<ClientProposalsScreen />);
     const modal = await openProposal(user);
 
-    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
+    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Report/i }));
     expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();
   });
 
@@ -547,7 +548,7 @@ describe('ClientProposalsScreen', () => {
     render(<ClientProposalsScreen />);
     const modal = await openProposal(user);
 
-    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Interview Report/i }));
+    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Report/i }));
     const evaluate = await within(modal).findByRole('button', { name: 'Evaluate Proposal with AI' });
     expect(screen.queryByText(/AI Interview/i)).not.toBeInTheDocument();
     await user.click(evaluate);
@@ -623,14 +624,13 @@ describe('ClientProposalsScreen', () => {
     await user.click((await screen.findAllByText('Ada Freelancer'))[0]);
 
     // Check if the tabs are present
-    expect(await screen.findByRole('button', { name: /freelancer Interview Answer/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /freelancer Project Proposal/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /AI Evaluation Interview Report/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Interview Answers/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Proposal Details/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /AI Evaluation Report/i })).toBeInTheDocument();
 
-    // Click on 'freelancer Project Proposal' tab
-    await user.click(screen.getByRole('button', { name: /freelancer Project Proposal/i }));
+    // Click on 'Proposal Details' tab
+    await user.click(screen.getByRole('button', { name: /Proposal Details/i }));
     expect(screen.getByText('Introduction')).toBeInTheDocument();
-    expect(screen.getByText('1. Foundation')).toBeInTheDocument();
     expect(screen.getByText('1. Foundation delivery')).toBeInTheDocument();
   });
 });

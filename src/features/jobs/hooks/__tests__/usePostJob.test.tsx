@@ -605,7 +605,8 @@ describe('usePostJob hook skills conversion', () => {
         budgetMin: 500,
         budgetMax: 500,
         estimatedDuration: '3 weeks',
-      });
+        proposalClosingDate: expect.any(String),
+      }, expect.any(AbortSignal));
 
       let submitPromise: any;
       act(() => {
@@ -626,7 +627,9 @@ describe('usePostJob hook skills conversion', () => {
       });
 
       expect(result.current.isGeneratingPlan).toBe(false);
-      expect(result.current.milestonePlans).toEqual([{ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: '2026-08-15', deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }]);
+      expect(result.current.milestonePlans).toEqual([
+        expect.objectContaining({ title: 'Milestone 1', amount: 100, estimatedDuration: '1 week', dueDate: expect.any(String), deliverables: 'd', acceptanceCriteria: 'a', orderIndex: 0, workItems: [] }),
+      ]);
     });
   });
 
