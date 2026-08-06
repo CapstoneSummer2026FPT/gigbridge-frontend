@@ -29,4 +29,8 @@ export const jobDeleteAPI = {
       `${jobPostsUrl}/${jobPostId}/attachments/${attachmentId}`,
     );
   },
+
+  disableAiInterview: async (jobPostId: string): Promise<ApiResponse<boolean>> => {
+    return apiService.delete<boolean>(`${jobPostsUrl}/${jobPostId}/ai-interviews`);
+  },
 };

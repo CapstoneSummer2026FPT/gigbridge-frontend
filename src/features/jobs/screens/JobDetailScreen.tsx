@@ -471,14 +471,16 @@ export default function JobDetailScreen() {
                       {t('jobDetail.proposalStatus', { status: getStatusLabel(myProposal.status) })}
                     </div>
 
-                    {job.hasAiInterview && Number(myProposal.status) === 0 && (myProposal.aiInterviewInProgress || localStorage.getItem(`ai_interview_session_${job.id}`)) && (
+                    {job.hasAiInterview && Number(myProposal.status) === 0 && !myProposal.aiInterviewCompleted && (
                       <button
                         className="jd-btn-apply"
                         onClick={() => navigate(`/ai-interview/${encodeURIComponent(job.id)}?proposalId=${myProposal.proposalId}`)}
                         style={{ background: 'var(--brand)', boxShadow: '0 4px 14px -2px rgba(73,75,231,0.3)' }}
                       >
                         <Bot size={14} />
-                        {t('aiInterview.proposal.continueAction') || 'Continue AI Interview'}
+                        {myProposal.aiInterviewInProgress || localStorage.getItem(`ai_interview_session_${job.id}`)
+                          ? (t('aiInterview.proposal.continueAction') || 'Continue AI Interview')
+                          : (t('aiInterview.proposal.startAction') || 'Start AI Interview')}
                       </button>
                     )}
 
