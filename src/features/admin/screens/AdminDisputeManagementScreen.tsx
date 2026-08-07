@@ -1,11 +1,18 @@
-import { useRef } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertCircle,
   Briefcase,
   CheckCircle,
+  ArrowUpDown,
   Download,
+  FileText,
+  Filter,
+  Flame,
+  Gavel,
+  Hash,
   History,
+  Layers,
   Landmark,
   LoaderCircle,
   MessageSquare,
@@ -17,6 +24,7 @@ import {
   ShieldAlert,
   Sparkles,
   User,
+  UserCheck,
   X,
 } from 'lucide-react';
 
@@ -38,6 +46,66 @@ import { DisputeMessageRecipient } from '../../../api/messageAPI/GET';
 import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { UserRole } from '../../../types/models/User';
 import '../styles/admin-dispute-management-screen.css';
+
+const formatAuditAction = (action: string): string => {
+  if (action === 'Dispute.RequestEvidence') return 'Evidence Requested';
+  if (action === 'Dispute.UpdateStatus') return 'Status Updated';
+  if (action === 'Dispute.Resolve') return 'Dispute Resolved';
+  if (action === 'Dispute.ReviewEvidence') return 'Evidence Reviewed';
+  return action.replace('.', ' • ');
+};
+
+const renderAuditContent = (rawJson: string | null) => {
+  if (!rawJson) return <span className="text-text-muted italic">—</span>;
+  try {
+    const parsed = JSON.parse(rawJson);
+    if (typeof parsed !== 'object' || parsed === null) {
+      return <span className="font-mono text-text-secondary">{String(parsed)}</span>;
+    }
+
+    const entries = Object.entries(parsed);
+    if (entries.length === 0) return <span className="text-text-muted italic">—</span>;
+
+    const formatKey = (key: string): string => {
+      if (key === 'reason') return 'Reason';
+      if (key === 'target') return 'Target Participant';
+      if (key === 'Deadline' || key === 'deadline') return 'Deadline';
+      if (key === 'groupId') return 'Request Group ID';
+      if (key === 'evidenceIds') return 'Evidence Items';
+      if (key === 'status') return 'New Status';
+      if (key === 'oldStatus') return 'Previous Status';
+      if (key === 'resolution') return 'Resolution';
+      if (key === 'resolutionNote') return 'Resolution Note';
+      return key.replace(/([A-Z])/g, ' $1').trim();
+    };
+
+    const formatValue = (key: string, val: unknown): string => {
+      if (val === null || val === undefined) return '—';
+      if (Array.isArray(val)) return `${val.length} item(s)`;
+      if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+      if (typeof val === 'string' && (key.toLowerCase().includes('date') || key === 'Deadline' || key === 'deadline')) {
+        return formatDate(val);
+      }
+      if (typeof val === 'object') return JSON.stringify(val);
+      return String(val);
+    };
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/40">
+        {entries.map(([key, value]) => (
+          <div key={key} className="flex flex-col gap-0.5 rounded-lg bg-background/80 p-2 border border-border/50 shadow-2xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{formatKey(key)}</span>
+            <strong className="text-xs font-semibold text-text-primary break-all">
+              {formatValue(key, value)}
+            </strong>
+          </div>
+        ))}
+      </div>
+    );
+  } catch {
+    return <p className="font-mono text-[11px] text-text-secondary break-all">{rawJson}</p>;
+  }
+};
 
 export default function AdminDisputeManagementScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,6 +174,23 @@ export default function AdminDisputeManagementScreen() {
     freelancerMessages,
     clientMessages,
   } = useAdminDisputeManagement();
+
+  const [auditSortOrder, setAuditSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [auditPageSize, setAuditPageSize] = useState<number>(10);
+
+  const displayedAuditTrail = useMemo(() => {
+    if (!selectedDispute?.auditTrail) return [];
+    const list = [...selectedDispute.auditTrail];
+    list.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return auditSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+    if (auditPageSize > 0) {
+      return list.slice(0, auditPageSize);
+    }
+    return list;
+  }, [selectedDispute?.auditTrail, auditSortOrder, auditPageSize]);
 
   // GSAP Entrance Animation
   usePageGSAP({
@@ -568,6 +653,22 @@ export default function AdminDisputeManagementScreen() {
                               <Paperclip size={16} className="text-brand shrink-0" />
                               <strong className="truncate" title={evidence.fileName || 'Attachment'}>{evidence.fileName || 'Attachment'}</strong>
                             </div>
+                            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-text-muted">
+                              <span className="flex items-center gap-1.5">
+                                <User size={13} className="text-brand shrink-0" />
+                                <span>Sender:</span>
+                                <strong className="text-text-primary">
+                                  {evidence.uploadedByName
+                                    ? `${evidence.uploadedByName} (${evidence.uploadedById === selectedDispute.client?.userId ? 'Client' : evidence.uploadedById === selectedDispute.freelancer?.userId ? 'Freelancer' : 'Participant'})`
+                                    : evidence.uploadedById === selectedDispute.client?.userId
+                                    ? `${selectedDispute.client.fullName} (Client)`
+                                    : evidence.uploadedById === selectedDispute.freelancer?.userId
+                                    ? `${selectedDispute.freelancer.fullName} (Freelancer)`
+                                    : 'Participant'}
+                                </strong>
+                              </span>
+                              <span className="text-[11px] font-medium">{formatDate(evidence.createdAt)}</span>
+                            </div>
                             <p className="text-xs font-medium text-text-secondary leading-relaxed">{evidence.description || 'No description provided.'}</p>
                             <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
                               <button
@@ -597,19 +698,90 @@ export default function AdminDisputeManagementScreen() {
 
                 {/* Tab 6: Audit Log */}
                 {activeTab === 'audit' && (
-                  <div className="tab-pane">
-                    <div className="space-y-3">
-                      {(selectedDispute.auditTrail || []).map((log: AdminAuditEvent) => (
-                        <div key={log.auditId} className="rounded-xl border border-border/60 bg-surface-muted/30 p-3 text-xs space-y-1">
-                          <div className="flex items-center justify-between font-extrabold text-text-primary">
-                            <span className="text-brand">{log.action}</span>
-                            <span className="text-[11px] text-text-muted">{formatDate(log.createdAt)}</span>
-                          </div>
-                          <p className="font-mono text-[11px] text-text-secondary">{log.newValues || log.oldValues || '—'}</p>
-                          <small className="text-[10px] text-text-muted">By Admin: {log.adminId}</small>
-                        </div>
-                      ))}
+                  <div className="tab-pane space-y-4">
+                    {/* Audit Control Bar: Sort, Limit, Total */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-surface-muted/40 border border-border/60 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-text-muted flex items-center gap-1">
+                          <Layers size={14} className="text-brand" />
+                          Showing:
+                        </span>
+                        <strong className="text-text-primary font-bold">
+                          {displayedAuditTrail.length} of {(selectedDispute.auditTrail || []).length} events
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Sort selector */}
+                        <label className="flex items-center gap-1.5 font-bold text-text-muted">
+                          <ArrowUpDown size={13} />
+                          <span>Sort:</span>
+                          <select
+                            value={auditSortOrder}
+                            onChange={(e) => setAuditSortOrder(e.target.value as 'newest' | 'oldest')}
+                            className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
+                          >
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                          </select>
+                        </label>
+
+                        {/* Page Size / Limit selector */}
+                        <label className="flex items-center gap-1.5 font-bold text-text-muted">
+                          <Filter size={13} />
+                          <span>Show:</span>
+                          <select
+                            value={auditPageSize}
+                            onChange={(e) => setAuditPageSize(Number(e.target.value))}
+                            className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
+                          >
+                            <option value={5}>5 items</option>
+                            <option value={10}>10 items</option>
+                            <option value={25}>25 items</option>
+                            <option value={0}>All events</option>
+                          </select>
+                        </label>
+                      </div>
                     </div>
+
+                    {(selectedDispute.auditTrail || []).length === 0 ? (
+                      <div className="admin-dispute-empty p-8 text-center text-xs font-extrabold text-text-muted">
+                        No audit events recorded for this case.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {displayedAuditTrail.map((log: AdminAuditEvent) => (
+                          <div key={log.auditId} className="rounded-2xl border border-border bg-background p-4 space-y-3 shadow-sm hover:shadow-md transition">
+                            {/* Header: Action badge & Timestamp */}
+                            <div className="flex items-center justify-between font-black text-xs text-text-primary">
+                              <span className="inline-flex items-center gap-1.5 rounded-xl bg-brand/10 border border-brand/20 px-3 py-1 text-xs font-black text-brand">
+                                <Sparkles size={13} />
+                                {formatAuditAction(log.action)}
+                              </span>
+                              <span className="text-[11px] font-bold text-text-muted">{formatDate(log.createdAt)}</span>
+                            </div>
+
+                            {/* Main Content: Parsed Key-Value Cards */}
+                            {renderAuditContent(log.newValues || log.oldValues)}
+
+                            {/* Footer: Styled Admin ID & Log ID Badges */}
+                            <div className="pt-2 text-xs font-semibold text-text-muted flex flex-wrap items-center justify-between gap-2 border-t border-border/40">
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40">
+                                <UserCheck size={13} className="text-brand shrink-0" />
+                                <span>Admin ID:</span>
+                                <strong className="font-mono text-text-primary">{log.adminId}</strong>
+                              </span>
+
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40" title={log.auditId}>
+                                <Hash size={13} className="text-text-muted shrink-0" />
+                                <span>Log ID:</span>
+                                <strong className="font-mono text-text-primary truncate max-w-[200px]">{log.auditId}</strong>
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
