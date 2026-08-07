@@ -1,8 +1,24 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import {
-  Search, Filter, Eye, Download, AlertCircle, CheckCircle2, Clock,
-  ChevronDown, FileText, TrendingUp, AlertTriangle, BarChart3, Calendar, Edit, XCircle
+  AlertCircle,
+  AlertTriangle,
+  BarChart3,
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Download,
+  Edit,
+  FileCheck2,
+  FileText,
+  Filter,
+  Save,
+  Search,
+  Shield,
+  Sparkles,
+  TrendingUp,
+  X,
 } from 'lucide-react';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -12,6 +28,9 @@ import { ContractStatus } from '../../../types/models/Contract';
 import { formatContractAmount, formatContractDate, getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { ContractAreaTabs } from '../../contracts/components/ContractAreaTabs';
 import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
+import '../../contracts/styles/manage-contract-screen.css';
+import '../../contracts/styles/esign-contracts-screen.css';
 import '../styles/admin-contract-audit-screen.css';
 
 interface ComplianceRequirement {
@@ -31,7 +50,7 @@ interface ContractAuditData extends ContractDto {
 }
 
 export default function AdminContractAuditScreen() {
-  const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [routeSearchParams] = useSearchParams();
 
   // State
@@ -65,10 +84,83 @@ export default function AdminContractAuditScreen() {
   const [showAtRiskOnly, setShowAtRiskOnly] = useState(false);
   const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
 
+  // GSAP Entrance Animations
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.esign-gsap-header', y: 20, duration: 0.55 },
+      { selector: '.esign-gsap-metrics', y: 16, duration: 0.5, stagger: 0.06 },
+      { selector: '.alerts-section', y: 18, duration: 0.45 },
+      { selector: '.esign-gsap-main', y: 24, duration: 0.5 },
+      { selector: '.contract-row', y: 16, duration: 0.4, stagger: 0.05 },
+    ],
+  });
+
   useEffect(() => {
     const contractId = routeSearchParams.get('contractId');
-    if (contractId && contracts.some(contract => contract.contractsId === contractId)) setExpandedContractId(contractId);
+    if (contractId && contracts.some(contract => contract.contractsId === contractId)) {
+      setExpandedContractId(contractId);
+    }
   }, [contracts, routeSearchParams]);
+
+  const getComplianceStatus = (contract: ContractDto): 'compliant' | 'warning' | 'violation' => {
+    if (!contract.esignContractPdfUrl) return 'violation';
+    if (!contract.description || contract.description.length < 10) return 'warning';
+    return 'compliant';
+  };
+
+  const calculateComplianceScore = (contract: ContractDto): number => {
+    let score = 100;
+    if (!contract.title || contract.title.length === 0) score -= 25;
+    if (contract.totalBudget === undefined || contract.totalBudget === null) score -= 25;
+    if (!contract.startDate) score -= 25;
+    if (!contract.esignContractPdfUrl) score -= 15;
+    if (!contract.description || contract.description.length < 10) score -= 10;
+    if (!contract.endDate) score -= 5;
+    return Math.max(0, score);
+  };
+
+  const getComplianceRequirements = (contract: ContractDto): ComplianceRequirement[] => [
+    {
+      name: 'Scope Defined',
+      met: !!contract.description && contract.description.length >= 10,
+      description: 'Contract scope must be clearly defined in description'
+    },
+    {
+      name: 'Budget Specified',
+      met: contract.totalBudget !== undefined && contract.totalBudget > 0,
+      description: 'Total budget must be specified'
+    },
+    {
+      name: 'Terms Set',
+      met: !!contract.startDate,
+      description: 'Contract start date must be set for payment terms'
+    },
+    {
+      name: 'Timeline Defined',
+      met: !!contract.endDate,
+      description: 'Contract timeline/end date must be defined'
+    },
+    {
+      name: 'E-sign PDF Generated',
+      met: !!contract.esignContractPdfUrl,
+      description: 'Contract PDF & signatures must be generated for legal protection'
+    },
+  ];
+
+  const isContractOverdue = (contract: ContractDto): boolean => {
+    if (!contract.endDate) return false;
+    return new Date(contract.endDate) < new Date() && contract.status === ContractStatus.Active;
+  };
+
+  const isContractAtRisk = (contract: ContractDto): boolean => {
+    if (!contract.endDate) return false;
+    const now = new Date();
+    const endDate = new Date(contract.endDate);
+    const daysRemaining = (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return daysRemaining < 7 && daysRemaining >= 0 && contract.status === ContractStatus.Active;
+  };
 
   const buildAuditContracts = (source: ContractDto[]): ContractAuditData[] =>
     source.map(c => ({
@@ -80,7 +172,7 @@ export default function AdminContractAuditScreen() {
       isAtRisk: isContractAtRisk(c),
     }));
 
-  const loadContractsList = async () => {
+  const loadContractsList = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -117,7 +209,11 @@ export default function AdminContractAuditScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadContractsList();
+  }, [loadContractsList]);
 
   const handleUpdateContract = async () => {
     if (!editingContract) return;
@@ -150,128 +246,30 @@ export default function AdminContractAuditScreen() {
     }
   };
 
-  // Load contracts
-  useEffect(() => {
-    loadContractsList();
-  }, []);
-
-  // Get compliance status based on contract data
-  const getComplianceStatus = (contract: ContractDto): 'compliant' | 'warning' | 'violation' => {
-    // Derive the visible status only from persisted contract fields.
-    if (!contract.esignContractPdfUrl) {
-      return 'violation'; // Missing contract PDF
-    }
-
-    if (!contract.description || contract.description.length < 10) {
-      return 'warning'; // Insufficient description
-    }
-
-    return 'compliant';
-  };
-
-  // Calculate compliance score (0-100)
-  const calculateComplianceScore = (contract: ContractDto): number => {
-    let score = 100;
-
-    // Check required fields (BR-51)
-    if (!contract.title || contract.title.length === 0) score -= 25;
-    if (contract.totalBudget === undefined || contract.totalBudget === null) score -= 25;
-    if (!contract.startDate) score -= 25;
-
-    // Check for contract PDF (required for legal protection)
-    if (!contract.esignContractPdfUrl) score -= 15;
-
-    // Check description quality
-    if (!contract.description || contract.description.length < 10) score -= 10;
-
-    // Check end date is set
-    if (!contract.endDate) score -= 5;
-
-    return Math.max(0, score);
-  };
-
-  // Get compliance requirements checklist
-  const getComplianceRequirements = (contract: ContractDto): ComplianceRequirement[] => {
-    return [
-      {
-        name: 'Scope Defined',
-        met: !!contract.description && contract.description.length >= 10,
-        description: 'Contract scope must be clearly defined in description'
-      },
-      {
-        name: 'Budget Specified',
-        met: contract.totalBudget !== undefined && contract.totalBudget > 0,
-        description: 'Total budget must be specified (BR-51)'
-      },
-      {
-        name: 'Terms Set',
-        met: !!contract.startDate,
-        description: 'Contract start date must be set for payment terms'
-      },
-      {
-        name: 'Timeline Defined',
-        met: !!contract.endDate,
-        description: 'Contract timeline/end date must be defined (BR-51)'
-      },
-      {
-        name: 'PDF Generated',
-        met: !!contract.esignContractPdfUrl,
-        description: 'Contract PDF must be generated for legal protection'
-      },
-      {
-        name: 'Both Parties Signed',
-        met: contract.status !== ContractStatus.Active || !!contract.esignContractPdfUrl,
-        description: 'Contract must be signed by both parties to be Active (BR-52)'
-      }
-    ];
-  };
-
-  // Check if contract is overdue
-  const isContractOverdue = (contract: ContractDto): boolean => {
-    if (!contract.endDate) return false;
-    return new Date(contract.endDate) < new Date() && contract.status === ContractStatus.Active;
-  };
-
-  // Check if contract is at risk
-  const isContractAtRisk = (contract: ContractDto): boolean => {
-    if (!contract.endDate) return false;
-    const now = new Date();
-    const endDate = new Date(contract.endDate);
-    const daysRemaining = (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-    
-    // At risk if less than 7 days remaining and status is Active
-    return daysRemaining < 7 && daysRemaining >= 0 && contract.status === ContractStatus.Active;
-  };
-
-  // Filter contracts
   useEffect(() => {
     let result = contracts;
 
-    // Status filter
     if (selectedStatus !== 'All') {
       result = result.filter(c => c.status === selectedStatus);
     }
 
-    // Compliance filter
     if (selectedCompliance !== 'all') {
       result = result.filter(c => c.complianceStatus === selectedCompliance);
     }
 
-    // Overdue filter
     if (showOverdueOnly) {
       result = result.filter(c => c.isOverdue);
     }
 
-    // At-risk filter
     if (showAtRiskOnly) {
       result = result.filter(c => c.isAtRisk);
     }
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(c =>
         c.title.toLowerCase().includes(query) ||
+        c.contractsId.toLowerCase().includes(query) ||
         c.clientProfilesId.toLowerCase().includes(query) ||
         (c.freelancerProfilesId?.toLowerCase().includes(query) ?? false)
       );
@@ -291,18 +289,19 @@ export default function AdminContractAuditScreen() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const calculateStats = () => {
-    return {
-      total: contracts.length,
-      active: contracts.filter(c => c.status === ContractStatus.Active).length,
-      completed: contracts.filter(c => c.status === ContractStatus.Completed).length,
-      compliant: contracts.filter(c => c.complianceStatus === 'compliant').length,
-      warnings: contracts.filter(c => c.complianceStatus === 'warning').length,
-      violations: contracts.filter(c => c.complianceStatus === 'violation').length,
-      overdue: contracts.filter(c => c.isOverdue).length,
-      atRisk: contracts.filter(c => c.isAtRisk).length,
-    };
-  };
+  const stats = useMemo(() => ({
+    total: contracts.length,
+    active: contracts.filter(c => c.status === ContractStatus.Active).length,
+    completed: contracts.filter(c => c.status === ContractStatus.Completed).length,
+    compliant: contracts.filter(c => c.complianceStatus === 'compliant').length,
+    warnings: contracts.filter(c => c.complianceStatus === 'warning').length,
+    violations: contracts.filter(c => c.complianceStatus === 'violation').length,
+    overdue: contracts.filter(c => c.isOverdue).length,
+    atRisk: contracts.filter(c => c.isAtRisk).length,
+  }), [contracts]);
+
+  const overdueContracts = useMemo(() => contracts.filter(c => c.isOverdue), [contracts]);
+  const atRiskContracts = useMemo(() => contracts.filter(c => c.isAtRisk), [contracts]);
 
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Client', 'Freelancer', 'Budget', 'Status', 'Compliance', 'Compliance Score', 'Is Overdue', 'Created Date'];
@@ -320,7 +319,6 @@ export default function AdminContractAuditScreen() {
     ]);
 
     const csv = [headers, ...rows].map(row => row.map(cell => {
-      // Escape cells containing commas or quotes
       const cellStr = String(cell || '');
       if (cellStr.includes(',') || cellStr.includes('"')) {
         return `"${cellStr.replace(/"/g, '""')}"`;
@@ -338,7 +336,6 @@ export default function AdminContractAuditScreen() {
   };
 
   const handleExportPDF = () => {
-    // Create PDF content
     const content = `
 Contract Audit Report
 Generated: ${new Date().toLocaleString()}
@@ -348,13 +345,13 @@ Total Contracts: ${filteredContracts.length}
 SUMMARY STATISTICS
 =======================================
 Total Contracts: ${contracts.length}
-Active: ${calculateStats().active}
-Completed: ${calculateStats().completed}
-Compliant: ${calculateStats().compliant}
-Warnings: ${calculateStats().warnings}
-Violations: ${calculateStats().violations}
-Overdue: ${calculateStats().overdue}
-At Risk: ${calculateStats().atRisk}
+Active: ${stats.active}
+Completed: ${stats.completed}
+Compliant: ${stats.compliant}
+Warnings: ${stats.warnings}
+Violations: ${stats.violations}
+Overdue: ${stats.overdue}
+At Risk: ${stats.atRisk}
 
 =======================================
 CONTRACTS DETAIL
@@ -388,693 +385,564 @@ ${idx + 1}. ${c.title}
     return `compliance-badge compliance-${status || 'unknown'}`;
   };
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="admin-contract-audit-wrapper">
-          <div className="loading-container">
-            <div className="spinner"></div>
-            <p>Loading contracts...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  const stats = calculateStats();
-  const overdueContracts = contracts.filter(c => c.isOverdue);
-  const atRiskContracts = contracts.filter(c => c.isAtRisk);
-
   return (
-    <AppLayout>
-      <div className="admin-contract-audit-wrapper">
-        {/* Header */}
-        <div className="audit-header">
-          <h1 className="audit-title">Contracts & Compliance</h1>
-          <p className="audit-subtitle">Manage all platform contracts, monitor risk, and review compliance evidence in one workspace</p>
-        </div>
+    <AppLayout fullWidth>
+      <div ref={containerRef} className="min-h-[calc(100vh-4rem)] bg-background text-text-primary">
 
-        <div className="mb-6">
-          <ContractAreaTabs />
-        </div>
-
-        {/* Stats Overview */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">
-              <FileText size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">Total Contracts</span>
-              <span className="stat-value">{stats.total}</span>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon active">
-              <Clock size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">Active Contracts</span>
-              <span className="stat-value">{stats.active}</span>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon completed">
-              <CheckCircle2 size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">Completed</span>
-              <span className="stat-value">{stats.completed}</span>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon compliant">
-              <CheckCircle2 size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">Compliant</span>
-              <span className="stat-value">{stats.compliant}</span>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon warning">
-              <AlertCircle size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">Warnings</span>
-              <span className="stat-value">{stats.warnings}</span>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon violation">
-              <AlertCircle size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">Violations</span>
-              <span className="stat-value">{stats.violations}</span>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon overdue">
-              <AlertTriangle size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">Overdue</span>
-              <span className="stat-value">{stats.overdue}</span>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-icon at-risk">
-              <TrendingUp size={24} />
-            </div>
-            <div className="stat-info">
-              <span className="stat-label">At Risk</span>
-              <span className="stat-value">{stats.atRisk}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="error-message">
-            <AlertCircle size={20} />
-            <p>{error}</p>
-            <button onClick={() => setError(null)} className="close-btn">✕</button>
-          </div>
-        )}
-
-        {/* Alerts Section - Overdue and At-Risk Contracts */}
-        {(overdueContracts.length > 0 || atRiskContracts.length > 0) && (
-          <div className="alerts-section">
-            {overdueContracts.length > 0 && (
-              <div className="alert-box alert-overdue">
-                <div className="alert-icon">
-                  <AlertTriangle size={24} />
-                </div>
-                <div className="alert-content">
-                  <h3>Overdue Contracts Alert</h3>
-                  <p>{overdueContracts.length} contract(s) have passed their end date and are still active. Immediate action required.</p>
-                  <button
-                    onClick={() => {
-                      setShowOverdueOnly(true);
-                      setShowFilters(true);
-                    }}
-                    className="alert-btn"
-                  >
-                    View Overdue Contracts
-                  </button>
-                </div>
+        {/* Sticky Top Header Bar with ContractAreaTabs Toggle */}
+        <header className="esign-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8">
+          <div className="mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-brand">
+                <Sparkles size={14} />
+                Contracts & E-Sign Audit
               </div>
-            )}
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
+                Contracts <span className="text-brand italic font-light">& E-Sign Management</span>
+              </h1>
+              <p className="mt-0.5 text-xs font-semibold text-text-muted">Monitor platform contracts, review legal e-signatures, inspect compliance audit trails, and manage risks.</p>
+            </div>
 
-            {atRiskContracts.length > 0 && (
-              <div className="alert-box alert-at-risk">
-                <div className="alert-icon">
-                  <Clock size={24} />
-                </div>
-                <div className="alert-content">
-                  <h3>At-Risk Contracts Alert</h3>
-                  <p>{atRiskContracts.length} contract(s) have less than 7 days remaining. Consider early completion or extension.</p>
-                  <button
-                    onClick={() => {
-                      setShowAtRiskOnly(true);
-                      setShowFilters(true);
-                    }}
-                    className="alert-btn"
-                  >
-                    View At-Risk Contracts
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Navigation Tabs Bar (Exact Same Toggle as /admin/contracts/esign) */}
+            <ContractAreaTabs />
           </div>
-        )}
+        </header>
 
-        {/* Controls */}
-        <div className="audit-controls glass-card">
-          <div className="search-box">
-            <Search size={18} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by contract title, client, or freelancer..."
-              className="search-input"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="clear-btn">✕</button>
-            )}
-          </div>
+        {/* Main Workspace Content */}
+        <main className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 lg:px-8">
 
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`filter-toggle ${showFilters ? 'active' : ''}`}
-          >
-            <Filter size={18} />
-            Filters
-          </button>
-
-          <button onClick={handleExportCSV} className="export-btn" title="Export contracts data as CSV">
-            <Download size={18} />
-            CSV
-          </button>
-
-          <button onClick={handleExportPDF} className="export-btn export-pdf" title="Export contracts report as text">
-            <FileText size={18} />
-            Report
-          </button>
-        </div>
-
-        {/* Filter Options */}
-        {showFilters && (
-          <div className="filter-panel glass-card">
-            <div className="filter-group">
-              <label className="filter-label">Contract Status</label>
-              <div className="filter-buttons">
-                <button
-                  onClick={() => setSelectedStatus('All')}
-                  className={`filter-btn ${selectedStatus === 'All' ? 'active' : ''}`}
-                >
-                  All
-                </button>
-                {[
-                  { value: ContractStatus.Active, label: 'Active' },
-                  { value: ContractStatus.Completed, label: 'Completed' },
-                  { value: ContractStatus.Cancelled, label: 'Cancelled' },
-                  { value: ContractStatus.Disputed, label: 'Disputed' },
-                ].map(status => (
-                  <button
-                    key={status.value}
-                    onClick={() => setSelectedStatus(status.value)}
-                    className={`filter-btn ${selectedStatus === status.value ? 'active' : ''}`}
-                  >
-                    {status.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-group">
-              <label className="filter-label">Compliance Status</label>
-              <div className="filter-buttons">
-                <button
-                  onClick={() => setSelectedCompliance('all')}
-                  className={`filter-btn ${selectedCompliance === 'all' ? 'active' : ''}`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setSelectedCompliance('compliant')}
-                  className={`filter-btn ${selectedCompliance === 'compliant' ? 'active' : ''}`}
-                >
-                  Compliant
-                </button>
-                <button
-                  onClick={() => setSelectedCompliance('warning')}
-                  className={`filter-btn ${selectedCompliance === 'warning' ? 'active' : ''}`}
-                >
-                  Warnings
-                </button>
-                <button
-                  onClick={() => setSelectedCompliance('violation')}
-                  className={`filter-btn ${selectedCompliance === 'violation' ? 'active' : ''}`}
-                >
-                  Violations
-                </button>
-              </div>
-            </div>
-
-            <div className="filter-group">
-              <label className="filter-label">Risk Status</label>
-              <div className="filter-buttons">
-                <button
-                  onClick={() => setShowOverdueOnly(!showOverdueOnly)}
-                  className={`filter-btn ${showOverdueOnly ? 'active' : ''}`}
-                >
-                  Overdue Only
-                </button>
-                <button
-                  onClick={() => setShowAtRiskOnly(!showAtRiskOnly)}
-                  className={`filter-btn ${showAtRiskOnly ? 'active' : ''}`}
-                >
-                  At Risk Only
-                </button>
-              </div>
-            </div>
-
-            {(showOverdueOnly || showAtRiskOnly) && (
-              <button
-                onClick={() => {
-                  setShowOverdueOnly(false);
-                  setShowAtRiskOnly(false);
-                }}
-                className="filter-btn filter-reset"
-              >
-                Clear Risk Filters
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Contracts Table */}
-        <div className="mb-3 flex justify-end">
-          <AdminTablePageSize pageSize={pageSize} totalEntries={filteredContracts.length} disabled={loading} onPageSizeChange={setPageSize} />
-        </div>
-        <div className="contracts-table-container">
-          {filteredContracts.length === 0 ? (
-            <div className="empty-state">
-              <FileText size={48} />
-              <p className="empty-title">No contracts found</p>
-              <p className="empty-subtitle">Try adjusting your filters or search criteria</p>
-            </div>
-          ) : (
-            <div className="contracts-list">
-              {paginatedContracts.map((contract, index) => (
-                <div
-                  key={contract.contractsId}
-                  className={`contract-row glass-card ${expandedContractId === contract.contractsId ? 'expanded' : ''}`}
-                >
-                  <div className="row-header">
-                    <div className="contract-rank">
-                      <span>#{((page - 1) * pageSize) + index + 1}</span>
-                    </div>
-
-                    <div className="row-content">
-                      <div className="contract-title-line">
-                        <h4 className="contract-title">{contract.title}</h4>
-                        <span className={`status-badge status-${contract.status}`}>
-                          {getContractStatusLabel(contract.status)}
-                        </span>
-                      </div>
-                      <p className="contract-meta">
-                        Contract ID: {contract.contractsId.substring(0, 12)}
-                      </p>
-                    </div>
-
-                    <div className="contract-card-metric">
-                      <GCoinIcon size={17} />
-                      <div>
-                        <span>Budget</span>
-                        <strong>{formatContractAmount(contract.totalBudget)}</strong>
-                      </div>
-                    </div>
-
-                    <div className="contract-card-metric">
-                      <Calendar size={17} />
-                      <div>
-                        <span>Timeline</span>
-                        <strong>{formatContractDate(contract.startDate)} - {formatContractDate(contract.endDate)}</strong>
-                      </div>
-                    </div>
-
-                    <div className="contract-score-summary">
-                      <BarChart3 size={17} />
-                      <div>
-                        <span>Score</span>
-                        <strong>{contract.complianceScore}%</strong>
-                      </div>
-                    </div>
-
-                    <div className="row-badges">
-                      <span className={getComplianceBadgeClass(contract.complianceStatus)}>
-                        {contract.complianceStatus?.toUpperCase() || 'UNKNOWN'}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        setExpandedContractId(
-                          expandedContractId === contract.contractsId ? null : contract.contractsId
-                        )
-                      }
-                      className="expand-btn"
-                      aria-label={expandedContractId === contract.contractsId ? 'Hide contract details' : 'Show contract details'}
-                    >
-                      <span>Details</span>
-                      <ChevronDown size={20} />
-                    </button>
-                  </div>
-
-                  {/* Row Expansion */}
-                  {expandedContractId === contract.contractsId && (
-                    <div className="row-details">
-                      <div className="details-grid">
-                        <div className="detail-item">
-                          <span className="detail-label">Client</span>
-                          <span className="detail-value text-primary font-semibold">{contract.clientName || 'Client'}</span>
-                          <span className="text-[10px] text-muted font-mono block mt-1 break-all">{contract.clientProfilesId}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Freelancer</span>
-                          <span className={`detail-value ${!contract.freelancerProfilesId ? 'text-muted font-medium italic' : 'text-primary font-semibold'}`}>
-                            {contract.freelancerName || 'Pending Freelancer Selection'}
-                          </span>
-                          {contract.freelancerProfilesId && (
-                            <span className="text-[10px] text-muted font-mono block mt-1 break-all">{contract.freelancerProfilesId}</span>
-                          )}
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Budget</span>
-                          <span className="detail-value">{formatContractAmount(contract.totalBudget)}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Start Date</span>
-                          <span className="detail-value">{formatContractDate(contract.startDate)}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">End Date</span>
-                          <span className="detail-value">{formatContractDate(contract.endDate)}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Contract PDF</span>
-                          <span className="detail-value">
-                            {contract.esignContractPdfUrl ? (
-                              <span className="badge-success">✓ Generated</span>
-                            ) : (
-                              <span className="badge-danger">✗ Missing</span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="detail-label">Compliance Score</span>
-                          <div className="compliance-score-bar">
-                            <div className="score-value">{contract.complianceScore}%</div>
-                            <div className="score-bar">
-                              <div 
-                                className={`score-fill score-${Math.floor((contract.complianceScore || 0) / 25) * 25}`}
-                                style={{ width: `${contract.complianceScore}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Compliance Requirements Checklist */}
-                      {contract.complianceRequirements && (
-                        <div className="compliance-checklist">
-                          <h5 className="section-title">Compliance Requirements (BR-51, BR-52)</h5>
-                          <div className="checklist-items">
-                            {contract.complianceRequirements.map((req, idx) => (
-                              <div key={idx} className={`checklist-item ${req.met ? 'met' : 'unmet'}`}>
-                                <div className="checklist-icon">
-                                  {req.met ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                                </div>
-                                <div className="checklist-content">
-                                  <div className="checklist-name">{req.name}</div>
-                                  <div className="checklist-description">{req.description}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Description */}
-                      {contract.description && (
-                        <div className="description-section">
-                          <h5 className="section-title">Description</h5>
-                          <p className="description-text">{contract.description}</p>
-                        </div>
-                      )}
-
-                      {/* Risk Indicators */}
-                      <div className="risk-indicators">
-                        {contract.isOverdue && (
-                          <div className="risk-indicator overdue">
-                            <AlertTriangle size={16} />
-                            <span>Overdue - Contract has passed end date</span>
-                          </div>
-                        )}
-                        {contract.isAtRisk && (
-                          <div className="risk-indicator at-risk">
-                            <Clock size={16} />
-                            <span>At Risk - Less than 7 days remaining</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="audit-trail-section">
-                        <h5 className="section-title">Audit Trail</h5>
-                        <p className="description-text">
-                          Contract audit history is unavailable because no audit-history endpoint is connected.
-                        </p>
-                      </div>
-
-                      {/* Compliance Notes */}
-                      <div className="audit-notes-section">
-                        <h5 className="section-title">Compliance Notes</h5>
-                        <p className="audit-notes">
-                          {contract.complianceStatus === 'compliant' &&
-                            'Contract meets all compliance requirements. All required fields and documents are in place.'}
-                          {contract.complianceStatus === 'warning' &&
-                            'Contract has minor compliance issues. Some recommended fields or documentation may be incomplete.'}
-                          {contract.complianceStatus === 'violation' &&
-                            'Contract has compliance violations. Critical fields or legal documents are missing. Immediate review required.'}
-                        </p>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="row-actions">
-                        <button
-                          onClick={() => navigate(`/contracts/${contract.contractsId}`)}
-                          className="action-btn action-view"
-                        >
-                          <Eye size={16} />
-                          View Details
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingContract(contract);
-                            setContractForm({
-                              title: contract.title,
-                              description: contract.description || '',
-                              totalBudget: contract.totalBudget,
-                              status: contract.status,
-                              startDate: contract.startDate ? contract.startDate.split('T')[0] : '',
-                              endDate: contract.endDate ? contract.endDate.split('T')[0] : '',
-                              esignContractPdfUrl: contract.esignContractPdfUrl || ''
-                            });
-                            setContractActionError(null);
-                          }}
-                          style={{ border: '1px solid rgba(168, 85, 247, 0.4)', background: 'rgba(168, 85, 247, 0.1)' }}
-                          className="action-btn action-edit text-purple-400 hover:bg-purple-500/20 font-semibold flex items-center gap-1"
-                        >
-                          <Edit size={16} />
-                          Manage Contract
-                        </button>
-                        {contract.esignContractPdfUrl && (
-                          <a
-                            href={contract.esignContractPdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="action-btn action-download"
-                          >
-                            <Download size={16} />
-                            Download PDF
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
+          {/* Stats Metrics Overview Grid */}
+          <section aria-label="Contracts Metrics" className="esign-gsap-metrics grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Total</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{stats.total}</p>
                 </div>
-              ))}
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                  <FileText size={18} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Active</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-cyan-400">{stats.active}</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
+                  <Clock size={18} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Completed</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-emerald-400">{stats.completed}</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <CheckCircle2 size={18} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Compliant</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-emerald-400">{stats.compliant}</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <Shield size={18} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Warnings</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-amber-400">{stats.warnings}</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                  <AlertCircle size={18} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Violations</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-rose-400">{stats.violations}</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
+                  <AlertTriangle size={18} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">Overdue</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-rose-400">{stats.overdue}</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
+                  <Clock size={18} />
+                </span>
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">At Risk</p>
+                  <p className="mt-1 text-2xl font-black tracking-tight text-amber-400">{stats.atRisk}</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                  <TrendingUp size={18} />
+                </span>
+              </div>
+            </article>
+          </section>
+
+          {/* Error Notification Message */}
+          {error && (
+            <div className="flex items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm font-semibold text-rose-400">
+              <AlertCircle size={20} />
+              <p className="flex-1">{error}</p>
+              <button type="button" onClick={() => setError(null)} className="cursor-pointer">✕</button>
             </div>
           )}
-        </div>
 
-        {/* Pagination Info */}
-        {filteredContracts.length > 0 && (
-          <div className="pagination-info">
-            <p>
-              Showing <strong>{((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, filteredContracts.length)}</strong> of{' '}
-              <strong>{filteredContracts.length}</strong> matching contracts
-            </p>
-            {totalPages > 1 && <AdminTablePagination currentPage={page} totalPages={totalPages} disabled={loading} onPageChange={setPage} ariaLabel="Contract pagination" />}
-          </div>
-        )}
-        {/* Manage Contract Modal */}
-        {editingContract && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingContract(null)}>
-            <div className="glass-card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-primary">Manage Contract</h2>
-                  <p className="text-xs text-secondary mt-0.5">Contract ID: <span className="font-mono">{editingContract.contractsId}</span></p>
+          {/* Risk Alerts Banner */}
+          {(overdueContracts.length > 0 || atRiskContracts.length > 0) && (
+            <section className="alerts-section space-y-3">
+              {overdueContracts.length > 0 && (
+                <div className="flex items-start gap-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 font-extrabold">
+                    <AlertTriangle size={20} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-text-primary">Overdue Contracts Alert ({overdueContracts.length})</h3>
+                    <p className="mt-0.5 text-xs font-bold text-text-secondary leading-relaxed">{overdueContracts.length} active contract(s) have exceeded their scheduled end date.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowOverdueOnly(true);
+                        setShowFilters(true);
+                      }}
+                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-300 hover:bg-rose-500/25 px-3.5 py-1.5 text-xs font-black cursor-pointer shadow-sm transition"
+                    >
+                      View Overdue Contracts
+                    </button>
+                  </div>
                 </div>
+              )}
+
+              {atRiskContracts.length > 0 && (
+                <div className="flex items-start gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 font-extrabold">
+                    <Clock size={20} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-text-primary">At-Risk Contracts Alert ({atRiskContracts.length})</h3>
+                    <p className="mt-0.5 text-xs font-bold text-text-secondary leading-relaxed">{atRiskContracts.length} contract(s) have less than 7 days remaining before deadline.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAtRiskOnly(true);
+                        setShowFilters(true);
+                      }}
+                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-300 hover:bg-amber-500/25 px-3.5 py-1.5 text-xs font-black cursor-pointer shadow-sm transition"
+                    >
+                      View At-Risk Contracts
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Search & Action Controls Section */}
+          <section className="esign-gsap-main rounded-2xl border border-border bg-background p-4 shadow-sm space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by contract title, ID, client, or freelancer..."
+                  className="input-gb w-full pl-10 pr-9 py-2 text-xs font-semibold"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted hover:text-text-primary">✕</button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setEditingContract(null)}
-                  className="p-2 rounded-lg glass-button hover:bg-red-500/10 transition-colors"
+                  type="button"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-extrabold cursor-pointer transition ${showFilters ? 'border-brand bg-brand text-white' : 'border-border bg-background text-text-primary hover:border-brand/40'
+                    }`}
                 >
-                  <XCircle size={20} className="text-red" />
+                  <Filter size={15} />
+                  Filters
+                </button>
+
+                <button type="button" onClick={handleExportCSV} className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs font-extrabold text-emerald-500 hover:bg-emerald-500/20 cursor-pointer transition">
+                  <Download size={15} />
+                  CSV
+                </button>
+
+                <button type="button" onClick={handleExportPDF} className="inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3.5 py-2 text-xs font-extrabold text-purple-400 hover:bg-purple-500/20 cursor-pointer transition">
+                  <FileText size={15} />
+                  Report
+                </button>
+
+                <AdminTablePageSize pageSize={pageSize} totalEntries={filteredContracts.length} disabled={loading} onPageSizeChange={setPageSize} />
+              </div>
+            </div>
+
+            {/* Filter Options Panel */}
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-border/50">
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">Contract Status</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStatus('All')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${selectedStatus === 'All' ? 'bg-brand text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                    >
+                      All
+                    </button>
+                    {[
+                      { value: ContractStatus.Active, label: 'Active' },
+                      { value: ContractStatus.Completed, label: 'Completed' },
+                      { value: ContractStatus.Cancelled, label: 'Cancelled' },
+                      { value: ContractStatus.Disputed, label: 'Disputed' },
+                    ].map(status => (
+                      <button
+                        key={status.value}
+                        type="button"
+                        onClick={() => setSelectedStatus(status.value)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${selectedStatus === status.value ? 'bg-brand text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                      >
+                        {status.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">Compliance Status</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCompliance('all')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${selectedCompliance === 'all' ? 'bg-brand text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCompliance('compliant')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${selectedCompliance === 'compliant' ? 'bg-brand text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                    >
+                      Compliant
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCompliance('warning')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${selectedCompliance === 'warning' ? 'bg-brand text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                    >
+                      Warnings
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCompliance('violation')}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${selectedCompliance === 'violation' ? 'bg-brand text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                    >
+                      Violations
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">Risk Status</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowOverdueOnly(!showOverdueOnly)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${showOverdueOnly ? 'bg-rose-500 text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                    >
+                      Overdue Only
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAtRiskOnly(!showAtRiskOnly)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${showAtRiskOnly ? 'bg-amber-500 text-white' : 'bg-surface-muted/60 text-text-muted hover:text-text-primary'}`}
+                    >
+                      At Risk Only
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Contracts List with Responsive Flex Truncation Protection */}
+            {loading ? (
+              <div className="flex min-h-[300px] flex-col items-center justify-center p-8 text-center">
+                <FileCheck2 size={42} className="text-brand animate-pulse" />
+                <p className="mt-2 text-sm font-extrabold text-text-primary">Loading contracts data...</p>
+              </div>
+            ) : filteredContracts.length === 0 ? (
+              <div className="flex min-h-[300px] flex-col items-center justify-center p-8 text-center space-y-2">
+                <FileText size={42} className="text-text-muted/40" />
+                <h3 className="text-sm font-black text-text-primary">No contracts found</h3>
+                <p className="text-xs font-semibold text-text-muted">Try adjusting search query, status, or compliance filters.</p>
+              </div>
+            ) : (
+              <div className="contracts-list space-y-3">
+                {paginatedContracts.map((contract, index) => (
+                  <div
+                    key={contract.contractsId}
+                    className={`rounded-2xl border transition overflow-hidden ${expandedContractId === contract.contractsId
+                        ? 'border-brand bg-brand/5 shadow-sm'
+                        : 'border-border bg-background hover:border-brand/40'
+                      }`}
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4">
+                      {/* Left Info Column with flex-1 min-w-0 */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 font-extrabold text-xs">
+                          #{((page - 1) * pageSize) + index + 1}
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <h3 className="text-sm font-extrabold text-text-primary truncate flex-1 min-w-0" title={contract.title}>
+                              {contract.title}
+                            </h3>
+                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${contract.status === ContractStatus.Active ? 'border border-cyan-500/40 bg-cyan-500/15 text-cyan-700 dark:text-cyan-400' :
+                                contract.status === ContractStatus.Completed ? 'border border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' :
+                                  'border border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                              }`}>
+                              {getContractStatusLabel(contract.status)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-text-muted font-mono mt-0.5 truncate">ID: {contract.contractsId}</p>
+                        </div>
+                      </div>
+
+                      {/* Right Metrics & Action Column with shrink-0 */}
+                      <div className="flex items-center flex-wrap gap-3 shrink-0">
+                        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-surface-muted/40 px-3 py-1.5 text-xs">
+                          <GCoinIcon size={16} />
+                          <div>
+                            <p className="text-[9px] font-black uppercase text-text-muted">Budget</p>
+                            <p className="font-extrabold text-text-primary">{formatContractAmount(contract.totalBudget)}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-surface-muted/40 px-3 py-1.5 text-xs">
+                          <Calendar size={16} className="text-brand" />
+                          <div>
+                            <p className="text-[9px] font-black uppercase text-text-muted">Timeline</p>
+                            <p className="font-extrabold text-text-primary">{formatContractDate(contract.startDate)} - {formatContractDate(contract.endDate)}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-3 py-1.5 text-xs">
+                          <BarChart3 size={16} className="text-brand" />
+                          <div>
+                            <p className="text-[9px] font-black uppercase text-brand">Score</p>
+                            <p className="font-extrabold text-brand">{contract.complianceScore}%</p>
+                          </div>
+                        </div>
+
+                        <span className={getComplianceBadgeClass(contract.complianceStatus)}>
+                          {contract.complianceStatus?.toUpperCase() || 'UNKNOWN'}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedContractId(
+                              expandedContractId === contract.contractsId ? null : contract.contractsId
+                            )
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-brand/40 bg-brand/10 px-3.5 py-2 text-xs font-extrabold text-brand hover:bg-brand/20 transition cursor-pointer"
+                        >
+                          <span>Details</span>
+                          <ChevronDown size={15} className={`transition-transform ${expandedContractId === contract.contractsId ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row Expansion Drawer Details */}
+                    {expandedContractId === contract.contractsId && (
+                      <div className="border-t border-border/60 bg-surface-muted/20 p-4 space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                          <div className="rounded-xl border border-border/50 bg-background p-3">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Client ID</span>
+                            <p className="text-xs font-bold text-text-primary truncate mt-0.5">{contract.clientProfilesId}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/50 bg-background p-3">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Freelancer ID</span>
+                            <p className="text-xs font-bold text-text-primary truncate mt-0.5">{contract.freelancerProfilesId || 'Pending'}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/50 bg-background p-3">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Total Budget</span>
+                            <p className="text-xs font-bold text-text-primary mt-0.5">{formatContractAmount(contract.totalBudget)}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/50 bg-background p-3">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Start Date</span>
+                            <p className="text-xs font-bold text-text-primary mt-0.5">{formatContractDate(contract.startDate)}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/50 bg-background p-3">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">End Date</span>
+                            <p className="text-xs font-bold text-text-primary mt-0.5">{formatContractDate(contract.endDate)}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/50 bg-background p-3">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">E-sign PDF</span>
+                            <p className="text-xs font-bold text-emerald-400 mt-0.5">
+                              {contract.esignContractPdfUrl ? '✓ E-Sign PDF Ready' : '❌ No PDF Document'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {contract.description && (
+                          <div className="rounded-xl border border-border/50 bg-background p-3.5 space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-text-muted">Scope Description</span>
+                            <p className="text-xs font-medium text-text-secondary leading-relaxed">{contract.description}</p>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-2 rounded-xl border border-brand/40 bg-brand/10 px-4 py-2 text-xs font-extrabold text-brand hover:bg-brand/20 transition cursor-pointer"
+                            onClick={() => {
+                              setEditingContract(contract);
+                              setContractForm({
+                                title: contract.title,
+                                description: contract.description || '',
+                                totalBudget: contract.totalBudget,
+                                status: contract.status,
+                                startDate: contract.startDate ? new Date(contract.startDate).toISOString().substring(0, 10) : '',
+                                endDate: contract.endDate ? new Date(contract.endDate).toISOString().substring(0, 10) : '',
+                                esignContractPdfUrl: contract.esignContractPdfUrl || '',
+                              });
+                            }}
+                          >
+                            <Edit size={15} /> Edit Contract
+                          </button>
+
+                          {contract.esignContractPdfUrl && (
+                            <a
+                              href={contract.esignContractPdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-extrabold text-emerald-400 hover:bg-emerald-500/20 transition cursor-pointer"
+                            >
+                              <Download size={15} /> View E-Sign Document
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Footer */}
+            {filteredContracts.length > 0 && (
+              <AdminTablePagination
+                currentPage={page}
+                totalPages={totalPages}
+                disabled={loading}
+                onPageChange={setPage}
+              />
+            )}
+          </section>
+        </main>
+
+        {/* Modal Edit Contract Form */}
+        {editingContract && (
+          <div className="modal-backdrop">
+            <div className="modal-card space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="text-base font-black text-text-primary">Edit Contract</h3>
+                <button type="button" onClick={() => setEditingContract(null)} className="text-text-muted hover:text-text-primary cursor-pointer">
+                  <X size={20} />
                 </button>
               </div>
 
               {contractActionError && (
-                <div className="mb-4 p-3 rounded-lg bg-red/10 border border-red/20 text-red text-xs flex items-center gap-2">
-                  <AlertCircle size={14} />
-                  <span>{contractActionError}</span>
+                <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-bold text-rose-400">
+                  <AlertCircle size={16} />
+                  <p>{contractActionError}</p>
                 </div>
               )}
 
-              <div className="space-y-4">
-                {/* Title */}
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-muted uppercase mb-1">Contract Title</label>
+                  <label className="block text-xs font-bold text-text-muted mb-1">Title</label>
                   <input
-                    type="text"
                     value={contractForm.title}
                     onChange={e => setContractForm({ ...contractForm, title: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                    className="input-gb w-full py-2 text-xs font-semibold"
                   />
                 </div>
 
-                {/* Description */}
                 <div>
-                  <label className="block text-xs font-semibold text-muted uppercase mb-1">Description</label>
-                  <textarea
-                    rows={4}
-                    value={contractForm.description}
-                    onChange={e => setContractForm({ ...contractForm, description: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
-                  />
-                </div>
-
-                {/* E-Sign PDF URL */}
-                <div>
-                  <label className="block text-xs font-semibold text-muted uppercase mb-1">E-Sign Contract PDF URL</label>
+                  <label className="block text-xs font-bold text-text-muted mb-1">Total Budget (GCoin)</label>
                   <input
-                    type="text"
+                    type="number"
+                    value={contractForm.totalBudget}
+                    onChange={e => setContractForm({ ...contractForm, totalBudget: Number(e.target.value) })}
+                    className="input-gb w-full py-2 text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-text-muted mb-1">E-Sign Document URL</label>
+                  <input
                     value={contractForm.esignContractPdfUrl}
                     onChange={e => setContractForm({ ...contractForm, esignContractPdfUrl: e.target.value })}
-                    placeholder="e.g. /contracts/esign_document_code.pdf"
-                    className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
+                    placeholder="https://..."
+                    className="input-gb w-full py-2 text-xs font-semibold"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Budget */}
-                  <div>
-                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Total Budget</label>
-                    <input
-                      type="number"
-                      value={contractForm.totalBudget}
-                      onChange={e => setContractForm({ ...contractForm, totalBudget: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
-                    />
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Contract Status</label>
-                    <select
-                      value={contractForm.status}
-                      onChange={e => setContractForm({ ...contractForm, status: parseInt(e.target.value) })}
-                      style={{ backgroundColor: '#111827', color: '#f3f4f6' }}
-                      className="w-full px-3 py-2 rounded-lg border border-white/10 text-secondary focus:outline-none focus:border-cyan text-sm"
-                    >
-                      <option value={0} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Draft</option>
-                      <option value={1} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Freelancer Selection</option>
-                      <option value={2} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>In Negotiation</option>
-                      <option value={3} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Details</option>
-                      <option value={4} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Confirmation</option>
-                      <option value={5} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Escrow</option>
-                      <option value={6} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Pending Signature</option>
-                      <option value={7} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Active</option>
-                      <option value={8} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Completed</option>
-                      <option value={9} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Cancelled</option>
-                      <option value={10} style={{ backgroundColor: '#111827', color: '#f3f4f6' }}>Disputed</option>
-                    </select>
-                  </div>
-
-                  {/* Start Date */}
-                  <div>
-                    <label className="block text-xs font-semibold text-muted uppercase mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      value={contractForm.startDate}
-                      onChange={e => setContractForm({ ...contractForm, startDate: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
-                    />
-                  </div>
-
-                  {/* End Date */}
-                  <div>
-                    <label className="block text-xs font-semibold text-muted uppercase mb-1">End Date</label>
-                    <input
-                      type="date"
-                      value={contractForm.endDate}
-                      onChange={e => setContractForm({ ...contractForm, endDate: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg bg-[#111827] border border-white/10 text-primary focus:outline-none focus:border-cyan text-sm"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-text-muted mb-1">Description</label>
+                  <textarea
+                    value={contractForm.description}
+                    onChange={e => setContractForm({ ...contractForm, description: e.target.value })}
+                    rows={4}
+                    className="input-gb w-full py-2 text-xs font-semibold"
+                  />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
-                <button
-                  onClick={() => setEditingContract(null)}
-                  className="btn-ghost-cyan px-6 py-2"
-                >
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <button type="button" onClick={() => setEditingContract(null)} className="rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 transition cursor-pointer" disabled={isContractActionLoading}>
                   Cancel
                 </button>
-                <button
-                  onClick={handleUpdateContract}
-                  disabled={isContractActionLoading}
-                  className="btn-cyan px-6 py-2 flex items-center gap-2"
-                >
-                  {isContractActionLoading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />}
-                  Save Changes
+                <button type="button" onClick={handleUpdateContract} className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer shadow-sm" disabled={isContractActionLoading}>
+                  <Save size={15} /> Save Changes
                 </button>
               </div>
-
             </div>
           </div>
         )}

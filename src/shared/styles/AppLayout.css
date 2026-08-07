@@ -39,9 +39,9 @@
   .app-layout-main.with-sidebar {
     padding: 1.5rem;
   }
-  
+
   .app-layout-main.with-sidebar.sidebar-open {
-    margin-left: 15rem;
+    margin-left: 17rem;
   }
 }
 
@@ -73,6 +73,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

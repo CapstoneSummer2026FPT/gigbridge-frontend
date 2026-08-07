@@ -1,537 +1,121 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  AlertCircle, AlertTriangle, CheckCircle, Clock, Download, Paperclip, FileText, LoaderCircle,
-  RefreshCw, Scale, Search, ShieldAlert, ShieldCheck, X, Briefcase, History,
-  Landmark, MessageSquare, User, UserCheck, Send
+  AlertCircle,
+  Briefcase,
+  CheckCircle,
+  Download,
+  History,
+  Landmark,
+  LoaderCircle,
+  MessageSquare,
+  Paperclip,
+  RefreshCw,
+  Scale,
+  Search,
+  Send,
+  ShieldAlert,
+  Sparkles,
+  User,
+  X,
 } from 'lucide-react';
-import { adminGetAPI, adminPatchAPI, adminPostAPI } from '../../../api/adminAPI';
-import type { AdminResolveDisputePayload } from '../../../api/adminAPI/POST';
+
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { AccountStatus, UserViolationType, type AdminDisputeDetail, type AdminDisputeListItem } from '../../../types/models/AdminDispute';
-import { DisputeMilestoneOutcome, DisputeResolution, DisputeStatus, EvidenceRequestTarget, type DisputeEvidence } from '../../../types/models/Dispute';
-import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
+import {
+  STATUS_FILTERS,
+  statusLabels,
+  formatDate,
+  formatSize,
+  useAdminDisputeManagement,
+} from '../hooks/useAdminDisputeManagement';
+import { AdminResolveDisputeModal } from '../components/AdminResolveDisputeModal';
+import type { AdminAuditEvent } from '../../../types/models/AdminDispute';
+import { DisputeStatus, EvidenceRequestTarget } from '../../../types/models/Dispute';
 import { DisputeMessageRecipient } from '../../../api/messageAPI/GET';
-import { MilestoneStatus } from '../../../types/models/Contract';
+import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { UserRole } from '../../../types/models/User';
-import * as signalR from '@microsoft/signalr';
-import { getChatHubUrl } from '../../../service/apiService';
 import '../styles/admin-dispute-management-screen.css';
 
-const statusLabels: Record<DisputeStatus, string> = {
-  [DisputeStatus.Open]: 'Waiting Admin',
-  [DisputeStatus.WaitingAdmin]: 'Waiting Admin',
-  [DisputeStatus.UnderReview]: 'In Progress',
-  [DisputeStatus.WaitingEvidence]: 'In Progress',
-  [DisputeStatus.DecisionPending]: 'In Progress',
-  [DisputeStatus.Resolved]: 'Resolved',
-  [DisputeStatus.Closed]: 'Closed',
-};
-const resolutionLabels: Record<DisputeResolution, string> = {
-  [DisputeResolution.ClientFavored]: 'Client Favored',
-  [DisputeResolution.FreelancerFavored]: 'Freelancer Favored',
-  [DisputeResolution.Split]: 'Split',
-  [DisputeResolution.Dismissed]: 'Dismissed',
-};
-
-const formatDate = (value: string | null): string => {
-  if (!value) return '—';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
-};
-
-const formatSize = (bytes: number | null): string => {
-  if (bytes === null) return 'Size unavailable';
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const apiError = (status: number, message: string): string => {
-  if (status === 401) return 'Your administrator session has expired.';
-  if (status === 403) return 'Administrator access is required.';
-  if (status === 404) return 'The dispute could not be found.';
-  return message || 'The request could not be completed.';
-};
-
-type DisputeStatusGroup = 'all' | 'waiting_admin' | 'in_progress' | 'resolved' | 'closed';
-
-const getDisputeGroup = (status: DisputeStatus): DisputeStatusGroup => {
-  if (status === DisputeStatus.Open || status === DisputeStatus.WaitingAdmin) return 'waiting_admin';
-  if (
-    status === DisputeStatus.UnderReview ||
-    status === DisputeStatus.WaitingEvidence ||
-    status === DisputeStatus.DecisionPending
-  ) return 'in_progress';
-  if (status === DisputeStatus.Resolved) return 'resolved';
-  return 'closed';
-};
-
-const GROUP_LABELS: Record<DisputeStatusGroup, string> = {
-  all: 'All Cases',
-  waiting_admin: 'Waiting Admin',
-  in_progress: 'In Progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
-};
-
-const STATUS_GROUPS: DisputeStatusGroup[] = [
-  'all',
-  'waiting_admin',
-  'in_progress',
-  'resolved',
-  'closed',
-];
-
-interface EvidenceRequestState {
-  reason: string;
-  deadline: string;
-  target: EvidenceRequestTarget;
-}
-
-interface ViolationState {
-  isViolation: boolean;
-  violationType: UserViolationType | null;
-  reason: string;
-  description: string;
-}
-
-const emptyViolation = (): ViolationState => ({
-  isViolation: false,
-  violationType: null,
-  reason: '',
-  description: '',
-});
-
-const accountStatusLabels: Record<AccountStatus, string> = {
-  [AccountStatus.Active]: 'Active',
-  [AccountStatus.Suspended]: 'Suspended for 7 days',
-  [AccountStatus.Banned]: 'Permanently banned',
-};
-
-type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milestones' | 'evidence' | 'audit' | 'workspace';
-
 export default function AdminDisputeManagementScreen() {
-  const [disputes, setDisputes] = useState<AdminDisputeListItem[]>([]);
-  const [selectedStatusGroup, setSelectedStatusGroup] = useState<DisputeStatusGroup>('all');
-  const [search, setSearch] = useState('');
-  const [selectedDisputeId, setSelectedDisputeId] = useState('');
-  const [selectedDispute, setSelectedDispute] = useState<AdminDisputeDetail | null>(null);
-  const [totalItems, setTotalItems] = useState(0);
-  const [loadingList, setLoadingList] = useState(true);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [showResolveDialog, setShowResolveDialog] = useState(false);
-  const [showEvidenceDialog, setShowEvidenceDialog] = useState(false);
-  const [evidenceRequest, setEvidenceRequest] = useState<EvidenceRequestState>({ reason: '', deadline: '', target: EvidenceRequestTarget.Both });
-  const [activeTab, setActiveTab] = useState<InvestigationTab>('dispute');
-  const [workspaceMessages, setWorkspaceMessages] = useState<ConversationMessageResponse[]>([]);
-  const [disputeMessages, setDisputeMessages] = useState<ConversationMessageResponse[]>([]);
-  const [adminMessage, setAdminMessage] = useState('');
-  const [adminMessageFiles, setAdminMessageFiles] = useState<File[]>([]);
-  const [adminMessageRecipient, setAdminMessageRecipient] = useState<DisputeMessageRecipient>(DisputeMessageRecipient.Both);
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const disputeConversationIdRef = useRef<string | null>(null);
-  const [milestoneDecisions, setMilestoneDecisions] = useState<Record<string, { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string }>>({});
-  const [clientViolation, setClientViolation] = useState<ViolationState>(emptyViolation);
-  const [freelancerViolation, setFreelancerViolation] = useState<ViolationState>(emptyViolation);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
-  // Scroll refs for the 3 chat columns
-  const freelancerChatEndRef = useRef<HTMLDivElement>(null);
-  const bothChatEndRef = useRef<HTMLDivElement>(null);
-  const clientChatEndRef = useRef<HTMLDivElement>(null);
+  const {
+    disputes,
+    selectedStatus,
+    setSelectedStatus,
+    search,
+    setSearch,
+    selectedDisputeId,
+    setSelectedDisputeId,
+    selectedDispute,
+    totalItems,
+    loadingList,
+    loadingDetail,
+    actionLoading,
+    downloadingId,
+    error,
+    setError,
+    success,
+    setSuccess,
+    setRefreshKey,
+    showResolveDialog,
+    showEvidenceDialog,
+    setShowEvidenceDialog,
+    evidenceRequest,
+    setEvidenceRequest,
+    activeTab,
+    setActiveTab,
+    adminMessage,
+    setAdminMessage,
+    adminMessageRecipient,
+    setAdminMessageRecipient,
+    sendingMessage,
+    milestoneDecisions,
+    setMilestoneDecisions,
+    clientViolation,
+    setClientViolation,
+    freelancerViolation,
+    setFreelancerViolation,
+    resolution,
+    setResolution,
+    resolutionNote,
+    setResolutionNote,
+    internalNotes,
+    setInternalNotes,
+    contractAction,
+    setContractAction,
+    freelancerChatEndRef,
+    clientChatEndRef,
+    stats,
+    allocationTotals,
+    allocationHasError,
+    violationHasError,
+    updateStatus,
+    requestEvidenceSubmit,
+    resolveCase,
+    openResolveDialog,
+    sendAdminDirective,
+    downloadEvidenceFile,
+    reviewEvidence,
+    resetResolveDialog,
+    freelancerMessages,
+    clientMessages,
+    isCaseOpen,
+  } = useAdminDisputeManagement();
 
-  // Resolve dialog fields
-  const [resolution, setResolution] = useState<DisputeResolution>(DisputeResolution.ClientFavored);
-  const [resolutionNote, setResolutionNote] = useState('');
-  const [internalNotes, setInternalNotes] = useState('');
-  const [contractAction, setContractAction] = useState<number>(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    const timeoutId = window.setTimeout(async () => {
-      setLoadingList(true);
-      setError(null);
-      const response = await adminGetAPI.getDisputes({
-        page: 1,
-        pageSize: 100,
-        search: search.trim() || undefined,
-      });
-      if (cancelled) return;
-
-      if (!response.success || !response.data) {
-        setDisputes([]);
-        setTotalItems(0);
-        setError(apiError(response.statusCode, response.message));
-        setLoadingList(false);
-        return;
-      }
-
-      setDisputes(response.data.items);
-      setTotalItems(response.data.totalItems);
-      setLoadingList(false);
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-    };
-  }, [search, refreshKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadDetail = async () => {
-      if (!selectedDisputeId) {
-        setSelectedDispute(null);
-        return;
-      }
-
-      setLoadingDetail(true);
-      const response = await adminGetAPI.getDisputeDetail(selectedDisputeId);
-      if (cancelled) return;
-      if (!response.success || !response.data) {
-        setSelectedDispute(null);
-        setError(apiError(response.statusCode, response.message));
-      } else {
-        setSelectedDispute(response.data);
-      }
-      setLoadingDetail(false);
-    };
-
-    void loadDetail();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedDisputeId]);
-
-  useEffect(() => {
-    if (!selectedDispute) return;
-    const load = async (conversationId: string | null, setter: (items: ConversationMessageResponse[]) => void) => {
-      if (!conversationId) { setter([]); return; }
-      const response = await adminGetAPI.getDisputeConversationMessages(selectedDispute.id, conversationId);
-      setter(response.success ? response.data ?? [] : []);
-    };
-    void load(selectedDispute.conversations.workspaceConversationId, setWorkspaceMessages);
-    void load(selectedDispute.conversations.disputeConversationId, setDisputeMessages);
-  }, [selectedDispute]);
-
-  useEffect(() => {
-    const conversationId = selectedDispute?.conversations.disputeConversationId ?? null;
-    disputeConversationIdRef.current = conversationId;
-    if (!conversationId) return;
-    let disposed = false;
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(getChatHubUrl(), { accessTokenFactory: () => localStorage.getItem('access_token') ?? '' })
-      .withAutomaticReconnect()
-      .build();
-
-    const receive = (payload: ConversationMessageResponse) => {
-      if (disposed || payload.conversationId !== disputeConversationIdRef.current) return;
-      setDisputeMessages(current =>
-        current.some(item =>
-          item.messageId === payload.messageId ||
-          (payload.clientMessageId && item.clientMessageId === payload.clientMessageId)
-        )
-          ? current
-          : [...current, payload]
-      );
-    };
-    connection.on('ReceiveMessage', receive);
-    connection.onreconnected(() => void connection.invoke('JoinConversation', conversationId));
-    void connection.start().then(() => disposed ? connection.stop() : connection.invoke('JoinConversation', conversationId)).catch(() => undefined);
-    return () => { disposed = true; connection.off('ReceiveMessage', receive); void connection.stop(); };
-  }, [selectedDispute?.conversations.disputeConversationId]);
-
-  // Auto-scroll chat columns when messages change
-  useEffect(() => {
-    freelancerChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    bothChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    clientChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [disputeMessages]);
-
-  const filteredDisputes = useMemo(() => {
-    if (selectedStatusGroup === 'all') return disputes;
-    return disputes.filter((item) => getDisputeGroup(item.status) === selectedStatusGroup);
-  }, [disputes, selectedStatusGroup]);
-
-  useEffect(() => {
-    if (filteredDisputes.length > 0 && !filteredDisputes.some((item) => item.id === selectedDisputeId)) {
-      setSelectedDisputeId(filteredDisputes[0].id);
-    }
-  }, [filteredDisputes, selectedDisputeId]);
-
-  const stats = useMemo(() => ({
-    total: disputes.length,
-    waitingAdmin: disputes.filter((item) => getDisputeGroup(item.status) === 'waiting_admin').length,
-    inProgress: disputes.filter((item) => getDisputeGroup(item.status) === 'in_progress').length,
-    resolved: disputes.filter((item) => getDisputeGroup(item.status) === 'resolved').length,
-    closed: disputes.filter((item) => getDisputeGroup(item.status) === 'closed').length,
-  }), [disputes]);
-
-  const allocationTotals = useMemo(() => Object.values(milestoneDecisions).reduce((totals, decision) => ({
-    release: totals.release + Number(decision.release || 0),
-    refund: totals.refund + Number(decision.refund || 0),
-    penalty: totals.penalty + Number(decision.penalty || 0),
-  }), { release: 0, refund: 0, penalty: 0 }), [milestoneDecisions]);
-
-  const allocationHasError = (milestoneId: string) => {
-    if (!selectedDispute) return true;
-    const milestone = selectedDispute.milestones.find(item => item.milestoneId === milestoneId);
-    const decision = milestoneDecisions[milestoneId];
-    if (!milestone || !decision) return true;
-    const release = Number(decision.release || 0);
-    const refund = Number(decision.refund || 0);
-    const penalty = Number(decision.penalty || 0);
-    if ([release, refund, penalty].some(value => !Number.isFinite(value) || value < 0)) return true;
-    if (Math.abs(release + refund + penalty - milestone.lockedAmount) >= 0.01) return true;
-    if (penalty > 0 && !decision.reason.trim()) return true;
-    const override = milestone.status === MilestoneStatus.Submitted || milestone.status === MilestoneStatus.Approved
-      ? Math.abs(release - milestone.lockedAmount) >= 0.01 || refund >= 0.01 || penalty >= 0.01
-      : milestone.status === MilestoneStatus.Pending || milestone.status === MilestoneStatus.InProgress
-        ? Math.abs(refund - milestone.lockedAmount) >= 0.01 || release >= 0.01 || penalty >= 0.01
-        : false;
-    return override && !decision.reason.trim();
-  };
-
-  const violationHasError = (violation: ViolationState) =>
-    violation.isViolation && (violation.violationType === null || !violation.reason.trim());
-
-  const applyUpdatedDetail = (detail: AdminDisputeDetail) => {
-    setSelectedDispute(detail);
-    setRefreshKey((value) => value + 1);
-  };
-
-  const updateStatus = async (targetStatus: DisputeStatus) => {
-    if (!selectedDispute || actionLoading) return;
-    setActionLoading(true);
-    setError(null);
-    setSuccess(null);
-    const response = await adminPatchAPI.updateDisputeStatus(selectedDispute.id, targetStatus);
-    setActionLoading(false);
-
-    if (!response.success || !response.data) {
-      setError(apiError(response.statusCode, response.message));
-      return;
-    }
-
-    applyUpdatedDetail(response.data);
-    setSuccess(`Dispute moved to ${statusLabels[targetStatus]}.`);
-  };
-
-  const requestEvidenceSubmit = async () => {
-    if (!selectedDispute || actionLoading) return;
-    if (!evidenceRequest.reason.trim()) {
-      setError('Evidence request reason is required.');
-      return;
-    }
-
-    setActionLoading(true);
-    setError(null);
-    setSuccess(null);
-    const response = await adminPostAPI.requestEvidence(
-      selectedDispute.id,
-      evidenceRequest.reason.trim(),
-      evidenceRequest.deadline || null,
-      evidenceRequest.target,
-    );
-    setActionLoading(false);
-
-    if (!response.success || !response.data) {
-      setError(apiError(response.statusCode, response.message));
-      return;
-    }
-
-    applyUpdatedDetail(response.data);
-    setShowEvidenceDialog(false);
-    setEvidenceRequest({ reason: '', deadline: '', target: EvidenceRequestTarget.Both });
-    setSuccess('Evidence requested. Participants were notified.');
-  };
-
-  const resolveCase = async () => {
-    if (!selectedDispute || actionLoading) return;
-    if (!resolutionNote.trim()) {
-      setError('Resolution Note is required.');
-      return;
-    }
-
-    setActionLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    const payload: AdminResolveDisputePayload = {
-      resolution,
-      resolutionNote: resolutionNote.trim(),
-      internalNotes: internalNotes.trim() || undefined,
-      milestoneAllocations: Object.entries(milestoneDecisions).map(([milestoneId, decision]) => ({
-        milestoneId,
-        outcome: decision.outcome,
-        freelancerAward: Number(decision.release || 0),
-        clientRefund: Number(decision.refund || 0),
-        penaltyAmount: Number(decision.penalty || 0),
-        reason: decision.reason.trim() || null,
-      })),
-      contractAction,
-      clientViolation: {
-        isViolation: clientViolation.isViolation,
-        violationType: clientViolation.violationType,
-        reason: clientViolation.reason.trim() || null,
-        description: clientViolation.description.trim() || null,
-      },
-      freelancerViolation: {
-        isViolation: freelancerViolation.isViolation,
-        violationType: freelancerViolation.violationType,
-        reason: freelancerViolation.reason.trim() || null,
-        description: freelancerViolation.description.trim() || null,
-      },
-    };
-
-    const response = await adminPostAPI.resolveDispute(selectedDispute.id, payload);
-    setActionLoading(false);
-
-    if (!response.success || !response.data) {
-      setError(apiError(response.statusCode, response.message));
-      return;
-    }
-
-    applyUpdatedDetail(response.data);
-    setShowResolveDialog(false);
-    setResolutionNote('');
-    setInternalNotes('');
-    setMilestoneDecisions({});
-    setClientViolation(emptyViolation());
-    setFreelancerViolation(emptyViolation());
-    setContractAction(0);
-    setSuccess('Dispute resolved. Financial transactions and contract actions were executed.');
-  };
-
-  const openResolveDialog = () => {
-    if (!selectedDispute) return;
-    setMilestoneDecisions(Object.fromEntries(selectedDispute.milestones
-      .filter(milestone => milestone.lockedAmount > 0 &&
-        (milestone.status === MilestoneStatus.Disputed || milestone.milestoneId === selectedDispute.milestoneId))
-      .map(milestone => {
-        const defaults = milestone.status === MilestoneStatus.Submitted || milestone.status === MilestoneStatus.Approved
-          ? { outcome: DisputeMilestoneOutcome.Accepted, release: milestone.lockedAmount.toFixed(2), refund: '0.00' }
-          : milestone.status === MilestoneStatus.Pending || milestone.status === MilestoneStatus.InProgress
-            ? { outcome: DisputeMilestoneOutcome.Rejected, release: '0.00', refund: milestone.lockedAmount.toFixed(2) }
-            : { outcome: DisputeMilestoneOutcome.PartiallyAccepted, release: (milestone.lockedAmount / 2).toFixed(2), refund: (milestone.lockedAmount - milestone.lockedAmount / 2).toFixed(2) };
-        return [milestone.milestoneId, { ...defaults, penalty: '0.00', reason: '' }];
-      })));
-    setClientViolation(emptyViolation());
-    setFreelancerViolation(emptyViolation());
-    setShowResolveDialog(true);
-  };
-
-  const changeContractAction = (action: number) => {
-    if (!selectedDispute) return;
-    setContractAction(action);
-    setMilestoneDecisions(Object.fromEntries(selectedDispute.milestones
-      .filter(milestone => milestone.lockedAmount > 0 &&
-        (action === 1 || milestone.status === MilestoneStatus.Disputed || milestone.milestoneId === selectedDispute.milestoneId))
-      .map(milestone => {
-        const existing = milestoneDecisions[milestone.milestoneId];
-        return [milestone.milestoneId, existing ?? {
-          outcome: DisputeMilestoneOutcome.PartiallyAccepted,
-          release: '0.00',
-          refund: '0.00',
-          penalty: '0.00',
-          reason: '',
-        }];
-      })));
-  };
-
-  const sendAdminMessage = async (overrideRecipient?: DisputeMessageRecipient) => {
-    const targetRecipient = overrideRecipient !== undefined ? overrideRecipient : adminMessageRecipient;
-    if (sendingMessage || !selectedDispute?.conversations.disputeConversationId || (!adminMessage.trim() && adminMessageFiles.length === 0)) return;
-    setSendingMessage(true);
-    setError(null);
-    const response = await adminPostAPI.sendDisputeMessage(
-      selectedDispute.id,
-      selectedDispute.conversations.disputeConversationId,
-      adminMessage,
-      adminMessageFiles,
-      targetRecipient,
-    );
-    setSendingMessage(false);
-    if (response.success) {
-      setAdminMessage('');
-      setAdminMessageFiles([]);
-    } else {
-      setError(response.message || 'Unable to send administrative message.');
-    }
-  };
-
-  const downloadEvidence = async (evidence: DisputeEvidence) => {
-    if (!selectedDispute || downloadingId) return;
-    setDownloadingId(evidence.id);
-    setError(null);
-    const response = await adminGetAPI.getDisputeEvidenceDownload(selectedDispute.id, evidence.id);
-    setDownloadingId(null);
-    if (!response.success || !response.data?.downloadUrl) {
-      setError(apiError(response.statusCode, response.message));
-      return;
-    }
-
-    const anchor = document.createElement('a');
-    anchor.href = response.data.downloadUrl;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener noreferrer';
-    anchor.download = response.data.fileName || evidence.fileName || 'evidence';
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-  };
-
-  const reviewEvidence = async (evidence: DisputeEvidence) => {
-    if (!selectedDispute || actionLoading || !evidence.fileName) return;
-    const reviewNote = window.prompt('Optional review note') ?? '';
-    setActionLoading(true);
-    const response = await adminPostAPI.reviewDisputeEvidence(selectedDispute.id, evidence.id, reviewNote);
-    setActionLoading(false);
-    if (!response.success || !response.data) {
-      setError(apiError(response.statusCode, response.message));
-      return;
-    }
-    setSelectedDispute(current => current ? { ...current, evidence: current.evidence.map(item => item.id === evidence.id ? response.data! : item) } : current);
-    setSuccess('Evidence marked as reviewed.');
-  };
-
-  const resetResolveDialog = () => {
-    setShowResolveDialog(false);
-    setResolution(DisputeResolution.ClientFavored);
-    setResolutionNote('');
-    setInternalNotes('');
-    setMilestoneDecisions({});
-    setClientViolation(emptyViolation());
-    setFreelancerViolation(emptyViolation());
-    setContractAction(0);
-  };
-
-  // Categorize messages for the 2-column chat layout (Freelancer & Client)
-  // Messages targeted to 'Both' appear in BOTH columns simultaneously.
-  // Messages targeted to Freelancer (1) appear ONLY in Freelancer column.
-  // Messages targeted to Client (0) appear ONLY in Client column.
-  const freelancerMessages = useMemo(() => {
-    return disputeMessages.filter(msg => {
-      if (msg.disputeRecipient !== null && msg.disputeRecipient !== undefined) {
-        return msg.disputeRecipient === DisputeMessageRecipient.Freelancer ||
-               msg.disputeRecipient === DisputeMessageRecipient.Both;
-      }
-      return msg.senderRole === UserRole.Freelancer || msg.senderRole === UserRole.Admin;
-    });
-  }, [disputeMessages]);
-
-  const clientMessages = useMemo(() => {
-    return disputeMessages.filter(msg => {
-      if (msg.disputeRecipient !== null && msg.disputeRecipient !== undefined) {
-        return msg.disputeRecipient === DisputeMessageRecipient.Client ||
-               msg.disputeRecipient === DisputeMessageRecipient.Both;
-      }
-      return msg.senderRole === UserRole.Client || msg.senderRole === UserRole.Admin;
-    });
-  }, [disputeMessages]);
+  // GSAP Entrance Animation
+  usePageGSAP({
+    containerRef,
+    loading: loadingList && disputes.length === 0,
+    groups: [
+      { selector: '.esign-gsap-header', y: 20, duration: 0.55 },
+      { selector: '.disputes-stats', y: 16, duration: 0.5, stagger: 0.05 },
+      { selector: '.disputes-toolbar', y: 18, duration: 0.45 },
+      { selector: '.disputes-layout', y: 24, duration: 0.5 },
+    ],
+  });
 
   const renderSingleChatMessage = (message: ConversationMessageResponse) => {
     const isOfficial = message.messageType === 10;
@@ -539,7 +123,9 @@ export default function AdminDisputeManagementScreen() {
     return (
       <div
         key={message.messageId}
-        className={`admin-chat-bubble-card ${isOfficial ? 'official-directive' : ''} ${isBoth ? 'both-directive' : ''} ${message.senderRole === UserRole.Admin ? 'admin-sender' : ''}`}
+        className={`admin-chat-bubble-card ${isOfficial ? 'official-directive' : ''} ${isBoth ? 'both-directive' : ''} ${
+          message.senderRole === UserRole.Admin ? 'admin-sender' : ''
+        }`}
       >
         <div className="admin-chat-bubble-header">
           <div className="admin-chat-sender-info">
@@ -551,10 +137,16 @@ export default function AdminDisputeManagementScreen() {
               </div>
             )}
             <strong className="admin-chat-sender-name">
-              {message.senderName || (isOfficial ? 'Administrator' : 'Participant')}
+              {message.senderName || (isOfficial ? t('admin.disputes.chat.administrator', 'Administrator') : t('admin.disputes.chat.participant', 'Participant'))}
             </strong>
             <span className={`admin-role-badge role-${message.senderRole ?? 'unknown'}`}>
-              {message.senderRole === UserRole.Admin ? 'Admin' : message.senderRole === UserRole.Client ? 'Client' : message.senderRole === UserRole.Freelancer ? 'Freelancer' : 'Participant'}
+              {message.senderRole === UserRole.Admin
+                ? 'Admin'
+                : message.senderRole === UserRole.Client
+                ? 'Client'
+                : message.senderRole === UserRole.Freelancer
+                ? 'Freelancer'
+                : 'Participant'}
             </span>
           </div>
 
@@ -567,7 +159,7 @@ export default function AdminDisputeManagementScreen() {
 
         {message.attachments.length > 0 && (
           <div className="admin-chat-attachment-list">
-            {message.attachments.map(att => (
+            {message.attachments.map((att) => (
               <a key={att.messageAttachmentId} href={att.fileUrl} target="_blank" rel="noreferrer" className="admin-chat-attachment-link">
                 <Paperclip size={12} /> {att.fileName}
               </a>
@@ -579,40 +171,65 @@ export default function AdminDisputeManagementScreen() {
   };
 
   return (
-    <AppLayout>
-      <div className="admin-disputes-wrapper">
-        {/* Top Hero Section */}
-        <section className="disputes-hero">
-          <div>
-            <p className="disputes-kicker">Dispute Arbitration Workspace</p>
-            <h1>Admin Control Center</h1>
-            <p>Review disputes, examine evidence, conduct 3-party arbitration, and issue official resolution verdicts.</p>
+    <AppLayout fullWidth>
+      <div ref={containerRef} className="admin-disputes-wrapper text-text-primary px-4 py-6 lg:px-8 max-w-[1600px] mx-auto space-y-6">
+        
+        {/* Sticky Top Header Bar matching esign/reports redesign */}
+        <header className="esign-gsap-header sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-4 backdrop-blur-md lg:px-8 mb-6 rounded-2xl border border-border shadow-sm">
+          <div className="mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wider text-brand">
+                <Sparkles size={14} />
+                {t('admin.disputes.kicker', 'Dispute Arbitration Workspace')}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">
+                {t('admin.disputes.titlePrefix', 'Dispute')} <span className="text-brand italic font-light">& {t('admin.disputes.titleSuffix', 'Escrow Resolution')}</span>
+              </h1>
+              <p className="mt-0.5 text-xs font-semibold text-text-muted">
+                {t('admin.disputes.subtitle', 'Arbitrate client-freelancer disputes, audit escrow milestones, request evidence, and issue binding resolutions.')}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+                <Scale size={24} />
+              </span>
+            </div>
           </div>
-          <div className="hero-scale-icon">
-            <Scale size={32} />
-          </div>
-        </section>
+        </header>
 
         {/* Metric Cards Row */}
         <section className="disputes-stats">
-          <div onClick={() => setSelectedStatusGroup('all')} className={selectedStatusGroup === 'all' ? 'active-stat' : ''}>
-            <span>Total Cases</span>
+          <div onClick={() => setSelectedStatus('all')} className={selectedStatus === 'all' ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.totalCases', 'Total Cases')}</span>
             <strong>{totalItems}</strong>
           </div>
-          <div onClick={() => setSelectedStatusGroup('waiting_admin')} className={selectedStatusGroup === 'waiting_admin' ? 'active-stat' : ''}>
-            <span>Waiting Admin</span>
+          <div onClick={() => setSelectedStatus(DisputeStatus.Open)} className={selectedStatus === DisputeStatus.Open ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.open', 'Open')}</span>
+            <strong>{stats.open}</strong>
+          </div>
+          <div onClick={() => setSelectedStatus(DisputeStatus.WaitingAdmin)} className={selectedStatus === DisputeStatus.WaitingAdmin ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.waitingAdmin', 'Waiting Admin')}</span>
             <strong>{stats.waitingAdmin}</strong>
           </div>
-          <div onClick={() => setSelectedStatusGroup('in_progress')} className={selectedStatusGroup === 'in_progress' ? 'active-stat' : ''}>
-            <span>In Progress</span>
-            <strong>{stats.inProgress}</strong>
+          <div onClick={() => setSelectedStatus(DisputeStatus.UnderReview)} className={selectedStatus === DisputeStatus.UnderReview ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.underReview', 'Under Review')}</span>
+            <strong>{stats.underReview}</strong>
           </div>
-          <div onClick={() => setSelectedStatusGroup('resolved')} className={selectedStatusGroup === 'resolved' ? 'active-stat' : ''}>
-            <span>Resolved</span>
+          <div onClick={() => setSelectedStatus(DisputeStatus.WaitingEvidence)} className={selectedStatus === DisputeStatus.WaitingEvidence ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.waitingEvidence', 'Waiting Evidence')}</span>
+            <strong>{stats.waitingEvidence}</strong>
+          </div>
+          <div onClick={() => setSelectedStatus(DisputeStatus.DecisionPending)} className={selectedStatus === DisputeStatus.DecisionPending ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.decisionPending', 'Decision Pending')}</span>
+            <strong>{stats.decisionPending}</strong>
+          </div>
+          <div onClick={() => setSelectedStatus(DisputeStatus.Resolved)} className={selectedStatus === DisputeStatus.Resolved ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.resolved', 'Resolved')}</span>
             <strong>{stats.resolved}</strong>
           </div>
-          <div onClick={() => setSelectedStatusGroup('closed')} className={selectedStatusGroup === 'closed' ? 'active-stat' : ''}>
-            <span>Closed</span>
+          <div onClick={() => setSelectedStatus(DisputeStatus.Closed)} className={selectedStatus === DisputeStatus.Closed ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.closed', 'Closed')}</span>
             <strong>{stats.closed}</strong>
           </div>
         </section>
@@ -622,14 +239,14 @@ export default function AdminDisputeManagementScreen() {
           <div className="dispute-admin-message error" role="alert">
             <AlertCircle size={18} />
             <span>{error}</span>
-            <button onClick={() => setError(null)} aria-label="Dismiss error"><X size={16} /></button>
+            <button onClick={() => setError(null)} aria-label={t('common.dismissError', 'Dismiss error')}><X size={16} /></button>
           </div>
         )}
         {success && (
           <div className="dispute-admin-message success">
             <CheckCircle size={18} />
             <span>{success}</span>
-            <button onClick={() => setSuccess(null)} aria-label="Dismiss message"><X size={16} /></button>
+            <button onClick={() => setSuccess(null)} aria-label={t('common.dismissMessage', 'Dismiss message')}><X size={16} /></button>
           </div>
         )}
 
@@ -640,11 +257,11 @@ export default function AdminDisputeManagementScreen() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search case ID, contract title, participant name, or reason..."
+              placeholder={t('admin.disputes.searchPlaceholder', 'Search case ID, contract title, participant name, or reason...')}
             />
           </label>
           <button onClick={() => setRefreshKey((value) => value + 1)} disabled={loadingList} className="refresh-btn">
-            <RefreshCw size={16} className={loadingList ? 'admin-dispute-spin' : ''} /> Refresh
+            <RefreshCw size={16} className={loadingList ? 'admin-dispute-spin' : ''} /> {t('admin.disputes.refresh', 'Refresh')}
           </button>
         </section>
 
@@ -653,23 +270,28 @@ export default function AdminDisputeManagementScreen() {
           {/* Left Panel: Dispute List */}
           <div className="disputes-list-card">
             <div className="disputes-filter-row">
-              {STATUS_GROUPS.map((group) => (
+              {STATUS_FILTERS.map((status: 'all' | DisputeStatus) => (
                 <button
                   key={group}
                   className={selectedStatusGroup === group ? 'active' : ''}
                   onClick={() => setSelectedStatusGroup(group)}
                 >
-                  {GROUP_LABELS[group]}
+                  {status === 'all' ? t('admin.disputes.allCases', 'All Cases') : statusLabels[status]}
                 </button>
               ))}
             </div>
 
             <div className="disputes-list">
               {loadingList ? (
-                <div className="admin-dispute-empty"><LoaderCircle className="admin-dispute-spin" size={24} /> Loading disputes list…</div>
-              ) : filteredDisputes.length === 0 ? (
-                <div className="admin-dispute-empty">No dispute cases match the selected filter.</div>
-              ) : filteredDisputes.map((dispute) => (
+                <div className="admin-dispute-empty p-8 text-center text-xs font-bold text-text-muted flex items-center justify-center gap-2">
+                  <LoaderCircle className="animate-spin text-brand" size={20} />
+                  {t('admin.disputes.loadingList', 'Loading disputes list…')}
+                </div>
+              ) : disputes.length === 0 ? (
+                <div className="admin-dispute-empty p-8 text-center text-xs font-bold text-text-muted">
+                  {t('admin.disputes.noDisputes', 'No dispute cases match the selected filter.')}
+                </div>
+              ) : disputes.map((dispute) => (
                 <button
                   key={dispute.id}
                   className={`dispute-list-item ${selectedDisputeId === dispute.id ? 'selected' : ''}`}
@@ -681,8 +303,8 @@ export default function AdminDisputeManagementScreen() {
                   </div>
                   <p className="dispute-reason-preview">{dispute.reason}</p>
                   <div className="dispute-item-footer">
-                    <small>Initiator: {dispute.initiatorName} ({dispute.initiatorRole ?? 'Party'})</small>
-                    <small>{dispute.evidenceCount} files • {formatDate(dispute.createdAt)}</small>
+                    <small>{t('admin.disputes.initiator', 'Initiator')}: {dispute.initiatorName} ({dispute.initiatorRole ?? 'Party'})</small>
+                    <small>{dispute.evidenceCount} {t('admin.disputes.files', 'files')} • {formatDate(dispute.createdAt)}</small>
                   </div>
                 </button>
               ))}
@@ -692,168 +314,142 @@ export default function AdminDisputeManagementScreen() {
           {/* Right Panel: Selected Case Workspace */}
           <div className="dispute-detail-card">
             {loadingDetail ? (
-              <div className="admin-dispute-empty"><LoaderCircle className="admin-dispute-spin" size={28} /> Loading dispute workspace…</div>
+              <div className="admin-dispute-empty p-12 text-center text-xs font-bold text-text-muted flex flex-col items-center justify-center gap-2">
+                <LoaderCircle className="animate-spin text-brand" size={28} />
+                {t('admin.disputes.loadingWorkspace', 'Loading dispute workspace…')}
+              </div>
             ) : !selectedDispute ? (
-              <div className="admin-dispute-empty">Select a dispute case from the list to view its complete workspace.</div>
+              <div className="admin-dispute-empty p-12 text-center text-xs font-bold text-text-muted">
+                {t('admin.disputes.selectDispute', 'Select a dispute case from the list to view its complete workspace.')}
+              </div>
             ) : (
               <>
                 {/* Case Header & Quick Actions */}
                 <div className="detail-card-header">
                   <div className="header-case-title">
-                    <p className="disputes-kicker">Case ID: {selectedDispute.id}</p>
-                    <h2>{selectedDispute.contractTitle}</h2>
+                    <p className="text-[11px] font-mono font-bold text-brand uppercase tracking-wider">Case ID: {selectedDispute.id}</p>
+                    <h2 className="text-xl font-black text-text-primary tracking-tight">{selectedDispute.contractTitle}</h2>
                   </div>
 
                   <div className="header-action-buttons">
+                    {isCaseOpen && (
+                      <button onClick={openResolveDialog} className="btn-resolve-primary">
+                        <Scale size={16} /> {t('admin.disputes.actions.resolve', 'Issue Binding Resolution')}
+                      </button>
+                    )}
+                    {isCaseOpen && (
+                      <button onClick={() => setShowEvidenceDialog(true)} className="btn-evidence">
+                        <Paperclip size={16} /> {t('admin.disputes.actions.requestEvidence', 'Request Evidence')}
+                      </button>
+                    )}
                     {selectedDispute.status === DisputeStatus.Open && (
-                      <button onClick={() => void updateStatus(DisputeStatus.WaitingAdmin)} disabled={actionLoading}>
-                        <Clock size={15} /> Move to Waiting
+                      <button onClick={() => void updateStatus(DisputeStatus.UnderReview)} className="btn-secondary">
+                        {t('admin.disputes.actions.markUnderReview', 'Mark Under Review')}
                       </button>
                     )}
-                    {selectedDispute.status === DisputeStatus.WaitingAdmin && (
-                      <button onClick={() => void updateStatus(DisputeStatus.UnderReview)} disabled={actionLoading} className="primary-action-btn">
-                        <Clock size={15} /> Assign & Start Review
-                      </button>
-                    )}
-                    {(selectedDispute.status === DisputeStatus.UnderReview || selectedDispute.status === DisputeStatus.WaitingEvidence) && (
-                      <>
-                        <button onClick={() => setShowEvidenceDialog(true)} disabled={actionLoading}>
-                          <Clock size={15} /> Request Evidence
-                        </button>
-                        <button onClick={() => void updateStatus(DisputeStatus.DecisionPending)} disabled={actionLoading}>
-                          <Clock size={15} /> Decision Pending
-                        </button>
-                        <button className="resolve-btn" onClick={openResolveDialog} disabled={actionLoading}>
-                          <CheckCircle size={15} /> Resolve Case
-                        </button>
-                      </>
-                    )}
-                    {selectedDispute.status === DisputeStatus.DecisionPending && (
-                      <button className="resolve-btn" onClick={openResolveDialog} disabled={actionLoading}>
-                        <CheckCircle size={15} /> Resolve Case
-                      </button>
-                    )}
-                    {selectedDispute.status === DisputeStatus.Resolved && (
-                      <button onClick={() => void updateStatus(DisputeStatus.Closed)} disabled={actionLoading}>
-                        <CheckCircle size={15} /> Close Case
+                    {selectedDispute.status === DisputeStatus.UnderReview && (
+                      <button onClick={() => void updateStatus(DisputeStatus.WaitingAdmin)} className="btn-secondary">
+                        {t('admin.disputes.actions.markWaitingAdmin', 'Mark Waiting Admin')}
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Participant Information Banner (Client & Freelancer) */}
-                <section className="admin-participants-banner">
-                  {/* Client Card */}
-                  <div className="admin-participant-card client">
-                    <div className="participant-header">
-                      <span className="role-tag client">Client</span>
-                      <span className={`status-badge account-status-${selectedDispute.client.accountStatus}`}>
-                        {accountStatusLabels[selectedDispute.client.accountStatus as AccountStatus]}
-                      </span>
-                    </div>
-                    <div className="participant-body">
-                      <strong>{selectedDispute.client.fullName}</strong>
-                      <span className="participant-email">{selectedDispute.client.email}</span>
-                      <small className="participant-violations">Violations: {selectedDispute.client.violationCount}</small>
-                    </div>
-                  </div>
-
-                  {/* Freelancer Card */}
-                  <div className="admin-participant-card freelancer">
-                    <div className="participant-header">
-                      <span className="role-tag freelancer">Freelancer</span>
-                      {selectedDispute.freelancer ? (
-                        <span className={`status-badge account-status-${selectedDispute.freelancer.accountStatus}`}>
-                          {accountStatusLabels[selectedDispute.freelancer.accountStatus as AccountStatus]}
-                        </span>
-                      ) : (
-                        <span className="status-badge unassigned">Unassigned</span>
-                      )}
-                    </div>
-                    <div className="participant-body">
-                      <strong>{selectedDispute.freelancer?.fullName ?? 'Not Assigned'}</strong>
-                      <span className="participant-email">{selectedDispute.freelancer?.email ?? '—'}</span>
-                      {selectedDispute.freelancer && (
-                        <small className="participant-violations">Violations: {selectedDispute.freelancer.violationCount}</small>
-                      )}
-                    </div>
-                  </div>
-                </section>
-
-                {/* Investigation Tabs Navigation */}
-                <nav className="admin-dispute-tabs" aria-label="Investigation sections">
-                  {([
-                    ['dispute', 'Dispute Overview', ShieldAlert],
-                    ['conversation', 'Tri-Party Chat', MessageSquare],
-                    ['contract', 'Contract & Job', Briefcase],
-                    ['milestones', 'Milestones & Escrow', Landmark],
-                    ['evidence', 'Evidence Review', FileText],
-                    ['audit', 'Audit Log', History],
-                    ['workspace', 'Workspace Chat', MessageSquare],
-                  ] as const).map(([tab, label, Icon]) => (
-                    <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>
-                      <Icon size={15} />
-                      <span>{label}</span>
-                    </button>
-                  ))}
+                {/* Tabs Bar for Workspace Panels */}
+                <nav className="admin-investigation-tabs" aria-label="Investigation tabs">
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'dispute' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('dispute')}
+                  >
+                    <ShieldAlert size={15} /> {t('admin.disputes.tabs.overview', 'Overview')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'conversation' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('conversation')}
+                  >
+                    <MessageSquare size={15} /> {t('admin.disputes.tabs.chat', 'Arbitration Chat')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'contract' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('contract')}
+                  >
+                    <Briefcase size={15} /> {t('admin.disputes.tabs.contractInfo', 'Contract Info')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'milestones' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('milestones')}
+                  >
+                    <Landmark size={15} /> {t('admin.disputes.tabs.milestones', 'Milestones')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'evidence' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('evidence')}
+                  >
+                    <Paperclip size={15} /> {t('admin.disputes.tabs.evidence', 'Evidence')} ({selectedDispute.evidence.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('audit')}
+                  >
+                    <History size={15} /> {t('admin.disputes.tabs.auditLog', 'Audit Log')}
+                  </button>
                 </nav>
 
-                {/* TAB 1: DISPUTE OVERVIEW */}
+                {/* Tab 1: Dispute Overview */}
                 {activeTab === 'dispute' && (
-                  <div className="admin-investigation-panel">
-                    <div className="dispute-detail-grid">
-                      <div><span>Title</span><strong>{selectedDispute.title ?? selectedDispute.contractTitle}</strong></div>
-                      <div><span>Status</span><strong>{statusLabels[selectedDispute.status]}</strong></div>
-                      <div><span>Initiator</span><strong>{selectedDispute.initiatorName}</strong><small>{selectedDispute.initiatorRole}</small></div>
-                      <div><span>Respondent</span><strong>{selectedDispute.respondentName ?? 'Not available'}</strong></div>
-                      <div><span>Dispute Type</span><strong>{selectedDispute.relatedReport?.issueType ?? 'General Dispute'}</strong></div>
-                      <div><span>Claimed Amount</span><strong>{selectedDispute.claimedAmount?.toLocaleString() ?? '0'} GigCoin</strong></div>
-                      <div><span>Urgency</span><strong>{['Normal', 'High', 'Critical'][selectedDispute.urgency] ?? selectedDispute.urgency}</strong></div>
-                      <div><span>Milestone Scope</span><strong>{selectedDispute.milestoneTitle ?? 'Full Contract'}</strong></div>
+                  <div className="tab-pane">
+                    <div className="overview-grid">
+                      <div className="info-block">
+                        <span>{t('admin.disputes.currentStatus', 'Current Status')}</span>
+                        <strong className={`dispute-status status-${selectedDispute.status}`}>{statusLabels[selectedDispute.status]}</strong>
+                      </div>
+                      <div className="info-block">
+                        <span>{t('admin.disputes.initiatorName', 'Dispute Initiator')}</span>
+                        <strong>{selectedDispute.initiatorName}</strong>
+                      </div>
+                      <div className="info-block">
+                        <span>{t('admin.disputes.respondentName', 'Respondent')}</span>
+                        <strong>{selectedDispute.respondentName || '—'}</strong>
+                      </div>
+                      <div className="info-block">
+                        <span>{t('admin.disputes.claimedAmount', 'Total Claimed Amount')}</span>
+                        <strong>{(selectedDispute.claimedAmount || selectedDispute.escrow?.fundedAmount || 0).toLocaleString()} GCoin</strong>
+                      </div>
                     </div>
 
-                    <section className="dispute-detail-section">
-                      <h3><ShieldAlert size={17} />Dispute Description</h3>
-                      <p className="admin-dispute-prewrap">{selectedDispute.description ?? selectedDispute.reason}</p>
-                      <h4>Requested Resolution</h4>
-                      <p className="admin-dispute-prewrap">{selectedDispute.requestedResolution ?? 'Not specified'}</p>
-                    </section>
+                    <div className="info-card">
+                      <h3>{t('admin.disputes.reasonTitle', 'Dispute Reason')}</h3>
+                      <p>{selectedDispute.reason}</p>
+                    </div>
 
-                    {(selectedDispute.status === DisputeStatus.Resolved || selectedDispute.status === DisputeStatus.Closed) && (
-                      <section className="resolved-summary">
-                        <CheckCircle size={20} />
-                        <div>
-                          <strong>{selectedDispute.resolutionLabel ?? (selectedDispute.resolution !== null ? resolutionLabels[selectedDispute.resolution] : 'Resolved')}</strong>
-                          <p className="admin-dispute-prewrap">{selectedDispute.resolutionNote}</p>
-                          <small>Resolved Date: {formatDate(selectedDispute.resolvedAt)}</small>
-                        </div>
-                      </section>
+                    {selectedDispute.description && (
+                      <div className="info-card">
+                        <h3>{t('admin.disputes.descriptionTitle', 'Detailed Description')}</h3>
+                        <p>{selectedDispute.description}</p>
+                      </div>
                     )}
                   </div>
                 )}
 
-                {/* TAB 2: TRI-PARTY CHAT WORKSPACE (2-COLUMN CHAT LAYOUT) */}
+                {/* Tab 2: 2-Column Arbitration Chat Workspace */}
                 {activeTab === 'conversation' && (
-                  <section className="admin-investigation-panel tri-party-chat-workspace">
-                    <div className="tri-party-chat-header">
-                      <div className="title-area">
-                        <h3><MessageSquare size={18} /> Tri-Party Dispute Communication</h3>
-                        <p>Direct communication channels with Freelancer and Client. Broadcast messages to Both will appear in both conversations.</p>
-                      </div>
-                    </div>
-
-                    {/* 2-Column Chat Streams Layout */}
-                    <div className="tri-party-streams-grid two-column">
-                      {/* Left Column: Freelancer Stream */}
-                      <div className={`chat-stream-column freelancer-stream ${adminMessageRecipient === DisputeMessageRecipient.Freelancer ? 'active-target' : ''}`}>
-                        <div className="stream-header freelancer">
-                          <User size={15} />
-                          <strong>Freelancer Conversation</strong>
-                          <span className="role-pill freelancer">Freelancer</span>
+                  <div className="tab-pane arbitration-chat-pane">
+                    <div className="arbitration-chat-columns">
+                      {/* Left Column: Freelancer Direct Chat */}
+                      <div className="chat-column freelancer-column">
+                        <div className="chat-column-header">
+                          <User size={16} />
+                          <span>{t('admin.disputes.chat.freelancerPrivate', 'Freelancer (Private Column)')}</span>
                         </div>
-                        <div className="stream-messages-container">
+                        <div className="chat-message-list">
                           {freelancerMessages.length === 0 ? (
-                            <div className="stream-empty">No messages in Freelancer conversation.</div>
+                            <p className="no-messages-text">{t('admin.disputes.chat.noFreelancerMsgs', 'No messages in Freelancer column.')}</p>
                           ) : (
                             freelancerMessages.map(renderSingleChatMessage)
                           )}
@@ -861,16 +457,15 @@ export default function AdminDisputeManagementScreen() {
                         </div>
                       </div>
 
-                      {/* Right Column: Client Stream */}
-                      <div className={`chat-stream-column client-stream ${adminMessageRecipient === DisputeMessageRecipient.Client ? 'active-target' : ''}`}>
-                        <div className="stream-header client">
-                          <UserCheck size={15} />
-                          <strong>Client Conversation</strong>
-                          <span className="role-pill client">Client</span>
+                      {/* Right Column: Client Direct Chat */}
+                      <div className="chat-column client-column">
+                        <div className="chat-column-header">
+                          <User size={16} />
+                          <span>{t('admin.disputes.chat.clientPrivate', 'Client (Private Column)')}</span>
                         </div>
-                        <div className="stream-messages-container">
+                        <div className="chat-message-list">
                           {clientMessages.length === 0 ? (
-                            <div className="stream-empty">No messages in Client conversation.</div>
+                            <p className="no-messages-text">{t('admin.disputes.chat.noClientMsgs', 'No messages in Client column.')}</p>
                           ) : (
                             clientMessages.map(renderSingleChatMessage)
                           )}
@@ -879,478 +474,248 @@ export default function AdminDisputeManagementScreen() {
                       </div>
                     </div>
 
-                    {/* Send Controls Area */}
-                    <div className="admin-chat-send-controls">
-                      {/* Target Audience Selector Bar */}
-                      <div className="send-target-buttons-row">
-                        <button
-                          type="button"
-                          className={`target-btn target-freelancer ${adminMessageRecipient === DisputeMessageRecipient.Freelancer ? 'selected' : ''}`}
-                          onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Freelancer)}
-                        >
-                          <User size={15} />
-                          <span>Send to Freelancer</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`target-btn target-both ${adminMessageRecipient === DisputeMessageRecipient.Both ? 'selected' : ''}`}
-                          onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Both)}
-                        >
-                          <ShieldCheck size={15} />
-                          <span>Send to Both (Mirrored)</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`target-btn target-client ${adminMessageRecipient === DisputeMessageRecipient.Client ? 'selected' : ''}`}
-                          onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Client)}
-                        >
-                          <UserCheck size={15} />
-                          <span>Send to Client</span>
-                        </button>
+                    {/* Admin Directive Input Box */}
+                    <div className="admin-chat-input-box">
+                      <div className="admin-chat-input-toolbar">
+                        <label className="recipient-selector">
+                          <span>{t('admin.disputes.chat.recipient', 'Recipient')}:</span>
+                          <select
+                            value={adminMessageRecipient}
+                            onChange={(e) => setAdminMessageRecipient(Number(e.target.value))}
+                          >
+                            <option value={DisputeMessageRecipient.Both}>{t('admin.disputes.chat.recipientBoth', 'Both Parties (Official Directive)')}</option>
+                            <option value={DisputeMessageRecipient.Freelancer}>{t('admin.disputes.chat.recipientFreelancer', 'Freelancer Only (Private)')}</option>
+                            <option value={DisputeMessageRecipient.Client}>{t('admin.disputes.chat.recipientClient', 'Client Only (Private)')}</option>
+                          </select>
+                        </label>
                       </div>
 
-                      {/* Single Message Input Box */}
-                      <div className="admin-chat-input-box">
+                      <div className="admin-chat-textarea-row">
                         <textarea
+                          rows={2}
                           value={adminMessage}
-                          onChange={event => setAdminMessage(event.target.value)}
-                          placeholder={
-                            adminMessageRecipient === DisputeMessageRecipient.Freelancer
-                              ? 'Write message to Freelancer...'
-                              : adminMessageRecipient === DisputeMessageRecipient.Client
-                              ? 'Write message to Client...'
-                              : 'Write message to Both parties (will be sent to Freelancer & Client simultaneously)...'
-                          }
-                          rows={3}
+                          onChange={(e) => setAdminMessage(e.target.value)}
+                          placeholder={t('admin.disputes.chat.placeholder', 'Type official administrative directive or inquiry...')}
                         />
-
-                        <div className="composer-footer-row">
-                          <label className="admin-message-file-picker">
-                            <Paperclip size={16} />
-                            <span>Attach files</span>
-                            <input
-                              type="file"
-                              multiple
-                              onChange={event => setAdminMessageFiles(Array.from(event.target.files ?? []).slice(0, 5))}
-                            />
-                          </label>
-
-                          {adminMessageFiles.length > 0 && (
-                            <div className="attached-files-pills">
-                              {adminMessageFiles.map(file => (
-                                <span key={file.name} className="file-pill">{file.name}</span>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="send-action-buttons-group">
-                            <button
-                              type="button"
-                              className={`main-send-btn target-${adminMessageRecipient}`}
-                              onClick={() => void sendAdminMessage()}
-                              disabled={sendingMessage || (!adminMessage.trim() && adminMessageFiles.length === 0)}
-                            >
-                              {sendingMessage ? (
-                                <LoaderCircle className="admin-dispute-spin" size={16} />
-                              ) : (
-                                <Send size={16} />
-                              )}
-                              <span>
-                                {sendingMessage
-                                  ? 'Sending...'
-                                  : adminMessageRecipient === DisputeMessageRecipient.Freelancer
-                                  ? 'Send to Freelancer'
-                                  : adminMessageRecipient === DisputeMessageRecipient.Client
-                                  ? 'Send to Client'
-                                  : 'Send to Both'}
-                              </span>
-                            </button>
-                          </div>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void sendAdminDirective()}
+                          disabled={sendingMessage || !adminMessage.trim()}
+                          className="send-directive-btn"
+                        >
+                          <Send size={16} /> {t('common.send', 'Send')}
+                        </button>
                       </div>
                     </div>
-                  </section>
+                  </div>
                 )}
 
-                {/* TAB 3: CONTRACT & JOB POST DETAILS */}
+                {/* Tab 3: Contract Info */}
                 {activeTab === 'contract' && (
-                  <section className="admin-investigation-panel">
-                    <h3><Briefcase size={18} />Contract Summary</h3>
-                    <div className="dispute-detail-grid">
-                      <div><span>Total Budget</span><strong>{selectedDispute.contract.totalBudget.toLocaleString()} GigCoin</strong></div>
-                      <div><span>Progress</span><strong>{selectedDispute.contract.progressPercentage}%</strong></div>
-                      <div><span>Start Date</span><strong>{formatDate(selectedDispute.contract.startDate)}</strong></div>
-                      <div><span>Target Completion</span><strong>{formatDate(selectedDispute.contract.endDate)}</strong></div>
-                    </div>
-                    <h3>Original Job Specification</h3>
-                    <h4>{selectedDispute.originalJob.title}</h4>
-                    <p className="admin-dispute-prewrap">{selectedDispute.originalJob.description}</p>
-                    <p><strong>Category:</strong> {selectedDispute.originalJob.category ?? 'Not specified'}</p>
-                    <p><strong>Required Skills:</strong> {selectedDispute.originalJob.skills.join(', ') || 'None'}</p>
-                  </section>
-                )}
-
-                {/* TAB 4: MILESTONES & ESCROW */}
-                {activeTab === 'milestones' && (
-                  <section className="admin-investigation-panel">
-                    <h3><Landmark size={18} />Escrow Ledger Summary</h3>
-                    <div className="dispute-detail-grid">
-                      <div><span>Original Escrow</span><strong>{selectedDispute.escrow.originalEscrow.toLocaleString()} GigCoin</strong></div>
-                      <div><span>Released</span><strong>{selectedDispute.escrow.releasedAmount.toLocaleString()}</strong></div>
-                      <div><span>Refunded</span><strong>{selectedDispute.escrow.refundedAmount.toLocaleString()}</strong></div>
-                      <div><span>Remaining Locked</span><strong>{selectedDispute.escrow.remainingAmount.toLocaleString()}</strong></div>
-                    </div>
-                    {selectedDispute.milestones.map((milestone, index) => (
-                      <article className="admin-milestone-card" key={milestone.milestoneId}>
-                        <h4>Milestone {index + 1}: {milestone.title}</h4>
-                        <p>{milestone.description}</p>
-                        <div className="dispute-detail-grid">
-                          <div><span>Amount</span><strong>{milestone.amount}</strong></div>
-                          <div><span>Released</span><strong>{milestone.releasedAmount}</strong></div>
-                          <div><span>Locked Amount</span><strong>{milestone.lockedAmount}</strong></div>
-                          <div><span>In Dispute Scope</span><strong>{milestone.isInDisputeScope ? 'Yes' : 'No'}</strong></div>
-                        </div>
-                      </article>
-                    ))}
-                  </section>
-                )}
-
-                {/* TAB 5: EVIDENCE REVIEW */}
-                {activeTab === 'evidence' && (
-                  <section className="admin-investigation-panel">
-                    <h3>Evidence Documentation</h3>
-                    {selectedDispute.evidence.length === 0 ? (
-                      <p className="admin-dispute-empty">No evidence files submitted.</p>
-                    ) : (
-                      selectedDispute.evidence.map(evidence => (
-                        <div className="admin-evidence-row" key={evidence.id}>
-                          <div>
-                            <strong>{evidence.fileName ?? `Pending Evidence Request: ${evidence.description}`}</strong>
-                            <small>
-                              {evidence.isRequestedByAdmin
-                                ? `Requested • ${evidence.isRequestFulfilled ? 'Fulfilled' : 'Pending'}`
-                                : `Uploaded by ${evidence.uploadedByName ?? 'Participant'} • ${formatDate(evidence.createdAt)} • ${formatSize(evidence.fileSize)}`}
-                            </small>
-                            {evidence.reviewNote && <p className="review-note">Reviewer Note: {evidence.reviewNote}</p>}
-                          </div>
-                          <div className="evidence-action-btns">
-                            {evidence.fileName && (
-                              <button onClick={() => void downloadEvidence(evidence)} disabled={downloadingId !== null}>
-                                <Download size={15} /> Download
-                              </button>
-                            )}
-                            {evidence.fileName && !evidence.reviewedAt && (
-                              <button onClick={() => void reviewEvidence(evidence)}>Mark Reviewed</button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </section>
-                )}
-
-                {/* TAB 6: AUDIT TRAIL */}
-                {activeTab === 'audit' && (
-                  <section className="admin-investigation-panel">
-                    <h3><History size={18} />Administrative Audit Trail</h3>
-                    {selectedDispute.auditTrail.map(event => (
-                      <div className="admin-evidence-row" key={event.auditId}>
-                        <div>
-                          <strong>{event.action}</strong>
-                          <small>{formatDate(event.createdAt)} • Admin ID: {event.adminId.slice(0, 8)}</small>
-                          <p>{event.newValues}</p>
-                        </div>
+                  <div className="tab-pane">
+                    <div className="overview-grid">
+                      <div className="info-block">
+                        <span>{t('admin.disputes.contractId', 'Contract ID')}</span>
+                        <strong>{selectedDispute.contractId}</strong>
                       </div>
-                    ))}
-                  </section>
+                      <div className="info-block">
+                        <span>{t('admin.disputes.totalBudget', 'Total Budget')}</span>
+                        <strong>{(selectedDispute.contract?.totalBudget || 0).toLocaleString()} GCoin</strong>
+                      </div>
+                      <div className="info-block">
+                        <span>{t('admin.disputes.startDate', 'Start Date')}</span>
+                        <strong>{formatDate(selectedDispute.contract?.startDate || null)}</strong>
+                      </div>
+                      <div className="info-block">
+                        <span>{t('admin.disputes.endDate', 'End Date')}</span>
+                        <strong>{formatDate(selectedDispute.contract?.endDate || null)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="info-card">
+                      <h3>{t('admin.disputes.contractScope', 'Contract Scope & Description')}</h3>
+                      <p>{selectedDispute.originalJob?.description || selectedDispute.contractTitle || 'No detailed scope available.'}</p>
+                    </div>
+                  </div>
                 )}
 
-                {/* TAB 7: WORKSPACE MESSAGES (REDESIGNED READ-ONLY CHAT) */}
-                {activeTab === 'workspace' && (
-                  <section className="admin-investigation-panel">
-                    <div className="admin-workspace-chat-header">
-                      <h3><MessageSquare size={18} /> Contract Workspace Conversation</h3>
-                      <p>Full read-only transcript of prior communications between Client and Freelancer on this contract.</p>
+                {/* Tab 4: Milestones Breakdown */}
+                {activeTab === 'milestones' && (
+                  <div className="tab-pane">
+                    <div className="milestones-table-card rounded-2xl border border-border overflow-hidden bg-background">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="border-b border-border bg-surface-muted/30">
+                          <tr>
+                            <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.title', 'Milestone Title')}</th>
+                            <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.lockedAmount', 'Locked Amount')}</th>
+                            <th className="p-3 text-[11px] font-black uppercase tracking-wider text-text-muted">{t('admin.disputes.milestones.status', 'Status')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {selectedDispute.milestones.map((milestone) => (
+                            <tr key={milestone.milestoneId} className="hover:bg-surface-muted/30">
+                              <td className="p-3 text-xs font-extrabold text-text-primary">{milestone.title}</td>
+                              <td className="p-3 text-xs font-bold font-mono text-brand">{milestone.lockedAmount.toLocaleString()} GCoin</td>
+                              <td className="p-3 text-xs font-bold text-text-muted">{milestone.status}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                  </div>
+                )}
 
-                    <div className="admin-workspace-chat-container">
-                      {workspaceMessages.length === 0 ? (
-                        <div className="admin-dispute-empty">No conversation messages recorded in this contract workspace.</div>
-                      ) : (
-                        workspaceMessages.map((message, index) => {
-                          const prevMessage = index > 0 ? workspaceMessages[index - 1] : null;
-                          const sameSender = prevMessage && prevMessage.senderUserId === message.senderUserId;
-                          const roleLabel = message.senderRole === UserRole.Client ? 'Client' : message.senderRole === UserRole.Freelancer ? 'Freelancer' : message.senderRole === UserRole.Admin ? 'Admin' : 'Participant';
-                          const roleClass = message.senderRole === UserRole.Client ? 'role-client' : message.senderRole === UserRole.Freelancer ? 'role-freelancer' : 'role-admin';
-
-                          return (
-                            <div key={message.messageId} className={`admin-workspace-msg-row ${sameSender ? 'grouped' : ''}`}>
-                              {!sameSender && (
-                                <div className="admin-workspace-msg-header">
-                                  <div className="admin-chat-sender-info">
-                                    {message.senderAvatar ? (
-                                      <img src={message.senderAvatar} alt={message.senderName || 'Sender'} className="admin-chat-avatar" />
-                                    ) : (
-                                      <div className="admin-chat-avatar-placeholder">
-                                        {message.senderName ? message.senderName[0].toUpperCase() : <User size={12} />}
-                                      </div>
-                                    )}
-                                    <strong className="admin-chat-sender-name">{message.senderName || 'Participant'}</strong>
-                                    <span className={`admin-role-badge ${roleClass}`}>{roleLabel}</span>
-                                  </div>
-                                  <time className="admin-chat-time">{new Date(message.sentAt).toLocaleString()}</time>
-                                </div>
-                              )}
-                              <div className="admin-workspace-bubble">
-                                <p>{message.content}</p>
-                                {message.attachments && message.attachments.length > 0 && (
-                                  <div className="admin-chat-attachment-list">
-                                    {message.attachments.map(att => (
-                                      <a key={att.messageAttachmentId} href={att.fileUrl} target="_blank" rel="noreferrer" className="admin-chat-attachment-link">
-                                        <Paperclip size={12} /> {att.fileName}
-                                      </a>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
+                {/* Tab 5: Evidence Files */}
+                {activeTab === 'evidence' && (
+                  <div className="tab-pane">
+                    {selectedDispute.evidence.length === 0 ? (
+                      <div className="admin-dispute-empty p-8 text-center text-xs font-extrabold text-text-muted">{t('admin.disputes.noEvidence', 'No evidence documents have been uploaded for this case.')}</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedDispute.evidence.map((evidence) => (
+                          <div key={evidence.id} className="rounded-2xl border border-border bg-background p-4 space-y-2 shadow-sm">
+                            <div className="flex items-center gap-2 text-xs font-black text-text-primary">
+                              <Paperclip size={16} className="text-brand shrink-0" />
+                              <strong className="truncate" title={evidence.fileName || 'Attachment'}>{evidence.fileName || 'Attachment'}</strong>
                             </div>
-                          );
-                        })
-                      )}
+                            <p className="text-xs font-medium text-text-secondary leading-relaxed">{evidence.description || 'No description provided.'}</p>
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 text-xs">
+                              <button
+                                type="button"
+                                onClick={() => void downloadEvidenceFile(evidence)}
+                                disabled={downloadingId === evidence.id}
+                                className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline cursor-pointer"
+                              >
+                                <Download size={14} /> {t('common.download', 'Download')} ({formatSize(evidence.fileSize)})
+                              </button>
+                              {!evidence.reviewedByAdminId && (
+                                <button
+                                  type="button"
+                                  onClick={() => void reviewEvidence(evidence)}
+                                  className="rounded-xl border border-brand/40 bg-brand/10 px-2.5 py-1 text-xs font-extrabold text-brand hover:bg-brand/20 transition cursor-pointer"
+                                >
+                                  {t('admin.disputes.markReviewed', 'Mark Reviewed')}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 6: Audit Log */}
+                {activeTab === 'audit' && (
+                  <div className="tab-pane">
+                    <div className="space-y-3">
+                      {(selectedDispute.auditTrail || []).map((log: AdminAuditEvent) => (
+                        <div key={log.auditId} className="rounded-xl border border-border/60 bg-surface-muted/30 p-3 text-xs space-y-1">
+                          <div className="flex items-center justify-between font-extrabold text-text-primary">
+                            <span className="text-brand">{log.action}</span>
+                            <span className="text-[11px] text-text-muted">{formatDate(log.createdAt)}</span>
+                          </div>
+                          <p className="font-mono text-[11px] text-text-secondary">{log.newValues || log.oldValues || '—'}</p>
+                          <small className="text-[10px] text-text-muted">By Admin: {log.adminId}</small>
+                        </div>
+                      ))}
                     </div>
-                  </section>
+                  </div>
                 )}
               </>
             )}
           </div>
         </section>
 
-        {/* EVIDENCE REQUEST MODAL */}
-        {showEvidenceDialog && selectedDispute && (
-          <div className="admin-dispute-modal-backdrop" role="presentation">
-            <section className="admin-dispute-modal" role="dialog" aria-modal="true">
-              <div className="admin-dispute-modal-header">
-                <div>
-                  <p className="disputes-kicker">Request Additional Evidence</p>
-                  <h2>Request Evidence</h2>
-                </div>
-                <button onClick={() => setShowEvidenceDialog(false)} disabled={actionLoading} aria-label="Close"><X size={18} /></button>
-              </div>
-              <label>Reason for Request
-                <textarea
-                  value={evidenceRequest.reason}
-                  onChange={(e) => setEvidenceRequest((prev) => ({ ...prev, reason: e.target.value }))}
-                  rows={4}
-                  placeholder="Explain clearly what additional evidence is required from the participant..."
-                  disabled={actionLoading}
-                />
-              </label>
-              <label>Submission Deadline (Optional)
-                <input
-                  type="date"
-                  value={evidenceRequest.deadline}
-                  onChange={(e) => setEvidenceRequest((prev) => ({ ...prev, deadline: e.target.value }))}
-                  disabled={actionLoading}
-                />
-              </label>
-              <label>Target Audience
-                <select
-                  value={evidenceRequest.target}
-                  onChange={(event) => setEvidenceRequest(previous => ({ ...previous, target: Number(event.target.value) as EvidenceRequestTarget }))}
-                  disabled={actionLoading}
-                >
-                  <option value={EvidenceRequestTarget.Reporter}>Reporter (Initiator)</option>
-                  <option value={EvidenceRequestTarget.Respondent}>Respondent</option>
-                  <option value={EvidenceRequestTarget.Both}>Both Parties</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                className="resolve-btn"
-                onClick={() => void requestEvidenceSubmit()}
-                disabled={actionLoading || !evidenceRequest.reason.trim()}
-              >
-                {actionLoading ? <LoaderCircle className="admin-dispute-spin" size={17} /> : null}
-                Send Evidence Request
-              </button>
-            </section>
-          </div>
+        {/* Separated Resolve Dispute Modal Dialog Component */}
+        {selectedDispute && (
+          <AdminResolveDisputeModal
+            selectedDispute={selectedDispute}
+            showResolveDialog={showResolveDialog}
+            actionLoading={actionLoading}
+            resolution={resolution}
+            setResolution={setResolution}
+            resolutionNote={resolutionNote}
+            setResolutionNote={setResolutionNote}
+            internalNotes={internalNotes}
+            setInternalNotes={setInternalNotes}
+            contractAction={contractAction}
+            setContractAction={setContractAction}
+            milestoneDecisions={milestoneDecisions}
+            setMilestoneDecisions={setMilestoneDecisions}
+            clientViolation={clientViolation}
+            setClientViolation={setClientViolation}
+            freelancerViolation={freelancerViolation}
+            setFreelancerViolation={setFreelancerViolation}
+            allocationTotals={allocationTotals}
+            allocationHasError={allocationHasError}
+            violationHasError={violationHasError}
+            resolveCase={resolveCase}
+            resetResolveDialog={resetResolveDialog}
+          />
         )}
 
-        {/* CASE RESOLUTION MODAL */}
-        {showResolveDialog && selectedDispute && (
-          <div className="admin-dispute-modal-backdrop" role="presentation" onClick={resetResolveDialog}>
-            <section className="admin-dispute-modal admin-dispute-modal-wide" role="dialog" aria-modal="true" aria-labelledby="resolve-case-title" onClick={(e) => e.stopPropagation()}>
-              <div className="admin-dispute-modal-header">
+        {/* Request Evidence Modal Dialog */}
+        {showEvidenceDialog && selectedDispute && (
+          <div className="modal-backdrop">
+            <div className="modal-card space-y-4 max-w-lg p-6 bg-background border border-border rounded-2xl shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="text-base font-black text-text-primary">{t('admin.disputes.dialog.evidenceTitle', 'Request Evidence From Participants')}</h3>
+                <button type="button" onClick={() => setShowEvidenceDialog(false)} className="text-text-muted hover:text-text-primary cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-3">
                 <div>
-                  <p className="disputes-kicker">Official Verdict</p>
-                  <h2 id="resolve-case-title">Issue Dispute Resolution</h2>
-                </div>
-                <button onClick={resetResolveDialog} disabled={actionLoading} aria-label="Close dialog"><X size={18} /></button>
-              </div>
-
-              <div className="resolve-dialog-grid">
-                <div className="resolve-column">
-                  <label>Verdict Decision
-                    <select value={resolution} onChange={(event) => setResolution(Number(event.target.value) as DisputeResolution)} disabled={actionLoading}>
-                      {Object.entries(resolutionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                  </label>
-
-                  <label>Contract Action
-                    <select value={contractAction} onChange={(e) => changeContractAction(Number(e.target.value))} disabled={actionLoading}>
-                      <option value={0}>Resume Contract Execution</option>
-                      <option value={1}>Terminate Contract</option>
-                    </select>
-                  </label>
+                  <label className="block text-xs font-bold text-text-muted mb-1">{t('admin.disputes.dialog.targetParticipant', 'Target Participant')}</label>
+                  <select
+                    className="input-gb w-full py-2 px-3 text-xs font-semibold"
+                    value={evidenceRequest.target}
+                    onChange={(e) => setEvidenceRequest({ ...evidenceRequest, target: Number(e.target.value) as EvidenceRequestTarget })}
+                  >
+                    <option value={EvidenceRequestTarget.Both}>{t('admin.disputes.dialog.bothParties', 'Both Parties')}</option>
+                    <option value={EvidenceRequestTarget.Reporter}>{t('admin.disputes.dialog.reporterOnly', 'Reporter Only')}</option>
+                    <option value={EvidenceRequestTarget.Respondent}>{t('admin.disputes.dialog.respondentOnly', 'Respondent Only')}</option>
+                  </select>
                 </div>
 
-                <div className="resolve-column">
-                  <label>Public Resolution Verdict Note
-                    <textarea
-                      value={resolutionNote}
-                      onChange={(event) => setResolutionNote(event.target.value)}
-                      rows={4}
-                      placeholder="Required: detailed explanation of the decision visible to both parties..."
-                      disabled={actionLoading}
-                    />
-                  </label>
-                  <label>Internal Administrator Notes (Optional)
-                    <textarea
-                      value={internalNotes}
-                      onChange={(event) => setInternalNotes(event.target.value)}
-                      rows={2}
-                      placeholder="Private notes (not visible to Client or Freelancer)..."
-                      disabled={actionLoading}
-                    />
-                  </label>
+                <div>
+                  <label className="block text-xs font-bold text-text-muted mb-1">{t('admin.disputes.dialog.evidenceReason', 'Evidence Request Reason')}</label>
+                  <textarea
+                    className="input-gb w-full py-2 px-3 text-xs font-semibold"
+                    rows={3}
+                    value={evidenceRequest.reason}
+                    onChange={(e) => setEvidenceRequest({ ...evidenceRequest, reason: e.target.value })}
+                    placeholder={t('admin.disputes.dialog.evidenceReasonPlaceholder', 'Specify evidence required, e.g. deliverables, logs, receipts...')}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-text-muted mb-1">{t('admin.disputes.dialog.deadline', 'Submission Deadline (Optional)')}</label>
+                  <input
+                    type="datetime-local"
+                    className="input-gb w-full py-2 px-3 text-xs font-semibold"
+                    value={evidenceRequest.deadline}
+                    onChange={(e) => setEvidenceRequest({ ...evidenceRequest, deadline: e.target.value })}
+                  />
                 </div>
               </div>
 
-              <section className="admin-resolution-milestones">
-                <h3>Milestone Financial Allocation</h3>
-                <p>Allocate remaining locked funds between Freelancer award, Client refund, and penalties.</p>
-                <div className="financial-totals-summary">
-                  <small>Calculated Totals: Freelancer Award {allocationTotals.release.toLocaleString()} • Client Refund {allocationTotals.refund.toLocaleString()} • Penalty {allocationTotals.penalty.toLocaleString()} GigCoin</small>
-                </div>
-                {selectedDispute.milestones.filter(milestone => milestoneDecisions[milestone.milestoneId]).map((milestone) => {
-                  const decision = milestoneDecisions[milestone.milestoneId];
-                  if (!decision) return null;
-                  const total = Number(decision.release || 0) + Number(decision.refund || 0) + Number(decision.penalty || 0);
-                  return (
-                    <article className="admin-resolution-milestone" key={milestone.milestoneId}>
-                      <header>
-                        <strong>{milestone.title}</strong>
-                        <span>Locked: {milestone.lockedAmount.toLocaleString()} GigCoin</span>
-                      </header>
-                      <div className="resolve-dialog-grid">
-                        <label>Outcome
-                          <select value={decision.outcome} onChange={event => {
-                            const outcome = Number(event.target.value) as DisputeMilestoneOutcome;
-                            const release = outcome === DisputeMilestoneOutcome.Accepted ? milestone.lockedAmount.toFixed(2) : outcome === DisputeMilestoneOutcome.Rejected ? '0.00' : decision.release;
-                            const refund = outcome === DisputeMilestoneOutcome.Accepted ? '0.00' : outcome === DisputeMilestoneOutcome.Rejected ? milestone.lockedAmount.toFixed(2) : decision.refund;
-                            setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, outcome, release, refund, penalty: outcome === DisputeMilestoneOutcome.PartiallyAccepted ? decision.penalty : '0.00' } }));
-                          }}>
-                            <option value={DisputeMilestoneOutcome.Accepted}>Accepted</option>
-                            <option value={DisputeMilestoneOutcome.Rejected}>Rejected</option>
-                            <option value={DisputeMilestoneOutcome.PartiallyAccepted}>Partially Accepted</option>
-                            <option value={DisputeMilestoneOutcome.Cancelled}>Cancelled</option>
-                          </select>
-                        </label>
-                        <label>Freelancer Award
-                          <input type="number" min="0" max={milestone.lockedAmount} step="0.01" value={decision.release} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, release: event.target.value } }))} />
-                        </label>
-                        <label>Client Refund
-                          <input type="number" min="0" max={milestone.lockedAmount} step="0.01" value={decision.refund} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, refund: event.target.value } }))} />
-                        </label>
-                        <label>Penalty Amount
-                          <input type="number" min="0" max={milestone.lockedAmount} step="0.01" value={decision.penalty} onChange={event => setMilestoneDecisions(current => ({ ...current, [milestone.milestoneId]: { ...decision, penalty: event.target.value } }))} />
-                        </label>
-                      </div>
-                      <small className={!allocationHasError(milestone.milestoneId) ? 'allocation-valid' : 'allocation-invalid'}>
-                        Allocated {total.toLocaleString()} of {milestone.lockedAmount.toLocaleString()} GigCoin
-                      </small>
-                    </article>
-                  );
-                })}
-              </section>
-
-              {/* Violation Panel */}
-              {[
-                { label: 'Client', party: selectedDispute.client, violation: clientViolation, setViolation: setClientViolation },
-                { label: 'Freelancer', party: selectedDispute.freelancer, violation: freelancerViolation, setViolation: setFreelancerViolation },
-              ].map(({ label, party, violation, setViolation }) => (
-                <section className="admin-violation-panel" key={label}>
-                  <div className="admin-violation-header">
-                    <AlertTriangle size={16} />
-                    <strong>Record Policy Violation – {label}</strong>
-                    <small className="text-muted">{party?.fullName}</small>
-                  </div>
-                  <label className="admin-violation-toggle">
-                    <input
-                      type="checkbox"
-                      checked={violation.isViolation}
-                      disabled={actionLoading}
-                      onChange={(e) => setViolation(v => ({ ...v, isViolation: e.target.checked, violationType: null, reason: '', description: '' }))}
-                    />
-                    Mark this party as having committed a policy violation
-                  </label>
-
-                  {violation.isViolation && (
-                    <div className="admin-violation-fields">
-                      <label>Violation Type
-                        <select
-                          value={violation.violationType ?? ''}
-                          disabled={actionLoading}
-                          onChange={(e) => setViolation(v => ({ ...v, violationType: Number(e.target.value) as UserViolationType }))}
-                        >
-                          <option value="" disabled>Select violation type…</option>
-                          <option value={UserViolationType.ContractBreach}>Contract Breach</option>
-                          <option value={UserViolationType.FraudOrMisrepresentation}>Fraud or Misrepresentation</option>
-                          <option value={UserViolationType.HarassmentOrAbuse}>Harassment or Abuse</option>
-                          <option value={UserViolationType.PaymentMisconduct}>Payment Misconduct</option>
-                          <option value={UserViolationType.PlatformPolicyViolation}>Platform Policy Violation</option>
-                          <option value={UserViolationType.Other}>Other</option>
-                        </select>
-                      </label>
-                      <label>Reason <span className="required">*</span>
-                        <input
-                          type="text"
-                          value={violation.reason}
-                          disabled={actionLoading}
-                          placeholder="Short summary of the violation reason…"
-                          onChange={(e) => setViolation(v => ({ ...v, reason: e.target.value }))}
-                        />
-                      </label>
-                      <label>Additional Description (Optional)
-                        <textarea
-                          rows={2}
-                          value={violation.description}
-                          disabled={actionLoading}
-                          placeholder="Detailed description for internal record…"
-                          onChange={(e) => setViolation(v => ({ ...v, description: e.target.value }))}
-                        />
-                      </label>
-                      {violationHasError(violation) && (
-                        <small className="allocation-invalid">Please select a violation type and provide a reason.</small>
-                      )}
-                    </div>
-                  )}
-                </section>
-              ))}
-
-              <button
-                type="button"
-                className="resolve-btn"
-                onClick={() => void resolveCase()}
-                disabled={actionLoading || !resolutionNote.trim() || Object.keys(milestoneDecisions).some(allocationHasError) || violationHasError(clientViolation) || violationHasError(freelancerViolation)}
-              >
-                {actionLoading ? <LoaderCircle className="admin-dispute-spin" size={17} /> : <CheckCircle size={17} />}
-                Execute Resolution & Final Verdict
-              </button>
-            </section>
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <button type="button" onClick={() => setShowEvidenceDialog(false)} className="rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 transition cursor-pointer" disabled={actionLoading}>
+                  {t('common.cancel', 'Cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void requestEvidenceSubmit()}
+                  disabled={actionLoading || !evidenceRequest.reason.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-xs font-extrabold text-white hover:opacity-90 transition cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {t('admin.disputes.dialog.sendRequest', 'Send Evidence Request')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

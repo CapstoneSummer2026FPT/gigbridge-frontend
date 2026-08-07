@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useOngoingScheduleStatus } from './useOngoingScheduleStatus';
+import { useOngoingScheduleStatus } from '../useOngoingScheduleStatus';
 
 describe('useOngoingScheduleStatus', () => {
   beforeEach(() => {
