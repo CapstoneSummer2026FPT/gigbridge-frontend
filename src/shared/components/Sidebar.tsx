@@ -134,7 +134,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
       icon: <BarChart2 size={18} />,
       children: [
         { id: 'overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
-        { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdraw' },
+        { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdrawals' },
         { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
     },
