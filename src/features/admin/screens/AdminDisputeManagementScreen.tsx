@@ -105,7 +105,6 @@ export default function AdminDisputeManagementScreen() {
     resetResolveDialog,
     freelancerMessages,
     clientMessages,
-    isCaseOpen,
   } = useAdminDisputeManagement();
 
   // GSAP Entrance Animation
@@ -323,25 +322,23 @@ export default function AdminDisputeManagementScreen() {
                   </div>
 
                   <div className="header-action-buttons">
-                    {isCaseOpen && (
-                      <button onClick={openResolveDialog} className="btn-resolve-primary">
-                        <Scale size={16} /> {t('admin.disputes.actions.resolve', 'Issue Binding Resolution')}
+                    {(selectedDispute.status === DisputeStatus.Open || selectedDispute.status === DisputeStatus.WaitingAdmin) && (
+                      <button onClick={() => void updateStatus(DisputeStatus.UnderReview)} className="btn-resolve-primary">
+                        <CheckCircle size={16} /> {t('admin.disputes.actions.markInProgress', 'Mark In Progress')}
                       </button>
                     )}
-                    {isCaseOpen && (
-                      <button onClick={() => setShowEvidenceDialog(true)} className="btn-evidence">
-                        <Paperclip size={16} /> {t('admin.disputes.actions.requestEvidence', 'Request Evidence')}
-                      </button>
-                    )}
-                    {selectedDispute.status === DisputeStatus.Open && (
-                      <button onClick={() => void updateStatus(DisputeStatus.UnderReview)} className="btn-secondary">
-                        {t('admin.disputes.actions.markUnderReview', 'Mark Under Review')}
-                      </button>
-                    )}
-                    {selectedDispute.status === DisputeStatus.UnderReview && (
-                      <button onClick={() => void updateStatus(DisputeStatus.WaitingAdmin)} className="btn-secondary">
-                        {t('admin.disputes.actions.markWaitingAdmin', 'Mark Waiting Admin')}
-                      </button>
+
+                    {(selectedDispute.status === DisputeStatus.UnderReview ||
+                      selectedDispute.status === DisputeStatus.WaitingEvidence ||
+                      selectedDispute.status === DisputeStatus.DecisionPending) && (
+                      <>
+                        <button onClick={openResolveDialog} className="btn-resolve-primary">
+                          <Scale size={16} /> {t('admin.disputes.actions.resolve', 'Issue Binding Resolution')}
+                        </button>
+                        <button onClick={() => setShowEvidenceDialog(true)} className="btn-evidence">
+                          <Paperclip size={16} /> {t('admin.disputes.actions.requestEvidence', 'Request Evidence')}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

@@ -591,6 +591,8 @@ export function useAdminDisputeManagement() {
         if (r === DisputeMessageRecipient.Client) return false;
       }
 
+      if (msg.messageType === 10 || !msg.senderUserId) return true;
+
       const senderId = (msg.senderUserId ?? '').toLowerCase();
       if (freelancerUserId && senderId === freelancerUserId) return true;
       if (freelancerProfileId && senderId === freelancerProfileId) return true;
@@ -614,6 +616,8 @@ export function useAdminDisputeManagement() {
         if (r === DisputeMessageRecipient.Client || r === DisputeMessageRecipient.Both) return true;
         if (r === DisputeMessageRecipient.Freelancer) return false;
       }
+
+      if (msg.messageType === 10 || !msg.senderUserId) return true;
 
       const senderId = (msg.senderUserId ?? '').toLowerCase();
       if (clientUserId && senderId === clientUserId) return true;
