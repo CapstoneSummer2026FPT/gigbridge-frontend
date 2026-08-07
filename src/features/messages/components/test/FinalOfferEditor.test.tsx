@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { NegotiationMilestoneDto } from '../../../types/models/Message';
-import { FinalOfferEditor } from './FinalOfferEditor';
+import type { NegotiationMilestoneDto } from '../../../../types/models/Message';
+import { FinalOfferEditor } from '../FinalOfferEditor';
 
 const copy: Record<string, string> = {
   'messages.finalOfferEditor.dialogLabel': 'Create final offer',

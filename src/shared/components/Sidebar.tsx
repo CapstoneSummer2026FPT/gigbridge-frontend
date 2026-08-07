@@ -4,18 +4,16 @@ import { useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   Bot, BarChart2, Shield, Flag,
-  TrendingUp, PlusCircle, Zap, ChevronRight, X, Bell, Bookmark,
+  TrendingUp, PlusCircle, Zap, X, Bell, Bookmark,
   ChevronDown, Wallet, Banknote, Star
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
 import { reportAPI } from '../../api/reportAPI';
 import { usePremiumStatus } from '../../features/premium/hooks';
-import { PremiumStatusBadge } from '../../features/premium/components/PremiumStatusBadge';
-import { getProfilePath } from '../../shared/hooks/useProfileNavigation';
 import { ADMIN_GROUPS, ADMIN_MANAGERS } from '../../features/admin/adminManagers';
 import '../../features/premium/styles/premium.css';
-import '../styles/Sidebar.css';
+import './styles/Sidebar.css';
 
 interface NavItem {
   id?: string;
@@ -264,7 +262,7 @@ function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, pa
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { user, role } = useApp();
+  const { role } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -322,24 +320,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <aside className={`gb-sidebar ${isOpen ? 'open' : ''}`}>
-
-      {/* User Profile Mini */}
-      {user && (
-        <div className="sidebar-profile-mini"
-          onClick={() => { const path = getProfilePath(user.id, role); if (path) navigate(path); }}>
-          <div className="sidebar-profile-avatar">
-            {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-          </div>
-          <div className="sidebar-profile-info">
-            <p className="sidebar-profile-name">{user.first_name}</p>
-            <p className="sidebar-profile-role">{role === 0 ? t('projects.client') : role === 1 ? t('projects.freelancer') : t('nav.admin')}</p>
-            {(role === 0 || role === 1) && !premiumStatus.loading && !premiumStatusUnavailable && (
-              <PremiumStatusBadge active={premiumStatus.isPremium} compact />
-            )}
-          </div>
-          <ChevronRight size={14} className="sidebar-profile-chevron" />
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="sidebar-nav">

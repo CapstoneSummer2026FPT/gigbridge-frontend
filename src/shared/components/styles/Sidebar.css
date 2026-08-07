@@ -1,0 +1,347 @@
+/* ============================================
+   Sidebar Component Styles (Redesigned Floating Card)
+   ============================================ */
+
+.gb-sidebar {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0.75rem;
+  top: 5.75rem;
+  bottom: 0.75rem;
+  width: 20rem;
+  z-index: 45;
+  padding: 0.875rem 0.625rem;
+  background: var(--card, rgba(15, 23, 42, 0.88));
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.12));
+  border-radius: 1.25rem;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35), 0 0 20px rgba(73, 75, 231, 0.06);
+  transform: translateX(calc(-100% - 2rem));
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s ease, top 0.3s ease, bottom 0.3s ease;
+}
+
+/* Light Mode / White theme adjustment */
+.white .gb-sidebar {
+  background: var(--surface, rgba(255, 255, 255, 0.92));
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.08), 0 0 15px rgba(0, 119, 255, 0.04);
+}
+
+/* Desktop positioning: equal top gap from TopNav (1rem) and equal bottom gap from viewport (1rem) */
+@media (min-width: 640px) {
+  .gb-sidebar {
+    left: 1.5rem;
+    top: 6rem;
+    bottom: 1.5rem;
+    width: 15.5rem;
+  }
+}
+
+/* Show sidebar when open */
+.gb-sidebar.open {
+  transform: translateX(0);
+}
+
+/* ─── User Profile Mini ─── */
+.sidebar-profile-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0.875rem;
+  background: var(--gb-glass-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--gb-border, rgba(255, 255, 255, 0.08));
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-profile-mini:hover {
+  background: var(--gb-glass-hover, rgba(255, 255, 255, 0.08));
+  border-color: rgba(0, 119, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.sidebar-profile-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary-foreground);
+  background: linear-gradient(135deg, var(--gb-cyan, #00f2fe), var(--gb-purple, #494be7));
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgba(0, 119, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.sidebar-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-profile-name {
+  color: var(--foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.sidebar-profile-role {
+  color: var(--gb-text-secondary, #94a3b8);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  margin-top: 0.125rem;
+}
+
+.sidebar-profile-chevron {
+  color: var(--gb-text-secondary, #94a3b8);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-profile-mini:hover .sidebar-profile-chevron {
+  transform: translateX(2px);
+  color: var(--gb-cyan, #00f2fe);
+}
+
+/* ─── Navigation Container ─── */
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  overflow-y: auto;
+  padding-right: 0.125rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+/* ─── Sections ─── */
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-section-title {
+  color: var(--gb-text-muted, #64748b);
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.5rem 0.625rem 0.25rem;
+  margin-top: 0.375rem;
+}
+
+.sidebar-section:first-child .sidebar-section-title {
+  margin-top: 0;
+}
+
+/* ─── Navigation Items ─── */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--gb-text-secondary, #94a3b8);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  white-space: nowrap;
+}
+
+.sidebar-item:hover {
+  background: var(--gb-glass-hover, rgba(255, 255, 255, 0.07));
+  color: var(--gb-text-primary, #f8fafc);
+  transform: translateX(2px);
+}
+
+.sidebar-item.active {
+  background: linear-gradient(135deg, rgba(73, 75, 231, 0.18), rgba(0, 242, 254, 0.12));
+  border: 1px solid rgba(73, 75, 231, 0.25);
+  color: var(--gb-cyan, #00f2fe);
+  font-weight: 600;
+  box-shadow: 0 4px 12px -2px rgba(73, 75, 231, 0.15);
+}
+
+.sidebar-item.active:hover {
+  background: linear-gradient(135deg, rgba(73, 75, 231, 0.24), rgba(0, 242, 254, 0.18));
+}
+
+.sidebar-active-indicator {
+  position: absolute;
+  left: -0.625rem;
+  width: 3.5px;
+  height: 1.25rem;
+  background: var(--gb-cyan, #00f2fe);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 8px var(--gb-cyan, #00f2fe);
+}
+
+/* ─── Item Actions (Badge + Chevron) ─── */
+.sidebar-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.sidebar-item-chevron {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--gb-text-secondary, #94a3b8);
+}
+
+.sidebar-item-chevron.expanded {
+  transform: rotate(180deg);
+  color: var(--gb-cyan, #00f2fe);
+}
+
+/* ─── Children Items ─── */
+.sidebar-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-left: 0.625rem;
+  border-left: 2px solid rgba(73, 75, 231, 0.25);
+  margin-left: 0.75rem;
+  margin-top: 0.125rem;
+  margin-bottom: 0.25rem;
+  animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidebar-child-item {
+  padding: 0.4375rem 0.625rem;
+  font-size: 0.78125rem;
+  color: var(--gb-text-secondary, #94a3b8);
+  border-radius: 0.625rem;
+}
+
+.sidebar-child-item:hover {
+  background: var(--gb-glass-hover, rgba(255, 255, 255, 0.07));
+  color: var(--gb-text-primary, #f8fafc);
+}
+
+.sidebar-child-item.active {
+  background: rgba(73, 75, 231, 0.15);
+  color: var(--gb-cyan, #00f2fe);
+  font-weight: 600;
+}
+
+/* ─── Bottom Section ─── */
+.sidebar-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--gb-border, rgba(255, 255, 255, 0.08));
+}
+
+/* ─── Pro Badge ─── */
+.sidebar-pro-badge {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, rgba(73, 75, 231, 0.12), rgba(0, 242, 254, 0.08));
+  border: 1px solid rgba(73, 75, 231, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-pro-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.sidebar-pro-icon {
+  color: var(--gb-cyan, #00f2fe);
+}
+
+.sidebar-pro-title {
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sidebar-pro-desc {
+  color: var(--gb-text-secondary, #94a3b8);
+  font-size: 0.6875rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
+
+.sidebar-pro-button {
+  width: 100%;
+  font-size: 0.71875rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.625rem;
+  font-weight: 600;
+}
+
+/* ─── Close Button (Mobile Only) ─── */
+.sidebar-close-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gb-glass-bg, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--gb-border, rgba(255, 255, 255, 0.1));
+  color: var(--gb-text-secondary, #94a3b8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.sidebar-close-button:hover {
+  background: var(--gb-glass-hover, rgba(255, 255, 255, 0.12));
+  color: var(--gb-cyan, #00f2fe);
+  border-color: rgba(0, 119, 255, 0.25);
+}
+
+@media (min-width: 768px) {
+  .sidebar-close-button {
+    display: none;
+  }
+}
