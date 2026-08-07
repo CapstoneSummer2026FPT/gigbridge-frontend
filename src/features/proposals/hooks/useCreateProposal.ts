@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -67,6 +67,7 @@ export function useCreateProposal() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const draftSavePromiseRef = useRef<Promise<string | null> | null>(null);
 
   const resolvedJobPostId = proposal?.jobPostId || jobPostId || '';
   const draftProposalId = proposal?.proposalId || proposalId || '';
@@ -242,12 +243,17 @@ export function useCreateProposal() {
     return '';
   };
 
-  const persistDraft = async () => {
+  const persistDraftCore = async () => {
     const payload = proposalPayload();
     if (draftProposalId) {
       // Proposals that are already submitted are read-only — never PUT them.
       if (!canEditProposal(proposal?.status)) return draftProposalId;
-      const response = await proposalPutAPI.updateProposal(draftProposalId, payload);
+      let response = await proposalPutAPI.updateProposal(draftProposalId, payload);
+      // A resumed question session may finish a stale request immediately before
+      // this submit. Repeating this idempotent draft replacement resolves that race.
+      if (!response.success && response.statusCode === 409) {
+        response = await proposalPutAPI.updateProposal(draftProposalId, payload);
+      }
       if (!response.success) { setError(response.message || t('createProposal.errLoadProposal')); return null; }
       return draftProposalId;
     }
@@ -265,6 +271,18 @@ export function useCreateProposal() {
     }
     setError(response.message || t('createProposal.errLoadProposal'));
     return null;
+  };
+
+  const persistDraft = () => {
+    // Save Draft and Submit may be clicked almost simultaneously. Reuse the same
+    // in-flight write so the browser never races itself with duplicate PUT calls.
+    if (draftSavePromiseRef.current) return draftSavePromiseRef.current;
+
+    const save = persistDraftCore().finally(() => {
+      draftSavePromiseRef.current = null;
+    });
+    draftSavePromiseRef.current = save;
+    return save;
   };
 
   const handleSaveDraft = async () => {
