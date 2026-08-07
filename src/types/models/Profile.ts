@@ -291,6 +291,7 @@ export interface UserProfileDto {
   phoneNumber?: string | null;
   preferredLanguage?: string | null;
   role: number;
+  isPremium: boolean;
 }
 
 export interface UpdateUserProfileDto {
@@ -307,4 +308,5 @@ export interface PublicUserProfileDto {
   fullName: string;
   avatar?: string | null;
   role: number;
+  isPremium: boolean;
 }

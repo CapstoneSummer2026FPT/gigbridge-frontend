@@ -5,11 +5,29 @@ import type {
   ESignSignatureDto,
   CreateSignatureDto,
   SubmitESignSignatureDto,
+  ESignPdfArtifactDto,
 } from '../../types/models/ESign';
 
 const esignUrl = 'ESign';
 
 export const esignPostAPI = {
+  saveDocumentPdf: (
+    documentId: string,
+    file: Blob,
+    fileName: string,
+    signatureCount: number,
+  ): Promise<ApiResponse<ESignPdfArtifactDto>> => {
+    const formData = new FormData();
+    formData.append('file', file, fileName);
+    formData.append('signatureCount', String(signatureCount));
+    return apiService.post<ESignPdfArtifactDto>(`${esignUrl}/documents/${documentId}/pdf/upload`, formData);
+  },
+
+  generateDocumentPdf: (
+    documentId: string,
+  ): Promise<ApiResponse<ESignPdfArtifactDto>> =>
+    apiService.post<ESignPdfArtifactDto>(`${esignUrl}/documents/${documentId}/pdf`, {}),
+
   /**
    * POST /api/ESign/documents/from-job/{jobPostId}
    * Create a new job post e-sign document
