@@ -18,15 +18,14 @@ import { getChatHubUrl } from '../../../service/apiService';
 import '../styles/admin-dispute-management-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
-  [DisputeStatus.Open]: 'Open',
+  [DisputeStatus.Open]: 'Waiting Admin',
   [DisputeStatus.WaitingAdmin]: 'Waiting Admin',
-  [DisputeStatus.UnderReview]: 'Under Review',
-  [DisputeStatus.WaitingEvidence]: 'Waiting Evidence',
-  [DisputeStatus.DecisionPending]: 'Decision Pending',
+  [DisputeStatus.UnderReview]: 'In Progress',
+  [DisputeStatus.WaitingEvidence]: 'In Progress',
+  [DisputeStatus.DecisionPending]: 'In Progress',
   [DisputeStatus.Resolved]: 'Resolved',
   [DisputeStatus.Closed]: 'Closed',
 };
-
 const resolutionLabels: Record<DisputeResolution, string> = {
   [DisputeResolution.ClientFavored]: 'Client Favored',
   [DisputeResolution.FreelancerFavored]: 'Freelancer Favored',
@@ -53,15 +52,33 @@ const apiError = (status: number, message: string): string => {
   return message || 'The request could not be completed.';
 };
 
-const STATUS_FILTERS: ('all' | DisputeStatus)[] = [
+type DisputeStatusGroup = 'all' | 'waiting_admin' | 'in_progress' | 'resolved' | 'closed';
+
+const getDisputeGroup = (status: DisputeStatus): DisputeStatusGroup => {
+  if (status === DisputeStatus.Open || status === DisputeStatus.WaitingAdmin) return 'waiting_admin';
+  if (
+    status === DisputeStatus.UnderReview ||
+    status === DisputeStatus.WaitingEvidence ||
+    status === DisputeStatus.DecisionPending
+  ) return 'in_progress';
+  if (status === DisputeStatus.Resolved) return 'resolved';
+  return 'closed';
+};
+
+const GROUP_LABELS: Record<DisputeStatusGroup, string> = {
+  all: 'All Cases',
+  waiting_admin: 'Waiting Admin',
+  in_progress: 'In Progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+};
+
+const STATUS_GROUPS: DisputeStatusGroup[] = [
   'all',
-  DisputeStatus.Open,
-  DisputeStatus.WaitingAdmin,
-  DisputeStatus.UnderReview,
-  DisputeStatus.WaitingEvidence,
-  DisputeStatus.DecisionPending,
-  DisputeStatus.Resolved,
-  DisputeStatus.Closed,
+  'waiting_admin',
+  'in_progress',
+  'resolved',
+  'closed',
 ];
 
 interface EvidenceRequestState {
@@ -94,7 +111,7 @@ type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milestones' |
 
 export default function AdminDisputeManagementScreen() {
   const [disputes, setDisputes] = useState<AdminDisputeListItem[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<'all' | DisputeStatus>('all');
+  const [selectedStatusGroup, setSelectedStatusGroup] = useState<DisputeStatusGroup>('all');
   const [search, setSearch] = useState('');
   const [selectedDisputeId, setSelectedDisputeId] = useState('');
   const [selectedDispute, setSelectedDispute] = useState<AdminDisputeDetail | null>(null);
@@ -140,7 +157,6 @@ export default function AdminDisputeManagementScreen() {
       const response = await adminGetAPI.getDisputes({
         page: 1,
         pageSize: 100,
-        status: selectedStatus === 'all' ? undefined : selectedStatus,
         search: search.trim() || undefined,
       });
       if (cancelled) return;
@@ -155,11 +171,6 @@ export default function AdminDisputeManagementScreen() {
 
       setDisputes(response.data.items);
       setTotalItems(response.data.totalItems);
-      setSelectedDisputeId((current) =>
-        response.data!.items.some((item) => item.id === current)
-          ? current
-          : response.data!.items[0]?.id ?? ''
-      );
       setLoadingList(false);
     }, 250);
 
@@ -167,7 +178,7 @@ export default function AdminDisputeManagementScreen() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [selectedStatus, search, refreshKey]);
+  }, [search, refreshKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,15 +251,23 @@ export default function AdminDisputeManagementScreen() {
     clientChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [disputeMessages]);
 
+  const filteredDisputes = useMemo(() => {
+    if (selectedStatusGroup === 'all') return disputes;
+    return disputes.filter((item) => getDisputeGroup(item.status) === selectedStatusGroup);
+  }, [disputes, selectedStatusGroup]);
+
+  useEffect(() => {
+    if (filteredDisputes.length > 0 && !filteredDisputes.some((item) => item.id === selectedDisputeId)) {
+      setSelectedDisputeId(filteredDisputes[0].id);
+    }
+  }, [filteredDisputes, selectedDisputeId]);
+
   const stats = useMemo(() => ({
-    visible: disputes.length,
-    open: disputes.filter((item) => item.status === DisputeStatus.Open).length,
-    waitingAdmin: disputes.filter((item) => item.status === DisputeStatus.WaitingAdmin).length,
-    underReview: disputes.filter((item) => item.status === DisputeStatus.UnderReview).length,
-    waitingEvidence: disputes.filter((item) => item.status === DisputeStatus.WaitingEvidence).length,
-    decisionPending: disputes.filter((item) => item.status === DisputeStatus.DecisionPending).length,
-    resolved: disputes.filter((item) => item.status === DisputeStatus.Resolved).length,
-    closed: disputes.filter((item) => item.status === DisputeStatus.Closed).length,
+    total: disputes.length,
+    waitingAdmin: disputes.filter((item) => getDisputeGroup(item.status) === 'waiting_admin').length,
+    inProgress: disputes.filter((item) => getDisputeGroup(item.status) === 'in_progress').length,
+    resolved: disputes.filter((item) => getDisputeGroup(item.status) === 'resolved').length,
+    closed: disputes.filter((item) => getDisputeGroup(item.status) === 'closed').length,
   }), [disputes]);
 
   const allocationTotals = useMemo(() => Object.values(milestoneDecisions).reduce((totals, decision) => ({
@@ -576,35 +595,23 @@ export default function AdminDisputeManagementScreen() {
 
         {/* Metric Cards Row */}
         <section className="disputes-stats">
-          <div onClick={() => setSelectedStatus('all')} className={selectedStatus === 'all' ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('all')} className={selectedStatusGroup === 'all' ? 'active-stat' : ''}>
             <span>Total Cases</span>
             <strong>{totalItems}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.Open)} className={selectedStatus === DisputeStatus.Open ? 'active-stat' : ''}>
-            <span>Open</span>
-            <strong>{stats.open}</strong>
-          </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.WaitingAdmin)} className={selectedStatus === DisputeStatus.WaitingAdmin ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('waiting_admin')} className={selectedStatusGroup === 'waiting_admin' ? 'active-stat' : ''}>
             <span>Waiting Admin</span>
             <strong>{stats.waitingAdmin}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.UnderReview)} className={selectedStatus === DisputeStatus.UnderReview ? 'active-stat' : ''}>
-            <span>Under Review</span>
-            <strong>{stats.underReview}</strong>
+          <div onClick={() => setSelectedStatusGroup('in_progress')} className={selectedStatusGroup === 'in_progress' ? 'active-stat' : ''}>
+            <span>In Progress</span>
+            <strong>{stats.inProgress}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.WaitingEvidence)} className={selectedStatus === DisputeStatus.WaitingEvidence ? 'active-stat' : ''}>
-            <span>Waiting Evidence</span>
-            <strong>{stats.waitingEvidence}</strong>
-          </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.DecisionPending)} className={selectedStatus === DisputeStatus.DecisionPending ? 'active-stat' : ''}>
-            <span>Decision Pending</span>
-            <strong>{stats.decisionPending}</strong>
-          </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.Resolved)} className={selectedStatus === DisputeStatus.Resolved ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('resolved')} className={selectedStatusGroup === 'resolved' ? 'active-stat' : ''}>
             <span>Resolved</span>
             <strong>{stats.resolved}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.Closed)} className={selectedStatus === DisputeStatus.Closed ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('closed')} className={selectedStatusGroup === 'closed' ? 'active-stat' : ''}>
             <span>Closed</span>
             <strong>{stats.closed}</strong>
           </div>
@@ -646,13 +653,13 @@ export default function AdminDisputeManagementScreen() {
           {/* Left Panel: Dispute List */}
           <div className="disputes-list-card">
             <div className="disputes-filter-row">
-              {STATUS_FILTERS.map((status) => (
+              {STATUS_GROUPS.map((group) => (
                 <button
-                  key={status}
-                  className={selectedStatus === status ? 'active' : ''}
-                  onClick={() => setSelectedStatus(status)}
+                  key={group}
+                  className={selectedStatusGroup === group ? 'active' : ''}
+                  onClick={() => setSelectedStatusGroup(group)}
                 >
-                  {status === 'all' ? 'All Cases' : statusLabels[status]}
+                  {GROUP_LABELS[group]}
                 </button>
               ))}
             </div>
@@ -660,9 +667,9 @@ export default function AdminDisputeManagementScreen() {
             <div className="disputes-list">
               {loadingList ? (
                 <div className="admin-dispute-empty"><LoaderCircle className="admin-dispute-spin" size={24} /> Loading disputes list…</div>
-              ) : disputes.length === 0 ? (
+              ) : filteredDisputes.length === 0 ? (
                 <div className="admin-dispute-empty">No dispute cases match the selected filter.</div>
-              ) : disputes.map((dispute) => (
+              ) : filteredDisputes.map((dispute) => (
                 <button
                   key={dispute.id}
                   className={`dispute-list-item ${selectedDisputeId === dispute.id ? 'selected' : ''}`}
