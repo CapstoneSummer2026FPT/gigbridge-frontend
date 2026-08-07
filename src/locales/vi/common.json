@@ -32,6 +32,21 @@
     "loadError": "Không thể tải Bộ chính sách GigBridge.",
     "retry": "Thử lại"
   },
+  "adminNav": {
+    "groups": {
+      "overview": "TỔNG QUAN & PHÂN TÍCH",
+      "users": "QUẢN LÝ NGƯỜI DÙNG",
+      "marketplace": "SÀN GIAO DỊCH & DỰ ÁN",
+      "finance": "TÀI CHÍNH & RÚT TIỀN",
+      "moderation": "KIỂM DUYỆT & TRANH CHẤP",
+      "configuration": "CẤU HÌNH HỆ THỐNG",
+      "monitoring": "GIÁM SÁT HỆ THỐNG"
+    },
+    "contractReports": "Báo Cáo Hợp Đồng",
+    "contractsEsign": "Hợp Đồng & Ký Điện Tử",
+    "esign": "Ký Kết Điện Tử",
+    "assets": "Sản Phẩm Bàn Giao"
+  },
   "nav": {
     "dashboard": "Bảng Điều Khiển",
     "browseJobs": "Tìm Công Việc",
@@ -549,5 +564,12 @@
       "2": "Hiệu chỉnh một phần",
       "3": "Điều chỉnh tùy chỉnh"
     }
+  },
+  "sidebar": {
+    "toggleHelpLabel": "Xem giải thích tác dụng Sidebar",
+    "toggleHelpTitle": "Cố định Sidebar",
+    "toggleHelpDesc": "Bật công tắc để giữ Sidebar cố định khi chuyển trang. Tắt công tắc để Sidebar tự đóng khi nhấp trang hoặc nhấp ra ngoài.",
+    "pinnedTitle": "Sidebar cố định (Đang BẬT)",
+    "unpinnedTitle": "Sidebar tự đóng (Đang TẮT)"
   }
 }
