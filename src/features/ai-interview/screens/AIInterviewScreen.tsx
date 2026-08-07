@@ -339,7 +339,8 @@ export default function AIInterviewScreen() {
   };
 
   const transcribeRecording = async (audioBlob: Blob) => {
-    const response = await aiInterviewAPI.transcribeAudio(sessionId, audioBlob, interviewLanguage);
+
+    const response = await aiInterviewAPI.transcribeAudio(sessionId, audioBlob, 'auto');
     if (!response.success || !response.data) {
       setActionError(response.message || t('aiInterview.errors.transcriptionFailed'));
       setAnswerState('idle');
@@ -348,7 +349,6 @@ export default function AIInterviewScreen() {
 
     const draft = response.data;
     setTranscript(draft.transcript);
-    setInterviewLanguage(draft.language || interviewLanguage);
     setSttProvider(draft.sttProvider ?? draft.stt_provider ?? 'speech-to-text');
     setSttConfidence(draft.confidence);
     setAnswerState('review');
@@ -859,86 +859,86 @@ export default function AIInterviewScreen() {
                 </div>
 
                 <div className="ai-answer-panel-body">
-                {answerState === 'idle' && (
-                  <div className="ai-answer-idle">
-                    <button
-                      type="button"
-                      onClick={beginAnswer}
-                      disabled={ttsState === 'streaming' || ttsState === 'playing'}
-                      className="ai-record-button"
-                    >
-                      <span><Mic size={28} /></span>
-                      {t('aiInterview.actions.answerQuestion')}
-                    </button>
-                    <p>{t('aiInterview.answer.microphoneHint')}</p>
-                  </div>
-                )}
-
-                {answerState === 'recording' && (
-                  <div className="ai-recording-state">
-                    <div className="ai-recording-meta">
-                      <span className="ai-recording-pill"><i /> {t('aiInterview.recording.label')}</span>
-                      <time>{formatDuration(recordingSeconds)}</time>
-                    </div>
-                    <div className="ai-answer-waveform" aria-hidden="true">
-                      {Array.from({ length: 28 }).map((_, index) => (
-                        <span key={index} style={{ animationDelay: `${(index % 7) * -0.09}s` }} />
-                      ))}
-                    </div>
-                    <p className="ai-silence-hint" aria-live="polite">
-                      {silenceCountdown === null
-                        ? t('aiInterview.recording.finishHint')
-                        : t('aiInterview.recording.silenceCountdown', { count: silenceCountdown })}
-                    </p>
-                    <div className="ai-recording-actions">
-                      <button type="button" onClick={cancelAnswer} className="ai-secondary-action">{t('aiInterview.actions.cancel')}</button>
-                      <button type="button" onClick={finishAnswer} className="ai-primary-action">
-                        <Square size={14} fill="currentColor" /> {t('aiInterview.actions.finishAnswer')}
+                  {answerState === 'idle' && (
+                    <div className="ai-answer-idle">
+                      <button
+                        type="button"
+                        onClick={beginAnswer}
+                        disabled={ttsState === 'streaming' || ttsState === 'playing'}
+                        className="ai-record-button"
+                      >
+                        <span><Mic size={28} /></span>
+                        {t('aiInterview.actions.answerQuestion')}
                       </button>
+                      <p>{t('aiInterview.answer.microphoneHint')}</p>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {answerState === 'transcribing' && (
-                  <div className="ai-processing-state">
-                    <div className="ai-processing-orb"><LoaderCircle size={30} className="animate-spin" /></div>
-                    <strong>{t('aiInterview.transcribing.title')}</strong>
-                    <p>{t('aiInterview.transcribing.description')}</p>
-                  </div>
-                )}
-
-                {answerState === 'review' && (
-                  <div className="ai-review-state">
-                    <div className="ai-transcript-label">
-                      <label htmlFor="interview-transcript">{t('aiInterview.review.whatWeHeard')}</label>
-                      <span>{t('aiInterview.review.readOnly')}</span>
+                  {answerState === 'recording' && (
+                    <div className="ai-recording-state">
+                      <div className="ai-recording-meta">
+                        <span className="ai-recording-pill"><i /> {t('aiInterview.recording.label')}</span>
+                        <time>{formatDuration(recordingSeconds)}</time>
+                      </div>
+                      <div className="ai-answer-waveform" aria-hidden="true">
+                        {Array.from({ length: 28 }).map((_, index) => (
+                          <span key={index} style={{ animationDelay: `${(index % 7) * -0.09}s` }} />
+                        ))}
+                      </div>
+                      <p className="ai-silence-hint" aria-live="polite">
+                        {silenceCountdown === null
+                          ? t('aiInterview.recording.finishHint')
+                          : t('aiInterview.recording.silenceCountdown', { count: silenceCountdown })}
+                      </p>
+                      <div className="ai-recording-actions">
+                        <button type="button" onClick={cancelAnswer} className="ai-secondary-action">{t('aiInterview.actions.cancel')}</button>
+                        <button type="button" onClick={finishAnswer} className="ai-primary-action">
+                          <Square size={14} fill="currentColor" /> {t('aiInterview.actions.finishAnswer')}
+                        </button>
+                      </div>
                     </div>
-                    <textarea
-                      id="interview-transcript"
-                      value={transcript}
-                      readOnly
-                      aria-readonly="true"
-                      rows={7}
-                      className="ai-transcript-input"
-                    />
-                    <div className="ai-review-actions">
-                      <button type="button" onClick={recordAgain} className="ai-secondary-action">
-                        <RotateCcw size={15} /> {t('aiInterview.actions.speakAgain')}
-                      </button>
-                      <button type="button" onClick={confirmAnswer} className="ai-primary-action ai-submit-answer">
-                        {t('aiInterview.actions.submitAnswer')} <Send size={15} />
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {answerState === 'submitting' && (
-                  <div className="ai-processing-state">
-                    <div className="ai-processing-orb is-purple"><LoaderCircle size={30} className="animate-spin" /></div>
-                    <strong>{t('aiInterview.submitting.title')}</strong>
-                    <p>{t('aiInterview.submitting.description')}</p>
-                  </div>
-                )}
+                  {answerState === 'transcribing' && (
+                    <div className="ai-processing-state">
+                      <div className="ai-processing-orb"><LoaderCircle size={30} className="animate-spin" /></div>
+                      <strong>{t('aiInterview.transcribing.title')}</strong>
+                      <p>{t('aiInterview.transcribing.description')}</p>
+                    </div>
+                  )}
+
+                  {answerState === 'review' && (
+                    <div className="ai-review-state">
+                      <div className="ai-transcript-label">
+                        <label htmlFor="interview-transcript">{t('aiInterview.review.whatWeHeard')}</label>
+                        <span>{t('aiInterview.review.readOnly')}</span>
+                      </div>
+                      <textarea
+                        id="interview-transcript"
+                        value={transcript}
+                        readOnly
+                        aria-readonly="true"
+                        rows={7}
+                        className="ai-transcript-input"
+                      />
+                      <div className="ai-review-actions">
+                        <button type="button" onClick={recordAgain} className="ai-secondary-action">
+                          <RotateCcw size={15} /> {t('aiInterview.actions.speakAgain')}
+                        </button>
+                        <button type="button" onClick={confirmAnswer} className="ai-primary-action ai-submit-answer">
+                          {t('aiInterview.actions.submitAnswer')} <Send size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {answerState === 'submitting' && (
+                    <div className="ai-processing-state">
+                      <div className="ai-processing-orb is-purple"><LoaderCircle size={30} className="animate-spin" /></div>
+                      <strong>{t('aiInterview.submitting.title')}</strong>
+                      <p>{t('aiInterview.submitting.description')}</p>
+                    </div>
+                  )}
                 </div>
 
                 <details className="ai-debug-console">
