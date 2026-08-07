@@ -160,20 +160,35 @@ function getFreelancerNavItems(t: any): NavItem[] {
 function getAdminNavSections(t: any, openReportCount: number | null): NavSection[] {
   return ADMIN_GROUPS.map(group => {
     const itemsInGroup = ADMIN_MANAGERS.filter(m => m.group === group.id && m.showInNavigation);
+
+    const topLevelItems = itemsInGroup.filter(m => !m.parentId);
+    const childItems = itemsInGroup.filter(m => !!m.parentId);
+
+    const navItems: NavItem[] = topLevelItems.map(item => {
+      const isReportManager = item.id === 'reports';
+      const badgeType: NavItem['badgeType'] = isReportManager ? 'amber' : undefined;
+
+      const childrenOfItem = childItems.filter(c => c.parentId === item.id);
+
+      return {
+        id: item.id,
+        label: t(item.labelKey, { defaultValue: item.fallbackLabel }),
+        icon: React.createElement(item.icon, { size: 18 }),
+        path: item.path,
+        badgeLabel: isReportManager && openReportCount && openReportCount > 0 ? String(openReportCount) : undefined,
+        badgeType,
+        children: childrenOfItem.length > 0 ? childrenOfItem.map(child => ({
+          id: child.id,
+          label: t(child.labelKey, { defaultValue: child.fallbackLabel }),
+          icon: React.createElement(child.icon, { size: 18 }),
+          path: child.path,
+        })) : undefined,
+      };
+    });
+
     return {
       title: t(group.labelKey, { defaultValue: group.fallbackLabel }),
-      items: itemsInGroup.map(item => {
-        const isReportManager = item.id === 'reports';
-        const badgeType: NavItem['badgeType'] = isReportManager ? 'amber' : undefined;
-        return {
-          id: item.id,
-          label: t(item.labelKey, { defaultValue: item.fallbackLabel }),
-          icon: React.createElement(item.icon, { size: 18 }),
-          path: item.path,
-          badgeLabel: isReportManager && openReportCount && openReportCount > 0 ? String(openReportCount) : undefined,
-          badgeType,
-        };
-      }),
+      items: navItems,
     };
   }).filter(section => section.items.length > 0);
 }
@@ -203,7 +218,10 @@ function NavItemComponent({
       <div className="sidebar-item-container">
         <button
           className={`sidebar-item ${isActive ? 'active' : ''}`}
-          onClick={() => onToggle(itemId)}
+          onClick={() => {
+            onToggle(itemId);
+            if (item.path) onNavigate(item.path);
+          }}
         >
           <span className="sidebar-item-icon">{item.icon}</span>
           <span className="sidebar-item-label">{item.label}</span>
