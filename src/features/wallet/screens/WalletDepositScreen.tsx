@@ -51,6 +51,7 @@ export default function WalletDepositScreen() {
   const [returnSuccess, setReturnSuccess] = useState(false);
   const [returnOrderCode, setReturnOrderCode] = useState<number | null>(null);
   const [syncingReturn, setSyncingReturn] = useState(false);
+  const [isSynced, setIsSynced] = useState(false);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -110,7 +111,17 @@ export default function WalletDepositScreen() {
   }, []);
 
   useEffect(() => {
-    if (!returnSuccess || !returnOrderCode || syncAttemptedRef.current === returnOrderCode) {
+    if (!returnSuccess) {
+      return;
+    }
+
+    if (!returnOrderCode) {
+      // If no orderCode, just fetch balance and finish
+      void fetchBalance();
+      return;
+    }
+
+    if (syncAttemptedRef.current === returnOrderCode) {
       return;
     }
 
@@ -132,6 +143,7 @@ export default function WalletDepositScreen() {
 
           if (syncRes.data?.status === 1) {
             synced = true;
+            setIsSynced(true);
             window.localStorage.removeItem(LAST_PAYOS_ORDER_CODE_KEY);
             break;
           }
@@ -195,24 +207,55 @@ export default function WalletDepositScreen() {
   };
 
   if (returnSuccess) {
+    const isSuccessState = !syncingReturn && (isSynced || !errorText);
+
     return (
       <AppLayout>
         <div className="min-h-[85vh] flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-3xl border border-border/80 bg-surface-card p-8 shadow-2xl text-center space-y-6">
-            <div className="relative w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
-              <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
-              <Loader2 size={44} className="text-emerald-500 animate-spin relative z-10" />
+            <div className={`relative w-20 h-20 rounded-full flex items-center justify-center mx-auto ${
+              syncingReturn
+                ? 'bg-emerald-500/10 border border-emerald-500/20'
+                : isSuccessState
+                  ? 'bg-emerald-500/15 border border-emerald-500/30'
+                  : 'bg-amber-500/15 border border-amber-500/30'
+            }`}>
+              <div className={`absolute inset-0 rounded-full blur-xl pointer-events-none ${
+                syncingReturn
+                  ? 'bg-emerald-500/20 animate-pulse'
+                  : isSuccessState
+                    ? 'bg-emerald-500/30'
+                    : 'bg-amber-500/20'
+              }`} />
+
+              {syncingReturn ? (
+                <Loader2 size={44} className="text-emerald-500 animate-spin relative z-10" />
+              ) : isSuccessState ? (
+                <CheckCircle2 size={44} className="text-emerald-500 relative z-10 animate-in zoom-in-50 duration-300" />
+              ) : (
+                <AlertCircle size={44} className="text-amber-500 relative z-10" />
+              )}
             </div>
 
             <div>
-              <h2 className="text-2xl font-black text-text-primary tracking-tight">{t('walletDeposit.syncTitle')}</h2>
+              <h2 className="text-2xl font-black text-text-primary tracking-tight">
+                {syncingReturn
+                  ? t('walletDeposit.syncTitle')
+                  : isSuccessState
+                    ? t('walletDeposit.syncSuccessTitle', { defaultValue: 'Nạp Tiền Thành Công!' })
+                    : t('walletDeposit.syncTitle')}
+              </h2>
               <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
-                {t('walletDeposit.syncDesc')}
+                {syncingReturn
+                  ? t('walletDeposit.syncDesc')
+                  : isSuccessState
+                    ? t('walletDeposit.syncSuccessDesc', { defaultValue: 'Giao dịch đã được xác nhận. Số dư GigCoin của bạn đã được cập nhật thành công!' })
+                    : t('walletDeposit.syncDesc')}
               </p>
             </div>
 
             {errorText && (
-              <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs font-bold text-rose-500">
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs font-bold text-amber-600 dark:text-amber-400">
                 {errorText}
               </div>
             )}
@@ -233,7 +276,12 @@ export default function WalletDepositScreen() {
 
             <div className="space-y-3 pt-2">
               <button
-                onClick={() => { void fetchBalance(); }}
+                onClick={() => {
+                  void fetchBalance();
+                  if (returnOrderCode) {
+                    void walletPostAPI.syncPayOsTopUp({ orderCode: returnOrderCode });
+                  }
+                }}
                 disabled={syncingReturn}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-muted py-3 px-4 text-xs font-black text-text-primary hover:bg-border/60 transition cursor-pointer disabled:opacity-50"
               >

@@ -137,6 +137,8 @@
     "errorInitDepositUnknown": "Đã xảy ra lỗi trong quá trình khởi tạo thanh toán.",
     "syncTitle": "Đang Xác Nhận Giao Dịch",
     "syncDesc": "Thanh toán của bạn đang được xử lý. Số dư sẽ được cập nhật sau khi PayOS xác nhận.",
+    "syncSuccessTitle": "Nạp Tiền Thành Công!",
+    "syncSuccessDesc": "Giao dịch đã được xác nhận. Số dư GigCoin của bạn đã được cập nhật thành công!",
     "currentBalance": "Số Dư Hiện Tại",
     "reloadBalance": "Tải lại số dư",
     "viewHistory": "Xem Lịch Sử Giao Dịch",
