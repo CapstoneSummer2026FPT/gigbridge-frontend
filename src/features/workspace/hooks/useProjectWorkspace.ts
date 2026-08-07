@@ -102,8 +102,7 @@ const getPartnerName = (contract: ContractDto, isClient: boolean): string =>
     ? contract.freelancerName || contract.freelancerEmail || 'Freelancer'
     : contract.clientName || contract.clientEmail || 'Client';
 
-const getAvatarUrl = (name: string): string =>
-  `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+const getAvatarUrl = (_name: string): string => '';
 
 const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status'] => {
   switch (status) {
