@@ -624,6 +624,81 @@ input[type="number"].input-gb::-webkit-inner-spin-button {
 .become-premium-button{display:inline-flex;align-items:center;gap:.45rem;padding:.55rem .8rem;border-radius:.75rem;border:1px solid rgba(139,92,246,.45);background:linear-gradient(135deg,rgba(124,58,237,.16),rgba(34,211,238,.12));color:#7c3aed;font-size:.75rem;font-weight:900;white-space:nowrap;transition:transform .2s,border-color .2s,box-shadow .2s}.become-premium-button:hover{transform:translateY(-1px);border-color:#7c3aed;box-shadow:0 8px 24px rgba(124,58,237,.18)}
 @media (prefers-reduced-motion:no-preference){.premium-avatar-ring{animation:premiumAvatarGlow 3s ease-in-out infinite alternate}@keyframes premiumAvatarGlow{to{box-shadow:0 0 0 2px var(--card),0 0 0 4px #c084fc,0 0 18px rgba(34,211,238,.55)}}}
 
+/* Premium Member Active TopNav Button - Exact match to UserAvatar Premium Neon Ring & Corner Crown Badge */
+.top-nav-premium-active {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+  border: 1.5px solid var(--brand, #494be7);
+  background: transparent;
+  color: var(--brand, #494be7);
+  font-size: 0.75rem;
+  font-weight: 900;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 10px rgba(73, 75, 231, 0.45);
+  animation: neonTubeBreathing 3s ease-in-out infinite alternate;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.top-nav-premium-active:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand, #494be7);
+  box-shadow: 0 0 18px rgba(73, 75, 231, 0.85);
+  filter: brightness(1.2);
+}
+
+.top-nav-crown-badge-corner {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  background: var(--background, #090d16);
+  color: var(--brand, #494be7);
+  border: 1.5px solid var(--brand, #494be7);
+  box-shadow: 0 0 8px rgba(73, 75, 231, 0.7);
+  pointer-events: none;
+}
+
+[data-theme="light"] .top-nav-crown-badge-corner,
+.light .top-nav-crown-badge-corner {
+  background: #ffffff;
+}
+
+/* Get Premium Now TopNav Button */
+.top-nav-get-premium {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(73, 75, 231, 0.45);
+  background: transparent;
+  color: var(--brand, #494be7);
+  font-size: 0.75rem;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.top-nav-get-premium:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand, #494be7);
+  box-shadow: 0 0 12px rgba(73, 75, 231, 0.35);
+  background: rgba(73, 75, 231, 0.08);
+}
+
 /* ─── Notification dot ─── */
 .notif-dot {
   width: 8px;
