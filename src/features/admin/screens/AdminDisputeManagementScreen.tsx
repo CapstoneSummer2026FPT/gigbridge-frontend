@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle, CheckCircle, Clock, Download, Paperclip, FileText, LoaderCircle,
+  AlertCircle, AlertTriangle, CheckCircle, Clock, Download, Paperclip, FileText, LoaderCircle,
   RefreshCw, Scale, Search, ShieldAlert, ShieldCheck, X, Briefcase, History,
   Landmark, MessageSquare, User, UserCheck, Send
 } from 'lucide-react';
@@ -415,8 +415,8 @@ export default function AdminDisputeManagementScreen() {
         const existing = milestoneDecisions[milestone.milestoneId];
         return [milestone.milestoneId, existing ?? {
           outcome: DisputeMilestoneOutcome.PartiallyAccepted,
-          release: (milestone.lockedAmount / 2).toFixed(2),
-          refund: (milestone.lockedAmount - milestone.lockedAmount / 2).toFixed(2),
+          release: '0.00',
+          refund: '0.00',
           penalty: '0.00',
           reason: '',
         }];
@@ -1269,6 +1269,70 @@ export default function AdminDisputeManagementScreen() {
                   );
                 })}
               </section>
+
+              {/* Violation Panel */}
+              {[
+                { label: 'Client', party: selectedDispute.client, violation: clientViolation, setViolation: setClientViolation },
+                { label: 'Freelancer', party: selectedDispute.freelancer, violation: freelancerViolation, setViolation: setFreelancerViolation },
+              ].map(({ label, party, violation, setViolation }) => (
+                <section className="admin-violation-panel" key={label}>
+                  <div className="admin-violation-header">
+                    <AlertTriangle size={16} />
+                    <strong>Record Policy Violation – {label}</strong>
+                    <small className="text-muted">{party?.fullName}</small>
+                  </div>
+                  <label className="admin-violation-toggle">
+                    <input
+                      type="checkbox"
+                      checked={violation.isViolation}
+                      disabled={actionLoading}
+                      onChange={(e) => setViolation(v => ({ ...v, isViolation: e.target.checked, violationType: null, reason: '', description: '' }))}
+                    />
+                    Mark this party as having committed a policy violation
+                  </label>
+
+                  {violation.isViolation && (
+                    <div className="admin-violation-fields">
+                      <label>Violation Type
+                        <select
+                          value={violation.violationType ?? ''}
+                          disabled={actionLoading}
+                          onChange={(e) => setViolation(v => ({ ...v, violationType: Number(e.target.value) as UserViolationType }))}
+                        >
+                          <option value="" disabled>Select violation type…</option>
+                          <option value={UserViolationType.ContractBreach}>Contract Breach</option>
+                          <option value={UserViolationType.FraudOrMisrepresentation}>Fraud or Misrepresentation</option>
+                          <option value={UserViolationType.HarassmentOrAbuse}>Harassment or Abuse</option>
+                          <option value={UserViolationType.PaymentMisconduct}>Payment Misconduct</option>
+                          <option value={UserViolationType.PlatformPolicyViolation}>Platform Policy Violation</option>
+                          <option value={UserViolationType.Other}>Other</option>
+                        </select>
+                      </label>
+                      <label>Reason <span className="required">*</span>
+                        <input
+                          type="text"
+                          value={violation.reason}
+                          disabled={actionLoading}
+                          placeholder="Short summary of the violation reason…"
+                          onChange={(e) => setViolation(v => ({ ...v, reason: e.target.value }))}
+                        />
+                      </label>
+                      <label>Additional Description (Optional)
+                        <textarea
+                          rows={2}
+                          value={violation.description}
+                          disabled={actionLoading}
+                          placeholder="Detailed description for internal record…"
+                          onChange={(e) => setViolation(v => ({ ...v, description: e.target.value }))}
+                        />
+                      </label>
+                      {violationHasError(violation) && (
+                        <small className="allocation-invalid">Please select a violation type and provide a reason.</small>
+                      )}
+                    </div>
+                  )}
+                </section>
+              ))}
 
               <button
                 type="button"
