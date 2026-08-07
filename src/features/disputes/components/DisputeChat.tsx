@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { AlertCircle, LoaderCircle, MessageSquare, Paperclip, Send, ShieldCheck, User } from 'lucide-react';
+import { AlertCircle, LoaderCircle, MessageSquare, Paperclip, Send, ShieldCheck } from 'lucide-react';
 import { messageGetAPI, type ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -8,6 +8,7 @@ import { MessageType } from '../../../types/models/Message';
 import { UserRole } from '../../../types/models/User';
 import * as signalR from '@microsoft/signalr';
 import { getChatHubUrl } from '../../../service/apiService';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 
 interface DisputeChatProps {
   disputeId: string;
@@ -154,25 +155,34 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
 
               const isOfficial = message.messageType === MessageType.AdminOfficial || message.senderRole === UserRole.Admin;
               const mine = message.senderUserId === user?.id;
+
               const prevMessage = index > 0 ? messages[index - 1] : null;
-              const sameSender = prevMessage && prevMessage.senderUserId === message.senderUserId && prevMessage.messageType !== MessageType.System;
+              const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+
+              const sameSenderAsPrev = Boolean(prevMessage && prevMessage.senderUserId === message.senderUserId && prevMessage.messageType !== MessageType.System);
+              const sameSenderAsNext = Boolean(nextMessage && nextMessage.senderUserId === message.senderUserId && nextMessage.messageType !== MessageType.System);
+
+              const showAvatar = !mine && (!sameSenderAsNext || !nextMessage);
+              const showMetaHeader = !mine && !sameSenderAsPrev;
 
               return (
-                <div className={`dispute-chat-message-row ${mine ? 'mine' : ''} ${isOfficial ? 'admin-official-row' : ''} ${sameSender ? 'grouped' : ''}`} key={message.messageId}>
-                  {!mine && !sameSender && (
-                    <div className="dispute-chat-avatar">
-                      {message.senderAvatar ? (
-                        <img src={message.senderAvatar} alt={message.senderName || 'Sender'} />
-                      ) : (
-                        <div className={`avatar-placeholder ${isOfficial ? 'admin' : ''}`}>
-                          {isOfficial ? <ShieldCheck size={14} /> : message.senderName ? message.senderName[0].toUpperCase() : <User size={14} />}
-                        </div>
+                <div className={`dispute-chat-message-row ${mine ? 'mine' : ''} ${isOfficial ? 'admin-official-row' : ''} ${sameSenderAsPrev ? 'grouped' : ''}`} key={message.messageId}>
+                  {!mine && (
+                    <div className="dispute-chat-avatar-wrapper shrink-0 w-8 h-8 flex items-end">
+                      {showAvatar && (
+                        <UserAvatar
+                          name={message.senderName || (isOfficial ? 'Administrator' : 'Participant')}
+                          src={message.senderAvatar}
+                          userId={message.senderUserId}
+                          size="sm"
+                          premium={isOfficial}
+                        />
                       )}
                     </div>
                   )}
 
                   <div className="dispute-chat-bubble-container">
-                    {!mine && !sameSender && (
+                    {showMetaHeader && (
                       <div className="dispute-chat-meta">
                         <span className="dispute-sender-name">{message.senderName || (isOfficial ? 'Administrator' : 'Participant')}</span>
                         {renderRoleBadge(message.senderRole, isOfficial)}
@@ -180,7 +190,7 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
                     )}
 
                     <div className={`dispute-chat-bubble ${mine ? 'mine' : ''} ${isOfficial ? 'admin-official-bubble' : ''}`}>
-                      {isOfficial && !mine && (
+                      {isOfficial && !mine && showMetaHeader && (
                         <div className="admin-bubble-header">
                           <ShieldCheck size={13} />
                           <strong>Official Administrative Directive</strong>

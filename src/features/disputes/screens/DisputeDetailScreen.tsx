@@ -9,6 +9,7 @@ import { disputeGetAPI } from '../../../api/disputeAPI';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { ContractDto } from '../../../types/models/Contract';
 import { ContractReportIssueType } from '../../../types/models/ReportContract';
 import {
@@ -272,12 +273,21 @@ export default function DisputeDetailScreen() {
                     <div>
                       <User size={16} />
                       <span>Initiated By</span>
-                      <strong>
-                        <UserProfileLink userId={dispute.initiator.id} role={dispute.initiator.role ?? undefined}>
-                          {dispute.initiator.name ?? 'Participant'}
-                        </UserProfileLink>
-                      </strong>
-                      <small>{dispute.initiator.role ?? 'Party'}</small>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <UserAvatar
+                          name={dispute.initiator.name ?? 'Participant'}
+                          userId={dispute.initiator.id}
+                          size="sm"
+                        />
+                        <div>
+                          <strong>
+                            <UserProfileLink userId={dispute.initiator.id} role={dispute.initiator.role ?? undefined}>
+                              {dispute.initiator.name ?? 'Participant'}
+                            </UserProfileLink>
+                          </strong>
+                          <small className="block text-xs text-muted">{dispute.initiator.role ?? 'Party'}</small>
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <FileText size={16} />
@@ -295,29 +305,51 @@ export default function DisputeDetailScreen() {
                   </div>
 
                   <div className="dispute-participants-grid">
-                    <div className="participant-card client">
-                      <div className="participant-badge-role">Client</div>
-                      <div className="participant-info">
-                        <strong>
-                          <UserProfileLink userId={dispute.initiator.role === 'Client' ? dispute.initiator.id : dispute.respondent?.id} role="Client">
-                            {dispute.initiator.role === 'Client' ? dispute.initiator.name : dispute.respondent?.name || 'Client'}
-                          </UserProfileLink>
-                        </strong>
-                        <span>Contract Owner</span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const isClientInitiator = dispute.initiator.role === 'Client';
+                      const clientUserId = isClientInitiator ? dispute.initiator.id : dispute.respondent?.id;
+                      const clientName = isClientInitiator ? dispute.initiator.name : dispute.respondent?.name || 'Client';
+                      const freelancerUserId = !isClientInitiator ? dispute.initiator.id : dispute.respondent?.id;
+                      const freelancerName = !isClientInitiator ? dispute.initiator.name : dispute.respondent?.name || 'Freelancer';
 
-                    <div className="participant-card freelancer">
-                      <div className="participant-badge-role">Freelancer</div>
-                      <div className="participant-info">
-                        <strong>
-                          <UserProfileLink userId={dispute.initiator.role === 'Freelancer' ? dispute.initiator.id : dispute.respondent?.id} role="Freelancer">
-                            {dispute.initiator.role === 'Freelancer' ? dispute.initiator.name : dispute.respondent?.name || 'Freelancer'}
-                          </UserProfileLink>
-                        </strong>
-                        <span>Contract Service Provider</span>
-                      </div>
-                    </div>
+                      return (
+                        <>
+                          <div className="participant-card client">
+                            <UserAvatar
+                              name={clientName ?? 'Client'}
+                              userId={clientUserId}
+                              size="md"
+                            />
+                            <div className="participant-info">
+                              <span className="participant-badge-role">Client</span>
+                              <strong>
+                                <UserProfileLink userId={clientUserId} role="Client">
+                                  {clientName}
+                                </UserProfileLink>
+                              </strong>
+                              <span>Contract Owner</span>
+                            </div>
+                          </div>
+
+                          <div className="participant-card freelancer">
+                            <UserAvatar
+                              name={freelancerName ?? 'Freelancer'}
+                              userId={freelancerUserId}
+                              size="md"
+                            />
+                            <div className="participant-info">
+                              <span className="participant-badge-role">Freelancer</span>
+                              <strong>
+                                <UserProfileLink userId={freelancerUserId} role="Freelancer">
+                                  {freelancerName}
+                                </UserProfileLink>
+                              </strong>
+                              <span>Contract Service Provider</span>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </article>
 
