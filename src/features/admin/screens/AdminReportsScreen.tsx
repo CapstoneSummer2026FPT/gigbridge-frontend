@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
@@ -16,6 +16,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
+import { AdminPageCache, adminPageCacheKey } from '../utils/AdminPageCache';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { reportAPI } from '../../../api/reportAPI';
 import { getAdminManager } from '../adminManagers';
@@ -30,6 +32,7 @@ import '../styles/admin-users-screen.css';
 import '../styles/admin-reports-screen.css';
 
 type ReportAction = 'review' | 'dismiss' | 'resolve' | 'resolve-action';
+type ReportPageData = NonNullable<Awaited<ReturnType<typeof reportAPI.getAdminReports>>['data']>;
 
 interface ActionMenuState {
   report: ReportDto;
@@ -101,6 +104,7 @@ export default function AdminReportsScreen() {
   const [reports, setReports] = useState<ReportDto[]>([]);
   const [summary, setSummary] = useState<ReportSummaryDto>(EMPTY_SUMMARY);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [status, setStatus] = useState<ReportStatus | ''>('');
@@ -116,37 +120,61 @@ export default function AdminReportsScreen() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pageCache = useRef(new AdminPageCache<ReportPageData>()).current;
+  const latestRequest = useRef(0);
 
   const loadSummary = useCallback(async () => {
     const response = await reportAPI.getAdminSummary();
     if (response.success && response.data) setSummary(response.data);
   }, []);
 
-  const loadReports = useCallback(async () => {
-    setLoading(true);
+  const loadReports = useCallback(async (force = false) => {
+    const requestId = ++latestRequest.current;
     setError(null);
-    const response = await reportAPI.getAdminReports({
-      page,
-      pageSize: 10,
+
+    const paramsForPage = (targetPage: number) => ({
+      page: targetPage,
+      pageSize,
       status: status === '' ? undefined : status,
       type: type === '' ? undefined : type,
       reportedEntityType: entityType || undefined,
       reportedEntityId: entityId || undefined,
       search: search || undefined,
     });
+    const keyForPage = (targetPage: number) => adminPageCacheKey('reports', paramsForPage(targetPage));
+    const requestPage = async (targetPage: number): Promise<ReportPageData> => {
+      const response = await reportAPI.getAdminReports(paramsForPage(targetPage));
+      if (!response.success || !response.data) throw new Error(response.message || 'Unable to load reports.');
+      return response.data;
+    };
+    const cached = force ? undefined : pageCache.get(keyForPage(page));
+    setLoading(!cached);
 
-    if (response.success && response.data) {
-      setReports(response.data.items);
-      setTotalPages(response.data.totalPages);
-      setTotalItems(response.data.totalItems);
-    } else {
+    const applyPage = (data: ReportPageData) => {
+      setReports(data.items);
+      setTotalPages(data.totalPages);
+      setTotalItems(data.totalItems);
+    };
+
+    if (cached) applyPage(cached);
+
+    try {
+      const data = await pageCache.load(keyForPage(page), () => requestPage(page), force);
+      if (requestId !== latestRequest.current) return;
+      applyPage(data);
+      [page - 1, page + 1]
+        .filter(target => target >= 1 && target <= data.totalPages)
+        .forEach(target => pageCache.prefetch(keyForPage(target), () => requestPage(target)));
+    } catch (loadError) {
+      if (requestId !== latestRequest.current || cached) return;
       setReports([]);
       setTotalPages(0);
       setTotalItems(0);
-      setError(response.message || 'Unable to load reports.');
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load reports.');
+    } finally {
+      if (requestId === latestRequest.current) setLoading(false);
     }
-    setLoading(false);
-  }, [entityId, entityType, page, search, status, type]);
+  }, [entityId, entityType, page, pageCache, pageSize, search, status, type]);
 
   useEffect(() => {
     void loadSummary();
@@ -198,7 +226,8 @@ export default function AdminReportsScreen() {
 
     if (response.success) {
       closeActionAfterSuccess();
-      await Promise.all([loadReports(), loadSummary()]);
+      pageCache.clear();
+      await Promise.all([loadReports(true), loadSummary()]);
     } else {
       setError(response.message || 'Unable to update this report.');
       setActionLoading(false);
@@ -451,8 +480,9 @@ export default function AdminReportsScreen() {
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-secondary">{loading ? 'Loading reports…' : `${totalItems} report${totalItems === 1 ? '' : 's'}`}</p>
+          <AdminTablePageSize pageSize={pageSize} totalEntries={totalItems} disabled={loading} onPageSizeChange={value => { setPageSize(value); setPage(1); }} />
         </div>
 
         <div className="hidden lg:block glass-card overflow-hidden">
@@ -460,15 +490,16 @@ export default function AdminReportsScreen() {
             <table className="w-full">
               <thead className="border-b border-primary">
                 <tr>
-                  {['Target', 'Reporter', 'Reason', 'Status', 'Created', 'Actions'].map((heading) => (
+                  {['No.', 'Target', 'Reporter', 'Reason', 'Status', 'Created', 'Actions'].map((heading) => (
 
                     <th key={heading} className="text-left p-4 text-xs font-semibold text-primary uppercase">{heading}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary">
-                {reports.map((report) => (
+                {reports.map((report, index) => (
                   <tr key={report.id} className="hover:bg-white/5 align-top">
+                    <td className="p-4 text-xs font-bold text-cyan">{((page - 1) * pageSize) + index + 1}</td>
                     <td className="p-4 min-w-48">
                       <button onClick={() => openTarget(report)} className="text-left" disabled={report.reportedEntityType === 'Review'}>
                         <p className="text-sm font-semibold text-primary hover:text-cyan">{report.targetSummary?.title || report.reportedEntityId}</p>
@@ -496,8 +527,9 @@ export default function AdminReportsScreen() {
         </div>
 
         <div className="lg:hidden space-y-4">
-          {reports.map((report) => (
+          {reports.map((report, index) => (
             <div key={report.id} className="glass-card p-4">
+              <p className="mb-2 text-xs font-bold text-cyan">#{((page - 1) * pageSize) + index + 1}</p>
               <div className="flex justify-between gap-3 mb-3">
                 <div>
                   <p className="font-semibold text-primary">{report.targetSummary?.title || report.reportedEntityId}</p>
@@ -527,13 +559,7 @@ export default function AdminReportsScreen() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-3 mt-6">
-            <button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="btn-ghost-cyan px-4 py-2 disabled:opacity-40">Previous</button>
-            <span className="text-sm text-secondary">Page {page} of {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} className="btn-ghost-cyan px-4 py-2 disabled:opacity-40">Next</button>
-          </div>
-        )}
+        {totalPages > 1 && <AdminTablePagination currentPage={page} totalPages={totalPages} disabled={loading} onPageChange={setPage} ariaLabel="Report pagination" />}
       </div>
 
       {selectedReport && !pendingAction && (

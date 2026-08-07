@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Eye, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
@@ -7,6 +7,8 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { type AdminEloAppealRow, type PaginatedElo } from '../../../types/elo';
 import { eloAppealStatusKey } from '../../elo/utils/eloLabels';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
+import { AdminPageCache, adminPageCacheKey } from '../utils/AdminPageCache';
 import '../styles/admin-elo-screen.css';
 
 const STATUS_OPTIONS = [
@@ -19,10 +21,9 @@ const STATUS_OPTIONS = [
   { value: 5, labelKey: 'elo.appealStatus.5' },
 ];
 
-const PAGE_SIZE = 15;
-
 const formatDate = (value: string, language: string): string =>
   new Date(value).toLocaleDateString(language, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+type AppealPageData = PaginatedElo<AdminEloAppealRow>;
 
 export default function AdminEloAppealsScreen() {
   const { t, i18n } = useTranslation();
@@ -30,33 +31,61 @@ export default function AdminEloAppealsScreen() {
 
   const [items, setItems] = useState<AdminEloAppealRow[]>([]);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const pageCache = useRef(new AdminPageCache<AppealPageData>()).current;
+  const latestRequest = useRef(0);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const requestId = ++latestRequest.current;
     setError('');
-    const response = await adminGetAPI.getAdminEloAppeals({
-      page,
-      pageSize: PAGE_SIZE,
+
+    const paramsForPage = (targetPage: number) => ({
+      page: targetPage,
+      pageSize,
       ...(search ? { search } : {}),
       ...(status !== '' ? { status } : {}),
     });
-    if (response.success && response.data) {
-      const data = response.data as PaginatedElo<AdminEloAppealRow>;
+    const keyForPage = (targetPage: number) => adminPageCacheKey('elo-appeals', paramsForPage(targetPage));
+    const requestPage = async (targetPage: number): Promise<AppealPageData> => {
+      const response = await adminGetAPI.getAdminEloAppeals(paramsForPage(targetPage));
+      if (!response.success || !response.data) throw new Error(response.message || t('adminElo.loadError'));
+      return response.data as AppealPageData;
+    };
+    const cached = pageCache.get(keyForPage(page));
+    setLoading(!cached);
+
+    const applyPage = (data: AppealPageData) => {
       setItems(data.items);
       setTotalPages(data.totalPages);
-    } else {
+      setTotalItems(data.totalCount);
+    };
+
+    if (cached) applyPage(cached);
+
+    try {
+      const data = await pageCache.load(keyForPage(page), () => requestPage(page));
+      if (requestId !== latestRequest.current) return;
+      applyPage(data);
+      [page - 1, page + 1]
+        .filter(target => target >= 1 && target <= data.totalPages)
+        .forEach(target => pageCache.prefetch(keyForPage(target), () => requestPage(target)));
+    } catch (loadError) {
+      if (requestId !== latestRequest.current || cached) return;
       setItems([]);
       setTotalPages(0);
-      setError(response.message || t('adminElo.loadError'));
+      setTotalItems(0);
+      setError(loadError instanceof Error ? loadError.message : t('adminElo.loadError'));
+    } finally {
+      if (requestId === latestRequest.current) setLoading(false);
     }
-    setLoading(false);
-  }, [page, search, status, t]);
+  }, [page, pageCache, pageSize, search, status, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -96,10 +125,15 @@ export default function AdminEloAppealsScreen() {
 
         {error && <div className="admin-elo-error">{error}</div>}
 
+        <div className="mb-3 flex justify-end">
+          <AdminTablePageSize pageSize={pageSize} totalEntries={totalItems} disabled={loading} onPageSizeChange={value => { setPageSize(value); setPage(1); }} />
+        </div>
+
         <section className="admin-elo-table-wrap">
           <table className="admin-elo-table">
             <thead>
               <tr>
+                <th>No.</th>
                 <th>{t('adminElo.user')}</th>
                 <th>{t('adminElo.appealReason')}</th>
                 <th>{t('adminElo.appealResolution')}</th>
@@ -108,10 +142,11 @@ export default function AdminEloAppealsScreen() {
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={5} className="admin-elo-empty">{t('adminElo.loading')}</td></tr>}
-              {!loading && items.length === 0 && <tr><td colSpan={5} className="admin-elo-empty">{t('adminElo.empty')}</td></tr>}
-              {items.map(appeal => (
+              {loading && <tr><td colSpan={6} className="admin-elo-empty">{t('adminElo.loading')}</td></tr>}
+              {!loading && items.length === 0 && <tr><td colSpan={6} className="admin-elo-empty">{t('adminElo.empty')}</td></tr>}
+              {items.map((appeal, index) => (
                 <tr key={appeal.appealId}>
+                  <td><strong className="text-cyan">{((page - 1) * pageSize) + index + 1}</strong></td>
                   <td>
                     <UserProfileLink userId={appeal.user.userId} role={appeal.user.role}>
                       <strong>{appeal.user.fullName}</strong>
@@ -135,17 +170,7 @@ export default function AdminEloAppealsScreen() {
           </table>
         </section>
 
-        {totalPages > 1 && (
-          <div className="admin-elo-pagination">
-            <button disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>
-              {t('adminElo.previous')}
-            </button>
-            <span>{t('adminElo.pageOf', { page, total: totalPages })}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage(value => value + 1)}>
-              {t('adminElo.next')}
-            </button>
-          </div>
-        )}
+        {totalPages > 1 && <AdminTablePagination currentPage={page} totalPages={totalPages} disabled={loading} onPageChange={setPage} ariaLabel="Elo appeal pagination" />}
       </div>
     </AppLayout>
   );
