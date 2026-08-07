@@ -354,11 +354,31 @@ export function useClientProposals() {
       }
       setDetailLoading(false);
 
-      const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, true);
-      if (evalRes.success && evalRes.data) {
-        setEvalResult(evalRes.data);
+      const prop = proposals.find(p => p.proposalsId === proposalId);
+      if (prop && prop.aiScore !== null && prop.aiScore !== undefined) {
+        const rawQuestions = prop.aiGradedQuestions || [];
+        const gradedQuestions = rawQuestions.map((q: any) => ({
+          questionIndex: typeof q.questionIndex === 'number' ? q.questionIndex : q.question_index,
+          questionText: q.questionText ?? q.question_text ?? '',
+          questionType: q.questionType ?? q.question_type ?? '',
+          difficulty: q.difficulty ?? '',
+          candidateAnswer: q.candidateAnswer ?? q.candidate_answer ?? '',
+          score: q.score ?? 0,
+          feedback: q.feedback ?? '',
+        }));
+
+        setEvalResult({
+          score: prop.aiScore,
+          summary: prop.aiSummary || '',
+          technicalSkills: prop.aiTechnicalSkills || [],
+          softSkills: prop.aiSoftSkills || [],
+          recommendedHire: !!prop.aiRecommendedHire,
+          holisticAdjustment: prop.aiHolisticAdjustment ?? 0,
+          holisticAdjustmentReason: prop.aiHolisticAdjustmentReason || '',
+          gradedQuestions,
+        });
       } else {
-        setEvalError(evalRes.message || 'Evaluation not available for this proposal.');
+        setEvalResult(null);
       }
     } catch (err: unknown) {
       setEvalError(err instanceof Error ? err.message : 'An error occurred during evaluation.');
@@ -372,33 +392,6 @@ export function useClientProposals() {
     setModalTab(initialTab);
     setEvalModalOpen(true);
     loadEvaluation(proposalId);
-  };
-
-  const runManualEvaluation = async (proposalId: string) => {
-    try {
-      setEvalLoading(true);
-      setEvalError('');
-      const evalRes = await proposalPostAPI.evaluateVettingAnswers(proposalId, false);
-      if (evalRes && evalRes.success && evalRes.data) {
-        const evaluation = evalRes.data;
-        setEvalResult(evaluation);
-        setProposals(prev => prev.map(p => p.proposalsId === proposalId ? {
-          ...p,
-          aiScore: evaluation.score,
-          aiSummary: evaluation.summary,
-          aiRecommendedHire: evaluation.recommendedHire,
-          aiTechnicalSkills: evaluation.technicalSkills,
-          aiSoftSkills: evaluation.softSkills,
-          aiEvaluatedAt: new Date().toISOString()
-        } : p));
-      } else {
-        setEvalError(evalRes.message || 'Failed to evaluate proposal.');
-      }
-    } catch (err: unknown) {
-      setEvalError(err instanceof Error ? err.message : 'An error occurred during evaluation.');
-    } finally {
-      setEvalLoading(false);
-    }
   };
 
 
@@ -472,6 +465,5 @@ export function useClientProposals() {
     setProposalReloadKey,
     isBusy,
     canClientAct,
-    runManualEvaluation,
   };
 }
