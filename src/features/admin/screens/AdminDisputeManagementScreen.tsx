@@ -500,7 +500,7 @@ export default function AdminDisputeManagementScreen() {
         return msg.disputeRecipient === DisputeMessageRecipient.Freelancer ||
                msg.disputeRecipient === DisputeMessageRecipient.Both;
       }
-      return msg.senderRole === UserRole.Freelancer;
+      return msg.senderRole === UserRole.Freelancer || msg.senderRole === UserRole.Admin;
     });
   }, [disputeMessages]);
 
@@ -510,7 +510,7 @@ export default function AdminDisputeManagementScreen() {
         return msg.disputeRecipient === DisputeMessageRecipient.Client ||
                msg.disputeRecipient === DisputeMessageRecipient.Both;
       }
-      return msg.senderRole === UserRole.Client;
+      return msg.senderRole === UserRole.Client || msg.senderRole === UserRole.Admin;
     });
   }, [disputeMessages]);
 
