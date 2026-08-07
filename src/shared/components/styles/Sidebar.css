@@ -47,13 +47,22 @@
 }
 
 /* ─── Top Control Buttons (Clean Help Icon & Light Switch Toggle) ─── */
+.sidebar-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.5rem 0.75rem 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  min-height: 2.5rem;
+  flex-shrink: 0;
+}
+
 .sidebar-top-actions {
-  position: absolute;
-  top: 0.875rem;
-  right: 0.875rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-left: auto;
   z-index: 30;
 }
 

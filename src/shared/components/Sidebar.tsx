@@ -42,48 +42,48 @@ function getClientNavItems(t: any): NavItem[] {
   return [
     {
       id: 'dashboard',
-      label: t('nav.dashboard'),
+      label: t('nav.dashboard', { defaultValue: 'Dashboard' }),
       icon: <LayoutDashboard size={18} />,
       path: '/client/dashboard',
     },
     {
       id: 'jobs',
-      label: t('nav.jobs'),
+      label: t('nav.jobs', { defaultValue: 'Jobs' }),
       icon: <Briefcase size={18} />,
       children: [
-        { id: 'post-job', label: t('nav.postJob'), icon: <PlusCircle size={18} />, path: '/jobs/post/guide', badge: 'AI', badgeType: 'cyan' },
-        { id: 'my-jobs', label: t('nav.myJobs'), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
+        { id: 'post-job', label: t('nav.postJob', { defaultValue: 'Post a Job' }), icon: <PlusCircle size={18} />, path: '/jobs/post/guide', badge: 'AI', badgeType: 'cyan' },
+        { id: 'my-jobs', label: t('nav.myJobs', { defaultValue: 'My Jobs' }), icon: <Briefcase size={18} />, path: '/jobs/my-jobs' },
       ],
     },
     {
       id: 'work',
-      label: t('nav.work'),
+      label: t('nav.work', { defaultValue: 'Work' }),
       icon: <Flag size={18} />,
       children: [
-        { id: 'proposals', label: t('nav.proposals'), icon: <FileText size={18} />, path: '/proposals' },
-        { id: 'contracts', label: t('nav.contracts'), icon: <FileText size={18} />, path: '/contracts' },
-        { id: 'projects', label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
-        { id: 'reviews', label: t('nav.reviews'), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'proposals', label: t('nav.proposals', { defaultValue: 'Proposals' }), icon: <FileText size={18} />, path: '/proposals' },
+        { id: 'contracts', label: t('nav.contracts', { defaultValue: 'Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
+        { id: 'projects', label: t('nav.projects', { defaultValue: 'Projects' }), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'reviews', label: t('nav.reviews', { defaultValue: 'Reviews' }), icon: <Star size={18} />, path: '/reviews' },
       ],
     },
     {
       id: 'freelancers',
-      label: t('nav.freelancers'),
+      label: t('nav.freelancers', { defaultValue: 'Freelancers' }),
       icon: <Search size={18} />,
       children: [
-        { id: 'smart-matching', label: t('nav.smartMatching'), icon: <Zap size={18} />, path: '/talent-matching', badge: 'PRO', badgeType: 'purple' },
-        { id: 'saved-freelancers', label: t('nav.savedFreelancers'), icon: <Bookmark size={18} />, path: '/talent-matching?tab=saved' },
+        { id: 'smart-matching', label: t('nav.smartMatching', { defaultValue: 'Smart Matching' }), icon: <Zap size={18} />, path: '/talent-matching', badge: 'PRO', badgeType: 'purple' },
+        { id: 'saved-freelancers', label: t('nav.savedFreelancers', { defaultValue: 'Saved Freelancers' }), icon: <Bookmark size={18} />, path: '/talent-matching?tab=saved' },
       ],
     },
     {
       id: 'messages',
-      label: t('nav.messages'),
+      label: t('nav.messages', { defaultValue: 'Messages' }),
       icon: <MessageSquare size={18} />,
       path: '/messages',
     },
     {
       id: 'ai-assistant',
-      label: t('nav.aiAssistant'),
+      label: t('nav.aiAssistant', { defaultValue: 'AI Assistant' }),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
       badge: 'NEW',
@@ -91,12 +91,12 @@ function getClientNavItems(t: any): NavItem[] {
     },
     {
       id: 'wallet',
-      label: t('nav.wallet'),
+      label: t('nav.wallet', { defaultValue: 'Wallet' }),
       icon: <Wallet size={18} />,
       children: [
-        { id: 'deposit', label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
-        { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
-        { id: 'financial-overview', label: t('nav.financialOverview'), icon: <BarChart2 size={18} />, path: '/financial-overview' },
+        { id: 'deposit', label: t('wallet.deposit', { defaultValue: 'Deposit' }), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
+        { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+        { id: 'financial-overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
       ],
     },
   ];
@@ -106,39 +106,39 @@ function getFreelancerNavItems(t: any): NavItem[] {
   return [
     {
       id: 'dashboard',
-      label: t('nav.dashboard'),
+      label: t('nav.dashboard', { defaultValue: 'Dashboard' }),
       icon: <LayoutDashboard size={18} />,
       path: '/freelancer/dashboard',
     },
     {
       id: 'find-work',
-      label: t('nav.findWork'),
+      label: t('nav.findWork', { defaultValue: 'Find Work' }),
       icon: <Search size={18} />,
       children: [
-        { id: 'search-jobs', label: t('nav.searchJobs'), icon: <Search size={18} />, path: '/jobs' },
-        { id: 'saved-jobs', label: t('nav.savedJobs'), icon: <Bookmark size={18} />, path: '/jobs/saved' },
+        { id: 'search-jobs', label: t('nav.searchJobs', { defaultValue: 'Search Jobs' }), icon: <Search size={18} />, path: '/jobs' },
+        { id: 'saved-jobs', label: t('nav.savedJobs', { defaultValue: 'Saved Jobs' }), icon: <Bookmark size={18} />, path: '/jobs/saved' },
       ],
     },
     {
       id: 'my-jobs',
-      label: t('nav.myWork'),
+      label: t('nav.myWork', { defaultValue: 'My Work' }),
       icon: <Briefcase size={18} />,
       children: [
-        { id: 'my-proposals', label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
-        { id: 'my-contracts', label: t('nav.myContracts'), icon: <FileText size={18} />, path: '/contracts' },
-        { id: 'my-projects', label: t('nav.myProjects'), icon: <Flag size={18} />, path: '/projects' },
-        { id: 'my-reviews', label: t('nav.myReviews'), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'my-proposals', label: t('nav.myProposals', { defaultValue: 'My Proposals' }), icon: <FileText size={18} />, path: '/proposals' },
+        { id: 'my-contracts', label: t('nav.myContracts', { defaultValue: 'My Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
+        { id: 'my-projects', label: t('nav.myProjects', { defaultValue: 'My Projects' }), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'my-reviews', label: t('nav.myReviews', { defaultValue: 'My Reviews' }), icon: <Star size={18} />, path: '/reviews' },
       ],
     },
     {
       id: 'messages',
-      label: t('nav.messages'),
+      label: t('nav.messages', { defaultValue: 'Messages' }),
       icon: <MessageSquare size={18} />,
       path: '/messages',
     },
     {
       id: 'ai-assistant',
-      label: t('nav.aiAssistant'),
+      label: t('nav.aiAssistant', { defaultValue: 'AI Assistant' }),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
       badge: 'NEW',
@@ -146,12 +146,12 @@ function getFreelancerNavItems(t: any): NavItem[] {
     },
     {
       id: 'finance',
-      label: t('nav.financialOverview'),
+      label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }),
       icon: <BarChart2 size={18} />,
       children: [
-        { id: 'overview', label: t('nav.financialOverview'), icon: <BarChart2 size={18} />, path: '/financial-overview' },
-        { id: 'withdraw', label: t('wallet.withdraw'), icon: <Banknote size={18} />, path: '/wallet/withdraw' },
-        { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
+        { id: 'overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
+        { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdraw' },
+        { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
     },
   ];
@@ -394,46 +394,53 @@ export function Sidebar({ isOpen, onClose, isPinned, onTogglePin }: SidebarProps
 
   return (
     <aside ref={sidebarRef} className={`gb-sidebar ${isOpen || isPinned ? 'open' : ''} ${isPinned ? 'pinned' : ''}`}>
-      {/* Top Right Actions Bar: Clickable Standalone Help ? & Light-Switch Toggle */}
-      <div className="sidebar-top-actions">
-        <div className="relative" ref={helpRef}>
-          <button
-            type="button"
-            onClick={() => setShowToggleHelp(prev => !prev)}
-            className={`sidebar-help-icon-btn ${showToggleHelp ? 'active' : ''}`}
-            title={t('sidebar.toggleHelpLabel', { defaultValue: 'Xem giải thích tác dụng Sidebar' })}
-            aria-label={t('sidebar.toggleHelpLabel', { defaultValue: 'Sidebar Mode Explanation' })}
-          >
-            <HelpCircle size={17} strokeWidth={2.2} />
-          </button>
-
-          {showToggleHelp && (
-            <div className="sidebar-help-popover" role="tooltip">
-              <div className="sidebar-help-title">
-                <HelpCircle size={14} className="text-[var(--brand,#494be7)] shrink-0" />
-                <span>{t('sidebar.toggleHelpTitle', { defaultValue: 'Cố định Sidebar' })}</span>
-              </div>
-              <p className="sidebar-help-desc">
-                {t('sidebar.toggleHelpDesc', {
-                  defaultValue:
-                    'Bật công tắc để giữ Sidebar cố định khi chuyển trang. Tắt công tắc để Sidebar tự đóng khi nhấp trang hoặc nhấp ra ngoài.',
-                })}
-              </p>
-            </div>
-          )}
+      {/* Top Header Row Bar: Brand Label & Action Buttons */}
+      <div className="sidebar-header-bar">
+        <div className="flex items-center gap-2 px-1 text-xs font-black uppercase tracking-wider text-[var(--gb-text-muted,#64748b)]">
+          <span className="h-2 w-2 rounded-full bg-[var(--brand,#494be7)]" />
+          <span>{role === 2 ? 'Admin Portal' : role === 0 ? 'Client Menu' : 'Freelancer Menu'}</span>
         </div>
 
-        {onTogglePin && (
-          <button
-            type="button"
-            onClick={onTogglePin}
-            className={`sidebar-switch-toggle ${isPinned ? 'active' : ''}`}
-            title={isPinned ? t('sidebar.pinnedTitle', { defaultValue: 'Sidebar cố định (Đang BẬT)' }) : t('sidebar.unpinnedTitle', { defaultValue: 'Sidebar tự đóng (Đang TẮT)' })}
-            aria-label={isPinned ? 'Disable Persistent Sidebar' : 'Enable Persistent Sidebar'}
-          >
-            <span className="sidebar-switch-thumb" />
-          </button>
-        )}
+        <div className="sidebar-top-actions">
+          <div className="relative" ref={helpRef}>
+            <button
+              type="button"
+              onClick={() => setShowToggleHelp(prev => !prev)}
+              className={`sidebar-help-icon-btn ${showToggleHelp ? 'active' : ''}`}
+              title={t('sidebar.toggleHelpLabel', { defaultValue: 'Xem giải thích tác dụng Sidebar' })}
+              aria-label={t('sidebar.toggleHelpLabel', { defaultValue: 'Sidebar Mode Explanation' })}
+            >
+              <HelpCircle size={17} strokeWidth={2.2} />
+            </button>
+
+            {showToggleHelp && (
+              <div className="sidebar-help-popover" role="tooltip">
+                <div className="sidebar-help-title">
+                  <HelpCircle size={14} className="text-[var(--brand,#494be7)] shrink-0" />
+                  <span>{t('sidebar.toggleHelpTitle', { defaultValue: 'Cố định Sidebar' })}</span>
+                </div>
+                <p className="sidebar-help-desc">
+                  {t('sidebar.toggleHelpDesc', {
+                    defaultValue:
+                      'Bật công tắc để giữ Sidebar cố định khi chuyển trang. Tắt công tắc để Sidebar tự đóng khi nhấp trang hoặc nhấp ra ngoài.',
+                  })}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {onTogglePin && (
+            <button
+              type="button"
+              onClick={onTogglePin}
+              className={`sidebar-switch-toggle ${isPinned ? 'active' : ''}`}
+              title={isPinned ? t('sidebar.pinnedTitle', { defaultValue: 'Sidebar cố định (Đang BẬT)' }) : t('sidebar.unpinnedTitle', { defaultValue: 'Sidebar tự đóng (Đang TẮT)' })}
+              aria-label={isPinned ? 'Disable Persistent Sidebar' : 'Enable Persistent Sidebar'}
+            >
+              <span className="sidebar-switch-thumb" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}
