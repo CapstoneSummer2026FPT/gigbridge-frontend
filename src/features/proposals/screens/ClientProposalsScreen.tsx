@@ -730,7 +730,7 @@ export default function ClientProposalsScreen() {
                           </div>
 
                           {/* Holistic Adjustment */}
-                          {evalResult.holisticAdjustment !== 0 && (
+                          {(evalResult.holisticAdjustment !== 0 || evalResult.holisticAdjustmentReason) && (
                             <div className="mt-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 p-3 text-xs space-y-1">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-extrabold text-purple-700 dark:text-purple-300 uppercase tracking-wider text-[10px]">Holistic Adjustment:</span>
