@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, Ban, Send, AlertTriangle,
+  ArrowLeft, Ban, Send, AlertTriangle, PanelLeftOpen, PanelLeftClose, PanelLeft,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
   Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks
@@ -109,6 +109,25 @@ export default function ProjectWorkspaceScreen() {
   const { contractId } = useParams<{ contractId: string }>();
   const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
   const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('gigbridge_workspace_left_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleLeftPanel = () => {
+    setIsLeftPanelCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('gigbridge_workspace_left_collapsed', String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [submitModal, setSubmitModal] = useState<{ milestoneId: string; title: string } | null>(null);
   const [submitDescription, setSubmitDescription] = useState('');
@@ -688,7 +707,7 @@ export default function ProjectWorkspaceScreen() {
     <AppLayout fullWidth hideAIWidget>
       <div className="project-workspace-page flex flex-col h-[calc(100vh-5rem)] pt-4 bg-background text-foreground overflow-hidden">
         {/* Top Header */}
-        <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-8 py-3 border-b border-border shadow-sm flex-shrink-0">
+        <header className="glass-header sticky top-0 z-50 flex justify-between items-center px-6 sm:px-8 py-3 border-b border-border shadow-sm flex-shrink-0">
           <div className="flex items-center gap-6">
             <button
               onClick={() => navigate('/projects')}
@@ -793,11 +812,26 @@ export default function ProjectWorkspaceScreen() {
 
         {/* 3-Column Messaging Workspace */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Column 1: Conversations List (Left Pane) */}
-          <section className={`w-80 border-r border-border flex flex-col bg-card flex-shrink-0 lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}>
-            <div className="p-4 border-b border-border flex justify-between items-center">
-              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold">{t('workspace.recentWorkspace')}</span>
+          {/* Column 1: Conversations List (Left Pane - Collapsible) */}
+          <section
+            className={`border-r border-border flex flex-col bg-card flex-shrink-0 transition-all duration-300 ${
+              isLeftPanelCollapsed ? 'w-0 opacity-0 overflow-hidden border-none pointer-events-none' : 'w-80'
+            } lg:flex ${mobileTab === 'list' ? 'flex-1 w-full' : 'hidden lg:flex'}`}
+          >
+            <div className="px-4 py-3.5 border-b border-border flex items-center justify-between min-h-[53px] shrink-0">
+              <span className="font-headline-sm text-xs uppercase tracking-widest text-muted-foreground font-semibold truncate">
+                {t('workspace.recentWorkspace')}
+              </span>
+              <button
+                type="button"
+                onClick={toggleLeftPanel}
+                className="p-1.5 rounded-lg border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer shrink-0"
+                title="Thu gọn danh sách workspace"
+              >
+                <PanelLeftClose size={16} />
+              </button>
             </div>
+
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {workspaceProjects.map(proj => {
                 const isActive = proj.id === activeProjectId;
@@ -808,19 +842,23 @@ export default function ProjectWorkspaceScreen() {
                       setActiveProjectId(proj.id);
                       navigate(`/workspace/${proj.id}`);
                     }}
-                    className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''}`}
+                    className={`border-b border-border/50 p-4 cursor-pointer transition-all group hover:bg-muted/30 ${
+                      isActive ? 'bg-[var(--gb-cyan)]/5 border-l-4 border-l-[var(--gb-cyan)]' : ''
+                    }`}
                   >
                     <div className="flex gap-3">
                       <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'} className="relative flex-shrink-0">
                         <UserAvatar name={proj.partnerName} src={proj.partnerAvatar} userId={proj.partnerUserId} size="md" />
                         {proj.online && (
-                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full"></span>
+                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full" />
                         )}
                       </UserProfileLink>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-0.5">
                           <h3 className="font-headline-sm text-sm truncate font-semibold">
-                            <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>{proj.partnerName}</UserProfileLink>
+                            <UserProfileLink userId={proj.partnerUserId} role={isClient ? 'freelancer' : 'client'}>
+                              {proj.partnerName}
+                            </UserProfileLink>
                           </h3>
                           <span className="text-[10px] text-muted-foreground">{proj.time}</span>
                         </div>
@@ -834,7 +872,7 @@ export default function ProjectWorkspaceScreen() {
                         </p>
                       </div>
                       {proj.unread && (
-                        <span className="w-2 h-2 bg-[var(--gb-cyan)] rounded-full self-center"></span>
+                        <span className="w-2 h-2 bg-[var(--gb-cyan)] rounded-full self-center" />
                       )}
                     </div>
                   </div>
@@ -843,84 +881,98 @@ export default function ProjectWorkspaceScreen() {
             </div>
           </section>
 
-          {/* Column 2: Milestone Management (Center Pane) */}
-          <section className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm lg:flex ${mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'}`}>
-            {/* Header */}
-            <div className="glass-header px-6 py-4 border-b border-border flex justify-between items-center">
+          {/* Column 2: Milestone Management (Center Pane - 65% ratio) */}
+          <section className={`flex-1 flex flex-col bg-card/20 m-2 rounded-2xl border border-border overflow-hidden relative shadow-sm lg:flex ${mobileTab === 'milestones' ? 'flex' : 'hidden lg:flex'} ${showInfo ? 'lg:w-[65%] xl:w-[68%]' : 'lg:w-full'}`}>
+
+            {/* Professional Milestone Management Header */}
+            <div className="glass-header px-6 py-3.5 border-b border-border flex flex-wrap items-center justify-between gap-4 shrink-0">
+              {/* Left Title & Status */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[var(--gb-cyan)]/10 flex items-center justify-center text-[var(--gb-cyan)]">
-                  <CreditCard size={20} />
+                {isLeftPanelCollapsed && (
+                  <button
+                    type="button"
+                    onClick={toggleLeftPanel}
+                    className="p-2 rounded-xl border border-border/80 bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition cursor-pointer hidden lg:flex items-center justify-center shrink-0 shadow-2xs"
+                    title={t('workspace.recentWorkspace')}
+                  >
+                    <PanelLeftOpen size={16} />
+                  </button>
+                )}
+                <div className="w-9 h-9 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0 shadow-2xs">
+                  <CreditCard size={18} />
                 </div>
                 <div>
-                  <h2 className="font-headline-sm text-sm font-semibold">{t('workspace.milestoneManagement')}</h2>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                    {t('workspace.trackDeliverables', { title: currentProjData.title })}
-                  </p>
+                  <h2 className="text-sm font-black text-text-primary tracking-tight">{t('workspace.milestoneManagement')}</h2>
+                  <div className="flex items-center gap-2 mt-0.5 text-[11px] text-text-muted font-medium">
+                    <span>{t('workspace.totalMilestones')}: <strong className="text-text-primary">{project.milestones.length}</strong></span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>{t('workspace.projectProgress')}:</span>
+                      <span className="w-16 bg-surface-muted h-1.5 rounded-full overflow-hidden inline-block align-middle">
+                        <span className="bg-brand h-full rounded-full block transition-all duration-300" style={{ width: `${project.progress}%` }} />
+                      </span>
+                      <strong className="text-text-primary">{project.progress}%</strong>
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+
+              {/* Right Stats & Actions */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="hidden sm:flex items-center gap-1.5 text-xs bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="text-[10px] uppercase tracking-wider opacity-80">{t('workspace.paidAmount')}:</span>
+                  <GigCoinAmount amount={project.paidAmount || 0} />
+                </div>
+
                 <button
                   type="button"
                   onClick={handleOpenMilestoneEditor}
-                  className="bg-card hover:bg-muted border border-border text-foreground font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                  className="bg-surface-card hover:bg-surface-muted border border-border/80 text-text-primary font-bold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                 >
-                  <ListChecks size={15} />
+                  <ListChecks size={14} className="text-brand" />
                   <span>{t('workspace.milestoneDetails')}</span>
                 </button>
+
                 {showEndProjectButton && (
                   <button
                     onClick={openEndProjectDialog}
                     disabled={!allMilestonesApproved}
-                    className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-md cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer"
                     title={allMilestonesApproved ? t('workspace.releaseEscrowTooltip') : t('workspace.approveAllTooltip')}
                   >
-                    <CheckCircle size={16} />
+                    <CheckCircle size={14} />
                     <span>{t('workspace.endProject')}</span>
                   </button>
                 )}
+
                 {activeContract?.canReview && (
                   <button
                     type="button"
                     onClick={() => setReviewDialogOpen(true)}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 transition-all cursor-pointer"
+                    className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-extrabold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
                   >
-                    <Star size={16} />
+                    <Star size={14} />
                     <span>{t(isClient ? 'reviews.leaveForFreelancer' : 'reviews.leaveForClient')}</span>
                   </button>
                 )}
+
                 {activeContract?.hasReviewedByCurrentUser && activeContract.status === ContractStatus.Completed && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-600">
-                    <CheckCircle size={15} /> {t('reviews.reviewed')}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600">
+                    <CheckCircle size={13} /> {t('reviews.reviewed')}
                   </span>
                 )}
+
                 <button
                   onClick={() => setShowInfo(!showInfo)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-all cursor-pointer ${showInfo ? 'bg-[var(--gb-cyan)]/10 border-[var(--gb-cyan)]/30 text-[var(--gb-cyan)]' : 'text-muted-foreground'}`}
+                  className={`w-8 h-8 flex items-center justify-center rounded-xl border transition cursor-pointer ${
+                    showInfo 
+                      ? 'bg-brand/10 border-brand/30 text-brand' 
+                      : 'border-border text-text-muted hover:text-text-primary hover:bg-surface-muted'
+                  }`}
                   title={t('workspace.toggleChatInfo')}
                 >
-                  <Info size={18} />
+                  <Info size={16} />
                 </button>
-              </div>
-            </div>
-
-            {/* Dashboard stats */}
-            <div className="p-6 bg-card/50 border-b border-border grid grid-cols-3 gap-4">
-              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.totalMilestones')}</span>
-                <span className="text-xl font-bold mt-1">{project.milestones.length}</span>
-              </div>
-              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.projectProgress')}</span>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
-                    <div className="bg-[var(--gb-cyan)] h-full rounded-full" style={{ width: `${project.progress}%` }}></div>
-                  </div>
-                  <span className="text-xs font-bold">{project.progress}%</span>
-                </div>
-              </div>
-              <div className="bg-card p-4 rounded-xl border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{t('workspace.paidAmount')}</span>
-                <span className="text-xl font-bold mt-1 text-green-500"><GigCoinAmount amount={project.paidAmount || 0} /></span>
               </div>
             </div>
 
@@ -956,6 +1008,11 @@ export default function ProjectWorkspaceScreen() {
                   const isInProgress = milestone.status === 'in_progress';
                   const isSubmitted = milestone.status === 'submitted';
                   const isPending = milestone.status === 'pending';
+                  const previousMilestone = idx > 0 ? project.milestones[idx - 1] : null;
+                  const isPreviousMilestoneStarted = idx === 0 || (previousMilestone && previousMilestone.status !== 'pending');
+                  const isConsecutiveEarlyStart = isPending && isPreviousMilestoneStarted;
+                  const canUnlockOrStartMilestone = isInProgress || isConsecutiveEarlyStart;
+
                   const isReleasedInFull = milestone.amount > 0 && milestone.releasedAmount >= milestone.amount;
                   const withdrawalEligibility = getEarlyWithdrawalEligibility(
                     project.milestones,
@@ -973,9 +1030,9 @@ export default function ProjectWorkspaceScreen() {
                     !isReleasedInFull;
                   const workItems = milestone.workItems || [];
                   const allWorkItemsCompleted = workItems.length > 0 && workItems.every(item => Number(item.status) === ContractWorkItemStatus.Completed);
-                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && isInProgress && allWorkItemsCompleted;
+                  const canFreelancerSubmit = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && allWorkItemsCompleted;
                   const canClientReview = !isWorkspaceLocked && isClient && isSubmitted;
-                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending;
+                  const canFreelancerRequestUnlock = !isWorkspaceLocked && !isClient && isPending && isPreviousMilestoneStarted;
                   const isMilestoneActionPending = milestoneActionPendingId === milestone.id;
                   const earlyStartRequest = (earlyStartRequests || []).find(request => request.milestoneId === milestone.id && Number(request.status) === 0);
 
@@ -987,7 +1044,9 @@ export default function ProjectWorkspaceScreen() {
                           ? 'bg-card border-green-500/20'
                           : isInProgress
                           ? 'bg-card border-[var(--gb-cyan)]/50 ring-1 ring-[var(--gb-cyan)]/25'
-                          : 'bg-muted/10 opacity-90 border-border'
+                          : isConsecutiveEarlyStart
+                          ? 'bg-card border-amber-500/30'
+                          : 'bg-muted/10 opacity-75 border-border'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -998,6 +1057,10 @@ export default function ProjectWorkspaceScreen() {
                             ) : isInProgress ? (
                               <div className="w-5 h-5 rounded-full border-2 border-[var(--gb-cyan)] flex items-center justify-center flex-shrink-0">
                                 <div className="w-2.5 h-2.5 bg-[var(--gb-cyan)] rounded-full animate-pulse"></div>
+                              </div>
+                            ) : isConsecutiveEarlyStart ? (
+                              <div className="w-5 h-5 rounded-full border-2 border-amber-500 flex items-center justify-center flex-shrink-0">
+                                <div className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></div>
                               </div>
                             ) : (
                               <Circle size={20} className="text-muted-foreground flex-shrink-0" />
@@ -1037,6 +1100,8 @@ export default function ProjectWorkspaceScreen() {
                               ? 'bg-green-500/10 text-green-500'
                               : isInProgress
                               ? 'bg-[var(--gb-cyan)]/10 text-[var(--gb-cyan)] animate-pulse'
+                              : isConsecutiveEarlyStart
+                              ? 'bg-amber-500/10 text-amber-500'
                               : 'bg-muted text-muted-foreground'
                           }`}>
                             {milestone.status}
@@ -1048,8 +1113,8 @@ export default function ProjectWorkspaceScreen() {
                         <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Work Breakdown Structure</h4>
                         {workItems.map((workItem, workIndex) => {
                           const status = Number(workItem.status);
-                          const canStartWork = !isWorkspaceLocked && !isClient && isInProgress && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
-                          const canCompleteWork = !isWorkspaceLocked && !isClient && isInProgress && status === ContractWorkItemStatus.InProgress;
+                          const canStartWork = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && (status === ContractWorkItemStatus.Todo || status === ContractWorkItemStatus.RevisionRequired);
+                          const canCompleteWork = !isWorkspaceLocked && !isClient && canUnlockOrStartMilestone && status === ContractWorkItemStatus.InProgress;
                           return <div key={workItem.workItemId} className="rounded-lg border border-border bg-background p-3">
                             <div className="flex flex-wrap items-start justify-between gap-2"><div><strong className="text-xs">{workIndex + 1}. {workItem.title}</strong>{workItem.description && <p className="mt-1 text-[11px] text-muted-foreground">{workItem.description}</p>}</div><span className="rounded bg-muted px-2 py-1 text-[10px] font-bold">{ContractWorkItemStatus[status] || status}</span></div>
                             {workItem.progressNote && <p className="mt-2 text-[11px]"><strong>Progress:</strong> {workItem.progressNote}</p>}
@@ -1218,10 +1283,10 @@ export default function ProjectWorkspaceScreen() {
             </div>
           </section>
 
-          {/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files) */}
+          {/* Column 3: Interaction Pane (Right Pane - tabs: Chat, Files - 25-30% ratio) */}
           <aside
             className={`border-l border-border flex flex-col bg-card overflow-hidden transition-all duration-300 flex-shrink-0
-              lg:${ showInfo ? 'w-[450px] xl:w-[480px] opacity-100' : 'w-0 opacity-0 pointer-events-none' }
+              lg:${ showInfo ? 'w-[35%] xl:w-[30%] 2xl:w-[25%] max-w-[420px] min-w-[300px] opacity-100' : 'w-0 opacity-0 pointer-events-none' }
               ${mobileTab === 'chat' ? 'flex flex-1' : 'hidden lg:flex'}
               ${!showInfo ? 'lg:w-0 lg:opacity-0 lg:pointer-events-none' : ''}
             `}

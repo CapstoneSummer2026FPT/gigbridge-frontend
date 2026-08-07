@@ -137,6 +137,8 @@
     "errorInitDepositUnknown": "An error occurred during payment initialization.",
     "syncTitle": "Confirming Transaction",
     "syncDesc": "Your payment is being processed. Balance will be updated after PayOS confirmation.",
+    "syncSuccessTitle": "Deposit Successful!",
+    "syncSuccessDesc": "Transaction confirmed. Your GigCoin balance has been updated successfully!",
     "currentBalance": "Current Balance",
     "reloadBalance": "Reload Balance",
     "viewHistory": "View Transaction History",
