@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle,
@@ -23,7 +23,10 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { AccountStatus, UserViolationType, type AdminDisputeDetail, type AdminDisputeListItem } from '../../../types/models/AdminDispute';
 import { DisputeMilestoneOutcome, DisputeResolution, DisputeStatus, EvidenceRequestTarget, type DisputeEvidence } from '../../../types/models/Dispute';
 import type { ConversationMessageResponse } from '../../../api/messageAPI/GET';
+import { DisputeMessageRecipient } from '../../../api/messageAPI/GET';
 import { MilestoneStatus } from '../../../types/models/Contract';
+import * as signalR from '@microsoft/signalr';
+import { getChatHubUrl } from '../../../service/apiService';
 import '../styles/admin-dispute-management-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
@@ -123,6 +126,8 @@ export default function AdminDisputeManagementScreen() {
   const [disputeMessages, setDisputeMessages] = useState<ConversationMessageResponse[]>([]);
   const [adminMessage, setAdminMessage] = useState('');
   const [adminMessageFiles, setAdminMessageFiles] = useState<File[]>([]);
+  const [adminMessageRecipient, setAdminMessageRecipient] = useState<DisputeMessageRecipient>(DisputeMessageRecipient.Both);
+  const disputeConversationIdRef = useRef<string | null>(null);
   const [milestoneDecisions, setMilestoneDecisions] = useState<Record<string, { outcome: DisputeMilestoneOutcome; release: string; refund: string; penalty: string; reason: string }>>({});
   const [clientViolation, setClientViolation] = useState<ViolationState>(emptyViolation);
   const [freelancerViolation, setFreelancerViolation] = useState<ViolationState>(emptyViolation);
@@ -206,6 +211,26 @@ export default function AdminDisputeManagementScreen() {
     void load(selectedDispute.conversations.workspaceConversationId, setWorkspaceMessages);
     void load(selectedDispute.conversations.disputeConversationId, setDisputeMessages);
   }, [selectedDispute]);
+
+  useEffect(() => {
+    const conversationId = selectedDispute?.conversations.disputeConversationId ?? null;
+    disputeConversationIdRef.current = conversationId;
+    if (!conversationId) return;
+    let disposed = false;
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(getChatHubUrl(), { accessTokenFactory: () => localStorage.getItem('access_token') ?? '' })
+      .withAutomaticReconnect()
+      .build();
+    const receive = (payload: ConversationMessageResponse) => {
+      if (disposed || payload.conversationId !== disputeConversationIdRef.current) return;
+      setDisputeMessages(current => current.some(item => item.messageId === payload.messageId || (payload.clientMessageId && item.clientMessageId === payload.clientMessageId))
+        ? current : [...current, payload]);
+    };
+    connection.on('ReceiveMessage', receive);
+    connection.onreconnected(() => void connection.invoke('JoinConversation', conversationId));
+    void connection.start().then(() => disposed ? connection.stop() : connection.invoke('JoinConversation', conversationId)).catch(() => undefined);
+    return () => { disposed = true; connection.off('ReceiveMessage', receive); void connection.stop(); };
+  }, [selectedDispute?.conversations.disputeConversationId]);
 
   const stats = useMemo(() => ({
     visible: disputes.length,
@@ -403,6 +428,7 @@ export default function AdminDisputeManagementScreen() {
       selectedDispute.conversations.disputeConversationId,
       adminMessage,
       adminMessageFiles,
+      adminMessageRecipient,
     );
     if (response.success && response.data) {
       setDisputeMessages(items => [...items, response.data!]);
@@ -606,7 +632,7 @@ export default function AdminDisputeManagementScreen() {
 
                 {activeTab === 'workspace' && <section className="dispute-detail-section admin-investigation-panel"><h3>Workspace Conversation · Read only</h3><div className="admin-conversation-history">{workspaceMessages.map(message => <div key={message.messageId} className="admin-conversation-message"><p>{message.content}</p><small>{formatDate(message.sentAt)}</small></div>)}</div></section>}
 
-                {activeTab === 'conversation' && <section className="dispute-detail-section admin-investigation-panel"><h3>Dispute Conversation</h3><div className="admin-conversation-history">{disputeMessages.map(message => <div key={message.messageId} className={message.messageType === 10 ? 'admin-official-message' : 'admin-conversation-message'}><strong>{message.messageType === 10 ? 'Administrator' : 'Participant'}</strong><p>{message.content}</p>{message.attachments.map(attachment => <a key={attachment.messageAttachmentId} href={attachment.fileUrl} target="_blank" rel="noreferrer"><Paperclip size={13} /> {attachment.fileName}</a>)}<small>{formatDate(message.sentAt)}</small></div>)}</div><div className="admin-message-composer"><textarea value={adminMessage} onChange={event => setAdminMessage(event.target.value)} placeholder="Write an official administrative message. Use @Reporter or @Respondent to mention a party." rows={3} /><label className="admin-message-file-picker"><Paperclip size={16} />Attach files<input type="file" multiple onChange={event => setAdminMessageFiles(Array.from(event.target.files ?? []).slice(0, 5))} /></label>{adminMessageFiles.length > 0 && <small>{adminMessageFiles.map(file => file.name).join(', ')}</small>}<button onClick={() => void sendAdminMessage()} disabled={!adminMessage.trim() && adminMessageFiles.length === 0}>Send</button></div></section>}
+                {activeTab === 'conversation' && <section className="dispute-detail-section admin-investigation-panel"><h3>Dispute Conversation</h3><div className="admin-conversation-history">{disputeMessages.map(message => <div key={message.messageId} className={message.messageType === 10 ? 'admin-official-message' : 'admin-conversation-message'}><strong>{message.senderName || (message.messageType === 10 ? 'Administrator' : 'Participant')}</strong>{message.disputeRecipient !== null && message.disputeRecipient !== undefined && <small> · {message.disputeRecipient === DisputeMessageRecipient.Client ? 'Client only' : message.disputeRecipient === DisputeMessageRecipient.Freelancer ? 'Freelancer only' : 'Both parties'}</small>}<p>{message.content}</p>{message.attachments.map(attachment => <a key={attachment.messageAttachmentId} href={attachment.fileUrl} target="_blank" rel="noreferrer"><Paperclip size={13} /> {attachment.fileName}</a>)}<small>{formatDate(message.sentAt)}</small></div>)}</div><div className="admin-message-composer"><label>Recipient<select value={adminMessageRecipient} onChange={event => setAdminMessageRecipient(Number(event.target.value) as DisputeMessageRecipient)}><option value={DisputeMessageRecipient.Client}>Send to Client</option><option value={DisputeMessageRecipient.Freelancer}>Send to Freelancer</option><option value={DisputeMessageRecipient.Both}>Send to Both</option></select></label><textarea value={adminMessage} onChange={event => setAdminMessage(event.target.value)} placeholder="Write an official administrative message. Use @Reporter or @Respondent to mention a party." rows={3} /><label className="admin-message-file-picker"><Paperclip size={16} />Attach files<input type="file" multiple onChange={event => setAdminMessageFiles(Array.from(event.target.files ?? []).slice(0, 5))} /></label>{adminMessageFiles.length > 0 && <small>{adminMessageFiles.map(file => file.name).join(', ')}</small>}<button onClick={() => void sendAdminMessage()} disabled={!adminMessage.trim() && adminMessageFiles.length === 0}>Send</button></div></section>}
 
                 {activeTab === 'evidence' && <section className="dispute-detail-section admin-investigation-panel"><h3>Evidence Review</h3>{selectedDispute.evidence.map(evidence => <div className="admin-evidence-row" key={evidence.id}><div><strong>{evidence.fileName ?? `Pending request: ${evidence.description}`}</strong><small>{evidence.isRequestedByAdmin ? `Requested · ${evidence.isRequestFulfilled ? 'Fulfilled' : 'Pending'} · deadline ${formatDate(evidence.deadline)}` : `Additional evidence · ${formatDate(evidence.createdAt)}`}</small>{evidence.reviewNote && <p>{evidence.reviewNote}</p>}</div><div>{evidence.fileName && <button onClick={() => void downloadEvidence(evidence)}><Download size={15} />Download</button>}{evidence.fileName && !evidence.reviewedAt && <button onClick={() => void reviewEvidence(evidence)}>Mark reviewed</button>}</div></div>)}</section>}
 

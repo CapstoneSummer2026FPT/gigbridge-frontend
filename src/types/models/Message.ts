@@ -52,6 +52,12 @@ export enum ParticipantRole {
   Support = 3,
 }
 
+export enum DisputeMessageRecipient {
+  Client = 0,
+  Freelancer = 1,
+  Both = 2,
+}
+
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 /** Mirrors backend: Domain.Entities.MessageAttachment */
@@ -82,6 +88,7 @@ export interface IMessage {
   editedAt?: string | null;
   deletedForEveryoneAt?: string | null;
   deletedForSenderAt?: string | null;
+  disputeRecipient?: DisputeMessageRecipient | null;
 
   // Navigation (populated when included by API)
   messageAttachments?: IMessageAttachment[];
@@ -212,6 +219,10 @@ export interface Message {
   content: string;
   conversationId?: string;
   senderId?: string;
+  senderName?: string | null;
+  senderAvatar?: string | null;
+  senderRole?: number | null;
+  disputeRecipient?: DisputeMessageRecipient | null;
   clientMessageId?: string | null;
   type?: string; // 'text' | 'file' | 'deal' | 'negotiation_request' | 'system'
   messageType?: MessageType | number;
