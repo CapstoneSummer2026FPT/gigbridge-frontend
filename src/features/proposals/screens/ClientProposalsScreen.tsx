@@ -689,14 +689,6 @@ export default function ClientProposalsScreen() {
                             <p className="text-muted-foreground mt-1">This proposal has not been evaluated by AI yet.</p>
                           )}
                         </div>
-                        {rawAnswers.length > 0 && rawAnswers.some(ans => ans.answerText?.trim()) && (
-                          <button
-                            onClick={() => activeId && openProposalModal(activeId)}
-                            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md cursor-pointer border-none"
-                          >
-                            <Brain size={14} /> Evaluate Proposal with AI
-                          </button>
-                        )}
                       </div>
                     )}
 
@@ -736,6 +728,21 @@ export default function ClientProposalsScreen() {
                             <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted mb-1">{t('proposalAnswers.summary')}</h4>
                             <p className="text-xs leading-relaxed text-text-primary font-medium whitespace-pre-wrap">{evalResult.summary}</p>
                           </div>
+
+                          {/* Holistic Adjustment */}
+                          {(evalResult.holisticAdjustment !== 0 || evalResult.holisticAdjustmentReason) && (
+                            <div className="mt-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 p-3 text-xs space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-extrabold text-purple-700 dark:text-purple-300 uppercase tracking-wider text-[10px]">Holistic Adjustment:</span>
+                                <span className={`font-black px-1.5 py-0.5 rounded text-[10px] ${evalResult.holisticAdjustment > 0 ? 'bg-emerald-500/15 text-emerald-600' : 'bg-rose-500/15 text-rose-600'}`}>
+                                  {evalResult.holisticAdjustment > 0 ? `+${evalResult.holisticAdjustment}` : evalResult.holisticAdjustment}
+                                </span>
+                              </div>
+                              {evalResult.holisticAdjustmentReason && (
+                                <p className="text-text-primary leading-relaxed font-medium mt-1">{evalResult.holisticAdjustmentReason}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Questions Breakdown */}
