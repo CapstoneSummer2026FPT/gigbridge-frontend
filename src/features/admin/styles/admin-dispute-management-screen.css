@@ -801,6 +801,37 @@
   white-space: pre-wrap;
 }
 
+/* Not-assigned admin read-only banner */
+.admin-chat-not-assigned-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.9rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 8px;
+  color: #d97706;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.admin-chat-not-assigned-banner svg {
+  flex-shrink: 0;
+  color: #f59e0b;
+}
+
+/* Disabled state for chat input box */
+.admin-chat-input-box.input-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.admin-message-file-picker.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Send Controls Area */
 .admin-chat-send-controls {
   display: flex;
@@ -810,6 +841,11 @@
   padding: 1rem;
   border-radius: 12px;
   border: 1px solid var(--gb-border);
+}
+
+.target-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* 3 Send Target Buttons visually matching Left, Center, Right columns */

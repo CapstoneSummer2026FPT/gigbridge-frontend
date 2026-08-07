@@ -167,7 +167,7 @@ export default function AdminJobsScreen() {
         pageSize,
         search: debouncedSearchQuery.trim() || undefined,
         status: filterType === 'all' ? undefined : JOB_FILTER_STATUS[filterType],
-        sortBy: sortBy === 'posted' ? 'newest' : sortBy === 'budget' ? 'budgetMax' : 'title',
+        sortBy: (sortBy === 'posted' ? 'newest' : sortBy === 'budget' ? 'budgetMax' : 'title') as 'newest' | 'title' | 'budgetMin' | 'budgetMax',
         sortDesc: sortBy !== 'title',
         includeSummary,
         knownTotalItems: includeSummary ? undefined : knownTotal,

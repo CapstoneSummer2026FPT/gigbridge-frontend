@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, AlertTriangle, CheckCircle, Clock, Download, Paperclip, FileText, LoaderCircle,
   RefreshCw, Scale, Search, ShieldAlert, ShieldCheck, X, Briefcase, History,
-  Landmark, MessageSquare, User, UserCheck, Send
+  Landmark, MessageSquare, User, UserCheck, Send, Lock
 } from 'lucide-react';
 import { adminGetAPI, adminPatchAPI, adminPostAPI } from '../../../api/adminAPI';
 import type { AdminResolveDisputePayload } from '../../../api/adminAPI/POST';
@@ -15,6 +15,7 @@ import { MilestoneStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
 import * as signalR from '@microsoft/signalr';
 import { getChatHubUrl } from '../../../service/apiService';
+import { useApp } from '../../../app/providers/AppProvider';
 import '../styles/admin-dispute-management-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
@@ -93,6 +94,7 @@ const accountStatusLabels: Record<AccountStatus, string> = {
 type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milestones' | 'evidence' | 'audit' | 'workspace';
 
 export default function AdminDisputeManagementScreen() {
+  const { user: currentUser } = useApp();
   const [disputes, setDisputes] = useState<AdminDisputeListItem[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<'all' | DisputeStatus>('all');
   const [search, setSearch] = useState('');
@@ -490,6 +492,15 @@ export default function AdminDisputeManagementScreen() {
     setContractAction(0);
   };
 
+  // Whether current admin is the assigned arbitrator for this dispute.
+  // Only the assigned admin may send official dispute messages (enforced by backend).
+  const isAssignedAdmin = useMemo(() => {
+    if (!selectedDispute || !currentUser) return false;
+    // If no admin is assigned yet, allow sending (backend will confirm).
+    if (!selectedDispute.assignedAdminId) return true;
+    return selectedDispute.assignedAdminId === currentUser.id;
+  }, [selectedDispute, currentUser]);
+
   // Categorize messages for the 2-column chat layout (Freelancer & Client)
   // Messages targeted to 'Both' appear in BOTH columns simultaneously.
   // Messages targeted to Freelancer (1) appear ONLY in Freelancer column.
@@ -874,12 +885,25 @@ export default function AdminDisputeManagementScreen() {
 
                     {/* Send Controls Area */}
                     <div className="admin-chat-send-controls">
+                      {/* Not-assigned admin warning banner */}
+                      {!isAssignedAdmin && selectedDispute.assignedAdminId && (
+                        <div className="admin-chat-not-assigned-banner">
+                          <Lock size={16} />
+                          <span>
+                            <strong>Read-only:</strong> Only the assigned arbitrator
+                            {selectedDispute.assignedAdminName ? ` (${selectedDispute.assignedAdminName})` : ''}
+                            {' '}may send official messages in this dispute.
+                          </span>
+                        </div>
+                      )}
+
                       {/* Target Audience Selector Bar */}
                       <div className="send-target-buttons-row">
                         <button
                           type="button"
                           className={`target-btn target-freelancer ${adminMessageRecipient === DisputeMessageRecipient.Freelancer ? 'selected' : ''}`}
                           onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Freelancer)}
+                          disabled={!isAssignedAdmin}
                         >
                           <User size={15} />
                           <span>Send to Freelancer</span>
@@ -889,6 +913,7 @@ export default function AdminDisputeManagementScreen() {
                           type="button"
                           className={`target-btn target-both ${adminMessageRecipient === DisputeMessageRecipient.Both ? 'selected' : ''}`}
                           onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Both)}
+                          disabled={!isAssignedAdmin}
                         >
                           <ShieldCheck size={15} />
                           <span>Send to Both (Mirrored)</span>
@@ -898,6 +923,7 @@ export default function AdminDisputeManagementScreen() {
                           type="button"
                           className={`target-btn target-client ${adminMessageRecipient === DisputeMessageRecipient.Client ? 'selected' : ''}`}
                           onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Client)}
+                          disabled={!isAssignedAdmin}
                         >
                           <UserCheck size={15} />
                           <span>Send to Client</span>
@@ -905,27 +931,31 @@ export default function AdminDisputeManagementScreen() {
                       </div>
 
                       {/* Single Message Input Box */}
-                      <div className="admin-chat-input-box">
+                      <div className={`admin-chat-input-box${!isAssignedAdmin ? ' input-disabled' : ''}`}>
                         <textarea
                           value={adminMessage}
                           onChange={event => setAdminMessage(event.target.value)}
                           placeholder={
-                            adminMessageRecipient === DisputeMessageRecipient.Freelancer
-                              ? "Write message to Freelancer..."
+                            !isAssignedAdmin
+                              ? 'You are not the assigned arbitrator — messaging is read-only.'
+                              : adminMessageRecipient === DisputeMessageRecipient.Freelancer
+                              ? 'Write message to Freelancer...'
                               : adminMessageRecipient === DisputeMessageRecipient.Client
-                              ? "Write message to Client..."
-                              : "Write message to Both parties (will be sent to Freelancer & Client simultaneously)..."
+                              ? 'Write message to Client...'
+                              : 'Write message to Both parties (will be sent to Freelancer & Client simultaneously)...'
                           }
                           rows={3}
+                          disabled={!isAssignedAdmin}
                         />
 
                         <div className="composer-footer-row">
-                          <label className="admin-message-file-picker">
+                          <label className={`admin-message-file-picker${!isAssignedAdmin ? ' disabled' : ''}`}>
                             <Paperclip size={16} />
                             <span>Attach files</span>
                             <input
                               type="file"
                               multiple
+                              disabled={!isAssignedAdmin}
                               onChange={event => setAdminMessageFiles(Array.from(event.target.files ?? []).slice(0, 5))}
                             />
                           </label>
@@ -943,7 +973,7 @@ export default function AdminDisputeManagementScreen() {
                               type="button"
                               className={`main-send-btn target-${adminMessageRecipient}`}
                               onClick={() => void sendAdminMessage()}
-                              disabled={sendingMessage || (!adminMessage.trim() && adminMessageFiles.length === 0)}
+                              disabled={!isAssignedAdmin || sendingMessage || (!adminMessage.trim() && adminMessageFiles.length === 0)}
                             >
                               {sendingMessage ? (
                                 <LoaderCircle className="admin-dispute-spin" size={16} />
