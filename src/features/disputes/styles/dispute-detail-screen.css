@@ -621,48 +621,27 @@
   font-weight: 750;
 }
 
-.dispute-chat-official {
-  align-self: center;
-  width: min(92%, 650px);
-  padding: 1rem 1.2rem;
-  border: 1px solid color-mix(in srgb, var(--gb-cyan) 40%, var(--gb-border));
-  border-radius: 12px;
+.dispute-chat-official,
+.admin-official-bubble {
+  align-self: flex-start;
+  border: 1px solid color-mix(in srgb, var(--gb-cyan) 35%, var(--gb-border));
   background: color-mix(in srgb, var(--gb-cyan) 8%, var(--gb-bg-secondary));
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
-.dispute-chat-official-header {
+.admin-bubble-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   color: var(--gb-cyan);
+  font-size: 0.78rem;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--gb-cyan) 20%, transparent);
 }
 
-.dispute-chat-official-header strong {
-  font-size: 0.9rem;
-}
-
-.dispute-recipient-tag {
-  margin-left: auto;
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+.avatar-placeholder.admin {
   background: color-mix(in srgb, var(--gb-cyan) 18%, transparent);
-}
-
-.dispute-chat-official-body {
-  white-space: pre-wrap;
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-
-.dispute-chat-official time {
-  font-size: 0.74rem;
-  color: var(--gb-text-secondary);
-  align-self: flex-end;
+  color: var(--gb-cyan);
 }
 
 .dispute-chat-message-row {

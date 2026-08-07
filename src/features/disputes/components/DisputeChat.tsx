@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { AlertCircle, LoaderCircle, MessageSquare, Paperclip, Send, ShieldCheck, User } from 'lucide-react';
-import { messageGetAPI, type ConversationMessageResponse, DisputeMessageRecipient } from '../../../api/messageAPI/GET';
+import { messageGetAPI, type ConversationMessageResponse } from '../../../api/messageAPI/GET';
 import { messagePostAPI } from '../../../api/messageAPI/POST';
 import { useApp } from '../../../app/providers/AppProvider';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -152,47 +152,20 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
                 );
               }
 
-              const isOfficial = message.messageType === MessageType.AdminOfficial;
-              if (isOfficial) {
-                return (
-                  <div className="dispute-chat-official" key={message.messageId}>
-                    <div className="dispute-chat-official-header">
-                      <ShieldCheck size={16} />
-                      <strong>Official Administrative Directive</strong>
-                      {message.disputeRecipient !== null && message.disputeRecipient !== undefined && (
-                        <span className="dispute-recipient-tag">
-                          {message.disputeRecipient === DisputeMessageRecipient.Client ? 'Client Only' : message.disputeRecipient === DisputeMessageRecipient.Freelancer ? 'Freelancer Only' : 'Both Parties'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="dispute-chat-official-body">{message.content}</div>
-                    {message.attachments.length > 0 && (
-                      <div className="dispute-chat-attachments">
-                        {message.attachments.map(attachment => (
-                          <a key={attachment.messageAttachmentId} href={attachment.fileUrl} target="_blank" rel="noreferrer" className="dispute-attachment-chip">
-                            <Paperclip size={13} /> {attachment.fileName}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                    <time>{new Date(message.sentAt).toLocaleString()}</time>
-                  </div>
-                );
-              }
-
+              const isOfficial = message.messageType === MessageType.AdminOfficial || message.senderRole === UserRole.Admin;
               const mine = message.senderUserId === user?.id;
               const prevMessage = index > 0 ? messages[index - 1] : null;
-              const sameSender = prevMessage && prevMessage.senderUserId === message.senderUserId && prevMessage.messageType !== MessageType.System && prevMessage.messageType !== MessageType.AdminOfficial;
+              const sameSender = prevMessage && prevMessage.senderUserId === message.senderUserId && prevMessage.messageType !== MessageType.System;
 
               return (
-                <div className={`dispute-chat-message-row ${mine ? 'mine' : ''} ${sameSender ? 'grouped' : ''}`} key={message.messageId}>
+                <div className={`dispute-chat-message-row ${mine ? 'mine' : ''} ${isOfficial ? 'admin-official-row' : ''} ${sameSender ? 'grouped' : ''}`} key={message.messageId}>
                   {!mine && !sameSender && (
                     <div className="dispute-chat-avatar">
                       {message.senderAvatar ? (
                         <img src={message.senderAvatar} alt={message.senderName || 'Sender'} />
                       ) : (
-                        <div className="avatar-placeholder">
-                          {message.senderName ? message.senderName[0].toUpperCase() : <User size={14} />}
+                        <div className={`avatar-placeholder ${isOfficial ? 'admin' : ''}`}>
+                          {isOfficial ? <ShieldCheck size={14} /> : message.senderName ? message.senderName[0].toUpperCase() : <User size={14} />}
                         </div>
                       )}
                     </div>
@@ -201,12 +174,18 @@ export function DisputeChat({ disputeId }: DisputeChatProps) {
                   <div className="dispute-chat-bubble-container">
                     {!mine && !sameSender && (
                       <div className="dispute-chat-meta">
-                        <span className="dispute-sender-name">{message.senderName || 'Participant'}</span>
+                        <span className="dispute-sender-name">{message.senderName || (isOfficial ? 'Administrator' : 'Participant')}</span>
                         {renderRoleBadge(message.senderRole, isOfficial)}
                       </div>
                     )}
 
-                    <div className={`dispute-chat-bubble ${mine ? 'mine' : ''}`}>
+                    <div className={`dispute-chat-bubble ${mine ? 'mine' : ''} ${isOfficial ? 'admin-official-bubble' : ''}`}>
+                      {isOfficial && !mine && (
+                        <div className="admin-bubble-header">
+                          <ShieldCheck size={13} />
+                          <strong>Official Administrative Directive</strong>
+                        </div>
+                      )}
                       <div className="dispute-chat-text">{message.content}</div>
 
                       {message.attachments.length > 0 && (

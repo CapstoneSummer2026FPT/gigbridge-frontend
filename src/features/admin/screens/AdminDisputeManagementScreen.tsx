@@ -490,35 +490,37 @@ export default function AdminDisputeManagementScreen() {
     setContractAction(0);
   };
 
-  // Categorize messages for the 3-column chat layout
+  // Categorize messages for the 2-column chat layout (Freelancer & Client)
+  // Messages targeted to 'Both' appear in BOTH columns simultaneously.
+  // Messages targeted to Freelancer (1) appear ONLY in Freelancer column.
+  // Messages targeted to Client (0) appear ONLY in Client column.
   const freelancerMessages = useMemo(() => {
-    return disputeMessages.filter(msg =>
-      msg.disputeRecipient === DisputeMessageRecipient.Freelancer ||
-      (msg.disputeRecipient === null && msg.senderRole === UserRole.Freelancer)
-    );
-  }, [disputeMessages]);
-
-  const bothMessages = useMemo(() => {
-    return disputeMessages.filter(msg =>
-      msg.disputeRecipient === DisputeMessageRecipient.Both ||
-      msg.messageType === 10 ||
-      (msg.disputeRecipient === null && (msg.senderRole === UserRole.Admin || msg.senderRole === null))
-    );
+    return disputeMessages.filter(msg => {
+      if (msg.disputeRecipient !== null && msg.disputeRecipient !== undefined) {
+        return msg.disputeRecipient === DisputeMessageRecipient.Freelancer ||
+               msg.disputeRecipient === DisputeMessageRecipient.Both;
+      }
+      return msg.senderRole === UserRole.Freelancer;
+    });
   }, [disputeMessages]);
 
   const clientMessages = useMemo(() => {
-    return disputeMessages.filter(msg =>
-      msg.disputeRecipient === DisputeMessageRecipient.Client ||
-      (msg.disputeRecipient === null && msg.senderRole === UserRole.Client)
-    );
+    return disputeMessages.filter(msg => {
+      if (msg.disputeRecipient !== null && msg.disputeRecipient !== undefined) {
+        return msg.disputeRecipient === DisputeMessageRecipient.Client ||
+               msg.disputeRecipient === DisputeMessageRecipient.Both;
+      }
+      return msg.senderRole === UserRole.Client;
+    });
   }, [disputeMessages]);
 
   const renderSingleChatMessage = (message: ConversationMessageResponse) => {
     const isOfficial = message.messageType === 10;
+    const isBoth = message.disputeRecipient === DisputeMessageRecipient.Both;
     return (
       <div
         key={message.messageId}
-        className={`admin-chat-bubble-card ${isOfficial ? 'official-directive' : ''} ${message.senderRole === UserRole.Admin ? 'admin-sender' : ''}`}
+        className={`admin-chat-bubble-card ${isOfficial ? 'official-directive' : ''} ${isBoth ? 'both-directive' : ''} ${message.senderRole === UserRole.Admin ? 'admin-sender' : ''}`}
       >
         <div className="admin-chat-bubble-header">
           <div className="admin-chat-sender-info">
@@ -823,28 +825,28 @@ export default function AdminDisputeManagementScreen() {
                   </div>
                 )}
 
-                {/* TAB 2: TRI-PARTY CHAT WORKSPACE (THE 3-COLUMN CHAT LAYOUT) */}
+                {/* TAB 2: TRI-PARTY CHAT WORKSPACE (2-COLUMN CHAT LAYOUT) */}
                 {activeTab === 'conversation' && (
                   <section className="admin-investigation-panel tri-party-chat-workspace">
                     <div className="tri-party-chat-header">
                       <div className="title-area">
                         <h3><MessageSquare size={18} /> Tri-Party Dispute Communication</h3>
-                        <p>Visually separated communication lanes between Admin, Freelancer, and Client.</p>
+                        <p>Direct communication channels with Freelancer and Client. Broadcast messages to Both will appear in both conversations.</p>
                       </div>
                     </div>
 
-                    {/* 3-Column Chat Streams Layout */}
-                    <div className="tri-party-streams-grid">
+                    {/* 2-Column Chat Streams Layout */}
+                    <div className="tri-party-streams-grid two-column">
                       {/* Left Column: Freelancer Stream */}
                       <div className={`chat-stream-column freelancer-stream ${adminMessageRecipient === DisputeMessageRecipient.Freelancer ? 'active-target' : ''}`}>
                         <div className="stream-header freelancer">
                           <User size={15} />
-                          <strong>Freelancer Channel</strong>
+                          <strong>Freelancer Conversation</strong>
                           <span className="role-pill freelancer">Freelancer</span>
                         </div>
                         <div className="stream-messages-container">
                           {freelancerMessages.length === 0 ? (
-                            <div className="stream-empty">No messages in Freelancer channel.</div>
+                            <div className="stream-empty">No messages in Freelancer conversation.</div>
                           ) : (
                             freelancerMessages.map(renderSingleChatMessage)
                           )}
@@ -852,33 +854,16 @@ export default function AdminDisputeManagementScreen() {
                         </div>
                       </div>
 
-                      {/* Center Column: Both Parties / Broadcast Stream */}
-                      <div className={`chat-stream-column both-stream ${adminMessageRecipient === DisputeMessageRecipient.Both ? 'active-target' : ''}`}>
-                        <div className="stream-header both">
-                          <ShieldCheck size={15} />
-                          <strong>Both Parties (Public)</strong>
-                          <span className="role-pill admin">Broadcast</span>
-                        </div>
-                        <div className="stream-messages-container">
-                          {bothMessages.length === 0 ? (
-                            <div className="stream-empty">No broadcast messages sent to both parties.</div>
-                          ) : (
-                            bothMessages.map(renderSingleChatMessage)
-                          )}
-                          <div ref={bothChatEndRef} />
-                        </div>
-                      </div>
-
                       {/* Right Column: Client Stream */}
                       <div className={`chat-stream-column client-stream ${adminMessageRecipient === DisputeMessageRecipient.Client ? 'active-target' : ''}`}>
                         <div className="stream-header client">
                           <UserCheck size={15} />
-                          <strong>Client Channel</strong>
+                          <strong>Client Conversation</strong>
                           <span className="role-pill client">Client</span>
                         </div>
                         <div className="stream-messages-container">
                           {clientMessages.length === 0 ? (
-                            <div className="stream-empty">No messages in Client channel.</div>
+                            <div className="stream-empty">No messages in Client conversation.</div>
                           ) : (
                             clientMessages.map(renderSingleChatMessage)
                           )}
@@ -889,7 +874,7 @@ export default function AdminDisputeManagementScreen() {
 
                     {/* Send Controls Area */}
                     <div className="admin-chat-send-controls">
-                      {/* 3 Target Action Buttons visually aligned Left, Center, Right */}
+                      {/* Target Audience Selector Bar */}
                       <div className="send-target-buttons-row">
                         <button
                           type="button"
@@ -897,7 +882,7 @@ export default function AdminDisputeManagementScreen() {
                           onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Freelancer)}
                         >
                           <User size={15} />
-                          <span>Send to Freelancer (Left Channel)</span>
+                          <span>Send to Freelancer</span>
                         </button>
 
                         <button
@@ -906,7 +891,7 @@ export default function AdminDisputeManagementScreen() {
                           onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Both)}
                         >
                           <ShieldCheck size={15} />
-                          <span>Send to Both Parties (Center Channel)</span>
+                          <span>Send to Both (Mirrored)</span>
                         </button>
 
                         <button
@@ -915,7 +900,7 @@ export default function AdminDisputeManagementScreen() {
                           onClick={() => setAdminMessageRecipient(DisputeMessageRecipient.Client)}
                         >
                           <UserCheck size={15} />
-                          <span>Send to Client (Right Channel)</span>
+                          <span>Send to Client</span>
                         </button>
                       </div>
 
@@ -926,10 +911,10 @@ export default function AdminDisputeManagementScreen() {
                           onChange={event => setAdminMessage(event.target.value)}
                           placeholder={
                             adminMessageRecipient === DisputeMessageRecipient.Freelancer
-                              ? "Write private administrative message to Freelancer... (use @Reporter or @Respondent)"
+                              ? "Write message to Freelancer..."
                               : adminMessageRecipient === DisputeMessageRecipient.Client
-                              ? "Write private administrative message to Client... (use @Reporter or @Respondent)"
-                              : "Write official broadcast message to Both Parties... (use @Reporter or @Respondent)"
+                              ? "Write message to Client..."
+                              : "Write message to Both parties (will be sent to Freelancer & Client simultaneously)..."
                           }
                           rows={3}
                         />
@@ -953,27 +938,29 @@ export default function AdminDisputeManagementScreen() {
                             </div>
                           )}
 
-                          <button
-                            type="button"
-                            className={`main-send-btn target-${adminMessageRecipient}`}
-                            onClick={() => void sendAdminMessage()}
-                            disabled={sendingMessage || (!adminMessage.trim() && adminMessageFiles.length === 0)}
-                          >
-                            {sendingMessage ? (
-                              <LoaderCircle className="admin-dispute-spin" size={16} />
-                            ) : (
-                              <Send size={16} />
-                            )}
-                            <span>
-                              {sendingMessage
-                                ? 'Sending...'
-                                : adminMessageRecipient === DisputeMessageRecipient.Freelancer
-                                ? 'Send to Freelancer'
-                                : adminMessageRecipient === DisputeMessageRecipient.Client
-                                ? 'Send to Client'
-                                : 'Broadcast to Both'}
-                            </span>
-                          </button>
+                          <div className="send-action-buttons-group">
+                            <button
+                              type="button"
+                              className={`main-send-btn target-${adminMessageRecipient}`}
+                              onClick={() => void sendAdminMessage()}
+                              disabled={sendingMessage || (!adminMessage.trim() && adminMessageFiles.length === 0)}
+                            >
+                              {sendingMessage ? (
+                                <LoaderCircle className="admin-dispute-spin" size={16} />
+                              ) : (
+                                <Send size={16} />
+                              )}
+                              <span>
+                                {sendingMessage
+                                  ? 'Sending...'
+                                  : adminMessageRecipient === DisputeMessageRecipient.Freelancer
+                                  ? 'Send to Freelancer'
+                                  : adminMessageRecipient === DisputeMessageRecipient.Client
+                                  ? 'Send to Client'
+                                  : 'Send to Both'}
+                              </span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1073,17 +1060,58 @@ export default function AdminDisputeManagementScreen() {
                   </section>
                 )}
 
-                {/* TAB 7: WORKSPACE MESSAGES */}
+                {/* TAB 7: WORKSPACE MESSAGES (REDESIGNED READ-ONLY CHAT) */}
                 {activeTab === 'workspace' && (
                   <section className="admin-investigation-panel">
-                    <h3>Contract Workspace Conversation (Read-Only)</h3>
-                    <div className="admin-conversation-history">
-                      {workspaceMessages.map(message => (
-                        <div key={message.messageId} className="admin-conversation-message">
-                          <p>{message.content}</p>
-                          <small>{formatDate(message.sentAt)}</small>
-                        </div>
-                      ))}
+                    <div className="admin-workspace-chat-header">
+                      <h3><MessageSquare size={18} /> Contract Workspace Conversation</h3>
+                      <p>Full read-only transcript of prior communications between Client and Freelancer on this contract.</p>
+                    </div>
+
+                    <div className="admin-workspace-chat-container">
+                      {workspaceMessages.length === 0 ? (
+                        <div className="admin-dispute-empty">No conversation messages recorded in this contract workspace.</div>
+                      ) : (
+                        workspaceMessages.map((message, index) => {
+                          const prevMessage = index > 0 ? workspaceMessages[index - 1] : null;
+                          const sameSender = prevMessage && prevMessage.senderUserId === message.senderUserId;
+                          const roleLabel = message.senderRole === UserRole.Client ? 'Client' : message.senderRole === UserRole.Freelancer ? 'Freelancer' : message.senderRole === UserRole.Admin ? 'Admin' : 'Participant';
+                          const roleClass = message.senderRole === UserRole.Client ? 'role-client' : message.senderRole === UserRole.Freelancer ? 'role-freelancer' : 'role-admin';
+
+                          return (
+                            <div key={message.messageId} className={`admin-workspace-msg-row ${sameSender ? 'grouped' : ''}`}>
+                              {!sameSender && (
+                                <div className="admin-workspace-msg-header">
+                                  <div className="admin-chat-sender-info">
+                                    {message.senderAvatar ? (
+                                      <img src={message.senderAvatar} alt={message.senderName || 'Sender'} className="admin-chat-avatar" />
+                                    ) : (
+                                      <div className="admin-chat-avatar-placeholder">
+                                        {message.senderName ? message.senderName[0].toUpperCase() : <User size={12} />}
+                                      </div>
+                                    )}
+                                    <strong className="admin-chat-sender-name">{message.senderName || 'Participant'}</strong>
+                                    <span className={`admin-role-badge ${roleClass}`}>{roleLabel}</span>
+                                  </div>
+                                  <time className="admin-chat-time">{new Date(message.sentAt).toLocaleString()}</time>
+                                </div>
+                              )}
+                              <div className="admin-workspace-bubble">
+                                <p>{message.content}</p>
+                                {message.attachments && message.attachments.length > 0 && (
+                                  <div className="admin-chat-attachment-list">
+                                    {message.attachments.map(att => (
+                                      <a key={att.messageAttachmentId} href={att.fileUrl} target="_blank" rel="noreferrer" className="admin-chat-attachment-link">
+                                        <Paperclip size={12} /> {att.fileName}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </section>
                 )}
