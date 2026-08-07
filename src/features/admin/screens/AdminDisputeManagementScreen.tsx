@@ -378,7 +378,7 @@ export default function AdminDisputeManagementScreen() {
                     className={`admin-investigation-tab-btn ${activeTab === 'evidence' ? 'active' : ''}`}
                     onClick={() => setActiveTab('evidence')}
                   >
-                    <Paperclip size={15} /> {t('admin.disputes.tabs.evidence', 'Evidence')} ({selectedDispute.evidence.length})
+                    <Paperclip size={15} /> {t('admin.disputes.tabs.evidence', 'Evidence')} ({selectedDispute.evidence.filter((e) => Boolean(e.fileName)).length})
                   </button>
                   <button
                     type="button"
@@ -556,11 +556,13 @@ export default function AdminDisputeManagementScreen() {
                 {/* Tab 5: Evidence Files */}
                 {activeTab === 'evidence' && (
                   <div className="tab-pane">
-                    {selectedDispute.evidence.length === 0 ? (
+                    {selectedDispute.evidence.filter((e) => Boolean(e.fileName)).length === 0 ? (
                       <div className="admin-dispute-empty p-8 text-center text-xs font-extrabold text-text-muted">{t('admin.disputes.noEvidence', 'No evidence documents have been uploaded for this case.')}</div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {selectedDispute.evidence.map((evidence) => (
+                        {selectedDispute.evidence
+                          .filter((evidence) => Boolean(evidence.fileName))
+                          .map((evidence) => (
                           <div key={evidence.id} className="rounded-2xl border border-border bg-background p-4 space-y-2 shadow-sm">
                             <div className="flex items-center gap-2 text-xs font-black text-text-primary">
                               <Paperclip size={16} className="text-brand shrink-0" />
