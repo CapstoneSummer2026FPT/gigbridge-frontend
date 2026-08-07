@@ -235,6 +235,28 @@ export default function ProjectWorkspaceScreen() {
     }
   }, [activeContract, endProjectModalOpen, reviewPromptContractId, user?.id]);
 
+  const [promptModalConfig, setPromptModalConfig] = useState<{
+    title: string;
+    description?: string;
+    placeholder?: string;
+    confirmText?: string;
+    confirmVariant?: 'primary' | 'danger' | 'success';
+    required?: boolean;
+    onConfirm: (value: string) => Promise<void> | void;
+  } | null>(null);
+
+  const openPromptModal = (config: {
+    title: string;
+    description?: string;
+    placeholder?: string;
+    confirmText?: string;
+    confirmVariant?: 'primary' | 'danger' | 'success';
+    required?: boolean;
+    onConfirm: (value: string) => Promise<void> | void;
+  }) => setPromptModalConfig(config);
+
+  const closePromptModal = () => setPromptModalConfig(null);
+
   useEffect(() => {
     setRaiseIssueModalOpen(false);
     setReportListOpen(false);
@@ -414,30 +436,43 @@ export default function ProjectWorkspaceScreen() {
   const handleWorkItemTransition = async (milestoneId: string, workItemId: string, status: ContractWorkItemStatus) => {
     setMilestoneActionPendingId(milestoneId);
     setMilestoneActionError(null);
-    const progressNote = window.prompt('Progress note (optional)') || undefined;
-    const result = await handleUpdateWorkItem(milestoneId, workItemId, status, progressNote);
+    const result = await handleUpdateWorkItem(milestoneId, workItemId, status);
     if (!result.success) {
       setMilestoneActionError({
         milestoneId,
         message: result.message || 'Work item could not be updated.',
       });
+      toast.error(result.message || 'Work item could not be updated.');
+    } else {
+      toast.success(result.message || (status === ContractWorkItemStatus.Completed ? 'Work item marked as completed.' : 'Work item started.'));
     }
     setMilestoneActionPendingId(null);
   };
 
-  const handleRequestPendingMilestoneUnlock = async (milestoneId: string) => {
-    const reason = window.prompt('Why should this next milestone start early?')?.trim();
-    if (!reason) return;
-    setMilestoneActionPendingId(milestoneId);
-    setMilestoneActionError(null);
-    const result = await handleRequestMilestoneUnlock(milestoneId, reason);
-    if (!result.success) {
-      setMilestoneActionError({
-        milestoneId,
-        message: result.message || t('workspace.failedRequestUnlockError'),
-      });
-    }
-    setMilestoneActionPendingId(null);
+  const handleRequestPendingMilestoneUnlock = (milestoneId: string) => {
+    openPromptModal({
+      title: 'Request Early Start',
+      description: 'Why should this next milestone start early? Provide a reason for the client to review.',
+      placeholder: 'Enter reason for early start...',
+      required: true,
+      confirmText: 'Submit Request',
+      confirmVariant: 'primary',
+      onConfirm: async (reason) => {
+        setMilestoneActionPendingId(milestoneId);
+        setMilestoneActionError(null);
+        const result = await handleRequestMilestoneUnlock(milestoneId, reason);
+        if (!result.success) {
+          setMilestoneActionError({
+            milestoneId,
+            message: result.message || t('workspace.failedRequestUnlockError'),
+          });
+          toast.error(result.message || t('workspace.failedRequestUnlockError'));
+        } else {
+          toast.success(result.message || 'Early start request submitted.');
+        }
+        setMilestoneActionPendingId(null);
+      },
+    });
   };
 
   const openWithdrawDialog = (milestoneId: string, title: string, availableAmount: number) => {
@@ -1122,7 +1157,60 @@ export default function ProjectWorkspaceScreen() {
                         </div>
                       )}
                       {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
-                      {!isWorkspaceLocked && isClient && earlyStartRequest && <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs"><strong>Early start requested</strong><p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p><div className="mt-2 flex gap-2"><button type="button" disabled={isMilestoneActionPending} onClick={async () => { setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not approve request.' }); setMilestoneActionPendingId(null); }} className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white">Approve</button><button type="button" disabled={isMilestoneActionPending} onClick={async () => { const note = window.prompt('Rejection note') || undefined; setMilestoneActionPendingId(milestone.id); const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note); if (!result.success) setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not reject request.' }); setMilestoneActionPendingId(null); }} className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500">Reject</button></div></div>}
+                      {!isWorkspaceLocked && isClient && earlyStartRequest && (
+                        <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+                          <strong>Early start requested</strong>
+                          <p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p>
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              type="button"
+                              disabled={isMilestoneActionPending}
+                              onClick={async () => {
+                                setMilestoneActionPendingId(milestone.id);
+                                const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true);
+                                if (!result.success) {
+                                  setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not approve request.' });
+                                  toast.error(result.message || 'Could not approve request.');
+                                } else {
+                                  toast.success('Early start request approved.');
+                                }
+                                setMilestoneActionPendingId(null);
+                              }}
+                              className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white cursor-pointer hover:bg-emerald-700 transition-colors"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isMilestoneActionPending}
+                              onClick={() => {
+                                openPromptModal({
+                                  title: 'Reject Early Start Request',
+                                  description: 'Provide an optional rejection note for the freelancer.',
+                                  placeholder: 'Enter rejection note (optional)...',
+                                  required: false,
+                                  confirmText: 'Reject Request',
+                                  confirmVariant: 'danger',
+                                  onConfirm: async (note) => {
+                                    setMilestoneActionPendingId(milestone.id);
+                                    const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note || undefined);
+                                    if (!result.success) {
+                                      setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not reject request.' });
+                                      toast.error(result.message || 'Could not reject request.');
+                                    } else {
+                                      toast.success('Early start request rejected.');
+                                    }
+                                    setMilestoneActionPendingId(null);
+                                  },
+                                });
+                              }}
+                              className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500 cursor-pointer hover:bg-red-500/10 transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -1240,8 +1328,9 @@ export default function ProjectWorkspaceScreen() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setIsBlocked(!isBlocked);
-                                  alert(isBlocked ? t('workspace.contactUnblocked') : t('workspace.contactBlocked'));
+                                  const nextBlocked = !isBlocked;
+                                  setIsBlocked(nextBlocked);
+                                  toast.success(nextBlocked ? t('workspace.contactBlocked') : t('workspace.contactUnblocked'));
                                 }}
                                 className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-md border font-bold text-[9px] uppercase tracking-widest transition-all cursor-pointer ${
                                   isBlocked ? 'border-green-500/30 text-green-500 hover:bg-green-500/5' : 'border-red-500/30 text-red-500 hover:bg-red-500/5'
@@ -1399,7 +1488,7 @@ export default function ProjectWorkspaceScreen() {
                                   )}
                                   <div className="bg-muted p-1.5 flex justify-between items-center text-[9px] text-muted-foreground">
                                     <span className="truncate max-w-[150px]">{msg.fileName}</span>
-                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => alert(t('workspace.downloadSim', { name: msg.fileName }))} />
+                                    <Download size={12} className="cursor-pointer hover:text-[var(--gb-cyan)]" onClick={() => toast.info(t('workspace.downloadSim', { name: msg.fileName }))} />
                                   </div>
                                 </div>
                               </div>
@@ -1536,7 +1625,7 @@ export default function ProjectWorkspaceScreen() {
                     ].map(file => (
                       <div
                         key={file.name}
-                        onClick={() => alert(t('workspace.downloadSim', { name: file.name }))}
+                        onClick={() => toast.info(t('workspace.downloadSim', { name: file.name }))}
                         className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
                       >
                         <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
@@ -1905,6 +1994,111 @@ export default function ProjectWorkspaceScreen() {
           isEscalating={isEscalatingReport}
         />
       )}
+
+      {promptModalConfig && (
+        <WorkspacePromptModal
+          isOpen={Boolean(promptModalConfig)}
+          title={promptModalConfig.title}
+          description={promptModalConfig.description}
+          placeholder={promptModalConfig.placeholder}
+          confirmText={promptModalConfig.confirmText}
+          confirmVariant={promptModalConfig.confirmVariant}
+          required={promptModalConfig.required}
+          onConfirm={promptModalConfig.onConfirm}
+          onClose={closePromptModal}
+        />
+      )}
     </AppLayout>
+  );
+}
+
+interface WorkspacePromptModalProps {
+  isOpen: boolean;
+  title: string;
+  description?: string;
+  placeholder?: string;
+  confirmText?: string;
+  confirmVariant?: 'primary' | 'danger' | 'success';
+  required?: boolean;
+  onConfirm: (value: string) => Promise<void> | void;
+  onClose: () => void;
+}
+
+function WorkspacePromptModal({
+  isOpen,
+  title,
+  description,
+  placeholder,
+  confirmText = 'Submit',
+  confirmVariant = 'primary',
+  required = false,
+  onConfirm,
+  onClose,
+}: WorkspacePromptModalProps) {
+  const [value, setValue] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (required && !value.trim()) return;
+    setIsSubmitting(true);
+    try {
+      await onConfirm(value.trim());
+      onClose();
+    } catch {
+      // Error handled in onConfirm callback
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const btnColor = confirmVariant === 'danger'
+    ? 'bg-red-600 hover:bg-red-700 text-white'
+    : confirmVariant === 'success'
+      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+      : 'bg-[var(--gb-cyan)] hover:bg-[var(--gb-cyan)]/90 text-white';
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6 text-foreground">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-sm font-bold">{title}</h3>
+          <button onClick={onClose} type="button" className="text-muted-foreground hover:text-foreground cursor-pointer">
+            <X size={16} />
+          </button>
+        </div>
+        {description && <p className="text-xs text-muted-foreground mb-4">{description}</p>}
+        <form onSubmit={handleSubmit}>
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder || 'Enter details...'}
+            rows={3}
+            required={required}
+            className="w-full bg-background border border-border rounded-xl p-3 text-xs mb-4 text-foreground focus:outline-none focus:border-[var(--gb-cyan)]"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl text-xs font-bold border border-border hover:bg-muted cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || (required && !value.trim())}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 ${btnColor}`}
+            >
+              {isSubmitting && <Loader2 size={14} className="animate-spin" />}
+              {confirmText}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
