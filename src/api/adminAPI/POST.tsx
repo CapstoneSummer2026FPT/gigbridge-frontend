@@ -79,9 +79,11 @@ export const adminPostAPI = {
     conversationId: string,
     content: string,
     attachments: File[],
+    recipient: 0 | 1 | 2,
   ): Promise<ApiResponse<MessageResponse>> => {
     const formData = new FormData();
     if (content.trim()) formData.append('content', content.trim());
+    formData.append('recipient', String(recipient));
     for (const file of attachments) formData.append('attachments', file);
     return apiService.post<MessageResponse>(
       `${Admin_Api_Base_Url}/disputes/${disputeId}/conversations/${conversationId}/messages`,

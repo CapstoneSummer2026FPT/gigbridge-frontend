@@ -46,6 +46,7 @@ export default function JobDetailScreen() {
     formatStatus,
     toggleSavedJob,
     handleApplyJob,
+    handleContinueEditingProposal,
     handleWithdrawProposal,
   } = useJobDetail();
 
@@ -487,7 +488,8 @@ export default function JobDetailScreen() {
                     {canEditProposal(myProposal.status) && (
                       <button
                         className="jd-btn-secondary"
-                        onClick={() => navigate(`/proposals/${myProposal.proposalId}/edit`)}
+                        onClick={handleContinueEditingProposal}
+                        disabled={isApplying}
                       >
                         <Edit3 size={14} />
                         {t('jobDetail.continueEditing')}

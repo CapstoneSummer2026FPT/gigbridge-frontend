@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Mic,
   Timer,
+  RefreshCcw,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -90,15 +91,19 @@ function TimerRing({ seconds, maxSeconds = 180, size = 64 }: { seconds: number; 
 function InterviewIntroOverlay({
   questionCount,
   proposalReadinessError,
+  loadError,
   onBack,
   onStart,
   onEditProposal,
+  onRetry,
 }: {
   questionCount: number;
   proposalReadinessError: string;
+  loadError: string;
   onBack: () => void;
   onStart: () => void;
   onEditProposal: () => void;
+  onRetry: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--background)]/95 backdrop-blur-xl px-4">
@@ -179,6 +184,17 @@ function InterviewIntroOverlay({
             </div>
           )}
 
+          {/* Transient load error */}
+          {loadError && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-500" />
+              <div>
+                <p className="text-sm font-bold text-rose-600">{loadError}</p>
+                <p className="mt-0.5 text-xs text-rose-500/80">Vui lòng thử lại hoặc quay lại chỉnh sửa đề xuất.</p>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="mt-6 flex gap-3">
             <button
@@ -199,6 +215,16 @@ function InterviewIntroOverlay({
               >
                 <FileEdit size={16} />
                 Sửa đề xuất
+              </button>
+            ) : loadError ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all hover:opacity-90"
+                style={{ background: 'var(--brand)' }}
+              >
+                <RefreshCcw size={16} />
+                Thử lại
               </button>
             ) : (
               <button
@@ -246,6 +272,7 @@ export default function ScreenProposalAnswerQuestion() {
   const [timerLoading, setTimerLoading] = useState(false);
   const [error, setError] = useState('');
   const [proposalReadinessError, setProposalReadinessError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const [interviewStarted, setInterviewStarted] = useState(false);
   const completingQuestionRef = useRef(false);
   const completingReviewRef = useRef(false);
@@ -273,9 +300,23 @@ export default function ScreenProposalAnswerQuestion() {
 
   useEffect(() => {
     const load = async () => {
-      if (!proposalId || !jobPostId) {
+      if (!jobPostId) {
         setError('Proposal or JobPost id is missing.');
         setLoading(false);
+        return;
+      }
+      if (!proposalId) {
+        // Refresh / deep-link recovery: locate the draft by job and restore the URL.
+        const recovered = await proposalGetAPI.getMyProposalByJobPost(jobPostId);
+        if (!recovered.success || !recovered.data) {
+          setError(recovered.message || 'Proposal or JobPost id is missing.');
+          setLoading(false);
+          return;
+        }
+        navigate(`/proposals/create/${jobPostId}/questions?proposalId=${recovered.data.proposalId}`, {
+          replace: true,
+          state: { proposalId: recovered.data.proposalId, jobPostId },
+        });
         return;
       }
       try {
@@ -291,9 +332,8 @@ export default function ScreenProposalAnswerQuestion() {
           return;
         }
         if (!proposalResponse.success || !proposalResponse.data) {
-          setProposalReadinessError(
-            proposalResponse.message || 'Proposal details could not be verified. Return to the proposal and save it again.'
-          );
+          // Transient load failure (e.g. right after a network drop) — retry, don't block permanently.
+          setError(proposalResponse.message || 'Proposal details could not be verified. Please try again.');
           return;
         }
         setProposalReadinessError(getProposalNarrativeValidationError(proposalResponse.data));
@@ -317,7 +357,12 @@ export default function ScreenProposalAnswerQuestion() {
       }
     };
     load();
-  }, [proposalId, jobPostId]);
+  }, [jobPostId, navigate, proposalId, reloadKey]);
+
+  const retryLoad = () => {
+    setError('');
+    setReloadKey((value) => value + 1);
+  };
 
   const markQuestionLocked = useCallback((questionId: string) => {
     setLockedQuestionIds(prev => {
@@ -523,9 +568,11 @@ export default function ScreenProposalAnswerQuestion() {
         <InterviewIntroOverlay
           questionCount={sortedQuestions.length}
           proposalReadinessError={proposalReadinessError}
+          loadError={error}
           onBack={() => navigate(-1)}
           onStart={handleStartInterview}
           onEditProposal={() => navigate(`/proposals/${proposalId}/edit`)}
+          onRetry={retryLoad}
         />
       )}
 
