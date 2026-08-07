@@ -1,5 +1,6 @@
 import { RouterProvider } from 'react-router';
 import { router } from './router';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
 
 // Import global styles
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <>
       <RouterProvider router={router} />
+      <SpeedInsights />
       <Analytics />
     </>
   );
