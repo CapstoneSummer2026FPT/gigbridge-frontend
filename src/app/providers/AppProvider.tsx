@@ -276,6 +276,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     secureStorage.removeItem('gigbridge_session');
     secureStorage.removeItem('gigbridge_user');
     localStorage.removeItem('access_token');
+
+    // Clear saved scroll positions so returning to landing page starts at the top (0, 0)
+    try {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('scroll-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      sessionStorage.removeItem('scroll-/');
+    } catch {
+      /* ignore */
+    }
+
     if (redirectPath) {
       window.location.href = redirectPath;
     }

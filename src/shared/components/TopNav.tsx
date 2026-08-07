@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -334,22 +334,41 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         {user && role !== 2 && !premiumStatus.loading && (
           <button
             type="button"
-            className="become-premium-button"
+            className={premiumStatus.isPremium ? 'top-nav-premium-active' : 'top-nav-get-premium'}
             onClick={() => {
               if (premiumStatusUnavailable) {
                 void premiumStatus.refresh();
                 return;
               }
-              navigate(role === 0
-                ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
-                : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing');
+              navigate(
+                role === 0
+                  ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
+                  : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing'
+              );
             }}
           >
-            {premiumStatusUnavailable ? <RotateCw size={15} /> : <Crown size={15} />}
-            <span className="hidden sm:inline">
-              {premiumStatusUnavailable ? 'Retry Premium status' : premiumStatus.isPremium ? 'Premium active' : 'Become Premium'}
-            </span>
-            <span className="sm:hidden">{premiumStatusUnavailable ? 'Retry' : 'Premium'}</span>
+            {premiumStatusUnavailable ? (
+              <>
+                <RotateCw size={15} />
+                <span className="hidden sm:inline">Retry Status</span>
+                <span className="sm:hidden">Retry</span>
+              </>
+            ) : premiumStatus.isPremium ? (
+              <>
+                {/* Crown Badge on the top-right corner edge of the border, matching UserAvatar */}
+                <span className="top-nav-crown-badge-corner" aria-hidden="true">
+                  <Crown size={10} strokeWidth={2.5} className="fill-[var(--brand,#494be7)] text-[var(--brand,#494be7)]" />
+                </span>
+                <span className="hidden sm:inline">Premium Member</span>
+                <span className="sm:hidden">Premium</span>
+              </>
+            ) : (
+              <>
+                <Crown size={15} />
+                <span className="hidden sm:inline">Get Premium Now</span>
+                <span className="sm:hidden">Get PRO</span>
+              </>
+            )}
           </button>
         )}
         {/* Wallet Balance Dropdown */}
@@ -466,6 +485,18 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               </div>
             )}
           </div>
+        ) : null}
+
+        {/* Messages Icon (Positioned immediately to the right of Notifications Bell) */}
+        {user ? (
+          <button
+            onClick={() => { setShowNotifs(false); setShowUserMenu(false); setShowWalletMenu(false); navigate('/messages'); }}
+            className="p-2 rounded-lg transition-all relative glass-button"
+            title={t('nav.messages', { defaultValue: 'Messages' })}
+            aria-label={t('nav.messages', { defaultValue: 'Messages' })}
+          >
+            <MessageSquare size={16} className="text-muted" />
+          </button>
         ) : null}
 
 
