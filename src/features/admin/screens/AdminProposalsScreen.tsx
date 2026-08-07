@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Ban,
@@ -24,6 +24,8 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { AdminProposalListItem } from '../../../types/models/AdminProposal';
 import { ProposalModerationStatus } from '../../../types/models/AdminProposal';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
+import { AdminPageCache, adminPageCacheKey } from '../utils/AdminPageCache';
 import {
   aiAttemptLabels,
   contractLabels,
@@ -35,10 +37,10 @@ import {
 } from '../proposalStatus';
 import '../styles/admin-users-screen.css';
 
-const PAGE_SIZE = 20;
 const entries = (labels: Record<number, string>) => Object.entries(labels).map(([value, label]) => ({ value, label }));
 const formatDate = (value: string | null) => value ? new Date(value).toLocaleDateString() : 'Draft';
 const formatDateTime = (value: string | null) => value ? new Date(value).toLocaleString() : 'Draft';
+type ProposalPageData = NonNullable<Awaited<ReturnType<typeof adminGetAPI.getProposals>>['data']>;
 
 const getStatusBadgeClass = (label: string) => {
   const tone = statusTone(label);
@@ -51,6 +53,7 @@ export default function AdminProposalsScreen() {
   const navigate = useNavigate();
   const [items, setItems] = useState<AdminProposalListItem[]>([]);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
@@ -73,50 +76,74 @@ export default function AdminProposalsScreen() {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
+  const pageCache = useRef(new AdminPageCache<ProposalPageData>()).current;
+  const latestRequest = useRef(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (force = false) => {
+    const requestId = ++latestRequest.current;
     setError(null);
 
-    try {
-      const response = await adminGetAPI.getProposals({
-        page,
-        pageSize: PAGE_SIZE,
-        search: search.trim() || undefined,
-        lifecycleStatus: lifecycle === '' ? undefined : Number(lifecycle),
-        moderationStatus: moderation === '' ? undefined : Number(moderation),
-        clientId: clientId.trim() || undefined,
-        freelancerId: freelancerId.trim() || undefined,
-        jobPostId: jobPostId.trim() || undefined,
-        minBudget: minBudget ? Number(minBudget) : undefined,
-        maxBudget: maxBudget ? Number(maxBudget) : undefined,
-        aiInterviewStatus: aiStatus === '' ? undefined : Number(aiStatus),
-        negotiationStatus: negotiationStatus === '' ? undefined : Number(negotiationStatus),
-        contractStatus: contractStatus === '' ? undefined : Number(contractStatus),
-        hasContract: relation === 'contract' ? true : relation === 'no-contract' ? false : undefined,
-        hasReport: relation === 'report' ? true : undefined,
-        hasDispute: relation === 'dispute' ? true : undefined,
-        sortBy: sort,
-        sortDescending: true,
-      });
+    const paramsForPage = (targetPage: number) => ({
+      page: targetPage,
+      pageSize,
+      search: search.trim() || undefined,
+      lifecycleStatus: lifecycle === '' ? undefined : Number(lifecycle),
+      moderationStatus: moderation === '' ? undefined : Number(moderation),
+      clientId: clientId.trim() || undefined,
+      freelancerId: freelancerId.trim() || undefined,
+      jobPostId: jobPostId.trim() || undefined,
+      minBudget: minBudget ? Number(minBudget) : undefined,
+      maxBudget: maxBudget ? Number(maxBudget) : undefined,
+      aiInterviewStatus: aiStatus === '' ? undefined : Number(aiStatus),
+      negotiationStatus: negotiationStatus === '' ? undefined : Number(negotiationStatus),
+      contractStatus: contractStatus === '' ? undefined : Number(contractStatus),
+      hasContract: relation === 'contract' ? true : relation === 'no-contract' ? false : undefined,
+      hasReport: relation === 'report' ? true : undefined,
+      hasDispute: relation === 'dispute' ? true : undefined,
+      sortBy: sort,
+      sortDescending: true,
+    });
 
-      if (response.success && response.data) {
-        setItems(response.data.items);
-        setPages(Math.max(1, response.data.totalPages));
-        setTotal(response.data.totalCount);
-      } else {
-        setItems([]);
-        setTotal(0);
-        setError({ message: response.message || 'Unable to load proposals.', status: response.statusCode });
+    const fetchPage = async (targetPage: number): Promise<ProposalPageData> => {
+      const response = await adminGetAPI.getProposals(paramsForPage(targetPage));
+      if (!response.success || !response.data) {
+        const failure = new Error(response.message || 'Unable to load proposals.') as Error & { status?: number };
+        failure.status = response.statusCode;
+        throw failure;
       }
-    } catch {
+      return response.data;
+    };
+
+    const keyForPage = (targetPage: number) => adminPageCacheKey('proposals', paramsForPage(targetPage));
+    const cached = force ? undefined : pageCache.get(keyForPage(page));
+    setLoading(!cached);
+
+    const applyPage = (data: ProposalPageData) => {
+      setItems(data.items);
+      setPages(Math.max(1, data.totalPages));
+      setTotal(data.totalCount);
+    };
+
+    if (cached) applyPage(cached);
+
+    try {
+      const data = await pageCache.load(keyForPage(page), () => fetchPage(page), force);
+      if (requestId !== latestRequest.current) return;
+      applyPage(data);
+
+      [page - 1, page + 1]
+        .filter(target => target >= 1 && target <= data.totalPages)
+        .forEach(target => pageCache.prefetch(keyForPage(target), () => fetchPage(target)));
+    } catch (loadError) {
+      if (requestId !== latestRequest.current || cached) return;
+      const failure = loadError as Error & { status?: number };
       setItems([]);
       setTotal(0);
-      setError({ message: 'Unable to load proposals. Please try again.' });
+      setError({ message: failure.message || 'Unable to load proposals. Please try again.', status: failure.status });
     } finally {
-      setLoading(false);
+      if (requestId === latestRequest.current) setLoading(false);
     }
-  }, [aiStatus, clientId, contractStatus, freelancerId, jobPostId, lifecycle, maxBudget, minBudget, moderation, negotiationStatus, page, relation, search, sort]);
+  }, [aiStatus, clientId, contractStatus, freelancerId, jobPostId, lifecycle, maxBudget, minBudget, moderation, negotiationStatus, page, pageCache, pageSize, relation, search, sort]);
 
   useEffect(() => {
     void load();
@@ -137,7 +164,8 @@ export default function AdminProposalsScreen() {
     } else {
       setAction(null);
       setReason('');
-      await load();
+      pageCache.clear();
+      await load(true);
     }
     setBusy(false);
   };
@@ -159,8 +187,8 @@ export default function AdminProposalsScreen() {
     related: items.reduce((sum, item) => sum + item.reportCount + item.disputeCount, 0),
   }), [items]);
 
-  const firstResult = total === 0 ? 0 : ((page - 1) * PAGE_SIZE) + 1;
-  const lastResult = Math.min(page * PAGE_SIZE, total);
+  const firstResult = total === 0 ? 0 : ((page - 1) * pageSize) + 1;
+  const lastResult = Math.min(page * pageSize, total);
 
   return (
     <AppLayout>
@@ -252,10 +280,16 @@ export default function AdminProposalsScreen() {
             </div>
           </section>
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs sm:text-sm text-secondary">
               {loading ? 'Loading proposals…' : <>Showing <span className="text-primary font-semibold">{firstResult}-{lastResult}</span> of <span className="text-primary font-semibold">{total}</span> matching proposals</>}
             </p>
+            <AdminTablePageSize
+              pageSize={pageSize}
+              totalEntries={total}
+              disabled={loading}
+              onPageSizeChange={value => { setPageSize(value); setPage(1); }}
+            />
           </div>
 
           {loading ? (
@@ -280,7 +314,8 @@ export default function AdminProposalsScreen() {
               <section className="glass-card" aria-label="Proposals table">
                 <table className="block w-full [&_td]:whitespace-normal">
                     <thead className="hidden lg:block border-b border-primary bg-white/[0.02]">
-                      <tr className="grid grid-cols-[minmax(0,1.8fr)_minmax(0,1.25fr)_90px_135px_minmax(0,1.4fr)_90px_40px] items-center gap-x-4 px-5 py-3">
+                      <tr className="grid grid-cols-[44px_minmax(0,1.8fr)_minmax(0,1.25fr)_90px_135px_minmax(0,1.4fr)_90px_40px] items-center gap-x-4 px-5 py-3">
+                        <th className="text-left text-xs font-semibold text-primary">No.</th>
                         <th className="text-left text-xs font-semibold text-primary">Proposal</th>
                         <th className="text-left text-xs font-semibold text-primary">Participants</th>
                         <th className="text-left text-xs font-semibold text-primary">Offer</th>
@@ -291,7 +326,7 @@ export default function AdminProposalsScreen() {
                       </tr>
                     </thead>
                     <tbody className="block divide-y divide-primary">
-                      {items.map(item => {
+                      {items.map((item, index) => {
                         const lifecycleText = statusLabel(lifecycleLabels, item.lifecycleStatus);
                         const moderationText = statusLabel(moderationLabels, item.moderationStatus);
                         const aiText = statusLabel(aiAttemptLabels, item.aiInterviewStatus);
@@ -299,7 +334,8 @@ export default function AdminProposalsScreen() {
                         const contractText = item.hasContract ? statusLabel(contractLabels, item.contractStatus) : 'No contract';
 
                         return (
-                          <tr key={item.proposalId} className="grid grid-cols-2 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1.25fr)_90px_135px_minmax(0,1.4fr)_90px_40px] items-start lg:items-center gap-x-4 gap-y-4 px-4 sm:px-5 py-4 hover:bg-white/5 transition-colors">
+                          <tr key={item.proposalId} className="grid grid-cols-2 lg:grid-cols-[44px_minmax(0,1.8fr)_minmax(0,1.25fr)_90px_135px_minmax(0,1.4fr)_90px_40px] items-start lg:items-center gap-x-4 gap-y-4 px-4 sm:px-5 py-4 hover:bg-white/5 transition-colors">
+                            <td className="col-span-2 lg:col-span-1 text-xs font-bold text-cyan">{firstResult + index}</td>
                             <td className="col-span-2 lg:col-span-1 min-w-0">
                               <button className="block w-full text-left text-sm font-semibold text-primary hover:text-cyan transition-colors truncate" title={item.jobPostTitle} onClick={() => navigate(`/admin/proposals/${item.proposalId}`)}>{item.jobPostTitle}</button>
                               <p className="text-[10px] text-muted mt-1 font-mono">Proposal #{item.proposalId.slice(0, 8)}</p>
@@ -365,11 +401,7 @@ export default function AdminProposalsScreen() {
                   </table>
               </section>
 
-              <nav className="flex items-center justify-center gap-3 mt-6" aria-label="Proposal pagination">
-                <button className="glass-button px-4 py-2 rounded-lg text-sm text-secondary disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(value => value - 1)}>Previous</button>
-                <span className="text-sm text-secondary">Page <strong className="text-primary">{page}</strong> of <strong className="text-primary">{pages}</strong> · {total} proposals</span>
-                <button className="glass-button px-4 py-2 rounded-lg text-sm text-secondary disabled:opacity-40" disabled={page >= pages} onClick={() => setPage(value => value + 1)}>Next</button>
-              </nav>
+              {pages > 1 && <AdminTablePagination currentPage={page} totalPages={pages} disabled={loading} onPageChange={setPage} ariaLabel="Proposal pagination" />}
             </>
           )}
         </main>
