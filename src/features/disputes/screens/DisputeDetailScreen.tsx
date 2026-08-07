@@ -22,11 +22,11 @@ import { useApp } from '../../../app/providers/AppProvider';
 import '../styles/dispute-detail-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
-  [DisputeStatus.Open]: 'Open',
-  [DisputeStatus.WaitingAdmin]: 'Waiting for Admin',
-  [DisputeStatus.UnderReview]: 'Under Review',
-  [DisputeStatus.WaitingEvidence]: 'Waiting for Evidence',
-  [DisputeStatus.DecisionPending]: 'Decision Pending',
+  [DisputeStatus.Open]: 'Waiting Admin',
+  [DisputeStatus.WaitingAdmin]: 'Waiting Admin',
+  [DisputeStatus.UnderReview]: 'In Progress',
+  [DisputeStatus.WaitingEvidence]: 'In Progress',
+  [DisputeStatus.DecisionPending]: 'In Progress',
   [DisputeStatus.Resolved]: 'Resolved',
   [DisputeStatus.Closed]: 'Closed',
 };
