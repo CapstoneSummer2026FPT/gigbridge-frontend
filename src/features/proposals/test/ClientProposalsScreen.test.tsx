@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   getProposalsByJobPost: vi.fn(),
   getProposalDetail: vi.fn(),
   getProposalAnswers: vi.fn(),
-  evaluateProposalAnswers: vi.fn(),
   updateProposalStatus: vi.fn(),
   acceptForNegotiation: vi.fn(),
   startNegotiationFromProposal: vi.fn(),
@@ -191,8 +190,6 @@ vi.mock('../../../api/proposalAPI/PATCH', () => ({
 vi.mock('../../../api/proposalAPI/POST', () => ({
   proposalPostAPI: {
     acceptForNegotiation: mocks.acceptForNegotiation,
-    evaluateProposalAnswers: mocks.evaluateProposalAnswers,
-    evaluateVettingAnswers: mocks.evaluateProposalAnswers,
   },
 }));
 
@@ -211,6 +208,13 @@ const listProposal = (status = ProposalStatus.Pending) => ({
   milestoneCount: 2,
   milestoneTotal: 1200,
   submittedAt: '2026-07-01T00:00:00Z',
+  aiScore: 84,
+  aiSummary: 'Strong written responses.',
+  aiRecommendedHire: true,
+  aiTechnicalSkills: ['React'],
+  aiSoftSkills: ['Communication'],
+  aiHolisticAdjustmentReason: '',
+  aiGradedQuestions: [],
 });
 
 const detailProposal = (status = ProposalStatus.Pending) => ({
@@ -287,19 +291,6 @@ describe('ClientProposalsScreen', () => {
     mocks.updateProposalStatus.mockResolvedValue({ success: true, data: { success: true } });
     mocks.acceptForNegotiation.mockResolvedValue({ success: true, data: 'conversation-1' });
     mocks.startNegotiationFromProposal.mockResolvedValue({ success: true, data: 'conversation-2' });
-    mocks.evaluateProposalAnswers.mockResolvedValue({
-      success: true,
-      data: {
-        score: 84,
-        summary: 'Strong written responses.',
-        technicalSkills: ['React'],
-        softSkills: ['Communication'],
-        recommendedHire: true,
-        holisticAdjustment: 0,
-        holisticAdjustmentReason: '',
-        gradedQuestions: [],
-      },
-    });
   });
 
   it('renders the comparison workspace and lazy-loads proposal detail', async () => {
@@ -482,80 +473,7 @@ describe('ClientProposalsScreen', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/proposals?job=job-2', { replace: true });
   });
 
-  it('shows no AI action when the job has no screening questions', async () => {
-    const user = userEvent.setup();
-    render(<ClientProposalsScreen />);
-    const modal = await openProposal(user);
 
-    expect(await within(modal).findByText(/No freelancer Interview Answers available/i)).toBeInTheDocument();
-
-    mocks.evaluateProposalAnswers.mockClear();
-
-    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Report/i }));
-    expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();
-    expect(mocks.evaluateProposalAnswers).not.toHaveBeenCalled();
-  });
-
-  it('does not offer AI evaluation for blank answers', async () => {
-    const user = userEvent.setup();
-    mocks.getProposalAnswers.mockResolvedValue({
-      success: true,
-      data: [{
-        proposalsId: 'proposal-1',
-        jobPostQuestionsId: 'question-1',
-        questionText: 'Describe your approach',
-        orderIndex: 0,
-        isRequired: true,
-        answerText: '   ',
-      }],
-    });
-    render(<ClientProposalsScreen />);
-    const modal = await openProposal(user);
-
-    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Report/i }));
-    expect(within(modal).queryByRole('button', { name: 'Evaluate Proposal with AI' })).not.toBeInTheDocument();
-  });
-
-  it('evaluates substantive clarifying answers without presenting them as an AI interview', async () => {
-    const user = userEvent.setup();
-    mocks.getProposalAnswers.mockResolvedValue({
-      success: true,
-      data: [{
-        proposalsId: 'proposal-1',
-        jobPostQuestionsId: 'question-1',
-        questionText: 'Describe your approach',
-        orderIndex: 0,
-        isRequired: true,
-        answerText: 'I would ship in small, reviewed increments.',
-      }],
-    });
-    mocks.evaluateProposalAnswers
-      .mockResolvedValueOnce({ success: false, data: null })
-      .mockResolvedValueOnce({
-        success: true,
-        data: {
-          score: 84,
-          summary: 'Strong written responses.',
-          technicalSkills: ['React'],
-          softSkills: ['Communication'],
-          recommendedHire: true,
-          holisticAdjustment: 0,
-          holisticAdjustmentReason: '',
-          gradedQuestions: [],
-        },
-      });
-
-    render(<ClientProposalsScreen />);
-    const modal = await openProposal(user);
-
-    await user.click(within(modal).getByRole('button', { name: /AI Evaluation Report/i }));
-    const evaluate = await within(modal).findByRole('button', { name: 'Evaluate Proposal with AI' });
-    expect(screen.queryByText(/AI Interview/i)).not.toBeInTheDocument();
-    await user.click(evaluate);
-
-    expect(mocks.evaluateProposalAnswers).toHaveBeenCalledWith('proposal-1', true);
-    expect(await within(modal).findByText('Strong written responses.')).toBeInTheDocument();
-  });
 
   it('keeps proposal actions in the modal and confirms rejection', async () => {
     const user = userEvent.setup();
