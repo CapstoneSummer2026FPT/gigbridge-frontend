@@ -73,6 +73,8 @@ interface BackendESignDocumentResponse {
   HasFinalArtifact?: boolean;
   finalizedDocumentFileName?: string | null;
   FinalizedDocumentFileName?: string | null;
+  hasPdfArtifact?: boolean;
+  HasPdfArtifact?: boolean;
   createdAt?: string;
   CreatedAt?: string;
   updatedAt?: string | null;
@@ -110,6 +112,8 @@ interface BackendESignDocumentListItemResponse {
   HasFinalArtifact?: boolean;
   finalizedDocumentFileName?: string | null;
   FinalizedDocumentFileName?: string | null;
+  hasPdfArtifact?: boolean;
+  HasPdfArtifact?: boolean;
   signatureCount?: number;
   SignatureCount?: number;
   finalizedAt?: string | null;
@@ -197,6 +201,7 @@ export const normalizeESignDocument = (
       'finalizedDocumentFileName',
       'FinalizedDocumentFileName'
     ) ?? null,
+    hasPdfArtifact: Boolean(getValue<boolean>(source, 'hasPdfArtifact', 'HasPdfArtifact') ?? false),
     createdAt: String(getValue(source, 'createdAt', 'CreatedAt') ?? new Date().toISOString()),
     updatedAt: getValue<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
     signatures: signatures.map(normalizeESignSignature),
@@ -228,6 +233,7 @@ const normalizeESignDocumentListItem = (
       'finalizedDocumentFileName',
       'FinalizedDocumentFileName'
     ) ?? null,
+    hasPdfArtifact: Boolean(getValue<boolean>(source, 'hasPdfArtifact', 'HasPdfArtifact') ?? false),
     signatureCount: Number(getValue(source, 'signatureCount', 'SignatureCount') ?? 0),
     finalizedAt: getValue<string | null>(source, 'finalizedAt', 'FinalizedAt') ?? null,
     exportedPdfUrl: getValue<string | null>(source, 'exportedPdfUrl', 'ExportedPdfUrl') ?? null,

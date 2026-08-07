@@ -28,6 +28,8 @@ interface MilestoneFormData {
   amount: number;
   due_date: string;
   description?: string;
+  deliverables?: string;
+  acceptanceCriteria?: string;
 }
 
 const createClientMilestoneId = () => `new:${typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now()}`;
@@ -57,6 +59,8 @@ export default function ManageMilestonesScreen() {
     amount: 0,
     due_date: '',
     description: '',
+    deliverables: '',
+    acceptanceCriteria: '',
   });
   const [expandedMilestoneId, setExpandedMilestoneId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -252,6 +256,8 @@ export default function ManageMilestonesScreen() {
       amount: 0,
       due_date: '',
       description: '',
+      deliverables: '',
+      acceptanceCriteria: '',
     });
     setShowCreateForm(true);
   };
@@ -267,7 +273,9 @@ export default function ManageMilestonesScreen() {
       title: milestone.title,
       amount: milestone.amount,
       due_date: milestone.due_date,
-      description: '',
+      description: milestone.description ?? '',
+      deliverables: milestone.deliverables ?? '',
+      acceptanceCriteria: milestone.acceptanceCriteria ?? '',
     });
     setShowCreateForm(true);
   };
@@ -280,6 +288,8 @@ export default function ManageMilestonesScreen() {
       amount: 0,
       due_date: '',
       description: '',
+      deliverables: '',
+      acceptanceCriteria: '',
     });
   };
 
@@ -304,7 +314,15 @@ export default function ManageMilestonesScreen() {
       setMilestones(prev =>
         prev.map(m =>
           m.id === editingId
-            ? { ...m, title: formData.title.trim(), amount: formData.amount, due_date: formData.due_date }
+            ? {
+                ...m,
+                title: formData.title.trim(),
+                amount: formData.amount,
+                due_date: formData.due_date,
+                description: formData.description?.trim() || null,
+                deliverables: formData.deliverables?.trim() || null,
+                acceptanceCriteria: formData.acceptanceCriteria?.trim() || null,
+              }
             : m
         )
       );
@@ -317,6 +335,9 @@ export default function ManageMilestonesScreen() {
         title: formData.title.trim(),
         amount: formData.amount,
         due_date: formData.due_date,
+        description: formData.description?.trim() || null,
+        deliverables: formData.deliverables?.trim() || null,
+        acceptanceCriteria: formData.acceptanceCriteria?.trim() || null,
         status: MilestoneStatus.Pending,
         paid_at: null,
         workItems: [],
@@ -346,6 +367,30 @@ export default function ManageMilestonesScreen() {
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
+  // Shared helper: builds the milestone payload including existing workItems so
+  // the backend validator doesn't reject milestones that already have work items.
+  const buildMilestonesPayload = () => ({
+    milestones: milestones.map(m => ({
+      milestoneId: isClientMilestoneId(m.id) ? null : m.id,
+      title: m.title,
+      amount: m.amount,
+      dueDate: m.due_date,
+      sortOrder: null,
+      description: m.description ?? null,
+      estimatedDuration: m.estimatedDuration ?? null,
+      deliverables: m.deliverables ?? null,
+      acceptanceCriteria: m.acceptanceCriteria ?? null,
+      workItems: (m.workItems ?? []).map((wi, idx) => ({
+        workItemId: wi.workItemId ?? null,
+        title: wi.title,
+        description: wi.description ?? null,
+        deliverables: wi.deliverables ?? null,
+        estimatedDuration: wi.estimatedDuration ?? null,
+        orderIndex: wi.orderIndex ?? idx,
+      })),
+    })),
+  });
+
   const handleSaveDraft = async () => {
     if (!canEditMilestones) {
       toast.info('Milestones are locked for this contract stage.');
@@ -360,17 +405,7 @@ export default function ManageMilestonesScreen() {
       setIsSubmitting(true);
       setError(null);
 
-      const payload = {
-        milestones: milestones.map(m => ({
-          milestoneId: isClientMilestoneId(m.id) ? null : m.id,
-          title: m.title,
-          amount: m.amount,
-          dueDate: m.due_date,
-          sortOrder: null,
-        })),
-      };
-
-      const response = await contractPutAPI.updateDetails(contractId!, payload);
+      const response = await contractPutAPI.updateDetails(contractId!, buildMilestonesPayload());
       if (!response.success) {
         throw new Error(response.message || 'Failed to save milestones draft.');
       }
@@ -409,18 +444,8 @@ export default function ManageMilestonesScreen() {
       setIsSubmitting(true);
       setError(null);
 
-      // 1. Bulk save milestones
-      const payload = {
-        milestones: milestones.map(m => ({
-          milestoneId: isClientMilestoneId(m.id) ? null : m.id,
-          title: m.title,
-          amount: m.amount,
-          dueDate: m.due_date,
-          sortOrder: null,
-        })),
-      };
-
-      const saveResponse = await contractPutAPI.updateDetails(contractId!, payload);
+      // 1. Bulk save milestones (with workItems so validator doesn't reject)
+      const saveResponse = await contractPutAPI.updateDetails(contractId!, buildMilestonesPayload());
       if (!saveResponse.success) {
         throw new Error(saveResponse.message || 'Failed to save milestones.');
       }
@@ -470,18 +495,8 @@ export default function ManageMilestonesScreen() {
       setIsSubmitting(true);
       setError(null);
 
-      // 1. Bulk save milestones
-      const payload = {
-        milestones: milestones.map(m => ({
-          milestoneId: isClientMilestoneId(m.id) ? null : m.id,
-          title: m.title,
-          amount: m.amount,
-          dueDate: m.due_date,
-          sortOrder: null,
-        })),
-      };
-
-      const saveResponse = await contractPutAPI.updateDetails(contractId!, payload);
+      // 1. Bulk save milestones (with workItems so validator doesn't reject)
+      const saveResponse = await contractPutAPI.updateDetails(contractId!, buildMilestonesPayload());
       if (!saveResponse.success) {
         throw new Error(saveResponse.message || 'Failed to save milestones.');
       }
@@ -678,6 +693,36 @@ export default function ManageMilestonesScreen() {
                             className="form-input-custom text-xs py-2 px-3"
                           />
                         </div>
+                      </div>
+
+                      {/* Deliverables */}
+                      <div className="flex flex-col gap-1 text-left">
+                        <label htmlFor="deliverables" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Deliverables
+                        </label>
+                        <textarea
+                          id="deliverables"
+                          value={formData.deliverables ?? ''}
+                          onChange={(e) => setFormData({ ...formData, deliverables: e.target.value })}
+                          placeholder="List the expected outputs or deliverables for this milestone…"
+                          className="form-input-custom text-xs py-2 px-3 resize-none"
+                          rows={3}
+                        />
+                      </div>
+
+                      {/* Acceptance Criteria */}
+                      <div className="flex flex-col gap-1 text-left">
+                        <label htmlFor="acceptanceCriteria" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          Acceptance Criteria
+                        </label>
+                        <textarea
+                          id="acceptanceCriteria"
+                          value={formData.acceptanceCriteria ?? ''}
+                          onChange={(e) => setFormData({ ...formData, acceptanceCriteria: e.target.value })}
+                          placeholder="Define what 'done' looks like — conditions the client will verify before approving…"
+                          className="form-input-custom text-xs py-2 px-3 resize-none"
+                          rows={3}
+                        />
                       </div>
 
                       <div className="flex gap-2 justify-end pt-2">

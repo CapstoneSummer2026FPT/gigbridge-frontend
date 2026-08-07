@@ -27,6 +27,7 @@ import { ContractAreaTabs } from '../components/ContractAreaTabs';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { useESignContracts, type StatusFilter } from '../hooks/useESignContracts';
+import { useESignPdf } from '../hooks/useESignPdf';
 import type { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/manage-contract-screen.css';
 import '../styles/esign-contracts-screen.css';
@@ -116,10 +117,11 @@ interface PreviewPanelProps {
   error: string | null;
   fallbackItem: ESignDocumentListItemDto | null;
   isAdmin: boolean;
-  isDownloading: boolean;
-  downloadError: string | null;
+  isPreparingPdf: boolean;
+  pdfError: string | null;
   t: ReturnType<typeof useTranslation>['t'];
   onDownload: () => void;
+  onRetryPdf: () => void;
   onRetry: () => void;
 }
 
@@ -129,10 +131,11 @@ function PreviewPanel({
   error,
   fallbackItem,
   isAdmin,
-  isDownloading,
-  downloadError,
+  isPreparingPdf,
+  pdfError,
   t,
   onDownload,
+  onRetryPdf,
   onRetry,
 }: PreviewPanelProps): JSX.Element {
   if (isLoading) {
@@ -196,23 +199,24 @@ function PreviewPanel({
             </span>
           )}
 
-          {fallbackItem?.hasFinalArtifact && (
+          {fallbackItem && (
             <button
               type="button"
               onClick={onDownload}
-              disabled={isDownloading}
+              disabled={isPreparingPdf}
               className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer disabled:opacity-50"
             >
               <Download size={14} />
-              {isDownloading ? t('contracts.legal.downloading') : t('contracts.legal.downloadSignedDocument')}
+              {isPreparingPdf ? 'Preparing PDF…' : 'Download PDF'}
             </button>
           )}
         </div>
       </div>
 
-      {downloadError && (
+      {pdfError && (
         <p className="text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3" role="alert">
-          {downloadError}
+          {pdfError}{' '}
+          <button type="button" onClick={onRetryPdf} className="underline cursor-pointer">Retry</button>
         </p>
       )}
 
@@ -264,8 +268,6 @@ export default function ESignContractsScreen(): JSX.Element {
     loadingDocument,
     listError,
     documentError,
-    downloadError,
-    downloadingDocumentId,
     groupedDocuments,
     selectedItem,
     totalDocuments,
@@ -279,8 +281,9 @@ export default function ESignContractsScreen(): JSX.Element {
     handleStatusChange,
     handlePreviousPage,
     handleNextPage,
-    handleDownload,
   } = useESignContracts();
+
+  const pdf = useESignPdf(selectedDocument);
 
   // GSAP Entrance Animation
   usePageGSAP({
@@ -356,7 +359,7 @@ export default function ESignContractsScreen(): JSX.Element {
             <article className="rounded-2xl border border-border bg-background p-4 shadow-sm transition hover:border-brand/40">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">DOCX Ready</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted">PDF Ready</p>
                   <p className="mt-1 text-2xl font-black tracking-tight text-text-primary">{artifactCount}</p>
                 </div>
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -475,10 +478,11 @@ export default function ESignContractsScreen(): JSX.Element {
                   error={documentError}
                   fallbackItem={selectedItem}
                   isAdmin={isAdmin}
-                  isDownloading={downloadingDocumentId === selectedDocumentId}
-                  downloadError={downloadError}
+                  isPreparingPdf={pdf.isPreparing}
+                  pdfError={pdf.error}
                   t={t}
-                  onDownload={handleDownload}
+                  onDownload={pdf.download}
+                  onRetryPdf={pdf.retry}
                   onRetry={() => {
                     if (selectedDocumentId) void loadDocument(selectedDocumentId);
                   }}

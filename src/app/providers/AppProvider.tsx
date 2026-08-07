@@ -77,6 +77,7 @@ const mapUserDTOToUser = (userDTO: UserDTO | any): User => {
     is_email_verified: Boolean(getField<boolean>(userDTO, 'isEmailVerified', 'IsEmailVerified')),
     is_active: getField<boolean>(userDTO, 'isActive', 'IsActive') ?? true,
     is_setup: Boolean(getField<boolean>(userDTO, 'isSetup', 'IsSetup')),
+    is_premium: Boolean(getField<boolean>(userDTO, 'isPremium', 'IsPremium')),
     preferred_language: getField<string | null>(userDTO, 'preferredLanguage', 'PreferredLanguage') || 'en',
     last_login_at: null,
     login_failed_time: null,

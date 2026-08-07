@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Check, ChevronLeft, Send, Loader2, AlertTriangle } from 'lucide-react';
+import { Check, ChevronLeft, Download, Send, Loader2, AlertTriangle } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { SuccessMilestoneSetupModal } from '../components/SuccessMilestoneSetupModal';
 import { InviteFreelancersAfterPostModal } from '../components/InviteFreelancersAfterPostModal';
 import '../styles/PostJobScreen.css';
+import { prepareESignPdfById, useESignPdf } from '../../contracts/hooks/useESignPdf';
 
 export default function CreatePostJobEsignScreen() {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ export default function CreatePostJobEsignScreen() {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isInviteFreelancersModalOpen, setIsInviteFreelancersModalOpen] = useState(false);
   const [createdContractId, setCreatedContractId] = useState<string | null>(null);
+  const pdf = useESignPdf(document);
 
   // Canvas drawing
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -231,6 +233,7 @@ export default function CreatePostJobEsignScreen() {
       if (!submitResponse.success) {
         if (submitResponse.statusCode === 409) {
           // Already signed, proceed as success!
+          void prepareESignPdfById(document.documentId).catch(console.warn);
           toast.success('E-sign signature recorded.');
           const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId!);
           if (contractResponse.success && contractResponse.data) {
@@ -246,6 +249,7 @@ export default function CreatePostJobEsignScreen() {
       }
 
       toast.success('E-sign signature submitted successfully!');
+      void prepareESignPdfById(document.documentId).catch(console.warn);
 
       // Fetch the draft contract created by the backend on E-sign completion
       const contractResponse = await contractGetAPI.getContractByJobPost(jobPostId!);
@@ -391,6 +395,13 @@ export default function CreatePostJobEsignScreen() {
 
         {/* Rendered HTML Document */}
         <div className="max-w-[850px] mx-auto bg-white text-black p-12 shadow-2xl border border-slate-200 rounded-sm font-serif leading-relaxed relative overflow-hidden my-4 select-text">
+          <div className="mb-5 flex justify-end">
+            <button type="button" onClick={() => void pdf.download()} disabled={pdf.isPreparing} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold disabled:opacity-50">
+              {pdf.isPreparing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {pdf.isPreparing ? 'Preparing PDF…' : 'Download PDF'}
+            </button>
+          </div>
+          {pdf.error && <p className="mb-4 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-600">{pdf.error}</p>}
           {/* Render the backend's HTML template */}
           <div
             dangerouslySetInnerHTML={{ __html: document.renderedHtmlContent }}

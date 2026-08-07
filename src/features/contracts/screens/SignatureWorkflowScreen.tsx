@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { AlertCircle, CheckCircle, Clock, FileText, Loader, PenTool, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, Download, FileText, Loader, PenTool, X } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { useApp } from '../../../app/providers/AppProvider';
@@ -15,6 +15,7 @@ import { UserRole } from '../../../types/models/User';
 import '../styles/signature-workflow-screen.css';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { prepareESignPdfById, useESignPdf } from '../hooks/useESignPdf';
 
 type SignatureStep = 'review' | 'capture' | 'complete';
 const POLICY_VERSION = '1.0-DATN';
@@ -80,6 +81,7 @@ export default function SignatureWorkflowScreen() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [signingInProgress, setSigningInProgress] = useState(false);
   const submittingRef = useRef(false);
+  const pdf = useESignPdf(document);
 
   const currentUserSignature = useMemo(
     () =>
@@ -276,8 +278,10 @@ export default function SignatureWorkflowScreen() {
       if (!response.success) {
         if (response.statusCode === 409) {
           // Already signed, proceed as success!
-          await refreshAfterSigning();
           setSignatureStep('complete');
+          setSuccess('Your signature has already been recorded. Preparing PDF in the background.');
+          if (document?.documentId) void prepareESignPdfById(document.documentId).catch(console.warn);
+          await refreshAfterSigning();
           return;
         }
         setError(response.message || 'Failed to submit signature. Please try again.');
@@ -285,13 +289,15 @@ export default function SignatureWorkflowScreen() {
       }
 
       const documentId = getDocumentIdFromResponse(response.data);
+      setSignatureStep('complete');
+      setSuccess('Your signature has been recorded. Preparing PDF in the background.');
+      const signedDocumentId = documentId || document?.documentId;
+      if (signedDocumentId) void prepareESignPdfById(signedDocumentId).catch(console.warn);
       if (documentId) {
         await loadDocument(contract.contractsId);
       }
 
       const finalStatus = await refreshAfterSigning(getStatusFromResponse(response.data));
-      setSignatureStep('complete');
-
       if (finalStatus === ContractStatus.PendingEscrow) {
         setSuccess(isClient ? 'Contract fully signed. You can now fund escrow.' : 'Contract fully signed. Waiting for the client to fund escrow.');
         if (isClient) {
@@ -498,7 +504,13 @@ export default function SignatureWorkflowScreen() {
 
               {document?.renderedHtmlContent && (
                 <div className="contract-description">
-                  <h3>{t('contracts.generatedContractDoc')}</h3>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3>{t('contracts.generatedContractDoc')}</h3>
+                    <button type="button" className="btn-outline" onClick={() => void pdf.download()} disabled={pdf.isPreparing}>
+                      {pdf.isPreparing ? 'Preparing PDF…' : 'Download PDF'}
+                    </button>
+                  </div>
+                  {pdf.error && <p className="signature-inline-warning">{pdf.error}</p>}
                   <iframe
                     title={t('contracts.generatedContractDoc')}
                     className="signature-document-frame"
@@ -648,6 +660,9 @@ export default function SignatureWorkflowScreen() {
             </div>
 
             <div className="signature-actions">
+              <button className="btn-secondary" onClick={() => void pdf.download()} disabled={signingInProgress || pdf.isPreparing}>
+                <Download size={16} /> {pdf.isPreparing ? 'Preparing PDF…' : 'Download signed PDF'}
+              </button>
               <button className="btn-primary btn-large" onClick={handleCompleteNavigation}>
                 {contract.status === ContractStatus.Active ? t('contracts.openWorkspace') : t('contracts.viewContractDetails')} <FileText size={16} />
               </button>

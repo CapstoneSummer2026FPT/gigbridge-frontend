@@ -386,6 +386,37 @@ describe('CreateProposalScreen milestone experience', () => {
     });
   });
 
+  it('retries a resumed draft once after a concurrency conflict and continues to questions', async () => {
+    getMyProposalByJobPostMock.mockResolvedValue({
+      success: true,
+      data: existingProposal([]),
+    });
+    getJobPostQuestionsMock.mockResolvedValue({
+      success: true,
+      data: [{
+        jobPostQuestionsId: 'question-1',
+        questionText: 'What is your delivery plan?',
+        orderIndex: 0,
+        isRequired: true,
+      }],
+    });
+    updateProposalMock
+      .mockResolvedValueOnce({ success: false, statusCode: 409, message: 'Draft changed' })
+      .mockResolvedValueOnce({ success: true, data: true });
+
+    render(<CreateProposalScreen />);
+    await screen.findByRole('heading', { name: 'Project Proposal' });
+    await waitFor(() => expect(getMyProposalByJobPostMock).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: /submit proposal/i }));
+
+    await waitFor(() => expect(updateProposalMock).toHaveBeenCalledTimes(2));
+    expect(navigateMock).toHaveBeenCalledWith(
+      '/proposals/create/job-1/questions?proposalId=proposal-1',
+      { state: { proposalId: 'proposal-1', jobPostId: 'job-1' } },
+    );
+  });
+
   it('opens the interview flow when the project only has optional questions', async () => {
     getJobPostQuestionsMock.mockResolvedValueOnce({
       success: true,
@@ -409,7 +440,7 @@ describe('CreateProposalScreen milestone experience', () => {
     fireEvent.click(screen.getByRole('button', { name: /submit proposal/i }));
 
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith(
-      '/proposals/create/job-1/questions',
+      '/proposals/create/job-1/questions?proposalId=proposal-1',
       { state: { proposalId: 'proposal-1', jobPostId: 'job-1' } },
     ));
     expect(updateProposalStatusMock).not.toHaveBeenCalled();

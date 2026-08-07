@@ -43,8 +43,6 @@ export function useESignContracts() {
   const [loadingDocument, setLoadingDocument] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [documentError, setDocumentError] = useState<string | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
 
   const listRequestId = useRef(0);
   const documentRequestId = useRef(0);
@@ -91,7 +89,6 @@ export function useESignContracts() {
     setSelectedDocumentId(documentId);
     setSelectedDocument(null);
     setDocumentError(null);
-    setDownloadError(null);
     setLoadingDocument(true);
 
     try {
@@ -207,6 +204,7 @@ export function useESignContracts() {
       signatureCount: selectedDocument.signatures.length,
       finalizedAt: selectedDocument.finalizedAt ?? null,
       exportedPdfUrl: selectedDocument.exportedPdfUrl ?? null,
+      hasPdfArtifact: selectedDocument.hasPdfArtifact,
       createdAt: selectedDocument.createdAt,
       updatedAt: selectedDocument.updatedAt ?? null,
     };
@@ -235,35 +233,11 @@ export function useESignContracts() {
     setPageNumber((current) => current + 1);
   };
 
-  const handleDownload = async (): Promise<void> => {
-    if (!selectedItem?.hasFinalArtifact) return;
-
-    setDownloadingDocumentId(selectedItem.documentId);
-    setDownloadError(null);
-    const response = await esignGetAPI.downloadDocument(selectedItem.documentId);
-
-    if (!response.success || !response.data) {
-      setDownloadError(response.message || t('contracts.legal.downloadFailed'));
-      setDownloadingDocumentId(null);
-      return;
-    }
-
-    const url = URL.createObjectURL(response.data);
-    const anchor = window.document.createElement('a');
-    anchor.href = url;
-    anchor.download = selectedItem.finalizedDocumentFileName || `${selectedItem.documentCode || 'GigBridge-contract'}.docx`;
-    window.document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    setDownloadingDocumentId(null);
-  };
-
   const totalDocuments = page?.totalCount ?? 0;
   const fullySignedCount = page?.items.filter(
     (doc) => doc.documentStatus === ESignDocumentStatus.FullySigned
   ).length ?? 0;
-  const artifactCount = page?.items.filter((doc) => doc.hasFinalArtifact).length ?? 0;
+  const artifactCount = page?.items.filter((doc) => doc.hasPdfArtifact).length ?? 0;
 
   return {
     t,
@@ -278,8 +252,6 @@ export function useESignContracts() {
     loadingDocument,
     listError,
     documentError,
-    downloadError,
-    downloadingDocumentId,
     groupedDocuments,
     selectedItem,
     totalDocuments,
@@ -293,6 +265,5 @@ export function useESignContracts() {
     handleStatusChange,
     handlePreviousPage,
     handleNextPage,
-    handleDownload,
   };
 }
