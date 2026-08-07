@@ -11,6 +11,7 @@ import type { ContractDto } from '../../../types/models/Contract';
 import { ContractStatus } from '../../../types/models/Contract';
 import { formatContractAmount, formatContractDate, getContractStatusLabel } from '../../../shared/utils/contractUtils';
 import { ContractAreaTabs } from '../../contracts/components/ContractAreaTabs';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
 import '../styles/admin-contract-audit-screen.css';
 
 interface ComplianceRequirement {
@@ -36,6 +37,8 @@ export default function AdminContractAuditScreen() {
   // State
   const [contracts, setContracts] = useState<ContractAuditData[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<ContractAuditData[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -276,6 +279,17 @@ export default function AdminContractAuditScreen() {
 
     setFilteredContracts(result);
   }, [contracts, selectedStatus, selectedCompliance, searchQuery, showOverdueOnly, showAtRiskOnly]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / pageSize));
+  const paginatedContracts = filteredContracts.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize, searchQuery, selectedCompliance, selectedStatus, showAtRiskOnly, showOverdueOnly]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const calculateStats = () => {
     return {
@@ -670,6 +684,9 @@ ${idx + 1}. ${c.title}
         )}
 
         {/* Contracts Table */}
+        <div className="mb-3 flex justify-end">
+          <AdminTablePageSize pageSize={pageSize} totalEntries={filteredContracts.length} disabled={loading} onPageSizeChange={setPageSize} />
+        </div>
         <div className="contracts-table-container">
           {filteredContracts.length === 0 ? (
             <div className="empty-state">
@@ -679,14 +696,14 @@ ${idx + 1}. ${c.title}
             </div>
           ) : (
             <div className="contracts-list">
-              {filteredContracts.map((contract, index) => (
+              {paginatedContracts.map((contract, index) => (
                 <div
                   key={contract.contractsId}
                   className={`contract-row glass-card ${expandedContractId === contract.contractsId ? 'expanded' : ''}`}
                 >
                   <div className="row-header">
                     <div className="contract-rank">
-                      <span>#{index + 1}</span>
+                      <span>#{((page - 1) * pageSize) + index + 1}</span>
                     </div>
 
                     <div className="row-content">
@@ -916,9 +933,10 @@ ${idx + 1}. ${c.title}
         {filteredContracts.length > 0 && (
           <div className="pagination-info">
             <p>
-              Showing <strong>{filteredContracts.length}</strong> of{' '}
-              <strong>{contracts.length}</strong> contracts
+              Showing <strong>{((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, filteredContracts.length)}</strong> of{' '}
+              <strong>{filteredContracts.length}</strong> matching contracts
             </p>
+            {totalPages > 1 && <AdminTablePagination currentPage={page} totalPages={totalPages} disabled={loading} onPageChange={setPage} ariaLabel="Contract pagination" />}
           </div>
         )}
         {/* Manage Contract Modal */}

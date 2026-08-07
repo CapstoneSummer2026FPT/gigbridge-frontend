@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -19,11 +19,13 @@ import { Link } from 'react-router';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import type { AdminContractReportListItem } from '../../../types/models/AdminContractReport';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
+import { AdminPageCache, adminPageCacheKey } from '../utils/AdminPageCache';
 import '../styles/admin-users-screen.css';
 
-const PAGE_SIZE = 20;
 const statusNames = ['Open', 'Under review', 'Awaiting information', 'Closed', 'Dismissed', 'Escalated', 'Linked to dispute'];
 const issueNames = ['Payment', 'Milestone', 'Delay', 'Poor quality', 'Communication', 'Scope change', 'Other'];
+type ContractReportPageData = NonNullable<Awaited<ReturnType<typeof adminGetAPI.getContractReports>>['data']>;
 
 const getStatusBadgeClass = (status: number) => {
   if (status === 3) return 'badge-green';
@@ -36,6 +38,7 @@ const getStatusBadgeClass = (status: number) => {
 export default function AdminContractReportsScreen() {
   const [items, setItems] = useState<AdminContractReportListItem[]>([]);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -61,56 +64,72 @@ export default function AdminContractReportsScreen() {
   const [updatedFrom, setUpdatedFrom] = useState('');
   const [updatedTo, setUpdatedTo] = useState('');
   const [sort, setSort] = useState('createdAt-desc');
+  const pageCache = useRef(new AdminPageCache<ContractReportPageData>()).current;
+  const latestRequest = useRef(0);
 
-  const load = async (next = page) => {
-    setLoading(true);
+  const load = async (next = page, nextPageSize = pageSize, force = false) => {
+    const requestId = ++latestRequest.current;
     setError('');
     const [sortBy, direction] = sort.split('-');
 
-    try {
-      const result = await adminGetAPI.getContractReports({
-        page: next,
-        pageSize: PAGE_SIZE,
-        search: search.trim() || undefined,
-        adminReviewStatus: status === '' ? undefined : Number(status),
-        issueType: issue === '' ? undefined : Number(issue),
-        reporterId: reporter.trim() || undefined,
-        respondentId: respondent.trim() || undefined,
-        clientId: client.trim() || undefined,
-        freelancerId: freelancer.trim() || undefined,
-        contractId: contract.trim() || undefined,
-        jobPostId: job.trim() || undefined,
-        milestoneId: milestone.trim() || undefined,
-        assignedAdminId: assigned && assigned !== 'unassigned' ? assigned.trim() : undefined,
-        unassignedOnly: assigned.trim().toLowerCase() === 'unassigned',
-        hasRelatedDispute: link === '' ? undefined : link === 'true',
-        hasAttachments: attachments === '' ? undefined : attachments === 'true',
-        hasResponse: response === '' ? undefined : response === 'true',
-        escalated: escalated === '' ? undefined : escalated === 'true',
-        createdFrom: createdFrom ? new Date(createdFrom).toISOString() : undefined,
-        createdTo: createdTo ? new Date(`${createdTo}T23:59:59Z`).toISOString() : undefined,
-        updatedFrom: updatedFrom ? new Date(updatedFrom).toISOString() : undefined,
-        updatedTo: updatedTo ? new Date(`${updatedTo}T23:59:59Z`).toISOString() : undefined,
-        sortBy,
-        sortDescending: direction === 'desc',
-      });
+    const paramsForPage = (targetPage: number) => ({
+      page: targetPage,
+      pageSize: nextPageSize,
+      search: search.trim() || undefined,
+      adminReviewStatus: status === '' ? undefined : Number(status),
+      issueType: issue === '' ? undefined : Number(issue),
+      reporterId: reporter.trim() || undefined,
+      respondentId: respondent.trim() || undefined,
+      clientId: client.trim() || undefined,
+      freelancerId: freelancer.trim() || undefined,
+      contractId: contract.trim() || undefined,
+      jobPostId: job.trim() || undefined,
+      milestoneId: milestone.trim() || undefined,
+      assignedAdminId: assigned && assigned !== 'unassigned' ? assigned.trim() : undefined,
+      unassignedOnly: assigned.trim().toLowerCase() === 'unassigned',
+      hasRelatedDispute: link === '' ? undefined : link === 'true',
+      hasAttachments: attachments === '' ? undefined : attachments === 'true',
+      hasResponse: response === '' ? undefined : response === 'true',
+      escalated: escalated === '' ? undefined : escalated === 'true',
+      createdFrom: createdFrom ? new Date(createdFrom).toISOString() : undefined,
+      createdTo: createdTo ? new Date(`${createdTo}T23:59:59Z`).toISOString() : undefined,
+      updatedFrom: updatedFrom ? new Date(updatedFrom).toISOString() : undefined,
+      updatedTo: updatedTo ? new Date(`${updatedTo}T23:59:59Z`).toISOString() : undefined,
+      sortBy,
+      sortDescending: direction === 'desc',
+    });
+    const keyForPage = (targetPage: number) => adminPageCacheKey('contract-reports', paramsForPage(targetPage));
+    const requestPage = async (targetPage: number): Promise<ContractReportPageData> => {
+      const result = await adminGetAPI.getContractReports(paramsForPage(targetPage));
+      if (!result.success || !result.data) throw new Error(result.message || 'Unable to load Contract Reports.');
+      return result.data;
+    };
+    const cached = force ? undefined : pageCache.get(keyForPage(next));
+    setLoading(!cached);
 
-      if (result.success && result.data) {
-        setItems(result.data.items);
-        setPage(result.data.pageNumber);
-        setPages(Math.max(1, result.data.totalPages));
-        setTotal(result.data.totalCount);
-      } else {
-        setItems([]);
-        setTotal(0);
-        setError(result.message || 'Unable to load Contract Reports.');
-      }
-    } catch {
+    const applyPage = (data: ContractReportPageData) => {
+      setItems(data.items);
+      setPage(data.pageNumber);
+      setPages(Math.max(1, data.totalPages));
+      setTotal(data.totalCount);
+    };
+
+    if (cached) applyPage(cached);
+
+    try {
+      const data = await pageCache.load(keyForPage(next), () => requestPage(next), force);
+      if (requestId !== latestRequest.current) return;
+      applyPage(data);
+      [next - 1, next + 1]
+        .filter(target => target >= 1 && target <= data.totalPages)
+        .forEach(target => pageCache.prefetch(keyForPage(target), () => requestPage(target)));
+    } catch (loadError) {
+      if (requestId !== latestRequest.current || cached) return;
       setItems([]);
       setTotal(0);
-      setError('Unable to load Contract Reports. Please try again.');
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load Contract Reports. Please try again.');
     } finally {
-      setLoading(false);
+      if (requestId === latestRequest.current) setLoading(false);
     }
   };
 
@@ -124,8 +143,8 @@ export default function AdminContractReportsScreen() {
     evidence: items.reduce((sum, item) => sum + item.attachmentCount, 0),
   }), [items]);
 
-  const firstResult = total === 0 ? 0 : ((page - 1) * PAGE_SIZE) + 1;
-  const lastResult = Math.min(page * PAGE_SIZE, total);
+  const firstResult = total === 0 ? 0 : ((page - 1) * pageSize) + 1;
+  const lastResult = Math.min(page * pageSize, total);
 
   return (
     <AppLayout>
@@ -240,10 +259,16 @@ export default function AdminContractReportsScreen() {
             </div>
           </section>
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs sm:text-sm text-secondary">
               {loading ? 'Loading reports…' : <>Showing <span className="text-primary font-semibold">{firstResult}-{lastResult}</span> of <span className="text-primary font-semibold">{total}</span> matching reports</>}
             </p>
+            <AdminTablePageSize
+              pageSize={pageSize}
+              totalEntries={total}
+              disabled={loading}
+              onPageSizeChange={value => { setPageSize(value); setPage(1); void load(1, value); }}
+            />
           </div>
 
           {loading ? (
@@ -269,7 +294,8 @@ export default function AdminContractReportsScreen() {
               <section className="glass-card" aria-label="Contract reports table">
                   <table className="block w-full [&_td]:whitespace-normal">
                     <thead className="hidden lg:block border-b border-primary bg-white/[0.02]">
-                      <tr className="grid grid-cols-[minmax(0,1.8fr)_minmax(0,1.3fr)_minmax(0,1fr)_135px_140px_40px] items-center gap-x-4 px-5 py-3">
+                      <tr className="grid grid-cols-[44px_minmax(0,1.8fr)_minmax(0,1.3fr)_minmax(0,1fr)_135px_140px_40px] items-center gap-x-4 px-5 py-3">
+                        <th className="text-left text-xs font-semibold text-primary">No.</th>
                         <th className="text-left text-xs font-semibold text-primary">Contract Report</th>
                         <th className="text-left text-xs font-semibold text-primary">Participants</th>
                         <th className="text-left text-xs font-semibold text-primary">Issue</th>
@@ -279,8 +305,9 @@ export default function AdminContractReportsScreen() {
                       </tr>
                     </thead>
                     <tbody className="block divide-y divide-primary">
-                      {items.map(item => (
-                        <tr key={item.reportContractId} className="grid grid-cols-2 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1.3fr)_minmax(0,1fr)_135px_140px_40px] items-start lg:items-center gap-x-4 gap-y-4 px-4 sm:px-5 py-4 hover:bg-white/5 transition-colors">
+                      {items.map((item, index) => (
+                        <tr key={item.reportContractId} className="grid grid-cols-2 lg:grid-cols-[44px_minmax(0,1.8fr)_minmax(0,1.3fr)_minmax(0,1fr)_135px_140px_40px] items-start lg:items-center gap-x-4 gap-y-4 px-4 sm:px-5 py-4 hover:bg-white/5 transition-colors">
+                          <td className="col-span-2 lg:col-span-1 text-xs font-bold text-cyan">#{firstResult + index}</td>
                           <td className="col-span-2 lg:col-span-1 min-w-0">
                             <Link to={`/admin/reports/contracts/${item.reportContractId}`} className="block text-sm font-semibold text-primary hover:text-cyan transition-colors truncate" title={item.contractTitle}>{item.contractTitle}</Link>
                             <p className="text-xs text-secondary mt-1 line-clamp-1">{item.jobPostTitle}</p>
@@ -318,11 +345,7 @@ export default function AdminContractReportsScreen() {
                   </table>
               </section>
 
-              <nav className="flex items-center justify-center gap-3 mt-6" aria-label="Contract report pagination">
-                <button type="button" className="glass-button px-4 py-2 rounded-lg text-sm text-secondary disabled:opacity-40" disabled={page <= 1} onClick={() => void load(page - 1)}>Previous</button>
-                <span className="text-sm text-secondary">Page <strong className="text-primary">{page}</strong> of <strong className="text-primary">{pages}</strong></span>
-                <button type="button" className="glass-button px-4 py-2 rounded-lg text-sm text-secondary disabled:opacity-40" disabled={page >= pages} onClick={() => void load(page + 1)}>Next</button>
-              </nav>
+              {pages > 1 && <AdminTablePagination currentPage={page} totalPages={pages} disabled={loading} onPageChange={next => void load(next)} ariaLabel="Contract report pagination" />}
             </>
           )}
         </main>

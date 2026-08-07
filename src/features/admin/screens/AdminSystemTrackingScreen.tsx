@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { Activity, AlertTriangle, FileText, Zap, Clock, Search, Download, RefreshCw, CheckCircle, XCircle, Terminal, Database, Cloud, ArrowUp, ArrowDown } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
 import { adminGetAPI } from '../../../api/adminAPI/GET';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -187,7 +188,7 @@ export default function AdminSystemTrackingScreen() {
   });
   const [apiLogSortOrder, setApiLogSortOrder] = useState<'asc' | 'desc'>('desc');
   const [apiLogPage, setApiLogPage] = useState(1);
-  const apiLogsPerPage = 5;
+  const [apiLogsPerPage, setApiLogsPerPage] = useState(10);
 
   const applyTrackingSnapshot = useCallback((snapshot: SystemTrackingSnapshot) => {
     setApiLogs(snapshot.requests.map(request => ({
@@ -466,6 +467,11 @@ export default function AdminSystemTrackingScreen() {
     (apiLogPage - 1) * apiLogsPerPage,
     apiLogPage * apiLogsPerPage
   );
+
+  useEffect(() => {
+    const lastPage = Math.max(1, totalApiLogPages);
+    if (apiLogPage > lastPage) setApiLogPage(lastPage);
+  }, [apiLogPage, totalApiLogPages]);
 
   const handleResetApiLogFilters = () => {
     setApiLogFilters({
@@ -771,10 +777,19 @@ export default function AdminSystemTrackingScreen() {
                 </div>
 
                 {/* Logs Table */}
+                <div className="flex justify-end border-t border-white/5 px-6 py-3">
+                  <AdminTablePageSize
+                    pageSize={apiLogsPerPage}
+                    totalEntries={filteredApiLogs.length}
+                    disabled={isLoadingTracking}
+                    onPageSizeChange={value => { setApiLogsPerPage(value); setApiLogPage(1); }}
+                  />
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="border-b border-white/5">
                       <tr>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">No.</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">HTTP Request</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">User</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-secondary uppercase">IP Address</th>
@@ -792,8 +807,9 @@ export default function AdminSystemTrackingScreen() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      {paginatedApiLogs.map(log => (
+                      {paginatedApiLogs.map((log, index) => (
                         <tr key={log.id} className="hover:bg-white/5 transition-colors">
+                          <td className="px-4 py-3 text-xs font-bold text-cyan">{((apiLogPage - 1) * apiLogsPerPage) + index + 1}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getMethodColor(log.method)}`}>
@@ -832,26 +848,11 @@ export default function AdminSystemTrackingScreen() {
 
                 {/* Pagination */}
                 {filteredApiLogs.length > 0 && (
-                  <div className="flex items-center justify-between px-6 py-4 border-t border-white/5">
+                  <div className="px-6 py-4 border-t border-white/5">
                     <p className="text-xs text-secondary">
                       Showing <span className="text-primary font-semibold">{((apiLogPage - 1) * apiLogsPerPage) + 1}</span> to <span className="text-primary font-semibold">{Math.min(apiLogPage * apiLogsPerPage, filteredApiLogs.length)}</span> of <span className="text-primary font-semibold">{filteredApiLogs.length}</span> logs
                     </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setApiLogPage(Math.max(1, apiLogPage - 1))}
-                        disabled={apiLogPage === 1}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium glass-button disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => setApiLogPage(Math.min(totalApiLogPages, apiLogPage + 1))}
-                        disabled={apiLogPage === totalApiLogPages}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium glass-button disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Next
-                      </button>
-                    </div>
+                    {totalApiLogPages > 1 && <AdminTablePagination currentPage={apiLogPage} totalPages={totalApiLogPages} disabled={isLoadingTracking} onPageChange={setApiLogPage} ariaLabel="API log pagination" />}
                   </div>
                 )}
               </div>
