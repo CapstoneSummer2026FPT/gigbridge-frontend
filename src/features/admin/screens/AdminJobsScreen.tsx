@@ -6,13 +6,14 @@ import { AppLayout } from '../../../shared/components/AppLayout';
 import GCoinIcon from '../../../shared/components/GCoinIcon';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { adminAPI } from '../../../api/adminAPI';
-import { JobPostStatus, type AdminJobPostStatsDto, type Job, type JobPostSummaryDto } from '../../../types/models/Job';
+import { JobPostStatus, type AdminJobPostListResponse, type AdminJobPostStatsDto, type Job, type JobPostSummaryDto } from '../../../types/models/Job';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
+import { AdminPageCache, adminPageCacheKey } from '../utils/AdminPageCache';
 import '../styles/admin-users-screen.css';
 
 type JobFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled';
 type JobSort = 'posted' | 'title' | 'budget';
 
-const PAGE_SIZE = 25;
 const EMPTY_STATS: AdminJobPostStatsDto = {
   total: 0,
   draft: 0,
@@ -106,6 +107,7 @@ export default function AdminJobsScreen() {
   const [sortBy, setSortBy] = useState<JobSort>('posted');
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [pageIndex, setPageIndex] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [stats, setStats] = useState<AdminJobPostStatsDto>(EMPTY_STATS);
@@ -152,45 +154,69 @@ export default function AdminJobsScreen() {
   const [isJobActionPending, setIsJobActionPending] = useState(false);
   const [jobsRefreshKey, setJobsRefreshKey] = useState(0);
   const latestJobsRequestRef = useRef(0);
+  const jobsPageCache = useRef(new AdminPageCache<AdminJobPostListResponse>()).current;
 
-  const fetchJobs = async (forceSummary = false) => {
+  const fetchJobs = async () => {
     const requestId = ++latestJobsRequestRef.current;
-    setIsLoadingJobs(true);
     setJobsError(null);
 
-    const includeSummary = forceSummary || pageIndex === 1;
+    const paramsForPage = (targetPage: number, knownTotal = totalItems) => {
+      const includeSummary = targetPage === 1;
+      return {
+        pageIndex: targetPage,
+        pageSize,
+        search: debouncedSearchQuery.trim() || undefined,
+        status: filterType === 'all' ? undefined : JOB_FILTER_STATUS[filterType],
+        sortBy: (sortBy === 'posted' ? 'newest' : sortBy === 'budget' ? 'budgetMax' : 'title') as 'newest' | 'title' | 'budgetMin' | 'budgetMax' | undefined,
+        sortDesc: sortBy !== 'title',
+        includeSummary,
+        knownTotalItems: includeSummary ? undefined : knownTotal,
+      };
+    };
+    const keyForPage = (targetPage: number, knownTotal = totalItems) =>
+      adminPageCacheKey(`jobs:${jobsRefreshKey}`, paramsForPage(targetPage, knownTotal));
+    const requestPage = async (targetPage: number, knownTotal = totalItems): Promise<AdminJobPostListResponse> => {
+      const response = await jobGetAPI.getAllJobPosts(paramsForPage(targetPage, knownTotal));
+      if (!response.success || !response.data) throw new Error(response.message || 'Failed to load jobs');
+      return response.data;
+    };
+    const cached = jobsPageCache.get(keyForPage(pageIndex));
+    setIsLoadingJobs(!cached);
 
-    const response = await jobGetAPI.getAllJobPosts({
-      pageIndex,
-      pageSize: PAGE_SIZE,
-      search: debouncedSearchQuery.trim() || undefined,
-      status: filterType === 'all' ? undefined : JOB_FILTER_STATUS[filterType],
-      sortBy: sortBy === 'posted' ? 'newest' : sortBy === 'budget' ? 'budgetMax' : 'title',
-      sortDesc: sortBy !== 'title',
-      includeSummary,
-      knownTotalItems: includeSummary ? undefined : totalItems,
-    });
-
-    if (requestId !== latestJobsRequestRef.current) return;
-
-    if (response.success && response.data) {
-      if (response.data.totalPages > 0 && pageIndex > response.data.totalPages) {
-        setPageIndex(response.data.totalPages);
+    const applyPage = (data: AdminJobPostListResponse) => {
+      if (data.totalPages > 0 && pageIndex > data.totalPages) {
+        setPageIndex(data.totalPages);
       } else {
-        setAllJobs(response.data.items.map(mapJobPostSummaryToJob));
+        setAllJobs(data.items.map(mapJobPostSummaryToJob));
       }
-      setTotalItems(response.data.totalItems);
-      setTotalPages(response.data.totalPages);
-      if (response.data.stats) setStats(response.data.stats);
-    } else {
+      setTotalItems(data.totalItems);
+      setTotalPages(data.totalPages);
+      if (data.stats) setStats(data.stats);
+    };
+
+    if (cached) applyPage(cached);
+
+    try {
+      const data = await jobsPageCache.load(keyForPage(pageIndex), () => requestPage(pageIndex));
+      if (requestId !== latestJobsRequestRef.current) return;
+      applyPage(data);
+
+      [pageIndex - 1, pageIndex + 1]
+        .filter(target => target >= 1 && target <= data.totalPages)
+        .forEach(target => jobsPageCache.prefetch(
+          keyForPage(target, data.totalItems),
+          () => requestPage(target, data.totalItems),
+        ));
+    } catch (loadError) {
+      if (requestId !== latestJobsRequestRef.current || cached) return;
       setAllJobs([]);
       setTotalItems(0);
       setTotalPages(0);
       setStats(EMPTY_STATS);
-      setJobsError(response.message || 'Failed to load jobs');
+      setJobsError(loadError instanceof Error ? loadError.message : 'Failed to load jobs');
+    } finally {
+      if (requestId === latestJobsRequestRef.current) setIsLoadingJobs(false);
     }
-
-    setIsLoadingJobs(false);
   };
 
   useEffect(() => {
@@ -207,7 +233,7 @@ export default function AdminJobsScreen() {
     return () => {
       latestJobsRequestRef.current += 1;
     };
-  }, [pageIndex, debouncedSearchQuery, filterType, sortBy, jobsRefreshKey]);
+  }, [pageIndex, pageSize, debouncedSearchQuery, filterType, sortBy, jobsRefreshKey]);
 
   useEffect(() => {
     if (!previewJobId) {
@@ -438,6 +464,7 @@ export default function AdminJobsScreen() {
     try {
       const response = await adminAPI.lockJobPost(job.id);
       if (response.success) {
+        jobsPageCache.clear();
         const isLocked = response.data === true;
         const wasLocked = job.visibility === 3;
 
@@ -470,7 +497,7 @@ export default function AdminJobsScreen() {
       const response = await adminAPI.deleteJobPost(job.id);
       if (response.success) {
         const nextTotalItems = Math.max(0, totalItems - 1);
-        const nextTotalPages = nextTotalItems === 0 ? 0 : Math.ceil(nextTotalItems / PAGE_SIZE);
+        const nextTotalPages = nextTotalItems === 0 ? 0 : Math.ceil(nextTotalItems / pageSize);
         const statusKey = job.status === 'draft'
           ? 'draft'
           : job.status === 'open'
@@ -621,6 +648,7 @@ export default function AdminJobsScreen() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-secondary">Sort:</span>
                     <select
+                      aria-label="Sort jobs"
                       value={sortBy}
                       onChange={e => {
                         setSortBy(e.target.value as JobSort);
@@ -639,18 +667,24 @@ export default function AdminJobsScreen() {
           </div>
 
           {/* Results count */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs sm:text-sm text-secondary">
               {isLoadingJobs ? (
                 <span>Loading jobs...</span>
               ) : (
                 <>
                   Showing <span className="text-primary font-semibold">
-                    {totalItems === 0 ? 0 : ((pageIndex - 1) * PAGE_SIZE) + 1}-{Math.min(pageIndex * PAGE_SIZE, totalItems)}
+                    {totalItems === 0 ? 0 : ((pageIndex - 1) * pageSize) + 1}-{Math.min(pageIndex * pageSize, totalItems)}
                   </span> of <span className="text-primary font-semibold">{totalItems}</span> matching jobs
                 </>
               )}
             </p>
+            <AdminTablePageSize
+              pageSize={pageSize}
+              totalEntries={totalItems}
+              disabled={isLoadingJobs}
+              onPageSizeChange={value => { setPageSize(value); setPageIndex(1); }}
+            />
           </div>
 
           {jobsError && (
@@ -666,18 +700,20 @@ export default function AdminJobsScreen() {
               <table className="w-full">
                 <thead className="border-b border-primary">
                   <tr>
+                    <th className="w-14 px-2 py-3 text-center text-xs font-semibold text-primary">No.</th>
                     <th className="text-left p-3 text-xs font-semibold text-primary min-w-[250px]">Job</th>
                     <th className="text-left p-3 text-xs font-semibold text-primary min-w-[120px]">Client</th>
                     <th className="text-left p-3 text-xs font-semibold text-primary min-w-[140px]">Budget</th>
                     <th className="text-left p-3 text-xs font-semibold text-primary min-w-[100px]">Type</th>
                     <th className="text-left p-3 text-xs font-semibold text-primary min-w-[90px]">Status</th>
                     <th className="text-left p-3 text-xs font-semibold text-primary min-w-[110px]">Posted</th>
-                    <th className="text-left p-3 text-xs font-semibold text-primary min-w-[130px]">Actions</th>
+                    <th className="w-20 min-w-[80px] px-2 py-3 text-center text-xs font-semibold text-primary">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-primary">
-                  {filteredJobs.map(job => (
+                  {filteredJobs.map((job, index) => (
                     <tr key={job.id} className="hover:bg-white/5 transition-colors">
+                      <td className="px-2 py-3 text-center text-xs font-bold text-cyan">{((pageIndex - 1) * pageSize) + index + 1}</td>
                       <td className="p-3">
                         <div>
                           <p className="text-sm font-semibold text-primary mb-1 truncate max-w-[250px]">{job.title}</p>
@@ -713,8 +749,8 @@ export default function AdminJobsScreen() {
                           </span>
                         </div>
                       </td>
-                      <td className="p-3">
-                        <div className="relative job-action-menu-container">
+                      <td className="w-20 px-2 py-3 text-center">
+                        <div className="relative inline-block job-action-menu-container">
                           <button
                             onClick={() => setShowActionMenu(showActionMenu === job.id ? null : job.id)}
                             className="p-2 rounded-lg glass-button hover:bg-amber/10 transition-colors"
@@ -803,8 +839,9 @@ export default function AdminJobsScreen() {
 
           {/* Jobs Cards - Mobile/Tablet */}
           <div className="xl:hidden space-y-4">
-            {filteredJobs.map(job => (
+            {filteredJobs.map((job, index) => (
               <div key={job.id} className="glass-card p-4">
+                <p className="mb-2 text-xs font-bold text-cyan">#{((pageIndex - 1) * pageSize) + index + 1}</p>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-primary mb-1 truncate">{job.title}</h3>
@@ -931,30 +968,7 @@ export default function AdminJobsScreen() {
             )}
           </div>
 
-          {totalPages > 1 && (
-            <nav className="mt-6 flex items-center justify-center gap-3" aria-label="Job list pagination">
-              <button
-                type="button"
-                className="glass-button rounded-lg px-4 py-2 text-sm font-semibold text-secondary disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={isLoadingJobs || pageIndex <= 1}
-                onClick={() => setPageIndex(current => Math.max(1, current - 1))}
-              >
-                Previous
-              </button>
-              <span className="text-sm text-secondary">
-                Page <span className="font-semibold text-primary">{pageIndex}</span> of{' '}
-                <span className="font-semibold text-primary">{totalPages}</span>
-              </span>
-              <button
-                type="button"
-                className="glass-button rounded-lg px-4 py-2 text-sm font-semibold text-secondary disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={isLoadingJobs || pageIndex >= totalPages}
-                onClick={() => setPageIndex(current => Math.min(totalPages, current + 1))}
-              >
-                Next
-              </button>
-            </nav>
-          )}
+          {totalPages > 1 && <AdminTablePagination currentPage={pageIndex} totalPages={totalPages} disabled={isLoadingJobs} onPageChange={setPageIndex} ariaLabel="Job list pagination" />}
 
           {/* Preview Job Modal */}
           {previewJob && (

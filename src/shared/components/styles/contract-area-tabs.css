@@ -1,0 +1,59 @@
+/* ==========================================================================
+   Shared Area Navigation Tabs Styles (Contract & Report Area Toggles)
+   ========================================================================== */
+
+.contract-area-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 1rem;
+  background: var(--surface, rgba(15, 23, 42, 0.6));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.contract-area-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.375rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.contract-area-tab:hover {
+  border-color: var(--border-strong, rgba(73, 75, 231, 0.3));
+  background: var(--surface-hover, rgba(73, 75, 231, 0.08));
+  color: var(--text-primary, #ffffff);
+}
+
+.contract-area-tab.active {
+  border-color: var(--brand-border, rgba(73, 75, 231, 0.4));
+  background: var(--brand, #494be7);
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(73, 75, 231, 0.3);
+}
+
+@media (max-width: 640px) {
+  .contract-area-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .contract-area-tab {
+    padding-inline: 0.5rem;
+    font-size: 0.75rem;
+  }
+}

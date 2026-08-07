@@ -10,6 +10,7 @@ export interface UserDTO {
   isEmailVerified: boolean;
   isActive: boolean;
   isSetup: boolean;
+  isPremium: boolean;
   preferredLanguage?: string | null;
   provider?: string | null;
   eloPoints?: number;

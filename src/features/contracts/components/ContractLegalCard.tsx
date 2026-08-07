@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router';
 import {
   AlertCircle,
@@ -9,10 +8,10 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import { esignGetAPI } from '../../../api/esignAPI/GET';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { ESignDocumentStatus, SignatureStatus } from '../../../types/models/ESign';
 import type { ContractESignDocumentState } from '../hooks/useContractESignDocument';
+import { useESignPdf } from '../hooks/useESignPdf';
 
 interface ContractLegalCardProps {
   contractId: string;
@@ -33,9 +32,8 @@ export function ContractLegalCard({
   documentState,
 }: ContractLegalCardProps): JSX.Element {
   const { t } = useTranslation();
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const document = documentState.document;
+  const pdf = useESignPdf(document);
 
   const signedCount = document?.signatures.filter(
     signature => signature.status === SignatureStatus.Signed
@@ -50,32 +48,6 @@ export function ContractLegalCard({
       document.status === ESignDocumentStatus.PendingSignatures ||
       document.status === ESignDocumentStatus.PartiallySigned
     );
-
-  const handleDownload = async (): Promise<void> => {
-    if (!document?.hasFinalArtifact || isDownloading) return;
-
-    setIsDownloading(true);
-    setDownloadError(null);
-    const response = await esignGetAPI.downloadDocument(document.documentId);
-
-    if (!response.success || !response.data) {
-      setDownloadError(response.message || t('contracts.legal.downloadFailed'));
-      setIsDownloading(false);
-      return;
-    }
-
-    const url = URL.createObjectURL(response.data);
-    const anchor = window.document.createElement('a');
-    anchor.href = url;
-    anchor.download =
-      document.finalizedDocumentFileName ||
-      `${document.documentCode || 'GigBridge-contract'}.docx`;
-    window.document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    setIsDownloading(false);
-  };
 
   return (
     <section
@@ -194,21 +166,19 @@ export function ContractLegalCard({
           )
         ) : null}
 
-        {document?.hasFinalArtifact ? (
+        {document ? (
           <button
             type="button"
-            onClick={() => void handleDownload()}
-            disabled={isDownloading}
+            onClick={() => void pdf.download()}
+            disabled={pdf.isPreparing}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-border/50 bg-secondary/60 px-5 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isDownloading ? (
+            {pdf.isPreparing ? (
               <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
             ) : (
               <Download size={16} aria-hidden="true" />
             )}
-            {isDownloading
-              ? t('contracts.legal.downloading')
-              : t('contracts.legal.downloadSignedDocument')}
+            {pdf.isPreparing ? 'Preparing PDF…' : 'Download PDF'}
           </button>
         ) : null}
 
@@ -223,9 +193,10 @@ export function ContractLegalCard({
         </a>
       </div>
 
-      {downloadError ? (
+      {pdf.error ? (
         <p className="text-xs font-semibold text-destructive" role="alert">
-          {downloadError}
+          {pdf.error}{' '}
+          <button type="button" onClick={() => void pdf.retry()} className="underline">Retry</button>
         </p>
       ) : null}
 

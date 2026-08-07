@@ -20,15 +20,46 @@
   --color-yellow-300: #edff66;
 }
 
-/* Globally force base font to Plus Jakarta Sans */
-:root, body {
-  font-family: "Plus Jakarta Sans", sans-serif;
+/* Globally force base font to Plus Jakarta Sans across all elements */
+:root,
+body,
+button,
+input,
+select,
+textarea,
+h1, h2, h3, h4, h5, h6,
+p, span, div, a, label, li,
+table, th, td {
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+}
+
+*:not(.logo-text):not(code):not(pre):not(.font-mono) {
+  font-family: "Plus Jakarta Sans", sans-serif !important;
+}
+
+/* @font-face aliases to redirect any legacy font references to Plus Jakarta Sans */
+@font-face {
+  font-family: 'circular-web';
+  src: local('Plus Jakarta Sans');
+}
+@font-face {
+  font-family: 'general';
+  src: local('Plus Jakarta Sans');
+}
+@font-face {
+  font-family: 'zentry';
+  src: local('Plus Jakarta Sans');
+}
+@font-face {
+  font-family: 'robert-medium';
+  src: local('Plus Jakarta Sans');
+}
+@font-face {
+  font-family: 'robert-regular';
+  src: local('Plus Jakarta Sans');
 }
 
 /* Globally force logo text to Montserrat geometric sans-serif */
 .logo-text {
   font-family: "Montserrat", "Plus Jakarta Sans", sans-serif !important;
 }
-
-
-

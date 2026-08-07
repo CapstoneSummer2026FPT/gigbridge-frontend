@@ -291,6 +291,7 @@ export interface UserProfileDto {
   phoneNumber?: string | null;
   preferredLanguage?: string | null;
   role: number;
+  isPremium: boolean;
 }
 
 export interface UpdateUserProfileDto {
@@ -301,3 +302,11 @@ export interface UpdateUserProfileDto {
   preferredLanguage?: string | null;
 }
 
+/** Minimal public profile returned by GET /api/profile/user/:userId */
+export interface PublicUserProfileDto {
+  userId: string;
+  fullName: string;
+  avatar?: string | null;
+  role: number;
+  isPremium: boolean;
+}

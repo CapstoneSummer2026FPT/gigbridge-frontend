@@ -14,6 +14,18 @@ import type { AccountReportDetail, AdminAuditLog, AdminUserDetail, PageResult } 
 import type { AdminContractReportDetail, AdminContractReportListParams, AdminContractReportPage } from '../../types/models/AdminContractReport';
 import type { AdminProposalDetail, AdminProposalListItem, AdminProposalListParams, PageResult as ProposalPage } from '../../types/models/AdminProposal';
 import type { SystemTrackingSnapshot } from '../../types/systemTracking';
+import type { AdminDashboardDays, AdminDashboardSummary } from '../../types/adminDashboard';
+import type {
+  AdminEloAppealDetail,
+  AdminEloAppealRow,
+  AdminEloAppealsQuery,
+  AdminEloHistoryQuery,
+  AdminEloTransactionRow,
+  AdminEloUserSummary,
+  EloHistoryQuery,
+  EloPolicy,
+  PaginatedElo,
+} from '../../types/elo';
 import {
   normalizeAdminDisputeDetail,
   normalizeAdminDisputeListResult,
@@ -23,6 +35,8 @@ import { normalizeAdminProposalDetail } from './proposalUtils';
 const Admin_Api_Base_Url = '/admin';
 
 export const adminGetAPI = {
+  getDashboard: (days: AdminDashboardDays = 30): Promise<ApiResponse<AdminDashboardSummary>> =>
+    apiService.get(`${Admin_Api_Base_Url}/dashboard`, { days }),
   getProposals: (params: AdminProposalListParams = {}): Promise<ApiResponse<ProposalPage<AdminProposalListItem>>> => apiService.get('/Proposals/admin/all', params),
   getProposalDetail: async (proposalId: string): Promise<ApiResponse<AdminProposalDetail>> => {
     const response = await apiService.get<unknown>(`/Proposals/admin/${proposalId}`);
@@ -162,6 +176,26 @@ export const adminGetAPI = {
   getContractMilestones: async (contractId: string): Promise<ApiResponse<any[]>> => {
     return apiService.get<any[]>(`${Admin_Api_Base_Url}/milestones/contract/${contractId}`);
   },
+
+  // --- Elo management ---
+
+  getAdminEloHistory: (params: AdminEloHistoryQuery = {}): Promise<ApiResponse<PaginatedElo<AdminEloTransactionRow>>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/history`, params),
+
+  getAdminEloUserHistory: (userId: string, params: EloHistoryQuery = {}): Promise<ApiResponse<PaginatedElo<AdminEloTransactionRow>>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/users/${userId}/history`, params),
+
+  getAdminEloUserSummary: (userId: string): Promise<ApiResponse<AdminEloUserSummary>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/users/${userId}/summary`),
+
+  getAdminEloAppeals: (params: AdminEloAppealsQuery = {}): Promise<ApiResponse<PaginatedElo<AdminEloAppealRow>>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/appeals`, params),
+
+  getAdminEloAppealDetail: (appealId: string): Promise<ApiResponse<AdminEloAppealDetail>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/appeals/${appealId}`),
+
+  getEloPolicy: (): Promise<ApiResponse<EloPolicy>> =>
+    apiService.get(`${Admin_Api_Base_Url}/elo/policy`),
 };
 
 

@@ -23,6 +23,9 @@ import {
   aiInterviewAPI,
   type AiInterviewQuestionResponse,
 } from '../../../api/externalAPI/aiInterviewAPI';
+import { proposalPatchAPI } from '../../../api/proposalAPI/PATCH';
+import { ProposalStatus } from '../../../types/models/Proposal';
+import { toast } from 'sonner';
 import '../styles/ai-interview-screen.css';
 
 type InterviewStage = 'intro' | 'interview' | 'results';
@@ -33,6 +36,7 @@ interface InterviewRouteState {
   jobPostId?: string;
   jobTitle?: string;
   interviewDefinitionId?: string | null;
+  proposalId?: string;
   job?: {
     id?: string;
     jobPostsId?: string;
@@ -176,6 +180,11 @@ export default function AIInterviewScreen() {
   ), [routeJobPostId, routeState.job?.id, routeState.job?.jobPostsId, routeState.jobPostId, searchParams]);
   const jobTitle = routeState.jobTitle || routeState.job?.title;
   const interviewDefinitionId = searchParams.get('definitionId') || routeState.interviewDefinitionId;
+  const proposalId = useMemo(() => (
+    searchParams.get('proposalId')
+    || routeState.proposalId
+    || ''
+  ), [searchParams, routeState.proposalId]);
 
   const [stage, setStage] = useState<InterviewStage>('intro');
   const [sessionId, setSessionId] = useState('');
@@ -247,6 +256,29 @@ export default function AIInterviewScreen() {
     if (questionAudioUrlRef.current) URL.revokeObjectURL(questionAudioUrlRef.current);
     questionAudioUrlRef.current = '';
   };
+
+  useEffect(() => {
+    if (!jobPostId) return;
+    const saved = localStorage.getItem(`ai_interview_session_${jobPostId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.sessionId) {
+          setSessionId(parsed.sessionId);
+          setAudioAccessToken(parsed.audioAccessToken || '');
+          setQuestionIndex(parsed.questionIndex || 1);
+          setQuestionCount(parsed.questionCount || 3);
+          setQuestionText(parsed.questionText || '');
+          setInterviewLanguage(parsed.interviewLanguage || 'auto');
+          setTtsProvider(parsed.ttsProvider || 'streaming');
+          setStage('interview');
+          setAnswerState('idle');
+        }
+      } catch (e) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+      }
+    }
+  }, [jobPostId]);
 
   useEffect(() => () => {
     clearRecordingTimers();
@@ -322,6 +354,18 @@ export default function AIInterviewScreen() {
       setInterviewLanguage(responseLanguage || 'auto');
       setAnswerState('idle');
       setStage('interview');
+
+      // Save state to localStorage for resume support
+      const sessionState = {
+        sessionId: nextSessionId,
+        audioAccessToken: nextAudioToken || '',
+        questionIndex: nextQuestionIndex,
+        questionCount: Math.max(nextQuestionIndex, nextQuestionCount),
+        questionText: nextQuestion,
+        interviewLanguage: responseLanguage || 'auto',
+        ttsProvider: nextTtsProvider || 'streaming'
+      };
+      localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify(sessionState));
     } catch {
       setStartError(t('aiInterview.errors.startFailed'));
     } finally {
@@ -333,6 +377,10 @@ export default function AIInterviewScreen() {
     const response = await aiInterviewAPI.transcribeAudio(sessionId, audioBlob, interviewLanguage);
     if (!response.success || !response.data) {
       setActionError(response.message || t('aiInterview.errors.transcriptionFailed'));
+      if (response.statusCode === 401 || response.statusCode === 404 || response.message?.includes("not found")) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+        setStage('intro');
+      }
       setAnswerState('idle');
       return;
     }
@@ -503,12 +551,37 @@ export default function AIInterviewScreen() {
     const data = response.data;
     if (!response.success || !data) {
       setActionError(t('aiInterview.errors.submitFailed'));
+      if (response.statusCode === 401 || response.statusCode === 404 || response.message?.includes("not found")) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+        setStage('intro');
+      }
       setAnswerState('review');
       return;
     }
 
     const completed = responseValue<boolean>(data, 'isCompleted', 'is_completed') ?? false;
     if (completed) {
+      localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+      if (proposalId) {
+        setAnswerState('submitting');
+        try {
+          const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, {
+            status: ProposalStatus.Pending,
+          });
+          if (!statusResponse.success) {
+            setActionError(statusResponse.message || 'Proposal could not be submitted.');
+            setAnswerState('review');
+            return;
+          }
+          toast.success(t('aiInterview.proposal.submitted') || 'Proposal submitted successfully!');
+          navigate('/proposals', { state: { submittedProposalId: proposalId } });
+          return;
+        } catch (err) {
+          setActionError('Failed to submit proposal. Please try again.');
+          setAnswerState('review');
+          return;
+        }
+      }
       setStage('results');
       setAnswerState('idle');
       return;
@@ -535,6 +608,18 @@ export default function AIInterviewScreen() {
     setRecordingSeconds(0);
     setSilenceCountdown(null);
     setAnswerState('idle');
+
+    // Save updated question progress to localStorage
+    const sessionState = {
+      sessionId,
+      audioAccessToken,
+      questionIndex: nextQuestionIndex,
+      questionCount: nextQuestionCount ? Math.max(nextQuestionIndex, nextQuestionCount) : questionCount,
+      questionText: nextQuestion,
+      interviewLanguage: data.language || interviewLanguage,
+      ttsProvider: nextTtsProvider || 'streaming'
+    };
+    localStorage.setItem(`ai_interview_session_${jobPostId}`, JSON.stringify(sessionState));
   };
 
   const playQuestion = async () => {
@@ -666,6 +751,11 @@ export default function AIInterviewScreen() {
       setSubtitleCueIndex(-1);
       setTtsState('failed');
       setActionError(t('aiInterview.errors.audioStreamFailed'));
+      const errorMsg = error instanceof Error ? error.message : '';
+      if (errorMsg.includes("401") || errorMsg.includes("403") || errorMsg.includes("404")) {
+        localStorage.removeItem(`ai_interview_session_${jobPostId}`);
+        setStage('intro');
+      }
     } finally {
       if (questionAudioAbortRef.current === controller) questionAudioAbortRef.current = null;
     }
@@ -947,7 +1037,18 @@ export default function AIInterviewScreen() {
 
               <div className="ai-complete-actions">
                 <button className="ai-secondary-action" onClick={() => navigate('/jobs/browse')}>{t('aiInterview.actions.browseMoreJobs')}</button>
-                <button className="ai-primary-action" onClick={() => navigate('/freelancer/dashboard')}>{t('aiInterview.actions.goToDashboard')}</button>
+                <button
+                  className="ai-primary-action"
+                  onClick={() => {
+                    if (proposalId) {
+                      navigate('/proposals', { state: { submittedProposalId: proposalId } });
+                    } else {
+                      navigate('/freelancer/dashboard');
+                    }
+                  }}
+                >
+                  {proposalId ? t('aiInterview.actions.goToProposals') : t('aiInterview.actions.goToDashboard')}
+                </button>
               </div>
             </section>
           </div>

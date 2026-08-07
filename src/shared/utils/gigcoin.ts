@@ -19,3 +19,25 @@ export function formatGigCoinPrecise(amount: number | null | undefined): string 
   }).format(value);
   return `${formatted} ${GIGCOIN_UNIT_LABEL}`;
 }
+
+export function formatGigCoinRange(min?: number | null, max?: number | null): string {
+  const minVal = typeof min === 'number' && Number.isFinite(min) && min > 0 ? min : null;
+  const maxVal = typeof max === 'number' && Number.isFinite(max) && max > 0 ? max : null;
+
+  if (minVal !== null && maxVal !== null) {
+    if (minVal === maxVal) {
+      return `${formatGigCoinNumber(minVal)} ${GIGCOIN_UNIT_LABEL}`;
+    }
+    return `${formatGigCoinNumber(minVal)} - ${formatGigCoinNumber(maxVal)} ${GIGCOIN_UNIT_LABEL}`;
+  }
+
+  if (minVal !== null) {
+    return `${formatGigCoinNumber(minVal)} ${GIGCOIN_UNIT_LABEL}`;
+  }
+
+  if (maxVal !== null) {
+    return `${formatGigCoinNumber(maxVal)} ${GIGCOIN_UNIT_LABEL}`;
+  }
+
+  return 'Thương lượng';
+}

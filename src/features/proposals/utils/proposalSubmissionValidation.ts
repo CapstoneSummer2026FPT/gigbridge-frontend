@@ -16,11 +16,8 @@ export const getProposalNarrativeValidationError = ({
     return `Introduction must be at least ${PROPOSAL_NARRATIVE_MIN_LENGTH} characters.`;
   }
 
-  if ((analysisSummary || '').trim().length < PROPOSAL_NARRATIVE_MIN_LENGTH) {
-    return `Your proposal approach must be at least ${PROPOSAL_NARRATIVE_MIN_LENGTH} characters.`;
-  }
-
-  if ((solutionApproach || '').trim().length < PROPOSAL_NARRATIVE_MIN_LENGTH) {
+  const approach = (analysisSummary || solutionApproach || '').trim();
+  if (approach.length < PROPOSAL_NARRATIVE_MIN_LENGTH) {
     return `Your proposal approach must be at least ${PROPOSAL_NARRATIVE_MIN_LENGTH} characters.`;
   }
 

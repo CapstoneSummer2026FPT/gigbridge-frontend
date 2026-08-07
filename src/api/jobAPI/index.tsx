@@ -10,6 +10,7 @@ export const jobAPI = {
   getSkillsByCategory: jobGetAPI.getSkillsByCategory,
   getMyJobPostById: jobGetAPI.getMyJobPostById,
   getMyJobPosts: jobGetAPI.getMyJobPosts,
+  getClientOpenJobPosts: jobGetAPI.getClientOpenJobPosts,
   getJobPromotionPolicy: jobGetAPI.getJobPromotionPolicy,
   getJobPromotionFeed: jobGetAPI.getJobPromotionFeed,
   getMyDraftJobPosts: jobGetAPI.getMyDraftJobPosts,
@@ -34,4 +35,5 @@ export const jobAPI = {
   deleteEmptyDraftJobPost: jobDeleteAPI.deleteEmptyDraftJobPost,
   deleteJobPostQuestion: jobDeleteAPI.deleteJobPostQuestion,
   deleteJobPostAttachment: jobDeleteAPI.deleteJobPostAttachment,
+  disableAiInterview: jobDeleteAPI.disableAiInterview,
 };

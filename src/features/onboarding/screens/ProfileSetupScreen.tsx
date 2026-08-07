@@ -9,6 +9,7 @@ import type { UpdateClientProfileDto, UpdateFreelancerProfileDto } from '../../.
 import type { CategoryOptionDto, MajorDto } from '../../../types/models/Category';
 import { jobAPI } from '../../../api/jobAPI';
 import { secureStorage } from '../../../shared/utils/secureStorage';
+import { LocationPickerModal } from '../../../shared/components/LocationPickerModal';
 import '../styles/profile-setup-screen.css';
 
 const INDUSTRIES_FALLBACK = [
@@ -330,13 +331,21 @@ export default function ProfileSetupScreen() {
                     <MapPin size={16} />
                     Location *
                   </label>
-                  <input
-                    type="text"
-                    value={clientData.location}
-                    onChange={e => setClientData({ ...clientData, location: e.target.value })}
-                    placeholder="City, Country"
-                    className="input-gb"
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={clientData.location}
+                      onChange={e => setClientData({ ...clientData, location: e.target.value })}
+                      placeholder="City, Country"
+                      className="input-gb pr-12"
+                    />
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <LocationPickerModal
+                        value={clientData.location}
+                        onSelect={loc => setClientData(prev => ({ ...prev, location: loc }))}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -442,13 +451,21 @@ export default function ProfileSetupScreen() {
                     <MapPin size={16} />
                     Location *
                   </label>
-                  <input
-                    type="text"
-                    value={freelancerData.location || ''}
-                    onChange={e => setFreelancerData({ ...freelancerData, location: e.target.value })}
-                    placeholder="City, Country"
-                    className="input-gb"
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={freelancerData.location || ''}
+                      onChange={e => setFreelancerData({ ...freelancerData, location: e.target.value })}
+                      placeholder="City, Country"
+                      className="input-gb pr-12"
+                    />
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                      <LocationPickerModal
+                        value={freelancerData.location || ''}
+                        onSelect={loc => setFreelancerData(prev => ({ ...prev, location: loc }))}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-group">

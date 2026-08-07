@@ -66,10 +66,13 @@ const toJobFromClientDetail = (dto: GetMyJobPostDetailDto): Job => ({
 const toJobFromDetail = (dto: JobPostDetailDto): Job => ({
   id: dto.jobPostsId,
   clientId: dto.clientProfilesId,
+  userId: dto.userId,
+  clientUserId: dto.userId,
+  clientFullName: dto.clientFullName || dto.fullName || 'Client',
   title: dto.title,
   description: dto.description,
   category: dto.categoryName || 'All',
-  skills: dto.skills?.map(s => s.skillName) || [],
+  skills: dto.skills?.map((s: { skillName?: string; name?: string }) => s.skillName || s.name || '') || [],
   budgetMin: dto.budgetMin ?? 0,
   budgetMax: dto.budgetMax ?? 0,
   jobType: 'fixed',
@@ -173,17 +176,23 @@ export function useJobDetail() {
         const data = await jobGetAPI.getJobById(activeJobPostId);
         setJob(data.job);
 
-        let fetchedClient: ClientIdentity | null = null;
+        const clientUserId = data.job.userId || data.job.clientUserId;
+        const targetIdToQuery = clientUserId || data.job.clientId;
+
+        let fetchedClient: ClientIdentity | null = (targetIdToQuery || data.job.clientFullName) ? {
+          id: targetIdToQuery,
+          fullName: data.job.clientFullName || 'Client',
+        } : null;
         let fetchedClientProfile: ClientProfileDetailDto | null = null;
 
-        if (data.job.clientId) {
+        if (targetIdToQuery) {
           try {
-            const profileRes = await profileGetAPI.getClientProfile(data.job.clientId);
+            const profileRes = await profileGetAPI.getClientProfile(targetIdToQuery);
             if (profileRes.success && profileRes.data) {
               const apiData = profileRes.data;
               fetchedClient = {
-                id: apiData.userId,
-                fullName: apiData.userFullName || 'Client',
+                id: apiData.userId || targetIdToQuery,
+                fullName: apiData.userFullName || data.job.clientFullName || 'Client',
               };
               fetchedClientProfile = apiData;
             }
@@ -342,6 +351,32 @@ export function useJobDetail() {
     }
   };
 
+  const handleContinueEditingProposal = async () => {
+    if (!job || !myProposal) return;
+
+    setIsApplying(true);
+    try {
+      // A draft with screening questions must resume from the question step.
+      // The question screen loads any previously saved answers for this proposal.
+      if (Number(myProposal.status) === ProposalStatus.Draft) {
+        const questionsResponse = await jobGetAPI.getJobPostQuestions(job.id);
+        if (questionsResponse.success && (questionsResponse.data?.length ?? 0) > 0) {
+          navigate(`/proposals/create/${encodeURIComponent(job.id)}/questions?proposalId=${encodeURIComponent(myProposal.proposalId)}`, {
+            state: {
+              jobPostId: job.id,
+              proposalId: myProposal.proposalId,
+            },
+          });
+          return;
+        }
+      }
+
+      navigate(`/proposals/${myProposal.proposalId}/edit`);
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
   const handleWithdrawProposal = async () => {
     if (!myProposal) return;
     if (Number(myProposal.status) !== ProposalStatus.Pending) {
@@ -417,6 +452,7 @@ export function useJobDetail() {
     // Actions
     toggleSavedJob,
     handleApplyJob,
+    handleContinueEditingProposal,
     handleWithdrawProposal,
     generateAIProposal,
 

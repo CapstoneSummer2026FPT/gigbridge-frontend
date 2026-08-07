@@ -8,6 +8,7 @@ import type { AdminUserDto, User } from '../../../types';
 import { UserRole } from '../../../types';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfilePreviewDrawer } from '../components/UserProfilePreviewDrawer';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
 import '../styles/admin-users-screen.css';
 
 type UserFilter = 'all' | 'client' | 'freelancer' | 'premium' | 'admin' | 'banned';
@@ -127,6 +128,8 @@ export default function AdminUsersScreen() {
 
   // Real API state
   const [users, setUsers] = useState<User[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [reportedUserTotal, setReportedUserTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
@@ -184,6 +187,20 @@ export default function AdminUsersScreen() {
 
     return filtered;
   }, [allUsers, searchQuery, filterType, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const pageUsers = useMemo(
+    () => filteredUsers.slice((page - 1) * pageSize, page * pageSize),
+    [filteredUsers, page, pageSize],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterType, pageSize, searchQuery, sortBy]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const stats = useMemo(() => {
     const total = allUsers.length;
@@ -418,14 +435,15 @@ export default function AdminUsersScreen() {
         </div>
 
         {/* Results count */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-secondary">
             {loading ? (
               <span>Loading users...</span>
             ) : (
-              <>Showing <span className="text-primary font-semibold">{filteredUsers.length}</span> of <span className="text-primary font-semibold">{allUsers.length}</span> users</>
+              <>Showing <span className="text-primary font-semibold">{filteredUsers.length === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, filteredUsers.length)}</span> of <span className="text-primary font-semibold">{filteredUsers.length}</span> matching users</>
             )}
           </p>
+          <AdminTablePageSize pageSize={pageSize} totalEntries={filteredUsers.length} disabled={loading} onPageSizeChange={setPageSize} />
         </div>
 
         {/* Users Table */}
@@ -440,6 +458,7 @@ export default function AdminUsersScreen() {
             <table className="w-full">
               <thead className="border-b border-primary">
                 <tr>
+                  <th className="text-left p-4 text-sm font-semibold text-primary">No.</th>
                   <th className="text-left p-4 text-sm font-semibold text-primary">User</th>
                   <th className="text-left p-4 text-sm font-semibold text-primary">Email</th>
                   <th className="text-left p-4 text-sm font-semibold text-primary">Role</th>
@@ -451,7 +470,7 @@ export default function AdminUsersScreen() {
               <tbody className="divide-y divide-primary">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-16">
+                    <td colSpan={7} className="text-center py-16">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-8 h-8 border-2 border-cyan border-t-transparent rounded-full animate-spin" />
                         <p className="text-sm text-secondary">Loading users...</p>
@@ -459,8 +478,9 @@ export default function AdminUsersScreen() {
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map(user => (
+                  pageUsers.map((user, index) => (
                     <tr key={user.id} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openPreview(user)}>
+                      <td className="p-4 text-sm font-bold text-cyan">{((page - 1) * pageSize) + index + 1}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <button type="button" className="flex items-center gap-3 text-left" onClick={event => { event.stopPropagation(); openPreview(user); }} aria-label={`Preview ${user.full_name}`}>
@@ -631,6 +651,10 @@ export default function AdminUsersScreen() {
             </div>
           )}
         </div>
+
+        {!loading && totalPages > 1 && (
+          <AdminTablePagination currentPage={page} totalPages={totalPages} onPageChange={setPage} ariaLabel="User list pagination" />
+        )}
 
         {/* Create User Modal */}
         {showCreateUser && typeof document !== 'undefined' && createPortal(

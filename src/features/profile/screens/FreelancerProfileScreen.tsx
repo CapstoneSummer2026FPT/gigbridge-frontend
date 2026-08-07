@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useNavigate, useParams } from 'react-router';
 import {
@@ -27,8 +27,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
-import { useGSAP } from '@gsap/react';
-import { gsap } from 'gsap';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow';
@@ -37,15 +36,185 @@ import { useFreelancerProfile } from '../hooks/useFreelancerProfile';
 import { InviteFreelancerToJobModal } from '../components/InviteFreelancerToJobModal';
 import { ReportUserModal } from '../components/ReportUserModal';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { formatGigCoinRange } from '../../../shared/utils/gigcoin';
+import type { FreelancerCompletedProjectDto } from '../../../api/contractAPI/GET';
 import '../../reviews/styles/reviews-screen.css';
 import '../styles/client-profile-screen.css';
 import '../styles/freelancer-profile-screen.css';
 
-const getAvailabilityText = (avail?: number) => {
-  if (avail === 0) return 'Full-time (40h/week)';
-  if (avail === 1) return 'Part-time (20h/week)';
-  if (avail === 2) return 'Not Available';
-  return 'Available for Hire';
+interface FreelancerCompletedProjectsCarouselProps {
+  completedProjects: FreelancerCompletedProjectDto[];
+  loading: boolean;
+}
+
+function FreelancerCompletedProjectsCarousel({ completedProjects, loading }: FreelancerCompletedProjectsCarouselProps) {
+  const navigate = useNavigate();
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const itemsPerPage = 2;
+  const totalSlides = Math.max(1, Math.ceil(completedProjects.length / itemsPerPage));
+
+  useEffect(() => {
+    setActiveSlide(0);
+  }, [completedProjects.length]);
+
+  useEffect(() => {
+    if (totalSlides <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % totalSlides);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [totalSlides, isPaused]);
+
+  if (loading) {
+    return (
+      <div className="space-y-3 py-4">
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-3 py-1">
+            <div className="h-4 bg-[var(--surface-muted)] rounded w-3/4" />
+            <div className="h-3 bg-[var(--surface-muted)] rounded w-1/2" />
+          </div>
+        </div>
+        <div className="animate-pulse flex space-x-4">
+          <div className="flex-1 space-y-3 py-1">
+            <div className="h-4 bg-[var(--surface-muted)] rounded w-3/4" />
+            <div className="h-3 bg-[var(--surface-muted)] rounded w-1/2" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (completedProjects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[140px] my-auto text-center p-6">
+        <p className="text-[var(--text-muted)] text-xs font-semibold">
+          Chưa có dự án nào hoàn thành gần đây.
+        </p>
+      </div>
+    );
+  }
+
+  const currentPair = completedProjects.slice(activeSlide * itemsPerPage, (activeSlide + 1) * itemsPerPage);
+
+  return (
+    <div
+      className="flex-1 flex flex-col justify-start space-y-3 min-h-[145px]"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <div className="cp-job-list flex flex-col justify-start items-stretch gap-2.5 transition-all duration-500 ease-in-out flex-1">
+        {currentPair.map(proj => {
+          const title = proj.jobPost?.title || 'Dự án đã hoàn thành';
+          const budgetText = formatGigCoinRange(proj.totalBudget, proj.totalBudget);
+          const categoryName = proj.jobPost?.categoryName || proj.jobPost?.majorName || 'Hoàn thành';
+          const skillsList = proj.jobPost?.skills?.map(s => s.skillName || s.name || '') || [];
+          const targetJobId = proj.jobPostsId || proj.jobPost?.jobPostsId;
+
+          return (
+            <div
+              key={proj.contractId}
+              onClick={() => {
+                if (targetJobId) {
+                  navigate(`/jobs/${targetJobId}`);
+                }
+              }}
+              className="group relative flex items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-[var(--surface)] via-[var(--surface)] to-[var(--surface-muted)]/40 hover:to-[var(--surface-hover)] border border-[var(--border)] hover:border-[var(--brand,#494be7)]/60 shadow-2xs hover:shadow-sm transition-all duration-300 cursor-pointer overflow-hidden"
+            >
+              {/* Left active green indicator bar */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 group-hover:bg-emerald-400 transition-all duration-300" />
+
+              <div className="space-y-1.5 flex-1 min-w-0 pl-1">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <h3 className="truncate font-black text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--brand,#494be7)] transition-colors">
+                    {title}
+                  </h3>
+                  <span className="shrink-0 text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20 shadow-2xs">
+                    {budgetText}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] font-semibold truncate">
+                  <span className="shrink-0 text-[var(--text-secondary)] font-bold">
+                    Khách hàng: {proj.clientName || 'N/A'}
+                  </span>
+                  <span className="text-[var(--border-strong,#a1a1aa)]">•</span>
+                  <span className="shrink-0">{categoryName}</span>
+                  {skillsList.length > 0 && (
+                    <>
+                      <span className="text-[var(--border-strong,#a1a1aa)]">•</span>
+                      <div className="flex items-center gap-1 overflow-hidden">
+                        {skillsList.slice(0, 3).map(tag => (
+                          <span
+                            key={tag}
+                            className="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-[var(--surface-muted)] text-[var(--text-muted)] border border-[var(--border)] group-hover:border-[var(--brand,#494be7)]/30 group-hover:text-[var(--brand,#494be7)] transition-colors"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 w-7 h-7 rounded-lg bg-[var(--surface)] border border-[var(--border)] group-hover:bg-[var(--brand,#494be7)] group-hover:text-white group-hover:border-[var(--brand,#494be7)] transition-all duration-300 flex items-center justify-center shadow-2xs">
+                <ChevronRight size={15} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pagination indicators & controls if > 1 slide */}
+      {totalSlides > 1 && (
+        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: totalSlides }).map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setActiveSlide(index)}
+                aria-label={`Go to slide ${index + 1}`}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  index === activeSlide
+                    ? 'w-6 bg-emerald-500'
+                    : 'w-2 bg-[var(--border-strong,#d4d4d8)] hover:bg-emerald-500/50'
+                }`}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveSlide(prev => (prev === 0 ? totalSlides - 1 : prev - 1))}
+              className="p-1 hover:text-emerald-500 cursor-pointer"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span>
+              {activeSlide + 1} / {totalSlides}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveSlide(prev => (prev + 1) % totalSlides)}
+              className="p-1 hover:text-emerald-500 cursor-pointer"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const getAvailabilityText = (avail?: number, t?: (key: string) => string) => {
+  if (avail === 0) return t ? t('profile.availability.fullTime') : 'Full-time (40h/week)';
+  if (avail === 1) return t ? t('profile.availability.partTime') : 'Part-time (20h/week)';
+  if (avail === 2) return t ? t('profile.availability.notAvailable') : 'Not Available';
+  return t ? t('profile.availability.available') : 'Available for Hire';
 };
 
 export default function FreelancerProfileScreen() {
@@ -76,6 +245,8 @@ export default function FreelancerProfileScreen() {
     distribution,
     totalPages,
     paginatedReviews,
+    completedProjects,
+    completedLoading,
     setShowJobInviteModal,
     setShowMoreMenu,
     setCurrentPage,
@@ -85,33 +256,16 @@ export default function FreelancerProfileScreen() {
     currentUser?.role === 0 && currentUser?.id !== targetId,
   );
 
-  // GSAP Entrance Timeline Animation (Identical clearProps & stagger logic to ClientProfileScreen)
-  useGSAP(
-    () => {
-      if (containerRef.current && !loading) {
-        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-        tl.fromTo(
-          '.cp-glow-orb',
-          { opacity: 0, scale: 0.8 },
-          { opacity: 0.6, scale: 1, duration: 0.8, stagger: 0.15, clearProps: 'all' }
-        )
-        .fromTo(
-          '.cp-hero-card',
-          { opacity: 0, y: 25 },
-          { opacity: 1, y: 0, duration: 0.5, clearProps: 'all' },
-          '-=0.5'
-        )
-        .fromTo(
-          '.cp-card',
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.45, stagger: 0.08, clearProps: 'all' },
-          '-=0.3'
-        );
-      }
-    },
-    { scope: containerRef, dependencies: [loading] }
-  );
+  // Reusable GSAP Entrance Hook
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.cp-glow-orb', scale: 0.8, duration: 0.8, stagger: 0.15, clearProps: 'all' },
+      { selector: '.cp-hero-card', y: 25, duration: 0.5, clearProps: 'all' },
+      { selector: '.cp-card', y: 20, duration: 0.45, stagger: 0.08, clearProps: 'all' },
+    ],
+  });
 
   if (loading) {
     return (
@@ -127,14 +281,14 @@ export default function FreelancerProfileScreen() {
     return (
       <AppLayout>
         <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 px-6 text-center">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Freelancer profile unavailable</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{t('profile.edit.loadError')}</h1>
           <p className="text-[var(--text-secondary)]">{error || 'No freelancer profile was selected.'}</p>
           <button
             type="button"
             onClick={() => navigate(-1)}
             className="cp-btn-secondary"
           >
-            Go back
+            {t('profile.back')}
           </button>
         </div>
       </AppLayout>
@@ -153,7 +307,7 @@ export default function FreelancerProfileScreen() {
     .map(part => part[0]?.toUpperCase())
     .join('') || 'B';
 
-  const availabilityText = getAvailabilityText(profile.availability);
+  const availabilityText = getAvailabilityText(profile.availability, t);
 
   return (
     <AppLayout>
@@ -172,7 +326,7 @@ export default function FreelancerProfileScreen() {
               className="cp-btn-secondary"
             >
               <ArrowLeft size={16} className="cp-card-icon" />
-              <span>Back</span>
+              <span>{t('profile.back')}</span>
             </button>
           </div>
 
@@ -196,14 +350,14 @@ export default function FreelancerProfileScreen() {
 
               {/* User Meta Details Block */}
               <div className="cp-hero-details">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
                   <h1 className="cp-hero-name">
                     {user.full_name || 'Bao Dinh'}
                   </h1>
                   {profile?.showProVerifiedBadge === true && (
                     <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--brand,#494be7)] text-white text-[11px] font-extrabold tracking-wide shadow-sm">
                       <Crown size={12} className="fill-current" />
-                      <span>Pro Verified</span>
+                      <span>{t('profile.proVerified')}</span>
                     </div>
                   )}
                 </div>
@@ -244,7 +398,7 @@ export default function FreelancerProfileScreen() {
                   className="cp-btn-secondary"
                 >
                   <Edit3 size={15} />
-                  <span>Edit Profile</span>
+                  <span>{t('profile.editProfile')}</span>
                 </button>
               ) : (
                 <>
@@ -291,12 +445,12 @@ export default function FreelancerProfileScreen() {
                         onClick={() => {
                           setShowMoreMenu(false);
                           void navigator.clipboard.writeText(window.location.href);
-                          toast.success('Link copied to clipboard!');
+                          toast.success(t('profile.linkCopied'));
                         }}
                         className="cp-dropdown-item"
                       >
                         <Share2 size={14} />
-                        Share
+                        {t('profile.share')}
                       </button>
 
                       {currentUser?.id !== user.id && (
@@ -310,7 +464,7 @@ export default function FreelancerProfileScreen() {
                           className="cp-dropdown-item cp-dropdown-item-danger"
                         >
                           <Flag size={14} />
-                          {reportSubmitted ? 'Reported' : 'Report User'}
+                          {reportSubmitted ? t('profile.reported') : t('profile.reportUser')}
                         </button>
                       )}
                     </div>
@@ -328,7 +482,7 @@ export default function FreelancerProfileScreen() {
                 <div className="cp-bio-col">
                   <div className="cp-card-title-group">
                     <AlignLeft size={18} className="cp-card-icon" />
-                    <h2 className="cp-card-title">Bio & Overview</h2>
+                    <h2 className="cp-card-title">{t('profile.bioOverview')}</h2>
                   </div>
                   <p className="cp-bio-text">
                     {profile.bio || "I'm a professional freelancer & software engineer focused on designing intuitive interfaces, building high-impact digital products, and creating scalable web solutions."}
@@ -341,7 +495,7 @@ export default function FreelancerProfileScreen() {
                   <div className="space-y-2">
                     <div className="cp-card-title-group">
                       <Tag size={16} className="cp-card-icon" />
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Categories</h3>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('profile.categories')}</h3>
                     </div>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {profile.categories && profile.categories.length > 0 ? (
@@ -364,7 +518,7 @@ export default function FreelancerProfileScreen() {
                   <div className="space-y-2">
                     <div className="cp-card-title-group">
                       <Code2 size={16} className="cp-card-icon" />
-                      <h3 className="text-sm font-bold text-[var(--text-primary)]">Skills</h3>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">{t('profile.skills')}</h3>
                     </div>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {skills.length > 0 ? (
@@ -397,26 +551,13 @@ export default function FreelancerProfileScreen() {
               <div className="w-full flex items-center justify-between">
                 <div className="cp-card-title-group">
                   <Shield size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">Elo Point</h2>
+                  <h2 className="cp-card-title">{t('profile.eloPoint')}</h2>
                 </div>
                 <span className="cp-pill-brand">
-                  Verified
+                  {t('profile.verified')}
                 </span>
               </div>
 
-              {/* SVG Arc Gauge — 290° arc, gap 70° at BOTTOM */}
-              {/*
-                SVG Y-axis goes DOWN: 0°=right, 90°=BOTTOM, 180°=left, 270°=top
-                Gap centered at 90° (bottom):
-                  from 90°-35°=55° to 90°+35°=125°
-                Arc: from 125° → clockwise → 55°  (= 290°, large arc)
-
-                125° → x=100+80·cos(125°)=54.11,  y=100+80·sin(125°)=165.54  (lower-left)
-                 55° → x=100+80·cos(55°)=145.89,  y=100+80·sin(55°)=165.54   (lower-right)
-
-                Path: M 54.11 165.54 A 80 80 0 1 1 145.89 165.54
-                large-arc=1, sweep=1 (clockwise)
-              */}
               <div className="fp-arc-gauge-wrap">
                 <div className="fp-arc-glow" />
                 <svg
@@ -424,7 +565,6 @@ export default function FreelancerProfileScreen() {
                   className="fp-arc-svg"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  {/* Background track — 290° */}
                   <path
                     d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
                     fill="none"
@@ -432,7 +572,6 @@ export default function FreelancerProfileScreen() {
                     strokeWidth="13"
                     strokeLinecap="round"
                   />
-                  {/* Foreground arc — brand color */}
                   <path
                     d="M 54.11 165.54 A 80 80 0 1 1 145.89 165.54"
                     fill="none"
@@ -442,107 +581,37 @@ export default function FreelancerProfileScreen() {
                     className="fp-arc-progress"
                   />
                 </svg>
-                {/* Score + label, centered inside the circle */}
                 <div className="fp-arc-center">
                   <span className="fp-arc-number">{eloPoints || 9999}</span>
-                  <span className="fp-arc-label">PROFILE STRENGTH</span>
+                  <span className="fp-arc-label">{t('profile.profileStrength')}</span>
                 </div>
               </div>
-            </div>
 
-            {/* Recently Worked Card (Col-8) - Exact Client Profile Job List Format */}
-            <div className="cp-card cp-col-8 flex flex-col justify-between space-y-5">
-              <div className="cp-card-header">
-                <div className="cp-card-title-group">
-                  <Layers size={18} className="cp-card-icon" />
-                  <h2 className="cp-card-title">Recently Worked</h2>
-                </div>
+              {currentUser?.id === targetId && (
                 <button
                   type="button"
-                  onClick={() => navigate('/jobs')}
-                  className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none"
+                  onClick={() => navigate('/elo')}
+                  className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none mt-3 mx-auto"
                 >
-                  <span>See more</span>
+                  <span>{t('profile.eloHistoryLink')}</span>
                   <ChevronRight size={14} />
                 </button>
+              )}
+            </div>
+
+            {/* Recently Worked Card (Col-8) */}
+            <div className="cp-card cp-col-8 flex flex-col justify-between space-y-5">
+              <div className="cp-card-header flex items-center justify-between">
+                <div className="cp-card-title-group">
+                  <Layers size={18} className="cp-card-icon" />
+                  <h2 className="cp-card-title">
+                    {t('profile.recentlyWorked')} {completedProjects.length > 0 ? `(${completedProjects.length})` : ''}
+                  </h2>
+                </div>
               </div>
 
-              {/* Job / Experience List */}
-              <div className="cp-job-list">
-                {experience.length > 0 ? (
-                  experience.map((exp, idx) => (
-                    <div key={idx} className="cp-job-item">
-                      <div className="space-y-1.5 flex-1">
-                        <h3 className="cp-job-title">{exp.title}</h3>
-                        <p className="cp-job-meta">
-                          $5 - $15 • Fixed Price • {exp.company || 'Remote'} ({exp.years})
-                        </p>
-                        <div className="cp-job-tags">
-                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                            <span key={tag} className="cp-job-tag-pill">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate('/jobs')}
-                        className="cp-action-icon-btn"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <>
-                    <div className="cp-job-item">
-                      <div className="space-y-1.5 flex-1">
-                        <h3 className="cp-job-title">Web Dev</h3>
-                        <p className="cp-job-meta">$5 - $15 • Fixed Price • Remote</p>
-                        <div className="cp-job-tags">
-                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                            <span key={tag} className="cp-job-tag-pill">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate('/jobs')}
-                        className="cp-action-icon-btn"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-
-                    <div className="cp-job-item">
-                      <div className="space-y-1.5 flex-1">
-                        <h3 className="cp-job-title">Web Dev</h3>
-                        <p className="cp-job-meta">$5 - $15 • Fixed Price • Remote</p>
-                        <div className="cp-job-tags">
-                          {['NEXT.JS', 'ASP. NET CORE', 'POSTGRESQL', 'NODE.JS'].map(tag => (
-                            <span key={tag} className="cp-job-tag-pill">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate('/jobs')}
-                        className="cp-action-icon-btn"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              {/* Dynamic Completed Projects Carousel */}
+              <FreelancerCompletedProjectsCarousel completedProjects={completedProjects} loading={completedLoading} />
             </div>
           </div>
 
@@ -553,7 +622,7 @@ export default function FreelancerProfileScreen() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="cp-card-title-group">
                   <FolderGit2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
-                  <h2 className="cp-card-title">Portfolio & Projects</h2>
+                  <h2 className="cp-card-title">{t('profile.portfolioProjects')}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   {currentUser?.id === targetId && (
@@ -563,11 +632,11 @@ export default function FreelancerProfileScreen() {
                       className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
                     >
                       <Plus size={13} />
-                      <span>Add Project</span>
+                      <span>{t('profile.addProject')}</span>
                     </button>
                   )}
                   <span className="cp-pill-brand text-xs">
-                    {profileData.rawPortfolioItems?.length || profileData.portfolio?.length || 0} Projects
+                    {t('profile.projectsCount', { count: profileData.rawPortfolioItems?.length || profileData.portfolio?.length || 0 })}
                   </span>
                 </div>
               </div>
@@ -604,7 +673,7 @@ export default function FreelancerProfileScreen() {
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="cp-card-title-group">
                   <Building2 size={18} className="cp-card-icon text-[var(--brand,#494be7)]" />
-                  <h2 className="cp-card-title">Work Experience</h2>
+                  <h2 className="cp-card-title">{t('profile.workExperience')}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   {currentUser?.id === targetId && (
@@ -614,11 +683,11 @@ export default function FreelancerProfileScreen() {
                       className="cp-btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
                     >
                       <Plus size={13} />
-                      <span>Add Position</span>
+                      <span>{t('profile.addPosition')}</span>
                     </button>
                   )}
                   <span className="cp-pill-muted text-xs">
-                    {profileData.rawWorkExperiences?.length || experience.length || 0} Positions
+                    {t('profile.positionsCount', { count: profileData.rawWorkExperiences?.length || experience.length || 0 })}
                   </span>
                 </div>
               </div>
@@ -675,7 +744,7 @@ export default function FreelancerProfileScreen() {
                   ))
                 ) : (
                   <div className="p-6 text-center text-sm text-[var(--text-secondary)]">
-                    No work experience entries added yet.
+                    {t('profile.noWorkExperience')}
                   </div>
                 )}
               </div>
@@ -686,7 +755,7 @@ export default function FreelancerProfileScreen() {
           <div className="cp-card cp-col-12 space-y-6">
             <div className="cp-card-title-group">
               <Star size={18} className="text-amber-500 fill-current" />
-              <h2 className="cp-card-title">{t('reviews.clientReviews') || 'Client Reviews'}</h2>
+              <h2 className="cp-card-title">{t('profile.clientReviews')}</h2>
             </div>
 
             {reviewsList.length > 0 ? (
@@ -706,7 +775,7 @@ export default function FreelancerProfileScreen() {
                     ))}
                   </div>
                   <p className="text-xs font-semibold text-[var(--text-secondary)]">
-                    Based on {reviewsList.length} reviews from clients
+                    {t('profile.basedOnReviewsClient', { count: reviewsList.length })}
                   </p>
 
                   <div className="w-full space-y-2 pt-2">

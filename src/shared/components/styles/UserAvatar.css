@@ -1,0 +1,404 @@
+/**
+ * UserAvatar.css
+ * Premium 3D Neon Tube Avatar Halo Effect with Theme-Adaptive Contrast for Light/Dark Modes
+ */
+
+:root {
+  --admin-matrix-green: #00ff66;
+  --admin-matrix-dark: #10b981;
+  --admin-matrix-deep: #059669;
+  --admin-matrix-shadow: rgba(0, 255, 102, 0.95);
+  --admin-pixel-color: #00ff66;
+  --admin-pixel-shadow: 0 0 4px #00ff66, 0 0 8px #10b981;
+  --admin-badge-bg: var(--background, #090d16);
+}
+
+[data-theme="light"],
+.light {
+  --admin-matrix-green: #15803d;
+  --admin-matrix-dark: #16a34a;
+  --admin-matrix-deep: #047857;
+  --admin-matrix-shadow: rgba(21, 128, 61, 0.65);
+  --admin-pixel-color: #15803d;
+  --admin-pixel-shadow: 0 0 3px rgba(21, 128, 61, 0.4);
+  --admin-badge-bg: #ffffff;
+}
+
+.user-avatar-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+/* Premium 3D Neon Tube SVG Overlay - Brand Color (Top Layer) */
+.neon-tube-ring-svg {
+  position: absolute;
+  inset: -5%;
+  width: 110%;
+  height: 110%;
+  pointer-events: none;
+  z-index: 15;
+  animation: neonTubeBreathing 3s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 5px rgba(73, 75, 231, 0.7));
+}
+
+@keyframes neonTubeBreathing {
+  0% {
+    transform: scale(0.99);
+    filter: drop-shadow(0 0 3.5px rgba(73, 75, 231, 0.65)) brightness(1);
+  }
+  100% {
+    transform: scale(1.01);
+    filter: drop-shadow(0 0 7.5px rgba(73, 75, 231, 0.95)) brightness(1.2);
+  }
+}
+
+.user-avatar-container:hover .neon-tube-ring-svg {
+  animation-duration: 1.5s;
+  filter: drop-shadow(0 0 10px rgba(73, 75, 231, 1)) brightness(1.3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ADMIN MATRIX CYBER GREEN 3D NEON TUBE SVG OVERLAY
+   ══════════════════════════════════════════════════════════════ */
+
+.admin-neon-tube-ring-svg {
+  position: absolute;
+  inset: -7%;
+  width: 114%;
+  height: 114%;
+  pointer-events: none;
+  z-index: 15;
+  animation: adminMatrixNeonBreathing 2.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 8px var(--admin-matrix-shadow)) drop-shadow(0 0 14px var(--admin-matrix-dark));
+}
+
+[data-theme="light"] .admin-neon-tube-ring-svg,
+.light .admin-neon-tube-ring-svg {
+  filter: drop-shadow(0 0 5px rgba(21, 128, 61, 0.65)) drop-shadow(0 0 8px rgba(4, 120, 87, 0.4));
+}
+
+@keyframes adminMatrixNeonBreathing {
+  0% {
+    transform: scale(0.985) rotate(0deg);
+    filter: drop-shadow(0 0 6px var(--admin-matrix-shadow)) brightness(1);
+  }
+  100% {
+    transform: scale(1.025) rotate(2deg);
+    filter: drop-shadow(0 0 14px var(--admin-matrix-green)) brightness(1.25);
+  }
+}
+
+.user-avatar-container:hover .admin-neon-tube-ring-svg {
+  animation-duration: 1.2s;
+  filter: drop-shadow(0 0 18px var(--admin-matrix-green)) brightness(1.4);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MATRIX HACKER BINARY DIGITS ORBIT (1 0 1 0 FLICKER)
+   ══════════════════════════════════════════════════════════════ */
+
+.admin-matrix-binary-svg {
+  position: absolute;
+  inset: -22%;
+  width: 144%;
+  height: 144%;
+  pointer-events: none;
+  z-index: 16;
+  animation: matrixBinaryRotate 14s linear infinite;
+}
+
+@keyframes matrixBinaryRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.matrix-digit {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 900;
+  fill: var(--admin-matrix-green);
+  text-shadow: var(--admin-pixel-shadow);
+  animation: matrixDigitFlicker 1.6s steps(2, start) infinite;
+}
+
+.matrix-digit:nth-child(2n) {
+  animation-delay: 0.3s;
+  fill: var(--admin-matrix-dark);
+}
+
+[data-theme="dark"] .matrix-digit:nth-child(2n) {
+  fill: #ffffff;
+}
+
+.matrix-digit:nth-child(3n) {
+  animation-delay: 0.8s;
+  fill: var(--admin-matrix-deep);
+}
+
+@keyframes matrixDigitFlicker {
+  0%, 100% { opacity: 0.95; }
+  25% { opacity: 0.2; }
+  50% { opacity: 1; }
+  75% { opacity: 0.35; }
+}
+
+/* Base Avatar Container */
+.user-avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Normal Non-Premium Ring */
+.user-avatar-normal-ring {
+  padding: 2px;
+  background: linear-gradient(135deg, var(--background, #090d16), var(--mint, #38bdf8));
+}
+
+/* Premium Neon Tube Avatar Ring Padding */
+.user-avatar-premium-ring {
+  padding: 2px;
+  background: transparent;
+}
+
+.user-avatar-wrapper.user-avatar-premium-ring:hover {
+  transform: scale(1.03);
+}
+
+/* Backward compatibility for admin-premium-avatar */
+.admin-premium-avatar {
+  padding: 2px;
+  background: transparent !important;
+}
+
+/* Inner Avatar Box */
+.user-avatar-inner {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--background, #090d16);
+  color: var(--text-primary, #ffffff);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MATRIX PIXEL DIGITS (1 0) OVERLAY ON AVATAR IMAGE (SPARSE & SUBTLE)
+   ══════════════════════════════════════════════════════════════ */
+
+.matrix-pixel-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.matrix-pixel-digit {
+  position: absolute;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 900;
+  font-size: 8.5px;
+  line-height: 1;
+  color: var(--admin-pixel-color);
+  text-shadow: var(--admin-pixel-shadow);
+  opacity: 0;
+  user-select: none;
+  animation: pixelDigitGlitchFade 6s ease-in-out infinite;
+}
+
+[data-theme="light"] .matrix-pixel-digit:nth-child(2n),
+.light .matrix-pixel-digit:nth-child(2n) {
+  color: #0f172a !important;
+}
+
+.matrix-pixel-digit:nth-child(1) { top: 20%; left: 25%; animation-delay: 0s; animation-duration: 5.5s; }
+.matrix-pixel-digit:nth-child(2) { top: 65%; left: 70%; animation-delay: 1.8s; animation-duration: 6.2s; }
+.matrix-pixel-digit:nth-child(3) { top: 40%; left: 75%; animation-delay: 3.4s; animation-duration: 5.8s; }
+.matrix-pixel-digit:nth-child(4) { top: 70%; left: 30%; animation-delay: 4.6s; animation-duration: 6.5s; }
+
+@keyframes pixelDigitGlitchFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.8);
+  }
+  8% {
+    opacity: 0.95;
+    transform: translateY(0) scale(1.05);
+  }
+  20% {
+    opacity: 0.8;
+    transform: translateY(1px) scale(1);
+  }
+  30% {
+    opacity: 0;
+    transform: translateY(3px) scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(3px) scale(0.7);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SHINY FALLING SPARKLE OVERLAY ON TOP OF AVATAR IMAGE
+   ══════════════════════════════════════════════════════════════ */
+
+.shiny-sparkle-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.shiny-sparkle {
+  position: absolute;
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 
+    0 0 4px #ffffff,
+    0 0 8px var(--brand, #494be7),
+    0 0 12px var(--brand, #494be7);
+  opacity: 0;
+  z-index: 12;
+  animation: shinySparkleFall 3.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+}
+
+/* Admin Matrix Green Sparkle Particles */
+.admin-sparkle-container .shiny-sparkle {
+  box-shadow: 
+    0 0 5px #ffffff,
+    0 0 10px var(--admin-matrix-green),
+    0 0 16px var(--admin-matrix-dark) !important;
+}
+
+.shiny-sparkle:nth-child(1) {
+  top: -10%;
+  left: 25%;
+  animation-delay: 0s;
+  animation-duration: 2.8s;
+}
+
+.shiny-sparkle:nth-child(2) {
+  top: -10%;
+  left: 60%;
+  width: 3px;
+  height: 3px;
+  animation-delay: 0.9s;
+  animation-duration: 3.4s;
+}
+
+.shiny-sparkle:nth-child(3) {
+  top: -10%;
+  left: 40%;
+  width: 4px;
+  height: 4px;
+  animation-delay: 1.8s;
+  animation-duration: 3s;
+}
+
+.shiny-sparkle:nth-child(4) {
+  top: -10%;
+  left: 75%;
+  width: 2.5px;
+  height: 2.5px;
+  animation-delay: 2.3s;
+  animation-duration: 3.6s;
+}
+
+@keyframes shinySparkleFall {
+  0% {
+    transform: translateY(0) translateX(0) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+    transform: translateY(20%) translateX(2px) scale(1.2);
+  }
+  70% {
+    opacity: 0.85;
+    transform: translateY(80%) translateX(-2px) scale(1);
+  }
+  100% {
+    transform: translateY(110%) translateX(3px) scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* Compact Brand Neon Crown Badge Accent */
+.user-avatar-crown-badge {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--admin-badge-bg);
+  color: var(--brand, #494be7);
+  border: 1.5px solid var(--brand, #494be7);
+  box-shadow: 0 0 6px rgba(73, 75, 231, 0.7);
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+/* Admin Matrix Green Badge Accent */
+.admin-crown-badge {
+  color: var(--admin-matrix-green) !important;
+  border-color: var(--admin-matrix-green) !important;
+  box-shadow: 0 0 8px var(--admin-matrix-shadow) !important;
+}
+
+.user-avatar-container:hover .user-avatar-crown-badge {
+  transform: scale(1.12);
+  box-shadow: 0 0 10px rgba(73, 75, 231, 1);
+}
+
+.user-avatar-container:hover .admin-crown-badge {
+  box-shadow: 0 0 14px var(--admin-matrix-green) !important;
+}
+
+.user-avatar-crown-badge.bottom-right {
+  bottom: -2px;
+  right: -2px;
+}
+
+.user-avatar-crown-badge.top-right {
+  top: -2px;
+  right: -2px;
+}
+
+/* Crown badge sizes scaled with avatar size */
+.user-avatar-crown-badge-sm {
+  width: 12px;
+  height: 12px;
+}
+
+.user-avatar-crown-badge-md {
+  width: 15px;
+  height: 15px;
+}
+
+.user-avatar-crown-badge-lg {
+  width: 18px;
+  height: 18px;
+}
+
+.user-avatar-crown-badge-xl {
+  width: 24px;
+  height: 24px;
+}

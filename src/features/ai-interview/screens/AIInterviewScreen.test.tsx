@@ -100,6 +100,7 @@ class FakeMediaRecorder {
 
 describe('AIInterviewScreen initiation', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.clearAllMocks();
     routeContext.jobPostId = 'job-123';
     routeContext.state = { jobTitle: 'Senior React Engineer' };
@@ -229,6 +230,25 @@ describe('AIInterviewScreen initiation', () => {
     fireEvent.click(screen.getByRole('button', { name: /start ai interview/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('aiInterview.errors.noQuestions');
+  });
+
+  it('automatically resumes an active session from localStorage on mount', async () => {
+    const sessionState = {
+      sessionId: 'session-456',
+      audioAccessToken: 'audio-token-456',
+      questionIndex: 2,
+      questionCount: 3,
+      questionText: 'What is your experience with React hooks?',
+      interviewLanguage: 'en',
+      ttsProvider: 'streaming',
+    };
+    localStorage.setItem('ai_interview_session_job-123', JSON.stringify(sessionState));
+
+    render(<AIInterviewScreen />);
+
+    expect(await screen.findByLabelText('Question 2 of 3')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /start ai interview/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /(hear question again|retry question audio)/i })).toBeInTheDocument();
   });
 });
 

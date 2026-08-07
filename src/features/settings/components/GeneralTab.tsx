@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router';
-import { User, FileText, Briefcase, Building2, MapPin, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X } from 'lucide-react';
+import { User, FileText, Briefcase, Building2, MapPin, Globe, Check, AlertCircle, RefreshCw, Camera, Phone, Mail, Users, Layers, AlignLeft, GraduationCap, Clock, FolderGit2, Plus, Trash2, Edit3, ExternalLink, Calendar, Sparkles, Save, X, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -16,6 +16,8 @@ import type { PortfolioItemDto, WorkExperienceDto } from '../../../types/models/
 import { Smooth3DSlideshow } from '../../../shared/components/Smooth3DSlideshow';
 
 import { AvatarCropModal } from './AvatarCropModal';
+import { PortfolioImageCropModal } from './PortfolioImageCropModal';
+import { LocationPickerModal } from '../../../shared/components/LocationPickerModal';
 
 type SubTab = 'basic' | 'details' | 'portfolio' | 'experience';
 
@@ -104,13 +106,44 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   const [savingPortfolio, setSavingPortfolio] = useState(false);
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
-  const [portfolioForm, setPortfolioForm] = useState({
+  const [portfolioForm, setPortfolioForm] = useState<{
+    title: string;
+    description: string;
+    imageUrl: string;
+    projectUrl: string;
+    projectDate: string;
+    imageFile?: File;
+  }>({
     title: '',
     description: '',
     imageUrl: '',
     projectUrl: '',
     projectDate: '',
   });
+
+  // Portfolio Image Crop Modal States
+  const [portfolioCropModalOpen, setPortfolioCropModalOpen] = useState(false);
+  const [portfolioRawImageSrc, setPortfolioRawImageSrc] = useState<string | null>(null);
+
+  const handlePortfolioImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPortfolioRawImageSrc(reader.result as string);
+      setPortfolioCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handlePortfolioCropSave = (croppedImageBase64: string, croppedFile: File) => {
+    setPortfolioForm(prev => ({
+      ...prev,
+      imageUrl: croppedImageBase64,
+      imageFile: croppedFile,
+    }));
+  };
 
   // Work Experience Management States
   const [workExperiences, setWorkExperiences] = useState<WorkExperienceDto[]>([]);
@@ -125,6 +158,26 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
     endDate: '',
     description: '',
   });
+
+  // GSAP Entrance Animations for Portfolio & Experience Items
+  useGSAP(
+    () => {
+      if (subTab === 'portfolio' && portfolioItems.length > 0) {
+        gsap.fromTo(
+          '.portfolio-card-item',
+          { opacity: 0, y: 25, scale: 0.96 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.45, stagger: 0.08, ease: 'back.out(1.4)' }
+        );
+      } else if (subTab === 'experience' && workExperiences.length > 0) {
+        gsap.fromTo(
+          '.experience-card-item',
+          { opacity: 0, x: -25 },
+          { opacity: 1, x: 0, duration: 0.45, stagger: 0.09, ease: 'power3.out' }
+        );
+      }
+    },
+    { dependencies: [subTab, portfolioItems.length, workExperiences.length] }
+  );
 
   const loadPortfolio = useCallback(async () => {
     try {
@@ -155,17 +208,29 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
   }, []);
 
   useEffect(() => {
-    if (subTab === 'portfolio') {
-      void loadPortfolio();
-    } else if (subTab === 'experience') {
-      void loadWorkExperiences();
+    if (role === UserRole.Client && (subTab === 'portfolio' || subTab === 'experience')) {
+      setSubTab('basic');
+      return;
     }
-  }, [subTab, loadPortfolio, loadWorkExperiences]);
+    if (role === UserRole.Freelancer) {
+      if (subTab === 'portfolio') {
+        void loadPortfolio();
+      } else if (subTab === 'experience') {
+        void loadWorkExperiences();
+      }
+    }
+  }, [role, subTab, loadPortfolio, loadWorkExperiences]);
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const handleSavePortfolioItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!portfolioForm.title.trim()) {
       toast.error('Project title is required.');
+      return;
+    }
+    if (portfolioForm.projectDate && portfolioForm.projectDate > todayStr) {
+      toast.error('Completion date cannot be in the future.');
       return;
     }
     try {
@@ -231,6 +296,20 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
     if (!experienceForm.companyName.trim() || !experienceForm.jobTitle.trim() || !experienceForm.startDate) {
       toast.error('Company Name, Job Title, and Start Date are required.');
       return;
+    }
+    if (experienceForm.startDate > todayStr) {
+      toast.error('Start date cannot be in the future.');
+      return;
+    }
+    if (experienceForm.endDate) {
+      if (experienceForm.endDate > todayStr) {
+        toast.error('End date cannot be in the future.');
+        return;
+      }
+      if (experienceForm.startDate > experienceForm.endDate) {
+        toast.error('Start date must be before or equal to end date.');
+        return;
+      }
     }
     try {
       setSavingExperience(true);
@@ -539,6 +618,20 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           return;
         }
 
+        // Validate bio has at least 50 words
+        const bioWordCount = formData.bio
+          .trim()
+          .split(/\s+/)
+          .filter(w => w.length > 0).length;
+        if (formData.bio.trim() && bioWordCount < 50) {
+          setErrorMessage(
+            t('settings.bioMinWords') ||
+            `Professional bio must be at least 50 words. Currently: ${bioWordCount} words.`
+          );
+          setSaving(false);
+          return;
+        }
+
         const response = await profilePutAPI.updateFreelancerProfile({
           title: formData.title,
           bio: formData.bio,
@@ -625,23 +718,27 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
           <span>{t('settings.detailedProfile')}</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setSubTab('portfolio')}
-          className={`settings-subtab-btn ${subTab === 'portfolio' ? 'active' : ''}`}
-        >
-          <FolderGit2 size={16} />
-          <span>Portfolio</span>
-        </button>
+        {role === UserRole.Freelancer && (
+          <>
+            <button
+              type="button"
+              onClick={() => setSubTab('portfolio')}
+              className={`settings-subtab-btn ${subTab === 'portfolio' ? 'active' : ''}`}
+            >
+              <FolderGit2 size={16} />
+              <span>Portfolio</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setSubTab('experience')}
-          className={`settings-subtab-btn ${subTab === 'experience' ? 'active' : ''}`}
-        >
-          <Building2 size={16} />
-          <span>Work Experience</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => setSubTab('experience')}
+              className={`settings-subtab-btn ${subTab === 'experience' ? 'active' : ''}`}
+            >
+              <Building2 size={16} />
+              <span>Work Experience</span>
+            </button>
+          </>
+        )}
       </div>
 
       {errorMessage && (
@@ -887,14 +984,20 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
 
                   <div className="settings-form-group">
                     <label className="settings-form-label">{t('settings.location')}</label>
-                    <div className="settings-input-wrapper">
+                    <div className="settings-input-wrapper relative flex items-center">
                       <MapPin size={16} className="settings-input-icon" />
                       <input
                         value={formData.location}
                         onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
                         placeholder={t('settings.locationPlaceholder')}
-                        className="settings-form-input"
+                        className="settings-form-input pr-12"
                       />
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                        <LocationPickerModal
+                          value={formData.location}
+                          onSelect={loc => setFormData(prev => ({ ...prev, location: loc }))}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -978,16 +1081,47 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   )}
 
                   <div className="settings-form-group full-width">
-                    <label className="settings-form-label">{t('settings.bio')}</label>
+                    <label className="settings-form-label">
+                      {t('settings.bio')}
+                      <span className="text-[var(--destructive,#dc2626)] ml-0.5">*</span>
+                    </label>
                     <div className="settings-input-wrapper">
                       <AlignLeft size={16} className="settings-input-icon self-start mt-3.5" />
                       <textarea
                         value={formData.bio}
                         onChange={e => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                         placeholder={t('settings.bioPlaceholder')}
-                        className="settings-form-textarea"
+                        className={`settings-form-textarea ${
+                          formData.bio.trim() &&
+                          formData.bio.trim().split(/\s+/).filter(w => w.length > 0).length < 50
+                            ? 'border-[var(--destructive,#dc2626)] focus:ring-[var(--destructive,#dc2626)]'
+                            : ''
+                        }`}
                       />
                     </div>
+                    {/* Live Word Counter */}
+                    {(() => {
+                      const wc = formData.bio
+                        .trim()
+                        .split(/\s+/)
+                        .filter(w => w.length > 0).length;
+                      const isEmpty = formData.bio.trim() === '';
+                      const isOk = isEmpty || wc >= 50;
+                      return (
+                        <div className={`flex items-center gap-1.5 mt-1.5 text-xs font-semibold ${
+                          isEmpty ? 'text-[var(--text-muted)]' : isOk ? 'text-[var(--success,#16a34a)]' : 'text-[var(--destructive,#dc2626)]'
+                        }`}>
+                          <span>
+                            {isEmpty
+                              ? `0 / 50 ${t('settings.words') || 'words'} ${t('settings.required') || 'required'}`
+                              : isOk
+                              ? `✓ ${wc} ${t('settings.words') || 'words'}`
+                              : `${wc} / 50 ${t('settings.words') || 'words'} (${50 - wc} ${t('settings.wordsRemaining') || 'more required'})`
+                            }
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1012,14 +1146,20 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
 
                   <div className="settings-form-group">
                     <label className="settings-form-label">{t('settings.location')}</label>
-                    <div className="settings-input-wrapper">
+                    <div className="settings-input-wrapper relative flex items-center">
                       <MapPin size={16} className="settings-input-icon" />
                       <input
                         value={formData.location}
                         onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
                         placeholder={t('settings.locationPlaceholder')}
-                        className="settings-form-input"
+                        className="settings-form-input pr-12"
                       />
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                        <LocationPickerModal
+                          value={formData.location}
+                          onSelect={loc => setFormData(prev => ({ ...prev, location: loc }))}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1142,13 +1282,13 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       )}
 
       {/* Sub-Tab 3: Portfolio Showcase Management */}
-      {subTab === 'portfolio' && (
+      {role === UserRole.Freelancer && subTab === 'portfolio' && (
         <div className="settings-subtab-content space-y-6">
           <section className="settings-form-card space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
               <div>
-                <h2 className="settings-form-card-title mb-1">
-                  <FolderGit2 size={18} className="text-[var(--brand,#494be7)]" />
+                <h2 className="settings-form-card-title mb-1 flex items-center gap-2 text-base font-extrabold text-[var(--text-primary)]">
+                  <FolderGit2 size={19} className="text-[var(--brand,#494be7)]" />
                   <span>Portfolio Showcase</span>
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
@@ -1162,7 +1302,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', projectDate: '' });
                   setShowPortfolioForm(!showPortfolioForm);
                 }}
-                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold"
+                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold"
               >
                 {showPortfolioForm ? <X size={15} /> : <Plus size={15} />}
                 <span>{showPortfolioForm ? 'Cancel' : 'Add Project'}</span>
@@ -1171,7 +1311,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
 
             {/* Form Section */}
             {showPortfolioForm && (
-              <form onSubmit={handleSavePortfolioItem} className="p-5 rounded-2xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--brand-soft)] space-y-4">
+              <form onSubmit={handleSavePortfolioItem} className="p-5 rounded-2xl bg-[var(--surface-hover)] border border-[var(--brand-soft)] space-y-4 shadow-sm">
                 <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                   <Sparkles size={16} className="text-[var(--brand,#494be7)]" />
                   <span>{editingPortfolioId ? 'Edit Portfolio Item' : 'New Portfolio Item'}</span>
@@ -1203,15 +1343,70 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[var(--text-secondary)]">Image URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://example.com/project-preview.jpg"
-                      value={portfolioForm.imageUrl}
-                      onChange={e => setPortfolioForm(prev => ({ ...prev, imageUrl: e.target.value }))}
-                      className="settings-input w-full"
-                    />
+                  {/* Image Upload & Crop Control */}
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-1.5">
+                      <Camera size={14} className="text-[var(--brand,#494be7)]" />
+                      <span>Ảnh bìa Dự án (Cover Image - Tỷ lệ 7:6 trên Gallery)</span>
+                    </label>
+                    <div className="flex items-start gap-4 flex-wrap">
+                      {portfolioForm.imageUrl ? (
+                        <div className="relative group w-36 h-28 rounded-2xl overflow-hidden border-2 border-[var(--brand,#494be7)] shadow-lg transition-transform hover:scale-105 shrink-0">
+                          <img
+                            src={portfolioForm.imageUrl}
+                            alt="Project preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label className="p-2 rounded-full bg-white/20 hover:bg-white/40 text-white cursor-pointer transition-colors" title="Change & Crop">
+                              <Camera size={14} />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePortfolioImageFileChange}
+                                className="hidden"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setPortfolioForm(prev => ({ ...prev, imageUrl: '', imageFile: undefined }))}
+                              className="p-2 rounded-full bg-red-500/80 hover:bg-red-600 text-white transition-colors"
+                              title="Remove Image"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-36 h-28 rounded-2xl bg-[var(--surface-hover)] border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-1 text-xs text-[var(--text-muted)] p-3 text-center shrink-0">
+                          <ImageIcon size={22} className="text-[var(--brand,#494be7)] opacity-60" />
+                          <span className="text-[10px] font-medium">Chưa có ảnh</span>
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-[220px] space-y-2.5">
+                        <label className="cp-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-xs font-extrabold cursor-pointer hover:border-[var(--brand,#494be7)] transition-all">
+                          <Camera size={15} className="text-[var(--brand,#494be7)]" />
+                          <span>{portfolioForm.imageUrl ? 'Cắt & Đổi ảnh mới' : 'Tải & Cắt ảnh chuẩn Coverflow'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePortfolioImageFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-[var(--text-muted)]">Hoặc dán URL ảnh trực tiếp:</span>
+                          <input
+                            type="url"
+                            placeholder="https://example.com/image.jpg"
+                            value={portfolioForm.imageUrl}
+                            onChange={e => setPortfolioForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                            className="settings-input w-full text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
@@ -1229,6 +1424,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                     <label className="text-xs font-bold text-[var(--text-secondary)]">Completion Date</label>
                     <input
                       type="date"
+                      max={todayStr}
                       value={portfolioForm.projectDate}
                       onChange={e => setPortfolioForm(prev => ({ ...prev, projectDate: e.target.value }))}
                       className="settings-input w-full"
@@ -1250,7 +1446,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   <button
                     type="submit"
                     disabled={savingPortfolio}
-                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5"
+                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5 font-extrabold"
                   >
                     {savingPortfolio ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                     <span>{editingPortfolioId ? 'Update Item' : 'Save Item'}</span>
@@ -1259,43 +1455,52 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
               </form>
             )}
 
-            {/* Live 3D Coverflow Gallery Preview */}
-            <div className="rounded-2xl p-4 bg-black/40 border border-white/10 space-y-2">
-              <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] px-2">
-                <span className="font-bold uppercase tracking-wider text-[var(--brand,#494be7)] flex items-center gap-1.5">
-                  <Sparkles size={14} /> Live Coverflow 3D Gallery Preview
+            {/* Live 3D Coverflow Gallery Preview Container */}
+            <div className="relative overflow-hidden rounded-3xl p-5 border border-[var(--border)] bg-[var(--surface)] shadow-xl transition-all duration-500 hover:border-[var(--brand-soft)] space-y-3">
+              {/* Ambient Glowing Brand Bubble Gradients */}
+              <div className="pointer-events-none absolute -top-24 -left-20 h-56 w-56 rounded-full bg-[var(--brand,#494be7)] opacity-15 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 -right-20 h-56 w-56 rounded-full bg-purple-500 opacity-15 blur-3xl" />
+
+              <div className="relative z-10 flex items-center justify-between text-xs text-[var(--text-secondary)] px-1">
+                <span className="font-extrabold uppercase tracking-wider text-[var(--brand,#494be7)] flex items-center gap-2">
+                  <Sparkles size={15} /> Live 3D Coverflow Gallery Preview
                 </span>
-                <span>{portfolioItems.length} items</span>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand,#494be7)]">
+                  {portfolioItems.length} {portfolioItems.length === 1 ? 'Project' : 'Projects'}
+                </span>
               </div>
-              <Smooth3DSlideshow
-                slides={
-                  portfolioItems.length > 0
-                    ? portfolioItems.map((item, idx) => ({
-                        id: item.portfolioItemId || String(idx),
-                        title: item.title,
-                        description: item.description,
-                        projectUrl: item.projectUrl,
-                        image: {
-                          src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
-                          alt: item.title,
-                        },
-                      }))
-                    : undefined
-                }
-                cardWidth={280}
-                cardHeight={260}
-                radius={4}
-                tilt={10}
-                sideTilt={6}
-                gap={6}
-              />
+
+              <div className="relative z-10 rounded-2xl overflow-hidden">
+                <Smooth3DSlideshow
+                  slides={
+                    portfolioItems.length > 0
+                      ? portfolioItems.map((item, idx) => ({
+                          id: item.portfolioItemId || String(idx),
+                          title: item.title,
+                          description: item.description,
+                          projectUrl: item.projectUrl,
+                          image: {
+                            src: item.imageUrl || "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60",
+                            alt: item.title,
+                          },
+                        }))
+                      : undefined
+                  }
+                  cardWidth={280}
+                  cardHeight={260}
+                  radius={4}
+                  tilt={10}
+                  sideTilt={6}
+                  gap={6}
+                />
+              </div>
             </div>
 
             {/* Portfolio Items List */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Existing Projects</h3>
               {loadingPortfolio ? (
-                <div className="flex items-center justify-center p-8 text-sm text-secondary">
+                <div className="flex items-center justify-center p-8 text-sm text-[var(--text-secondary)]">
                   <RefreshCw size={18} className="animate-spin mr-2 text-[var(--brand,#494be7)]" />
                   Loading portfolio...
                 </div>
@@ -1304,17 +1509,17 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   {portfolioItems.map(item => (
                     <div
                       key={item.portfolioItemId}
-                      className="p-4 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))] flex flex-col justify-between gap-3 group"
+                      className="portfolio-card-item p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex flex-col justify-between gap-3 group transition-all duration-300 hover:border-[var(--brand-soft)] hover:shadow-xl"
                     >
                       <div className="flex items-start gap-3">
                         {item.imageUrl ? (
                           <img
                             src={item.imageUrl}
                             alt={item.title}
-                            className="w-16 h-16 rounded-lg object-cover shrink-0 border border-white/10"
+                            className="w-20 h-16 rounded-xl object-cover shrink-0 border border-[var(--border)] shadow-sm group-hover:scale-105 transition-transform"
                           />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-indigo-900/40 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold shrink-0">
+                          <div className="w-20 h-16 rounded-xl bg-[var(--surface-hover)] border border-[var(--border)] flex items-center justify-center text-[var(--brand,#494be7)] font-bold shrink-0">
                             GB
                           </div>
                         )}
@@ -1337,20 +1542,20 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-[var(--text-muted)]">
+                      <div className="flex items-center justify-between pt-2 border-t border-[var(--border)] text-xs text-[var(--text-muted)]">
                         <span>{item.projectDate || 'No date'}</span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => handleStartEditPortfolio(item)}
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-secondary hover:text-white"
+                            className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                           >
                             <Edit3 size={14} />
                           </button>
                           <button
                             type="button"
                             onClick={() => void handleDeletePortfolioItem(item.portfolioItemId)}
-                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400"
+                            className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1360,7 +1565,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   ))}
                 </div>
               ) : (
-                <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-xl border border-dashed border-[var(--border,#ededf0)]">
+                <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]">
                   No portfolio items created yet. Click "+ Add Project" to build your showcase!
                 </div>
               )}
@@ -1370,13 +1575,13 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
       )}
 
       {/* Sub-Tab 4: Work Experience Management */}
-      {subTab === 'experience' && (
+      {role === UserRole.Freelancer && subTab === 'experience' && (
         <div className="settings-subtab-content space-y-6">
           <section className="settings-form-card space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-[var(--border,#ededf0)]">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
               <div>
-                <h2 className="settings-form-card-title mb-1">
-                  <Building2 size={18} className="text-[var(--brand,#494be7)]" />
+                <h2 className="settings-form-card-title mb-1 flex items-center gap-2 text-base font-extrabold text-[var(--text-primary)]">
+                  <Building2 size={19} className="text-[var(--brand,#494be7)]" />
                   <span>Work Experience</span>
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
@@ -1390,7 +1595,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   setExperienceForm({ companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
                   setShowExperienceForm(!showExperienceForm);
                 }}
-                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold"
+                className="cp-btn-secondary inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-extrabold"
               >
                 {showExperienceForm ? <X size={15} /> : <Plus size={15} />}
                 <span>{showExperienceForm ? 'Cancel' : 'Add Position'}</span>
@@ -1399,7 +1604,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
 
             {/* Form Section */}
             {showExperienceForm && (
-              <form onSubmit={handleSaveWorkExperience} className="p-5 rounded-2xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--brand-soft)] space-y-4">
+              <form onSubmit={handleSaveWorkExperience} className="p-5 rounded-2xl bg-[var(--surface-hover)] border border-[var(--brand-soft)] space-y-4 shadow-sm">
                 <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                   <Sparkles size={16} className="text-[var(--brand,#494be7)]" />
                   <span>{editingExperienceId ? 'Edit Work Experience' : 'New Work Experience'}</span>
@@ -1441,6 +1646,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                     <input
                       type="date"
                       required
+                      max={todayStr}
                       value={experienceForm.startDate}
                       onChange={e => setExperienceForm(prev => ({ ...prev, startDate: e.target.value }))}
                       className="settings-input w-full"
@@ -1451,6 +1657,8 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                     <label className="text-xs font-bold text-[var(--text-secondary)]">End Date (Leave empty if current job)</label>
                     <input
                       type="date"
+                      min={experienceForm.startDate || undefined}
+                      max={todayStr}
                       value={experienceForm.endDate}
                       onChange={e => setExperienceForm(prev => ({ ...prev, endDate: e.target.value }))}
                       className="settings-input w-full"
@@ -1483,7 +1691,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   <button
                     type="submit"
                     disabled={savingExperience}
-                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5"
+                    className="cp-btn-primary px-4 py-2 text-xs flex items-center gap-1.5 font-extrabold"
                   >
                     {savingExperience ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                     <span>{editingExperienceId ? 'Update Position' : 'Save Position'}</span>
@@ -1496,7 +1704,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
             <div className="space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Work History</h3>
               {loadingExperience ? (
-                <div className="flex items-center justify-center p-8 text-sm text-secondary">
+                <div className="flex items-center justify-center p-8 text-sm text-[var(--text-secondary)]">
                   <RefreshCw size={18} className="animate-spin mr-2 text-[var(--brand,#494be7)]" />
                   Loading work history...
                 </div>
@@ -1505,12 +1713,12 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   {workExperiences.map(item => (
                     <div
                       key={item.workExperienceId}
-                      className="p-4 rounded-xl bg-[var(--surface-hover,rgba(255,255,255,0.03))] border border-[var(--border,rgba(255,255,255,0.08))] flex items-start justify-between gap-4"
+                      className="experience-card-item p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-start justify-between gap-4 transition-all duration-300 hover:border-[var(--brand-soft)] hover:shadow-xl"
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-base font-bold text-[var(--text-primary)]">{item.jobTitle}</h4>
-                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft,rgba(73,75,231,0.15))] text-[var(--brand,#494be7)] font-semibold">
+                          <span className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand,#494be7)] font-bold">
                             {item.companyName}
                           </span>
                         </div>
@@ -1527,14 +1735,14 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                         <button
                           type="button"
                           onClick={() => handleStartEditExperience(item)}
-                          className="p-1.5 rounded-lg hover:bg-white/10 text-secondary hover:text-white"
+                          className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                         >
                           <Edit3 size={14} />
                         </button>
                         <button
                           type="button"
                           onClick={() => void handleDeleteWorkExperience(item.workExperienceId)}
-                          className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400"
+                          className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1543,7 +1751,7 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
                   ))}
                 </div>
               ) : (
-                <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-xl border border-dashed border-[var(--border,#ededf0)]">
+                <div className="p-6 text-center text-sm text-[var(--text-secondary)] rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)]">
                   No work experience entries added yet. Click "+ Add Position" to populate your work history!
                 </div>
               )}
@@ -1558,6 +1766,14 @@ export function GeneralTab({ defaultSubTab }: { defaultSubTab?: SubTab }) {
         imageSrc={rawImageSrc}
         onClose={() => setCropModalOpen(false)}
         onCropSave={handleCropSave}
+      />
+
+      {/* Interactive Portfolio Image Crop Modal */}
+      <PortfolioImageCropModal
+        isOpen={portfolioCropModalOpen}
+        imageSrc={portfolioRawImageSrc}
+        onClose={() => setPortfolioCropModalOpen(false)}
+        onCropSave={handlePortfolioCropSave}
       />
     </div>
   );

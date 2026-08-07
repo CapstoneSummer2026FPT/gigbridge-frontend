@@ -1,0 +1,86 @@
+/* Client Proposals Review Workspace Styles */
+
+.cps-header {
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.cps-card {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cps-card:hover {
+  border-color: rgba(73, 75, 231, 0.3);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.05);
+}
+
+.cps-table-row {
+  transition: background-color 0.15s ease;
+}
+
+.cps-table-row:hover {
+  background-color: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+.cps-btn-primary {
+  background: var(--brand);
+  color: #ffffff;
+  font-weight: 800;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px -2px rgba(73, 75, 231, 0.3);
+}
+
+.cps-btn-primary:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.cps-btn-primary:disabled {
+  opacity: 0.4;
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.cps-btn-outline {
+  background: var(--background);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-weight: 700;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.cps-btn-outline:hover {
+  border-color: var(--brand-border);
+  color: var(--brand);
+}
+
+.cps-btn-decline {
+  background: linear-gradient(var(--background), var(--background)) padding-box,
+              linear-gradient(135deg, #ef4444, #f87171) border-box;
+  border: 2px solid transparent;
+  color: #ef4444;
+  font-weight: 800;
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.cps-btn-decline:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.cps-badge-uniform {
+  font-weight: 900;
+  color: var(--text-primary);
+  border-radius: 9999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

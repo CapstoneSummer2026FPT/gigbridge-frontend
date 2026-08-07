@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { useApp } from '../../../app/providers/AppProvider';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
@@ -16,7 +17,7 @@ import { profileGetAPI } from '../../../api/profileAPI/GET';
 import type { FreelancerSummaryDto } from '../../../types/models/Profile';
 import { premiumAPI } from '../../premium/api';
 import { SponsoredPromotionCard } from '../../premium/components/SponsoredPromotionCard';
-
+import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 
 const PAGE_SIZE = 20;
 const WORK_TYPES = ['All', 'fixed'];
@@ -42,13 +43,11 @@ export default function BrowseJobsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  // React Router recreates setSearchParams on every URL change, so depending on it
-  // in an effect would re-fire that effect when the page param is updated. Keep the
-  // latest setter in a ref and call that, so effects only react to real state changes.
   const setParamsRef = useRef(setParams);
   useEffect(() => {
     setParamsRef.current = setParams;
   }, [setParams]);
+
   const { user, role } = useApp();
   const [search, setSearch] = useState(sanitizeSearch(params.get('q') || ''));
   const [committedSearch, setCommittedSearch] = useState(sanitizeSearch(params.get('q') || ''));
@@ -62,7 +61,6 @@ export default function BrowseJobsScreen() {
   const [workType, setWorkType] = useState('All');
   const [datePosted, setDatePosted] = useState('Any time');
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
-  const [aiOnly, setAiOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [savingJobIds, setSavingJobIds] = useState<Set<string>>(new Set());
@@ -76,7 +74,21 @@ export default function BrowseJobsScreen() {
   const [page, setPage] = useState(() => Math.max(1, Number(params.get('page')) || 1));
   const [totalResults, setTotalResults] = useState(0);
   const [searchEventId, setSearchEventId] = useState<string | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const isFreelancer = role === UserRole.Freelancer;
+
+  // Reusable GSAP Entrance Hook
+  usePageGSAP({
+    containerRef,
+    loading,
+    groups: [
+      { selector: '.browse-jobs-header-card', y: 20, duration: 0.4, clearProps: 'all' },
+      { selector: '.browse-category-pill', scale: 0.9, stagger: 0.02, duration: 0.3, clearProps: 'all' },
+      { selector: '.browse-jobs-job-card', y: 20, stagger: 0.03, duration: 0.35, clearProps: 'all' },
+      { selector: '.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', x: 20, stagger: 0.05, duration: 0.35, clearProps: 'all' },
+    ],
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -182,7 +194,6 @@ export default function BrowseJobsScreen() {
           skills: committedSkills || undefined,
           workType: workType === 'All' ? undefined : workType,
           postedWithinDays: getDatePostedDays(datePosted) ?? undefined,
-          aiOnly,
           searchEventId: page > 1 ? searchEventId : null,
         }, controller.signal);
         setAllJobs(result.items.map(job => ({
@@ -204,7 +215,7 @@ export default function BrowseJobsScreen() {
     };
     void fetchJobs();
     return () => controller.abort();
-  }, [aiOnly, category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, page, sortBy, workType]);
+  }, [category, committedBudgetMax, committedBudgetMin, committedSearch, committedSkills, datePosted, page, sortBy, workType]);
 
   useEffect(() => {
     let isMounted = true;
@@ -232,9 +243,7 @@ export default function BrowseJobsScreen() {
   }, []);
 
   const budgetInvalid = Boolean(budgetMin && budgetMax && Number(budgetMin) > Number(budgetMax));
-
   const jobs = budgetInvalid ? [] : allJobs;
-
   const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
   const pagedJobs = jobs;
 
@@ -312,41 +321,44 @@ export default function BrowseJobsScreen() {
 
   return (
     <AppLayout>
-      <div className="browse-jobs-shell">
+      <div className="browse-jobs-shell" ref={containerRef}>
+        {/* Header Title Section */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
-            {t('jobs.browseJobs').split(' ')[0]} <span className="text-blue-600 black:text-blue-400 italic font-light">{t('jobs.browseJobs').split(' ').slice(1).join(' ')}</span>
+          <h1 className="browse-jobs-header-title mb-1.5">
+            {t('jobs.browseJobs').split(' ')[0]} <span className="text-[var(--brand,#494be7)] italic font-light">{t('jobs.browseJobs').split(' ').slice(1).join(' ')}</span>
           </h1>
           <p className="browse-jobs-desc">{t('jobs.browseJobsDesc')}</p>
         </div>
 
+        {/* Main Grid Layout */}
         <div className="browse-jobs-layout-grid">
-          {/* Left Column (2/3 width) */}
-          <div className="browse-jobs-results space-y-6">
-            <div className="glass-card p-4">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 browse-jobs-search-icon" />
+          {/* Left Column - Main Content & Job Cards */}
+          <div className="browse-jobs-results space-y-5">
+            {/* Search & Filter Header Box */}
+            <div className="browse-jobs-glass-card p-4 browse-jobs-header-card">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="browse-jobs-search-wrapper">
+                  <Search size={16} className="browse-jobs-search-icon" />
                   <input
                     type="text"
                     value={search}
                     onChange={event => setSearch(sanitizeSearch(event.target.value))}
                     onKeyDown={event => event.key === 'Enter' && commitSearch()}
                     placeholder={t('jobs.searchPlaceholder')}
-                    className="input-gb w-full browse-jobs-search-input"
+                    className="browse-jobs-search-input"
                   />
                 </div>
-                <button onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm transition-all browse-jobs-filter-btn">
-                  <Filter size={16} /> {t('jobs.filters')}
-                </button>
-                <button onClick={() => { setAiOnly(!aiOnly); resetBrowsePage(); }}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${aiOnly ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
-                  <Bot size={16} />
-                  {t('jobs.aiRecommended')}
+                <button
+                  type="button"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`browse-jobs-filter-btn ${showFilters ? 'active' : ''}`}
+                >
+                  <Filter size={16} />
+                  <span>{t('jobs.filters')}</span>
                 </button>
               </div>
 
+              {/* Filter Expansion Grid */}
               {showFilters && (
                 <div className="mt-4 pt-4 border-t browse-jobs-divider">
                   <div className="browse-jobs-filter-grid">
@@ -358,7 +370,7 @@ export default function BrowseJobsScreen() {
                     </label>
                     <label>
                       {t('jobs.skills')}
-                      <input value={skills} onChange={event => setSkills(sanitizeSearch(event.target.value))} placeholder="React, SQL" />
+                      <input value={skills} onChange={event => setSkills(sanitizeSearch(event.target.value))} placeholder="React, SQL..." />
                     </label>
                     <label>
                       {t('jobs.minBudget')}
@@ -386,88 +398,134 @@ export default function BrowseJobsScreen() {
               )}
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {/* Category Filter Horizontal Smooth Scroll Pill Container */}
+            <div className="browse-category-scroll-container">
               {categoryOptions.map(cat => (
-                <button key={cat} onClick={() => { setCategory(cat); resetBrowsePage(); }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${category === cat ? 'browse-jobs-ai-toggle-active' : 'browse-jobs-ai-toggle-inactive'}`}>
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => { setCategory(cat); resetBrowsePage(); }}
+                  className={`browse-category-pill ${category === cat ? 'active' : ''}`}
+                >
                   {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
                 </button>
               ))}
             </div>
 
+            {/* Results Count & Sort Dropdown */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm browse-jobs-desc">
-                  <span className="text-primary font-semibold">{totalResults}</span> {t('jobs.openJobsFound')}
+              <div className="flex items-center justify-between mb-3.5">
+                <p className="text-sm browse-jobs-desc font-medium">
+                  <span className="text-[var(--brand,#494be7)] font-bold">{totalResults}</span> {t('jobs.openJobsFound')}
                 </p>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs browse-jobs-desc">{t('jobs.sortBy')}:</span>
-                  <button onClick={() => { setSortBy(sortBy === 'relevance' ? 'date' : 'relevance'); resetBrowsePage(); }} className="flex items-center gap-1 text-sm text-primary">
-                    {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')} <ChevronDown size={14} />
+                  <span className="text-xs browse-jobs-desc font-medium">{t('jobs.sortBy')}:</span>
+                  <button
+                    type="button"
+                    onClick={() => { setSortBy(sortBy === 'relevance' ? 'date' : 'relevance'); resetBrowsePage(); }}
+                    className="flex items-center gap-1 text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
+                  >
+                    {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')}
+                    <ChevronDown size={14} />
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {pagedJobs.map((job, idx) => (
-                  <div key={job.id}
-                    className="glass-card p-5 cursor-pointer group browse-jobs-job-card"
-                    style={{ animationDelay: `${idx * 0.05}s` }}
-                    onClick={() => openJob(job)}>
-                    <div className="flex flex-col md:flex-row md:items-start gap-4">
-                      <div className="flex-1">
+              {/* Job Cards List */}
+              <div className="space-y-3.5">
+                {pagedJobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className="browse-jobs-job-card"
+                    onClick={() => openJob(job)}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {/* Title & Badges */}
                         <div className="flex items-start gap-2 flex-wrap mb-2">
-                          <h2 className="text-primary font-semibold group-hover:text-[#0077FF] transition-colors">{job.title}</h2>
-                          {job.isFeatured && <span className="badge-purple text-xs flex-shrink-0">{t('jobs.featured')}</span>}
-                          {job.isAiRecommended && <span className="badge-cyan text-xs flex-shrink-0">{t('jobs.aiPick')}</span>}
+                          <h2 className="text-base font-bold text-[var(--text-primary)] hover:text-[var(--brand,#494be7)] transition-colors line-clamp-1">
+                            {job.title}
+                          </h2>
+                          {job.isFeatured && (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-500/10 text-purple-600 border border-purple-500/20 shrink-0">
+                              {t('jobs.featured')}
+                            </span>
+                          )}
                           {job.hasAiInterview && isFreelancer && (
-                            <span className="badge-purple text-xs flex-shrink-0 inline-flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[var(--brand-soft,#494be715)] text-[var(--brand,#494be7)] border border-[var(--brand,#494be730)] shrink-0 inline-flex items-center gap-1">
                               <Bot size={11} /> {t('jobs.aiInterviewTag')}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 mb-3">
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
-                            <GigCoinBudget min={job.budgetMin} max={job.budgetMax} /> • {t('jobs.fixedPrice')}
+                        {/* Meta Pills */}
+                        <div className="flex flex-wrap items-center gap-3 mb-2.5">
+                          <div className="flex items-center gap-1 text-xs font-semibold text-[var(--brand,#494be7)] bg-[var(--brand-soft,#494be710)] px-2.5 py-1 rounded-lg">
+                            <GigCoinBudget min={job.budgetMin} max={job.budgetMax} />
+                            <span className="text-[var(--text-secondary)] font-normal ml-1">• {t('jobs.fixedPrice')}</span>
                           </div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Globe size={12} /> {t('jobs.remote')}</div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Users size={12} /> {job.proposalCount} {t('jobs.proposals').toLowerCase()}</div>
-                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta"><Clock size={12} /> {job.postedAt}</div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
+                            <Globe size={13} className="text-[var(--text-muted)]" />
+                            <span>{t('jobs.remote')}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
+                            <Users size={13} className="text-[var(--text-muted)]" />
+                            <span>{job.proposalCount} {t('jobs.proposals').toLowerCase()}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs browse-jobs-job-meta">
+                            <Clock size={13} className="text-[var(--text-muted)]" />
+                            <span>{job.postedAt}</span>
+                          </div>
                         </div>
 
-                        <p className="text-sm leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">{job.description}</p>
+                        {/* Description */}
+                        <p className="text-xs leading-relaxed mb-3 line-clamp-2 browse-jobs-job-meta">
+                          {job.description}
+                        </p>
+
+                        {/* Skill Tags */}
                         <div className="flex flex-wrap gap-1.5">
-                          {job.skills.map(skill => <span key={skill} className="tag-pill">{skill}</span>)}
+                          {job.skills.map(skill => (
+                            <span key={skill} className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-secondary)]">
+                              {skill}
+                            </span>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="flex md:flex-col items-center md:items-end gap-3 flex-shrink-0">
+                      {/* Right Action Container */}
+                      <div className="flex md:flex-col items-center md:items-end justify-between gap-3 shrink-0 pt-2 md:pt-0">
                         {(() => {
                           const isSaved = savedJobIds.has(job.id);
                           const isSaving = savingJobIds.has(job.id);
                           const canSaveJob = Boolean(user && isFreelancer);
 
                           return (
-                            <>
-                        {job.aiMatchScore && user && (
-                          <div className={`match-score ${job.aiMatchScore >= 90 ? 'high' : job.aiMatchScore >= 70 ? 'medium' : 'low'} flex-shrink-0`}>
-                            <Bot size={10} />
-                            {job.aiMatchScore}% {t('jobs.match')}
-                          </div>
-                        )}
-                        <button
-                          onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
-                          disabled={!canSaveJob || isSaving}
-                          title={canSaveJob ? undefined : t('jobs.onlyFreelancersCanSave')}
-                          className={`p-2 rounded-lg transition-all ${isSaved ? 'browse-jobs-save-icon-active' : 'browse-jobs-save-icon'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                          <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
-                        </button>
-                            </>
+                            <div className="flex items-center gap-2">
+                              {job.aiMatchScore && user && (
+                                <div className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
+                                  <Bot size={11} />
+                                  <span>{job.aiMatchScore}% {t('jobs.match')}</span>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={event => { event.stopPropagation(); toggleSave(job.id); }}
+                                disabled={!canSaveJob || isSaving}
+                                title={canSaveJob ? undefined : t('jobs.onlyFreelancersCanSave')}
+                                className={`p-2 rounded-xl border border-[var(--border)] transition-all ${isSaved ? 'browse-jobs-save-icon-active bg-amber-500/10 border-amber-500/30' : 'browse-jobs-save-icon hover:bg-[var(--surface-hover)]'} ${(!canSaveJob || isSaving) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                              >
+                                <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                              </button>
+                            </div>
                           );
                         })()}
-                        <button onClick={event => { event.stopPropagation(); openJob(job); }}
-                          className="btn-ghost-cyan px-3 py-1.5 text-xs flex-shrink-0">
+
+                        <button
+                          type="button"
+                          onClick={event => { event.stopPropagation(); openJob(job); }}
+                          className="px-3.5 py-2 rounded-xl bg-[var(--brand,#494be7)] text-white text-xs font-bold shadow-sm hover:bg-[var(--brand-hover,#3f41d0)] transition-all cursor-pointer"
+                        >
                           {t('jobs.viewJob')}
                         </button>
                       </div>
@@ -476,122 +534,131 @@ export default function BrowseJobsScreen() {
                 ))}
               </div>
 
+              {/* Empty State */}
               {!loading && jobs.length === 0 && (
-                <div className="text-center py-20">
-                  <Bot size={48} className="mx-auto mb-4 opacity-30 browse-jobs-job-meta" />
-                  <p className="text-primary font-semibold mb-2">
+                <div className="text-center py-16 browse-jobs-glass-card">
+                  <Bot size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)]" />
+                  <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
                     {loadError || t('jobs.noJobsFound')}
                   </p>
                 </div>
               )}
 
+              {/* Pagination */}
               {totalResults > PAGE_SIZE && (
                 <div className="browse-jobs-pagination">
-                  <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>{t('jobs.previous')}</button>
+                  <button type="button" disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>
+                    {t('jobs.previous')}
+                  </button>
                   <span>{t('jobs.pageOf', { page, totalPages })}</span>
-                  <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)}>{t('jobs.next')}</button>
+                  <button type="button" disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)}>
+                    {t('jobs.next')}
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Column (1/3 width) - Sidebar with System Ads and Freelancer Rankings */}
+          {/* Right Column - Desktop Sticky Sidebar */}
           <aside className="system-ads-sidebar-container" aria-label="Promotions and freelancer insights">
+            {/* Promoted Job Card (Featured Opportunities) */}
             <SponsoredPromotionCard promotionType="job" />
-            {/* Ad 1: Premium upgrade or promotion activation */}
-            {isPremium !== null && <div className={`system-ad-card ${isPremium ? 'system-ad-card-promotion' : 'system-ad-card-premium'}`}>
-              <div className="system-ad-title">
-                {isPremium ? <TrendingUp size={18} className="ad-icon-promotion" /> : <Sparkles size={18} className="ad-icon-purple" />}
-                <span>{isPremium ? t('jobs.promotionTitle') : t('jobs.premiumTitle')}</span>
-              </div>
-              <p className="system-ad-subtitle">
-                {isPremium ? t('jobs.promotionDesc') : t('jobs.premiumDesc')}
-              </p>
-              <button
-                className={`system-ad-btn ${isPremium ? 'system-ad-btn-promotion' : 'system-ad-btn-primary'}`}
-                disabled={Boolean(isPremium && isPromotionActive)}
-                onClick={() => navigate(isPremium ? '/premium/freelancer/promotions' : '/premium/freelancer/pricing')}
-              >
-                {isPremium
-                  ? t(isPromotionActive ? 'jobs.promotionActive' : 'jobs.startPromotion')
-                  : t('jobs.upgradePlan')}
-              </button>
-            </div>}
 
-            {/* Ad 2: Skill Certification */}
-            <div className="system-ad-card">
-              <div className="system-ad-title">
-                <Zap size={18} className="ad-icon-cyan" />
-                <span>{t('jobs.verifySkills')}</span>
+            {/* Premium upgrade card */}
+            {isPremium !== null && (
+              <div className="system-ad-card">
+                <div className="system-ad-title">
+                  {isPremium ? <TrendingUp size={18} className="text-emerald-500" /> : <Sparkles size={18} className="text-[var(--brand,#494be7)]" />}
+                  <span>{isPremium ? t('jobs.promotionTitle') : t('jobs.premiumTitle')}</span>
+                </div>
+                <p className="system-ad-subtitle">
+                  {isPremium ? t('jobs.promotionDesc') : t('jobs.premiumDesc')}
+                </p>
+                <button
+                  type="button"
+                  className="system-ad-btn system-ad-btn-primary"
+                  disabled={Boolean(isPremium && isPromotionActive)}
+                  onClick={() => navigate(isPremium ? '/premium/freelancer/promotions' : '/premium/freelancer/pricing')}
+                >
+                  {isPremium
+                    ? t(isPromotionActive ? 'jobs.promotionActive' : 'jobs.startPromotion')
+                    : t('jobs.upgradePlan')}
+                </button>
               </div>
-              <p className="system-ad-subtitle">
-                {t('jobs.verifySkillsDesc')}
-              </p>
-              <button className="system-ad-btn system-ad-btn-secondary">
-                {t('jobs.startChallenge')}
-              </button>
-            </div>
+            )}
 
-            {/* Freelancer ELO Leaderboard */}
+            {/* Top Freelancers Leaderboard */}
             <div className="freelancer-ranking-card">
               <div className="freelancer-ranking-header">
                 <div className="freelancer-ranking-title">
-                  <Trophy size={18} className="trophy-icon" />
+                  <Trophy size={18} className="text-amber-500" />
                   <span>{t('jobs.topFreelancers')}</span>
                 </div>
-                <span className="freelancer-ranking-subtitle flex items-center gap-1">
+                <span className="text-xs text-[var(--text-secondary)] font-medium flex items-center gap-1">
                   <TrendingUp size={12} className="text-emerald-500" />
                   {t('jobs.eloRatings')}
                 </span>
               </div>
 
               <div className="ranking-list">
-                {topFreelancers.length === 0 ? <p className="p-4 text-xs text-muted-foreground">No freelancer ranking data is available.</p> : topFreelancers.map((freelancer, index) => {
-                  const rank = index + 1;
-                  const isGold = rank === 1;
-                  const isSilver = rank === 2;
-                  const isBronze = rank === 3;
-                  
-                  return (
-                    <div 
-                      key={freelancer.freelancerProfilesId}
-                      className={`ranking-item ${
-                        isGold ? 'ranking-item-top1' : 
-                        isSilver ? 'ranking-item-top2' : 
-                        isBronze ? 'ranking-item-top3' : ''
-                      }`}
-                    >
-                      <div className="ranking-user-info">
-                        <div className={`ranking-position ${
-                          isGold ? 'ranking-position-gold' : 
-                          isSilver ? 'ranking-position-silver' : 
-                          isBronze ? 'ranking-position-bronze' : ''
-                        }`}>
-                          {rank}
+                {topFreelancers.length === 0 ? (
+                  <p className="p-3 text-xs text-[var(--text-muted)] text-center">No freelancer ranking data is available.</p>
+                ) : (
+                  topFreelancers.map((freelancer, index) => {
+                    const rank = index + 1;
+                    const isGold = rank === 1;
+                    const isSilver = rank === 2;
+                    const isBronze = rank === 3;
+                    
+                    return (
+                      <div 
+                        key={freelancer.freelancerProfilesId}
+                        onClick={() => {
+                          const path = getProfilePath(freelancer.userId || freelancer.freelancerProfilesId, 'freelancer');
+                          if (path) navigate(path);
+                        }}
+                        className={`ranking-item ${
+                          isGold ? 'ranking-item-top1' : 
+                          isSilver ? 'ranking-item-top2' : 
+                          isBronze ? 'ranking-item-top3' : ''
+                        }`}
+                      >
+                        <div className="ranking-user-info">
+                          <div className={`ranking-position ${
+                            isGold ? 'text-amber-500 font-black' : 
+                            isSilver ? 'text-slate-400 font-bold' : 
+                            isBronze ? 'text-amber-700 font-bold' : 'text-[var(--text-muted)] font-medium'
+                          }`}>
+                            {isGold ? '👑' : `#${rank}`}
+                          </div>
+                          <div className="relative shrink-0">
+                            <img 
+                              src={freelancer.userAvatar || '/img/avatar-fallback.png'}
+                              alt={freelancer.userFullName || 'Freelancer'}
+                              className={`ranking-avatar ${
+                                isGold ? 'ranking-avatar-gold' : 
+                                isSilver ? 'ranking-avatar-silver' : 
+                                isBronze ? 'ranking-avatar-bronze' : ''
+                              }`}
+                            />
+                          </div>
+                          <div className="ranking-text-details">
+                            <span className="ranking-name" title={freelancer.userFullName || 'Freelancer'}>
+                              {freelancer.userFullName || 'Freelancer'}
+                            </span>
+                            <span className="ranking-role" title={freelancer.title || 'Independent professional'}>
+                              {freelancer.title || 'Independent professional'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="ranking-avatar-container">
-                          <img 
-                            src={freelancer.userAvatar || '/img/avatar-fallback.png'}
-                            alt={freelancer.userFullName || 'Freelancer'}
-                            className={`ranking-avatar ${
-                              isGold ? 'ranking-avatar-gold' : 
-                              isSilver ? 'ranking-avatar-silver' : 
-                              isBronze ? 'ranking-avatar-bronze' : ''
-                            }`}
-                          />
-                        </div>
-                        <div className="ranking-text-details">
-                          <span className="ranking-name">{freelancer.userFullName || 'Freelancer'}</span>
-                          <span className="ranking-role">{freelancer.title || 'Independent professional'}</span>
+                        <div className="flex flex-col items-end shrink-0 pl-1">
+                          <span className="ranking-elo-value">{freelancer.eloPoints}</span>
+                          <span className="ranking-elo-label">{t('jobs.elo')}</span>
                         </div>
                       </div>
-                      <div className="ranking-elo">
-                        <span className="ranking-elo-value">{freelancer.eloPoints}</span>
-                        <span className="ranking-elo-label">{t('jobs.elo')}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
           </aside>

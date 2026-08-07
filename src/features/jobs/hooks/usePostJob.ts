@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useBlocker, useLocation, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import axios from 'axios';
 import { toast } from 'sonner';
 import { GIGCOIN_CURRENCY_CODE } from '../../../shared/utils/gigcoin';
 import { jobAPI } from '../../../api/jobAPI';
@@ -18,6 +19,7 @@ import {
   type GenerateJobDescriptionDetailsResponse,
 } from '../../../types/models/Job';
 import {
+  durationToWeeks,
   formatJobDuration,
   isValidJobDurationValue,
   parseJobDuration,
@@ -111,6 +113,17 @@ export const shouldConfirmBudgetOverride = (budgetValue: string, milestonePlanTo
   const expected = Number(budgetValue);
   return expected > 0 && milestonePlanTotal > expected;
 };
+
+/**
+ * True when the milestone plan's total duration (in weeks) exceeds the job
+ * post's estimated duration (in weeks) — the "duration-exceeded" confirmation
+ * is shown alongside the budget one. A missing/zero estimated duration means
+ * there is nothing to exceed, so no confirmation is shown.
+ */
+export const shouldConfirmDurationOverride = (
+  milestoneTotalWeeks: number,
+  expectedDurationWeeks: number,
+): boolean => expectedDurationWeeks > 0 && milestoneTotalWeeks > expectedDurationWeeks;
 
 interface PostJobValidationIssue {
   message: string;
@@ -246,6 +259,7 @@ export function usePostJob() {
   const [isBudgetExceededPromptOpen, setIsBudgetExceededPromptOpen] = useState(false);
   const [pendingBudgetSubmitMode, setPendingBudgetSubmitMode] = useState<PostJobSubmitMode | null>(null);
   const budgetOverrideRef = useRef<string | null>(null);
+  const durationOverrideRef = useRef(false);
   const [leaveAction, setLeaveAction] = useState<LeaveAction>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [jobPostId, setJobPostId] = useState<string | null>(initialJobPostId);
@@ -283,7 +297,11 @@ export function usePostJob() {
   });
   const [backgroundHiringPlanStatus, setBackgroundHiringPlanStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [backgroundHiringPlanError, setBackgroundHiringPlanError] = useState<string | null>(null);
-  const backgroundHiringPlanPromiseRef = useRef<Promise<{ milestones: JobPostMilestonePlanDto[]; questions: QuestionInput[] }> | null>(null);
+  const backgroundHiringPlanPromiseRef = useRef<Promise<{ milestones: JobPostMilestonePlanDto[]; questions: QuestionInput[] } | null> | null>(null);
+  // Tracks the current generation so stale Flow 2 results (Scenarios 2 & 3) are silently discarded
+  const generationIdRef = useRef(0);
+  // Cancels the in-flight HTTP fetch (Browser → ASP.NET) when user re-prompts
+  const hiringPlanAbortRef = useRef<AbortController | null>(null);
 
 
   const [majors, setMajors] = useState<MajorDto[]>([]);
@@ -322,6 +340,21 @@ export function usePostJob() {
     () => milestonePlans.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [milestonePlans]
   );
+
+  const milestoneTotalWeeks = useMemo(
+    () => milestonePlans.reduce((sum, milestone) => {
+      const { value, unit } = parseJobDuration(milestone.estimatedDuration);
+      return sum + durationToWeeks(value, unit);
+    }, 0),
+    [milestonePlans]
+  );
+
+  const expectedDurationWeeks = form.estimatedDurationValue
+    ? durationToWeeks(form.estimatedDurationValue, form.estimatedDurationUnit)
+    : 0;
+
+  const isBudgetExceeded = shouldConfirmBudgetOverride(form.budget, milestonePlanTotal);
+  const isDurationExceeded = shouldConfirmDurationOverride(milestoneTotalWeeks, expectedDurationWeeks);
 
   const questionsWithOrder = useMemo<OrderedQuestionInput[]>(
     () => questions.map((question, index) => ({ ...question, orderIndex: index })),
@@ -382,6 +415,36 @@ export function usePostJob() {
       setErrorMessage(null);
     }
   }, [isInstantJobMode]);
+
+  // Dynamically shift milestone due dates sequentially when form.deadline changes
+  useEffect(() => {
+    if (!form.deadline || milestonePlans.length === 0) return;
+
+    let previousDueDate = form.deadline;
+    let modified = false;
+
+    const nextMilestones = milestonePlans.map(milestone => {
+      // If a milestone is missing dueDate, or is before/equal to closing date, or is out of order:
+      if (!milestone.dueDate || milestone.dueDate <= form.deadline || (previousDueDate && milestone.dueDate <= previousDueDate)) {
+        const duration = parseJobDuration(milestone.estimatedDuration);
+        const weeks = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 4.333 : duration.unit === 'years' ? 52 : 1) : 2;
+        const days = Math.ceil(weeks * 7);
+        
+        const start = previousDueDate ? new Date(previousDueDate) : new Date(form.deadline);
+        const newDueDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        previousDueDate = newDueDate;
+        modified = true;
+        return { ...milestone, dueDate: newDueDate };
+      }
+      previousDueDate = milestone.dueDate;
+      return milestone;
+    });
+
+    if (modified) {
+      setMilestonePlans(nextMilestones);
+    }
+  }, [form.deadline, milestonePlans]);
 
   useEffect(() => {
     let isMounted = true;
@@ -622,6 +685,9 @@ export function usePostJob() {
     setMilestonePlans([]);
     setAttachments([]);
     setAttachmentError(null);
+    hiringPlanAbortRef.current?.abort('Draft reset');
+    hiringPlanAbortRef.current = null;
+    generationIdRef.current += 1;
     backgroundHiringPlanPromiseRef.current = null;
     setBackgroundHiringPlanStatus('idle');
     setBackgroundHiringPlanError(null);
@@ -769,6 +835,16 @@ export function usePostJob() {
       return;
     }
 
+    // Cancel any in-flight Flow 2 from a previous generation before starting a new Flow 1.
+    // AbortController kills the HTTP leg (Browser → ASP.NET); generationIdRef discards
+    // any result that somehow still arrives (Scenarios 2 & 3 where the LLM keeps running).
+    hiringPlanAbortRef.current?.abort('User re-prompted AI');
+    hiringPlanAbortRef.current = null;
+    generationIdRef.current += 1;
+    backgroundHiringPlanPromiseRef.current = null;
+    setBackgroundHiringPlanStatus('idle');
+    setIsHiringPlanGenerated(false);
+
     setErrorMessage(null);
     setIsGeneratingInstant(true);
     try {
@@ -782,6 +858,7 @@ export function usePostJob() {
 
       setAiClientPrompt(promptText);
       setPendingGeneratedDetails(response.data);
+      // Open the lightweight success modal — user confirms before prefill + Flow 2 start
       setIsReviewModalOpen(true);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'An error occurred during AI generation.';
@@ -796,11 +873,19 @@ export function usePostJob() {
     if (!pendingGeneratedDetails) return;
     const generatedData = pendingGeneratedDetails;
 
+    // Capture this generation's ID — used to detect stale results from Scenarios 2 & 3
+    // where the LLM keeps generating even after the HTTP request was aborted.
+    const myGenerationId = generationIdRef.current;
+
     setIsReviewModalOpen(false);
     setIsInstantJobMode(true);
     setIsHiringPlanGenerated(false);
 
-    // Start background generation of hiring plan immediately
+    // Create a new AbortController for this generation's Flow 2 HTTP request.
+    // Aborted on next re-prompt (handleGenerateInstantJob) or draft reset.
+    const abortController = new AbortController();
+    hiringPlanAbortRef.current = abortController;
+
     const promptText = aiClientPrompt;
     const jobTitle = generatedData.title;
     const jobDescription = generatedData.description;
@@ -808,11 +893,25 @@ export function usePostJob() {
     setBackgroundHiringPlanStatus('loading');
     setBackgroundHiringPlanError(null);
 
+    const duration = parseJobDuration(generatedData.estimatedDuration);
+    const durationDays = (duration.value ? Number(duration.value) * (duration.unit === 'months' ? 30 : duration.unit === 'years' ? 365 : 7) : 14) * 2;
+    const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     const promise = jobAPI.generateAIHiringPlan({
       clientPrompt: promptText,
       title: jobTitle || '',
-      description: jobDescription || ''
-    }).then(response => {
+      description: jobDescription || '',
+      budgetMin: generatedData.budgetMin,
+      budgetMax: generatedData.budgetMax,
+      estimatedDuration: generatedData.estimatedDuration,
+      proposalClosingDate: computedDeadline,
+    }, abortController.signal).then(response => {
+      // Guard: if user has re-prompted since this Flow 2 started, discard the result silently.
+      // This handles Scenarios 2 & 3 where the LLM result still arrives despite the abort.
+      if (myGenerationId !== generationIdRef.current) {
+        return null;
+      }
+
       if (!response.success || !response.data) {
         throw new Error(response.message || 'Failed to generate hiring plan.');
       }
@@ -841,6 +940,14 @@ export function usePostJob() {
 
       return { milestones: nextMilestones, questions: nextQuestions };
     }).catch(error => {
+      // Intentional abort (user re-prompted) — do not show an error, just clean up silently.
+      if (axios.isCancel(error) || (error instanceof Error && error.name === 'CanceledError')) {
+        return null;
+      }
+      // Stale result guard (extra safety) — discard without error
+      if (myGenerationId !== generationIdRef.current) {
+        return null;
+      }
       const planErrorMsg = error instanceof Error ? error.message : 'An error occurred generating hiring plan.';
       setBackgroundHiringPlanStatus('error');
       setBackgroundHiringPlanError(planErrorMsg);
@@ -893,11 +1000,12 @@ export function usePostJob() {
         skillIds: generatedSkillIds,
         customSkillNames: generatedData.customSkills || [],
         description: generatedData.description || prev.description,
+        budget: toStringValue(generatedData.budgetMin ?? generatedData.budgetMax) || prev.budget,
         currency: prev.currency || GIGCOIN_CURRENCY_CODE,
-        estimatedDurationValue: prev.estimatedDurationValue || '2',
-        estimatedDurationUnit: prev.estimatedDurationUnit || 'weeks',
+        estimatedDurationValue: duration.value || prev.estimatedDurationValue || '2',
+        estimatedDurationUnit: duration.unit || prev.estimatedDurationUnit || 'weeks',
         visibility: String(JobPostVisibility.Public),
-        deadline: prev.deadline || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        deadline: computedDeadline,
         isAigenerated: true,
       }));
 
@@ -1024,12 +1132,15 @@ export function usePostJob() {
     questions?: QuestionInput[];
     milestonePlans?: JobPostMilestonePlanDto[];
   }): SaveDraftJobPostRequest => {
-    // A confirmed budget override (milestone total) takes precedence over the
-    // current form value — the immediate post-confirm save runs in the same
-    // tick as setForm, so form.budget would still hold the stale expected budget.
+    // Confirmed overrides (milestone total / total duration) take precedence
+    // over the current form values — the immediate post-confirm save runs in
+    // the same tick as setForm, so the form fields would still hold the stale
+    // expected values.
     const budgetValue = budgetOverrideRef.current !== null
       ? Number(budgetOverrideRef.current)
       : form.budget ? Number(form.budget) : null;
+    const durationValue = durationOverrideRef.current ? String(milestoneTotalWeeks) : form.estimatedDurationValue;
+    const durationUnit: JobDurationUnit = durationOverrideRef.current ? 'weeks' : form.estimatedDurationUnit;
     const finalQuestions = overrides?.questions || questions;
     const finalMilestones = overrides?.milestonePlans || milestonePlans;
     const questionsWithOrderOverrides = finalQuestions.map((question, index) => ({ ...question, orderIndex: index }));
@@ -1041,7 +1152,7 @@ export function usePostJob() {
       budgetMin: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       budgetMax: budgetValue !== null && Number.isNaN(budgetValue) ? null : budgetValue,
       currency: form.currency.trim() || GIGCOIN_CURRENCY_CODE,
-      estimatedDuration: formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit),
+      estimatedDuration: formatJobDuration(durationValue, durationUnit),
       visibility: form.visibility ? Number(form.visibility) : JobPostVisibility.Public,
       endDate: form.deadline ? new Date(`${form.deadline}T23:59:59`).toISOString() : null,
       isAigenerated: form.isAigenerated,
@@ -1288,11 +1399,14 @@ export function usePostJob() {
       }
     }
 
-    // When the milestone plan total exceeds the client's expected budget, ask
-    // before saving so the job post budget is only raised by explicit consent.
-    if ((mode === 'review' || mode === 'publish')
-      && shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)
-      && budgetOverrideRef.current === null) {
+    // When the milestone plan total exceeds the client's expected budget or
+    // total duration, ask before saving so the job post fields are only
+    // raised by explicit consent.
+    const budgetNeedsConfirm = shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)
+      && budgetOverrideRef.current === null;
+    const durationNeedsConfirm = shouldConfirmDurationOverride(milestoneTotalWeeks, expectedDurationWeeks)
+      && !durationOverrideRef.current;
+    if ((mode === 'review' || mode === 'publish') && (budgetNeedsConfirm || durationNeedsConfirm)) {
       setPendingBudgetSubmitMode(mode);
       setIsBudgetExceededPromptOpen(true);
       return { status: 'budget-exceeded' };
@@ -1316,8 +1430,10 @@ export function usePostJob() {
             setIsGeneratingPlan(true);
             try {
               const result = await backgroundHiringPlanPromiseRef.current;
-              finalMilestones = result.milestones;
-              finalQuestions = result.questions;
+              if (result) {
+                finalMilestones = result.milestones;
+                finalQuestions = result.questions;
+              }
             } catch (planError) {
               backgroundHiringPlanPromiseRef.current = null;
               setBackgroundHiringPlanStatus('error');
@@ -1328,10 +1444,22 @@ export function usePostJob() {
           } else {
             setIsGeneratingPlan(true);
             try {
+              const durationWeeks = form.estimatedDurationValue ? Number(form.estimatedDurationValue) * (form.estimatedDurationUnit === 'months' ? 4.333 : form.estimatedDurationUnit === 'years' ? 52 : 1) : 2;
+              const durationDays = Math.ceil(durationWeeks * 7) * 2;
+              const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+              
+              if (!form.deadline) {
+                setForm(prev => ({ ...prev, deadline: computedDeadline }));
+              }
+
               const planResponse = await jobAPI.generateAIHiringPlan({
                 clientPrompt: aiClientPrompt,
                 title: form.title,
-                description: form.description
+                description: form.description,
+                budgetMin: form.budget ? Number(form.budget) : undefined,
+                budgetMax: form.budget ? Number(form.budget) : undefined,
+                estimatedDuration: form.estimatedDurationValue ? formatJobDuration(form.estimatedDurationValue, form.estimatedDurationUnit) || undefined : undefined,
+                proposalClosingDate: computedDeadline,
               });
 
               if (!planResponse.success || !planResponse.data) {
@@ -1417,15 +1545,26 @@ export function usePostJob() {
     } finally {
       setSubmitMode(null);
       budgetOverrideRef.current = null;
+      durationOverrideRef.current = false;
     }
   };
 
   const handleBudgetExceededConfirm = (): Promise<PostJobSubmitResult> => {
-    budgetOverrideRef.current = String(milestonePlanTotal);
-    setForm(current => ({
-      ...current,
-      budget: String(milestonePlanTotal),
-    }));
+    if (shouldConfirmBudgetOverride(form.budget, milestonePlanTotal)) {
+      budgetOverrideRef.current = String(milestonePlanTotal);
+      setForm(current => ({
+        ...current,
+        budget: String(milestonePlanTotal),
+      }));
+    }
+    if (shouldConfirmDurationOverride(milestoneTotalWeeks, expectedDurationWeeks)) {
+      durationOverrideRef.current = true;
+      setForm(current => ({
+        ...current,
+        estimatedDurationValue: String(milestoneTotalWeeks),
+        estimatedDurationUnit: 'weeks',
+      }));
+    }
     setIsBudgetExceededPromptOpen(false);
     const mode = pendingBudgetSubmitMode;
     setPendingBudgetSubmitMode(null);
@@ -1523,6 +1662,10 @@ export function usePostJob() {
     isUploadingAttachment,
     attachmentError,
     milestonePlanTotal,
+    milestoneTotalWeeks,
+    expectedDurationWeeks,
+    isBudgetExceeded,
+    isDurationExceeded,
     setMilestonePlans,
     uploadAttachment,
     deleteAttachment,
@@ -1559,6 +1702,7 @@ export function usePostJob() {
     handleBudgetExceededConfirm,
     handleBudgetExceededCancel,
     shouldConfirmBudgetOverride,
+    shouldConfirmDurationOverride,
     navigateWizard,
     flushAutosave,
     retryAutosave,

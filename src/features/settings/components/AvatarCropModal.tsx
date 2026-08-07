@@ -325,9 +325,9 @@ export function AvatarCropModal({
                   <ZoomOut size={14} className="text-muted shrink-0" />
                   <input
                     type="range"
-                    min="1"
-                    max="3"
-                    step="0.05"
+                    min="0.2"
+                    max="2.0"
+                    step="0.02"
                     value={zoom}
                     onChange={e => setZoom(parseFloat(e.target.value))}
                     className="w-full accent-[var(--brand,#494be7)] cursor-pointer"

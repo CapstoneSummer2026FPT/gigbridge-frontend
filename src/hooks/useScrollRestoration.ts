@@ -9,6 +9,17 @@ export function useScrollRestoration() {
   const location = useLocation();
 
   useEffect(() => {
+    // Landing page (/) should always scroll to top on fresh load/logout
+    if (location.pathname === '/') {
+      try {
+        sessionStorage.removeItem('scroll-/');
+      } catch {
+        /* ignore */
+      }
+      window.scrollTo(0, 0);
+      return;
+    }
+
     // Restore scroll position when component mounts
     const savedPosition = sessionStorage.getItem(`scroll-${location.pathname}`);
     if (savedPosition !== null) {

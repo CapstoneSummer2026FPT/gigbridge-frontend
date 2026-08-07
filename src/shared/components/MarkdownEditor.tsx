@@ -1,17 +1,21 @@
-import { useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Placeholder from '@tiptap/extension-placeholder';
+import { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   Bold,
   Code,
-  Eye,
   Heading2,
   Italic,
-  Link,
   List,
   ListOrdered,
-  Pencil,
+  Underline as UnderlineIcon,
 } from 'lucide-react';
+import './styles/MarkdownEditor.css';
+
 interface MarkdownPreviewProps {
   value?: string | null;
   className?: string;
@@ -21,7 +25,9 @@ interface MarkdownEditorProps extends MarkdownPreviewProps {
   label: string;
   placeholder?: string;
   rows?: number;
+  error?: string;
   onChange: (value: string) => void;
+  onFocus?: () => void;
 }
 
 const previewClass = 'prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 prose-pre:overflow-x-auto';
@@ -35,83 +41,153 @@ export function MarkdownPreview({ value, className = '' }: MarkdownPreviewProps)
   );
 }
 
-export function MarkdownEditor({ label, value = '', placeholder, rows = 6, onChange, className = '' }: MarkdownEditorProps) {
-  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
-  const editorValue = value ?? '';
+function ToolbarButton({
+  onClick,
+  active,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  active?: boolean;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={e => { e.preventDefault(); onClick(); }}
+      className={`rounded-md p-1.5 transition-colors ${active
+        ? 'bg-brand/15 text-brand'
+        : 'text-muted-foreground hover:bg-background hover:text-foreground'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
-  const wrapSelection = (before: string, after = before) => {
-    const active = document.activeElement as HTMLTextAreaElement | null;
-    if (!active || active.tagName !== 'TEXTAREA') {
-      onChange(`${editorValue}${before}${after}`);
-      return;
-    }
-    const start = active.selectionStart;
-    const end = active.selectionEnd;
-    const selected = editorValue.slice(start, end);
-    const next = `${editorValue.slice(0, start)}${before}${selected || 'text'}${after}${editorValue.slice(end)}`;
-    onChange(next);
-    requestAnimationFrame(() => {
-      active.focus();
-      active.setSelectionRange(start + before.length, start + before.length + (selected || 'text').length);
-    });
-  };
+export function MarkdownEditor({
+  label,
+  value = '',
+  placeholder,
+  rows = 6,
+  error,
+  onChange,
+  onFocus,
+  className = '',
+}: MarkdownEditorProps) {
+  // Track whether initial content has been set from a non-empty external value
+  const isInitialized = useRef(false);
 
-  const prefixLine = (prefix: string) => {
-    const active = document.activeElement as HTMLTextAreaElement | null;
-    if (!active || active.tagName !== 'TEXTAREA') {
-      onChange(`${editorValue}${editorValue.endsWith('\n') || !editorValue ? '' : '\n'}${prefix}`);
-      return;
-    }
-    const start = active.selectionStart;
-    const lineStart = editorValue.lastIndexOf('\n', start - 1) + 1;
-    onChange(`${editorValue.slice(0, lineStart)}${prefix}${editorValue.slice(lineStart)}`);
-    requestAnimationFrame(() => active.focus());
-  };
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      Placeholder.configure({
+        placeholder: placeholder ?? '',
+      }),
+    ],
+    content: '',
+    onUpdate({ editor }) {
+      onChange(editor.getText({ blockSeparator: '\n' }));
+    },
+    onFocus() {
+      onFocus?.();
+    },
+    editorProps: {
+      attributes: {
+        class: 'tiptap-editor outline-none p-3 text-sm text-foreground',
+        style: `min-height: ${rows * 1.75}rem`,
+      },
+    },
+  });
+
+  // Sync external value → editor content when value loads (e.g., draft hydration)
+  // Only do this once when editor is ready AND the state value arrives non-empty
+  useEffect(() => {
+    if (!editor) return;
+    if (isInitialized.current) return;
+    if (!value) return;
+
+    // Set content from external state (e.g., loaded draft)
+    editor.commands.setContent(
+      `<p>${value.replace(/\n/g, '</p><p>')}</p>`,
+      { emitUpdate: false },
+    );
+    isInitialized.current = true;
+  }, [editor, value]);
+
+  if (!editor) return null;
 
   const tools = [
-    { title: 'Bold', icon: <Bold size={15} />, action: () => wrapSelection('**') },
-    { title: 'Italic', icon: <Italic size={15} />, action: () => wrapSelection('_') },
-    { title: 'Heading', icon: <Heading2 size={15} />, action: () => prefixLine('## ') },
-    { title: 'Bullet list', icon: <List size={15} />, action: () => prefixLine('- ') },
-    { title: 'Numbered list', icon: <ListOrdered size={15} />, action: () => prefixLine('1. ') },
-    { title: 'Link', icon: <Link size={15} />, action: () => wrapSelection('[', '](https://)') },
-    { title: 'Code', icon: <Code size={15} />, action: () => wrapSelection('`') },
+    {
+      title: 'Bold',
+      icon: <Bold size={15} />,
+      active: editor.isActive('bold'),
+      action: () => editor.chain().focus().toggleBold().run(),
+    },
+    {
+      title: 'Italic',
+      icon: <Italic size={15} />,
+      active: editor.isActive('italic'),
+      action: () => editor.chain().focus().toggleItalic().run(),
+    },
+    {
+      title: 'Underline',
+      icon: <UnderlineIcon size={15} />,
+      active: editor.isActive('underline'),
+      action: () => editor.chain().focus().toggleUnderline().run(),
+    },
+    {
+      title: 'Heading',
+      icon: <Heading2 size={15} />,
+      active: editor.isActive('heading', { level: 2 }),
+      action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+    },
+    {
+      title: 'Bullet list',
+      icon: <List size={15} />,
+      active: editor.isActive('bulletList'),
+      action: () => editor.chain().focus().toggleBulletList().run(),
+    },
+    {
+      title: 'Numbered list',
+      icon: <ListOrdered size={15} />,
+      active: editor.isActive('orderedList'),
+      action: () => editor.chain().focus().toggleOrderedList().run(),
+    },
+    {
+      title: 'Code',
+      icon: <Code size={15} />,
+      active: editor.isActive('code'),
+      action: () => editor.chain().focus().toggleCode().run(),
+    },
   ];
 
+  const hasError = !!error;
+
   return (
-    <div className={`space-y-2 ${className}`}>
-      <div className="flex items-center justify-between gap-3">
-        <label className="text-sm font-semibold">{label}</label>
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">
-          <button type="button" title="Edit" onClick={() => setMode('edit')} className={`rounded-md p-1.5 ${mode === 'edit' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}>
-            <Pencil size={14} />
-          </button>
-          <button type="button" title="Preview" onClick={() => setMode('preview')} className={`rounded-md p-1.5 ${mode === 'preview' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}>
-            <Eye size={14} />
-          </button>
+    <div className={`space-y-1.5 ${className}`}>
+      {label && <label className="text-sm font-semibold">{label}</label>}
+      <div className={`overflow-hidden rounded-lg border bg-background transition-all focus-within:ring-2 ${
+        hasError
+          ? 'border-rose-500 focus-within:ring-rose-500/20'
+          : 'border-border focus-within:ring-[var(--gb-cyan)]'
+      }`}>
+        <div className="flex flex-wrap gap-1 border-b border-border bg-muted/30 p-2">
+          {tools.map(tool => (
+            <ToolbarButton key={tool.title} title={tool.title} active={tool.active} onClick={tool.action}>
+              {tool.icon}
+            </ToolbarButton>
+          ))}
         </div>
+        <EditorContent editor={editor} />
       </div>
-      {mode === 'edit' ? (
-        <div className="overflow-hidden rounded-lg border border-border bg-background focus-within:ring-2 focus-within:ring-[var(--gb-cyan)]">
-          <div className="flex flex-wrap gap-1 border-b border-border bg-muted/30 p-2">
-            {tools.map(tool => (
-              <button key={tool.title} type="button" title={tool.title} onClick={tool.action} className="rounded-md p-1.5 text-muted-foreground hover:bg-background hover:text-foreground">
-                {tool.icon}
-              </button>
-            ))}
-          </div>
-          <textarea
-            value={editorValue}
-            onChange={event => onChange(event.target.value)}
-            rows={rows}
-            placeholder={placeholder}
-            className="w-full resize-y border-none bg-transparent p-3 text-sm text-foreground outline-none"
-          />
-        </div>
-      ) : (
-        <div className="min-h-36 rounded-lg border border-border bg-background p-3 text-sm">
-          {editorValue.trim() ? <MarkdownPreview value={editorValue} /> : <p className="text-muted-foreground">Nothing to preview.</p>}
-        </div>
+      {hasError && (
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-rose-500">
+          <span aria-hidden="true">⚠</span> {error}
+        </p>
       )}
     </div>
   );

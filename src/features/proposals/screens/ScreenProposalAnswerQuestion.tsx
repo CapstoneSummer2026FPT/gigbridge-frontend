@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { ArrowLeft, CheckCircle2, Clock3, Play, Save, Send } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  Play,
+  Save,
+  Send,
+  AlertTriangle,
+  FileEdit,
+  ChevronRight,
+  Mic,
+  Timer,
+  RefreshCcw,
+} from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { jobGetAPI } from '../../../api/jobAPI/GET';
 import { proposalGetAPI } from '../../../api/proposalAPI/GET';
@@ -16,6 +29,7 @@ import {
 import type { JobPostQuestionDto } from '../../../types/models/Job';
 import { getProposalNarrativeValidationError } from '../utils/proposalSubmissionValidation';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 
 type AnswerRouteState = {
   proposalId?: string;
@@ -28,6 +42,210 @@ const formatRemainingTime = (seconds: number) => {
   const remainingSeconds = Math.floor(safeSeconds % 60).toString().padStart(2, '0');
   return `${minutes}:${remainingSeconds}`;
 };
+
+// ── Timer Ring Component ──────────────────────────────────────────────────────
+function TimerRing({ seconds, maxSeconds = 180, size = 64 }: { seconds: number; maxSeconds?: number; size?: number }) {
+  const radius = (size - 8) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.max(0, Math.min(1, seconds / maxSeconds));
+  const strokeDashoffset = circumference * (1 - progress);
+  const isLow = seconds <= 30;
+  const isCritical = seconds <= 10;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="absolute -rotate-90" style={{ overflow: 'visible' }}>
+        {/* Track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth={4}
+        />
+        {/* Progress */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={isCritical ? '#ef4444' : isLow ? '#f59e0b' : 'var(--brand)'}
+          strokeWidth={4}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.3s ease' }}
+        />
+      </svg>
+      <span className={`relative z-10 text-xs font-black tabular-nums ${
+        isCritical ? 'text-rose-500' : isLow ? 'text-amber-500' : 'text-brand'
+      }`}>
+        {formatRemainingTime(seconds)}
+      </span>
+    </div>
+  );
+}
+
+// ── Intro Overlay ─────────────────────────────────────────────────────────────
+function InterviewIntroOverlay({
+  questionCount,
+  proposalReadinessError,
+  loadError,
+  onBack,
+  onStart,
+  onEditProposal,
+  onRetry,
+}: {
+  questionCount: number;
+  proposalReadinessError: string;
+  loadError: string;
+  onBack: () => void;
+  onStart: () => void;
+  onEditProposal: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--background)]/95 backdrop-blur-xl px-4">
+      <div className="relative w-full max-w-lg">
+        {/* Card with thick mint & brand gradient border */}
+        <div
+          className="rounded-3xl p-8 shadow-2xl"
+          style={{
+            background: 'linear-gradient(var(--background), var(--background)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+            border: '3px solid transparent',
+          }}
+        >
+          {/* Icon with thick gradient border */}
+          <div
+            className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
+            style={{
+              background: 'linear-gradient(var(--surface-muted), var(--surface-muted)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+              border: '2.5px solid transparent',
+            }}
+          >
+            <Mic size={30} className="text-brand" />
+          </div>
+
+          <h1 className="text-center text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            Phỏng vấn có tính giờ
+          </h1>
+          <p className="mt-2 text-center text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Timed Interview Questions
+          </p>
+
+          {/* Info pills with thick gradient border */}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div
+              className="flex flex-col items-center gap-1.5 rounded-2xl p-4"
+              style={{
+                background: 'linear-gradient(var(--background), var(--background)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+                border: '2px solid transparent',
+              }}
+            >
+              <Timer size={20} className="text-brand" />
+              <span className="text-xs font-extrabold" style={{ color: 'var(--text-primary)' }}>3 phút / câu</span>
+              <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Per question</span>
+            </div>
+            <div
+              className="flex flex-col items-center gap-1.5 rounded-2xl p-4"
+              style={{
+                background: 'linear-gradient(var(--background), var(--background)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+                border: '2px solid transparent',
+              }}
+            >
+              <FileEdit size={20} className="text-brand" />
+              <span className="text-xs font-extrabold" style={{ color: 'var(--text-primary)' }}>{questionCount} câu hỏi</span>
+              <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Questions</span>
+            </div>
+          </div>
+
+          {/* Rule */}
+          <p
+            className="mt-5 rounded-xl px-4 py-3 text-xs font-medium leading-relaxed text-center"
+            style={{
+              background: 'var(--surface-muted)',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            Đồng hồ bắt đầu chạy sau khi bạn nhấn <strong>Bắt đầu phỏng vấn</strong>.
+            Mỗi câu hỏi có đúng <strong>3 phút</strong>. Câu trả lời được lưu tự động khi hết giờ.
+          </p>
+
+          {/* Proposal readiness error */}
+          {proposalReadinessError && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-500" />
+              <div>
+                <p className="text-sm font-bold text-rose-600">{proposalReadinessError}</p>
+                <p className="mt-0.5 text-xs text-rose-500/80">Hãy cập nhật đề xuất trước khi bắt đầu phỏng vấn.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Transient load error */}
+          {loadError && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-rose-500" />
+              <div>
+                <p className="text-sm font-bold text-rose-600">{loadError}</p>
+                <p className="mt-0.5 text-xs text-rose-500/80">Vui lòng thử lại hoặc quay lại chỉnh sửa đề xuất.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition-all hover:bg-[var(--surface-muted)]"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+            >
+              <ArrowLeft size={16} />
+              Quay lại
+            </button>
+            {proposalReadinessError ? (
+              <button
+                type="button"
+                onClick={onEditProposal}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all hover:opacity-90"
+                style={{ background: 'var(--brand)' }}
+              >
+                <FileEdit size={16} />
+                Sửa đề xuất
+              </button>
+            ) : loadError ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all hover:opacity-90"
+                style={{ background: 'var(--brand)' }}
+              >
+                <RefreshCcw size={16} />
+                Thử lại
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onStart}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition-all hover:opacity-90 hover:-translate-y-0.5"
+                style={{
+                  background: 'var(--brand)',
+                  boxShadow: '0 6px 20px -4px rgba(73,75,231,0.35)',
+                }}
+              >
+                <Play size={16} />
+                Bắt đầu phỏng vấn
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ScreenProposalAnswerQuestion() {
   const { t } = useTranslation();
@@ -54,9 +272,11 @@ export default function ScreenProposalAnswerQuestion() {
   const [timerLoading, setTimerLoading] = useState(false);
   const [error, setError] = useState('');
   const [proposalReadinessError, setProposalReadinessError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const [interviewStarted, setInterviewStarted] = useState(false);
   const completingQuestionRef = useRef(false);
   const completingReviewRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const sortedQuestions = useMemo(
     () => [...questions].sort((a, b) => a.orderIndex - b.orderIndex),
@@ -80,41 +300,48 @@ export default function ScreenProposalAnswerQuestion() {
 
   useEffect(() => {
     const load = async () => {
-      if (!proposalId || !jobPostId) {
+      if (!jobPostId) {
         setError('Proposal or JobPost id is missing.');
         setLoading(false);
         return;
       }
-
+      if (!proposalId) {
+        // Refresh / deep-link recovery: locate the draft by job and restore the URL.
+        const recovered = await proposalGetAPI.getMyProposalByJobPost(jobPostId);
+        if (!recovered.success || !recovered.data) {
+          setError(recovered.message || 'Proposal or JobPost id is missing.');
+          setLoading(false);
+          return;
+        }
+        navigate(`/proposals/create/${jobPostId}/questions?proposalId=${recovered.data.proposalId}`, {
+          replace: true,
+          state: { proposalId: recovered.data.proposalId, jobPostId },
+        });
+        return;
+      }
       try {
         setLoading(true);
         setError('');
-
         const [questionsResponse, answersResponse, proposalResponse] = await Promise.all([
           jobGetAPI.getJobPostQuestions(jobPostId),
           proposalGetAPI.getProposalAnswers(proposalId),
           proposalGetAPI.getProposalDetail(proposalId),
         ]);
-
         if (!questionsResponse.success) {
           setError(questionsResponse.message || 'Questions could not be loaded.');
           return;
         }
         if (!proposalResponse.success || !proposalResponse.data) {
-          setProposalReadinessError(
-            proposalResponse.message || 'Proposal details could not be verified. Return to the proposal and save it again.'
-          );
+          // Transient load failure (e.g. right after a network drop) — retry, don't block permanently.
+          setError(proposalResponse.message || 'Proposal details could not be verified. Please try again.');
           return;
         }
-
         setProposalReadinessError(getProposalNarrativeValidationError(proposalResponse.data));
-
         const loadedQuestions = (questionsResponse.data || []).map(question => ({
           ...question,
           isRequired: question.isRequired ?? true,
         }));
         setQuestions(loadedQuestions);
-
         const answerMap: Record<string, string> = {};
         if (answersResponse.success && answersResponse.data) {
           answersResponse.data.forEach((answer: ProposalAnswerDto) => {
@@ -129,9 +356,13 @@ export default function ScreenProposalAnswerQuestion() {
         setLoading(false);
       }
     };
-
     load();
-  }, [proposalId, jobPostId]);
+  }, [jobPostId, navigate, proposalId, reloadKey]);
+
+  const retryLoad = () => {
+    setError('');
+    setReloadKey((value) => value + 1);
+  };
 
   const markQuestionLocked = useCallback((questionId: string) => {
     setLockedQuestionIds(prev => {
@@ -142,36 +373,28 @@ export default function ScreenProposalAnswerQuestion() {
   }, []);
 
   const startQuestionAtIndex = useCallback(async (startIndex: number) => {
-    if (!proposalId || sortedQuestions.length === 0) {
-      return false;
-    }
-
+    if (!proposalId || sortedQuestions.length === 0) return false;
     setTimerLoading(true);
     setError('');
     try {
       for (let index = startIndex; index < sortedQuestions.length; index += 1) {
         const question = sortedQuestions[index];
-        if (lockedQuestionIds.has(question.jobPostQuestionsId)) {
-          continue;
-        }
-
+        if (lockedQuestionIds.has(question.jobPostQuestionsId)) continue;
         setActiveQuestionIndex(index);
         const response = await proposalPostAPI.startQuestionTimer(proposalId, question.jobPostQuestionsId);
         if (!response.success || !response.data) {
           setError(response.message || 'Question timer could not be started.');
           return false;
         }
-
         setTimerState(response.data);
         setRemainingSeconds(response.data.remainingSeconds);
         if (response.data.isLocked) {
           markQuestionLocked(question.jobPostQuestionsId);
           continue;
         }
-
+        setTimeout(() => textareaRef.current?.focus(), 100);
         return true;
       }
-
       setTimerState(null);
       setRemainingSeconds(0);
       setActiveQuestionIndex(sortedQuestions.length);
@@ -182,49 +405,26 @@ export default function ScreenProposalAnswerQuestion() {
   }, [lockedQuestionIds, markQuestionLocked, proposalId, sortedQuestions]);
 
   const handleStartInterview = useCallback(() => {
-    if (proposalReadinessError) {
-      setError(proposalReadinessError);
-      return;
-    }
+    if (proposalReadinessError) { setError(proposalReadinessError); return; }
     setError('');
     setInterviewStarted(true);
     void startQuestionAtIndex(activeQuestionIndex);
   }, [activeQuestionIndex, proposalReadinessError, startQuestionAtIndex]);
 
   const completeQuestion = useCallback(async (reason: QuestionTimerLockedReason) => {
-    if (!proposalId || !activeQuestion || completingQuestionRef.current) {
-      return false;
-    }
-
+    if (!proposalId || !activeQuestion || completingQuestionRef.current) return false;
     const answerText = answers[activeQuestion.jobPostQuestionsId] || '';
-    if (answerText.length > 4000) {
-      setError('Answers must not exceed 4000 characters.');
-      return false;
-    }
-
+    if (answerText.length > 4000) { setError('Answers must not exceed 4000 characters.'); return false; }
     if (reason === QuestionTimerLockedReason.Completed && activeQuestion.isRequired && !answerText.trim()) {
       setError(`Answer is required for question ${activeQuestion.orderIndex}.`);
       return false;
     }
-
     completingQuestionRef.current = true;
     setSaving(true);
     setError('');
     try {
-      const response = await proposalPostAPI.completeQuestionTimer(
-        proposalId,
-        activeQuestion.jobPostQuestionsId,
-        {
-          answerText,
-          lockedReason: reason,
-        }
-      );
-
-      if (!response.success || !response.data) {
-        setError(response.message || 'Question could not be completed.');
-        return false;
-      }
-
+      const response = await proposalPostAPI.completeQuestionTimer(proposalId, activeQuestion.jobPostQuestionsId, { answerText, lockedReason: reason });
+      if (!response.success || !response.data) { setError(response.message || 'Question could not be completed.'); return false; }
       markQuestionLocked(activeQuestion.jobPostQuestionsId);
       setTimerState(response.data);
       setRemainingSeconds(0);
@@ -237,129 +437,72 @@ export default function ScreenProposalAnswerQuestion() {
   }, [activeQuestion, activeQuestionIndex, answers, markQuestionLocked, proposalId, startQuestionAtIndex]);
 
   const startInterviewReview = useCallback(async () => {
-    if (!proposalId || reviewSession || reviewLoading) {
-      return;
-    }
-
+    if (!proposalId || reviewSession || reviewLoading) return;
     setReviewLoading(true);
     setError('');
     try {
       const response = await proposalPostAPI.startInterviewReview(proposalId);
-      if (!response.success || !response.data) {
-        setError(response.message || 'Interview review could not be started.');
-        return;
-      }
-
+      if (!response.success || !response.data) { setError(response.message || 'Interview review could not be started.'); return; }
       setReviewSession(response.data);
       setReviewRemainingSeconds(response.data.remainingSeconds);
-    } finally {
-      setReviewLoading(false);
-    }
+    } finally { setReviewLoading(false); }
   }, [proposalId, reviewLoading, reviewSession]);
 
   const completeInterviewReview = useCallback(async () => {
-    if (!proposalId || completingReviewRef.current || !reviewSession || reviewSession.isLocked) {
-      return true;
-    }
-
+    if (!proposalId || completingReviewRef.current || !reviewSession || reviewSession.isLocked) return true;
     completingReviewRef.current = true;
     try {
       const response = await proposalPostAPI.completeInterviewReview(proposalId);
-      if (!response.success || !response.data) {
-        setError(response.message || 'Interview review could not be completed.');
-        return false;
-      }
-
+      if (!response.success || !response.data) { setError(response.message || 'Interview review could not be completed.'); return false; }
       setReviewSession(response.data);
       setReviewRemainingSeconds(0);
       return true;
-    } finally {
-      completingReviewRef.current = false;
-    }
+    } finally { completingReviewRef.current = false; }
   }, [proposalId, reviewSession]);
 
   const saveReviewAnswers = useCallback(async () => {
-    if (!proposalId || !reviewSession || reviewSession.isLocked) {
-      return true;
-    }
-
+    if (!proposalId || !reviewSession || reviewSession.isLocked) return true;
     const payloadAnswers = reviewableQuestions.map(question => ({
       jobPostQuestionId: question.jobPostQuestionsId,
       answerText: answers[question.jobPostQuestionsId] || '',
     }));
-
     for (const question of reviewableQuestions) {
       const answerText = answers[question.jobPostQuestionsId] || '';
-      if (answerText.length > 4000) {
-        setError('Answers must not exceed 4000 characters.');
-        return false;
-      }
-
-      if (question.isRequired && !answerText.trim()) {
-        setError(`Answer is required for question ${question.orderIndex}.`);
-        return false;
-      }
+      if (answerText.length > 4000) { setError('Answers must not exceed 4000 characters.'); return false; }
+      if (question.isRequired && !answerText.trim()) { setError(`Answer is required for question ${question.orderIndex}.`); return false; }
     }
-
-    if (payloadAnswers.length === 0) {
-      return true;
-    }
-
-    const response = await proposalPatchAPI.updateBulkProposalAnswers(proposalId, {
-      answers: payloadAnswers,
-    });
-
-    if (!response.success) {
-      setError(response.message || 'Review answers could not be saved.');
-      return false;
-    }
-
+    if (payloadAnswers.length === 0) return true;
+    const response = await proposalPatchAPI.updateBulkProposalAnswers(proposalId, { answers: payloadAnswers });
+    if (!response.success) { setError(response.message || 'Review answers could not be saved.'); return false; }
     return true;
   }, [answers, proposalId, reviewSession, reviewableQuestions]);
 
   useEffect(() => {
-    if (!interviewStarted || !isReviewMode || reviewSession || reviewLoading) {
-      return;
-    }
-
+    if (!interviewStarted || !isReviewMode || reviewSession || reviewLoading) return;
     void startInterviewReview();
   }, [interviewStarted, isReviewMode, reviewLoading, reviewSession, startInterviewReview]);
 
   useEffect(() => {
-    if (!interviewStarted || !timerState || timerState.isLocked || !activeQuestion) {
-      return undefined;
-    }
-
+    if (!interviewStarted || !timerState || timerState.isLocked || !activeQuestion) return undefined;
     const tick = () => {
       const expiresAt = new Date(timerState.expiresAt).getTime();
       const nextRemaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
       setRemainingSeconds(nextRemaining);
-
-      if (nextRemaining <= 0 && !completingQuestionRef.current) {
-        void completeQuestion(QuestionTimerLockedReason.Timeout);
-      }
+      if (nextRemaining <= 0 && !completingQuestionRef.current) void completeQuestion(QuestionTimerLockedReason.Timeout);
     };
-
     tick();
     const intervalId = window.setInterval(tick, 1000);
     return () => window.clearInterval(intervalId);
   }, [activeQuestion, completeQuestion, interviewStarted, timerState]);
 
   useEffect(() => {
-    if (!interviewStarted || !reviewSession || reviewSession.isLocked) {
-      return undefined;
-    }
-
+    if (!interviewStarted || !reviewSession || reviewSession.isLocked) return undefined;
     const tick = () => {
       const expiresAt = new Date(reviewSession.expiresAt).getTime();
       const nextRemaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
       setReviewRemainingSeconds(nextRemaining);
-
-      if (nextRemaining <= 0 && !completingReviewRef.current) {
-        void completeInterviewReview();
-      }
+      if (nextRemaining <= 0 && !completingReviewRef.current) void completeInterviewReview();
     };
-
     tick();
     const intervalId = window.setInterval(tick, 1000);
     return () => window.clearInterval(intervalId);
@@ -371,79 +514,48 @@ export default function ScreenProposalAnswerQuestion() {
     try {
       if (activeQuestion && !lockedQuestionIds.has(activeQuestion.jobPostQuestionsId)) {
         const answerText = answers[activeQuestion.jobPostQuestionsId] || '';
-        if (answerText.length > 4000) {
-          setError('Answers must not exceed 4000 characters.');
-          return;
-        }
-
+        if (answerText.length > 4000) { setError('Answers must not exceed 4000 characters.'); return; }
         if (answerText.trim()) {
           const response = await proposalPatchAPI.updateBulkProposalAnswers(proposalId, {
             answers: [{ jobPostQuestionId: activeQuestion.jobPostQuestionsId, answerText }],
           });
-
-          if (!response.success) {
-            setError(response.message || 'Answers could not be saved.');
-            return;
-          }
+          if (!response.success) { setError(response.message || 'Answers could not be saved.'); return; }
         }
       }
-
       navigate('/proposals');
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleSubmit = async () => {
-    if (proposalReadinessError) {
-      setError(proposalReadinessError);
-      return;
-    }
-
-    if (!allQuestionsLocked) {
-      setError('Complete or time out all questions before submitting.');
-      return;
-    }
-
-    if (!reviewSession) {
-      setError('Interview review is still starting. Please wait a moment.');
-      return;
-    }
-
+    if (proposalReadinessError) { setError(proposalReadinessError); return; }
+    if (!allQuestionsLocked) { setError('Complete or time out all questions before submitting.'); return; }
+    if (!reviewSession) { setError('Interview review is still starting. Please wait a moment.'); return; }
     setSaving(true);
     setError('');
     if (isReviewEditable) {
       const reviewSaved = await saveReviewAnswers();
-      if (!reviewSaved) {
-        setSaving(false);
-        return;
-      }
+      if (!reviewSaved) { setSaving(false); return; }
     }
-
     const reviewCompleted = await completeInterviewReview();
-    if (!reviewCompleted) {
-      setSaving(false);
-      return;
-    }
-
-    const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, {
-      status: ProposalStatus.Pending,
-    });
-
+    if (!reviewCompleted) { setSaving(false); return; }
+    const statusResponse = await proposalPatchAPI.updateProposalStatus(proposalId, { status: ProposalStatus.Pending });
     setSaving(false);
-    if (!statusResponse.success) {
-      setError(statusResponse.message || 'Proposal could not be submitted.');
-      return;
-    }
-
+    if (!statusResponse.success) { setError(statusResponse.message || 'Proposal could not be submitted.'); return; }
     navigate('/proposals', { state: { submittedProposalId: proposalId } });
   };
 
+  // Derived
+  const displaySeconds = isReviewMode ? reviewRemainingSeconds : remainingSeconds;
+  const isUrgent = displaySeconds <= 30 && displaySeconds > 0;
+  const isCritical = displaySeconds <= 10 && displaySeconds > 0;
+  const charCount = activeQuestion ? (answers[activeQuestion.jobPostQuestionsId] || '').length : 0;
+
+  // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <AppLayout hideTopNav hideAIWidget excludeMeshGradient>
-        <div className="flex min-h-screen items-center justify-center px-4 text-center text-muted-foreground">
-          Loading questions...
+        <div className="flex min-h-screen items-center justify-center">
+          <LemniscateBloomLoader label="Đang tải câu hỏi..." tag="Phỏng vấn" />
         </div>
       </AppLayout>
     );
@@ -451,220 +563,372 @@ export default function ScreenProposalAnswerQuestion() {
 
   return (
     <AppLayout hideTopNav hideAIWidget excludeMeshGradient>
-      <div className="relative h-screen overflow-y-auto bg-background px-4 py-6 pb-28 sm:py-8">
-        {!interviewStarted ? (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 px-4 backdrop-blur-md">
-            <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 text-center shadow-2xl">
-              <Clock3 size={32} className="mx-auto text-[var(--gb-cyan)]" />
-              <h2 className="mt-3 text-xl font-bold text-primary">Timed interview questions</h2>
-              <p className="mt-2 text-sm text-secondary">
-                Each question has a three-minute answer window. The timer starts only after you continue.
-              </p>
-              {proposalReadinessError ? (
-                <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-left text-sm text-red-500">
-                  <p>{proposalReadinessError}</p>
-                  <p className="mt-1 text-xs">Update the proposal details before starting the timed interview.</p>
-                </div>
-              ) : null}
-              <div className="mt-5 flex justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground"
-                >
-                  <ArrowLeft size={16} />
-                  Back
-                </button>
-                {proposalReadinessError ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/proposals/${proposalId}/edit`)}
-                    className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-                  >
-                    Edit proposal details
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleStartInterview}
-                    className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm"
-                  >
-                    <Play size={16} />
-                    Start interview
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null}
+      {/* Intro overlay */}
+      {!interviewStarted && (
+        <InterviewIntroOverlay
+          questionCount={sortedQuestions.length}
+          proposalReadinessError={proposalReadinessError}
+          loadError={error}
+          onBack={() => navigate(-1)}
+          onStart={handleStartInterview}
+          onEditProposal={() => navigate(`/proposals/${proposalId}/edit`)}
+          onRetry={retryLoad}
+        />
+      )}
 
-        <div className="relative z-20 max-w-4xl mx-auto">
-          {!interviewStarted ? (
+      {/* Full-screen exam layout */}
+      <div
+        className="relative flex min-h-screen flex-col overflow-hidden"
+        style={{ background: 'var(--background)' }}
+      >
+        {/* Ambient gradient bubbles background */}
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+          <div
+            className="absolute -top-32 -left-32 h-96 w-96 rounded-full opacity-20 blur-[120px]"
+            style={{ background: 'radial-gradient(circle, var(--brand) 0%, transparent 70%)' }}
+          />
+          <div
+            className="absolute top-1/3 -right-32 h-[30rem] w-[30rem] rounded-full opacity-25 blur-[140px]"
+            style={{ background: 'radial-gradient(circle, var(--mint) 0%, transparent 70%)' }}
+          />
+          <div
+            className="absolute -bottom-32 left-1/3 h-96 w-96 rounded-full opacity-15 blur-[120px]"
+            style={{ background: 'radial-gradient(circle, var(--brand) 0%, transparent 70%)' }}
+          />
+        </div>
+
+        {/* ── Top chrome bar ───────────────────────────────────────────────── */}
+        <header
+          className="sticky top-0 z-40 grid grid-cols-3 items-center gap-4 px-4 py-3 sm:px-6"
+          style={{
+            background: 'color-mix(in srgb, var(--background) 85%, transparent)',
+            backdropFilter: 'blur(16px)',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          {/* Left: back + title */}
+          <div className="flex items-center gap-3 min-w-0 justify-start">
             <button
+              type="button"
               onClick={() => navigate(-1)}
-              className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors hover:bg-[var(--surface-muted)]"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
             >
               <ArrowLeft size={16} />
-              Back
             </button>
-          ) : null}
-
-          <div className="glass-card overflow-visible p-6">
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-primary">JobPost Questions</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {isReviewMode
-                    ? 'Review answered questions before submitting your proposal.'
-                    : 'Each question has a strict 3-minute answer window.'}
-                </p>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold text-foreground">
-                <Clock3
-                  size={16}
-                  className={(isReviewMode ? reviewRemainingSeconds : remainingSeconds) <= 30 ? 'text-red-500' : 'text-[var(--gb-cyan)]'}
-                />
-                <span className={(isReviewMode ? reviewRemainingSeconds : remainingSeconds) <= 30 ? 'text-red-500' : ''}>
-                  {formatRemainingTime(isReviewMode ? reviewRemainingSeconds : remainingSeconds)}
-                </span>
-              </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--brand)' }}>
+                {isReviewMode ? 'Ôn tập · Review' : 'Phỏng vấn · Interview'}
+              </p>
+              <h1 className="truncate text-sm font-black" style={{ color: 'var(--text-primary)' }}>
+                {isReviewMode
+                  ? 'Xem lại câu trả lời'
+                  : timerLoading
+                    ? 'Đang chuẩn bị câu hỏi...'
+                    : activeQuestion
+                      ? `Câu ${activeQuestionIndex + 1} / ${sortedQuestions.length}`
+                      : 'Hoàn thành'}
+              </h1>
             </div>
+          </div>
 
+          {/* Center: step dots (strictly centered in grid) */}
+          <div className="hidden sm:flex items-center justify-center gap-1.5">
+            {sortedQuestions.map((q, idx) => {
+              const done = lockedQuestionIds.has(q.jobPostQuestionsId);
+              const active = idx === activeQuestionIndex && !isReviewMode;
+              return (
+                <div
+                  key={q.jobPostQuestionsId}
+                  className="rounded-full transition-all"
+                  style={{
+                    width: active ? 22 : 8,
+                    height: 8,
+                    background: done
+                      ? 'var(--brand)'
+                      : active
+                        ? 'linear-gradient(90deg, var(--brand), var(--mint))'
+                        : 'var(--border)',
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Right: timer ring */}
+          <div className="flex items-center justify-end">
+            <div className={`transition-all ${isCritical ? 'animate-pulse' : ''}`}>
+              <TimerRing seconds={displaySeconds} maxSeconds={isReviewMode ? (reviewSession?.remainingSeconds || 300) : 180} size={64} />
+            </div>
+          </div>
+        </header>
+
+        {/* ── Main content ─────────────────────────────────────────────────── */}
+        <main className="flex-1 px-4 py-6 sm:px-6">
+          <div className="mx-auto max-w-3xl space-y-5">
+
+            {/* Error banner */}
             {error && (
-              <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
-                {error}
+              <div className="flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0 text-rose-500" />
+                <p className="text-sm font-semibold text-rose-600">{error}</p>
               </div>
             )}
 
-            {sortedQuestions.length === 0 ? (
-              <div className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
-                This JobPost has no questions.
-              </div>
-            ) : isReviewMode ? (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm">
-                  <span className="font-bold text-foreground">
-                    Review answers
-                  </span>
-                  <span className="text-muted-foreground">
-                    {reviewLoading
-                      ? 'Starting review...'
-                      : reviewSession?.isLocked
-                        ? 'Review closed'
-                        : `Review time left ${formatRemainingTime(reviewRemainingSeconds)}`}
-                  </span>
+            {/* ── REVIEW MODE ──────────────────────────────────────────────── */}
+            {isReviewMode ? (
+              <div className="space-y-4">
+                {/* Review header card with thick gradient border */}
+                <div
+                  className="rounded-2xl p-5"
+                  style={{
+                    background: 'linear-gradient(var(--background), var(--background)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+                    border: '2.5px solid transparent',
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-extrabold uppercase tracking-wider" style={{ color: 'var(--brand)' }}>
+                        Giai đoạn ôn tập
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        Xem lại và chỉnh sửa câu trả lời trước khi nộp
+                      </p>
+                    </div>
+                    <div
+                      className="shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5"
+                      style={{
+                        background: 'linear-gradient(var(--background), var(--background)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+                        border: '1.5px solid transparent',
+                      }}
+                    >
+                      <Clock size={13} className="text-brand" />
+                      <span className="text-xs font-bold" style={{ color: 'var(--brand)' }}>
+                        {reviewLoading
+                          ? 'Đang bắt đầu...'
+                          : reviewSession?.isLocked
+                            ? 'Đã đóng'
+                            : formatRemainingTime(reviewRemainingSeconds)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {reviewableQuestions.length === 0 ? (
-                  <div className="rounded-lg border border-border bg-background p-6 text-center">
-                    <CheckCircle2 size={30} className="mx-auto text-emerald-500" />
-                    <p className="mt-3 text-base font-bold text-primary">No answers available for review</p>
-                    <p className="mt-1 text-sm text-muted-foreground">You can submit your proposal now.</p>
+                  <div className="rounded-2xl border p-10 text-center" style={{ borderColor: 'var(--border)' }}>
+                    <CheckCircle2 size={44} className="mx-auto text-emerald-500" />
+                    <p className="mt-3 text-lg font-black" style={{ color: 'var(--text-primary)' }}>Không có câu nào cần ôn tập</p>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Bạn đã sẵn sàng nộp đề xuất.</p>
                   </div>
                 ) : (
-                  reviewableQuestions.map(question => (
-                    <label key={question.jobPostQuestionsId} className="block">
-                      <span className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold text-foreground">
-                        <span>
-                          {question.orderIndex}. {question.questionText}
-                        </span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${question.isRequired ? 'bg-red-500/10 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+                  reviewableQuestions.map((question, idx) => (
+                    <div
+                      key={question.jobPostQuestionsId}
+                      className="rounded-2xl p-5 space-y-3"
+                      style={{
+                        background: 'linear-gradient(var(--background), var(--background)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+                        border: '2px solid transparent',
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-bold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                          <span className="mr-1.5 text-brand">{idx + 1}.</span>
+                          {question.questionText}
+                        </p>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                          question.isRequired ? 'bg-rose-500/10 text-rose-500' : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
+                        }`}>
                           {t(question.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
                         </span>
-                      </span>
+                      </div>
                       <textarea
                         rows={5}
                         value={answers[question.jobPostQuestionsId] || ''}
                         disabled={!isReviewEditable || saving}
-                        onChange={event => setAnswers(prev => ({
-                          ...prev,
-                          [question.jobPostQuestionsId]: event.target.value,
-                        }))}
-                        className="w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
-                        placeholder="Review your answer..."
+                        onChange={event => setAnswers(prev => ({ ...prev, [question.jobPostQuestionsId]: event.target.value }))}
+                        className="w-full rounded-xl border p-3 text-sm transition-all focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{
+                          background: 'var(--background)',
+                          borderColor: 'var(--border)',
+                          color: 'var(--text-primary)',
+                        }}
+                        placeholder="Xem lại câu trả lời..."
                       />
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        {(answers[question.jobPostQuestionsId] || '').length}/4000 characters
-                      </span>
-                    </label>
+                      <p className="text-right text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                        {(answers[question.jobPostQuestionsId] || '').length}/4000
+                      </p>
+                    </div>
                   ))
                 )}
               </div>
             ) : (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm">
-                  <span className="font-bold text-foreground">
-                    Question {activeQuestionIndex + 1} of {sortedQuestions.length}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {timerLoading ? 'Starting timer...' : `Time left ${formatRemainingTime(remainingSeconds)}`}
-                  </span>
+              /* ── QUESTION MODE ─────────────────────────────────────────────── */
+              sortedQuestions.length === 0 ? (
+                <div className="rounded-2xl border p-10 text-center" style={{ borderColor: 'var(--border)' }}>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Không có câu hỏi nào.</p>
                 </div>
+              ) : activeQuestion && (
+                <div className="space-y-4">
+                  {/* Question card with thick mint & brand gradient border */}
+                  <div
+                    className="rounded-2xl p-6 shadow-sm"
+                    style={
+                      isUrgent
+                        ? {
+                            background: 'var(--background)',
+                            border: `2.5px solid ${isCritical ? 'rgba(239, 68, 68, 0.8)' : 'rgba(245, 158, 11, 0.8)'}`,
+                            transition: 'border-color 0.3s ease',
+                          }
+                        : {
+                            background: 'linear-gradient(var(--background), var(--background)) padding-box, linear-gradient(135deg, var(--brand), var(--mint)) border-box',
+                            border: '2.5px solid transparent',
+                            transition: 'border-color 0.3s ease',
+                          }
+                    }
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black text-white"
+                          style={{ background: 'var(--brand)' }}
+                        >
+                          {activeQuestionIndex + 1}
+                        </span>
+                        <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                          / {sortedQuestions.length} câu hỏi
+                        </span>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+                        activeQuestion.isRequired ? 'bg-rose-500/10 text-rose-500' : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
+                      }`}>
+                        {t(activeQuestion.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
+                      </span>
+                    </div>
 
-                <label className="block">
-                  <span className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold text-foreground">
-                    <span>
-                      {activeQuestion.orderIndex}. {activeQuestion.questionText}
-                    </span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${activeQuestion.isRequired ? 'bg-red-500/10 text-red-500' : 'bg-muted text-muted-foreground'}`}>
-                      {t(activeQuestion.isRequired ? 'proposalQuestions.required' : 'proposalQuestions.optional')}
-                    </span>
-                  </span>
-                  <textarea
-                    rows={7}
-                    value={answers[activeQuestion.jobPostQuestionsId] || ''}
-                    disabled={!interviewStarted || timerLoading || saving}
-                    onChange={event => setAnswers(prev => ({
-                      ...prev,
-                      [activeQuestion.jobPostQuestionsId]: event.target.value,
-                    }))}
-                    className="w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--gb-cyan)] disabled:cursor-not-allowed disabled:opacity-60"
-                    placeholder="Write your answer..."
-                  />
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {(answers[activeQuestion.jobPostQuestionsId] || '').length}/4000 characters
-                  </span>
-                </label>
-              </div>
+                    <p className="text-base font-bold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                      {activeQuestion.questionText}
+                    </p>
+                  </div>
+
+                  {/* Answer textarea */}
+                  <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
+                      style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}>
+                      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                        Câu trả lời của bạn
+                      </span>
+                      <span className={`text-[11px] font-bold tabular-nums ${charCount > 3800 ? 'text-rose-500' : ''}`}
+                        style={{ color: charCount > 3800 ? undefined : 'var(--text-muted)' }}>
+                        {charCount}/4000
+                      </span>
+                    </div>
+                    <textarea
+                      ref={textareaRef}
+                      rows={10}
+                      value={answers[activeQuestion.jobPostQuestionsId] || ''}
+                      disabled={!interviewStarted || timerLoading || saving}
+                      onChange={event => setAnswers(prev => ({ ...prev, [activeQuestion.jobPostQuestionsId]: event.target.value }))}
+                      className="w-full resize-none border-none bg-transparent p-4 text-sm leading-relaxed outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ color: 'var(--text-primary)' }}
+                      placeholder={timerLoading ? 'Đang chuẩn bị câu hỏi...' : 'Viết câu trả lời của bạn tại đây...'}
+                    />
+                  </div>
+
+                  {/* Timer hint */}
+                  {isUrgent && (
+                    <div className={`flex items-center gap-2 rounded-xl px-4 py-2.5 ${
+                      isCritical ? 'border border-rose-500/30 bg-rose-500/10' : 'border border-amber-500/30 bg-amber-500/10'
+                    }`}>
+                      <Timer size={14} className={isCritical ? 'text-rose-500' : 'text-amber-500'} />
+                      <p className={`text-xs font-bold ${isCritical ? 'text-rose-600' : 'text-amber-600'}`}>
+                        {isCritical
+                          ? 'Hết giờ ngay bây giờ! Câu trả lời sẽ được lưu tự động.'
+                          : 'Còn ít thời gian. Hoàn thành câu trả lời của bạn.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )
             )}
+          </div>
+        </main>
 
-            <div className="sticky bottom-0 z-30 -mx-6 mt-6 flex flex-wrap justify-end gap-3 border-t border-border bg-background/95 px-6 py-4 shadow-[0_-16px_32px_rgba(0,0,0,0.08)] backdrop-blur-md">
+        {/* ── Sticky bottom bar ─────────────────────────────────────────────── */}
+        <footer
+          className="sticky bottom-0 z-40 px-4 py-3 sm:px-6"
+          style={{
+            background: 'color-mix(in srgb, var(--background) 88%, transparent)',
+            backdropFilter: 'blur(16px)',
+            borderTop: '1px solid var(--border)',
+          }}
+        >
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+            {/* Left status / action */}
+            <div className="flex items-center gap-2 min-w-0">
               {!interviewStarted ? (
                 <button
                   type="button"
                   onClick={handleSaveDraft}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground hover:bg-muted/20 disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all hover:-translate-y-0.5 disabled:opacity-50"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-primary)', background: 'var(--background)' }}
                 >
-                  <Save size={16} />
-                  Save as Draft
+                  <Save size={15} />
+                  Lưu nháp
                 </button>
-              ) : null}
-              {!allQuestionsLocked && activeQuestion ? (
+              ) : (
+                <span className="text-xs font-bold text-text-muted truncate">
+                  {isReviewMode ? 'Chế độ xem lại' : `Đang trả lời câu ${activeQuestionIndex + 1}/${sortedQuestions.length}`}
+                </span>
+              )}
+            </div>
+
+            {/* Right actions */}
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Continue question (shown during active questions) */}
+              {!allQuestionsLocked && activeQuestion && (
                 <button
                   type="button"
                   onClick={() => void completeQuestion(QuestionTimerLockedReason.Completed)}
                   disabled={saving || timerLoading || !interviewStarted}
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-bold text-foreground hover:bg-muted/20 disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-extrabold text-white transition-all hover:opacity-90 hover:-translate-y-0.5 disabled:opacity-50"
+                  style={{
+                    background: 'var(--brand)',
+                    boxShadow: '0 6px 20px -4px rgba(73,75,231,0.35)',
+                  }}
                 >
-                  <CheckCircle2 size={16} />
-                  {t(!activeQuestion.isRequired && !(answers[activeQuestion.jobPostQuestionsId] || '').trim()
-                    ? 'proposalQuestions.skipAndContinue'
-                    : 'proposalQuestions.continueInterview')}
+                  <span>
+                    {!activeQuestion.isRequired && !(answers[activeQuestion.jobPostQuestionsId] || '').trim()
+                      ? t('proposalQuestions.skipAndContinue')
+                      : t('proposalQuestions.continueInterview')}
+                  </span>
+                  <ChevronRight size={16} />
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={saving || !allQuestionsLocked || (isReviewMode && !reviewSession)}
-                className="btn-cyan inline-flex items-center gap-2 px-5 py-2.5 text-sm disabled:opacity-60"
-              >
-                <Send size={16} />
-                Submit Proposal
-              </button>
+              )}
+
+              {/* Submit Proposal (shown ONLY when all questions are completed/locked) */}
+              {allQuestionsLocked && (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={saving || (isReviewMode && !reviewSession)}
+                  className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-extrabold text-white transition-all hover:opacity-90 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'var(--brand)',
+                    boxShadow: '0 6px 20px -4px rgba(73,75,231,0.35)',
+                  }}
+                >
+                  {saving ? (
+                    <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  ) : (
+                    <Send size={15} />
+                  )}
+                  <span>Nộp đề xuất</span>
+                </button>
+              )}
             </div>
           </div>
-        </div>
+        </footer>
       </div>
     </AppLayout>
   );

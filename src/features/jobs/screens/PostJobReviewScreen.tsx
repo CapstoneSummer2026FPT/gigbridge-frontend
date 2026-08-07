@@ -17,6 +17,7 @@ import {
   type PostJobReviewSection,
   type PostJobRouteState,
 } from '../hooks/usePostJob';
+import { renderDescription } from '../utils/descriptionFormatter';
 
 export default function PostJobReviewScreen() {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export default function PostJobReviewScreen() {
     form, selectedOfficialSkills, selectedMajorName, selectedCategoryName,
     previewTitle, errorMessage, isActionDisabled, isDraftInitializing,
     draftError, questions, milestonePlans, milestonePlanTotal,
+    milestoneTotalWeeks, isBudgetExceeded, isDurationExceeded,
     attachments,
     isLeavePromptOpen, leaveAction, autosaveStatus, autosaveError,
     handleLeaveSaveDraft, handleLeaveDiscardDraft, cancelBlockedNavigation,
@@ -149,8 +151,14 @@ export default function PostJobReviewScreen() {
           />
           <PostJobBudgetExceededPrompt
             isOpen={isBudgetExceededPromptOpen}
-            total={formatGigCoin(milestonePlanTotal)}
-            expected={formatGigCoin(Number(form.budget) || 0)}
+            isBudgetExceeded={isBudgetExceeded}
+            budgetTotal={formatGigCoin(milestonePlanTotal)}
+            budgetExpected={formatGigCoin(Number(form.budget) || 0)}
+            isDurationExceeded={isDurationExceeded}
+            durationTotal={`${milestoneTotalWeeks} ${t('postJob.durationUnits.weeks')}`}
+            durationExpected={form.estimatedDurationValue
+              ? `${form.estimatedDurationValue} ${t(`postJob.durationUnits.${form.estimatedDurationUnit}`)}`
+              : ''}
             onConfirm={handleBudgetExceededConfirm}
             onCancel={handleBudgetExceededCancel}
           />
@@ -174,7 +182,7 @@ export default function PostJobReviewScreen() {
               <div><span className="job-post-field__label">{t('postJob.major')}</span><p className="mt-1 text-sm">{optional(selectedMajorName)}</p></div>
               <div><span className="job-post-field__label">{t('postJob.category')}</span><p className="mt-1 text-sm">{optional(selectedCategoryName)}</p></div>
             </div>
-            <div><span className="job-post-field__label">{t('postJob.jobDescription')}</span><p className="mt-1 whitespace-pre-wrap text-sm leading-7">{form.description}</p></div>
+            <div><span className="job-post-field__label">{t('postJob.jobDescription')}</span><div className="mt-1 text-sm leading-7 whitespace-pre-line">{renderDescription(form.description)}</div></div>
             <div>
               <span className="job-post-field__label"><Tags size={13} className="mr-1 inline" />{t('postJob.requiredSkills')}</span>
               <div className="mt-2 flex flex-wrap gap-1.5">

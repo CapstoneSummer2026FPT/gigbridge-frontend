@@ -237,9 +237,10 @@ export const apiService = {
     endpoint: string,
     data: unknown = {},
     headers: Record<string, string> = {},
+    signal?: AbortSignal,
   ): Promise<ApiResponse<T>> {
     try {
-      const response = await apiClient.post<unknown>(normalizeEndpoint(endpoint), data, { headers });
+      const response = await apiClient.post<unknown>(normalizeEndpoint(endpoint), data, { headers, signal });
       return handleResponse<T>(response);
     } catch (error: unknown) {
       return handleFailure<T>(error);

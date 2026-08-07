@@ -77,6 +77,7 @@ const mapUserDTOToUser = (userDTO: UserDTO | any): User => {
     is_email_verified: Boolean(getField<boolean>(userDTO, 'isEmailVerified', 'IsEmailVerified')),
     is_active: getField<boolean>(userDTO, 'isActive', 'IsActive') ?? true,
     is_setup: Boolean(getField<boolean>(userDTO, 'isSetup', 'IsSetup')),
+    is_premium: Boolean(getField<boolean>(userDTO, 'isPremium', 'IsPremium')),
     preferred_language: getField<string | null>(userDTO, 'preferredLanguage', 'PreferredLanguage') || 'en',
     last_login_at: null,
     login_failed_time: null,
@@ -275,6 +276,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     secureStorage.removeItem('gigbridge_session');
     secureStorage.removeItem('gigbridge_user');
     localStorage.removeItem('access_token');
+
+    // Clear saved scroll positions so returning to landing page starts at the top (0, 0)
+    try {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('scroll-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      sessionStorage.removeItem('scroll-/');
+    } catch {
+      /* ignore */
+    }
+
     if (redirectPath) {
       window.location.href = redirectPath;
     }
