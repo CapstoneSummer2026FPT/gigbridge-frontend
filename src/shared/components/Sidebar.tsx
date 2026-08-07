@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
-  Bot, BarChart2, Shield, Flag,
-  TrendingUp, PlusCircle, Zap, X, Bell, Bookmark,
+  Bot, BarChart2, Shield, Flag, HelpCircle,
+  TrendingUp, PlusCircle, Zap, Bookmark,
   ChevronDown, Wallet, Banknote, Star
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
@@ -34,6 +34,8 @@ interface NavSection {
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
+  isPinned?: boolean;
+  onTogglePin?: () => void;
 }
 
 function getClientNavItems(t: any): NavItem[] {
@@ -109,24 +111,23 @@ function getFreelancerNavItems(t: any): NavItem[] {
       path: '/freelancer/dashboard',
     },
     {
-      id: 'jobs',
-      label: t('nav.jobs'),
+      id: 'find-work',
+      label: t('nav.findWork'),
       icon: <Search size={18} />,
       children: [
-        { id: 'browse-jobs', label: t('nav.browseJobs'), icon: <Search size={18} />, path: '/jobs/browse' },
+        { id: 'search-jobs', label: t('nav.searchJobs'), icon: <Search size={18} />, path: '/jobs' },
         { id: 'saved-jobs', label: t('nav.savedJobs'), icon: <Bookmark size={18} />, path: '/jobs/saved' },
-        { id: 'job-invitations', label: t('nav.jobInvitations'), icon: <Bell size={18} />, path: '/jobs/invitations' },
       ],
     },
     {
-      id: 'work',
-      label: t('nav.work'),
-      icon: <Flag size={18} />,
+      id: 'my-jobs',
+      label: t('nav.myWork'),
+      icon: <Briefcase size={18} />,
       children: [
         { id: 'my-proposals', label: t('nav.myProposals'), icon: <FileText size={18} />, path: '/proposals' },
-        { id: 'contracts', label: t('nav.contracts'), icon: <FileText size={18} />, path: '/contracts' },
-        { id: 'projects', label: t('nav.projects'), icon: <Flag size={18} />, path: '/projects' },
-        { id: 'reviews', label: t('nav.reviews'), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'my-contracts', label: t('nav.myContracts'), icon: <FileText size={18} />, path: '/contracts' },
+        { id: 'my-projects', label: t('nav.myProjects'), icon: <Flag size={18} />, path: '/projects' },
+        { id: 'my-reviews', label: t('nav.myReviews'), icon: <Star size={18} />, path: '/reviews' },
       ],
     },
     {
@@ -140,16 +141,16 @@ function getFreelancerNavItems(t: any): NavItem[] {
       label: t('nav.aiAssistant'),
       icon: <Bot size={18} />,
       path: '/ai-assistant',
-      badge: 'AI',
+      badge: 'NEW',
       badgeType: 'cyan',
     },
     {
-      id: 'wallet',
-      label: t('nav.wallet'),
-      icon: <Wallet size={18} />,
+      id: 'finance',
+      label: t('nav.financialOverview'),
+      icon: <BarChart2 size={18} />,
       children: [
-        { id: 'deposit', label: t('wallet.deposit'), icon: <PlusCircle size={18} />, path: '/wallet/deposit' },
-        { id: 'withdrawals', label: t('wallet.withdraw'), icon: <Banknote size={18} />, path: '/wallet/withdrawals' },
+        { id: 'overview', label: t('nav.financialOverview'), icon: <BarChart2 size={18} />, path: '/financial-overview' },
+        { id: 'withdraw', label: t('wallet.withdraw'), icon: <Banknote size={18} />, path: '/wallet/withdraw' },
         { id: 'history', label: t('wallet.history'), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
     },
@@ -157,123 +158,174 @@ function getFreelancerNavItems(t: any): NavItem[] {
 }
 
 function getAdminNavSections(t: any, openReportCount: number | null): NavSection[] {
-  const label = (key: string, fallback: string) => t(key, { defaultValue: fallback });
   return ADMIN_GROUPS.map(group => {
-    const managers = ADMIN_MANAGERS.filter(manager => manager.showInNavigation && manager.group === group.id);
-    const parentIds = [...new Set(managers.flatMap(manager => (manager.parentId ? [manager.parentId] : [])))];
-    // Root items are those without a parent group; parents and their children
-    // collapse into a single expandable nav entry (e.g. Reports, Elo).
-    const items = managers
-      .filter(manager => !manager.parentId)
-      .map(manager => ({
-        id: manager.id,
-        label: label(manager.labelKey, manager.fallbackLabel),
-        icon: React.createElement(manager.icon, { size: 18 }),
-        path: manager.path,
-      } as NavItem));
-
-    parentIds.forEach(parentId => {
-      const parent = managers.find(manager => manager.id === parentId);
-      if (!parent) return;
-      const children = managers.filter(manager => manager.parentId === parentId);
-      items.push({
-        id: parent.id,
-        label: label(parent.labelKey, parent.fallbackLabel),
-        icon: React.createElement(parent.icon, { size: 18 }),
-        path: parent.path,
-        badge: parentId === 'reports' && openReportCount !== null ? openReportCount.toString() : undefined,
-        badgeType: parentId === 'reports' ? 'red' : undefined,
-        badgeLabel: parentId === 'reports' ? 'Open reports' : undefined,
-        children: children.map(manager => ({
-          id: manager.id,
-          label: label(manager.labelKey, manager.fallbackLabel),
-          icon: React.createElement(manager.icon, { size: 18 }),
-          path: manager.path,
-        })),
-      });
-    });
-
-    return { title: label(group.labelKey, group.fallbackLabel), items };
+    const itemsInGroup = ADMIN_MANAGERS.filter(m => m.group === group.id && m.showInNavigation);
+    return {
+      title: t(group.labelKey, { defaultValue: group.fallbackLabel }),
+      items: itemsInGroup.map(item => {
+        const isReportManager = item.id === 'reports';
+        const badgeType: NavItem['badgeType'] = isReportManager ? 'amber' : undefined;
+        return {
+          id: item.id,
+          label: t(item.labelKey, { defaultValue: item.fallbackLabel }),
+          icon: React.createElement(item.icon, { size: 18 }),
+          path: item.path,
+          badgeLabel: isReportManager && openReportCount && openReportCount > 0 ? String(openReportCount) : undefined,
+          badgeType,
+        };
+      }),
+    };
   }).filter(section => section.items.length > 0);
 }
 
-function NavItemComponent({ item, isActive, isExpanded, onToggle, onNavigate, path }: any) {
+interface NavItemComponentProps {
+  item: NavItem;
+  isActive: boolean;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  onNavigate: (path: string) => void;
+  path: string;
+}
+
+function NavItemComponent({
+  item,
+  isActive,
+  isExpanded,
+  onToggle,
+  onNavigate,
+  path,
+}: NavItemComponentProps) {
   const hasChildren = item.children && item.children.length > 0;
+  const itemId = item.id || item.label;
+
+  if (hasChildren) {
+    return (
+      <div className="sidebar-item-container">
+        <button
+          className={`sidebar-item ${isActive ? 'active' : ''}`}
+          onClick={() => onToggle(itemId)}
+        >
+          <span className="sidebar-item-icon">{item.icon}</span>
+          <span className="sidebar-item-label">{item.label}</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar-chevron ${isExpanded ? 'expanded' : ''}`}
+          />
+        </button>
+        {isExpanded && (
+          <div className="sidebar-submenu">
+            {item.children!.map(child => {
+              const childActive = path === child.path;
+              return (
+                <button
+                  key={child.id || child.path || child.label}
+                  className={`sidebar-subitem ${childActive ? 'active' : ''}`}
+                  onClick={() => child.path && onNavigate(child.path)}
+                >
+                  <span className="sidebar-item-icon">{child.icon}</span>
+                  <span className="sidebar-item-label">{child.label}</span>
+                  {child.badge && (
+                    <span className={`sidebar-badge ${child.badgeType || 'cyan'}`}>
+                      {child.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <>
-      <button
-        onClick={() => {
-          // A parent that also has a path (e.g. Reports) navigates to its
-          // landing screen while still expanding its child items.
-          if (item.path) {
-            onNavigate(item.path);
-          }
-          if (hasChildren) {
-            onToggle(item.id || item.label);
-          }
-        }}
-        className={`sidebar-item w-full relative ${isActive ? 'active' : ''}`}
-      >
-        {isActive && <span className="sidebar-active-indicator" />}
-        <span className="ml-1">{item.icon}</span>
-        <span className="flex-1 text-left">{item.label}</span>
-        <div className="sidebar-item-actions">
-          {item.badge && (
-            <span className={`badge-${item.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}>
-              {item.badge}
-            </span>
-          )}
-          {hasChildren && (
-            <ChevronDown
-              size={16}
-              className={`sidebar-item-chevron ${isExpanded ? 'expanded' : ''}`}
-            />
-          )}
-        </div>
-      </button>
-
-      {/* Children */}
-      {hasChildren && isExpanded && (
-        <div className="sidebar-children">
-          {item.children?.map((child: NavItem) => (
-            <button
-              key={child.id || child.path || child.label}
-              onClick={() => {
-                if (child.path) {
-                  onNavigate(child.path);
-                }
-              }}
-              className={`sidebar-item sidebar-child-item ${path === child.path || (child.path !== '/admin/reports' && child.path && path.startsWith(`${child.path}/`)) ? 'active' : ''}`}
-            >
-              <span className="ml-1">{child.icon}</span>
-              <span className="flex-1 text-left">{child.label}</span>
-              {child.badge && (
-                <span className={`badge-${child.badgeType || 'cyan'} text-[10px] px-1.5 py-0`}>
-                  {child.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </>
+    <button
+      className={`sidebar-item ${isActive ? 'active' : ''}`}
+      onClick={() => item.path && onNavigate(item.path)}
+    >
+      <span className="sidebar-item-icon">{item.icon}</span>
+      <span className="sidebar-item-label">{item.label}</span>
+      {item.badgeLabel ? (
+        <span className={`sidebar-badge ${item.badgeType || 'cyan'}`}>
+          {item.badgeLabel}
+        </span>
+      ) : item.badge ? (
+        <span className={`sidebar-badge ${item.badgeType || 'cyan'}`}>
+          {item.badge}
+        </span>
+      ) : null}
+    </button>
   );
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, isPinned, onTogglePin }: SidebarProps) {
   const { role } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
+
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [openReportCount, setOpenReportCount] = useState<number | null>(null);
   const [showPremiumTeaser, setShowPremiumTeaser] = useState(false);
+  const [showToggleHelp, setShowToggleHelp] = useState(false);
   const premiumStatus = usePremiumStatus(role);
   const premiumStatusUnavailable = Boolean(premiumStatus.error && !premiumStatus.hasResolved);
 
-  const navItems = role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t);
-  const adminSections = role === 2 ? getAdminNavSections(t, openReportCount) : [];
+  const navItems = useMemo(
+    () => (role === 0 ? getClientNavItems(t) : getFreelancerNavItems(t)),
+    [role, t]
+  );
+  const adminSections = useMemo(
+    () => (role === 2 ? getAdminNavSections(t, openReportCount) : []),
+    [role, t, openReportCount]
+  );
+
+  // Close help popover on click outside of helpRef
+  useEffect(() => {
+    if (!showToggleHelp) return;
+
+    const handleHelpOutside = (event: MouseEvent) => {
+      if (helpRef.current && !helpRef.current.contains(event.target as Node)) {
+        setShowToggleHelp(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleHelpOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleHelpOutside);
+    };
+  }, [showToggleHelp]);
+
+  // Click Outside Listener: Automatically close sidebar when clicking outside if UNPINNED
+  useEffect(() => {
+    if (isPinned || !isOpen || !onClose) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        // Exclude clicks on TopNav menu toggle button to avoid immediate re-opening
+        const isMenuBtn = (event.target as HTMLElement).closest('.glass-button');
+        if (!isMenuBtn) {
+          onClose();
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, isPinned, onClose]);
+
+  // Auto-expand all collapsible submenus when sidebar loads
+  useEffect(() => {
+    const allParentIds = role === 2
+      ? adminSections.flatMap(section => section.items).filter(item => item.children && item.children.length > 0).map(item => item.id || item.label)
+      : navItems.filter(item => item.children && item.children.length > 0).map(item => item.id || item.label);
+
+    setExpandedMenus(allParentIds);
+  }, [role, navItems, adminSections]);
 
   useEffect(() => {
     if (role !== 2) return;
@@ -300,7 +352,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     } else {
       navigate(path);
     }
-    if (onClose) onClose();
+
+    // Only auto-close sidebar on navigation if NOT pinned
+    if (!isPinned && onClose) {
+      onClose();
+    }
   };
 
   const isActive = (path?: string) => {
@@ -319,7 +375,48 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   };
 
   return (
-    <aside className={`gb-sidebar ${isOpen ? 'open' : ''}`}>
+    <aside ref={sidebarRef} className={`gb-sidebar ${isOpen || isPinned ? 'open' : ''} ${isPinned ? 'pinned' : ''}`}>
+      {/* Top Right Actions Bar: Clickable Standalone Help ? & Light-Switch Toggle */}
+      <div className="sidebar-top-actions">
+        <div className="relative" ref={helpRef}>
+          <button
+            type="button"
+            onClick={() => setShowToggleHelp(prev => !prev)}
+            className={`sidebar-help-icon-btn ${showToggleHelp ? 'active' : ''}`}
+            title={t('sidebar.toggleHelpLabel', { defaultValue: 'Xem giải thích tác dụng Sidebar' })}
+            aria-label={t('sidebar.toggleHelpLabel', { defaultValue: 'Sidebar Mode Explanation' })}
+          >
+            <HelpCircle size={17} strokeWidth={2.2} />
+          </button>
+
+          {showToggleHelp && (
+            <div className="sidebar-help-popover" role="tooltip">
+              <div className="sidebar-help-title">
+                <HelpCircle size={14} className="text-[var(--brand,#494be7)] shrink-0" />
+                <span>{t('sidebar.toggleHelpTitle', { defaultValue: 'Cố định Sidebar' })}</span>
+              </div>
+              <p className="sidebar-help-desc">
+                {t('sidebar.toggleHelpDesc', {
+                  defaultValue:
+                    'Bật công tắc để giữ Sidebar cố định khi chuyển trang. Tắt công tắc để Sidebar tự đóng khi nhấp trang hoặc nhấp ra ngoài.',
+                })}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {onTogglePin && (
+          <button
+            type="button"
+            onClick={onTogglePin}
+            className={`sidebar-switch-toggle ${isPinned ? 'active' : ''}`}
+            title={isPinned ? t('sidebar.pinnedTitle', { defaultValue: 'Sidebar cố định (Đang BẬT)' }) : t('sidebar.unpinnedTitle', { defaultValue: 'Sidebar tự đóng (Đang TẮT)' })}
+            aria-label={isPinned ? 'Disable Persistent Sidebar' : 'Enable Persistent Sidebar'}
+          >
+            <span className="sidebar-switch-thumb" />
+          </button>
+        )}
+      </div>
 
       {/* Navigation */}
       <nav className="sidebar-nav">
@@ -358,7 +455,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Bottom Links */}
       {role === 2 && (
         <div className="sidebar-bottom">
-          <button onClick={() => navigate('/admin')} className="sidebar-item w-full">
+          <button onClick={() => handleNavigate('/admin')} className="sidebar-item w-full">
             <Shield size={18} />
             <span>{t('nav.adminPanel')}</span>
           </button>
@@ -391,13 +488,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             else setShowPremiumTeaser(true);
           }}>{t(premiumStatusUnavailable ? 'nav.retryPremium' : premiumStatus.isPremium ? 'nav.openHub' : 'nav.upgrade')}</button>
         </div>
-      )}
-
-      {/* Close Button */}
-      {onClose && (
-        <button className="sidebar-close-button" onClick={onClose}>
-          <X size={18} />
-        </button>
       )}
 
       {showPremiumTeaser && typeof document !== 'undefined' && createPortal(

@@ -477,10 +477,13 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); }}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-all glass-button"
             >
-              <div className={`w-7 h-7 rounded-full avatar-glow flex items-center justify-center text-xs font-bold avatar-gradient ${premiumStatus.isPremium ? 'premium-avatar-ring' : ''}`} aria-label={premiumStatus.isPremium ? 'Premium account' : undefined}>
-                {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                {premiumStatus.isPremium && <Crown size={11} className="premium-avatar-crown" />}
-              </div>
+              <UserAvatar
+                name={user.full_name || `${user.first_name} ${user.last_name}`}
+                src={user.avatar}
+                userId={user.id}
+                premium={premiumStatus.isPremium}
+                size="sm"
+              />
               <span className={`text-primary text-sm font-medium hidden md:block ${premiumStatus.isPremium ? 'premium-user-name' : ''}`}>{user.first_name}</span>
               <ChevronDown size={14} className="text-muted" />
             </button>
@@ -500,6 +503,7 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                     name={user.full_name || `${user.first_name} ${user.last_name}`}
                     src={user.avatar}
                     userId={user.id}
+                    premium={premiumStatus.isPremium}
                     size="md"
                   />
                   <div className="flex-1 min-w-0">

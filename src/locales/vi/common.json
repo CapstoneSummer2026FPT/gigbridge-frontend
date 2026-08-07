@@ -549,5 +549,12 @@
       "2": "Hiệu chỉnh một phần",
       "3": "Điều chỉnh tùy chỉnh"
     }
+  },
+  "sidebar": {
+    "toggleHelpLabel": "Xem giải thích tác dụng Sidebar",
+    "toggleHelpTitle": "Cố định Sidebar",
+    "toggleHelpDesc": "Bật công tắc để giữ Sidebar cố định khi chuyển trang. Tắt công tắc để Sidebar tự đóng khi nhấp trang hoặc nhấp ra ngoài.",
+    "pinnedTitle": "Sidebar cố định (Đang BẬT)",
+    "unpinnedTitle": "Sidebar tự đóng (Đang TẮT)"
   }
 }

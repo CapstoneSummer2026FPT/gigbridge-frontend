@@ -554,5 +554,12 @@
       "2": "Partial correction",
       "3": "Custom adjustment"
     }
+  },
+  "sidebar": {
+    "toggleHelpLabel": "Sidebar Mode Explanation",
+    "toggleHelpTitle": "Persistent Sidebar",
+    "toggleHelpDesc": "Turn ON to keep the sidebar pinned across page navigation. Turn OFF to auto-close the sidebar when navigating or clicking outside.",
+    "pinnedTitle": "Persistent Sidebar (Active)",
+    "unpinnedTitle": "Auto-close Sidebar (Inactive)"
   }
 }

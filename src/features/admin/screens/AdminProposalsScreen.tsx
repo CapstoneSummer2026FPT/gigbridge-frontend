@@ -307,11 +307,11 @@ export default function AdminProposalsScreen() {
                             <td className="min-w-0 space-y-1.5">
                               <p className="lg:hidden text-[10px] font-semibold uppercase tracking-wide text-muted mb-2">Participants</p>
                               <button className="flex w-full items-center gap-2 min-w-0 text-left" onClick={() => openUser(item.clientId)} title={`Client: ${item.clientName}`}>
-                                <UserAvatar name={item.clientName} src={item.clientAvatar} size="sm" className="!h-6 !w-6 !text-[9px]" />
+                                <UserAvatar name={item.clientName} src={item.clientAvatar} userId={item.clientId} size="sm" className="!h-6 !w-6 !text-[9px]" />
                                 <span className="min-w-0"><span className="block text-[9px] leading-none text-muted">Client</span><span className="block mt-0.5 text-[11px] leading-tight text-primary truncate">{item.clientName}</span></span>
                               </button>
                               <button className="flex w-full items-center gap-2 min-w-0 text-left" onClick={() => openUser(item.freelancerId)} title={`Freelancer: ${item.freelancerName}`}>
-                                <UserAvatar name={item.freelancerName} src={item.freelancerAvatar} size="sm" premium={false} className="!h-6 !w-6 !text-[9px]" />
+                                <UserAvatar name={item.freelancerName} src={item.freelancerAvatar} userId={item.freelancerId} size="sm" className="!h-6 !w-6 !text-[9px]" />
                                 <span className="min-w-0"><span className="block text-[9px] leading-none text-muted">Freelancer</span><span className="block mt-0.5 text-[11px] leading-tight text-primary truncate">{item.freelancerName}</span></span>
                               </button>
                             </td>
