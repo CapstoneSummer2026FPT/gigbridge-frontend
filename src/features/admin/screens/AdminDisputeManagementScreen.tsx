@@ -23,11 +23,13 @@ import {
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import {
-  STATUS_FILTERS,
+  STATUS_GROUPS,
+  GROUP_LABELS,
   statusLabels,
   formatDate,
   formatSize,
   useAdminDisputeManagement,
+  type DisputeStatusGroup,
 } from '../hooks/useAdminDisputeManagement';
 import { AdminResolveDisputeModal } from '../components/AdminResolveDisputeModal';
 import type { AdminAuditEvent } from '../../../types/models/AdminDispute';
@@ -43,8 +45,9 @@ export default function AdminDisputeManagementScreen() {
 
   const {
     disputes,
-    selectedStatus,
-    setSelectedStatus,
+    filteredDisputes,
+    selectedStatusGroup,
+    setSelectedStatusGroup,
     search,
     setSearch,
     selectedDisputeId,
@@ -200,35 +203,23 @@ export default function AdminDisputeManagementScreen() {
 
         {/* Metric Cards Row */}
         <section className="disputes-stats">
-          <div onClick={() => setSelectedStatus('all')} className={selectedStatus === 'all' ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('all')} className={selectedStatusGroup === 'all' ? 'active-stat' : ''}>
             <span>{t('admin.disputes.totalCases', 'Total Cases')}</span>
             <strong>{totalItems}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.Open)} className={selectedStatus === DisputeStatus.Open ? 'active-stat' : ''}>
-            <span>{t('admin.disputes.open', 'Open')}</span>
-            <strong>{stats.open}</strong>
-          </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.WaitingAdmin)} className={selectedStatus === DisputeStatus.WaitingAdmin ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('waiting_admin')} className={selectedStatusGroup === 'waiting_admin' ? 'active-stat' : ''}>
             <span>{t('admin.disputes.waitingAdmin', 'Waiting Admin')}</span>
             <strong>{stats.waitingAdmin}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.UnderReview)} className={selectedStatus === DisputeStatus.UnderReview ? 'active-stat' : ''}>
-            <span>{t('admin.disputes.underReview', 'Under Review')}</span>
-            <strong>{stats.underReview}</strong>
+          <div onClick={() => setSelectedStatusGroup('in_progress')} className={selectedStatusGroup === 'in_progress' ? 'active-stat' : ''}>
+            <span>{t('admin.disputes.inProgress', 'In Progress')}</span>
+            <strong>{stats.inProgress}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.WaitingEvidence)} className={selectedStatus === DisputeStatus.WaitingEvidence ? 'active-stat' : ''}>
-            <span>{t('admin.disputes.waitingEvidence', 'Waiting Evidence')}</span>
-            <strong>{stats.waitingEvidence}</strong>
-          </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.DecisionPending)} className={selectedStatus === DisputeStatus.DecisionPending ? 'active-stat' : ''}>
-            <span>{t('admin.disputes.decisionPending', 'Decision Pending')}</span>
-            <strong>{stats.decisionPending}</strong>
-          </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.Resolved)} className={selectedStatus === DisputeStatus.Resolved ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('resolved')} className={selectedStatusGroup === 'resolved' ? 'active-stat' : ''}>
             <span>{t('admin.disputes.resolved', 'Resolved')}</span>
             <strong>{stats.resolved}</strong>
           </div>
-          <div onClick={() => setSelectedStatus(DisputeStatus.Closed)} className={selectedStatus === DisputeStatus.Closed ? 'active-stat' : ''}>
+          <div onClick={() => setSelectedStatusGroup('closed')} className={selectedStatusGroup === 'closed' ? 'active-stat' : ''}>
             <span>{t('admin.disputes.closed', 'Closed')}</span>
             <strong>{stats.closed}</strong>
           </div>
@@ -270,13 +261,13 @@ export default function AdminDisputeManagementScreen() {
           {/* Left Panel: Dispute List */}
           <div className="disputes-list-card">
             <div className="disputes-filter-row">
-              {STATUS_FILTERS.map((status: 'all' | DisputeStatus) => (
+              {STATUS_GROUPS.map((group: DisputeStatusGroup) => (
                 <button
                   key={group}
                   className={selectedStatusGroup === group ? 'active' : ''}
                   onClick={() => setSelectedStatusGroup(group)}
                 >
-                  {status === 'all' ? t('admin.disputes.allCases', 'All Cases') : statusLabels[status]}
+                  {GROUP_LABELS[group]}
                 </button>
               ))}
             </div>
@@ -287,11 +278,11 @@ export default function AdminDisputeManagementScreen() {
                   <LoaderCircle className="animate-spin text-brand" size={20} />
                   {t('admin.disputes.loadingList', 'Loading disputes list…')}
                 </div>
-              ) : disputes.length === 0 ? (
+              ) : filteredDisputes.length === 0 ? (
                 <div className="admin-dispute-empty p-8 text-center text-xs font-bold text-text-muted">
                   {t('admin.disputes.noDisputes', 'No dispute cases match the selected filter.')}
                 </div>
-              ) : disputes.map((dispute) => (
+              ) : filteredDisputes.map((dispute) => (
                 <button
                   key={dispute.id}
                   className={`dispute-list-item ${selectedDisputeId === dispute.id ? 'selected' : ''}`}

@@ -30,23 +30,43 @@ export const emptyViolation = (): ViolationState => ({
   description: '',
 });
 
-export const STATUS_FILTERS: ('all' | DisputeStatus)[] = [
+export type DisputeStatusGroup = 'all' | 'waiting_admin' | 'in_progress' | 'resolved' | 'closed';
+
+export const getDisputeGroup = (status: DisputeStatus): DisputeStatusGroup => {
+  if (status === DisputeStatus.Open || status === DisputeStatus.WaitingAdmin) return 'waiting_admin';
+  if (
+    status === DisputeStatus.UnderReview ||
+    status === DisputeStatus.WaitingEvidence ||
+    status === DisputeStatus.DecisionPending
+  ) return 'in_progress';
+  if (status === DisputeStatus.Resolved) return 'resolved';
+  return 'closed';
+};
+
+export const GROUP_LABELS: Record<DisputeStatusGroup, string> = {
+  all: 'All Cases',
+  waiting_admin: 'Waiting Admin',
+  in_progress: 'In Progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+};
+
+export const STATUS_GROUPS: DisputeStatusGroup[] = [
   'all',
-  DisputeStatus.Open,
-  DisputeStatus.WaitingAdmin,
-  DisputeStatus.UnderReview,
-  DisputeStatus.WaitingEvidence,
-  DisputeStatus.DecisionPending,
-  DisputeStatus.Resolved,
-  DisputeStatus.Closed,
+  'waiting_admin',
+  'in_progress',
+  'resolved',
+  'closed',
 ];
 
+export const STATUS_FILTERS = STATUS_GROUPS;
+
 export const statusLabels: Record<DisputeStatus, string> = {
-  [DisputeStatus.Open]: 'Open',
+  [DisputeStatus.Open]: 'Waiting Admin',
   [DisputeStatus.WaitingAdmin]: 'Waiting Admin',
-  [DisputeStatus.UnderReview]: 'Under Review',
-  [DisputeStatus.WaitingEvidence]: 'Waiting Evidence',
-  [DisputeStatus.DecisionPending]: 'Decision Pending',
+  [DisputeStatus.UnderReview]: 'In Progress',
+  [DisputeStatus.WaitingEvidence]: 'In Progress',
+  [DisputeStatus.DecisionPending]: 'In Progress',
   [DisputeStatus.Resolved]: 'Resolved',
   [DisputeStatus.Closed]: 'Closed',
 };
@@ -87,7 +107,7 @@ export type InvestigationTab = 'dispute' | 'conversation' | 'contract' | 'milest
 
 export function useAdminDisputeManagement() {
   const [disputes, setDisputes] = useState<AdminDisputeListItem[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<'all' | DisputeStatus>('all');
+  const [selectedStatusGroup, setSelectedStatusGroup] = useState<DisputeStatusGroup>('all');
   const [search, setSearch] = useState('');
   const [selectedDisputeId, setSelectedDisputeId] = useState('');
   const [selectedDispute, setSelectedDispute] = useState<AdminDisputeDetail | null>(null);
@@ -140,7 +160,6 @@ export function useAdminDisputeManagement() {
       const response = await adminGetAPI.getDisputes({
         page: 1,
         pageSize: 100,
-        status: selectedStatus === 'all' ? undefined : selectedStatus,
         search: search.trim() || undefined,
       });
       if (cancelled) return;
@@ -167,7 +186,7 @@ export function useAdminDisputeManagement() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [selectedStatus, search, refreshKey]);
+  }, [search, refreshKey]);
 
   // Fetch dispute details
   useEffect(() => {
@@ -260,16 +279,24 @@ export function useAdminDisputeManagement() {
     clientChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [disputeMessages]);
 
+  const filteredDisputes = useMemo(() => {
+    if (selectedStatusGroup === 'all') return disputes;
+    return disputes.filter((item) => getDisputeGroup(item.status) === selectedStatusGroup);
+  }, [disputes, selectedStatusGroup]);
+
+  useEffect(() => {
+    if (filteredDisputes.length > 0 && !filteredDisputes.some((item) => item.id === selectedDisputeId)) {
+      setSelectedDisputeId(filteredDisputes[0].id);
+    }
+  }, [filteredDisputes, selectedDisputeId]);
+
   const stats = useMemo(
     () => ({
-      visible: disputes.length,
-      open: disputes.filter((item) => item.status === DisputeStatus.Open).length,
-      waitingAdmin: disputes.filter((item) => item.status === DisputeStatus.WaitingAdmin).length,
-      underReview: disputes.filter((item) => item.status === DisputeStatus.UnderReview).length,
-      waitingEvidence: disputes.filter((item) => item.status === DisputeStatus.WaitingEvidence).length,
-      decisionPending: disputes.filter((item) => item.status === DisputeStatus.DecisionPending).length,
-      resolved: disputes.filter((item) => item.status === DisputeStatus.Resolved).length,
-      closed: disputes.filter((item) => item.status === DisputeStatus.Closed).length,
+      total: disputes.length,
+      waitingAdmin: disputes.filter((item) => getDisputeGroup(item.status) === 'waiting_admin').length,
+      inProgress: disputes.filter((item) => getDisputeGroup(item.status) === 'in_progress').length,
+      resolved: disputes.filter((item) => getDisputeGroup(item.status) === 'resolved').length,
+      closed: disputes.filter((item) => getDisputeGroup(item.status) === 'closed').length,
     }),
     [disputes]
   );
@@ -605,8 +632,9 @@ export function useAdminDisputeManagement() {
 
   return {
     disputes,
-    selectedStatus,
-    setSelectedStatus,
+    filteredDisputes,
+    selectedStatusGroup,
+    setSelectedStatusGroup,
     search,
     setSearch,
     selectedDisputeId,
