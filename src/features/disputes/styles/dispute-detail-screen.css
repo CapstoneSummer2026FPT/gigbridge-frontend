@@ -161,9 +161,6 @@
 .dispute-status-1 { color: #2563eb; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.3); }
 .dispute-status-2 { color: #059669; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); }
 .dispute-status-3 { color: #7c3aed; background: rgba(124, 58, 237, 0.12); border: 1px solid rgba(124, 58, 237, 0.3); }
-.dispute-status-4 { color: #ea580c; background: rgba(234, 88, 12, 0.12); border: 1px solid rgba(234, 88, 12, 0.3); }
-.dispute-status-5 { color: #166534; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); }
-.dispute-status-6 { color: var(--gb-text-secondary); background: var(--gb-bg-secondary); border: 1px solid var(--gb-border); }
 
 /* Main Layout Grid */
 .dispute-detail-grid {

@@ -6,10 +6,7 @@ import {
   CheckCircle,
   ArrowUpDown,
   Download,
-  FileText,
   Filter,
-  Flame,
-  Gavel,
   Hash,
   History,
   Layers,
@@ -407,15 +404,13 @@ export default function AdminDisputeManagementScreen() {
                   </div>
 
                   <div className="header-action-buttons">
-                    {(selectedDispute.status === DisputeStatus.Open || selectedDispute.status === DisputeStatus.WaitingAdmin) && (
-                      <button onClick={() => void updateStatus(DisputeStatus.UnderReview)} className="btn-resolve-primary">
+                    {selectedDispute.status === DisputeStatus.WaitingAdmin && (
+                      <button onClick={() => void updateStatus(DisputeStatus.InProgress)} className="btn-resolve-primary">
                         <CheckCircle size={16} /> {t('admin.disputes.actions.markInProgress', 'Mark In Progress')}
                       </button>
                     )}
 
-                    {(selectedDispute.status === DisputeStatus.UnderReview ||
-                      selectedDispute.status === DisputeStatus.WaitingEvidence ||
-                      selectedDispute.status === DisputeStatus.DecisionPending) && (
+                    {selectedDispute.status === DisputeStatus.InProgress && (
                       <>
                         <button onClick={openResolveDialog} className="btn-resolve-primary">
                           <Scale size={16} /> {t('admin.disputes.actions.resolve', 'Issue Binding Resolution')}
