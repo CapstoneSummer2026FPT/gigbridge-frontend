@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
-  Bot, BarChart2, Shield, Flag, HelpCircle,
+  BarChart2, Shield, Flag, HelpCircle,
   TrendingUp, PlusCircle, Zap, Bookmark,
   ChevronDown, Wallet, Banknote, Star
 } from 'lucide-react';
@@ -82,14 +82,6 @@ function getClientNavItems(t: any): NavItem[] {
       path: '/messages',
     },
     {
-      id: 'ai-assistant',
-      label: t('nav.aiAssistant', { defaultValue: 'AI Assistant' }),
-      icon: <Bot size={18} />,
-      path: '/ai-assistant',
-      badge: 'NEW',
-      badgeType: 'cyan',
-    },
-    {
       id: 'wallet',
       label: t('nav.wallet', { defaultValue: 'Wallet' }),
       icon: <Wallet size={18} />,
@@ -115,7 +107,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
       label: t('nav.findWork', { defaultValue: 'Find Work' }),
       icon: <Search size={18} />,
       children: [
-        { id: 'search-jobs', label: t('nav.searchJobs', { defaultValue: 'Search Jobs' }), icon: <Search size={18} />, path: '/jobs' },
+        { id: 'search-jobs', label: t('nav.searchJobs', { defaultValue: 'Search Jobs' }), icon: <Search size={18} />, path: '/jobs/browse' },
         { id: 'saved-jobs', label: t('nav.savedJobs', { defaultValue: 'Saved Jobs' }), icon: <Bookmark size={18} />, path: '/jobs/saved' },
       ],
     },
@@ -137,20 +129,12 @@ function getFreelancerNavItems(t: any): NavItem[] {
       path: '/messages',
     },
     {
-      id: 'ai-assistant',
-      label: t('nav.aiAssistant', { defaultValue: 'AI Assistant' }),
-      icon: <Bot size={18} />,
-      path: '/ai-assistant',
-      badge: 'NEW',
-      badgeType: 'cyan',
-    },
-    {
       id: 'finance',
       label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }),
       icon: <BarChart2 size={18} />,
       children: [
         { id: 'overview', label: t('nav.financialOverview', { defaultValue: 'Financial Overview' }), icon: <BarChart2 size={18} />, path: '/financial-overview' },
-        { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdraw' },
+        { id: 'withdraw', label: t('wallet.withdraw', { defaultValue: 'Withdraw' }), icon: <Banknote size={18} />, path: '/wallet/withdrawals' },
         { id: 'history', label: t('wallet.history', { defaultValue: 'History' }), icon: <BarChart2 size={18} />, path: '/wallet/history' },
       ],
     },

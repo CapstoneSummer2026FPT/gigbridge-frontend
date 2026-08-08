@@ -4,6 +4,7 @@ import type { ProposalDto } from '../../../types/models/Proposal';
 import { ProposalStatus } from '../../../types/models/Proposal';
 import { proposalPostAPI } from '../../../api/proposalAPI/POST';
 import { formatGigCoin } from '../../../shared/utils/gigcoin';
+import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
 
 interface ProposalJudgingListViewProps {
@@ -380,8 +381,13 @@ export const ProposalJudgingListView: React.FC<ProposalJudgingListViewProps> = (
                       #{rankIndex}
                     </div>
 
-                    <div className="min-w-0 space-y-1">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        <UserAvatar
+                          userId={candidate.freelancerUserId}
+                          name={candidate.freelancerName || 'Freelancer'}
+                          size="sm"
+                        />
                         <h3 className="font-bold text-base text-foreground truncate">
                           <UserProfileLink userId={candidate.freelancerUserId} role="freelancer">{candidate.freelancerName || 'Freelancer'}</UserProfileLink>
                         </h3>

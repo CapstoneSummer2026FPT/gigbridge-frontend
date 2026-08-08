@@ -1,18 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   AlertTriangle,
+  ArrowLeft,
   Banknote,
   CheckCircle2,
   Clock,
+  Coins,
+  CreditCard,
   Loader2,
   RefreshCw,
   Send,
   ShieldCheck,
+  Sparkles,
   Wallet,
   XCircle,
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
-import { GigCoinAmount } from '../../../shared/components/GigCoinAmount';
+import { GigCoinAmount, GigCoinLogo } from '../../../shared/components/GigCoinAmount';
 import { walletGetAPI } from '../../../api/walletAPI/GET';
 import { walletPostAPI } from '../../../api/walletAPI/POST';
 import BankAccountManager from '../components/BankAccountManager';
@@ -23,6 +28,7 @@ import type {
   WithdrawalResponse,
   WithdrawalSettingsResponse,
 } from '../../../types';
+import { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/early-payout-screen.css';
 
 const QUICK_AMOUNTS = [10, 50, 100, 500, 1000, 5000];
@@ -46,22 +52,43 @@ function isTerminalStatus(status: WithdrawalStatus): boolean {
   return status === WithdrawalStatus.Success || status === WithdrawalStatus.Failed || status === WithdrawalStatus.Cancelled;
 }
 
-function getStatusMeta(status: WithdrawalStatus) {
+function getStatusMeta(status: WithdrawalStatus, t: any) {
   switch (status) {
     case WithdrawalStatus.Pending:
-      return { label: 'Đang xử lý tự động', className: 'pending' };
+      return {
+        label: t('withdrawalsScreen.statusPending', { defaultValue: 'Đang xử lý' }),
+        badgeClass: 'bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400',
+      };
     case WithdrawalStatus.Processing:
-      return { label: 'Đang xử lý tự động', className: 'processing' };
+      return {
+        label: t('withdrawalsScreen.statusProcessing', { defaultValue: 'Đang xử lý tự động' }),
+        badgeClass: 'bg-blue-500/15 border-blue-500/30 text-blue-600 dark:text-blue-400',
+      };
     case WithdrawalStatus.SyncRequired:
-      return { label: 'Đang xử lý tự động', className: 'processing' };
+      return {
+        label: t('withdrawalsScreen.statusSyncRequired', { defaultValue: 'Đồng bộ lại' }),
+        badgeClass: 'bg-indigo-500/15 border-indigo-500/30 text-indigo-600 dark:text-indigo-400',
+      };
     case WithdrawalStatus.Success:
-      return { label: 'Thành công', className: 'success' };
+      return {
+        label: t('withdrawalsScreen.statusSuccess', { defaultValue: 'Thành công' }),
+        badgeClass: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+      };
     case WithdrawalStatus.Failed:
-      return { label: 'Thất bại', className: 'failed' };
+      return {
+        label: t('withdrawalsScreen.statusFailed', { defaultValue: 'Thất bại' }),
+        badgeClass: 'bg-rose-500/15 border-rose-500/30 text-rose-500',
+      };
     case WithdrawalStatus.Cancelled:
-      return { label: 'Đã hủy', className: 'cancelled' };
+      return {
+        label: t('withdrawalsScreen.statusCancelled', { defaultValue: 'Đã hủy' }),
+        badgeClass: 'bg-surface-muted border-border text-text-muted',
+      };
     default:
-      return { label: 'Đang xử lý tự động', className: 'processing' };
+      return {
+        label: t('withdrawalsScreen.statusProcessing', { defaultValue: 'Đang xử lý' }),
+        badgeClass: 'bg-blue-500/15 border-blue-500/30 text-blue-600',
+      };
   }
 }
 
@@ -70,6 +97,9 @@ function getResponseMessage(responseMessage: string | undefined, fallback: strin
 }
 
 export default function EarlyPayoutScreen() {
+  const { t } = useTranslation(['wallet', 'common']);
+  const navigate = useNavigate();
+
   const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccountResponse[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalResponse[]>([]);
@@ -93,9 +123,6 @@ export default function EarlyPayoutScreen() {
     [activeBankAccounts, selectedBankId]
   );
 
-  // Keep the selected payout account valid as the shared BankAccountManager
-  // loads or changes accounts: if the current selection is gone, fall back to
-  // the default account, then the first active account.
   useEffect(() => {
     setSelectedBankId(current => {
       const activeIds = new Set(activeBankAccounts.map(account => account.bankAccountId));
@@ -106,22 +133,18 @@ export default function EarlyPayoutScreen() {
   }, [activeBankAccounts]);
 
   const amountValue = Number(amount || 0);
-  // Deposited GigCoin is spendable in-platform but never withdrawable; earned
-  // GigCoin is spendable and withdrawable. Only the earned pool can fund a
-  // withdrawal.
   const depositedTokens = wallet?.depositedGigCoin ?? 0;
   const withdrawableTokens = wallet?.withdrawableGigCoin ?? 0;
   const nonWithdrawableTokens = depositedTokens;
   const feeVnd = settings?.fixedFeeVnd ?? 0;
-  const vndAmount = amountValue * (settings?.vndPerToken ?? 0);
+  const vndAmount = amountValue * (settings?.vndPerToken ?? 1000);
   const netVnd = Math.max(0, vndAmount - feeVnd);
   const hasEnoughBalance = wallet ? amountValue <= withdrawableTokens : false;
-  // Withdrawal max is capped by the earned (withdrawable) pool.
-  const withdrawMax = Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0, withdrawableTokens);
+  const withdrawMax = Math.min(settings?.maxTokens ?? withdrawableTokens, settings?.dailyMaxTokens ?? withdrawableTokens, withdrawableTokens);
   const amountValid =
     Number.isFinite(amountValue) &&
     Boolean(settings?.enabled) &&
-    amountValue >= (settings?.minTokens ?? Number.POSITIVE_INFINITY) &&
+    amountValue >= (settings?.minTokens ?? 1) &&
     amountValue <= withdrawMax &&
     netVnd > 0 &&
     hasEnoughBalance;
@@ -140,19 +163,19 @@ export default function EarlyPayoutScreen() {
     if (walletRes.success && walletRes.data) {
       setWallet(walletRes.data);
     } else {
-      nextError = getResponseMessage(walletRes.message, 'Không thể tải ví.');
+      nextError = getResponseMessage(walletRes.message, t('withdrawalsScreen.errorLoadWallet', { defaultValue: 'Không thể tải thông tin ví.' }));
     }
 
     if (withdrawalRes.success && withdrawalRes.data) {
       setWithdrawals(withdrawalRes.data);
     } else if (!nextError) {
-      nextError = getResponseMessage(withdrawalRes.message, 'Không thể tải lịch sử rút tiền.');
+      nextError = getResponseMessage(withdrawalRes.message, t('withdrawalsScreen.errorLoadHistory', { defaultValue: 'Không thể tải lịch sử rút tiền.' }));
     }
 
     if (settingsRes.success && settingsRes.data) {
       setSettings(settingsRes.data);
     } else if (!nextError) {
-      nextError = getResponseMessage(settingsRes.message, 'Khong the tai cau hinh rut tien.');
+      nextError = getResponseMessage(settingsRes.message, t('withdrawalsScreen.errorLoadSettings', { defaultValue: 'Không thể tải cấu hình rút tiền.' }));
     }
 
     setError(nextError);
@@ -165,12 +188,16 @@ export default function EarlyPayoutScreen() {
 
   const handleCreateWithdrawal = async () => {
     if (!selectedBank) {
-      setError('Vui lòng chọn tài khoản ngân hàng nhận tiền.');
+      setError(t('withdrawalsScreen.errorNoBank', { defaultValue: 'Vui lòng chọn tài khoản ngân hàng nhận tiền.' }));
       return;
     }
 
     if (!amountValid) {
-      setError(`Số GigCoin rút phải từ ${settings?.minTokens ?? 0} đến ${(settings?.maxTokens ?? 0).toLocaleString('vi-VN')} và không vượt quá thu nhập có thể rút.`);
+      setError(t('withdrawalsScreen.errorInvalidAmount', {
+        min: settings?.minTokens ?? 1,
+        max: withdrawMax.toLocaleString('vi-VN'),
+        defaultValue: `Số GigCoin rút phải từ ${settings?.minTokens ?? 1} đến ${withdrawMax.toLocaleString('vi-VN')} và không vượt quá thu nhập có thể rút.`,
+      }));
       return;
     }
 
@@ -192,11 +219,11 @@ export default function EarlyPayoutScreen() {
     if (response.success && response.data) {
       withdrawalDraftRef.current = null;
       setAmount('');
-      setSuccess('Đã xếp hàng yêu cầu rút tiền. Hệ thống sẽ tự động tạo lệnh chi và kiểm tra trạng thái PayOS.');
+      setSuccess(t('withdrawalsScreen.successCreated', { defaultValue: 'Đã tạo yêu cầu rút tiền thành công. Hệ thống tự động chuyển khoản qua cổng PayOS.' }));
       await loadData();
       window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     } else {
-      setError(getResponseMessage(response.message, 'Không thể tạo yêu cầu rút tiền.'));
+      setError(getResponseMessage(response.message, t('wallet.errorCreateWithdrawal', { defaultValue: 'Không thể tạo yêu cầu rút tiền.' })));
     }
 
     setSubmitting(false);
@@ -209,11 +236,11 @@ export default function EarlyPayoutScreen() {
 
     const response = await walletPostAPI.syncWithdrawal(withdrawalId);
     if (response.success && response.data) {
-      setSuccess('Đã đồng bộ trạng thái rút tiền.');
+      setSuccess(t('withdrawalsScreen.successSynced', { defaultValue: 'Đã đồng bộ trạng thái rút tiền.' }));
       await loadData();
       window.dispatchEvent(new Event('gigbridge-wallet-updated'));
     } else {
-      setError(getResponseMessage(response.message, 'Không thể đồng bộ trạng thái rút tiền.'));
+      setError(getResponseMessage(response.message, t('withdrawalsScreen.errorSync', { defaultValue: 'Không thể đồng bộ trạng thái rút tiền.' })));
     }
 
     setSyncingId(null);
@@ -221,201 +248,401 @@ export default function EarlyPayoutScreen() {
 
   return (
     <AppLayout>
-      <div className="early-payout-page">
-        <header className="early-payout-header">
-          <div>
-            <p><Banknote size={18} /> Freelancer Withdrawal</p>
-            <h1>Rút tiền về ngân hàng</h1>
-            <span>GigCoin rút sẽ được khóa trong Pending Withdrawal cho đến khi nhà cung cấp trả kết quả cuối.</span>
+      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-6">
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="p-1.5 rounded-xl border border-border bg-surface-card hover:bg-surface-muted text-text-muted hover:text-text-primary transition cursor-pointer"
+                title="Go back"
+              >
+                <ArrowLeft size={16} />
+              </button>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                <Sparkles size={12} /> {t('withdrawalsScreen.badgeLabel', { defaultValue: 'Withdrawal Center' })}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-extrabold text-amber-600 dark:text-amber-400">
+                <Coins size={11} /> {t('withdrawalsScreen.rateNotice', { defaultValue: '1 GigCoin = 1,000 VNĐ' })}
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">
+              {t('withdrawalsScreen.title', { defaultValue: 'Rút Tiền Về Ngân Hàng' })}
+            </h1>
+            <p className="text-xs text-text-muted font-medium">
+              {t('withdrawalsScreen.subtitle', { defaultValue: 'Chuyển thu nhập GigCoin đã kiếm được về tài khoản ngân hàng chính chủ của bạn 24/7.' })}
+            </p>
           </div>
-          <button type="button" onClick={() => void loadData()} disabled={loading}>
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Làm mới
-          </button>
-        </header>
 
-        {error && <div className="early-payout-alert danger"><AlertTriangle size={17} />{error}</div>}
-        {success && <div className="early-payout-alert success"><CheckCircle2 size={17} />{success}</div>}
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-surface-card text-xs font-black text-text-primary hover:bg-surface-muted transition cursor-pointer shadow-2xs disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin text-brand' : 'text-brand'} />
+            {t('withdrawalsScreen.refreshData', { defaultValue: 'Làm mới dữ liệu' })}
+          </button>
+        </div>
+
+        {/* Alerts & System Maintenance Notices */}
+        {error && (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-center gap-3 text-rose-600 dark:text-rose-400 animate-in fade-in">
+            <AlertTriangle size={18} className="shrink-0" />
+            <span className="text-xs font-bold leading-relaxed">{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center gap-3 text-emerald-600 dark:text-emerald-400 animate-in fade-in">
+            <CheckCircle2 size={18} className="shrink-0" />
+            <span className="text-xs font-bold leading-relaxed">{success}</span>
+          </div>
+        )}
         {settings && !settings.enabled && (
-          <div className="early-payout-alert danger">
-            <AlertTriangle size={17} />Chức năng rút tiền đang tạm khóa để bảo trì.
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 flex items-center gap-3 text-amber-600 dark:text-amber-400">
+            <AlertTriangle size={18} className="shrink-0" />
+            <span className="text-xs font-bold">{t('withdrawalsScreen.maintenanceNotice', { defaultValue: 'Chức năng rút tiền hiện đang tạm khóa để bảo trì hệ thống chi tự động.' })}</span>
           </div>
         )}
 
         {loading ? (
-          <div className="early-payout-loading">
-            <Loader2 size={34} className="animate-spin" />
-            <span>Đang tải ví rút tiền...</span>
+          <div className="flex flex-col items-center justify-center py-24 space-y-4">
+            <Loader2 size={40} className="animate-spin text-brand" />
+            <span className="text-xs font-bold text-text-muted">{t('withdrawalsScreen.loadingData', { defaultValue: 'Đang tải thông tin ví và danh sách rút tiền...' })}</span>
           </div>
         ) : (
           <>
-            <section className="early-payout-stats">
-              <div className="early-payout-stat">
-                <Wallet size={18} />
-                <span>Đã nạp (Deposited)</span>
-                <strong><GigCoinAmount amount={depositedTokens} /></strong>
-                <small>{formatVnd(wallet?.depositedGigCoinVnd ?? 0)}</small>
+            {/* Wallet Balance Metrics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Earned (Withdrawable) Balance Card */}
+              <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-2 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <Banknote size={14} /> {t('withdrawalsScreen.statEarned', { defaultValue: 'Có thể rút (Earned)' })}
+                  </span>
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <GigCoinLogo size={24} />
+                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                    {withdrawableTokens.toLocaleString('vi-VN')}
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600/70">GigCoin</span>
+                </div>
+                <p className="text-xs font-extrabold text-emerald-600/80 dark:text-emerald-400/80">
+                  {formatVnd(wallet?.withdrawableGigCoinVnd ?? 0)}
+                </p>
               </div>
-              <div className="early-payout-stat">
-                <Banknote size={18} />
-                <span>Có thể rút (Earned)</span>
-                <strong><GigCoinAmount amount={withdrawableTokens} /></strong>
-                <small>{formatVnd(wallet?.withdrawableGigCoinVnd ?? 0)}</small>
+
+              {/* Deposited Pool Card */}
+              <div className="rounded-3xl border border-border/80 bg-surface-card p-5 space-y-2 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                  <Wallet size={14} className="text-brand" /> {t('withdrawalsScreen.statDeposited', { defaultValue: 'Đã nạp (Deposited)' })}
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <GigCoinLogo size={24} />
+                  <span className="text-2xl font-black text-text-primary tracking-tight">
+                    {depositedTokens.toLocaleString('vi-VN')}
+                  </span>
+                  <span className="text-xs font-bold text-text-muted">GigCoin</span>
+                </div>
+                <p className="text-xs font-bold text-text-muted">
+                  {formatVnd(wallet?.depositedGigCoinVnd ?? 0)} {t('withdrawalsScreen.statDepositedNote', { defaultValue: '(Không rút)' })}
+                </p>
               </div>
-              <div className="early-payout-stat">
-                <ShieldCheck size={18} />
-                <span>Escrow held</span>
-                <strong><GigCoinAmount amount={wallet?.heldGigCoin || 0} /></strong>
-                <small>{formatVnd(wallet?.heldGigCoinVnd || 0)}</small>
+
+              {/* Escrow Held Card */}
+              <div className="rounded-3xl border border-border/80 bg-surface-card p-5 space-y-2 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-amber-500" /> {t('withdrawalsScreen.statEscrow', { defaultValue: 'Escrow Bảo Chứng' })}
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <GigCoinLogo size={24} />
+                  <span className="text-2xl font-black text-text-primary tracking-tight">
+                    {(wallet?.heldGigCoin || 0).toLocaleString('vi-VN')}
+                  </span>
+                  <span className="text-xs font-bold text-text-muted">GigCoin</span>
+                </div>
+                <p className="text-xs font-bold text-text-muted">
+                  {formatVnd(wallet?.heldGigCoinVnd || 0)}
+                </p>
               </div>
-              <div className="early-payout-stat">
-                <Clock size={18} />
-                <span>Đang rút</span>
-                <strong><GigCoinAmount amount={wallet?.pendingWithdrawalGigCoin || 0} /></strong>
-                <small>{formatVnd(wallet?.pendingWithdrawalGigCoinVnd || 0)}</small>
+
+              {/* Pending Withdrawal Card */}
+              <div className="rounded-3xl border border-border/80 bg-surface-card p-5 space-y-2 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                  <Clock size={14} className="text-indigo-400" /> {t('withdrawalsScreen.statPending', { defaultValue: 'Đang Chờ Xử Lý' })}
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <GigCoinLogo size={24} />
+                  <span className="text-2xl font-black text-text-primary tracking-tight">
+                    {(wallet?.pendingWithdrawalGigCoin || 0).toLocaleString('vi-VN')}
+                  </span>
+                  <span className="text-xs font-bold text-text-muted">GigCoin</span>
+                </div>
+                <p className="text-xs font-bold text-text-muted">
+                  {formatVnd(wallet?.pendingWithdrawalGigCoinVnd || 0)}
+                </p>
+              </div>
+            </div>
+
+            {/* SECTION 1: BANK ACCOUNT MANAGER (Full Width Spacious Container) */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
+                  <CreditCard size={16} className="text-brand" />
+                  {t('withdrawalsScreen.bankManagerTitle', { defaultValue: 'Quản Lý Tài Khoản Ngân Hàng Nhận Tiền' })}
+                </h3>
+                <span className="text-[11px] font-bold text-text-muted">{t('withdrawalsScreen.bankManagerSubtitle', { defaultValue: 'Thêm & chọn ngân hàng liên kết nhận tiền' })}</span>
+              </div>
+              
+              <div className="rounded-3xl border border-border/80 bg-surface-card p-6 shadow-md overflow-hidden">
+                <BankAccountManager onBankAccountsChange={setBankAccounts} />
               </div>
             </section>
 
-            <div className="early-payout-layout">
-              <main className="early-payout-card">
-                <div className="early-payout-balance">
-                  <Wallet size={24} />
-                  <div>
-                    <span>GigCoin kiếm được có thể rút</span>
-                    <strong><GigCoinAmount amount={withdrawableTokens} /></strong>
-                    {withdrawableTokens <= 0 && (
-                      <small className="early-payout-balance-note">
-                        Bạn chưa có GigCoin đủ điều kiện rút. GigCoin kiếm được từ hợp đồng/đợt đã hoàn thành mới có thể rút.
-                      </small>
-                    )}
+            {/* SECTION 2: CREATE WITHDRAWAL REQUEST & SUMMARY GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Form Column (8 cols) */}
+              <div className="lg:col-span-8 space-y-6">
+                <div className="rounded-3xl border border-border/80 bg-surface-card p-6 shadow-md space-y-5">
+                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-3 flex items-center gap-2">
+                    <Send size={16} className="text-brand" />
+                    {t('withdrawalsScreen.formTitle', { defaultValue: 'Tạo Lệnh Rút Tiền Về Ngân Hàng' })}
+                  </h3>
+
+                  {/* Quick Amount Tiles */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-black uppercase tracking-wider text-text-muted">
+                      {t('withdrawalsScreen.selectQuick', { defaultValue: 'Chọn nhanh số GigCoin' })}
+                    </label>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                      {QUICK_AMOUNTS.map(quickAmount => {
+                        const isDisabled =
+                          !settings?.enabled ||
+                          quickAmount > withdrawableTokens ||
+                          quickAmount > Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0);
+                        const isSelected = amountValue === quickAmount;
+
+                        return (
+                          <button
+                            key={quickAmount}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => setAmount(String(quickAmount))}
+                            className={`rounded-2xl py-2.5 px-2 text-center text-xs font-black transition-all cursor-pointer border ${
+                              isSelected
+                                ? 'border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-xs ring-2 ring-emerald-500/20'
+                                : 'border-border/80 bg-surface-card hover:bg-surface-muted text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'
+                            }`}
+                          >
+                            <GigCoinAmount amount={quickAmount} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Custom Amount Input */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-text-muted">
+                      <label htmlFor="withdraw-amount-input">{t('withdrawalsScreen.customAmountLabel', { defaultValue: 'Số GigCoin muốn rút' })}</label>
+                      <span>{t('withdrawalsScreen.maxWithdrawNotice', { max: withdrawMax.toLocaleString('vi-VN'), defaultValue: `Tối đa có thể rút: ${withdrawMax.toLocaleString('vi-VN')} G-coin` })}</span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-brand text-sm font-extrabold">
+                        <GigCoinLogo size={18} />
+                      </span>
+                      <input
+                        id="withdraw-amount-input"
+                        type="number"
+                        value={amount}
+                        min={settings?.minTokens ?? 1}
+                        max={withdrawMax}
+                        step="0.0001"
+                        onChange={event => setAmount(event.target.value)}
+                        placeholder={t('withdrawalsScreen.customAmountPlaceholder', { defaultValue: 'Nhập số GigCoin...' })}
+                        className="w-full h-12 rounded-2xl border border-border/80 bg-surface-muted/30 pl-12 pr-4 text-sm font-bold text-text-primary outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                      />
+                    </div>
                     {nonWithdrawableTokens > 0 && (
-                      <small className="early-payout-balance-note">
-                        <GigCoinAmount amount={nonWithdrawableTokens} /> đã nạp chỉ dùng trong app, không thể rút.
-                      </small>
+                      <p className="text-[11px] font-semibold text-text-muted italic px-1">
+                        {t('withdrawalsScreen.depositedNonWithdrawNotice', { amount: nonWithdrawableTokens.toLocaleString('vi-VN'), defaultValue: `* ${nonWithdrawableTokens.toLocaleString('vi-VN')} GigCoin từ nguồn đã nạp chỉ dùng thanh toán trong ứng dụng, không thể rút.` })}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Selected Bank Picker */}
+                  <div className="space-y-2 pt-2 border-t border-border/60">
+                    <label className="block text-xs font-black uppercase tracking-wider text-text-muted">
+                      {t('withdrawalsScreen.bankPickerLabel', { defaultValue: 'Tài khoản ngân hàng nhận tiền' })}
+                    </label>
+                    {activeBankAccounts.length === 0 ? (
+                      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-3">
+                        <AlertTriangle size={18} className="shrink-0" />
+                        <span>{t('withdrawalsScreen.noBankWarning', { defaultValue: 'Chưa có tài khoản ngân hàng liên kết. Hãy thêm tài khoản ở phần trên trước khi tạo lệnh rút.' })}</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {activeBankAccounts.map(account => {
+                          const isSelected = account.bankAccountId === selectedBankId;
+                          return (
+                            <button
+                              key={account.bankAccountId}
+                              type="button"
+                              onClick={() => setSelectedBankId(account.bankAccountId)}
+                              className={`rounded-2xl p-4 text-left border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                                isSelected
+                                  ? 'border-brand bg-brand/10 shadow-xs ring-2 ring-brand/20'
+                                  : 'border-border/80 bg-surface-card hover:border-brand/40 hover:bg-surface-muted/40'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <strong className="text-xs font-black text-text-primary">{account.bankName}</strong>
+                                {account.isDefault && (
+                                  <span className="rounded-full bg-brand/15 border border-brand/30 px-2 py-0.5 text-[9px] font-black uppercase text-brand">
+                                    {t('wallet.bankAccount.defaultBadge', { defaultValue: 'Mặc định' })}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-text-muted font-medium">
+                                <div>{account.accountName}</div>
+                                <div className="font-mono text-text-primary font-bold mt-0.5">{account.accountNumberMasked}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>
-
-                <div className="early-payout-quick-grid">
-                  {QUICK_AMOUNTS.map(quickAmount => (
-                    <button
-                      key={quickAmount}
-                      type="button"
-                      className={amountValue === quickAmount ? 'selected' : ''}
-                      onClick={() => setAmount(String(quickAmount))}
-                      disabled={!settings?.enabled || quickAmount > withdrawableTokens ||
-                        quickAmount > Math.min(settings?.maxTokens ?? 0, settings?.dailyMaxTokens ?? 0)}
-                    >
-                      <GigCoinAmount amount={quickAmount} />
-                    </button>
-                  ))}
-                </div>
-
-                <label>
-                  Số GigCoin muốn rút
-                  <input
-                    value={amount}
-                    type="number"
-                    min={settings?.minTokens ?? 0}
-                    max={withdrawMax}
-                    step="0.0001"
-                    onChange={event => setAmount(event.target.value)}
-                    placeholder="Nhập số GigCoin"
-                  />
-                </label>
-
-                <div className="early-payout-bank-picker">
-                  <span>Tài khoản nhận tiền</span>
-                  {activeBankAccounts.length === 0 ? (
-                    <div className="early-payout-empty-bank">
-                      <Banknote size={18} />
-                      <p>Chưa có tài khoản ngân hàng. Hãy thêm tài khoản ở khung bên phải.</p>
-                    </div>
-                  ) : (
-                    activeBankAccounts.map(account => (
-                      <button
-                        key={account.bankAccountId}
-                        type="button"
-                        className={account.bankAccountId === selectedBankId ? 'selected' : ''}
-                        onClick={() => setSelectedBankId(account.bankAccountId)}
-                      >
-                        <b>{account.bankName}</b>
-                        <small>{account.accountName} · {account.accountNumberMasked}</small>
-                        {account.isDefault && <em>Mặc định</em>}
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                <div className="early-payout-summary">
-                  <div><span>Yêu cầu rút</span><b><GigCoinAmount amount={amountValue || 0} /></b></div>
-                  <div><span>Quy đổi VND</span><b>{formatVnd(vndAmount || 0)}</b></div>
-                  <div><span>Phí xử lý</span><b>{formatVnd(feeVnd)}</b></div>
-                  <div><span>Thực nhận</span><b>{formatVnd(netVnd || 0)}</b></div>
-                </div>
-
-                <button
-                  className="early-payout-submit"
-                  onClick={() => void handleCreateWithdrawal()}
-                  disabled={submitting || !amountValid || !selectedBank || withdrawableTokens <= 0}
-                >
-                  {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                  {withdrawableTokens <= 0 ? 'Chưa có GigCoin có thể rút' : 'Tạo yêu cầu rút tiền'}
-                </button>
-              </main>
-
-              <aside className="early-payout-side">
-                <BankAccountManager onBankAccountsChange={setBankAccounts} />
-              </aside>
-            </div>
-
-            <section className="early-payout-history">
-              <div className="early-payout-history-head">
-                <div>
-                  <h2>Lịch sử rút tiền</h2>
-                  <p>Hệ thống tự động tạo lệnh chi và thử lại khi PayOS tạm thời gián đoạn.</p>
-                </div>
               </div>
 
-              <div className="early-payout-history-list">
+              {/* Summary Column (4 cols Sticky) */}
+              <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4">
+                <div className="rounded-3xl border border-border/80 bg-surface-card p-6 shadow-xl space-y-5">
+                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider border-b border-border/60 pb-3 flex items-center gap-2">
+                    <Sparkles size={15} className="text-brand" />
+                    {t('withdrawalsScreen.summaryTitle', { defaultValue: 'Tóm Tắt Lệnh Rút' })}
+                  </h3>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="flex justify-between items-center text-text-muted font-medium">
+                      <span>{t('withdrawalsScreen.summaryAmount', { defaultValue: 'Số GigCoin rút' })}</span>
+                      <span className="text-text-primary font-black text-sm">{amountValue.toLocaleString('vi-VN')} G-coin</span>
+                    </div>
+                    <div className="flex justify-between items-center text-text-muted font-medium">
+                      <span>{t('withdrawalsScreen.summaryVnd', { defaultValue: 'Quy đổi VNĐ (1k/coin)' })}</span>
+                      <span className="text-text-primary font-bold">{formatVnd(vndAmount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-text-muted font-medium">
+                      <span>{t('withdrawalsScreen.summaryFee', { defaultValue: 'Phí xử lý giao dịch' })}</span>
+                      <span className="text-rose-500 font-bold">{formatVnd(feeVnd)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-text-muted font-medium pt-2 border-t border-border/50">
+                      <span className="font-black text-text-primary">{t('withdrawalsScreen.summaryNet', { defaultValue: 'Thực nhận về ngân hàng' })}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-base">{formatVnd(netVnd || 0)}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border/60 bg-surface-muted/30 p-3.5 flex items-center gap-2.5 text-xs text-text-muted font-medium">
+                    <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
+                    <span>{t('withdrawalsScreen.summaryNote', { defaultValue: 'Lệnh rút được xử lý tự động qua cổng PayOS Out 24/7.' })}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateWithdrawal()}
+                    disabled={submitting || !amountValid || !selectedBank || withdrawableTokens <= 0}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 px-5 text-xs font-black text-white shadow-lg hover:bg-emerald-700 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Send size={16} />
+                    )}
+                    {withdrawableTokens <= 0
+                      ? t('withdrawalsScreen.submitNoBalance', { defaultValue: 'Chưa có GigCoin có thể rút' })
+                      : t('withdrawalsScreen.submitBtn', { defaultValue: 'Tạo Yêu Cầu Rút Tiền' })}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 3: WITHDRAWAL HISTORY */}
+            <section className="space-y-4 pt-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div>
+                  <h3 className="text-sm font-black text-text-primary uppercase tracking-wider">{t('withdrawalsScreen.historyTitle', { defaultValue: 'Lịch Sử Rút Tiền' })}</h3>
+                  <p className="text-xs text-text-muted font-medium mt-0.5">{t('withdrawalsScreen.historySubtitle', { defaultValue: 'Tự động chi tiền 24/7 qua cổng PayOS.' })}</p>
+                </div>
+                <span className="rounded-full bg-surface-muted border border-border px-3 py-1 text-xs font-bold text-text-muted">
+                  {t('withdrawalsScreen.historyCount', { count: withdrawals.length, defaultValue: `${withdrawals.length} giao dịch` })}
+                </span>
+              </div>
+
+              <div className="space-y-3">
                 {withdrawals.map(withdrawal => {
-                  const status = getStatusMeta(withdrawal.status);
+                  const status = getStatusMeta(withdrawal.status, t);
 
                   return (
-                    <article key={withdrawal.withdrawalId} className="early-payout-history-item">
-                      <div>
-                        <span className={`early-payout-status ${status.className}`}>{status.label}</span>
-                        <strong><GigCoinAmount amount={withdrawal.tokenAmount} /></strong>
-                        <small>{formatVnd(withdrawal.netVndAmount)}</small>
+                    <div
+                      key={withdrawal.withdrawalId}
+                      className="rounded-2xl border border-border/80 bg-surface-card p-4.5 transition-all flex flex-wrap items-center justify-between gap-4 shadow-2xs hover:border-brand/40"
+                    >
+                      <div className="space-y-1 min-w-[200px]">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black border ${status.badgeClass}`}>
+                            {status.label}
+                          </span>
+                          <span className="text-[11px] font-bold text-text-muted">Mã: {withdrawal.providerOrderCode || withdrawal.withdrawalId}</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <GigCoinLogo size={16} />
+                          <span className="text-base font-black text-text-primary">
+                            {withdrawal.tokenAmount.toLocaleString('vi-VN')} GigCoin
+                          </span>
+                          <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
+                            ({formatVnd(withdrawal.netVndAmount)})
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <b>{withdrawal.bankName}</b>
-                        <span>{withdrawal.bankAccountName} · {withdrawal.bankAccountNumberMasked}</span>
-                        <span>Mã lệnh: {withdrawal.providerOrderCode || withdrawal.withdrawalId}</span>
+
+                      <div className="text-xs space-y-0.5 text-text-muted font-medium min-w-[180px]">
+                        <div className="font-bold text-text-primary">{withdrawal.bankName}</div>
+                        <div>{withdrawal.bankAccountName} · {withdrawal.bankAccountNumberMasked}</div>
                       </div>
-                      <div>
-                        <span>Tạo lúc {formatDate(withdrawal.createdAt)}</span>
-                        {withdrawal.completedAt && <span>Hoàn tất {formatDate(withdrawal.completedAt)}</span>}
-                        {withdrawal.failureReason && <em>{withdrawal.failureReason}</em>}
+
+                      <div className="text-xs text-right space-y-1 shrink-0">
+                        <div className="text-text-muted font-medium">Tạo: {formatDate(withdrawal.createdAt)}</div>
+                        {withdrawal.completedAt && (
+                          <div className="text-emerald-600 dark:text-emerald-400 font-bold">Hoàn tất: {formatDate(withdrawal.completedAt)}</div>
+                        )}
+                        {withdrawal.failureReason && (
+                          <div className="text-rose-500 font-bold text-[11px]">{withdrawal.failureReason}</div>
+                        )}
                         {!isTerminalStatus(withdrawal.status) && (
                           <button
                             type="button"
                             onClick={() => void handleSyncWithdrawal(withdrawal.withdrawalId)}
                             disabled={syncingId === withdrawal.withdrawalId}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-muted px-3 py-1 text-[11px] font-bold text-text-primary hover:bg-border/60 transition cursor-pointer"
                           >
-                            {syncingId === withdrawal.withdrawalId ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                            Kiểm tra trạng thái
+                            {syncingId === withdrawal.withdrawalId ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                            {t('withdrawalsScreen.checkStatus', { defaultValue: 'Kiểm tra trạng thái' })}
                           </button>
                         )}
                       </div>
-                    </article>
+                    </div>
                   );
                 })}
 
                 {withdrawals.length === 0 && (
-                  <div className="early-payout-empty-history">
-                    <XCircle size={26} />
-                    <span>Chưa có yêu cầu rút tiền.</span>
+                  <div className="rounded-3xl border border-border/80 bg-surface-card p-12 text-center text-xs text-text-muted space-y-2">
+                    <XCircle size={36} className="mx-auto text-text-muted/40" />
+                    <p className="font-bold text-text-primary text-sm">{t('withdrawalsScreen.historyEmpty', { defaultValue: 'Chưa có yêu cầu rút tiền nào.' })}</p>
                   </div>
                 )}
               </div>

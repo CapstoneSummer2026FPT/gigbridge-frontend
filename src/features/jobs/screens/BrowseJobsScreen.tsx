@@ -83,12 +83,11 @@ export default function BrowseJobsScreen() {
     containerRef,
     loading,
     groups: [
-      { selector: '.browse-jobs-header-card', y: 20, duration: 0.4 },
-      { selector: '.browse-category-pill', scale: 0.9, stagger: 0.03, duration: 0.35 },
-      { selector: '.browse-jobs-job-card', y: 25, stagger: 0.05, duration: 0.4, clearProps: 'transform,opacity' },
-      { selector: '.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', x: 20, stagger: 0.08, duration: 0.4, clearProps: 'transform,opacity' },
+      { selector: '.browse-jobs-header-card', y: 20, duration: 0.4, clearProps: 'all' },
+      { selector: '.browse-category-pill', scale: 0.9, stagger: 0.02, duration: 0.3, clearProps: 'all' },
+      { selector: '.browse-jobs-job-card', y: 20, stagger: 0.03, duration: 0.35, clearProps: 'all' },
+      { selector: '.system-ad-card, .freelancer-ranking-card, .promotion-sticky-card', x: 20, stagger: 0.05, duration: 0.35, clearProps: 'all' },
     ],
-    dependencies: [allJobs.length],
   });
 
   useEffect(() => {

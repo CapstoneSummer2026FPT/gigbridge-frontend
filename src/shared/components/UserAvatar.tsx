@@ -288,13 +288,13 @@ export function UserAvatar({
 
   // Fetch avatar, role, and premium status by userId ONLY IF data is missing
   useEffect(() => {
-    if (!userId || (src !== undefined && premium !== undefined && role !== undefined)) {
+    if (!userId || (Boolean(src) && premium !== undefined && role !== undefined)) {
       return;
     }
 
     const cached = avatarProfileCache.get(userId);
     if (cached) {
-      if (cached.avatar && src === undefined) setFetchedSrc(cached.avatar);
+      if (cached.avatar && !src) setFetchedSrc(cached.avatar);
       if (typeof cached.isPremium === 'boolean' && premium === undefined) {
         setFetchedIsPremium(cached.isPremium);
       }
@@ -309,15 +309,16 @@ export function UserAvatar({
       .getUserById(userId)
       .then(res => {
         if (isMounted && res.success && res.data) {
+          const avatarUrl = res.data.avatar || (res.data as any).avatarUrl || null;
           const profileData = {
-            avatar: res.data.avatar,
+            avatar: avatarUrl,
             isPremium: res.data.isPremium,
             role: res.data.role,
           };
           avatarProfileCache.set(userId, profileData);
 
-          if (res.data.avatar && src === undefined) {
-            setFetchedSrc(res.data.avatar);
+          if (avatarUrl && !src) {
+            setFetchedSrc(avatarUrl);
           }
           if (typeof res.data.isPremium === 'boolean' && premium === undefined) {
             setFetchedIsPremium(res.data.isPremium);
