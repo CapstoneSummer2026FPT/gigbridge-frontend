@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw } from 'lucide-react';
+import { Bell, Search, ChevronDown, LogOut, Settings, Menu, CreditCard, TrendingUp, History, Banknote, Crown, RotateCw, User as UserIcon, ChevronRight, MessageSquare } from 'lucide-react';
 import gsap from 'gsap';
 import { TiLocationArrow } from 'react-icons/ti';
 import clsx from 'clsx';
@@ -13,6 +13,9 @@ import { GigCoinAmount, GigCoinLogo } from './GigCoinAmount';
 import { formatGigCoinNumber } from '../utils/gigcoin';
 import { useTranslation } from '../../hooks/useTranslation';
 import { usePremiumStatus } from '../../features/premium/hooks';
+import { UserAvatar } from './UserAvatar';
+import { getProfilePath } from '../hooks/useProfileNavigation';
+import { PremiumStatusBadge } from '../../features/premium/components/PremiumStatusBadge';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -331,22 +334,41 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
         {user && role !== 2 && !premiumStatus.loading && (
           <button
             type="button"
-            className="become-premium-button"
+            className={premiumStatus.isPremium ? 'top-nav-premium-active' : 'top-nav-get-premium'}
             onClick={() => {
               if (premiumStatusUnavailable) {
                 void premiumStatus.refresh();
                 return;
               }
-              navigate(role === 0
-                ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
-                : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing');
+              navigate(
+                role === 0
+                  ? premiumStatus.isPremium ? '/premium/client' : '/premium/client/pricing'
+                  : premiumStatus.isPremium ? '/premium/freelancer' : '/premium/freelancer/pricing'
+              );
             }}
           >
-            {premiumStatusUnavailable ? <RotateCw size={15} /> : <Crown size={15} />}
-            <span className="hidden sm:inline">
-              {premiumStatusUnavailable ? 'Retry Premium status' : premiumStatus.isPremium ? 'Premium active' : 'Become Premium'}
-            </span>
-            <span className="sm:hidden">{premiumStatusUnavailable ? 'Retry' : 'Premium'}</span>
+            {premiumStatusUnavailable ? (
+              <>
+                <RotateCw size={15} />
+                <span className="hidden sm:inline">Retry Status</span>
+                <span className="sm:hidden">Retry</span>
+              </>
+            ) : premiumStatus.isPremium ? (
+              <>
+                {/* Crown Badge on the top-right corner edge of the border, matching UserAvatar */}
+                <span className="top-nav-crown-badge-corner" aria-hidden="true">
+                  <Crown size={10} strokeWidth={2.5} className="fill-[var(--brand,#494be7)] text-[var(--brand,#494be7)]" />
+                </span>
+                <span className="hidden sm:inline">Premium Member</span>
+                <span className="sm:hidden">Premium</span>
+              </>
+            ) : (
+              <>
+                <Crown size={15} />
+                <span className="hidden sm:inline">Get Premium Now</span>
+                <span className="sm:hidden">Get PRO</span>
+              </>
+            )}
           </button>
         )}
         {/* Wallet Balance Dropdown */}
@@ -465,6 +487,18 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
           </div>
         ) : null}
 
+        {/* Messages Icon (Positioned immediately to the right of Notifications Bell) */}
+        {user ? (
+          <button
+            onClick={() => { setShowNotifs(false); setShowUserMenu(false); setShowWalletMenu(false); navigate('/messages'); }}
+            className="p-2 rounded-lg transition-all relative glass-button"
+            title={t('nav.messages', { defaultValue: 'Messages' })}
+            aria-label={t('nav.messages', { defaultValue: 'Messages' })}
+          >
+            <MessageSquare size={16} className="text-muted" />
+          </button>
+        ) : null}
+
 
 
         {/* User Menu / Auth Buttons */}
@@ -474,24 +508,73 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
               onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifs(false); setShowWalletMenu(false); }}
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl transition-all glass-button"
             >
-              <div className={`w-7 h-7 rounded-full avatar-glow flex items-center justify-center text-xs font-bold avatar-gradient ${premiumStatus.isPremium ? 'premium-avatar-ring' : ''}`} aria-label={premiumStatus.isPremium ? 'Premium account' : undefined}>
-                {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                {premiumStatus.isPremium && <Crown size={11} className="premium-avatar-crown" />}
-              </div>
+              <UserAvatar
+                name={user.full_name || `${user.first_name} ${user.last_name}`}
+                src={user.avatar}
+                userId={user.id}
+                premium={premiumStatus.isPremium}
+                size="sm"
+              />
               <span className={`text-primary text-sm font-medium hidden md:block ${premiumStatus.isPremium ? 'premium-user-name' : ''}`}>{user.first_name}</span>
               <ChevronDown size={14} className="text-muted" />
             </button>
 
             {showUserMenu && (
-              <div className="absolute right-0 top-12 w-56 rounded-2xl p-2 z-50 dropdown-menu">
-                <div className="px-3 py-2 mb-1">
-                  <p className="text-primary text-sm font-semibold">{user.full_name}</p>
-                  <p className="text-xs text-secondary">{user.email}</p>
+              <div className="absolute right-0 top-12 w-64 rounded-2xl p-2.5 z-50 dropdown-menu shadow-2xl border border-white/10">
+                {/* User Profile Info Card */}
+                <div
+                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer flex items-center gap-3 mb-2 border border-white/10 group"
+                  onClick={() => {
+                    const path = getProfilePath(user.id, role);
+                    if (path) navigate(path);
+                    setShowUserMenu(false);
+                  }}
+                >
+                  <UserAvatar
+                    name={user.full_name || `${user.first_name} ${user.last_name}`}
+                    src={user.avatar}
+                    userId={user.id}
+                    premium={premiumStatus.isPremium}
+                    size="md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-primary text-sm font-semibold truncate group-hover:text-cyan transition-colors">
+                      {user.full_name || `${user.first_name} ${user.last_name}`}
+                    </p>
+                    <p className="text-[11px] text-secondary truncate">{user.email}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-muted uppercase tracking-wider">
+                        {role === 0 ? t('projects.client') : role === 1 ? t('projects.freelancer') : t('nav.admin')}
+                      </span>
+                      {(role === 0 || role === 1) && !premiumStatus.loading && !premiumStatusUnavailable && (
+                        <PremiumStatusBadge active={premiumStatus.isPremium} compact />
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className="text-muted group-hover:translate-x-0.5 group-hover:text-cyan transition-all flex-shrink-0" />
                 </div>
+
                 <div className="h-px mb-1 dropdown-divider" />
 
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
-                  onClick={() => { navigate('/settings'); setShowUserMenu(false); }}>
+                {/* Profile Link Button */}
+                {(role === 0 || role === 1) && (
+                  <button
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                    onClick={() => {
+                      const path = getProfilePath(user.id, role);
+                      if (path) navigate(path);
+                      setShowUserMenu(false);
+                    }}
+                  >
+                    <UserIcon size={14} />
+                    <span>{t('nav.profile', { defaultValue: 'My Profile' })}</span>
+                  </button>
+                )}
+
+                <button
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-white/5 text-secondary"
+                  onClick={() => { navigate('/settings'); setShowUserMenu(false); }}
+                >
                   <Settings size={14} />
                   {t('nav.settings')}
                 </button>
@@ -507,10 +590,10 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
 
                 <div className="h-px my-1 dropdown-divider" />
 
-
-
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 logout-button"
-                  onClick={() => { logout('/'); setShowUserMenu(false); }}>
+                <button
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all hover:bg-red-500/10 logout-button"
+                  onClick={() => { logout('/'); setShowUserMenu(false); }}
+                >
                   <LogOut size={14} />
                   {t('auth.signOut')}
                 </button>

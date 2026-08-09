@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import * as signalR from '@microsoft/signalr';
+import { toast } from 'sonner';
 import { useApp } from '../../../app/providers/AppProvider';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { contractPostAPI } from '../../../api/contractAPI/POST';
@@ -101,8 +102,7 @@ const getPartnerName = (contract: ContractDto, isClient: boolean): string =>
     ? contract.freelancerName || contract.freelancerEmail || 'Freelancer'
     : contract.clientName || contract.clientEmail || 'Client';
 
-const getAvatarUrl = (name: string): string =>
-  `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+const getAvatarUrl = (_name: string): string => '';
 
 const mapMilestoneStatus = (status: MilestoneStatus): WorkspaceMilestone['status'] => {
   switch (status) {
@@ -337,6 +337,28 @@ export function useProjectWorkspace(initialContractId: string) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [projectMessages]);
 
+  const lastReloadTimeRef = useRef(0);
+
+  const debouncedReloadActiveWorkspace = useCallback(async (): Promise<void> => {
+    const now = Date.now();
+    if (now - lastReloadTimeRef.current < 300) return;
+    lastReloadTimeRef.current = now;
+    await reloadActiveWorkspace();
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalWorkspaceUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ contractId?: string }>;
+      if (customEvent.detail?.contractId && customEvent.detail.contractId !== activeProjectIdRef.current) return;
+      void debouncedReloadActiveWorkspace();
+    };
+
+    window.addEventListener('gigbridge-workspace-updated', handleGlobalWorkspaceUpdated);
+    return () => {
+      window.removeEventListener('gigbridge-workspace-updated', handleGlobalWorkspaceUpdated);
+    };
+  }, [debouncedReloadActiveWorkspace]);
+
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -387,12 +409,17 @@ export function useProjectWorkspace(initialContractId: string) {
         nextMessages[existingIndex] = mappedMessage;
         return nextMessages;
       });
+
+      // Synchronize workspace data when receiving system/event messages or messages from another user
+      if ((mappedMessage.messageType !== undefined && mappedMessage.messageType >= 3) || (user?.id && mappedMessage.senderId !== user.id)) {
+        void debouncedReloadActiveWorkspace();
+      }
     };
 
     const handleContractCompleted = (payload: Record<string, unknown>): void => {
       const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
       if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
-      void reloadActiveWorkspace().then(() => {
+      void debouncedReloadActiveWorkspace().then(() => {
         setReviewPromptContractId(eventContractId || activeProjectIdRef.current);
       }).finally(() => {
         window.dispatchEvent(new Event('gigbridge-wallet-updated'));
@@ -402,14 +429,39 @@ export function useProjectWorkspace(initialContractId: string) {
     const handleFinalPayoutClaimed = (payload: Record<string, unknown>): void => {
       const eventContractId = String(payload.contractId ?? payload.ContractId ?? '');
       if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
-      void reloadActiveWorkspace().finally(() => {
+      void debouncedReloadActiveWorkspace().finally(() => {
         window.dispatchEvent(new Event('gigbridge-wallet-updated'));
       });
     };
 
+    const handleRealtimeWorkspaceEvent = (payload?: Record<string, unknown>): void => {
+      const eventContractId = payload ? String(payload.contractId ?? payload.ContractId ?? payload.contractsId ?? '') : '';
+      if (eventContractId && eventContractId !== activeProjectIdRef.current) return;
+      void debouncedReloadActiveWorkspace();
+    };
+
+    const workspaceEvents = [
+      'WorkspaceUpdated',
+      'MilestoneUpdated',
+      'MilestoneStatusChanged',
+      'MilestoneEdited',
+      'ContractUpdated',
+      'ContractProgressUpdated',
+      'WorkItemUpdated',
+      'WorkItemStatusChanged',
+      'DeliverableSubmitted',
+      'EarlyStartRequested',
+      'EarlyStartResponded',
+      'ProductHandoffSubmitted',
+    ];
+
     connection.on('ReceiveMessage', handleReceiveMessage);
     connection.on('ContractCompleted', handleContractCompleted);
     connection.on('FinalPayoutClaimed', handleFinalPayoutClaimed);
+    workspaceEvents.forEach(evt => {
+      connection.on(evt, handleRealtimeWorkspaceEvent);
+    });
+
     connection.onreconnected(() => {
       if (!disposed) void joinCurrentConversation();
     });
@@ -435,10 +487,13 @@ export function useProjectWorkspace(initialContractId: string) {
       connection.off('ReceiveMessage', handleReceiveMessage);
       connection.off('ContractCompleted', handleContractCompleted);
       connection.off('FinalPayoutClaimed', handleFinalPayoutClaimed);
+      workspaceEvents.forEach(evt => {
+        connection.off(evt, handleRealtimeWorkspaceEvent);
+      });
       if (chatConnectionRef.current === connection) chatConnectionRef.current = null;
       void connection.stop();
     };
-  }, []);
+  }, [user?.id, debouncedReloadActiveWorkspace]);
 
   useEffect(() => {
     const previousConversationId = conversationIdRef.current;
@@ -552,7 +607,7 @@ export function useProjectWorkspace(initialContractId: string) {
   };
 
   const handleSimulateAttachment = (): void => {
-    alert('File attachments are not available in this workspace yet.');
+    toast.info('File attachments are not available in this workspace yet.');
   };
 
   const handleOpenMilestoneEditor = (): void => {

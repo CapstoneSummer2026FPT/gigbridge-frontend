@@ -1,23 +1,21 @@
-import { FileCheck, FileText } from 'lucide-react';
+import { FileWarning, Flag } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import '../../../shared/components/styles/contract-area-tabs.css';
 
-export function ContractAreaTabs(): JSX.Element {
+export function ReportAreaTabs(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isAdmin = location.pathname.startsWith('/admin');
-
   const tabs = [
     {
-      label: 'Contracts',
-      path: isAdmin ? '/admin/contracts' : '/contracts',
-      icon: <FileText size={16} />,
+      label: 'General Reports',
+      path: '/admin/reports',
+      icon: <Flag size={16} />,
     },
     {
-      label: 'E-sign Contracts',
-      path: isAdmin ? '/admin/contracts/esign' : '/contracts/esign',
-      icon: <FileCheck size={16} />,
+      label: 'Contract Reports',
+      path: '/admin/reports/contracts',
+      icon: <FileWarning size={16} />,
     },
   ];
 
@@ -26,9 +24,10 @@ export function ContractAreaTabs(): JSX.Element {
   };
 
   return (
-    <div className="contract-area-tabs" role="tablist" aria-label="Contract area">
+    <div className="contract-area-tabs" role="tablist" aria-label="Reports area">
       {tabs.map((tab) => {
-        const isActive = location.pathname === tab.path;
+        // Match exact or parent path for active state
+        const isActive = location.pathname === tab.path || (tab.path === '/admin/reports' && location.pathname.startsWith('/admin/reports/accounts'));
 
         return (
           <button

@@ -25,8 +25,16 @@ export function AppLayout({
   hideTopNav = false,
   mainClassName = '',
 }: AppLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    try {
+      return localStorage.getItem('sidebar_pinned') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => isSidebarPinned);
+
   // Safely get app context - might throw if not within provider
   let user = null;
   try {
@@ -39,11 +47,29 @@ export function AppLayout({
   
   const hasSidebar = !hideTopNav && showSidebar && !!user;
 
+  const togglePin = () => {
+    const nextPinned = !isSidebarPinned;
+    setIsSidebarPinned(nextPinned);
+    try {
+      localStorage.setItem('sidebar_pinned', String(nextPinned));
+    } catch {
+      /* ignore */
+    }
+    if (nextPinned) {
+      setIsSidebarOpen(true);
+    }
+  };
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   const closeSidebar = () => {
+    if (isSidebarPinned) return;
+    setIsSidebarOpen(false);
+  };
+
+  const forceCloseSidebar = () => {
     setIsSidebarOpen(false);
   };
 
@@ -56,9 +82,14 @@ export function AppLayout({
       <div className={`app-layout-content ${hideTopNav ? 'no-top-nav' : ''}`}>
         {hasSidebar && (
           <>
-            <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-            {/* Overlay for mobile */}
-            {isSidebarOpen && (
+            <Sidebar
+              isOpen={isSidebarOpen || isSidebarPinned}
+              onClose={isSidebarPinned ? undefined : forceCloseSidebar}
+              isPinned={isSidebarPinned}
+              onTogglePin={togglePin}
+            />
+            {/* Overlay for mobile (only active when unpinned) */}
+            {isSidebarOpen && !isSidebarPinned && (
               <div 
                 className="sidebar-overlay" 
                 onClick={closeSidebar}
@@ -69,7 +100,7 @@ export function AppLayout({
         )}
 
         <main
-          className={`app-layout-main ${hideTopNav ? 'no-top-nav' : ''} ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
+          className={`app-layout-main ${hideTopNav ? 'no-top-nav' : ''} ${hasSidebar ? 'with-sidebar' : ''} ${isSidebarOpen || isSidebarPinned ? 'sidebar-open' : ''} ${fullWidth ? 'full-width' : ''} ${mainClassName}`}
         >
           {excludeMeshGradient ? (
             children

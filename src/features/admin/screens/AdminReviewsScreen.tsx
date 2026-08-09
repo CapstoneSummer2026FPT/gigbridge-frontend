@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, Flag, Search, ShieldCheck, Star, X } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { reviewGetAPI } from '../../../api/reviewAPI/GET';
@@ -6,6 +6,8 @@ import { reviewPutAPI } from '../../../api/reviewAPI/PUT';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
+import { AdminTablePageSize, AdminTablePagination } from '../components/AdminTableControls';
+import { AdminPageCache, adminPageCacheKey } from '../utils/AdminPageCache';
 import {
   ReviewModerationStatus,
   type AdminReviewSummary,
@@ -15,6 +17,7 @@ import { UserRole } from '../../../types/models/User';
 import '../styles/admin-reviews-screen.css';
 
 const EMPTY_SUMMARY: AdminReviewSummary = { total: 0, active: 0, hidden: 0, withOpenReports: 0 };
+type ReviewPageData = NonNullable<Awaited<ReturnType<typeof reviewGetAPI.getAdminReviews>>['data']>;
 
 export default function AdminReviewsScreen() {
   const { t, i18n } = useTranslation();
@@ -22,7 +25,9 @@ export default function AdminReviewsScreen() {
   const [items, setItems] = useState<ManagedReview[]>([]);
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [rating, setRating] = useState<number | ''>('');
@@ -36,13 +41,16 @@ export default function AdminReviewsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const pageCache = useRef(new AdminPageCache<ReviewPageData>()).current;
+  const latestRequest = useRef(0);
 
-  const loadReviews = useCallback(async () => {
-    setLoading(true);
+  const loadReviews = useCallback(async (force = false) => {
+    const requestId = ++latestRequest.current;
     setError('');
-    const response = await reviewGetAPI.getAdminReviews({
-      page,
-      pageSize: 15,
+
+    const paramsForPage = (targetPage: number) => ({
+      page: targetPage,
+      pageSize,
       ...(search ? { search } : {}),
       ...(rating !== '' ? { rating } : {}),
       ...(reviewerRole !== '' ? { reviewerRole } : {}),
@@ -50,16 +58,41 @@ export default function AdminReviewsScreen() {
       ...(status !== '' ? { moderationStatus: status } : {}),
       ...(hasOpenReport !== '' ? { hasOpenReport } : {}),
     });
-    if (response.success && response.data) {
-      setItems(response.data.items);
-      setSummary(response.data.summary);
-      setTotalPages(response.data.totalPages);
-    } else {
+    const keyForPage = (targetPage: number) => adminPageCacheKey('reviews', paramsForPage(targetPage));
+    const requestPage = async (targetPage: number): Promise<ReviewPageData> => {
+      const response = await reviewGetAPI.getAdminReviews(paramsForPage(targetPage));
+      if (!response.success || !response.data) throw new Error(response.message || t('adminReviews.loadError'));
+      return response.data;
+    };
+    const cached = force ? undefined : pageCache.get(keyForPage(page));
+    setLoading(!cached);
+
+    const applyPage = (data: ReviewPageData) => {
+      setItems(data.items);
+      setSummary(data.summary);
+      setTotalPages(data.totalPages);
+      setTotalItems(data.totalItems);
+    };
+
+    if (cached) applyPage(cached);
+
+    try {
+      const data = await pageCache.load(keyForPage(page), () => requestPage(page), force);
+      if (requestId !== latestRequest.current) return;
+      applyPage(data);
+      [page - 1, page + 1]
+        .filter(target => target >= 1 && target <= data.totalPages)
+        .forEach(target => pageCache.prefetch(keyForPage(target), () => requestPage(target)));
+    } catch (loadError) {
+      if (requestId !== latestRequest.current || cached) return;
       setItems([]);
-      setError(response.message || t('adminReviews.loadError'));
+      setTotalItems(0);
+      setTotalPages(0);
+      setError(loadError instanceof Error ? loadError.message : t('adminReviews.loadError'));
+    } finally {
+      if (requestId === latestRequest.current) setLoading(false);
     }
-    setLoading(false);
-  }, [hasOpenReport, page, rating, revieweeRole, reviewerRole, search, status, t]);
+  }, [hasOpenReport, page, pageCache, pageSize, rating, revieweeRole, reviewerRole, search, status, t]);
 
   useEffect(() => { void loadReviews(); }, [loadReviews]);
 
@@ -80,7 +113,8 @@ export default function AdminReviewsScreen() {
       return;
     }
     setModerating(null);
-    await loadReviews();
+    pageCache.clear();
+    await loadReviews(true);
   };
 
   const roleLabel = (role: number) => role === UserRole.Freelancer ? t('adminReviews.freelancer') : t('adminReviews.client');
@@ -107,17 +141,20 @@ export default function AdminReviewsScreen() {
         </section>
 
         {error && <div className="admin-review-error">{error}</div>}
+        <div className="mb-3 flex justify-end">
+          <AdminTablePageSize pageSize={pageSize} totalEntries={totalItems} disabled={loading} onPageSizeChange={value => { setPageSize(value); setPage(1); }} />
+        </div>
         <section className="admin-review-table-wrap">
           <table className="admin-review-table">
-            <thead><tr><th>{t('adminReviews.project')}</th><th>{t('adminReviews.reviewer')}</th><th>{t('adminReviews.reviewee')}</th><th>{t('adminReviews.rating')}</th><th>{t('adminReviews.status')}</th><th>{t('adminReviews.reports')}</th><th>{t('adminReviews.date')}</th><th /></tr></thead>
+            <thead><tr><th>No.</th><th>{t('adminReviews.project')}</th><th>{t('adminReviews.reviewer')}</th><th>{t('adminReviews.reviewee')}</th><th>{t('adminReviews.rating')}</th><th>{t('adminReviews.status')}</th><th>{t('adminReviews.reports')}</th><th>{t('adminReviews.date')}</th><th /></tr></thead>
             <tbody>
-              {!loading && items.length === 0 && <tr><td colSpan={8} className="admin-review-empty">{t('adminReviews.empty')}</td></tr>}
-              {loading && <tr><td colSpan={8} className="admin-review-empty">{t('adminReviews.loading')}</td></tr>}
-              {items.map(review => <tr key={review.reviewId}><td><strong>{review.projectTitle}</strong></td><td><UserProfileLink userId={review.reviewerId} role={review.reviewerRole}>{review.reviewerName}</UserProfileLink><small>{roleLabel(review.reviewerRole)}</small></td><td><UserProfileLink userId={review.revieweeId} role={review.revieweeRole}>{review.revieweeName}</UserProfileLink><small>{roleLabel(review.revieweeRole)}</small></td><td><span className="admin-review-stars"><Star size={14} fill="currentColor" />{review.rating}</span></td><td><span className={`admin-review-status ${review.moderationStatus === ReviewModerationStatus.Hidden ? 'hidden' : 'active'}`}>{statusLabel(review.moderationStatus)}</span></td><td>{review.openReportCount > 0 ? <button className="admin-review-report-link" onClick={() => navigate(`/admin/reports?reportedEntityType=Review&reportedEntityId=${review.reviewId}`)}><Flag size={14} />{review.openReportCount}</button> : '0'}</td><td>{new Date(review.createdAt).toLocaleDateString(i18n.language)}</td><td><button className="admin-review-view" onClick={() => setSelected(review)}><Eye size={16} />{t('adminReviews.view')}</button></td></tr>)}
+              {!loading && items.length === 0 && <tr><td colSpan={9} className="admin-review-empty">{t('adminReviews.empty')}</td></tr>}
+              {loading && <tr><td colSpan={9} className="admin-review-empty">{t('adminReviews.loading')}</td></tr>}
+              {items.map((review, index) => <tr key={review.reviewId}><td><strong className="text-cyan">{((page - 1) * pageSize) + index + 1}</strong></td><td><strong>{review.projectTitle}</strong></td><td><UserProfileLink userId={review.reviewerId} role={review.reviewerRole}>{review.reviewerName}</UserProfileLink><small>{roleLabel(review.reviewerRole)}</small></td><td><UserProfileLink userId={review.revieweeId} role={review.revieweeRole}>{review.revieweeName}</UserProfileLink><small>{roleLabel(review.revieweeRole)}</small></td><td><span className="admin-review-stars"><Star size={14} fill="currentColor" />{review.rating}</span></td><td><span className={`admin-review-status ${review.moderationStatus === ReviewModerationStatus.Hidden ? 'hidden' : 'active'}`}>{statusLabel(review.moderationStatus)}</span></td><td>{review.openReportCount > 0 ? <button className="admin-review-report-link" onClick={() => navigate(`/admin/reports?reportedEntityType=Review&reportedEntityId=${review.reviewId}`)}><Flag size={14} />{review.openReportCount}</button> : '0'}</td><td>{new Date(review.createdAt).toLocaleDateString(i18n.language)}</td><td><button className="admin-review-view" onClick={() => setSelected(review)}><Eye size={16} />{t('adminReviews.view')}</button></td></tr>)}
             </tbody>
           </table>
         </section>
-        {totalPages > 1 && <div className="review-pagination"><button disabled={page <= 1} onClick={() => setPage(value => value - 1)}>{t('reviewManagement.previous')}</button><span>{page} / {totalPages}</span><button disabled={page >= totalPages} onClick={() => setPage(value => value + 1)}>{t('reviewManagement.next')}</button></div>}
+        {totalPages > 1 && <AdminTablePagination currentPage={page} totalPages={totalPages} disabled={loading} onPageChange={setPage} ariaLabel="Review pagination" />}
       </div>
 
       {selected && <div className="admin-review-drawer-overlay" onMouseDown={() => setSelected(null)}><aside className="admin-review-drawer" onMouseDown={event => event.stopPropagation()}><button className="admin-review-drawer-close" onClick={() => setSelected(null)}><X size={19} /></button><span className="admin-review-drawer-kicker">{t('adminReviews.detail')}</span><h2>{selected.projectTitle}</h2><div className="admin-review-detail-grid"><div><small>{t('adminReviews.reviewer')}</small><strong><UserProfileLink userId={selected.reviewerId} role={selected.reviewerRole}>{selected.reviewerName}</UserProfileLink></strong><span>{roleLabel(selected.reviewerRole)}</span></div><div><small>{t('adminReviews.reviewee')}</small><strong><UserProfileLink userId={selected.revieweeId} role={selected.revieweeRole}>{selected.revieweeName}</UserProfileLink></strong><span>{roleLabel(selected.revieweeRole)}</span></div></div><div className="admin-review-detail-score"><Star size={22} fill="currentColor" /><strong>{selected.rating.toFixed(1)}</strong></div><div className="admin-review-criteria"><p><span>{t('reviews.communication')}</span><strong>{selected.communicationRating ?? '—'}</strong></p><p><span>{t(selected.revieweeRole === UserRole.Freelancer ? 'reviews.workQuality' : 'reviews.requirementClarity')}</span><strong>{selected.qualityRating ?? '—'}</strong></p><p><span>{t(selected.revieweeRole === UserRole.Freelancer ? 'reviews.onTimeDelivery' : 'reviews.approvalPaymentTimeliness')}</span><strong>{selected.timelinessRating ?? '—'}</strong></p></div><div className="admin-review-comment"><small>{t('adminReviews.comment')}</small><p>{selected.comment || t('reviewManagement.noComment')}</p></div><div className="admin-review-drawer-meta"><span>{statusLabel(selected.moderationStatus)}</span><span>{t('adminReviews.reportCount', { count: selected.totalReportCount })}</span><span>{selected.isAnonymous ? t('adminReviews.legacyAnonymous') : t('adminReviews.identified')}</span></div>{selected.totalReportCount > 0 && <button className="admin-review-secondary" onClick={() => navigate(`/admin/reports?reportedEntityType=Review&reportedEntityId=${selected.reviewId}`)}><Flag size={16} />{t('adminReviews.openRelatedReports')}</button>}<button className={selected.moderationStatus === ReviewModerationStatus.Active ? 'admin-review-danger' : 'admin-review-restore'} onClick={() => beginModeration(selected)}>{selected.moderationStatus === ReviewModerationStatus.Active ? <EyeOff size={17} /> : <ShieldCheck size={17} />}{selected.moderationStatus === ReviewModerationStatus.Active ? t('adminReviews.hideAction') : t('adminReviews.restoreAction')}</button></aside></div>}
