@@ -420,6 +420,12 @@ export default function AdminDisputeManagementScreen() {
                         </button>
                       </>
                     )}
+
+                    {selectedDispute.status === DisputeStatus.Resolved && (
+                      <button onClick={() => void updateStatus(DisputeStatus.Closed)} className="btn-secondary">
+                        <CheckCircle size={16} /> {t('admin.disputes.actions.closeCase', 'Close Case')}
+                      </button>
+                    )}
                   </div>
                 </div>
 
