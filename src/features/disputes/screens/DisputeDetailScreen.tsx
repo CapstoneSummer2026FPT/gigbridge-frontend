@@ -22,13 +22,10 @@ import { useApp } from '../../../app/providers/AppProvider';
 import '../styles/dispute-detail-screen.css';
 
 const statusLabels: Record<DisputeStatus, string> = {
-  [DisputeStatus.Open]: 'Waiting Admin',
   [DisputeStatus.WaitingAdmin]: 'Waiting Admin',
-  [DisputeStatus.UnderReview]: 'In Progress',
-  [DisputeStatus.WaitingEvidence]: 'In Progress',
-  [DisputeStatus.DecisionPending]: 'In Progress',
-  [DisputeStatus.Resolved]: 'Resolved',
-  [DisputeStatus.Closed]: 'Closed',
+  [DisputeStatus.InProgress]:   'In Progress',
+  [DisputeStatus.Resolved]:     'Resolved',
+  [DisputeStatus.Closed]:       'Closed',
 };
 
 const resolutionLabels: Record<DisputeResolution, string> = {
@@ -152,13 +149,10 @@ export default function DisputeDetailScreen() {
 
   const getStatusStepIndex = (status: DisputeStatus) => {
     switch (status) {
-      case DisputeStatus.Open: return 0;
-      case DisputeStatus.WaitingAdmin: return 1;
-      case DisputeStatus.UnderReview: return 2;
-      case DisputeStatus.WaitingEvidence: return 2;
-      case DisputeStatus.DecisionPending: return 3;
-      case DisputeStatus.Resolved: return 4;
-      case DisputeStatus.Closed: return 4;
+      case DisputeStatus.WaitingAdmin: return 0;
+      case DisputeStatus.InProgress:   return 1;
+      case DisputeStatus.Resolved:     return 2;
+      case DisputeStatus.Closed:       return 3;
       default: return 0;
     }
   };
@@ -214,10 +208,9 @@ export default function DisputeDetailScreen() {
             <section className="dispute-progress-stepper">
               {[
                 { label: 'Dispute Filed', step: 0 },
-                { label: 'Waiting Admin', step: 1 },
-                { label: 'Under Review', step: 2 },
-                { label: 'Verdict Pending', step: 3 },
-                { label: 'Resolved & Closed', step: 4 },
+                { label: 'In Progress', step: 1 },
+                { label: 'Resolved', step: 2 },
+                { label: 'Closed', step: 3 },
               ].map((item) => {
                 const currentStep = getStatusStepIndex(dispute.status);
                 const isCompleted = currentStep > item.step || dispute.status === DisputeStatus.Resolved || dispute.status === DisputeStatus.Closed;
@@ -369,7 +362,7 @@ export default function DisputeDetailScreen() {
                   <DisputeEvidenceUploader
                     contractId={contractId}
                     disputeId={disputeId}
-                    disabled={!([DisputeStatus.Open, DisputeStatus.WaitingAdmin, DisputeStatus.UnderReview, DisputeStatus.WaitingEvidence, DisputeStatus.DecisionPending] as DisputeStatus[]).includes(dispute.status)}
+                    disabled={!([DisputeStatus.WaitingAdmin, DisputeStatus.InProgress] as DisputeStatus[]).includes(dispute.status)}
                     onUploaded={evidence => setDispute(current => current ? { ...current, evidence: [...current.evidence, ...evidence] } : current)}
                   />
 

@@ -1224,7 +1224,7 @@ export default function ProjectWorkspaceScreen() {
                       {!isClient && isInProgress && !allWorkItemsCompleted && <p className="mt-3 text-[11px] font-semibold text-amber-600">Complete every work item before submitting this milestone.</p>}
                       {!isWorkspaceLocked && isClient && earlyStartRequest && (
                         <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
-                          <strong>Early start requested</strong>
+                          <strong>{t('workspace.earlyStartRequested', 'Early start requested')}</strong>
                           <p className="mt-1 text-muted-foreground">{earlyStartRequest.reason}</p>
                           <div className="mt-2 flex gap-2">
                             <button
@@ -1234,36 +1234,36 @@ export default function ProjectWorkspaceScreen() {
                                 setMilestoneActionPendingId(milestone.id);
                                 const result = await handleRespondEarlyStart(earlyStartRequest.requestId, true);
                                 if (!result.success) {
-                                  setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not approve request.' });
-                                  toast.error(result.message || 'Could not approve request.');
+                                  setMilestoneActionError({ milestoneId: milestone.id, message: result.message || t('workspace.approveFailed', 'Could not approve request.') });
+                                  toast.error(result.message || t('workspace.approveFailed', 'Could not approve request.'));
                                 } else {
-                                  toast.success('Early start request approved.');
+                                  toast.success(t('workspace.earlyStartApproved', 'Early start request approved.'));
                                 }
                                 setMilestoneActionPendingId(null);
                               }}
                               className="rounded bg-emerald-600 px-3 py-1.5 font-bold text-white cursor-pointer hover:bg-emerald-700 transition-colors"
                             >
-                              Approve
+                              {t('common.approve', 'Approve')}
                             </button>
                             <button
                               type="button"
                               disabled={isMilestoneActionPending}
                               onClick={() => {
                                 openPromptModal({
-                                  title: 'Reject Early Start Request',
-                                  description: 'Provide an optional rejection note for the freelancer.',
-                                  placeholder: 'Enter rejection note (optional)...',
+                                  title: t('workspace.rejectEarlyStartTitle', 'Reject Early Start Request'),
+                                  description: t('workspace.rejectEarlyStartDesc', 'Provide an optional rejection note for the freelancer.'),
+                                  placeholder: t('workspace.rejectEarlyStartPlaceholder', 'Enter rejection note (optional)...'),
                                   required: false,
-                                  confirmText: 'Reject Request',
+                                  confirmText: t('workspace.rejectRequest', 'Reject Request'),
                                   confirmVariant: 'danger',
                                   onConfirm: async (note) => {
                                     setMilestoneActionPendingId(milestone.id);
                                     const result = await handleRespondEarlyStart(earlyStartRequest.requestId, false, note || undefined);
                                     if (!result.success) {
-                                      setMilestoneActionError({ milestoneId: milestone.id, message: result.message || 'Could not reject request.' });
-                                      toast.error(result.message || 'Could not reject request.');
+                                      setMilestoneActionError({ milestoneId: milestone.id, message: result.message || t('workspace.rejectFailed', 'Could not reject request.') });
+                                      toast.error(result.message || t('workspace.rejectFailed', 'Could not reject request.'));
                                     } else {
-                                      toast.success('Early start request rejected.');
+                                      toast.success(t('workspace.earlyStartRejected', 'Early start request rejected.'));
                                     }
                                     setMilestoneActionPendingId(null);
                                   },
@@ -1271,7 +1271,7 @@ export default function ProjectWorkspaceScreen() {
                               }}
                               className="rounded border border-red-500/40 px-3 py-1.5 font-bold text-red-500 cursor-pointer hover:bg-red-500/10 transition-colors"
                             >
-                              Reject
+                              {t('common.reject', 'Reject')}
                             </button>
                           </div>
                         </div>
