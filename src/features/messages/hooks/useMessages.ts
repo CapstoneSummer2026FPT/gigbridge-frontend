@@ -341,6 +341,8 @@ export function useMessages() {
   const [googleMeetStatus, setGoogleMeetStatus] = useState<GoogleMeetConnectionStatus | null>(null);
   const [googleMeetStatusLoading, setGoogleMeetStatusLoading] = useState(false);
   const [googleMeetConnecting, setGoogleMeetConnecting] = useState(false);
+  const [creatingGoogleMeet, setCreatingGoogleMeet] = useState(false);
+  const resumeGoogleMeetCreationRef = useRef<(() => void) | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [anchorNotice, setAnchorNotice] = useState('');
   const negotiationClosedNotice = 'This job post is no longer open for negotiation.';
@@ -430,13 +432,19 @@ export function useMessages() {
   }, [showScheduleModal, scheduleMode, refreshGoogleMeetStatus]);
 
   useEffect(() => {
-    const handleOAuthResult = (event: MessageEvent) => {
+    const handleOAuthResult = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.data?.type !== 'google-meet-oauth') return;
       setGoogleMeetConnecting(false);
       if (event.data.result === 'success') {
-        refreshGoogleMeetStatus();
+        const status = await refreshGoogleMeetStatus();
         setScheduleError('');
+        if (status?.isConnected && resumeGoogleMeetCreationRef.current) {
+          const resumeCreation = resumeGoogleMeetCreationRef.current;
+          resumeGoogleMeetCreationRef.current = null;
+          resumeCreation();
+        }
       } else {
+        resumeGoogleMeetCreationRef.current = null;
         const oauthErrors: Record<string, string> = {
           cancelled: 'Google authorization was cancelled.',
           invalid_state: 'The Google connection request expired. Please try again.',
@@ -1241,6 +1249,66 @@ export function useMessages() {
     }
   };
 
+  const handleCreateGoogleMeetRoom = async () => {
+    if (!activeConvId || creatingGoogleMeet || isActiveWorkspaceDisputed) return;
+
+    const conversationId = activeConvId;
+    setCreatingGoogleMeet(true);
+    setAnchorNotice('Creating a Google Meet room...');
+
+    try {
+      const status = googleMeetStatus?.isConnected
+        ? googleMeetStatus
+        : await refreshGoogleMeetStatus();
+      if (!status?.isConnected) {
+        setAnchorNotice('Connect Google Meet to create and share a room. The room will be created after authorization.');
+        resumeGoogleMeetCreationRef.current = () => void handleCreateGoogleMeetRoom();
+        await connectGoogleMeet();
+        return;
+      }
+
+      const clientMessageId = typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, character => {
+            const random = Math.random() * 16 | 0;
+            return (character === 'x' ? random : (random & 0x3 | 0x8)).toString(16);
+          });
+
+      const response = await googleMeetAPI.createRoomAndSendMessage({
+        conversationId,
+        clientMessageId,
+      });
+      if (!response.success || !response.data) {
+        setAnchorNotice(response.message || 'Unable to create and share the Google Meet room.');
+        if ((response.message || '').toLowerCase().includes('connect')) {
+          await refreshGoogleMeetStatus();
+        }
+        return;
+      }
+
+      const message = { ...mapBackendMessage(response.data), sendStatus: 'sent' as const };
+      setMessagesMap(previous => ({
+        ...previous,
+        [conversationId]: dedupeMessages([...(previous[conversationId] ?? []), message]),
+      }));
+      setConversationsState(previous => sortConversations(previous.map(conversation =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              lastMessage: message.content,
+              lastMessageAt: message.createdAt || new Date().toISOString(),
+            }
+          : conversation
+      )));
+      setAnchorNotice('Google Meet room created and shared in chat.');
+    } catch (error) {
+      console.error('[Messages] failed to create Google Meet room:', error);
+      setAnchorNotice('Unable to create and share the Google Meet room. Please try again.');
+    } finally {
+      setCreatingGoogleMeet(false);
+    }
+  };
+
   const validateDealMilestoneDraft = () => {
     const validation = validateNegotiationMilestones(dealMilestones);
     if (validation.valid) return true;
@@ -1784,6 +1852,7 @@ export function useMessages() {
     scheduleConflict, confirmScheduleRetry, midnightConfirmed, setMidnightConfirmed, scheduleAddGoogleMeet, setScheduleAddGoogleMeet,
     scheduleSendEmail, setScheduleSendEmail,
     googleMeetStatus, googleMeetStatusLoading, googleMeetConnecting, connectGoogleMeet,
+    creatingGoogleMeet, handleCreateGoogleMeetRoom,
     highlightedMessageId, anchorNotice, setAnchorNotice,
     hasOngoingSchedule, checkingOngoingSchedule,
   };

@@ -5,12 +5,12 @@ import type { ESignDocumentDto } from '../../../types/models/ESign';
 import { SignatureStatus } from '../../../types/models/ESign';
 import { sanitizePdfHtml } from '../utils/pdfHtmlSanitizer';
 
-const safeFileName = (document: ESignDocumentDto): string =>
+export const getESignPdfFileName = (document: ESignDocumentDto): string =>
   document.contractId
     ? 'Gigbridge-Client-Freelancer-Contract.pdf'
     : `${(document.documentCode || 'GigBridge-document').replace(/[^a-z0-9._-]+/gi, '-')}.pdf`;
 
-const downloadBlob = (blob: Blob, fileName: string): void => {
+export const downloadESignPdfBlob = (blob: Blob, fileName: string): void => {
   const url = URL.createObjectURL(blob);
   const anchor = window.document.createElement('a');
   anchor.href = url;
@@ -77,7 +77,7 @@ const renderPdf = async (document: ESignDocumentDto): Promise<Blob> => {
     return await html2pdf()
       .set({
         margin: 8,
-        filename: safeFileName(document),
+        filename: getESignPdfFileName(document),
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 1.5, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -90,16 +90,11 @@ const renderPdf = async (document: ESignDocumentDto): Promise<Blob> => {
   }
 };
 
-export async function prepareESignPdf(
-  document: ESignDocumentDto,
-  download: boolean,
-): Promise<void> {
-  const fileName = safeFileName(document);
+export async function getESignPdfBlob(document: ESignDocumentDto): Promise<Blob> {
   if (document.hasPdfArtifact) {
     const cached = await esignGetAPI.downloadDocument(document.documentId);
     if (cached.success && cached.data) {
-      if (download) downloadBlob(cached.data, fileName);
-      return;
+      return cached.data;
     }
     if (cached.statusCode !== 409) {
       throw new Error(cached.message || 'The saved PDF could not be downloaded.');
@@ -112,21 +107,31 @@ export async function prepareESignPdf(
     if (!generated.success) {
       throw new Error(generated.message || 'The contract PDF could not be prepared from the Word template.');
     }
-    if (download) {
-      const prepared = await esignGetAPI.downloadDocument(document.documentId);
-      if (!prepared.success || !prepared.data) {
-        throw new Error(prepared.message || 'The prepared contract PDF could not be downloaded.');
-      }
-      downloadBlob(prepared.data, fileName);
+    const prepared = await esignGetAPI.downloadDocument(document.documentId);
+    if (!prepared.success || !prepared.data) {
+      throw new Error(prepared.message || 'The prepared contract PDF could not be downloaded.');
     }
-    return;
+    return prepared.data;
   }
 
   const pdf = await renderPdf(document);
   const signatureCount = document.signatures.filter(signature => signature.status === SignatureStatus.Signed).length;
-  const saved = await esignPostAPI.saveDocumentPdf(document.documentId, pdf, fileName, signatureCount);
-  if (download) downloadBlob(pdf, fileName);
+  const saved = await esignPostAPI.saveDocumentPdf(
+    document.documentId,
+    pdf,
+    getESignPdfFileName(document),
+    signatureCount,
+  );
   if (!saved.success) throw new Error(saved.message || 'The PDF was created but could not be saved.');
+  return pdf;
+}
+
+export async function prepareESignPdf(
+  document: ESignDocumentDto,
+  download: boolean,
+): Promise<void> {
+  const pdf = await getESignPdfBlob(document);
+  if (download) downloadESignPdfBlob(pdf, getESignPdfFileName(document));
 }
 
 export async function prepareESignPdfById(documentId: string, download = false): Promise<void> {

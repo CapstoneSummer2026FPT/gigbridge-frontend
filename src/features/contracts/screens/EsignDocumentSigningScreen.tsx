@@ -16,7 +16,8 @@ import { SignatureStatus, SignatureType } from '../../../types/models/ESign';
 import '../styles/esign-document-signing-screen.css';
 
 import { useTranslation } from '../../../hooks/useTranslation';
-import { prepareESignPdfById, useESignPdf } from '../hooks/useESignPdf';
+import { prepareESignPdfById } from '../hooks/useESignPdf';
+import { ContractPdfViewer } from '../components/ContractPdfViewer';
 
 type SigningStep = 'review' | 'capture' | 'confirm' | 'complete';
 type CaptureMethod = 'draw' | 'type' | 'initials';
@@ -56,7 +57,6 @@ export default function EsignDocumentSigningScreen() {
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [copySuccess, setCopySuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const pdf = useESignPdf(document);
 
   // System information for audit trail
   const getSystemInfo = () => {
@@ -466,18 +466,10 @@ export default function EsignDocumentSigningScreen() {
                     )}
                   </div>
 
-                  <div className="document-preview">
-                    <button
-                      type="button"
-                      onClick={() => void pdf.download()}
-                      disabled={pdf.isPreparing}
-                      className="btn-view-document"
-                    >
-                      {pdf.isPreparing ? <Loader size={18} className="spinner-icon" /> : <Download size={18} />}
-                      {pdf.isPreparing ? 'Preparing PDF…' : 'Download PDF'}
-                    </button>
-                    {pdf.error && <p className="error-alert">{pdf.error}</p>}
-                  </div>
+                  <ContractPdfViewer
+                    document={document}
+                    title={document.documentCode || contract.title}
+                  />
                 </div>
 
                 <div className="review-instructions">

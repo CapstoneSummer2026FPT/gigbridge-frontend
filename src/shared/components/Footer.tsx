@@ -28,6 +28,7 @@ export function Footer() {
       links: [
         { label: 'FAQ', path: '/faq' },
         { label: 'Contact', path: '/about#contact' },
+        { label: 'Policy Center', path: '/policies' },
         { label: 'Privacy Policy', path: '/privacy' },
         { label: 'Terms of Service', path: '/terms' },
       ]

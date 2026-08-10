@@ -28,6 +28,19 @@
     "tagline": "Nền Tảng Freelance Được Hỗ Trợ Bởi AI"
   },
   "policy": {
+    "legalCenter": "Trung tâm pháp lý",
+    "pageTitle": "Chính sách rõ ràng cho mọi dự án",
+    "pageDescription": "Tìm hiểu quyền, nghĩa vụ và cách GigBridge bảo vệ giao dịch giữa Client và Freelancer.",
+    "documentInfo": "Thông tin tài liệu",
+    "version": "{{version}}",
+    "updatedAt": "Cập nhật {{date}}",
+    "policyViews": "Các trang chính sách",
+    "allPolicies": "Toàn bộ chính sách",
+    "terms": "Điều khoản sử dụng",
+    "privacy": "Quyền riêng tư",
+    "tableOfContents": "Mục lục",
+    "print": "In chính sách",
+    "contact": "Liên hệ hỗ trợ",
     "loading": "Đang tải Bộ chính sách GigBridge...",
     "loadError": "Không thể tải Bộ chính sách GigBridge.",
     "retry": "Thử lại"
