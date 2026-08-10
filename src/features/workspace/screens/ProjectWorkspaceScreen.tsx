@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
-  ArrowLeft, Ban, Send, AlertTriangle, PanelLeftOpen, PanelLeftClose, PanelLeft,
+  ArrowLeft, Ban, Send, AlertTriangle, PanelLeftOpen, PanelLeftClose,
   Paperclip, Smile, CheckCircle, Circle, Download,
   FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
   Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks
