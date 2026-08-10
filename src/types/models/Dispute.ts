@@ -1,11 +1,8 @@
 export enum DisputeStatus {
-  Open = 0,
-  WaitingAdmin = 1,
-  UnderReview = 2,
-  WaitingEvidence = 3,
-  DecisionPending = 4,
-  Resolved = 5,
-  Closed = 6,
+  WaitingAdmin = 0,
+  InProgress   = 1,
+  Resolved     = 2,
+  Closed       = 3,
 }
 
 export enum DisputeResolution {

@@ -33,13 +33,9 @@ export const emptyViolation = (): ViolationState => ({
 export type DisputeStatusGroup = 'all' | 'waiting_admin' | 'in_progress' | 'resolved' | 'closed';
 
 export const getDisputeGroup = (status: DisputeStatus): DisputeStatusGroup => {
-  if (status === DisputeStatus.Open || status === DisputeStatus.WaitingAdmin) return 'waiting_admin';
-  if (
-    status === DisputeStatus.UnderReview ||
-    status === DisputeStatus.WaitingEvidence ||
-    status === DisputeStatus.DecisionPending
-  ) return 'in_progress';
-  if (status === DisputeStatus.Resolved) return 'resolved';
+  if (status === DisputeStatus.WaitingAdmin) return 'waiting_admin';
+  if (status === DisputeStatus.InProgress)   return 'in_progress';
+  if (status === DisputeStatus.Resolved)     return 'resolved';
   return 'closed';
 };
 
@@ -62,13 +58,10 @@ export const STATUS_GROUPS: DisputeStatusGroup[] = [
 export const STATUS_FILTERS = STATUS_GROUPS;
 
 export const statusLabels: Record<DisputeStatus, string> = {
-  [DisputeStatus.Open]: 'Waiting Admin',
   [DisputeStatus.WaitingAdmin]: 'Waiting Admin',
-  [DisputeStatus.UnderReview]: 'In Progress',
-  [DisputeStatus.WaitingEvidence]: 'In Progress',
-  [DisputeStatus.DecisionPending]: 'In Progress',
-  [DisputeStatus.Resolved]: 'Resolved',
-  [DisputeStatus.Closed]: 'Closed',
+  [DisputeStatus.InProgress]:   'In Progress',
+  [DisputeStatus.Resolved]:     'Resolved',
+  [DisputeStatus.Closed]:       'Closed',
 };
 
 export const resolutionLabels: Record<DisputeResolution, string> = {

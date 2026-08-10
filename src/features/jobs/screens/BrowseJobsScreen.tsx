@@ -74,6 +74,9 @@ export default function BrowseJobsScreen() {
   const [page, setPage] = useState(() => Math.max(1, Number(params.get('page')) || 1));
   const [totalResults, setTotalResults] = useState(0);
   const [searchEventId, setSearchEventId] = useState<string | null>(null);
+  const [recommendedMode, setRecommendedMode] = useState(false);
+  const [recommendedJobs, setRecommendedJobs] = useState<BrowseJob[]>([]);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isFreelancer = role === UserRole.Freelancer;
@@ -245,7 +248,7 @@ export default function BrowseJobsScreen() {
   const budgetInvalid = Boolean(budgetMin && budgetMax && Number(budgetMin) > Number(budgetMax));
   const jobs = budgetInvalid ? [] : allJobs;
   const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
-  const pagedJobs = jobs;
+  const pagedJobs = recommendedMode ? recommendedJobs : jobs;
 
   useEffect(() => {
     setParamsRef.current(current => {
@@ -269,6 +272,40 @@ export default function BrowseJobsScreen() {
   const openJob = (job: BrowseJob) => {
     void jobGetAPI.recordJobOpen(job.id, searchEventId);
     navigate(`/jobs/${job.id}`, { state: { job, searchEventId } });
+  };
+
+  const exitRecommendedMode = () => {
+    setRecommendedMode(false);
+    setRecommendedJobs([]);
+  };
+
+  const findMatchingJobs = async () => {
+    if (!user || !isFreelancer) {
+      toast.error(t('jobs.onlyFreelancersCanSave'));
+      return;
+    }
+
+    if (recommendedMode) {
+      exitRecommendedMode();
+      return;
+    }
+
+    setRecommendedMode(true);
+    setRecommendedLoading(true);
+    try {
+      const jobs = await jobGetAPI.getRecommendedJobs(20);
+      setRecommendedJobs(jobs.map(job => ({
+        ...job,
+        datePosted: job.createdAt || '',
+        isFeatured: Boolean(job.isFeatured),
+      })));
+    } catch (error) {
+      console.error('Failed to fetch recommended jobs:', error);
+      toast.error(error instanceof Error ? error.message : t('jobs.recommendedError'));
+      setRecommendedJobs([]);
+    } finally {
+      setRecommendedLoading(false);
+    }
   };
 
   const toggleSave = async (id: string) => {
@@ -356,10 +393,21 @@ export default function BrowseJobsScreen() {
                   <Filter size={16} />
                   <span>{t('jobs.filters')}</span>
                 </button>
+                {user && isFreelancer && (
+                  <button
+                    type="button"
+                    onClick={findMatchingJobs}
+                    disabled={recommendedLoading}
+                    className={`browse-jobs-filter-btn ${recommendedMode ? 'active' : ''}`}
+                  >
+                    <Sparkles size={16} />
+                    <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : recommendedMode ? t('jobs.exitRecommended') : t('jobs.findMatchingJobs')}</span>
+                  </button>
+                )}
               </div>
 
               {/* Filter Expansion Grid */}
-              {showFilters && (
+              {!recommendedMode && showFilters && (
                 <div className="mt-4 pt-4 border-t browse-jobs-divider">
                   <div className="browse-jobs-filter-grid">
                     <label>
@@ -399,41 +447,65 @@ export default function BrowseJobsScreen() {
             </div>
 
             {/* Category Filter Horizontal Smooth Scroll Pill Container */}
-            <div className="browse-category-scroll-container">
-              {categoryOptions.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => { setCategory(cat); resetBrowsePage(); }}
-                  className={`browse-category-pill ${category === cat ? 'active' : ''}`}
-                >
-                  {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
-                </button>
-              ))}
-            </div>
+            {!recommendedMode && (
+              <div className="browse-category-scroll-container">
+                {categoryOptions.map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => { setCategory(cat); resetBrowsePage(); }}
+                    className={`browse-category-pill ${category === cat ? 'active' : ''}`}
+                  >
+                    {cat === 'All' ? (isEn ? 'All' : 'Tất cả') : cat}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Results Count & Sort Dropdown */}
             <div>
               <div className="flex items-center justify-between mb-3.5">
-                <p className="text-sm browse-jobs-desc font-medium">
-                  <span className="text-[var(--brand,#494be7)] font-bold">{totalResults}</span> {t('jobs.openJobsFound')}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs browse-jobs-desc font-medium">{t('jobs.sortBy')}:</span>
+                {recommendedMode ? (
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-[var(--brand,#494be7)]" />
+                    <p className="text-sm browse-jobs-desc font-medium">
+                      {t('jobs.recommendedJobsTitle')}
+                      {!recommendedLoading && (
+                        <span className="text-[var(--brand,#494be7)] font-bold"> · {recommendedJobs.length}</span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm browse-jobs-desc font-medium">
+                    <span className="text-[var(--brand,#494be7)] font-bold">{totalResults}</span> {t('jobs.openJobsFound')}
+                  </p>
+                )}
+                {recommendedMode ? (
                   <button
                     type="button"
-                    onClick={() => { setSortBy(sortBy === 'relevance' ? 'date' : 'relevance'); resetBrowsePage(); }}
-                    className="flex items-center gap-1 text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
+                    onClick={exitRecommendedMode}
+                    className="text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
                   >
-                    {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')}
-                    <ChevronDown size={14} />
+                    {t('jobs.exitRecommended')}
                   </button>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs browse-jobs-desc font-medium">{t('jobs.sortBy')}:</span>
+                    <button
+                      type="button"
+                      onClick={() => { setSortBy(sortBy === 'relevance' ? 'date' : 'relevance'); resetBrowsePage(); }}
+                      className="flex items-center gap-1 text-xs font-bold text-[var(--brand,#494be7)] hover:underline cursor-pointer"
+                    >
+                      {sortBy === 'relevance' ? t('jobs.mostRelevant') : t('jobs.datePosted')}
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Job Cards List */}
               <div className="space-y-3.5">
-                {pagedJobs.map((job) => (
+                {!recommendedLoading && pagedJobs.map((job) => (
                   <div
                     key={job.id}
                     className="browse-jobs-job-card"
@@ -503,7 +575,10 @@ export default function BrowseJobsScreen() {
                           return (
                             <div className="flex items-center gap-2">
                               {job.aiMatchScore && user && (
-                                <div className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
+                                <div
+                                  className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1"
+                                  title={job.matchReasons?.length ? `${t('jobs.matchReasonsTitle')}: ${job.matchReasons.join(' · ')}` : undefined}
+                                >
                                   <Bot size={11} />
                                   <span>{job.aiMatchScore}% {t('jobs.match')}</span>
                                 </div>
@@ -534,18 +609,28 @@ export default function BrowseJobsScreen() {
                 ))}
               </div>
 
+              {/* Recommended Loading State */}
+              {recommendedMode && recommendedLoading && (
+                <div className="text-center py-16 browse-jobs-glass-card">
+                  <Sparkles size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)] animate-pulse" />
+                  <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
+                    {t('jobs.findingMatchingJobs')}
+                  </p>
+                </div>
+              )}
+
               {/* Empty State */}
-              {!loading && jobs.length === 0 && (
+              {!recommendedLoading && !loading && pagedJobs.length === 0 && (
                 <div className="text-center py-16 browse-jobs-glass-card">
                   <Bot size={44} className="mx-auto mb-3 opacity-30 text-[var(--brand,#494be7)]" />
                   <p className="text-sm text-[var(--text-primary)] font-bold mb-1">
-                    {loadError || t('jobs.noJobsFound')}
+                    {recommendedMode ? t('jobs.noRecommendedJobs') : (loadError || t('jobs.noJobsFound'))}
                   </p>
                 </div>
               )}
 
               {/* Pagination */}
-              {totalResults > PAGE_SIZE && (
+              {!recommendedMode && totalResults > PAGE_SIZE && (
                 <div className="browse-jobs-pagination">
                   <button type="button" disabled={page === 1} onClick={() => setPage(prev => prev - 1)}>
                     {t('jobs.previous')}
