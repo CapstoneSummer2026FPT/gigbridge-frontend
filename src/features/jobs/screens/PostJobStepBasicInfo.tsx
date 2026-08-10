@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
-  BriefcaseBusiness, ChevronDown, Clock3, FileText, Plus, Save, Sparkles,
+  BriefcaseBusiness, ChevronDown, Clock3, Coins, FileText, Plus, Save, Sparkles,
   ImagePlus, LoaderCircle, Tag, Trash2, X,
 } from 'lucide-react';
 import { jobAPI } from '../../../api/jobAPI';
 import { useApp } from '../../../app/providers/AppProvider';
 import { JobPostVisibility, type GetMyJobPostDto } from '../../../types/models/Job';
+import { formatGigCoinToVnd } from '../../../shared/utils/gigcoin';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PostJobAiInput } from '../components/PostJobAiInput';
 import { PostJobLeavePrompt } from '../components/PostJobLeavePrompt';
@@ -301,6 +302,15 @@ export default function PostJobStepBasicInfo() {
             <div className="job-post-field">
               <label htmlFor="job-budget">{t('postJob.expectedBudget')}</label>
               <input id="job-budget" type="number" min="0" value={form.budget} onChange={event => setForm({ ...form, budget: event.target.value })} placeholder="0" />
+              {Number(form.budget) > 0 && (
+                <div className="mt-1 flex items-center gap-1.5 rounded-md bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground">
+                  <Coins size={13} className="text-[var(--brand)] flex-shrink-0" />
+                  <span>
+                    ≈ <strong>{formatGigCoinToVnd(Number(form.budget))}</strong>
+                    <span className="ml-1 opacity-75">(1 G-coin = 1.000 VNĐ)</span>
+                  </span>
+                </div>
+              )}
               <small>{t('postJobWizard.details.budgetFromMilestones')}</small>
             </div>
             <div className="job-post-field">
