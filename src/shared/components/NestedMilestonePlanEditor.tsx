@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { ChevronDown, ChevronRight, GripVertical, Plus, Trash2 } from 'lucide-react';
-import { formatGigCoin } from '../utils/gigcoin';
+import { formatGigCoin, formatGigCoinToVnd } from '../utils/gigcoin';
 
 export interface EditablePlanWorkItem {
   id?: string | null;
@@ -284,7 +284,10 @@ export function NestedMilestonePlanEditor({
           {uiCopy.fixedProjectBudget || 'Fixed project budget from milestones'}
           {renderHint('fixed-project-budget', fieldHints.fixedProjectBudget)}
         </span>
-        <strong className="text-xl text-foreground">{formatGigCoin(total)}</strong>
+        <div className="text-right">
+          <strong className="block text-xl text-foreground">{formatGigCoin(total)}</strong>
+          {total > 0 && <small className="text-xs font-normal text-muted-foreground">≈ {formatGigCoinToVnd(total)}</small>}
+        </div>
       </div>}
 
       {value.length === 0 ? (
