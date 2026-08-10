@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useApp } from '../../../app/providers/AppProvider';
 import type { Message as MsgMessage, MsgConversation } from '../../../types/models/Message';
+import { ConversationStatus } from '../../../types/models/Message';
 
 import { UserRole } from '../../../types';
 import * as signalR from '@microsoft/signalr';
@@ -93,6 +94,7 @@ function mapBackendConversation(c: any): MsgConversation {
     disputeId,
     roomType: room.type,
     roomId: room.id,
+    status: c.status ?? c.Status ?? ConversationStatus.Active,
     participantId: c.otherParticipantId || '',
     participantName: c.otherParticipantName || 'Partner',
     participantAvatar: c.otherParticipantAvatar || '/img/avatar-fallback.png',
@@ -1136,7 +1138,8 @@ export function useMessages() {
   };
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !activeConvId || isActiveWorkspaceDisputed) return;
+    if (!messageInput.trim() || !activeConvId || isActiveWorkspaceDisputed ||
+        activeConv?.status === ConversationStatus.Closed) return;
     const content = messageInput.trim();
 
     const clientMessageId = typeof crypto.randomUUID === 'function'

@@ -5,7 +5,7 @@ import {
   ExternalLink, MessageSquare, Settings2, ArrowRightLeft,
   Wifi, WifiOff, Loader2, AlertCircle, Clock3,
   CalendarPlus, CalendarDays, Pencil, ChevronUp, Video,
-  ShieldAlert,
+  ShieldAlert, Lock,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { ScheduleEvent } from '../../../api/scheduleAPI';
@@ -16,6 +16,7 @@ import { calculateServiceFee } from '../../../shared/utils/serviceFee';
 import { NegotiationDealCard } from '../components/NegotiationDealCard';
 import { FinalOfferEditor } from '../components/FinalOfferEditor';
 import { useMessages } from '../hooks/useMessages';
+import { ConversationStatus } from '../../../types/models/Message';
 import { MESSAGE_ROOMS } from '../messageRooms';
 import { ReportDetailModal, useReportContract } from '../../report-contracts';
 import {
@@ -768,6 +769,16 @@ export default function MessagesScreen() {
                       {t('workspace.openDispute')}
                     </button>
                   )}
+                </div>
+              </div>
+            ) : activeConv?.status === ConversationStatus.Closed ? (
+              <div className="shrink-0 border-t border-border bg-muted p-4">
+                <div className="mx-auto flex max-w-3xl items-center justify-center gap-3 text-muted-foreground">
+                  <Lock size={20} className="shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <strong className="text-sm">{t('workspace.conversationClosedTitle')}</strong>
+                    <p className="text-xs">{t('workspace.conversationClosedDescription')}</p>
+                  </div>
                 </div>
               </div>
             ) : (

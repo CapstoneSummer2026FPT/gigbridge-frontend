@@ -7,6 +7,7 @@
     "chatSend": "Gửi",
     "chatUnavailable": "Cuộc trò chuyện tranh chấp chưa khả dụng.",
     "chatLoadFailed": "Không thể tải cuộc trò chuyện tranh chấp.",
-    "chatSendFailed": "Không thể gửi tin nhắn."
+    "chatSendFailed": "Không thể gửi tin nhắn.",
+    "chatClosed": "Hội thoại đã bị khóa sau khi đóng phiếu tranh chấp."
   }
 }

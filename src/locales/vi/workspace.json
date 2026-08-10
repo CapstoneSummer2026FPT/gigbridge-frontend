@@ -112,6 +112,8 @@
     "submitDispute": "Gửi tranh chấp",
     "disputeLockedTitle": "Hợp đồng này hiện đang có tranh chấp.",
     "disputeLockedDescription": "Vui lòng tiếp tục trao đổi trong cuộc trò chuyện tranh chấp.",
+    "conversationClosedTitle": "Cuộc hội thoại này đã bị khóa.",
+    "conversationClosedDescription": "Không thể gửi tin nhắn sau khi phiếu tranh chấp được đóng.",
     "disputedBadge": "Đang tranh chấp",
     "openDispute": "Mở tranh chấp",
     "version": "Phiên bản {{version}}",

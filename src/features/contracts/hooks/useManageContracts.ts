@@ -17,7 +17,8 @@ export interface ContractWithMilestones extends ContractDto {
 
 export const mapMilestoneForDisplay = (milestone: Milestone): MilestoneDisplay => {
   const dueDate = milestone.due_date ? new Date(milestone.due_date) : null;
-  const isCompleted = milestone.status === MilestoneStatus.Approved;
+  const isCompleted =
+    milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.Completed;
 
   return {
     ...milestone,

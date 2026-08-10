@@ -570,11 +570,12 @@ export default function AdminDisputeManagementScreen() {
                           value={adminMessage}
                           onChange={(e) => setAdminMessage(e.target.value)}
                           placeholder={t('admin.disputes.chat.placeholder', 'Type official administrative directive or inquiry...')}
+                          disabled={selectedDispute.status === DisputeStatus.Closed}
                         />
                         <button
                           type="button"
                           onClick={() => void sendAdminDirective()}
-                          disabled={sendingMessage || !adminMessage.trim()}
+                          disabled={sendingMessage || !adminMessage.trim() || selectedDispute.status === DisputeStatus.Closed}
                           className="send-directive-btn"
                         >
                           <Send size={16} /> {t('common.send', 'Send')}
