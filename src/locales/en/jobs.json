@@ -379,11 +379,11 @@
       "lockedTitle": "AI drafting is a Premium feature",
       "lockedDescription": "Upgrade your client plan to generate structured project details and interview questions.",
       "upgrade": "View Premium plans",
-      "attachFile": "Attach document (.docx, .pdf, .txt, .md, .zip)",
+      "attachFile": "Attach document (.docx, .pdf, .txt, .md)",
       "extractingText": "Extracting document text...",
       "documentAttached": "Document attached",
       "fileTooLarge": "File size exceeds 10 MB limit.",
-      "unsupportedFormat": "Unsupported file format. Please upload .docx, .pdf, .txt, .md, or .zip.",
+      "unsupportedFormat": "Unsupported file format. Please upload .docx, .pdf, .txt, or .md.",
       "parsingFailed": "Could not read document. Please check the file and try again.",
       "pdfPageLimit": "PDF exceeds 15 page limit; extracted first 15 pages."
     }
