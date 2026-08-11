@@ -371,7 +371,7 @@ export function ClientContractDetails({
                   <span className="truncate max-w-[200px] md:max-w-xl">{contract.title}</span>
                   <span className="text-brand italic font-light">Details</span>
                   <span className={`status-badge ${getContractStatusClass(effectiveStatus)} text-[10px] py-1 px-3`}>
-                    {t('contracts.status.' + effectiveStatus, { defaultValue: getContractStatusLabel(effectiveStatus) })}
+                    {t('contracts.statusLabels.' + effectiveStatus, { defaultValue: getContractStatusLabel(effectiveStatus) })}
                   </span>
                 </h1>
               </div>

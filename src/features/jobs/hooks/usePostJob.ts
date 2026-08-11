@@ -333,6 +333,9 @@ export function usePostJob() {
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [milestoneErrors, setMilestoneErrors] = useState<Record<string, string>>({});
+  const [expandedMilestones, setExpandedMilestones] = useState<number[]>(() =>
+    initialJobData?.milestonePlans?.length ? [0] : [0]
+  );
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(
     initialJobData?.milestonePlans?.length ? 0 : null
   );
@@ -429,10 +432,10 @@ export function usePostJob() {
         const duration = parseJobDuration(milestone.estimatedDuration);
         const weeks = duration.value ? Number(duration.value) * (duration.unit === 'months' ? 4.333 : duration.unit === 'years' ? 52 : 1) : 2;
         const days = Math.ceil(weeks * 7);
-        
+
         const start = previousDueDate ? new Date(previousDueDate) : new Date(form.deadline);
         const newDueDate = new Date(start.getTime() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+
         previousDueDate = newDueDate;
         modified = true;
         return { ...milestone, dueDate: newDueDate };
@@ -822,7 +825,7 @@ export function usePostJob() {
 
   const handleGenerateInstantJob = async (prompt?: string) => {
     let promptText = typeof prompt === 'string' ? prompt.trim() : '';
-    
+
     if (!promptText) {
       const textarea = document.getElementById('guide-prompt-textarea') as HTMLTextAreaElement | null;
       if (textarea && textarea.value.trim()) {
@@ -965,7 +968,7 @@ export function usePostJob() {
       if (categoriesResponse?.success && categoriesResponse.data) {
         setCategories(categoriesResponse.data);
       }
-      
+
       if (skillsResponse?.success && skillsResponse.data) {
         setAvailableSkills(skillsResponse.data);
         setSkillNameById(prev => {
@@ -1447,7 +1450,7 @@ export function usePostJob() {
               const durationWeeks = form.estimatedDurationValue ? Number(form.estimatedDurationValue) * (form.estimatedDurationUnit === 'months' ? 4.333 : form.estimatedDurationUnit === 'years' ? 52 : 1) : 2;
               const durationDays = Math.ceil(durationWeeks * 7) * 2;
               const computedDeadline = form.deadline || new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-              
+
               if (!form.deadline) {
                 setForm(prev => ({ ...prev, deadline: computedDeadline }));
               }
@@ -1673,6 +1676,8 @@ export function usePostJob() {
     setMilestoneErrors,
     expandedMilestone,
     setExpandedMilestone,
+    expandedMilestones,
+    setExpandedMilestones,
     isActionDisabled,
     questionsWithOrder,
     taxonomyError,

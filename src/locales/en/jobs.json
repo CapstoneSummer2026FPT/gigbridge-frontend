@@ -283,6 +283,21 @@
       "milestones": "Baseline milestones",
       "milestonesHint": "Define payable outcomes and acceptance criteria. Freelancers can propose adjustments.",
       "questionsAdded": "questions added",
+      "milestoneSummaryDesc": "Automatically calculated from all milestone items below",
+      "milestoneLabel": "Milestone {{number}}",
+      "guideTitle": "Purpose & Benefits of Screening Questions",
+      "guideReady": "AI Interview Ready",
+      "standardTitle": "1. Standard Interview",
+      "standardDesc": "Freelancers answer these questions directly when submitting proposals, helping you evaluate their approach and experience without endless chat back-and-forth.",
+      "aiTitle": "2. Automated AI Interview (Premium Plan ✦)",
+      "aiDesc": "When AI Interviewer is enabled, these questions serve as the prompt basis for the AI Agent to conduct 1-on-1 interviews with applicants and generate detailed evaluation scores!",
+      "presetTitle": "Popular question suggestions (Click to add):",
+      "presetSimilar": "Have you worked on a project of similar scope before?",
+      "presetPortfolio": "Please share a link to your most relevant work or portfolio.",
+      "presetAvailability": "How many hours per week can you dedicate to this project?",
+      "questionLabel": "Question {{number}}",
+      "questionHint": "Freelancers will see this question when submitting a proposal.",
+      "noQuestionsDesc": "Adding questions helps you evaluate freelancer qualifications faster.",
       "milestoneCopy": {
         "optional": "Optional",
         "addMilestone": "Add milestone",
@@ -378,7 +393,14 @@
       "generating": "Generating...",
       "lockedTitle": "AI drafting is a Premium feature",
       "lockedDescription": "Upgrade your client plan to generate structured project details and interview questions.",
-      "upgrade": "View Premium plans"
+      "upgrade": "View Premium plans",
+      "attachFile": "Attach document (.docx, .pdf, .txt, .md, .zip)",
+      "extractingText": "Extracting document text...",
+      "documentAttached": "Document attached",
+      "fileTooLarge": "File size exceeds 10 MB limit.",
+      "unsupportedFormat": "Unsupported file format. Please upload .docx, .pdf, .txt, .md, or .zip.",
+      "parsingFailed": "Could not read document. Please check the file and try again.",
+      "pdfPageLimit": "PDF exceeds 15 page limit; extracted first 15 pages."
     }
   },
   "postJobAI": {
@@ -628,5 +650,20 @@
     "clientMessage": "Message from client:",
     "invitedAt": "Invited {{date}}",
     "client": "Client"
+  },
+  "inviteModal": {
+    "title": "Invite Freelancers",
+    "subtitle": "Send direct invitations for \"{{jobTitle}}\" to top matching freelancers.",
+    "searchPlaceholder": "Search freelancers by name, title, location, or skill...",
+    "selectedCount": "{{count}} freelancers selected",
+    "messageTitle": "Personal Invitation Message",
+    "messagePlaceholder": "Write an optional personalized invitation message...",
+    "presetMessage": "Hi, your profile is a great fit for our project. We would love to invite you to review the job post and submit a proposal!",
+    "sendInvites": "Send Invitations ({{count}})",
+    "sending": "Sending invitations...",
+    "successSent": "Successfully sent {{count}} invitation(s)!",
+    "noFreelancers": "No matching freelancers found.",
+    "loadingFreelancers": "Searching top freelancers...",
+    "selectAtLeastOne": "Select at least one freelancer to send invitations."
   }
 }

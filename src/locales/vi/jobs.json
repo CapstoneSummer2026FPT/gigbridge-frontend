@@ -65,6 +65,7 @@
     "applyWithAiInterview": "Ứng tuyển & phỏng vấn"
   },
   "postJob": {
+    "advancedSettings": "Cài Đặt Nâng Cao",
     "createNewJobPost": "Tạo Project Request",
     "continueDraft": "Tiếp Tục Bản Nháp",
     "createInstantJobDetail": "Tạo Chi Tiết Công Việc Tức Thì (Premium)",
@@ -279,6 +280,21 @@
       "milestones": "Milestone nền tảng",
       "milestonesHint": "Xác định kết quả thanh toán và tiêu chí nghiệm thu. Freelancer vẫn có thể đề xuất điều chỉnh.",
       "questionsAdded": "câu hỏi đã thêm",
+      "milestoneSummaryDesc": "Tự động cộng từ tất cả các mốc công việc bên dưới",
+      "milestoneLabel": "Mốc {{number}}",
+      "guideTitle": "Tác dụng & Lợi ích của Câu hỏi sàng lọc",
+      "guideReady": "AI Interview Ready",
+      "standardTitle": "1. Phỏng vấn Tiêu chuẩn",
+      "standardDesc": "Freelancer sẽ trả lời các câu hỏi này ngay khi gửi Proposal. Giúp bạn đánh giá tư duy, thái độ và kinh nghiệm thực tế của ứng viên mà không cần chat qua lại nhiều lần.",
+      "aiTitle": "2. AI Phỏng vấn tự động (Gói Premium ✦)",
+      "aiDesc": "Khi bật AI Interviewer, bộ câu hỏi này sẽ làm cơ sở dữ liệu để AI Agent tự động phỏng vấn 1:1 với ứng viên, phân tích tư duy và tổng hợp báo cáo chấm điểm cho bạn!",
+      "presetTitle": "Gợi ý câu hỏi phổ biến (Click để thêm):",
+      "presetSimilar": "Bạn đã từng thực hiện dự án nào có quy mô tương tự chưa?",
+      "presetPortfolio": "Hãy gửi link sản phẩm hoặc portfolio tiêu biểu nhất của bạn.",
+      "presetAvailability": "Bạn có thể dành bao nhiêu giờ mỗi tuần cho dự án này?",
+      "questionLabel": "Câu hỏi {{number}}",
+      "questionHint": "Freelancers sẽ nhận được câu hỏi này tại bước nộp proposal.",
+      "noQuestionsDesc": "Thêm câu hỏi giúp bạn đánh giá năng lực và thái độ làm việc của ứng viên nhanh hơn.",
       "milestoneCopy": {
         "optional": "Không bắt buộc",
         "addMilestone": "Thêm milestone",
@@ -374,7 +390,14 @@
       "generating": "Đang tạo...",
       "lockedTitle": "Tạo bản nháp bằng AI là tính năng Premium",
       "lockedDescription": "Nâng cấp gói Client để AI tạo thông tin dự án và câu hỏi phỏng vấn có cấu trúc.",
-      "upgrade": "Xem các gói Premium"
+      "upgrade": "Xem các gói Premium",
+      "attachFile": "Đính kèm tài liệu (.docx, .pdf, .txt, .md, .zip)",
+      "extractingText": "Đang trích xuất nội dung tài liệu...",
+      "documentAttached": "Đã đính kèm tài liệu",
+      "fileTooLarge": "Kích thước tệp vượt quá giới hạn 10 MB.",
+      "unsupportedFormat": "Định dạng tệp không được hỗ trợ. Vui lòng tải .docx, .pdf, .txt, .md hoặc .zip.",
+      "parsingFailed": "Không thể đọc tài liệu. Vui lòng kiểm tra lại tệp.",
+      "pdfPageLimit": "File PDF vượt quá 15 trang; đã trích xuất 15 trang đầu tiên."
     }
   },
   "postJobAI": {
@@ -624,5 +647,20 @@
     "clientMessage": "Lời nhắn từ khách hàng:",
     "invitedAt": "Được mời ngày {{date}}",
     "client": "Khách hàng"
+  },
+  "inviteModal": {
+    "title": "Mời Freelancer ứng tuyển",
+    "subtitle": "Gửi lời mời trực tiếp cho dự án \"{{jobTitle}}\" đến các freelancer hàng đầu.",
+    "searchPlaceholder": "Tìm kiếm theo tên, chuyên môn, thành phố hoặc kỹ năng...",
+    "selectedCount": "Đã chọn {{count}} ứng viên",
+    "messageTitle": "Lời nhắn cá nhân hóa",
+    "messagePlaceholder": "Nhập lời nhắn gửi kèm đến các freelancer được chọn...",
+    "presetMessage": "Chào bạn, dự án của chúng tôi rất phù hợp với chuyên môn của bạn. Mời bạn xem chi tiết và nộp proposal nhé!",
+    "sendInvites": "Gửi lời mời ngay ({{count}})",
+    "sending": "Đang gửi lời mời...",
+    "successSent": "Đã gửi thành công {{count}} lời mời!",
+    "noFreelancers": "Không tìm thấy freelancer phù hợp.",
+    "loadingFreelancers": "Đang tìm kiếm freelancer phù hợp...",
+    "selectAtLeastOne": "Vui lòng chọn ít nhất 1 freelancer để gửi lời mời."
   }
 }

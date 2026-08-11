@@ -1,0 +1,60 @@
+{
+  "title": "Hoàn thiện hồ sơ cá nhân",
+  "subtitle": "Chào mừng bạn đến với GigBridge! Hãy hoàn tất một số thông tin cơ bản để bắt đầu kết nối dự án.",
+  "clientRoleBadge": "Hồ sơ Nhà Tuyển Dụng",
+  "freelancerRoleBadge": "Hồ sơ Freelancer",
+  "steps": {
+    "step1Client": "1. Thông tin công ty",
+    "step2Client": "2. Quy mô & Địa điểm",
+    "step1Freelancer": "1. Chuyên môn & Kỹ năng",
+    "step2Freelancer": "2. Giới thiệu & Địa điểm"
+  },
+  "client": {
+    "step1Title": "Thông tin thương hiệu & Doanh nghiệp",
+    "step1Subtitle": "Cung cấp tên công ty và ngành nghề để tạo uy tín với các ứng viên hàng đầu.",
+    "companyName": "Tên công ty / Tổ chức",
+    "companyNamePlaceholder": "Ví dụ: Công ty TNHH Giải Pháp Công Nghệ GigBridge",
+    "companyWebsite": "Website công ty (Không bắt buộc)",
+    "companyWebsitePlaceholder": "https://example.com",
+    "industry": "Ngành nghề hoạt động chính",
+    "selectIndustry": "-- Chọn ngành nghề hoạt động --",
+    "companySize": "Quy mô công ty",
+    "companyDescription": "Mô tả ngắn gọn về doanh nghiệp",
+    "companyDescriptionPlaceholder": "Giới thiệu mục tiêu, sản phẩm dịch vụ hoặc định hướng của công ty...",
+    "step2Title": "Địa điểm & Mô tả chi tiết",
+    "step2Subtitle": "Giúp ứng viên biết vị trí trụ sở hoặc văn phòng làm việc của bạn."
+  },
+  "freelancer": {
+    "step1Title": "Chuyên môn & Lĩnh vực hoạt động",
+    "step1Subtitle": "Chọn ngành nghề và chuyên môn chính để thuật toán AI gợi ý các công việc phù hợp nhất.",
+    "professionalTitle": "Tiêu đề chuyên môn / Chức danh",
+    "professionalTitlePlaceholder": "Ví dụ: Senior Fullstack Developer / UI/UX Designer Specialist",
+    "major": "Lĩnh vực / Chuyên ngành chính",
+    "selectMajor": "-- Chọn lĩnh vực hoạt động --",
+    "categories": "Kỹ năng & Chuyên môn cụ thể (Chọn ít nhất 1)",
+    "selectMajorFirst": "Vui lòng chọn Lĩnh vực / Chuyên ngành chính ở trên trước.",
+    "loadingTaxonomy": "Đang tải danh mục kỹ năng...",
+    "availability": "Trạng thái sẵn sàng nhận việc",
+    "step2Title": "Giới thiệu bản thân & Địa điểm",
+    "step2Subtitle": "Viết mô tả kinh nghiệm và vị trí của bạn để nhà tuyển dụng dễ dàng tìm thấy.",
+    "bio": "Mô tả bản thân & Kinh nghiệm làm việc",
+    "bioPlaceholder": "Chia sẻ về kinh nghiệm, phong cách làm việc, các dự án tiêu biểu và giá trị bạn mang lại..."
+  },
+  "location": {
+    "title": "Địa điểm làm việc (Việt Nam)",
+    "provinceLabel": "Tỉnh / Thành phố",
+    "selectProvince": "-- Chọn Tỉnh / Thành phố --",
+    "wardLabel": "Phường / Xã / Thị trấn",
+    "selectWard": "-- Chọn Phường / Xã / Thị trấn --",
+    "formattedPreview": "Địa điểm hoàn chỉnh:"
+  },
+  "buttons": {
+    "back": "Quay lại",
+    "continue": "Tiếp tục",
+    "complete": "Hoàn tất đăng ký",
+    "completing": "Đang lưu thông tin..."
+  },
+  "errors": {
+    "setupFailed": "Không thể hoàn tất đăng ký hồ sơ. Vui lòng thử lại."
+  }
+}
