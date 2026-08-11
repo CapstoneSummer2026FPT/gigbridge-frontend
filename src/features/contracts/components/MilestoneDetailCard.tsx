@@ -24,7 +24,8 @@ export function MilestoneDetailCard({
   isSubmittingFor = false,
 }: MilestoneDetailCardProps) {
   const { t } = useTranslation();
-  const isCompleted = milestone.status === MilestoneStatus.Approved;
+  const isCompleted =
+    milestone.status === MilestoneStatus.Approved || milestone.status === MilestoneStatus.Completed;
   const isFullyReleased = (milestone.releasedAmount ?? 0) >= milestone.amount;
   const canSubmit = canSubmitMilestoneDeliverable(milestone.status);
   const isOverdue = !isCompleted && new Date(milestone.due_date) < new Date();

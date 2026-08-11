@@ -388,18 +388,37 @@ export default function SignatureWorkflowScreen() {
       return;
     }
 
-    submittingRef.current = true;
-    setSigningInProgress(true);
-    setError('');
+    if (!signaturePreviewApplied || !preparedSignature) {
+      setError(t('contracts.previewSignatureBeforeCompleting'));
+      return;
+    }
 
     try {
-      let activePreparedSignature = preparedSignature;
-      if (!signaturePreviewApplied || !activePreparedSignature) {
-        const applied = await handleApplySignaturePreview();
-        activePreparedSignature = preparedSignature;
-        if (!applied || !activePreparedSignature) {
-          submittingRef.current = false;
-          setSigningInProgress(false);
+      submittingRef.current = true;
+      setSigningInProgress(true);
+      setError('');
+      setSuccess('');
+
+      const response = await contractPostAPI.sign(contract.contractsId, {
+        signatureImageUrl: preparedSignature.imageUrl,
+        signatureWidth: preparedSignature.width,
+        signatureHeight: preparedSignature.height,
+      });
+
+      if (!response.success) {
+        if (response.statusCode === 409) {
+          // Already signed, proceed as success!
+          setSuccess('Your signature has already been recorded. Preparing PDF in the background.');
+          if (document?.documentId) {
+            try {
+              await prepareESignPdfById(document.documentId);
+            } catch (pdfError) {
+              console.warn('The signed PDF could not be prepared immediately:', pdfError);
+              setDocumentWarning(t('contracts.signatureSavedPdfError'));
+            }
+          }
+          await refreshAfterSigning();
+          setSignatureStep('complete');
           return;
         }
       }

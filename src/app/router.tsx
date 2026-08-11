@@ -59,6 +59,7 @@ const AdminEloHistoryScreen = lazy(() => import('../features/admin/screens/Admin
 const AdminEloAppealsScreen = lazy(() => import('../features/admin/screens/AdminEloAppealsScreen'));
 const AdminEloAppealDetailScreen = lazy(() => import('../features/admin/screens/AdminEloAppealDetailScreen'));
 const DisputeDetailScreen = lazy(() => import('../features/disputes/screens/DisputeDetailScreen'));
+const MyDisputesScreen = lazy(() => import('../features/disputes/screens/MyDisputesScreen'));
 const NotificationsScreen = lazy(() => import('../features/notifications/screens/NotificationsScreen'));
 const MyReviewsScreen = lazy(() => import('../features/reviews/screens/MyReviewsScreen'));
 const SmartTalentMatchingScreen = lazy(() => import('../features/talent-matching/screens/SmartTalentMatchingScreen'));
@@ -310,6 +311,7 @@ export const router = createBrowserRouter([
       { path: 'elo', element: <ProtectedRoute requireAuth><EloHistoryScreen /></ProtectedRoute> },
       { path: 'reviews/create', element: <Navigate to="/contracts" replace /> },
       { path: 'reviews', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><MyReviewsScreen /></ProtectedRoute> },
+      { path: 'disputes', element: <ProtectedRoute requireAuth requireSetup allowedRoles={PARTICIPANT_ROLES}><MyDisputesScreen /></ProtectedRoute> },
 
       // Company Pages - public
       { path: 'about', element: <AboutScreen /> },

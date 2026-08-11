@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Briefcase, Search, FileText, MessageSquare,
   BarChart2, Shield, Flag, HelpCircle,
   TrendingUp, PlusCircle, Zap, Bookmark,
-  ChevronDown, Wallet, Banknote, Star
+  ChevronDown, Wallet, Banknote, Star, Scale
 } from 'lucide-react';
 import { useApp } from '../../app/providers/AppProvider';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -64,6 +64,7 @@ function getClientNavItems(t: any): NavItem[] {
         { id: 'contracts', label: t('nav.contracts', { defaultValue: 'Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
         { id: 'projects', label: t('nav.projects', { defaultValue: 'Projects' }), icon: <Flag size={18} />, path: '/projects' },
         { id: 'reviews', label: t('nav.reviews', { defaultValue: 'Reviews' }), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'My Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
       ],
     },
     {
@@ -120,6 +121,7 @@ function getFreelancerNavItems(t: any): NavItem[] {
         { id: 'my-contracts', label: t('nav.myContracts', { defaultValue: 'My Contracts' }), icon: <FileText size={18} />, path: '/contracts' },
         { id: 'my-projects', label: t('nav.myProjects', { defaultValue: 'My Projects' }), icon: <Flag size={18} />, path: '/projects' },
         { id: 'my-reviews', label: t('nav.myReviews', { defaultValue: 'My Reviews' }), icon: <Star size={18} />, path: '/reviews' },
+        { id: 'my-disputes', label: t('nav.myDisputes', { defaultValue: 'My Disputes' }), icon: <Scale size={18} />, path: '/disputes' },
       ],
     },
     {

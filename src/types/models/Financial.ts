@@ -112,6 +112,8 @@ export interface WalletTransactionResponse {
   type: number;
   status: number;
   balanceSource: WalletBalanceSource;
+  /** True when this row is money arriving for this wallet's owner (render as +/green). */
+  isCredit: boolean;
   /** Amount sourced from the deposited pool; null when single-source Earned. */
   depositedAmount?: number | null;
   /** Amount sourced from the earned pool; null when single-source Deposited. */

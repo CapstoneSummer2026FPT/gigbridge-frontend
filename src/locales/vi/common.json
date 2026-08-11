@@ -21,7 +21,13 @@
     "finish": "Hoàn thành",
     "confirm": "Xác nhận",
     "viewAll": "Xem Tất Cả",
-    "learnMore": "Tìm Hiểu Thêm"
+    "learnMore": "Tìm Hiểu Thêm",
+    "download": "Tải xuống",
+    "send": "Gửi",
+    "dismissError": "Đóng thông báo lỗi",
+    "dismissMessage": "Đóng thông báo",
+    "yes": "Có",
+    "no": "Không"
   },
   "app": {
     "name": "GigBridge",
@@ -69,6 +75,7 @@
     "myProposals": "Đề Xuất Của Tôi",
     "projects": "Dự Án",
     "reviews": "Đánh giá của tôi",
+    "myDisputes": "Tranh chấp của tôi",
     "reviewManagement": "Quản lý review",
     "aiAssistant": "Trợ Lý AI",
     "aiInterview": "Phỏng Vấn AI",
@@ -590,5 +597,166 @@
     "toggleHelpDesc": "Bật công tắc để giữ Sidebar cố định khi chuyển trang. Tắt công tắc để Sidebar tự đóng khi nhấp trang hoặc nhấp ra ngoài.",
     "pinnedTitle": "Sidebar cố định (Đang BẬT)",
     "unpinnedTitle": "Sidebar tự đóng (Đang TẮT)"
+  },
+  "admin": {
+    "disputes": {
+      "kicker": "Không gian phân xử tranh chấp",
+      "titlePrefix": "Tranh chấp",
+      "titleSuffix": "Giải quyết ký quỹ",
+      "subtitle": "Phân xử tranh chấp giữa Client và Freelancer, kiểm tra mốc ký quỹ, yêu cầu bằng chứng và đưa ra quyết định cuối cùng.",
+      "totalCases": "Tổng số vụ",
+      "waitingAdmin": "Chờ Admin",
+      "inProgress": "Đang xử lý",
+      "resolved": "Đã giải quyết",
+      "closed": "Đã đóng",
+      "searchPlaceholder": "Tìm theo mã vụ, tên hợp đồng, tên người tham gia hoặc lý do...",
+      "refresh": "Làm mới",
+      "loadingList": "Đang tải danh sách tranh chấp…",
+      "noDisputes": "Không có vụ tranh chấp nào khớp với bộ lọc đã chọn.",
+      "loadingWorkspace": "Đang tải không gian xử lý tranh chấp…",
+      "selectDispute": "Chọn một vụ tranh chấp từ danh sách để xem toàn bộ chi tiết.",
+      "currentStatus": "Trạng thái hiện tại",
+      "initiator": "Người khởi tạo",
+      "contractId": "Mã hợp đồng",
+      "claimedAmount": "Tổng số tiền yêu cầu",
+      "reasonTitle": "Lý do tranh chấp",
+      "descriptionTitle": "Mô tả chi tiết",
+      "contractScope": "Phạm vi & mô tả hợp đồng",
+      "totalBudget": "Tổng ngân sách",
+      "startDate": "Ngày bắt đầu",
+      "endDate": "Ngày kết thúc",
+      "initiatorName": "Người khởi tạo tranh chấp",
+      "respondentName": "Bên bị khiếu nại",
+      "files": "tệp",
+      "noEvidence": "Chưa có tài liệu bằng chứng nào được tải lên cho vụ này.",
+      "markReviewed": "Đánh dấu đã xem xét",
+      "tabs": {
+        "overview": "Tổng quan",
+        "chat": "Trao đổi phân xử",
+        "contractInfo": "Thông tin hợp đồng",
+        "milestones": "Các mốc",
+        "evidence": "Bằng chứng",
+        "auditLog": "Nhật ký hoạt động",
+        "userTimeline": "Hoạt động người dùng"
+      },
+      "actions": {
+        "markInProgress": "Đánh dấu đang xử lý",
+        "requestEvidence": "Yêu cầu bằng chứng",
+        "closeCase": "Đóng vụ việc",
+        "resolve": "Đưa ra quyết định cuối cùng"
+      },
+      "chat": {
+        "recipient": "Người nhận",
+        "recipientBoth": "Cả hai bên (Thông báo chính thức)",
+        "recipientClient": "Chỉ Client (Riêng tư)",
+        "recipientFreelancer": "Chỉ Freelancer (Riêng tư)",
+        "placeholder": "Nhập chỉ thị hoặc yêu cầu hành chính chính thức...",
+        "administrator": "Quản trị viên",
+        "participant": "Người tham gia",
+        "clientPrivate": "Client (Cột riêng tư)",
+        "freelancerPrivate": "Freelancer (Cột riêng tư)",
+        "noClientMsgs": "Không có tin nhắn nào trong cột Client.",
+        "noFreelancerMsgs": "Không có tin nhắn nào trong cột Freelancer."
+      },
+      "milestones": {
+        "title": "Tên mốc công việc",
+        "status": "Trạng thái",
+        "lockedAmount": "Số tiền đang khóa"
+      },
+      "evidence": {
+        "sender": "Người gửi:",
+        "attachment": "Tệp đính kèm",
+        "roleParticipant": "Người tham gia",
+        "noDescription": "Chưa có mô tả."
+      },
+      "auditLog": {
+        "showing": "Đang hiển thị:",
+        "sort": "Sắp xếp:",
+        "show": "Hiển thị:",
+        "sortNewest": "Mới nhất trước",
+        "sortOldest": "Cũ nhất trước",
+        "pageSize5": "5 mục",
+        "pageSize10": "10 mục",
+        "pageSize25": "25 mục",
+        "pageSizeAll": "Tất cả sự kiện",
+        "empty": "Chưa có nhật ký hoạt động nào được ghi nhận cho vụ này.",
+        "adminId": "Mã Admin:",
+        "logId": "Mã nhật ký:",
+        "itemsCount": "{{count}} mục",
+        "actions": {
+          "requestEvidence": "Đã yêu cầu bằng chứng",
+          "updateStatus": "Đã cập nhật trạng thái",
+          "resolve": "Đã giải quyết tranh chấp",
+          "reviewEvidence": "Đã xem xét bằng chứng"
+        },
+        "fields": {
+          "reason": "Lý do",
+          "target": "Đối tượng yêu cầu",
+          "deadline": "Hạn chót",
+          "groupId": "Mã nhóm yêu cầu",
+          "evidenceIds": "Mục bằng chứng",
+          "status": "Trạng thái mới",
+          "oldStatus": "Trạng thái trước đó",
+          "resolution": "Quyết định",
+          "resolutionNote": "Ghi chú quyết định"
+        }
+      },
+      "userTimeline": {
+        "empty": "Chưa có hoạt động nào của Client/Freelancer được ghi nhận cho hợp đồng này.",
+        "unknownUser": "Người dùng không xác định",
+        "roles": {
+          "client": "Client",
+          "freelancer": "Freelancer",
+          "admin": "Admin",
+          "unknown": "Không xác định"
+        },
+        "actions": {
+          "confirmedParticipation": "Đã xác nhận tham gia",
+          "signedContract": "Đã ký hợp đồng điện tử",
+          "requestedEarlyStart": "Đã yêu cầu bắt đầu sớm",
+          "submittedMilestone": "Đã nộp mốc công việc",
+          "fundedEscrow": "Đã nạp tiền ký quỹ",
+          "approvedMilestone": "Đã duyệt mốc công việc",
+          "reportedIssue": "Đã báo cáo sự cố",
+          "createdDispute": "Đã tạo tranh chấp",
+          "escalatedDispute": "Đã nâng cấp thành tranh chấp"
+        }
+      },
+      "dialog": {
+        "evidenceTitle": "Yêu cầu bằng chứng từ các bên tham gia",
+        "targetParticipant": "Đối tượng yêu cầu",
+        "bothParties": "Cả hai bên",
+        "reporterOnly": "Chỉ người báo cáo",
+        "respondentOnly": "Chỉ bên bị khiếu nại",
+        "evidenceReason": "Lý do yêu cầu bằng chứng",
+        "evidenceReasonPlaceholder": "Ghi rõ bằng chứng cần thiết, ví dụ: sản phẩm bàn giao, nhật ký, biên lai...",
+        "deadline": "Hạn nộp (Tùy chọn)",
+        "sendRequest": "Gửi yêu cầu bằng chứng"
+      }
+    }
+  },
+  "myDisputes": {
+    "kicker": "Tranh chấp của tôi",
+    "title": "Tranh chấp của tôi",
+    "subtitle": "Xem tất cả các tranh chấp liên quan đến hợp đồng của bạn.",
+    "loading": "Đang tải danh sách tranh chấp...",
+    "errorFallback": "Không thể tải danh sách tranh chấp của bạn.",
+    "errorGeneric": "Đã xảy ra lỗi khi tải danh sách tranh chấp của bạn.",
+    "retry": "Thử lại",
+    "emptyTitle": "Chưa có tranh chấp nào",
+    "emptySubtitle": "Các tranh chấp bạn tham gia sẽ hiển thị tại đây.",
+    "columnStt": "STT",
+    "columnProject": "Tên dự án",
+    "columnDate": "Ngày",
+    "columnStatus": "Trạng thái",
+    "columnAction": "Xem chi tiết",
+    "viewDetail": "Xem chi tiết",
+    "showing": "Hiển thị {{from}}-{{to}} trên tổng số {{total}}",
+    "prev": "Trước",
+    "next": "Tiếp",
+    "statusWaitingAdmin": "Chờ Admin",
+    "statusInProgress": "Đang xử lý",
+    "statusResolved": "Đã giải quyết",
+    "statusClosed": "Đã đóng"
   }
 }

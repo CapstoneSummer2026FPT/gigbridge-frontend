@@ -39,7 +39,9 @@ export const getEarlyWithdrawalEligibility = (
   isFreelancer: boolean,
 ): EarlyWithdrawalEligibility => {
   const totalMilestones = milestones.length;
-  const approvedMilestones = milestones.filter(item => isApprovedMilestoneStatus(item.status)).length;
+  const approvedMilestones = milestones.filter(
+    item => isApprovedMilestoneStatus(item.status) || Number(item.status) === MilestoneStatus.Completed,
+  ).length;
   const requiredApprovedMilestones = Math.ceil(totalMilestones * 0.5);
   const meetsApprovalThreshold = totalMilestones > 0 && approvedMilestones >= requiredApprovedMilestones;
   const releaseCap = roundMoney(Math.max(0, Number(milestone.amount || 0)) * EARLY_WITHDRAWAL_PERCENTAGE);
