@@ -60,6 +60,7 @@ export interface AdminMilestone { milestoneId: string; title: string; descriptio
 export interface AdminEscrowSummary { escrowId: string | null; originalEscrow: number; fundedAmount: number; releasedAmount: number; refundedAmount: number; penaltyAmount: number; serviceFeeAmount: number; remainingAmount: number; status: number | null; }
 export interface AdminConversationReferences { workspaceConversationId: string | null; disputeConversationId: string | null; }
 export interface AdminAuditEvent { auditId: string; adminId: string; action: string; oldValues: string | null; newValues: string | null; createdAt: string; }
+export interface AdminUserAuditEvent { auditLogUserId: string; userId: string; userName: string | null; role: number; actionType: number; contractId: string; milestoneId: string | null; milestoneTitle: string | null; reportId: string | null; disputeId: string | null; description: string; createdAt: string; }
 export interface AdminMilestoneDecision { decisionId: string; milestoneId: string; outcome: number; milestoneAmount: number; releasedBeforeDecision: number; additionalRelease: number; refund: number; penalty: number; reason: string | null; decidedByAdminId: string; createdAt: string; }
 export interface AdminDisputePenalty { penaltyId: string; milestoneId: string; violatingUserId: string | null; amount: number; reason: string; clientDebitWalletTransactionId: string | null; escrowTransactionId: string | null; status: number; createdAt: string; }
 
@@ -105,6 +106,7 @@ export interface AdminDisputeDetail {
   milestoneDecisions: AdminMilestoneDecision[];
   penalties: AdminDisputePenalty[];
   resolutionAuditId: string | null;
+  userActionTimeline: AdminUserAuditEvent[];
 }
 
 export interface AdminDisputeListParams {

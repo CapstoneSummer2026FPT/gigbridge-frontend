@@ -1,6 +1,7 @@
 import { useRef, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Activity,
   AlertCircle,
   Briefcase,
   CheckCircle,
@@ -50,6 +51,28 @@ const formatAuditAction = (action: string): string => {
   if (action === 'Dispute.Resolve') return 'Dispute Resolved';
   if (action === 'Dispute.ReviewEvidence') return 'Evidence Reviewed';
   return action.replace('.', ' • ');
+};
+
+const USER_AUDIT_ACTION_LABELS: Record<number, string> = {
+  0: 'Confirmed Participation',
+  1: 'Signed E-Sign Contract',
+  2: 'Requested Early Start',
+  3: 'Submitted Milestone',
+  4: 'Funded Escrow',
+  5: 'Approved Milestone',
+  6: 'Reported an Issue',
+  7: 'Created a Dispute',
+  8: 'Escalated a Dispute',
+};
+
+const formatUserAuditAction = (actionType: number): string =>
+  USER_AUDIT_ACTION_LABELS[actionType] ?? `Action ${actionType}`;
+
+const formatUserAuditRole = (role: number): 'Client' | 'Freelancer' | 'Admin' | 'Unknown' => {
+  if (role === 0) return 'Client';
+  if (role === 1) return 'Freelancer';
+  if (role === 2) return 'Admin';
+  return 'Unknown';
 };
 
 const renderAuditContent = (rawJson: string | null) => {
@@ -188,6 +211,23 @@ export default function AdminDisputeManagementScreen() {
     }
     return list;
   }, [selectedDispute?.auditTrail, auditSortOrder, auditPageSize]);
+
+  const [userTimelineSortOrder, setUserTimelineSortOrder] = useState<'newest' | 'oldest'>('oldest');
+  const [userTimelinePageSize, setUserTimelinePageSize] = useState<number>(0);
+
+  const displayedUserTimeline = useMemo(() => {
+    if (!selectedDispute?.userActionTimeline) return [];
+    const list = [...selectedDispute.userActionTimeline];
+    list.sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return userTimelineSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+    if (userTimelinePageSize > 0) {
+      return list.slice(0, userTimelinePageSize);
+    }
+    return list;
+  }, [selectedDispute?.userActionTimeline, userTimelineSortOrder, userTimelinePageSize]);
 
   // GSAP Entrance Animation
   usePageGSAP({
@@ -472,6 +512,13 @@ export default function AdminDisputeManagementScreen() {
                     onClick={() => setActiveTab('audit')}
                   >
                     <History size={15} /> {t('admin.disputes.tabs.auditLog', 'Audit Log')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`admin-investigation-tab-btn ${activeTab === 'userTimeline' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('userTimeline')}
+                  >
+                    <Activity size={15} /> {t('admin.disputes.tabs.userTimeline', 'User Activity')}
                   </button>
                 </nav>
 
@@ -782,6 +829,105 @@ export default function AdminDisputeManagementScreen() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 7: User Activity Timeline */}
+                {activeTab === 'userTimeline' && (
+                  <div className="tab-pane space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-surface-muted/40 border border-border/60 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-text-muted flex items-center gap-1">
+                          <Layers size={14} className="text-brand" />
+                          Showing:
+                        </span>
+                        <strong className="text-text-primary font-bold">
+                          {displayedUserTimeline.length} of {(selectedDispute.userActionTimeline || []).length} events
+                        </strong>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-1.5 font-bold text-text-muted">
+                          <ArrowUpDown size={13} />
+                          <span>Sort:</span>
+                          <select
+                            value={userTimelineSortOrder}
+                            onChange={(e) => setUserTimelineSortOrder(e.target.value as 'newest' | 'oldest')}
+                            className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
+                          >
+                            <option value="oldest">Oldest First</option>
+                            <option value="newest">Newest First</option>
+                          </select>
+                        </label>
+
+                        <label className="flex items-center gap-1.5 font-bold text-text-muted">
+                          <Filter size={13} />
+                          <span>Show:</span>
+                          <select
+                            value={userTimelinePageSize}
+                            onChange={(e) => setUserTimelinePageSize(Number(e.target.value))}
+                            className="rounded-xl border border-border bg-background px-2.5 py-1 text-xs font-extrabold text-text-primary focus:outline-hidden focus:ring-1 focus:ring-brand cursor-pointer"
+                          >
+                            <option value={0}>All events</option>
+                            <option value={10}>10 items</option>
+                            <option value={25}>25 items</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+
+                    {(selectedDispute.userActionTimeline || []).length === 0 ? (
+                      <div className="admin-dispute-empty p-8 text-center text-xs font-extrabold text-text-muted">
+                        No client/freelancer activity recorded for this contract.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {displayedUserTimeline.map((log) => {
+                          const role = formatUserAuditRole(log.role);
+                          return (
+                            <div key={log.auditLogUserId} className="rounded-2xl border border-border bg-background p-4 space-y-3 shadow-sm hover:shadow-md transition">
+                              <div className="flex items-center justify-between font-black text-xs text-text-primary">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-black border ${
+                                      role === 'Client'
+                                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-600'
+                                        : role === 'Freelancer'
+                                          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'
+                                          : 'bg-surface-muted/60 border-border/40 text-text-secondary'
+                                    }`}
+                                  >
+                                    <User size={13} />
+                                    {role}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-brand/10 border border-brand/20 px-3 py-1 text-xs font-black text-brand">
+                                    <Activity size={13} />
+                                    {formatUserAuditAction(log.actionType)}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-bold text-text-muted">{formatDate(log.createdAt)}</span>
+                              </div>
+
+                              <p className="text-xs font-semibold text-text-secondary">{log.description}</p>
+
+                              <div className="pt-2 text-xs font-semibold text-text-muted flex flex-wrap items-center justify-between gap-2 border-t border-border/40">
+                                <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40">
+                                  <UserCheck size={13} className="text-brand shrink-0" />
+                                  <span>{log.userName ?? 'Unknown user'}</span>
+                                </span>
+
+                                {log.milestoneTitle && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-muted/60 px-2.5 py-1 text-[11px] font-bold text-text-secondary border border-border/40">
+                                    <Landmark size={13} className="text-text-muted shrink-0" />
+                                    <span>{log.milestoneTitle}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
