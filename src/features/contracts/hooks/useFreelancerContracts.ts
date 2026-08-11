@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { contractGetAPI } from '../../../api/contractAPI/GET';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { ContractDto, ContractQueryParams, Milestone } from '../../../types/models/Contract';
-import { MilestoneStatus } from '../../../types/models/Contract';
+import { ContractStatus, MilestoneStatus } from '../../../types/models/Contract';
 import { calculateMilestoneCompletion } from '../../../shared/utils/contractUtils';
 
 export interface MilestoneDisplay extends Milestone {
@@ -35,7 +35,7 @@ export function useFreelancerContracts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'completed'>('active');
+  const [selectedStatus, setSelectedStatus] = useState<ContractStatus | 'All'>('All');
   const [sortBy, setSortBy] = useState<'date' | 'value'>('date');
   const [expandedContractIds, setExpandedContractIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,10 +85,10 @@ export function useFreelancerContracts() {
     void loadContracts();
   }, [loadContracts]);
 
-  // Reset pagination when search, tab, or sort changes
+  // Reset pagination when search, status, or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTab, sortBy]);
+  }, [searchQuery, selectedStatus, sortBy]);
 
   const toggleExpand = (contractId: string) => {
     setExpandedContractIds(prev => {
@@ -100,6 +100,11 @@ export function useFreelancerContracts() {
       }
       return next;
     });
+  };
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setSelectedStatus('All');
   };
 
   const filteredContracts = useMemo(() => {
@@ -114,16 +119,9 @@ export function useFreelancerContracts() {
 
       if (!matchesSearch) return false;
 
-      // Filter by Tab
-      const status = Number(contract.status);
-      if (activeTab === 'active') {
-        return status === 7; // Active
-      }
-      if (activeTab === 'pending') {
-        return status === 0 || status === 6; // Draft or PendingSignature
-      }
-      if (activeTab === 'completed') {
-        return status === 8; // Completed
+      // Filter by Status
+      if (selectedStatus !== 'All' && Number(contract.status) !== Number(selectedStatus)) {
+        return false;
       }
 
       return true;
@@ -133,7 +131,7 @@ export function useFreelancerContracts() {
       }
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
-  }, [contracts, searchQuery, activeTab, sortBy]);
+  }, [contracts, searchQuery, selectedStatus, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredContracts.length / itemsPerPage));
 
@@ -143,9 +141,9 @@ export function useFreelancerContracts() {
   }, [filteredContracts, currentPage, itemsPerPage]);
 
   const stats = useMemo(() => {
-    const activeCount = contracts.filter(c => Number(c.status) === 7).length;
-    const completedCount = contracts.filter(c => Number(c.status) === 8).length;
-    const pendingCount = contracts.filter(c => Number(c.status) === 0 || Number(c.status) === 6).length;
+    const activeCount = contracts.filter(c => Number(c.status) === ContractStatus.Active).length;
+    const completedCount = contracts.filter(c => Number(c.status) === ContractStatus.Completed).length;
+    const pendingCount = contracts.filter(c => Number(c.status) === ContractStatus.PendingSignature).length;
     const totalValue = contracts.reduce((sum, c) => sum + (Number(c.totalBudget) || 0), 0);
 
     return {
@@ -171,12 +169,13 @@ export function useFreelancerContracts() {
     error,
     searchQuery,
     setSearchQuery,
-    activeTab,
-    setActiveTab,
+    selectedStatus,
+    setSelectedStatus,
     sortBy,
     setSortBy,
     expandedContractIds,
     toggleExpand,
+    resetFilters,
     stats,
     loadContracts,
   };

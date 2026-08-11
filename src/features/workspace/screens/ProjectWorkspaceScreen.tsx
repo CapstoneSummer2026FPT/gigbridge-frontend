@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, Ban, Send, AlertTriangle, PanelLeftOpen, PanelLeftClose,
   Paperclip, Smile, CheckCircle, Circle, Download,
-  FileText, Image as ImageIcon, Table, Info, CreditCard, MessageSquare,
-  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks
+  FileText, Info, CreditCard, MessageSquare,
+  Upload, Link2, X, AlertCircle, Loader2, Wallet, LockKeyhole, Star, ListChecks,
+  FolderOpen, RefreshCw
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
 import { UserProfileLink } from '../../../shared/components/UserProfileLink';
@@ -12,9 +13,8 @@ import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { getProfilePath } from '../../../shared/hooks/useProfileNavigation';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useProjectWorkspace } from '../hooks/useProjectWorkspace';
-import { ContractProductHandoffSourceType, ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
+import { ContractStatus, ContractWorkItemStatus } from '../../../types/models/Contract';
 import { UserRole } from '../../../types/models/User';
-import type { ContractProductHandoffResponse } from '../../../types/models/Contract';
 import type { EscalateReportToDisputeInput } from '../../../types/models/Dispute';
 import {
   ContractReportIssueType,
@@ -44,21 +44,10 @@ import {
 } from '../utils/reportSystemMessage';
 import { ProjectReviewDialog } from '../../reviews/components/ProjectReviewDialog';
 import '../../reviews/styles/reviews-screen.css';
+import { FileTypeBadge } from '../../../shared/components/FileTypeBadge';
+import { contractGetAPI, type WorkspaceFileDto } from '../../../api/contractAPI/GET';
 
 type Translate = ReturnType<typeof useTranslation>['t'];
-
-const getProductHandoffUrl = (handoff: ContractProductHandoffResponse): string | null => {
-  const url = handoff.sourceType === ContractProductHandoffSourceType.Link
-    ? handoff.externalUrl
-    : handoff.fileUrl;
-
-  return url?.trim() || null;
-};
-
-const getProductHandoffLabel = (handoff: ContractProductHandoffResponse, t: Translate): string =>
-  handoff.sourceType === ContractProductHandoffSourceType.Link
-    ? t('workspace.workMaterialsLink')
-    : handoff.fileName || t('workspace.workMaterialsFile');
 
 const REPORT_ISSUE_KEYS: Record<number, string> = {
   [ContractReportIssueType.PaymentIssue]: 'workspace.reportIssueTypePaymentIssue',
@@ -115,6 +104,11 @@ export default function ProjectWorkspaceScreen() {
   const navigate = useNavigate();
   const { contractId } = useParams<{ contractId: string }>();
   const [activeTab, setActiveTab] = useState<'chat' | 'files'>('chat');
+
+  // ── Workspace Files State ──────────────────────────────────────────────────
+  const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFileDto[]>([]);
+  const [workspaceFilesLoading, setWorkspaceFilesLoading] = useState(false);
+  const [workspaceFilesError, setWorkspaceFilesError] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<'list' | 'milestones' | 'chat'>('chat');
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(() => {
     try {
@@ -184,7 +178,6 @@ export default function ProjectWorkspaceScreen() {
     setIsBlocked,
     project,
     activeContract,
-    productHandoffs,
     earlyStartRequests,
     workspaceProjects,
     currentProjData,
@@ -1622,67 +1615,26 @@ export default function ProjectWorkspaceScreen() {
               )}
 
               {activeTab === 'files' && (
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-headline-sm text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('workspace.sharedFiles')}</h4>
-                    <button className="text-[10px] text-[var(--gb-cyan)] hover:underline font-semibold cursor-pointer">{t('workspace.seeAll')}</button>
-                  </div>
-                  <div className="space-y-3">
-                    {productHandoffs.map(handoff => {
-                      const productUrl = getProductHandoffUrl(handoff);
-                      const isLink = handoff.sourceType === ContractProductHandoffSourceType.Link;
-
-                      return (
-                        <button
-                          type="button"
-                          key={handoff.contractProductHandoffId}
-                          onClick={productUrl ? () => window.open(productUrl, '_blank', 'noopener,noreferrer') : undefined}
-                          disabled={!productUrl}
-                          aria-label={t('workspace.openHandoffAria', { defaultValue: `Open ${getProductHandoffLabel(handoff, t)} version ${handoff.version}`, label: getProductHandoffLabel(handoff, t), version: handoff.version })}
-                          className={`w-full text-left flex items-center gap-3 p-3 bg-[var(--gb-cyan)]/5 rounded-lg transition-all border border-[var(--gb-cyan)]/20 ${
-                            productUrl ? 'cursor-pointer hover:bg-[var(--gb-cyan)]/10' : 'cursor-default opacity-70'
-                          }`}
-                        >
-                          <div className="w-9 h-9 rounded bg-[var(--gb-cyan)]/10 flex items-center justify-center flex-shrink-0 text-[var(--gb-cyan)]">
-                            {isLink ? <Link2 size={18} /> : <FileText size={18} />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-bold truncate text-foreground">
-                              {getProductHandoffLabel(handoff, t)}
-                            </p>
-                            <p className="text-[9px] text-muted-foreground truncate">
-                              {t('workspace.version', { version: handoff.version })}
-                              {handoff.note ? ` - ${handoff.note}` : ''}
-                            </p>
-                          </div>
-                          {productUrl && (
-                            <Download size={14} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
-                          )}
-                        </button>
-                      );
-                    })}
-                    {[
-                      { name: 'Contract_Alex_J.pdf', size: '2.4 MB', date: 'Oct 14', icon: <FileText className="text-red-500" /> },
-                      { name: 'UI_Moodboard_v1.zip', size: '18.5 MB', date: 'Oct 13', icon: <ImageIcon className="text-[var(--gb-cyan)]" /> },
-                      { name: 'Project_Timeline.xlsx', size: '120 KB', date: 'Oct 11', icon: <Table className="text-green-500" /> }
-                    ].map(file => (
-                      <div
-                        key={file.name}
-                        onClick={() => toast.info(t('workspace.downloadSim', { name: file.name }))}
-                        className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-all border border-transparent hover:border-border"
-                      >
-                        <div className="w-8 h-8 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                          {file.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] font-semibold truncate text-foreground">{file.name}</p>
-                          <p className="text-[9px] text-muted-foreground">{file.size} • {file.date}</p>
-                        </div>
-                        <Download size={14} className="text-muted-foreground hover:text-[var(--gb-cyan)] flex-shrink-0" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <WorkspaceFilesPanel
+                  contractId={contractId ?? ''}
+                  files={workspaceFiles}
+                  isLoading={workspaceFilesLoading}
+                  error={workspaceFilesError}
+                  onLoad={async () => {
+                    if (!contractId) return;
+                    setWorkspaceFilesLoading(true);
+                    setWorkspaceFilesError(null);
+                    try {
+                      const res = await contractGetAPI.getWorkspaceFiles(contractId);
+                      if (res.success && res.data) setWorkspaceFiles(res.data);
+                      else setWorkspaceFilesError(res.message ?? 'Unable to load files');
+                    } catch {
+                      setWorkspaceFilesError('Unable to load files');
+                    } finally {
+                      setWorkspaceFilesLoading(false);
+                    }
+                  }}
+                />
               )}
             </div>
           </aside>
@@ -2072,6 +2024,128 @@ export default function ProjectWorkspaceScreen() {
         />
       )}
     </AppLayout>
+  );
+}
+
+// ─── WorkspaceFilesPanel ──────────────────────────────────────────────────────
+
+interface WorkspaceFilesPanelProps {
+  contractId: string;
+  files: WorkspaceFileDto[];
+  isLoading: boolean;
+  error: string | null;
+  onLoad: () => Promise<void>;
+}
+
+function WorkspaceFilesPanel({ files, isLoading, error, onLoad }: WorkspaceFilesPanelProps) {
+  // Auto-fetch when panel first mounts
+  const hasLoaded = useRef(false);
+  useEffect(() => {
+    if (!hasLoaded.current) {
+      hasLoaded.current = true;
+      void onLoad();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const normalizeFile = (f: WorkspaceFileDto) => ({
+    id:           f.id ?? f.fileId ?? Math.random().toString(36),
+    fileName:     f.fileName ?? f.FileName ?? null,
+    fileUrl:      f.fileUrl ?? f.FileUrl ?? f.externalUrl ?? f.ExternalUrl ?? null,
+    isExternalLink: (f.sourceType ?? f.SourceType) === 1,
+    fileSize:     f.fileSize ?? f.FileSize ?? null,
+    uploadedAt:   f.uploadedAt ?? f.UploadedAt ?? f.createdAt ?? f.CreatedAt ?? null,
+    uploaderName: f.uploaderName ?? f.UploaderName ?? null,
+    note:         f.note ?? f.Note ?? null,
+    version:      f.version ?? f.Version ?? null,
+    context:      f.context ?? f.Context ?? null,
+    milestoneTitle: f.milestoneTitle ?? f.MilestoneTitle ?? null,
+  });
+
+  // Group by context / milestone
+  const grouped = files.reduce<Record<string, ReturnType<typeof normalizeFile>[]>>((acc, f) => {
+    const norm  = normalizeFile(f);
+    const group = norm.milestoneTitle
+      ? `Milestone: ${norm.milestoneTitle}`
+      : norm.context
+        ? norm.context.charAt(0).toUpperCase() + norm.context.slice(1)
+        : 'Chung';
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(norm);
+    return acc;
+  }, {});
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-extrabold uppercase tracking-wider text-text-muted flex items-center gap-2">
+          <FolderOpen size={14} />
+          Shared Files
+        </h4>
+        <button
+          type="button"
+          onClick={() => void onLoad()}
+          disabled={isLoading}
+          className="p-1.5 rounded-lg border border-border bg-background text-text-muted hover:text-text-primary hover:border-brand/30 transition cursor-pointer disabled:opacity-40"
+          title="Refresh"
+        >
+          <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* Loading state */}
+      {isLoading && !files.length && (
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-14 rounded-xl bg-surface-muted/40 animate-pulse border border-border" />
+          ))}
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !isLoading && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold flex items-center gap-2">
+          <AlertCircle size={14} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !error && files.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <FolderOpen size={36} className="text-text-muted/30 mb-3" />
+          <p className="text-xs font-extrabold text-text-muted">Chưa có file nào được chia sẻ</p>
+          <p className="text-[10px] text-text-muted/60 mt-1">Các file trao đổi trong workspace sẽ xuất hiện ở đây</p>
+        </div>
+      )}
+
+      {/* Files grouped */}
+      {!isLoading && Object.keys(grouped).length > 0 && (
+        <div className="space-y-5">
+          {Object.entries(grouped).map(([groupName, groupFiles]) => (
+            <div key={groupName} className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted px-1">{groupName}</p>
+              <div className="space-y-2">
+                {groupFiles.map(f => (
+                  <FileTypeBadge
+                    key={f.id}
+                    fileName={f.fileName}
+                    fileUrl={f.fileUrl}
+                    isExternalLink={f.isExternalLink}
+                    fileSize={f.fileSize}
+                    uploadedAt={f.uploadedAt}
+                    uploaderName={f.uploaderName}
+                    note={f.note}
+                    version={f.version}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
