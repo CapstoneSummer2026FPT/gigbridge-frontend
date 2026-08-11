@@ -15,7 +15,6 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { usePremiumStatus } from '../../features/premium/hooks';
 import { UserAvatar } from './UserAvatar';
 import { getProfilePath } from '../hooks/useProfileNavigation';
-import { PremiumStatusBadge } from '../../features/premium/components/PremiumStatusBadge';
 
 interface TopNavProps {
   onMenuClick?: () => void;
@@ -546,9 +545,6 @@ export function TopNav({ onMenuClick, showMenuButton = false }: TopNavProps = {}
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-muted uppercase tracking-wider">
                         {role === 0 ? t('projects.client') : role === 1 ? t('projects.freelancer') : t('nav.admin')}
                       </span>
-                      {(role === 0 || role === 1) && !premiumStatus.loading && !premiumStatusUnavailable && (
-                        <PremiumStatusBadge active={premiumStatus.isPremium} compact />
-                      )}
                     </div>
                   </div>
                   <ChevronRight size={14} className="text-muted group-hover:translate-x-0.5 group-hover:text-cyan transition-all flex-shrink-0" />

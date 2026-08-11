@@ -1,38 +1,50 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Bot, BriefcaseBusiness, Crown, Scale, Sparkles, Target, WandSparkles } from 'lucide-react';
+import {
+  ArrowRight, Bot, BriefcaseBusiness, CheckCircle2, Crown,
+  Megaphone, Sparkles, Target, WandSparkles, Zap
+} from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
+import { useTranslation } from '../../../hooks/useTranslation';
 import { clientPremiumAPI } from '../api/premiumAPI';
-import { PremiumStatusBadge } from '../components/PremiumStatusBadge';
 import { JobPromotionStudio } from '../components/JobPromotionStudio';
 import { PremiumTimeRemaining } from '../components/PremiumTimeRemaining';
 import { usePremiumResource } from '../hooks';
 import { PremiumSubscriptionStatus } from '../types';
-import '../styles/premium.css';
+import '../styles/client-pricing-screen.css';
 import '../styles/auto-renew.css';
+
+type Tab = 'overview' | 'aiBuilder' | 'promotions' | 'talentMatching' | 'interviews' | 'history';
 
 export default function ClientPremiumScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const current = usePremiumResource(useCallback(clientPremiumAPI.currentSubscription, []));
-  const history = usePremiumResource(useCallback(clientPremiumAPI.subscriptionHistory, []));
+  const { t } = useTranslation('premium');
+
+  const [tab, setTab] = useState<Tab>('overview');
   const [busy, setBusy] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [message, setMessage] = useState<{ error?: string; success?: string }>({});
+
+  const current = usePremiumResource(useCallback(clientPremiumAPI.currentSubscription, []));
+  const history = usePremiumResource(useCallback(clientPremiumAPI.subscriptionHistory, []));
   const entitled = Boolean(current.data?.isPremium && current.data.status === 0 && new Date(current.data.endDate) > new Date());
 
   useEffect(() => {
-    if (location.hash === '#job-promotions') {
-      window.setTimeout(() => document.getElementById('job-promotions')?.scrollIntoView({ behavior: 'smooth' }), 0);
+    const stateTab = (location.state as { activeTab?: Tab } | null)?.activeTab;
+    if (stateTab) {
+      setTab(stateTab);
+    } else if (location.hash === '#job-promotions' || location.hash === '#promotions') {
+      setTab('promotions');
     }
-  }, [location.hash]);
+  }, [location.hash, location.state]);
 
   const updateAutoRenew = async (autoRenew: boolean) => {
     setBusy(true); setMessage({});
     const response = await clientPremiumAPI.updateAutoRenew(autoRenew);
     setBusy(false);
     if (!response.success) return setMessage({ error: response.message });
-    setMessage({ success: autoRenew ? 'Automatic renewal is on.' : 'Automatic renewal is off.' });
+    setMessage({ success: t(autoRenew ? 'clientPremium.autoRenewOn' : 'clientPremium.autoRenewOff') });
     window.dispatchEvent(new Event('gigbridge-premium-updated'));
     await Promise.all([current.refresh(), history.refresh()]);
   };
@@ -43,65 +55,401 @@ export default function ClientPremiumScreen() {
     setBusy(false);
     if (!response.success) return setMessage({ error: response.message });
     setConfirmCancel(false);
-    setMessage({ success: 'Renewal cancelled. Premium benefits stay active through the end date.' });
+    setMessage({ success: t('clientPremium.cancelSuccess') });
     window.dispatchEvent(new Event('gigbridge-premium-updated'));
     await Promise.all([current.refresh(), history.refresh()]);
   };
 
-  const features = [
-    { icon: <Target size={22} />, title: 'Smart talent matching', description: 'Rank eligible freelancers with transparent skills, category, reputation, and availability signals.', path: '/talent-matching', action: 'Find talent' },
-    { icon: <WandSparkles size={22} />, title: 'AI job builder', description: 'Turn a hiring brief into a structured job draft, then review every field before publishing.', path: '/jobs/post/guide', action: 'Create a job' },
-    { icon: <BriefcaseBusiness size={22} />, title: 'Promoted job posts', description: 'Use GigCoin to feature an open job and improve marketplace reach.', path: '/premium/client#job-promotions', action: 'Open promotion studio' },
-    { icon: <Bot size={22} />, title: 'AI interview setup', description: 'Attach a structured text or voice interview to an open job and review candidate results.', path: '/jobs/my-jobs', action: 'Configure interviews' },
-    { icon: <Scale size={22} />, title: 'Priority dispute handling', description: 'Client disputes automatically enter the Premium 24-hour priority queue with AI-assisted analysis.', path: '/contracts', action: 'View contracts' },
+  const tabItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'overview',       label: t('clientPremium.tabs.overview'),       icon: <Crown size={15} /> },
+    { id: 'aiBuilder',      label: t('clientPremium.tabs.aiBuilder'),      icon: <WandSparkles size={15} /> },
+    { id: 'promotions',     label: t('clientPremium.tabs.promotions'),     icon: <Megaphone size={15} /> },
+    { id: 'talentMatching', label: t('clientPremium.tabs.talentMatching'), icon: <Target size={15} /> },
+    { id: 'interviews',     label: t('clientPremium.tabs.interviews'),     icon: <Bot size={15} /> },
+    { id: 'history',        label: t('clientPremium.tabs.history'),        icon: <BriefcaseBusiness size={15} /> },
   ];
 
-  return <AppLayout><main className="premium-shell">
-    <section className="premium-hero">
-      <div className="premium-eyebrow"><Crown size={16} /> Client Premium</div>
-      <h1 className="premium-title">Your hiring intelligence hub.</h1>
-      <p className="premium-muted">Use every Premium hiring capability from the workflow where it belongs, with clear status for both Standard and Premium clients.</p>
-      <div className="premium-hero-actions">
-        <PremiumStatusBadge active={entitled} />
-        <button className="premium-button" onClick={() => navigate('/premium/client/pricing')}>{entitled ? 'Extend Premium' : 'Upgrade to Premium'}</button>
-      </div>
-    </section>
+  return (
+    <AppLayout>
+      <main className="cp-shell">
 
-    {location.state?.purchased && <div className="premium-notice"><Sparkles size={18} />Client Premium is active. Your hiring tools are now unlocked.</div>}
-    {message.error && <div className="premium-error">{message.error}</div>}
-    {message.success && <div className="premium-notice"><Sparkles size={18} />{message.success}</div>}
+        {/* ══════════════════════════════════════
+            HERO BANNER (Awwwards Editorial Style)
+        ══════════════════════════════════════ */}
+        <section className="cp-hero">
+          <div className="cp-hero-eyebrow">
+            <span className="cp-hero-eyebrow-dot" />
+            {t('clientPremium.name')}
+          </div>
+          <h1 className="cp-hero-headline">
+            {t('clientPremium.title')}
+          </h1>
+          <p className="cp-hero-sub">
+            {t('clientPremium.subtitle')}
+          </p>
 
-    {(current.loading || history.loading) ? <div className="premium-grid"><div className="premium-skeleton" /><div className="premium-skeleton" /></div> :
-      <div className="premium-grid">
-        <section className="premium-card">
-          <h3>{entitled ? current.data?.planName : 'Standard Client'}</h3>
-          {entitled ? <PremiumTimeRemaining subscriptions={history.data?.length ? history.data : (current.data ? [current.data] : [])} /> : <p className="premium-muted">Core hiring tools remain available. Premium actions will guide you to upgrade.</p>}
-          {entitled && <>
-            <label className="premium-auto-renew"><input type="checkbox" checked={Boolean(current.data?.autoRenew)} disabled={busy} onChange={event => void updateAutoRenew(event.target.checked)} /><span>Automatic renewal</span></label>
-            <p className="premium-muted premium-auto-renew-help">{current.data?.autoRenew ? 'Your plan renews automatically using GigCoin.' : 'Your access ends on the current end date unless renewed.'}</p>
-            {current.data?.autoRenew && <button className="premium-button secondary" disabled={busy} onClick={() => setConfirmCancel(true)}>Cancel renewal</button>}
-          </>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <button className="cp-btn" onClick={() => navigate('/premium/client/pricing')}>
+              <Zap size={14} />
+              {entitled ? t('clientPremium.extend') : t('clientPremium.upgrade')}
+            </button>
+          </div>
         </section>
-        <section className="premium-card">
-          <Crown color="#8b5cf6" /><h3>{entitled ? 'All hiring tools unlocked' : 'Preview Premium capabilities'}</h3>
-          <p className="premium-muted">Feature buttons remain visible for Standard clients, but protected actions require an active plan.</p>
-        </section>
-      </div>}
 
-    <h2 style={{ margin: '30px 0 14px', fontSize: 24, fontWeight: 900 }}>Premium hiring tools</h2>
-    <div className="premium-grid">
-      {features.map(feature => <article className="premium-card premium-feature-card" key={feature.title}>
-        <div className="premium-feature-icon">{feature.icon}</div><h3>{feature.title}</h3><p className="premium-muted">{feature.description}</p>
-        <button className="premium-button" onClick={() => navigate(entitled ? feature.path : '/premium/client/pricing')}>{entitled ? feature.action : 'Unlock with Premium'}</button>
-      </article>)}
-    </div>
+        {location.state?.purchased && (
+          <div className="cp-hero-eyebrow" style={{ color: '#10b981', marginTop: 16 }}>
+            <Sparkles size={16} /> {t('clientPremium.activeNotice')}
+          </div>
+        )}
+        {message.error && (
+          <div style={{ color: '#ef4444', padding: '12px 16px', borderRadius: '12px', background: 'rgba(239,68,68,.08)', margin: '16px 0', fontSize: 13 }}>
+            {message.error}
+          </div>
+        )}
+        {message.success && (
+          <div style={{ color: '#10b981', padding: '12px 16px', borderRadius: '12px', background: 'rgba(16,185,129,.08)', margin: '16px 0', fontSize: 13 }}>
+            {message.success}
+          </div>
+        )}
 
-    {!!history.data?.length && <section className="premium-card" style={{ marginTop: 24 }}><h3>Subscription history</h3>{history.data.map(item => <div className="premium-row" key={item.id}><div><strong>{item.planName}</strong><div className="premium-muted">{new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}</div></div><span>{PremiumSubscriptionStatus[item.status]}</span></div>)}</section>}
+        {/* RESTRAINED EDITORIAL TABS */}
+        <div className="cp-tabs" role="tablist">
+          {tabItems.map(item => (
+            <button
+              key={item.id}
+              className={`cp-tab ${tab === item.id ? 'active' : ''}`}
+              onClick={() => setTab(item.id)}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
 
-    {confirmCancel && <div className="premium-modal" onClick={() => setConfirmCancel(false)}><div className="premium-modal-box" onClick={event => event.stopPropagation()}><h2>Cancel automatic renewal?</h2><p className="premium-muted">Your Premium client benefits remain active through the current end date.</p><div className="premium-modal-actions"><button className="premium-button secondary" disabled={busy} onClick={() => setConfirmCancel(false)}>Keep renewal</button><button className="premium-button" disabled={busy} onClick={() => void cancelRenewal()}>{busy ? 'Cancelling…' : 'Confirm cancellation'}</button></div></div></div>}
-    <section id="job-promotions" className="client-promotion-section">
-      <div className="client-promotion-heading"><div><div className="premium-eyebrow"><BriefcaseBusiness size={16} /> Dedicated promotion manager</div><h2>Promote your open jobs</h2><p className="premium-muted">Design the card, crop its artwork, preview the final placement, and track active campaigns in one place.</p></div></div>
-      <JobPromotionStudio entitled={entitled} />
-    </section>
-  </main></AppLayout>;
+        {/* ══════════════════════════════════════
+            TAB 1: OVERVIEW (Editorial Dashboard)
+        ══════════════════════════════════════ */}
+        {tab === 'overview' && (
+          <div>
+            {/* REALITY STATS STRIP */}
+            <section className="cp-reality" style={{ padding: '0 0 36px', borderBottom: '1px solid var(--cp-border)' }}>
+              <div className="cp-reality-grid">
+                <div className="cp-reality-stat">
+                  <div className="cp-reality-number">85%</div>
+                  <p className="cp-reality-caption">Faster time-to-hire</p>
+                  <p className="cp-reality-sub">AI job post generator &amp; featured promotions drive instant candidate applications.</p>
+                </div>
+                <div className="cp-reality-stat">
+                  <div className="cp-reality-number">3.8×</div>
+                  <p className="cp-reality-caption">Higher candidate response</p>
+                  <p className="cp-reality-sub">Smart talent matching pushes your post directly to verified candidates matching Major &amp; Skill badges.</p>
+                </div>
+                <div className="cp-reality-stat">
+                  <div className="cp-reality-number">100%</div>
+                  <p className="cp-reality-caption">Automated AI screening</p>
+                  <p className="cp-reality-sub">AI Screener bot interviews applicants upon submission and provides scored transcript summaries.</p>
+                </div>
+              </div>
+            </section>
+
+            {/* SUBSCRIPTION CONTROL CARD (HIGH END EDITORIAL PLAN CARD) */}
+            <div style={{ padding: '36px 0', borderBottom: '1px solid var(--cp-border)' }}>
+              <p className="cp-section-eyebrow"><Crown size={13} /> Active Plan Status</p>
+
+              {(current.loading || history.loading) ? (
+                <div style={{ height: 260, borderRadius: 24, background: 'var(--card)', opacity: 0.5 }} />
+              ) : (
+                <article className="cp-plan-prem" style={{ margin: 0, padding: 36 }}>
+                  <div className="cp-plan-prem-orb" aria-hidden />
+
+                  <div className="cp-plan-prem-top">
+                    <div className="cp-plan-prem-badge">
+                      <Sparkles size={12} /> {entitled ? 'Active Subscription' : 'Standard Account'}
+                    </div>
+                    <div className="cp-plan-prem-tier">
+                      <Crown size={14} /> {entitled ? (current.data?.planName || 'Client Premium') : t('clientPremium.standardTitle')}
+                    </div>
+                  </div>
+
+                  <div className="cp-plan-prem-headline">
+                    {entitled ? 'Client Premium Velocity Suite' : 'Standard Hiring Mode'}
+                  </div>
+
+                  {entitled ? (
+                    <PremiumTimeRemaining subscriptions={history.data?.length ? history.data : (current.data ? [current.data] : [])} />
+                  ) : (
+                    <p className="cp-plan-std-desc" style={{ fontSize: 14, margin: '16px 0 24px' }}>
+                      {t('clientPremium.standardSub')}
+                    </p>
+                  )}
+
+                  {entitled ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderTop: '1px solid var(--cp-border)', paddingTop: 20, marginTop: 12, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <label className={`cp-toggle ${Boolean(current.data?.autoRenew) ? '' : 'off'}`} title="Tự động gia hạn gói Client Premium">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(current.data?.autoRenew)}
+                            disabled={busy}
+                            onChange={e => void updateAutoRenew(e.target.checked)}
+                          />
+                          <span className="cp-slider" />
+                        </label>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800, color: 'var(--cp-text)' }}>
+                            <span>{t('clientPremium.autoRenewLabel')}</span>
+                            {Boolean(current.data?.autoRenew) ? (
+                              <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(16,185,129,0.15)', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                ACTIVE ✦
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(99,102,241,0.15)', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                RECOMMENDED
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--cp-muted)', marginTop: 2, fontWeight: 600 }}>
+                            {current.data?.autoRenew
+                              ? 'Tự động gia hạn đang bật — Đảm bảo bài ghim Top #1 & phỏng vấn AI luôn hoạt động liên tục.'
+                              : 'Bật tự động gia hạn để duy trì bài đăng vị trí Top #1 và công cụ phỏng vấn AI không bị gián đoạn.'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 10, marginLeft: 'auto' }}>
+                        {current.data?.autoRenew && (
+                          <button className="cp-btn ghost" style={{ padding: '8px 16px', fontSize: 12 }} disabled={busy} onClick={() => setConfirmCancel(true)}>
+                            {t('clientPremium.cancelRenewalBtn')}
+                          </button>
+                        )}
+                        <button className="cp-btn" style={{ padding: '8px 18px', fontSize: 12 }} onClick={() => navigate('/premium/client/pricing')}>
+                          <Zap size={14} /> {t('clientPremium.extend')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderTop: '1px solid var(--cp-border)', paddingTop: 16, marginTop: 12 }}>
+                      <div className="cp-plan-std-desc" style={{ margin: 0 }}>
+                        Upgrade to Client Premium to unlock top-pinned listings, AI screeners &amp; 3D Neon badge.
+                      </div>
+                      <button className="cp-btn" onClick={() => navigate('/premium/client/pricing')}>
+                        <Zap size={14} /> {t('clientPremium.upgrade')}
+                      </button>
+                    </div>
+                  )}
+                </article>
+              )}
+            </div>
+
+            {/* CORE RECRUITING SUPERPOWERS (4 TOOLS) */}
+            <div style={{ padding: '36px 0' }}>
+              <p className="cp-section-eyebrow"><Sparkles size={13} /> Recruiting Suite</p>
+              <h2 className="cp-section-headline" style={{ marginBottom: 32 }}>Four Core Superpower Tools</h2>
+
+              <div className="cp-card-grid">
+                {/* TOOL 1: AI JOB BUILDER */}
+                <article className="cp-card">
+                  <div className="cp-card-header">
+                    <div className="cp-card-icon"><WandSparkles size={20} /></div>
+                    <h3 className="cp-card-title">AI Job Post Generator</h3>
+                  </div>
+                  <p className="cp-card-body">
+                    AI drafts descriptions, milestone breakdowns, and skill tags in seconds.
+                  </p>
+                  <button className="cp-btn ghost" onClick={() => setTab('aiBuilder')}>
+                    Launch AI Generator <ArrowRight size={14} />
+                  </button>
+                </article>
+
+                {/* TOOL 2: FEATURED JOB PROMOTION */}
+                <article className="cp-card">
+                  <div className="cp-card-header">
+                    <div className="cp-card-icon"><Megaphone size={20} /></div>
+                    <h3 className="cp-card-title">Featured Job Promotion</h3>
+                  </div>
+                  <p className="cp-card-body">
+                    Pin your job post to position #1 with a 3D Gold border to get 3.8× candidate responses.
+                  </p>
+                  <button className="cp-btn ghost" onClick={() => setTab('promotions')}>
+                    Open Studio <ArrowRight size={14} />
+                  </button>
+                </article>
+
+                {/* TOOL 3: SMART TALENT MATCHING */}
+                <article className="cp-card">
+                  <div className="cp-card-header">
+                    <div className="cp-card-icon"><Target size={20} /></div>
+                    <h3 className="cp-card-title">Smart Talent Matching</h3>
+                  </div>
+                  <p className="cp-card-body">
+                    Auto-highlight the top 5% matched freelancers by Major, verified skills, and Elo rank.
+                  </p>
+                  <button className="cp-btn ghost" onClick={() => setTab('talentMatching')}>
+                    Match Candidates <ArrowRight size={14} />
+                  </button>
+                </article>
+
+                {/* TOOL 4: AI INTERVIEW SCREENERS */}
+                <article className="cp-card">
+                  <div className="cp-card-header">
+                    <div className="cp-card-icon"><Bot size={20} /></div>
+                    <h3 className="cp-card-title">AI Interview Screeners</h3>
+                  </div>
+                  <p className="cp-card-body">
+                    Automated Q&amp;A screening bot interviews applicants and provides scored transcript summaries.
+                  </p>
+                  <button className="cp-btn ghost" onClick={() => setTab('interviews')}>
+                    Manage Screeners <ArrowRight size={14} />
+                  </button>
+                </article>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 2: AI BUILDER (MOVED UP)
+        ══════════════════════════════════════ */}
+        {tab === 'aiBuilder' && (
+          <section className="cp-studio-box">
+            <div className="cp-card-header" style={{ marginBottom: 20 }}>
+              <div className="cp-card-icon"><WandSparkles size={24} /></div>
+              <div>
+                <h2 className="cp-card-title" style={{ fontSize: 22 }}>AI Job Post Generator</h2>
+                <p className="cp-card-body" style={{ margin: 0 }}>Turn hiring briefs into high-converting, structured job listings in seconds.</p>
+              </div>
+            </div>
+            <div style={{ padding: '20px 24px', borderRadius: 16, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: '#6366f1', marginBottom: 8, fontSize: 13 }}>
+                <Sparkles size={16} /> AI Assistant Active
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--cp-muted)', lineHeight: 1.6, margin: 0 }}>
+                Type a title or brief summary. The AI generator produces structured descriptions, required major criteria, skill tags, milestones, and competitive budget recommendations.
+              </p>
+            </div>
+            <button className="cp-btn" onClick={() => navigate(entitled ? '/jobs/post/guide' : '/premium/client/pricing')}>
+              {entitled ? 'Create Job with AI Generator' : 'Unlock AI Generator with Premium'} <ArrowRight size={14} />
+            </button>
+          </section>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 3: PROMOTIONS STUDIO
+        ══════════════════════════════════════ */}
+        {tab === 'promotions' && (
+          <section id="job-promotions" className="cp-studio-box">
+            <div style={{ marginBottom: 24 }}>
+              <p className="cp-section-eyebrow"><BriefcaseBusiness size={13} /> Dedicated Studio</p>
+              <h2 className="cp-section-headline" style={{ marginBottom: 12 }}>Promote Your Open Jobs</h2>
+              <p className="cp-hero-sub" style={{ margin: 0 }}>
+                Design featured job cards, crop artwork, preview the live 2:3 card format, and pin your listings to position #1.
+              </p>
+            </div>
+            <JobPromotionStudio entitled={entitled} />
+          </section>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 4: TALENT MATCHING
+        ══════════════════════════════════════ */}
+        {tab === 'talentMatching' && (
+          <section className="cp-studio-box">
+            <div className="cp-card-header" style={{ marginBottom: 20 }}>
+              <div className="cp-card-icon"><Target size={24} /></div>
+              <div>
+                <h2 className="cp-card-title" style={{ fontSize: 22 }}>Smart AI Talent Matching</h2>
+                <p className="cp-card-body" style={{ margin: 0 }}>Auto-screen freelancers by Major, verified skills, contract outcomes &amp; Elo rank.</p>
+              </div>
+            </div>
+            <div style={{ padding: '20px 24px', borderRadius: 16, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: '#10b981', marginBottom: 8, fontSize: 13 }}>
+                <CheckCircle2 size={16} /> Matching Engine Active
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--cp-muted)', lineHeight: 1.6, margin: 0 }}>
+                Our algorithm cross-references candidate verified skill badges and Elo ratings against your active job specs, presenting you with candidates matching 90%+ compatibility.
+              </p>
+            </div>
+            <button className="cp-btn" onClick={() => navigate(entitled ? '/talent-matching' : '/premium/client/pricing')}>
+              {entitled ? 'Open Smart Talent Matcher' : 'Unlock Talent Matcher with Premium'} <ArrowRight size={14} />
+            </button>
+          </section>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 5: INTERVIEWS
+        ══════════════════════════════════════ */}
+        {tab === 'interviews' && (
+          <section className="cp-studio-box">
+            <div className="cp-card-header" style={{ marginBottom: 20 }}>
+              <div className="cp-card-icon"><Bot size={24} /></div>
+              <div>
+                <h2 className="cp-card-title" style={{ fontSize: 22 }}>Automated AI Interview Screeners</h2>
+                <p className="cp-card-body" style={{ margin: 0 }}>Define custom AI screening Q&amp;A to automatically interview candidates upon application.</p>
+              </div>
+            </div>
+            <div style={{ padding: '20px 24px', borderRadius: 16, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, color: '#6366f1', marginBottom: 8, fontSize: 13 }}>
+                <Bot size={16} /> AI Bot Screener Active
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--cp-muted)', lineHeight: 1.6, margin: 0 }}>
+                Attach AI interview definitions to your open jobs. As freelancers apply, the bot conducts instant interactive Q&amp;A sessions and delivers scored transcript summaries before you schedule live calls.
+              </p>
+            </div>
+            <button className="cp-btn" onClick={() => navigate(entitled ? '/jobs/my-jobs' : '/premium/client/pricing')}>
+              {entitled ? 'Configure Job AI Interviews' : 'Unlock AI Screener with Premium'} <ArrowRight size={14} />
+            </button>
+          </section>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 6: HISTORY
+        ══════════════════════════════════════ */}
+        {tab === 'history' && (
+          <section className="cp-studio-box">
+            <h2 className="cp-card-title" style={{ fontSize: 22, marginBottom: 20 }}>{t('clientPremium.subscriptionHistory')}</h2>
+            {history.data?.length ? (
+              <table className="cp-compare-table">
+                <thead>
+                  <tr>
+                    <th>Plan Name</th>
+                    <th>Period</th>
+                    <th style={{ textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.data.map(item => (
+                    <tr key={item.id}>
+                      <td style={{ fontWeight: 800 }}>{item.planName}</td>
+                      <td style={{ color: 'var(--cp-muted)' }}>{new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 800 }}>{PremiumSubscriptionStatus[item.status]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="cp-card-body">No subscription history found.</p>
+            )}
+          </section>
+        )}
+
+        {/* CONFIRM CANCEL MODAL */}
+        {confirmCancel && (
+          <div className="cp-modal-overlay" onClick={() => setConfirmCancel(false)}>
+            <div className="cp-modal-box" onClick={e => e.stopPropagation()}>
+              <h2>{t('clientPremium.cancelConfirmTitle')}</h2>
+              <p className="cp-card-body">{t('clientPremium.cancelConfirmSub')}</p>
+              <div className="cp-modal-actions">
+                <button className="cp-btn ghost" disabled={busy} onClick={() => setConfirmCancel(false)}>
+                  {t('clientPremium.keepRenewal')}
+                </button>
+                <button className="cp-btn" disabled={busy} onClick={() => void cancelRenewal()}>
+                  {busy ? 'Cancelling…' : t('clientPremium.confirmCancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </AppLayout>
+  );
 }

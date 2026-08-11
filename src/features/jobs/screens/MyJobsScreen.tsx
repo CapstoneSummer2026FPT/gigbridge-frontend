@@ -37,22 +37,20 @@ import {
   JobPostVisibility,
   type GetMyJobPostDto,
 } from '../../../types/models/Job';
-import '../styles/my-jobs-screen.css';
 import { GigCoinBudget } from '../../../shared/components/GigCoinAmount';
 import { useApp } from '../../../app/providers/AppProvider';
 import { usePremiumStatus } from '../../premium/hooks';
 import { PremiumStatusBadge } from '../../premium/components/PremiumStatusBadge';
-import { JobPromotionStudio } from '../../premium/components/JobPromotionStudio';
 import '../../premium/styles/premium.css';
 
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled' | 'unknown';
 
 const STATUS_FILTERS: { key: StatusFilter; labelKey: string }[] = [
-  { key: 'all', labelKey: 'myJobs.filter.all' },
   { key: 'open', labelKey: 'myJobs.filter.open' },
   { key: 'draft', labelKey: 'myJobs.filter.draft' },
   { key: 'closed', labelKey: 'myJobs.filter.closed' },
   { key: 'cancelled', labelKey: 'myJobs.filter.cancelled' },
+  { key: 'all', labelKey: 'myJobs.filter.all' },
 ];
 
 const statusToFilter = (status?: number | null): StatusFilter => {
@@ -121,14 +119,13 @@ export default function MyJobsScreen() {
 
   const [jobs, setJobs] = useState<GetMyJobPostDto[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
   const [isCompact, setIsCompact] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingJobId, setPendingJobId] = useState<string | null>(null);
   const [inviteJobId, setInviteJobId] = useState<string | null>(null);
   const [inviteJobTitle, setInviteJobTitle] = useState<string | undefined>(undefined);
-  const [promoteTarget, setPromoteTarget] = useState<{ job: GetMyJobPostDto }>();
   const [interviewTarget, setInterviewTarget] = useState<GetMyJobPostDto>();
   const [premiumActionBusy, setPremiumActionBusy] = useState(false);
 
@@ -588,67 +585,137 @@ export default function MyJobsScreen() {
                               <Users size={14} /> Mời Freelancer
                             </button>
 
-                            {/* Premium & AI Features Dropdown with Solid Background */}
-                            <details className="relative inline-block">
-                              <summary className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all text-xs font-black cursor-pointer list-none shadow-2xs">
-                                <Sparkles size={13} className="text-amber-500" />
-                                <span>Tính Năng AI</span>
-                                <ChevronDown size={13} />
+                             {/* Premium & AI Features Dropdown */}
+                            <details style={{ position: 'relative', display: 'inline-block' }}>
+                              <summary className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 hover:border-amber-500/70 hover:shadow-lg hover:shadow-amber-500/15 transition-all text-xs font-black cursor-pointer list-none select-none">
+                                <Sparkles size={14} className="text-amber-500 animate-pulse" />
+                                <span className="text-amber-500">Tính Năng AI</span>
+                                <ChevronDown size={14} className="text-amber-500 opacity-80" />
                               </summary>
-                              <div className="mj-ai-dropdown-panel space-y-1">
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: 'calc(100% + 8px)',
+                                  left: 0,
+                                  width: '280px',
+                                  padding: '10px',
+                                  borderRadius: '20px',
+                                  background: 'var(--card, #ffffff)',
+                                  color: 'var(--text-primary, #0f0f1a)',
+                                  border: '1px solid var(--border, rgba(255,255,255,0.15))',
+                                  boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(245, 158, 11, 0.15)',
+                                  zIndex: 99999,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '6px'
+                                }}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {/* Dropdown Header */}
+                                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/50 pb-2 mb-0.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                                    <Sparkles size={12} /> Công Cụ AI Nâng Cao
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 text-[9px] font-black uppercase">
+                                    VIP
+                                  </span>
+                                </div>
+
+                                {/* Item 1: AI Candidate Suggestions */}
                                 <button
                                   type="button"
                                   onClick={event => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
                                     event.currentTarget.closest('details')?.removeAttribute('open');
-                                    openPremiumPath(() => navigate(`/talent-matching?job=${job.jobPostsId}`));
+                                    openPremiumPath(() => navigate(`/talent-matching?job=${job.jobPostsId}&tab=smart`));
                                   }}
-                                  className="mj-ai-dropdown-item"
+                                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-left group cursor-pointer border-0 bg-transparent"
                                 >
-                                  <Target size={14} className="text-brand" />
-                                  <span>Gợi ý ứng viên AI</span>
-                                  {!premiumStatus.isPremium && <Crown size={12} className="text-amber-500 ml-auto" />}
+                                  <div className="h-9 w-9 rounded-xl bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                    <Target size={16} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-black color-[var(--text-primary)] flex items-center justify-between">
+                                      <span>Gợi ý ứng viên AI</span>
+                                      {!premiumStatus.isPremium && <Crown size={12} className="text-amber-500 shrink-0 ml-1" />}
+                                    </div>
+                                    <div className="text-[10px] font-medium text-text-muted truncate">Ghép nối freelancer phù hợp</div>
+                                  </div>
                                 </button>
 
+                                {/* Item 2: Job Promotion */}
                                 <button
                                   type="button"
                                   onClick={event => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
                                     event.currentTarget.closest('details')?.removeAttribute('open');
-                                    if (job.isFeatured) setPromoteTarget({ job });
-                                    else openPremiumPath(() => setPromoteTarget({ job }));
+                                    if (!premiumStatus.isPremium) {
+                                      navigate('/premium/client/pricing');
+                                    } else {
+                                      navigate('/premium/client#job-promotions', { state: { activeTab: 'promotions' } });
+                                    }
                                   }}
-                                  className="mj-ai-dropdown-item"
+                                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-left group cursor-pointer border-0 bg-transparent"
                                 >
-                                  <Megaphone size={14} className="text-amber-500" />
-                                  <span>{job.isFeatured ? 'Quản lý quảng bá' : 'Quảng bá tin nổi bật'}</span>
-                                  {!premiumStatus.isPremium && !job.isFeatured && <Crown size={12} className="text-amber-500 ml-auto" />}
+                                  <div className="h-9 w-9 rounded-xl bg-amber-500/15 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                    <Megaphone size={16} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-black color-[var(--text-primary)] flex items-center justify-between">
+                                      <span>{job.isFeatured ? 'Quản lý quảng bá' : 'Quảng bá tin nổi bật'}</span>
+                                      {!premiumStatus.isPremium && !job.isFeatured && <Crown size={12} className="text-amber-500 shrink-0 ml-1" />}
+                                    </div>
+                                    <div className="text-[10px] font-medium text-text-muted truncate">Ghim vị trí ưu tiên trang chủ Feed</div>
+                                  </div>
                                 </button>
 
+                                {/* Item 3: AI Interview Screener */}
                                 {job.hasAiInterview ? (
                                   <button
                                     type="button"
                                     onClick={event => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
                                       event.currentTarget.closest('details')?.removeAttribute('open');
                                       void disableAiInterview(job);
                                     }}
                                     disabled={premiumActionBusy}
-                                    className="mj-ai-dropdown-item text-rose-500 hover:bg-rose-500/10"
+                                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-rose-500/10 transition-all text-left group cursor-pointer border-0 bg-transparent"
                                   >
-                                    <Bot size={14} />
-                                    <span>{premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Đang tắt...' : 'Tắt phỏng vấn AI'}</span>
+                                    <div className="h-9 w-9 rounded-xl bg-rose-500/15 text-rose-500 dark:text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                      <Bot size={16} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs font-black text-rose-500 dark:text-rose-400">
+                                        {premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Đang tắt...' : 'Tắt phỏng vấn AI'}
+                                      </div>
+                                      <div className="text-[10px] font-medium text-rose-400/80 truncate">Tạm dừng sàng lọc tự động</div>
+                                    </div>
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={event => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
                                       event.currentTarget.closest('details')?.removeAttribute('open');
                                       openPremiumPath(() => void createAiInterview(job));
                                     }}
                                     disabled={premiumActionBusy}
-                                    className="mj-ai-dropdown-item"
+                                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition-all text-left group cursor-pointer border-0 bg-transparent"
                                   >
-                                    <Bot size={14} className="text-brand" />
-                                    <span>{premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Đang bật...' : 'Bật phỏng vấn AI'}</span>
-                                    {!premiumStatus.isPremium && <Crown size={12} className="text-amber-500 ml-auto" />}
+                                    <div className="h-9 w-9 rounded-xl bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                      <Bot size={16} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs font-black color-[var(--text-primary)] flex items-center justify-between">
+                                        <span>{premiumActionBusy && interviewTarget?.jobPostsId === job.jobPostsId ? 'Đang bật...' : 'Bật phỏng vấn AI'}</span>
+                                        {!premiumStatus.isPremium && <Crown size={12} className="text-amber-500 shrink-0 ml-1" />}
+                                      </div>
+                                      <div className="text-[10px] font-medium text-text-muted truncate">Phỏng vấn & chấm điểm AI</div>
+                                    </div>
                                   </button>
                                 )}
                               </div>
@@ -755,47 +822,6 @@ export default function MyJobsScreen() {
             setInviteJobTitle(undefined);
           }}
         />
-      )}
-
-      {/* Promotion Studio Modal */}
-      {promoteTarget && (
-        <div className="premium-modal" onClick={() => setPromoteTarget(undefined)}>
-          <div className="premium-modal-box premium-modal-box-wide" onClick={event => event.stopPropagation()}>
-            <JobPromotionStudio
-              entitled={premiumStatus.isPremium}
-              initialJob={promoteTarget.job}
-              onComplete={promotion => {
-                setJobs(current =>
-                  current.map(job =>
-                    job.jobPostsId === promotion.jobPostId
-                      ? { ...job, isFeatured: true, featuredUntil: promotion.featuredUntil }
-                      : job
-                  )
-                );
-                setPromoteTarget(undefined);
-              }}
-              onDeactivated={promotion => {
-                setJobs(current =>
-                  current.map(job =>
-                    job.jobPostsId === promotion.jobPostId
-                      ? { ...job, isFeatured: false, featuredUntil: promotion.featuredUntil }
-                      : job
-                  )
-                );
-                setPromoteTarget(undefined);
-              }}
-            />
-            <div className="premium-modal-actions">
-              <button
-                type="button"
-                className="premium-button secondary"
-                onClick={() => setPromoteTarget(undefined)}
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </AppLayout>
   );

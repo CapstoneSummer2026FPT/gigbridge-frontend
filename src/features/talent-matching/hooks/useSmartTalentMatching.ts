@@ -103,10 +103,13 @@ export function useSmartTalentMatching() {
         job => Number(job.status) === JobPostStatus.Open,
       );
       setJobs(openJobs);
+      const requestedJobId = searchParams.get('job');
       setSelectedJobId(current =>
-        openJobs.some(job => job.jobPostsId === current)
-          ? current
-          : openJobs[0]?.jobPostsId || '',
+        requestedJobId && openJobs.some(job => job.jobPostsId === requestedJobId)
+          ? requestedJobId
+          : openJobs.some(job => job.jobPostsId === current)
+            ? current
+            : openJobs[0]?.jobPostsId || '',
       );
     }
 

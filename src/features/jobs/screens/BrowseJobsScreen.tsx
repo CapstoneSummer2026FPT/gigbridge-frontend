@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp } from 'lucide-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { Search, Filter, Bot, Clock, Users, Globe, Bookmark, ChevronDown, Trophy, Sparkles, TrendingUp, Flame, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -42,7 +42,10 @@ const getSavedJobPostId = (job: SavedJobDto): string => job.jobPostId ?? job.job
 export default function BrowseJobsScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params, setParams] = useSearchParams();
+  const isAiMatchHighlighted = params.get('aiMatch') === 'true' || Boolean((location.state as { highlightAiMatch?: boolean })?.highlightAiMatch);
+
   const setParamsRef = useRef(setParams);
   useEffect(() => {
     setParamsRef.current = setParams;
@@ -398,7 +401,7 @@ export default function BrowseJobsScreen() {
                     type="button"
                     onClick={findMatchingJobs}
                     disabled={recommendedLoading}
-                    className={`browse-jobs-filter-btn ${recommendedMode ? 'active' : ''}`}
+                    className={`browse-jobs-filter-btn ${recommendedMode ? 'active' : ''} ${isAiMatchHighlighted ? 'ai-match-breathe' : ''}`}
                   >
                     <Sparkles size={16} />
                     <span>{recommendedLoading ? t('jobs.findingMatchingJobs') : recommendedMode ? t('jobs.exitRecommended') : t('jobs.findMatchingJobs')}</span>
@@ -649,26 +652,64 @@ export default function BrowseJobsScreen() {
             {/* Promoted Job Card (Featured Opportunities) */}
             <SponsoredPromotionCard promotionType="job" />
 
-            {/* Premium upgrade card */}
+            {/* Fashion-Forward Premium & Profile Promotion Card */}
             {isPremium !== null && (
-              <div className="system-ad-card">
-                <div className="system-ad-title">
-                  {isPremium ? <TrendingUp size={18} className="text-emerald-500" /> : <Sparkles size={18} className="text-[var(--brand,#494be7)]" />}
-                  <span>{isPremium ? t('jobs.promotionTitle') : t('jobs.premiumTitle')}</span>
+              <div className={`system-ad-card ${isPremium ? 'system-ad-card-premium' : ''}`}>
+                <div className="system-ad-premium-orb" aria-hidden />
+
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="system-ad-title" style={{ margin: 0 }}>
+                    {isPremium ? (
+                      <div className="w-8 h-8 rounded-xl bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] flex items-center justify-center flex-shrink-0">
+                        <Flame size={18} />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-xl bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] flex items-center justify-center flex-shrink-0">
+                        <Sparkles size={18} />
+                      </div>
+                    )}
+                    <span className="font-extrabold text-[15px]">{isPremium ? t('jobs.promotionTitle') : t('jobs.premiumTitle')}</span>
+                  </div>
+
+                  {isPremium && (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] border border-[rgba(99,102,241,0.2)]">
+                      {isPromotionActive ? 'ACTIVE ✦' : 'PROMOTION'}
+                    </span>
+                  )}
                 </div>
-                <p className="system-ad-subtitle">
+
+                <p className="system-ad-subtitle" style={{ fontSize: 12, lineHeight: 1.55, margin: '0 0 16px' }}>
                   {isPremium ? t('jobs.promotionDesc') : t('jobs.premiumDesc')}
                 </p>
-                <button
-                  type="button"
-                  className="system-ad-btn system-ad-btn-primary"
-                  disabled={Boolean(isPremium && isPromotionActive)}
-                  onClick={() => navigate(isPremium ? '/premium/freelancer/promotions' : '/premium/freelancer/pricing')}
-                >
-                  {isPremium
-                    ? t(isPromotionActive ? 'jobs.promotionActive' : 'jobs.startPromotion')
-                    : t('jobs.upgradePlan')}
-                </button>
+
+                {isPremium ? (
+                  isPromotionActive ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, background: 'var(--cp-accent-dim,#6366f11c)', border: '1px solid var(--cp-border,rgba(99,102,241,0.2))', color: 'var(--brand,#494be7)', fontSize: 13, fontWeight: 800 }}>
+                      <Sparkles size={15} />
+                      <span>{t('jobs.promotionActive')}</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="system-ad-btn system-ad-btn-primary"
+                      onClick={() => navigate('/premium/freelancer/promotions')}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 18px', fontSize: 13, fontWeight: 800 }}
+                    >
+                      <Flame size={15} />
+                      <span>{t('jobs.startPromotion')}</span>
+                    </button>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    className="system-ad-btn system-ad-btn-primary"
+                    onClick={() => navigate('/premium/freelancer/pricing')}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 18px', fontSize: 13, fontWeight: 800 }}
+                  >
+                    <Sparkles size={15} />
+                    <span>{t('jobs.upgradePlan')}</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -676,55 +717,43 @@ export default function BrowseJobsScreen() {
             <div className="freelancer-ranking-card">
               <div className="freelancer-ranking-header">
                 <div className="freelancer-ranking-title">
-                  <Trophy size={18} className="text-amber-500" />
-                  <span>{t('jobs.topFreelancers')}</span>
+                  <div className="w-8 h-8 rounded-xl bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] flex items-center justify-center flex-shrink-0">
+                    <Trophy size={18} />
+                  </div>
+                  <span className="font-extrabold text-[15px]">{t('jobs.topFreelancers')}</span>
                 </div>
-                <span className="text-xs text-[var(--text-secondary)] font-medium flex items-center gap-1">
-                  <TrendingUp size={12} className="text-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--cp-accent-dim,#6366f11c)] text-[var(--brand,#494be7)] border border-[rgba(99,102,241,0.2)] flex items-center gap-1">
+                  <TrendingUp size={12} />
                   {t('jobs.eloRatings')}
                 </span>
               </div>
 
               <div className="ranking-list">
                 {topFreelancers.length === 0 ? (
-                  <p className="p-3 text-xs text-[var(--text-muted)] text-center">No freelancer ranking data is available.</p>
+                  <p className="p-4 text-xs text-[var(--text-muted)] text-center font-medium">No freelancer ranking data available.</p>
                 ) : (
                   topFreelancers.map((freelancer, index) => {
                     const rank = index + 1;
-                    const isGold = rank === 1;
-                    const isSilver = rank === 2;
-                    const isBronze = rank === 3;
-                    
+                    const isTop1 = rank === 1;
+
                     return (
-                      <div 
+                      <div
                         key={freelancer.freelancerProfilesId}
                         onClick={() => {
                           const path = getProfilePath(freelancer.userId || freelancer.freelancerProfilesId, 'freelancer');
                           if (path) navigate(path);
                         }}
-                        className={`ranking-item ${
-                          isGold ? 'ranking-item-top1' : 
-                          isSilver ? 'ranking-item-top2' : 
-                          isBronze ? 'ranking-item-top3' : ''
-                        }`}
+                        className={`ranking-item ${isTop1 ? 'ranking-item-top1' : ''}`}
                       >
                         <div className="ranking-user-info">
-                          <div className={`ranking-position ${
-                            isGold ? 'text-amber-500 font-black' : 
-                            isSilver ? 'text-slate-400 font-bold' : 
-                            isBronze ? 'text-amber-700 font-bold' : 'text-[var(--text-muted)] font-medium'
-                          }`}>
-                            {isGold ? '👑' : `#${rank}`}
+                          <div className={`ranking-position ${isTop1 ? 'ranking-position-top1' : ''}`}>
+                            {isTop1 ? <Crown size={14} /> : `#${rank}`}
                           </div>
                           <div className="relative shrink-0">
-                            <img 
+                            <img
                               src={freelancer.userAvatar || '/img/avatar-fallback.png'}
                               alt={freelancer.userFullName || 'Freelancer'}
-                              className={`ranking-avatar ${
-                                isGold ? 'ranking-avatar-gold' : 
-                                isSilver ? 'ranking-avatar-silver' : 
-                                isBronze ? 'ranking-avatar-bronze' : ''
-                              }`}
+                              className={`ranking-avatar ${isTop1 ? 'ranking-avatar-top1' : ''}`}
                             />
                           </div>
                           <div className="ranking-text-details">
@@ -736,7 +765,7 @@ export default function BrowseJobsScreen() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end shrink-0 pl-1">
+                        <div className="flex flex-col items-end shrink-0 pl-2">
                           <span className="ranking-elo-value">{freelancer.eloPoints}</span>
                           <span className="ranking-elo-label">{t('jobs.elo')}</span>
                         </div>
