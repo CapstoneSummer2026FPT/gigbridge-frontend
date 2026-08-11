@@ -11,7 +11,8 @@ function sanitizeImageUrl(imageUrl: string, allowBlob: boolean): string | undefi
   try {
     const parsed = new URL(trimmed, window.location.origin);
     const allowedProtocol =
-      REMOTE_IMAGE_PROTOCOLS.has(parsed.protocol) || (allowBlob && parsed.protocol === 'blob:');
+      REMOTE_IMAGE_PROTOCOLS.has(parsed.protocol) ||
+      (allowBlob && (parsed.protocol === 'blob:' || parsed.protocol === 'data:'));
     return allowedProtocol
       ? parsed.href.replace(/[<"']/g, character => encodeURIComponent(character))
       : undefined;
