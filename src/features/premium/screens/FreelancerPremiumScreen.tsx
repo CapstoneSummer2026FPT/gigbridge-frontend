@@ -174,7 +174,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                 </div>
 
                 <div className="cp-plan-prem-headline">
-                  Freelancer Velocity &amp; Rank Suite
+                  {t('freelancerPremium.velocityHeadline', { defaultValue: 'Freelancer Velocity & Rank Suite' })}
                 </div>
 
                 <PremiumTimeRemaining subscriptions={history.data?.length ? history.data : (current.data ? [current.data] : [])} />
@@ -195,11 +195,11 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                         <span>{t('freelancerPremium.autoRenew')}</span>
                         {Boolean(current.data?.autoRenew) ? (
                           <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            ACTIVE ✦
+                            {t('freelancerPremium.activeBadge', { defaultValue: 'ACTIVE ✦' })}
                           </span>
                         ) : (
                           <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.08)', color: 'var(--cp-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            OFF
+                            {t('freelancerPremium.offBadge', { defaultValue: 'OFF' })}
                           </span>
                         )}
                       </div>
@@ -258,7 +258,9 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                 <article className="cp-card">
                   <div className="cp-card-header">
                     <div className="cp-card-icon"><Sparkles size={20} /></div>
-                    <h3 className="cp-card-title">{points.data?.eloPoints ?? 0} Elo Points</h3>
+                    <h3 className="cp-card-title">
+                      {t('freelancerPremium.eloPointsCounter', { count: points.data?.eloPoints ?? 0, defaultValue: `${points.data?.eloPoints ?? 0} Elo Points` })}
+                    </h3>
                   </div>
                   <p className="cp-card-body">
                     {points.data?.tierName || t('freelancerPremium.tierUnlocks')}
@@ -310,7 +312,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
               </p>
 
               <div style={{ borderTop: '1px solid var(--cp-border)', paddingTop: 24, marginTop: 12 }}>
-                <button className="cp-btn" style={{ padding: '14px 32px', fontSize: 15 }} onClick={() => navigate('/jobs/browse')}>
+                <button className="cp-btn" style={{ padding: '14px 32px', fontSize: 15 }} onClick={() => navigate('/jobs/browse?aiMatch=true', { state: { highlightAiMatch: true } })}>
                   <Target size={18} /> {t('freelancerPremium.goToBrowseJobs', { defaultValue: 'Đi tới trang Tìm kiếm Việc làm (Browse Jobs)' })} <ArrowRight size={18} />
                 </button>
               </div>
@@ -345,10 +347,10 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
 
                   <div className="cp-plan-prem-top">
                     <div className="cp-plan-prem-badge">
-                      <Shield size={12} /> PROTECTED ✦ ACTIVE
+                      <Shield size={12} /> {t('freelancerPremium.protectedActiveBadge', { defaultValue: 'PROTECTED ✦ ACTIVE' })}
                     </div>
                     <div className="cp-plan-prem-tier">
-                      Rank Freeze Active
+                      {t('freelancerPremium.rankFreezeActiveBadge', { defaultValue: 'Rank Freeze Active' })}
                     </div>
                   </div>
 
@@ -512,7 +514,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
 
               <div className="cp-plan-prem-top">
                 <div className="cp-plan-prem-badge">
-                  <Sparkles size={12} /> ELO RANK TIER
+                  <Sparkles size={12} /> {t('freelancerPremium.eloRankTierBadge', { defaultValue: 'ELO RANK TIER' })}
                 </div>
                 <div className="cp-plan-prem-tier">
                   <Crown size={14} /> {points.data?.tierName || 'Bronze Rank'}
@@ -523,7 +525,9 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                 <span style={{ fontSize: 40, fontWeight: 900, color: 'var(--cp-text)', letterSpacing: '-0.03em' }}>
                   {points.data?.eloPoints ?? 0}
                 </span>
-                <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--cp-accent)' }}>Elo Points</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--cp-accent)' }}>
+                  {t('freelancerPremium.eloPointsUnit', { defaultValue: 'Elo Points' })}
+                </span>
               </div>
 
               <p style={{ fontSize: 13, color: 'var(--cp-muted)', margin: '0 0 24px', fontWeight: 500 }}>
@@ -539,7 +543,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, color: 'var(--cp-muted)' }}>
                 <span>{points.data?.tierName || 'Bronze'}</span>
                 <span>{points.data?.tierProgress?.toFixed(0) || 0}%</span>
-                <span>{points.data?.nextTierName || 'Max Tier'}</span>
+                <span>{points.data?.nextTierName || t('freelancerPremium.maxTier', { defaultValue: 'Max Tier' })}</span>
               </div>
             </article>
 
@@ -590,7 +594,7 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
             <div className="cp-card-grid">
               {/* Subscriptions */}
               <article className="cp-card">
-                <h3 className="cp-card-title" style={{ marginBottom: 16 }}>{t('freelancerPremium.subscriptions')}</h3>
+                <h3 className="cp-card-title" style={{ marginBottom: 16 }}>{t('freelancerPremium.subscriptions', { defaultValue: 'Lịch sử gói Đăng ký' })}</h3>
                 {history.data?.length ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {history.data.map(x => (
@@ -606,13 +610,13 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                     ))}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: 'var(--cp-muted)', margin: 0 }}>{t('freelancerPremium.noSubscriptionHistory')}</p>
+                  <p style={{ fontSize: 13, color: 'var(--cp-muted)', margin: 0 }}>{t('freelancerPremium.noSubscriptionHistory', { defaultValue: 'Chưa có lịch sử đăng ký.' })}</p>
                 )}
               </article>
 
               {/* Wallet Activity */}
               <article className="cp-card">
-                <h3 className="cp-card-title" style={{ marginBottom: 16 }}>{t('freelancerPremium.walletActivity')}</h3>
+                <h3 className="cp-card-title" style={{ marginBottom: 16 }}>{t('freelancerPremium.walletActivity', { defaultValue: 'Lịch sử giao dịch Ví' })}</h3>
                 {transactions.data?.filter(x => x.type === WalletTransactionType.PromotionPurchase || x.type === WalletTransactionType.SubscriptionPurchase).length ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {transactions.data
@@ -628,14 +632,14 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                       ))}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: 'var(--cp-muted)', margin: 0 }}>{t('freelancerPremium.noTransactions')}</p>
+                  <p style={{ fontSize: 13, color: 'var(--cp-muted)', margin: 0 }}>{t('freelancerPremium.noTransactions', { defaultValue: 'Chưa có giao dịch ví nào.' })}</p>
                 )}
               </article>
             </div>
           </div>
         )}
 
-        {/* REDESIGN: ELEGANT EDITORIAL CONFIRMATION MODAL */}
+        {/* ELEGANT CONFIRMATION MODAL */}
         {confirm && (
           <div
             style={{
@@ -697,12 +701,14 @@ export default function FreelancerPremiumScreen({ initialTab = 'overview' }: { i
                   <h3 style={{ fontSize: 16, fontWeight: 900, color: 'var(--cp-text)', margin: 0 }}>
                     {t(confirm.kind === 'vacation' ? 'freelancerPremium.confirmVacationModalTitle' : 'freelancerPremium.confirmCancelVacationModalTitle', { defaultValue: confirm.kind === 'vacation' ? 'Xác Nhận Bật Nghỉ Phép' : 'Xác Nhận Tắt Nghỉ Phép' })}
                   </h3>
-                  <span style={{ fontSize: 11, color: 'var(--cp-muted)', fontWeight: 600 }}>Rank Protection Status</span>
+                  <span style={{ fontSize: 11, color: 'var(--cp-muted)', fontWeight: 600 }}>
+                    {t('freelancerPremium.rankProtectionStatusModal', { defaultValue: 'Rank Protection Status' })}
+                  </span>
                 </div>
               </div>
 
               {/* SUMMARY BOX */}
-              <div style={{ padding: 16, borderRadius: 16, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', margin: '16px 0 24px' }}>
+              <div style={{ padding: 16, borderRadius: 16, background: 'var(--cp-accent-dim)', border: '1px solid var(--cp-border)', margin: '16px 0 24px' }}>
                 <p style={{ fontSize: 13, color: 'var(--cp-text)', margin: 0, fontWeight: 600, lineHeight: 1.5 }}>
                   {confirm.label || t(confirm.kind === 'vacation' ? 'freelancerPremium.confirmProtect' : 'freelancerPremium.confirmEnd', { date: endDate ? formatDate(endDate) : '', defaultValue: confirm.kind === 'vacation' ? `Bảo vệ và đóng băng điểm uy tín Elo của bạn đến hết ngày ${endDate ? formatDate(endDate) : ''}?` : 'Tắt chế độ nghỉ phép và mở lại trạng thái nhận dự án ngay lập tức?' })}
                 </p>

@@ -141,7 +141,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
 
   if (loadError) {
     return (
-      <article className="cp-card" style={{ padding: 24, color: '#ef4444', textAlign: 'center' }}>
+      <article className="cp-card" style={{ padding: 24, color: 'var(--cp-red)', textAlign: 'center' }}>
         <AlertCircle size={32} className="mx-auto mb-2" />
         {loadError}
       </article>
@@ -248,7 +248,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
       </div>
 
       {message && (
-        <div style={{ padding: '12px 16px', borderRadius: 14, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: '#6366f1', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ padding: '12px 16px', borderRadius: 14, background: 'var(--cp-accent-dim)', border: '1px solid var(--cp-border)', color: 'var(--cp-accent)', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Sparkles size={16} />
           <span>{message}</span>
         </div>
@@ -262,7 +262,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
           /* NO ACTIVE CAMPAIGN — CAMPAIGN BUILDER FORM */
           <article className="cp-card" style={{ padding: 28 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(99,102,241,0.15)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Megaphone size={20} />
               </div>
               <div>
@@ -290,7 +290,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                       style={{ display: 'none' }}
                       onChange={e => handleFileChoose(e.target.files?.[0])}
                     />
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99,102,241,0.12)', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <ImagePlus size={18} />
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--cp-text)' }}>
@@ -308,7 +308,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                         setIsCropModalOpen(true);
                       }}
                       className="cp-btn ghost"
-                      style={{ padding: '8px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderColor: 'rgba(99,102,241,0.4)', color: '#6366f1' }}
+                      style={{ padding: '8px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderColor: 'var(--cp-border)', color: 'var(--cp-accent)' }}
                     >
                       <Wand2 size={15} />
                       <span>{t('premiumPromotion.editAndRemoveBgAI', { defaultValue: '✨ Chỉnh Sửa & Tách Nền AI' })}</span>
@@ -339,7 +339,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                     type="checkbox"
                     checked={card.showQuote}
                     onChange={e => setCard(val => ({ ...val, showQuote: e.target.checked }))}
-                    style={{ width: 16, height: 16, accentColor: '#6366f1' }}
+                    style={{ width: 16, height: 16, accentColor: 'var(--cp-accent)' }}
                   />
                   <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--cp-text)' }}>
                     {t('premiumPromotion.showQuote', { defaultValue: 'Hiển thị Slogan / Trích dẫn ấn tượng' })}
@@ -365,7 +365,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                     type="checkbox"
                     checked={card.showJobTitle}
                     onChange={e => setCard(val => ({ ...val, showJobTitle: e.target.checked }))}
-                    style={{ width: 16, height: 16, accentColor: '#6366f1' }}
+                    style={{ width: 16, height: 16, accentColor: 'var(--cp-accent)' }}
                   />
                   <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--cp-text)' }}>
                     {t('premiumPromotion.showJobTitle', { defaultValue: 'Hiển thị Chức danh chuyên môn' })}
@@ -381,8 +381,8 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
               </div>
 
               {/* STEP 5: TARGET CLICKS & COIN COST */}
-              <div style={{ padding: 16, borderRadius: 16, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6366f1', display: 'block', marginBottom: 8 }}>
+              <div style={{ padding: 16, borderRadius: 16, background: 'var(--cp-accent-dim)', border: '1px solid var(--cp-border)' }}>
+                <label style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--cp-accent)', display: 'block', marginBottom: 8 }}>
                   {t('premiumPromotion.clientTarget', { defaultValue: 'Mục tiêu Lượt nhấp (Clicks)' })}
                 </label>
                 <input
@@ -393,7 +393,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                   style={{ width: '100%', height: 42, borderRadius: 12, background: 'var(--card)', border: '1px solid var(--cp-border)', padding: '0 14px', color: 'var(--cp-text)', outline: 'none', fontSize: 14, fontWeight: 800 }}
                 />
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(99,102,241,0.15)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--cp-border)' }}>
                   <span style={{ fontSize: 12, color: 'var(--cp-muted)', fontWeight: 600 }}>
                     {t('premiumPromotion.activationCostLabel', { defaultValue: 'Chi phí kích hoạt:' })}
                   </span>
@@ -433,7 +433,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
             <div className="cp-plan-prem-orb" aria-hidden />
 
             <div className="cp-plan-prem-top">
-              <div className="cp-plan-prem-badge" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.35)' }}>
+              <div className="cp-plan-prem-badge" style={{ background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)', border: '1px solid var(--cp-border)' }}>
                 <Flame size={12} /> ONGOING ✦ ACTIVE
               </div>
               <div className="cp-plan-prem-tier">
@@ -459,7 +459,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                   onMouseLeave={() => setShowMetricsGuide(false)}
                   onClick={() => setShowMetricsGuide(prev => !prev)}
                   className="cp-btn ghost"
-                  style={{ padding: '3px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 999, borderColor: 'rgba(99,102,241,0.35)', color: '#6366f1', background: 'rgba(99,102,241,0.08)' }}
+                  style={{ padding: '3px 10px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 999, borderColor: 'var(--cp-border)', color: 'var(--cp-accent)', background: 'var(--cp-accent-dim)' }}
                 >
                   <HelpCircle size={14} />
                   <span>{t('premiumPromotion.explainMetricsBtn', { defaultValue: 'Giải thích chỉ số (?)' })}</span>
@@ -477,31 +477,31 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                       padding: 16,
                       borderRadius: 16,
                       background: 'var(--card)',
-                      border: '1px solid rgba(99,102,241,0.4)',
+                      border: '1px solid var(--cp-border)',
                       boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
                       zIndex: 50,
                       color: 'var(--cp-text)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 900, color: '#6366f1', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 900, color: 'var(--cp-accent)', marginBottom: 10 }}>
                       <Sparkles size={14} /> {t('premiumPromotion.metricsGuideTitle', { defaultValue: 'Hướng dẫn chỉ số & Mẹo đẩy Top #1' })}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 11, lineHeight: 1.5, color: 'var(--cp-muted)' }}>
                       <div>
-                        <strong style={{ color: '#10b981' }}>{t('premiumPromotion.clicksGuideTitle', { defaultValue: '• Lượt nhấp (Clicks):' })}</strong> {t('premiumPromotion.clicksGuideText', { defaultValue: 'Số lần Nhà tuyển dụng thực sự bấm trực tiếp vào thẻ để xem hồ sơ của bạn.' })}
+                        <strong style={{ color: 'var(--cp-text)' }}>{t('premiumPromotion.clicksGuideTitle', { defaultValue: '• Lượt nhấp (Clicks):' })}</strong> {t('premiumPromotion.clicksGuideText', { defaultValue: 'Số lần Nhà tuyển dụng thực sự bấm trực tiếp vào thẻ để xem hồ sơ của bạn.' })}
                       </div>
                       <div>
-                        <strong style={{ color: '#6366f1' }}>{t('premiumPromotion.impressionsGuideTitle', { defaultValue: '• Hiển thị (Impressions):' })}</strong> {t('premiumPromotion.impressionsGuideText', { defaultValue: 'Số lần thẻ ghim của bạn lướt qua màn hình Nhà tuyển dụng.' })}
+                        <strong style={{ color: 'var(--cp-text)' }}>{t('premiumPromotion.impressionsGuideTitle', { defaultValue: '• Hiển thị (Impressions):' })}</strong> {t('premiumPromotion.impressionsGuideText', { defaultValue: 'Số lần thẻ ghim của bạn lướt qua màn hình Nhà tuyển dụng.' })}
                       </div>
                       <div>
-                        <strong style={{ color: '#f59e0b' }}>{t('premiumPromotion.weightGuideTitle', { defaultValue: '• Trọng số Boost (Weight):' })}</strong> {t('premiumPromotion.weightGuideText', { defaultValue: 'Điểm ưu tiên quyết định vị trí ghim thẻ trên bảng tin.' })}
+                        <strong style={{ color: 'var(--cp-text)' }}>{t('premiumPromotion.weightGuideTitle', { defaultValue: '• Trọng số Boost (Weight):' })}</strong> {t('premiumPromotion.weightGuideText', { defaultValue: 'Điểm ưu tiên quyết định vị trí ghim thẻ trên bảng tin.' })}
                       </div>
                     </div>
 
                     {/* CALL TO ACTION RECOMMENDATION BOX */}
-                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--cp-border)', background: 'rgba(245,158,11,0.08)', padding: 10, borderRadius: 10, border: '1px solid rgba(245,158,11,0.25)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 900, color: '#f59e0b', marginBottom: 4 }}>
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--cp-border)', background: 'var(--cp-accent-dim)', padding: 10, borderRadius: 10, border: '1px solid var(--cp-border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 900, color: 'var(--cp-accent)', marginBottom: 4 }}>
                         <Flame size={13} /> {t('premiumPromotion.boostAdviceTitle', { defaultValue: 'Lời khuyên: Boost thêm GigCoin' })}
                       </div>
                       <p style={{ fontSize: 11, color: 'var(--cp-text)', margin: 0, fontWeight: 600, lineHeight: 1.4 }}>
@@ -524,7 +524,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                   <span style={{ fontSize: 10, fontWeight: 900, color: 'var(--cp-muted)', textTransform: 'uppercase' }}>{t('premiumPromotion.clicks', { defaultValue: 'Lượt nhấp' })}</span>
                   <HelpCircle size={11} style={{ color: 'var(--cp-muted)' }} />
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#10b981', marginTop: 2 }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--cp-text)', marginTop: 2 }}>
                   {manager.active.clickCount}/{manager.active.targetClickCount}
                 </div>
               </div>
@@ -538,7 +538,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                   <span style={{ fontSize: 10, fontWeight: 900, color: 'var(--cp-muted)', textTransform: 'uppercase' }}>{t('premiumPromotion.impressions', { defaultValue: 'Hiển thị' })}</span>
                   <HelpCircle size={11} style={{ color: 'var(--cp-muted)' }} />
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#6366f1', marginTop: 2 }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--cp-text)', marginTop: 2 }}>
                   {manager.active.impressionCount}
                 </div>
               </div>
@@ -550,9 +550,9 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 10, fontWeight: 900, color: 'var(--cp-muted)', textTransform: 'uppercase' }}>{t('premiumPromotion.boostWeight', { defaultValue: 'Trọng số Boost' })}</span>
-                  <HelpCircle size={11} style={{ color: '#f59e0b' }} />
+                  <HelpCircle size={11} style={{ color: 'var(--cp-accent)' }} />
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#f59e0b', marginTop: 2 }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--cp-accent)', marginTop: 2 }}>
                   {manager.active.boostWeight}
                 </div>
               </div>
@@ -567,7 +567,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                   </h4>
                   <span style={{ fontSize: 11, color: 'var(--cp-muted)' }}>{t('premiumPromotion.projectedPositionLabel', { defaultValue: 'Vị trí dự kiến của bạn:' })}</span>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 900, padding: '2px 10px', borderRadius: 8, background: 'rgba(99,102,241,0.15)', color: '#6366f1' }}>
+                <span style={{ fontSize: 14, fontWeight: 900, padding: '2px 10px', borderRadius: 8, background: 'var(--cp-accent-dim)', color: 'var(--cp-accent)' }}>
                   #{projectedPosition}
                 </span>
               </div>
@@ -582,8 +582,8 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                       gap: 8,
                       padding: '6px 10px',
                       borderRadius: 8,
-                      background: entry.isCurrent ? 'rgba(99,102,241,0.15)' : 'transparent',
-                      border: entry.isCurrent ? '1px solid rgba(99,102,241,0.3)' : 'none',
+                      background: entry.isCurrent ? 'var(--cp-accent-dim)' : 'transparent',
+                      border: entry.isCurrent ? '1px solid var(--cp-border)' : 'none',
                     }}
                   >
                     <span style={{ fontSize: 11, fontWeight: 800, width: 24, color: 'var(--cp-muted)' }}>#{entry.queuePosition}</span>
@@ -592,11 +592,11 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                         style={{
                           height: '100%',
                           width: `${Math.max(8, (entry.boostWeight / maximumVisibleWeight) * 100)}%`,
-                          background: entry.isCurrent ? 'linear-gradient(90deg, #6366f1, #10b981)' : 'var(--cp-border)',
+                          background: entry.isCurrent ? 'var(--cp-accent)' : 'var(--cp-border)',
                         }}
                       />
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: entry.isCurrent ? '#6366f1' : 'var(--cp-muted)' }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: entry.isCurrent ? 'var(--cp-accent)' : 'var(--cp-muted)' }}>
                       {entry.boostWeight}
                     </span>
                   </div>
@@ -606,10 +606,10 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
 
             {/* BOOST CONTROL INPUT & RECOMMENDATION BANNER */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--cp-border)', paddingTop: 16 }}>
-              <div style={{ padding: 12, borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <Flame size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 2 }} />
+              <div style={{ padding: 12, borderRadius: 12, background: 'var(--cp-accent-dim)', border: '1px solid var(--cp-border)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <Flame size={18} style={{ color: 'var(--cp-accent)', flexShrink: 0, marginTop: 2 }} />
                 <div style={{ fontSize: 12, color: 'var(--cp-text)', lineHeight: 1.4 }}>
-                  <strong style={{ color: '#f59e0b', display: 'block', marginBottom: 2 }}>
+                  <strong style={{ color: 'var(--cp-accent)', display: 'block', marginBottom: 2 }}>
                     {t('premiumPromotion.boostTipTitle', { defaultValue: 'Mẹo đẩy hồ sơ lên Vị trí Top #1:' })}
                   </strong>
                   {t('premiumPromotion.boostTipText', { defaultValue: 'Nạp thêm GigCoin bên dưới để gia tăng trọng số Boost và vượt qua các ứng viên khác trong bảng xếp hạng ghim thẻ.' })}
@@ -617,7 +617,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
               </div>
 
               <label style={{ fontSize: 12, fontWeight: 800, color: 'var(--cp-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Target size={15} className="text-indigo-400" />
+                <Target size={15} style={{ color: 'var(--cp-accent)' }} />
                 {t('premiumPromotion.boostAmount', { defaultValue: 'Tăng tốc trọng số (GigCoin)' })}
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -645,7 +645,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                 className="cp-btn ghost"
                 disabled={busy}
                 onClick={() => void end()}
-                style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)', marginTop: 8 }}
+                style={{ color: 'var(--cp-red)', borderColor: 'rgba(239,68,68,0.3)', marginTop: 8 }}
               >
                 {t('premiumPromotion.endNow', { defaultValue: 'Dừng chiến dịch ngay' })}
               </button>
@@ -657,7 +657,7 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
         <div style={{ position: 'sticky', top: 24, width: '100%', maxWidth: 320, margin: '0 auto' }}>
           <div style={{ marginBottom: 12, textAlign: 'center' }}>
             <span style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--cp-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={13} style={{ color: '#6366f1' }} /> {t('premiumPromotion.livePreviewLabel', { defaultValue: 'Xem Trước Thẻ Live (2:3 Feed)' })}
+              <Sparkles size={13} style={{ color: 'var(--cp-accent)' }} /> {t('premiumPromotion.livePreviewLabel', { defaultValue: 'Xem Trước Thẻ Live (2:3 Feed)' })}
             </span>
           </div>
 
@@ -721,16 +721,16 @@ export function PromotionManagerPanel({ entitled }: { entitled: boolean }) {
                     letterSpacing: '0.06em',
                     background:
                       item === manager.active
-                        ? 'rgba(16,185,129,0.15)'
+                        ? 'var(--cp-accent-dim)'
                         : item.status === PromotionStatus.Pending
-                        ? 'rgba(245,158,11,0.15)'
-                        : 'rgba(99,102,241,0.12)',
+                        ? 'rgba(255,255,255,0.08)'
+                        : 'rgba(255,255,255,0.05)',
                     color:
                       item === manager.active
-                        ? '#10b981'
+                        ? 'var(--cp-accent)'
                         : item.status === PromotionStatus.Pending
-                        ? '#f59e0b'
-                        : '#6366f1',
+                        ? 'var(--cp-text)'
+                        : 'var(--cp-muted)',
                   }}
                 >
                   {item === manager.active
