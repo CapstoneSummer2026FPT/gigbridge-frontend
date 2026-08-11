@@ -52,6 +52,7 @@ function labelFor(key: string) {
     grossRevenue: 'Gross platform revenue', revenueGrowth: 'Revenue growth', contractTakeRate: 'Contract take rate',
     marketplaceGmv: 'Marketplace GMV', netCashMovement: 'Net cash movement', premiumRevenue: 'Premium revenue',
     activePaidUsers: 'Active paid users', paidFeatureUsers: 'Paid feature users', promotionCtr: 'Promotion CTR',
+    totalDisputePenalties: 'Total dispute penalties',
   };
   return labels[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, value => value.toUpperCase());
 }
