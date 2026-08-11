@@ -215,6 +215,34 @@
     "cancel": "Cancel",
     "submitChangeRequest": "Submit Change Request",
     "status": "Status",
+    "statusLabels": {
+      "0": "Draft",
+      "1": "Pending Freelancer Selection",
+      "2": "In Negotiation",
+      "3": "Pending Contract Details",
+      "4": "Pending Contract Confirmation",
+      "5": "Pending Escrow",
+      "6": "Pending Signature",
+      "7": "Active",
+      "8": "Completed",
+      "9": "Cancelled",
+      "10": "Disputed"
+    },
+    "contracts": {
+      "statusLabels": {
+        "0": "Draft",
+        "1": "Pending Freelancer Selection",
+        "2": "In Negotiation",
+        "3": "Pending Contract Details",
+        "4": "Pending Contract Confirmation",
+        "5": "Pending Escrow",
+        "6": "Pending Signature",
+        "7": "Active",
+        "8": "Completed",
+        "9": "Cancelled",
+        "10": "Disputed"
+      }
+    },
     "milestoneStatus": {
       "Pending": "Pending",
       "InProgress": "In Progress",

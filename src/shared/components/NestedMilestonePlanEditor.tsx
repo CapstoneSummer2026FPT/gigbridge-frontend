@@ -437,8 +437,12 @@ export function NestedMilestonePlanEditor({
                 </div>
 
                 {/* Core Parameters Box: Amount, Duration, Deadline */}
-                <div className="rounded-2xl border border-border/80 bg-muted/20 p-4.5 space-y-3">
-                  <div className="grid gap-4 sm:grid-cols-3 items-start">
+                <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 sm:p-4.5 space-y-3">
+                  <div className={`grid gap-4 items-start ${
+                    simplifiedMilestoneFields && showDueDate
+                      ? 'grid-cols-1 sm:grid-cols-2'
+                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                  }`}>
                     {/* 1. AMOUNT */}
                     <div className="space-y-1.5 relative focus-within:z-20">
                       <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -551,7 +555,9 @@ export function NestedMilestonePlanEditor({
                 </div>
 
                 {/* Description, Deliverables & Acceptance Criteria */}
-                <div className="grid gap-3 md:grid-cols-2 pt-1">
+                <div className={`grid gap-3 pt-1 ${
+                  simplifiedMilestoneFields ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'
+                }`}>
                   {!simplifiedMilestoneFields && (
                     <label className="text-xs font-bold text-foreground md:col-span-2">
                       {uiCopy.description || 'Mô tả mốc công việc'}

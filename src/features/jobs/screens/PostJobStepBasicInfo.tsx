@@ -312,41 +312,42 @@ export default function PostJobStepBasicInfo() {
           </div>
         </div>
         <div className="job-post-section__body">
-          <div className="job-post-grid">
-            {/* Expected Budget */}
-            <div className="job-post-field">
-              <label htmlFor="job-budget">{t('postJob.expectedBudget', 'Ngân sách dự kiến')}</label>
-              <input id="job-budget" type="number" min="0" value={form.budget} onChange={event => setForm({ ...form, budget: event.target.value })} placeholder="0" />
-              {/* Quick Budget Presets */}
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Quick:</span>
-                {[100, 300, 500, 1000].map(amount => (
-                  <button
-                    type="button"
-                    key={amount}
-                    onClick={() => setForm({ ...form, budget: String(amount) })}
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${
-                      form.budget === String(amount)
-                        ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
-                        : 'bg-muted/40 text-muted-foreground border-border hover:border-[var(--brand)] hover:text-foreground'
-                    }`}
-                  >
-                    {amount} G-coin
-                  </button>
-                ))}
-              </div>
-              {Number(form.budget) > 0 && (
-                <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--brand)_8%,var(--card))] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] px-3 py-1.5 text-xs text-foreground font-medium">
-                  <Coins size={14} className="text-[var(--brand)] flex-shrink-0" />
-                  <span>
-                    ≈ <strong>{formatGigCoinToVnd(Number(form.budget))}</strong>
-                    <span className="ml-1 text-muted-foreground text-[11px]">(1 G-coin = 1.000 VNĐ)</span>
-                  </span>
-                </div>
-              )}
-              <small className="mt-0.5 text-muted-foreground">{t('postJobWizard.details.budgetFromMilestones', 'Được tự động tính từ kế hoạch milestone.')}</small>
+          {/* Expected Budget – full width */}
+          <div className="job-post-field">
+            <label htmlFor="job-budget">{t('postJob.expectedBudget', 'Ngân sách dự kiến')}</label>
+            <input id="job-budget" type="number" min="0" value={form.budget} onChange={event => setForm({ ...form, budget: event.target.value })} placeholder="0" />
+            {/* Quick Budget Presets */}
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Quick:</span>
+              {[100, 300, 500, 1000].map(amount => (
+                <button
+                  type="button"
+                  key={amount}
+                  onClick={() => setForm({ ...form, budget: String(amount) })}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold transition-all border ${
+                    form.budget === String(amount)
+                      ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-sm'
+                      : 'bg-muted/40 text-muted-foreground border-border hover:border-[var(--brand)] hover:text-foreground'
+                  }`}
+                >
+                  {amount} G-coin
+                </button>
+              ))}
             </div>
+            {Number(form.budget) > 0 && (
+              <div className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-[color-mix(in_srgb,var(--brand)_8%,var(--card))] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] px-3 py-1.5 text-xs text-foreground font-medium">
+                <Coins size={14} className="text-[var(--brand)] flex-shrink-0" />
+                <span>
+                  ≈ <strong>{formatGigCoinToVnd(Number(form.budget))}</strong>
+                  <span className="ml-1 text-muted-foreground text-[11px]">(1 G-coin = 1.000 VNĐ)</span>
+                </span>
+              </div>
+            )}
+            <small className="mt-0.5 text-muted-foreground">{t('postJobWizard.details.budgetFromMilestones', 'Được tự động tính từ kế hoạch milestone.')}</small>
+          </div>
 
+          {/* Estimated Duration + Deadline – side-by-side */}
+          <div className="job-post-grid">
             {/* Estimated Duration */}
             <div className="job-post-field">
               <label htmlFor="job-duration">{t('postJob.estimatedDuration', 'Thời gian dự kiến')} *</label>
@@ -387,13 +388,13 @@ export default function PostJobStepBasicInfo() {
               </div>
               <small className="text-muted-foreground">{t('postJobWizard.details.estimatedDurationHint', 'Thời gian dự kiến hoàn thành toàn bộ dự án.')}</small>
             </div>
-          </div>
 
-          {/* End Date / Deadline */}
-          <div className="job-post-field">
-            <label htmlFor="job-deadline">{t('postJob.endDate', 'Ngày kết thúc nhận proposal')} *</label>
-            <input id="job-deadline" type="date" value={form.deadline} onChange={event => setForm({ ...form, deadline: event.target.value })} />
-            <small className="text-muted-foreground">{t('postJobWizard.details.deadlineHint', 'Đây là hạn cuối nhận proposal, không phải ngày hoàn thành toàn bộ dự án.')}</small>
+            {/* End Date / Deadline */}
+            <div className="job-post-field">
+              <label htmlFor="job-deadline">{t('postJob.endDate', 'Ngày kết thúc nhận proposal')} *</label>
+              <input id="job-deadline" type="date" value={form.deadline} onChange={event => setForm({ ...form, deadline: event.target.value })} />
+              <small className="text-muted-foreground">{t('postJobWizard.details.deadlineHint', 'Đây là hạn cuối nhận proposal, không phải ngày hoàn thành toàn bộ dự án.')}</small>
+            </div>
           </div>
 
           {/* Advanced Settings Accordion */}

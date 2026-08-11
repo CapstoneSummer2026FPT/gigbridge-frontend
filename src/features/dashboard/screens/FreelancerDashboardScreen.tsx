@@ -95,12 +95,12 @@ export default function FreelancerDashboardScreen() {
 
         <div className="relative z-10 max-w-[1600px] mx-auto px-4 md:px-8 py-10 space-y-20">
           <section className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 fl-stagger-up">
-            <div className="max-w-4xl">
+            <div className="flex-1 min-w-0">
               <span className="inline-block text-brand font-bold tracking-[0.4em] uppercase text-xs mb-4">
                 Freelancer workspace
               </span>
-              <h1 className="text-7xl md:text-[9rem] font-black freelancer-avant-heading freelancer-hero-text mb-6 uppercase">
-                FREELANCER
+              <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[5.5rem] font-black freelancer-avant-heading freelancer-hero-text mb-6 uppercase tracking-tight leading-none whitespace-nowrap overflow-hidden text-ellipsis">
+                {userName || 'FREELANCER'}
               </h1>
               <p className="text-xl md:text-2xl text-text-secondary max-w-2xl leading-relaxed">
                 {greeting} <span className="font-black text-text-primary">{userName}</span>.{' '}

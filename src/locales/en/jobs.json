@@ -650,5 +650,20 @@
     "clientMessage": "Message from client:",
     "invitedAt": "Invited {{date}}",
     "client": "Client"
+  },
+  "inviteModal": {
+    "title": "Invite Freelancers",
+    "subtitle": "Send direct invitations for \"{{jobTitle}}\" to top matching freelancers.",
+    "searchPlaceholder": "Search freelancers by name, title, location, or skill...",
+    "selectedCount": "{{count}} freelancers selected",
+    "messageTitle": "Personal Invitation Message",
+    "messagePlaceholder": "Write an optional personalized invitation message...",
+    "presetMessage": "Hi, your profile is a great fit for our project. We would love to invite you to review the job post and submit a proposal!",
+    "sendInvites": "Send Invitations ({{count}})",
+    "sending": "Sending invitations...",
+    "successSent": "Successfully sent {{count}} invitation(s)!",
+    "noFreelancers": "No matching freelancers found.",
+    "loadingFreelancers": "Searching top freelancers...",
+    "selectAtLeastOne": "Select at least one freelancer to send invitations."
   }
 }
