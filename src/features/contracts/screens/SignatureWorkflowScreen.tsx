@@ -399,39 +399,19 @@ export default function SignatureWorkflowScreen() {
       setError('');
       setSuccess('');
 
-      const response = await contractPostAPI.sign(contract.contractsId, {
+      const signResponse = await contractPostAPI.sign(contract.contractsId, {
         signatureImageUrl: preparedSignature.imageUrl,
         signatureWidth: preparedSignature.width,
         signatureHeight: preparedSignature.height,
       });
 
-      if (!response.success) {
-        if (response.statusCode === 409) {
-          // Already signed, proceed as success!
-          setSuccess('Your signature has already been recorded. Preparing PDF in the background.');
-          if (document?.documentId) {
-            try {
-              await prepareESignPdfById(document.documentId);
-            } catch (pdfError) {
-              console.warn('The signed PDF could not be prepared immediately:', pdfError);
-              setDocumentWarning(t('contracts.signatureSavedPdfError'));
-            }
-          }
-          await refreshAfterSigning();
+      if (!signResponse.success) {
+        if (signResponse.statusCode === 409) {
+          setSuccess(t('contracts.contractSignedSuccess'));
+          await loadDocument(contract.contractsId);
           setSignatureStep('complete');
           return;
         }
-      }
-
-      const signResponse = await contractPostAPI.sign(contract.contractsId, {
-        signatureImageUrl: activePreparedSignature.imageUrl,
-        signatureWidth: activePreparedSignature.width,
-        signatureHeight: activePreparedSignature.height,
-        policyAccepted: true,
-        policyVersion: POLICY_VERSION,
-      });
-
-      if (!signResponse.success) {
         setError(signResponse.message || t('contracts.failedToSign'));
         return;
       }
