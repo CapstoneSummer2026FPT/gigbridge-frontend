@@ -7,6 +7,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { CustomSelect } from '../../../shared/components/CustomSelect';
 import {
   NestedMilestonePlanEditor,
   type EditableMilestonePlan,
@@ -44,17 +45,25 @@ export function PostJobProjectReviewEditor({ controller }: EditorProps) {
       <div className="job-post-grid">
         <div className="job-post-field">
           <label htmlFor="job-major">{t('postJob.major')} *</label>
-          <select id="job-major" value={form.majorId} disabled={isMajorsLoading} onChange={event => handleMajorChange(event.target.value)}>
-            <option value="">{isMajorsLoading ? t('postJob.loadingMajors') : t('postJob.selectMajor')}</option>
-            {majors.map(major => <option key={major.majorId} value={major.majorId}>{major.name}</option>)}
-          </select>
+          <CustomSelect
+            disabled={isMajorsLoading}
+            value={form.majorId}
+            options={majors.map(m => ({ value: m.majorId, label: m.name }))}
+            onChange={val => handleMajorChange(val)}
+            placeholder={isMajorsLoading ? t('postJob.loadingMajors') : t('postJob.selectMajor')}
+            searchable={true}
+          />
         </div>
         <div className="job-post-field">
           <label htmlFor="job-category">{t('postJob.category')} *</label>
-          <select id="job-category" value={form.majorCategoryId} disabled={!form.majorId || isCategoriesLoading} onChange={event => handleCategoryChange(event.target.value)}>
-            <option value="">{!form.majorId ? t('postJob.selectMajorFirst') : t('postJob.selectCategory')}</option>
-            {categories.map(category => <option key={category.majorCategoryId} value={category.majorCategoryId}>{category.name}</option>)}
-          </select>
+          <CustomSelect
+            disabled={!form.majorId || isCategoriesLoading}
+            value={form.majorCategoryId}
+            options={categories.map(c => ({ value: c.majorCategoryId, label: c.name }))}
+            onChange={val => handleCategoryChange(val)}
+            placeholder={!form.majorId ? t('postJob.selectMajorFirst') : t('postJob.selectCategory')}
+            searchable={true}
+          />
         </div>
       </div>
 
@@ -162,9 +171,13 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
           <label htmlFor="job-duration">{t('postJob.estimatedDuration')} *</label>
           <div className="grid grid-cols-[1fr_8rem] gap-2">
             <input id="job-duration" type="number" min="1" value={form.estimatedDurationValue} onChange={event => setForm({ ...form, estimatedDurationValue: event.target.value })} placeholder="3" />
-            <select aria-label={t('postJobWizard.plan.milestoneCopy.durationUnit')} value={form.estimatedDurationUnit} onChange={event => setForm({ ...form, estimatedDurationUnit: event.target.value as JobDurationUnit })}>
-              {JOB_DURATION_UNITS.map(unit => <option key={unit} value={unit}>{t(`postJob.durationUnits.${unit}`)}</option>)}
-            </select>
+            <CustomSelect
+              value={form.estimatedDurationUnit}
+              options={JOB_DURATION_UNITS.map(unit => ({ value: unit, label: t(`postJob.durationUnits.${unit}`) }))}
+              onChange={val => setForm({ ...form, estimatedDurationUnit: val as JobDurationUnit })}
+              searchable={false}
+              className="cs-compact"
+            />
           </div>
         </div>
       </div>
@@ -175,11 +188,16 @@ export function PostJobTermsReviewEditor({ controller }: EditorProps) {
       </div>
       <div className="job-post-field">
         <label htmlFor="job-visibility">{t('postJob.visibility')}</label>
-        <select id="job-visibility" value={form.visibility} onChange={event => setForm({ ...form, visibility: event.target.value })}>
-          <option value={JobPostVisibility.Public}>{t('postJob.public')}</option>
-          <option value={JobPostVisibility.Private}>{t('postJob.private')}</option>
-          <option value={JobPostVisibility.InviteOnly}>{t('postJob.inviteOnly')}</option>
-        </select>
+        <CustomSelect
+          value={form.visibility}
+          options={[
+            { value: String(JobPostVisibility.Public), label: t('postJob.public') },
+            { value: String(JobPostVisibility.Private), label: t('postJob.private') },
+            { value: String(JobPostVisibility.InviteOnly), label: t('postJob.inviteOnly') },
+          ]}
+          onChange={val => setForm({ ...form, visibility: val })}
+          searchable={false}
+        />
       </div>
     </div>
   );

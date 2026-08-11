@@ -856,11 +856,11 @@ export default function EditJobPostScreen() {
                               <span className="w-4.5 h-4.5 rounded-full bg-[var(--gb-cyan)]/15 text-[var(--gb-cyan)] flex items-center justify-center text-[10px] font-black">?</span>
                               {t('jobs.budgetGuideTitle')}
                             </h4>
-                            <p 
+                            <p
                               className="text-[11px] text-muted-foreground leading-relaxed mb-3"
                               dangerouslySetInnerHTML={{ __html: t('jobs.budgetGuideDesc') }}
                             />
-                            
+
                             <div className="bg-muted/40 rounded-xl p-2.5 border border-border/60 flex items-center justify-between mb-3">
                               <div className="flex items-center gap-1.5">
                                 <GigCoinLogo size={16} />
