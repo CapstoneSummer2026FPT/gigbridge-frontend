@@ -193,8 +193,6 @@ export const contractPostAPI = {
       signatureImageUrl: string;
       signatureWidth?: number;
       signatureHeight?: number;
-      policyAccepted: boolean;
-      policyVersion: string;
     }
   ): Promise<ApiResponse<any>> => {
     return apiService.post<any>(`contracts/${contractId}/sign`, payload);

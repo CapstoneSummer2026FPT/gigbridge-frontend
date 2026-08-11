@@ -423,8 +423,6 @@ export default function SignatureWorkflowScreen() {
         signatureImageUrl: preparedSignature.imageUrl,
         signatureWidth: preparedSignature.width,
         signatureHeight: preparedSignature.height,
-        policyAccepted: true,
-        policyVersion: POLICY_VERSION,
       });
 
       if (!response.success) {
