@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft, FileText, Signature, Check, AlertCircle, Clock,
-  Copy, Download, Shield, Loader, PenTool, Type,
+  Download, Shield, Loader, PenTool, Type,
   ChevronRight, CheckCircle, Zap
 } from 'lucide-react';
 import { AppLayout } from '../../../shared/components/AppLayout';
@@ -55,7 +55,6 @@ export default function EsignDocumentSigningScreen() {
   const submittingRef = useRef(false);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
-  const [copySuccess, setCopySuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // System information for audit trail
@@ -327,14 +326,6 @@ export default function EsignDocumentSigningScreen() {
     }
   };
 
-  const handleCopyDocumentId = () => {
-    if (document?.documentId) {
-      navigator.clipboard.writeText(document.documentId);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    }
-  };
-
   if (loading) {
     return (
       <AppLayout>
@@ -437,19 +428,6 @@ export default function EsignDocumentSigningScreen() {
                   </div>
 
                   <div className="document-meta">
-                    <div className="meta-item">
-                      <label>{t('contracts.documentId')}</label>
-                      <div className="meta-value-with-copy">
-                        <code>{document.documentId}</code>
-                        <button
-                          onClick={handleCopyDocumentId}
-                          className="btn-copy-small"
-                          title={copySuccess ? 'Copied' : 'Copy'}
-                        >
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                    </div>
                     <div className="meta-item">
                       <label>{t('contracts.title')}</label>
                       <p>{contract.title}</p>
