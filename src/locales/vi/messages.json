@@ -94,6 +94,10 @@
     "roomWorkspaceDesc": "Phòng làm việc dự án đang hoạt động",
     "roomDisputeLabel": "Tranh chấp",
     "roomDisputeDesc": "Các cuộc trò chuyện tranh chấp hợp đồng chính thức",
+    "tabInvited": "Được Mời",
+    "tabNegotiation": "Đàm Phán",
+    "tabWorkspace": "Workspace",
+    "tabDispute": "Tranh Chấp",
     "deal": {
       "title": "Đề xuất cuối cùng",
       "subtitle": "Thỏa thuận hợp đồng",

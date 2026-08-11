@@ -94,6 +94,10 @@
     "roomWorkspaceDesc": "Active project workrooms",
     "roomDisputeLabel": "Disputes",
     "roomDisputeDesc": "Official contract dispute conversations",
+    "tabInvited": "Invited",
+    "tabNegotiation": "Negotiation",
+    "tabWorkspace": "Workspace",
+    "tabDispute": "Dispute",
     "deal": {
       "title": "Final offer",
       "subtitle": "Contract proposal",

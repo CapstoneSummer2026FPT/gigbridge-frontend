@@ -49,7 +49,7 @@ export function PromotionCard({
   carouselIndex?: number;
   onSelectCarousel?: (index: number) => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['premium', 'common']);
   const safePhotoUrl = sanitizeImageUrl(card?.photoUrl);
   const safeDisplayName = sanitizeText(card?.displayName);
   const safeJobTitle = sanitizeText(card?.jobTitle);

@@ -1,0 +1,41 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   FinalOfferEditor — scoped styling for NestedMilestonePlanEditor inside modal
+────────────────────────────────────────────────────────────────────────── */
+
+/* Remove top border + extra padding on the first section */
+.final-offer-editor-body > section {
+  border-top: none !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* Ensure full width for the editor body and all child elements */
+.final-offer-editor-body {
+  width: 100%;
+}
+
+.final-offer-editor-body article {
+  width: 100%;
+  border-radius: 1rem !important;
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.15s ease-in-out;
+}
+
+.final-offer-editor-body article:hover {
+  border-color: color-mix(in srgb, var(--gb-cyan) 40%, var(--border)) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Make sure all form inputs, textareas, and parameters occupy 100% width */
+.final-offer-editor-body article input,
+.final-offer-editor-body article textarea {
+  width: 100%;
+}
+
+/* Ensure core parameters box inside milestone cards stretches nicely */
+.final-offer-editor-body article .rounded-2xl.border {
+  border-radius: 0.875rem !important;
+  background: color-mix(in srgb, var(--surface-muted, var(--muted)) 40%, var(--card)) !important;
+}

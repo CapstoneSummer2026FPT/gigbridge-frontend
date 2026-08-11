@@ -647,5 +647,20 @@
     "clientMessage": "Lời nhắn từ khách hàng:",
     "invitedAt": "Được mời ngày {{date}}",
     "client": "Khách hàng"
+  },
+  "inviteModal": {
+    "title": "Mời Freelancer ứng tuyển",
+    "subtitle": "Gửi lời mời trực tiếp cho dự án \"{{jobTitle}}\" đến các freelancer hàng đầu.",
+    "searchPlaceholder": "Tìm kiếm theo tên, chuyên môn, thành phố hoặc kỹ năng...",
+    "selectedCount": "Đã chọn {{count}} ứng viên",
+    "messageTitle": "Lời nhắn cá nhân hóa",
+    "messagePlaceholder": "Nhập lời nhắn gửi kèm đến các freelancer được chọn...",
+    "presetMessage": "Chào bạn, dự án của chúng tôi rất phù hợp với chuyên môn của bạn. Mời bạn xem chi tiết và nộp proposal nhé!",
+    "sendInvites": "Gửi lời mời ngay ({{count}})",
+    "sending": "Đang gửi lời mời...",
+    "successSent": "Đã gửi thành công {{count}} lời mời!",
+    "noFreelancers": "Không tìm thấy freelancer phù hợp.",
+    "loadingFreelancers": "Đang tìm kiếm freelancer phù hợp...",
+    "selectAtLeastOne": "Vui lòng chọn ít nhất 1 freelancer để gửi lời mời."
   }
 }
