@@ -24,10 +24,10 @@ import type {
 } from '../../../types/models/ESign';
 import { ESignDocumentStatus } from '../../../types/models/ESign';
 import { ContractAreaTabs } from '../components/ContractAreaTabs';
+import { ContractPdfViewer } from '../components/ContractPdfViewer';
 import { LemniscateBloomLoader } from '../../../shared/components/LemniscateBloomLoader';
 import { usePageGSAP } from '../../../shared/hooks/usePageGSAP';
 import { useESignContracts, type StatusFilter } from '../hooks/useESignContracts';
-import { useESignPdf } from '../hooks/useESignPdf';
 import type { useTranslation } from '../../../hooks/useTranslation';
 import '../styles/manage-contract-screen.css';
 import '../styles/esign-contracts-screen.css';
@@ -117,11 +117,7 @@ interface PreviewPanelProps {
   error: string | null;
   fallbackItem: ESignDocumentListItemDto | null;
   isAdmin: boolean;
-  isPreparingPdf: boolean;
-  pdfError: string | null;
   t: ReturnType<typeof useTranslation>['t'];
-  onDownload: () => void;
-  onRetryPdf: () => void;
   onRetry: () => void;
 }
 
@@ -131,11 +127,7 @@ function PreviewPanel({
   error,
   fallbackItem,
   isAdmin,
-  isPreparingPdf,
-  pdfError,
   t,
-  onDownload,
-  onRetryPdf,
   onRetry,
 }: PreviewPanelProps): JSX.Element {
   if (isLoading) {
@@ -199,26 +191,8 @@ function PreviewPanel({
             </span>
           )}
 
-          {fallbackItem && (
-            <button
-              type="button"
-              onClick={onDownload}
-              disabled={isPreparingPdf}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-xs font-extrabold text-text-primary hover:border-brand/40 hover:text-brand transition cursor-pointer disabled:opacity-50"
-            >
-              <Download size={14} />
-              {isPreparingPdf ? 'Preparing PDF…' : 'Download PDF'}
-            </button>
-          )}
         </div>
       </div>
-
-      {pdfError && (
-        <p className="text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3" role="alert">
-          {pdfError}{' '}
-          <button type="button" onClick={onRetryPdf} className="underline cursor-pointer">Retry</button>
-        </p>
-      )}
 
       {/* Signature Pill Indicators */}
       <div className="flex flex-wrap items-center gap-2">
@@ -240,15 +214,11 @@ function PreviewPanel({
         </span>
       </div>
 
-      {/* Frame Preview */}
-      <div className="flex-1 min-h-[460px] rounded-2xl border border-border bg-white overflow-hidden shadow-inner">
-        <iframe
-          title="Read-only e-sign contract document"
-          className="w-full h-full border-0 min-h-[460px]"
-          sandbox=""
-          srcDoc={document.renderedHtmlContent}
-        />
-      </div>
+      <ContractPdfViewer
+        key={document.documentId}
+        document={document}
+        title={fallbackItem?.title || document.documentCode}
+      />
     </div>
   );
 }
@@ -282,8 +252,6 @@ export default function ESignContractsScreen(): JSX.Element {
     handlePreviousPage,
     handleNextPage,
   } = useESignContracts();
-
-  const pdf = useESignPdf(selectedDocument);
 
   // GSAP Entrance Animation
   usePageGSAP({
@@ -478,11 +446,7 @@ export default function ESignContractsScreen(): JSX.Element {
                   error={documentError}
                   fallbackItem={selectedItem}
                   isAdmin={isAdmin}
-                  isPreparingPdf={pdf.isPreparing}
-                  pdfError={pdf.error}
                   t={t}
-                  onDownload={pdf.download}
-                  onRetryPdf={pdf.retry}
                   onRetry={() => {
                     if (selectedDocumentId) void loadDocument(selectedDocumentId);
                   }}
