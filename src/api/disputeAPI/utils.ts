@@ -5,6 +5,8 @@ import type {
   DisputeResolution,
   DisputeStatus,
   DisputeUrgency,
+  MyDisputeSummary,
+  MyDisputesResponse,
 } from '../../types/models/Dispute';
 
 type UnknownRecord = Record<string, unknown>;
@@ -88,6 +90,31 @@ export const normalizeDispute = (raw: unknown): Dispute => {
     updatedAt: valueOf<string | null>(source, 'updatedAt', 'UpdatedAt') ?? null,
     resolvedAt: valueOf<string | null>(source, 'resolvedAt', 'ResolvedAt') ?? null,
     openedAt: valueOf<string | null>(source, 'openedAt', 'OpenedAt') ?? null,
+  };
+};
+
+export const normalizeMyDisputeSummary = (raw: unknown): MyDisputeSummary => {
+  const source = (raw ?? {}) as UnknownRecord;
+  return {
+    disputeId: String(valueOf(source, 'disputeId', 'DisputeId') ?? ''),
+    contractId: String(valueOf(source, 'contractId', 'ContractId') ?? ''),
+    jobPostId: String(valueOf(source, 'jobPostId', 'JobPostId') ?? ''),
+    projectName: String(valueOf(source, 'projectName', 'ProjectName') ?? ''),
+    createdAt: String(valueOf(source, 'createdAt', 'CreatedAt') ?? ''),
+    status: Number(valueOf(source, 'status', 'Status') ?? 0) as DisputeStatus,
+    milestoneId: valueOf<string | null>(source, 'milestoneId', 'MilestoneId') ?? null,
+    milestoneTitle: valueOf<string | null>(source, 'milestoneTitle', 'MilestoneTitle') ?? null,
+  };
+};
+
+export const normalizeMyDisputesResponse = (raw: unknown): MyDisputesResponse => {
+  const source = (raw ?? {}) as UnknownRecord;
+  const items = valueOf<unknown[]>(source, 'items', 'Items') ?? [];
+  return {
+    items: items.map(normalizeMyDisputeSummary),
+    page: Number(valueOf(source, 'page', 'Page') ?? 1),
+    pageSize: Number(valueOf(source, 'pageSize', 'PageSize') ?? 20),
+    totalItems: Number(valueOf(source, 'totalItems', 'TotalItems') ?? 0),
   };
 };
 
